@@ -84,7 +84,36 @@ func (h *Host) SyncRegistration(ctx context.Context) {
 		}
 		config.Models = append(config.Models, entry)
 	}
+	// The native provider registers every model of getAllModels and owns their classify operation.
+	// upstream: packages/coding-agent/src/extensions/llama/provider.ts:204 (getAllModels), :262 (classify); index.ts:44 (registerProvider)
+	for _, model := range classifiersOf(provider.GetAllModels()) {
+		entry := extension.ProviderModelConfig{
+			ID:            model.ID,
+			Name:          model.Name,
+			Type:          ai.ModelTypeClassifier,
+			API:           ai.API(model.API),
+			Input:         model.Input,
+			Cost:          extension.ProviderModelCost{Input: model.Cost.Input, Output: model.Cost.Output, CacheRead: model.Cost.CacheRead, CacheWrite: model.Cost.CacheWrite},
+			ContextWindow: model.ContextWindow,
+		}
+		if result == nil {
+			entry.BaseURL = model.BaseURL
+		}
+		config.Models = append(config.Models, entry)
+		config.Classifiers = ai.ProviderClassifierMap{ai.ClassifierAPILlamaCppClassify: ai.LlamaCppClassifyAPI()}
+	}
 	h.registry.SetProvider(LlamaProviderID, config)
+}
+
+// classifiersOf are the classifier models of a provider's getAllModels list.
+func classifiersOf(models []AnyModel) []ClassifierModel {
+	var classifiers []ClassifierModel
+	for _, model := range models {
+		if classifier, ok := model.(ClassifierModel); ok {
+			classifiers = append(classifiers, classifier)
+		}
+	}
+	return classifiers
 }
 
 func (m *ThinkingLevelMap) levels() ai.ThinkingLevelMap {
@@ -135,20 +164,6 @@ func (h *Host) CheckAuth(ctx context.Context) (*AuthCheck, error) {
 		credential = nil
 	}
 	return h.controller.Provider.APIKey.Check(ctx, h.authContext, credential)
-}
-
-// Login runs the provider's api-key login and stores the credential,
-// mirroring ModelRuntime.login for an api-key method.
-func (h *Host) Login(interaction AuthInteraction) error {
-	credential, err := h.controller.Provider.APIKey.Login(interaction)
-	if err != nil {
-		return err
-	}
-	if err := h.credentials.Set(LlamaProviderID, credential); err != nil {
-		return err
-	}
-	h.SyncRegistration(interaction.Ctx)
-	return nil
 }
 
 // RefreshResult mirrors ModelsRefreshResult for this provider.

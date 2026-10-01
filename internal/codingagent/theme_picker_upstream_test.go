@@ -35,7 +35,7 @@ func TestThemeContentNamePathReachesExtension(t *testing.T) {
 	for _, source := range []string{dir, path} {
 		t.Run(filepath.Base(source), func(t *testing.T) {
 			registry := tui.NewThemeRegistry()
-			if _, diagnostics := loadThemeResources(registry, []string{source}); len(diagnostics) != 0 {
+			if _, diagnostics := loadThemeResources(registry, []string{source}, tui.GetTerminalColorMode()); len(diagnostics) != 0 {
 				t.Fatalf("diagnostics = %#v", diagnostics)
 			}
 			old := tui.ActiveThemeRegistry()

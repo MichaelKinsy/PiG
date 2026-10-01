@@ -237,7 +237,7 @@ func formatFindResults(relativized []string, effectiveLimit float64, custom bool
 }
 
 func findError(message string) agent.AgentToolResult {
-	return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: message}}, Details: map[string]any{}, IsError: true}
+	return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: message}}, Details: map[string]any{}, IsError: true, Thrown: true}
 }
 
 // insideGitRepo reports whether searchPath or an ancestor has a .git entry.

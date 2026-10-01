@@ -86,6 +86,7 @@ type sessionIdentityRecord struct {
 // The real CLI must bind the current SessionManager before dispatching lifecycle
 // handlers and tools in print/JSON/RPC, including --no-session (Pi main.ts:363-447).
 func TestHeadlessExtensionSessionIdentity(t *testing.T) {
+	t.Parallel()
 	binary := buildPigBinaryForSignalTest(t)
 	fixture, err := filepath.Abs("../../test/parity/scenarios/testdata/extension-session-id.mjs")
 	if err != nil {

@@ -139,9 +139,9 @@ func TestDefaultToolsInitialSelectionPort(t *testing.T) {
 		defaults        []string
 		present, absent []string
 	}{
-		// .upstream/v0.87.1/packages/coding-agent/test/default-tools-setting.test.ts:58
+		// .upstream/v0.99.1/packages/coding-agent/test/default-tools-setting.test.ts:58
 		{"uses the configured list as the initial built-in selection", []string{"grep", "find"}, []string{"- grep:"}, []string{"- read:"}},
-		// .upstream/v0.87.1/packages/coding-agent/test/default-tools-setting.test.ts:73
+		// .upstream/v0.99.1/packages/coding-agent/test/default-tools-setting.test.ts:73
 		{"can select powershell instead of bash", []string{"read", "powershell", "edit", "write"}, []string{"- powershell: Execute PowerShell commands"}, []string{"- bash:"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -151,7 +151,21 @@ func TestDefaultToolsInitialSelectionPort(t *testing.T) {
 			printRegistryPort(t, tc.defaults[0], session)
 		})
 	}
-	// .upstream/v0.87.1/packages/coding-agent/test/default-tools-setting.test.ts:82
+	// .upstream/v0.99.1/packages/coding-agent/test/default-tools-setting.test.ts:82
+	// .upstream/v0.99.2/packages/coding-agent/test/default-tools-setting.test.ts:82-98: the tool registers with `defaultActive: false`, so only the `+name` entry activates it.
+	t.Run("activates an inactive extension tool with +name", func(t *testing.T) {
+		inactive := registryTool("inactive_tool", "Inactive Tool", "Extension tool registered inactive", "")
+		defaultActive := false
+		inactive.DefaultActive = &defaultActive
+		session := newRegistryPortSession(t, []string{"+inactive_tool", "-write"}, SessionOptions{}, []extension.ToolDefinition{inactive}, nil)
+		bindRegistryPort(t, session)
+		active := session.ActiveToolNames()
+		slices.Sort(active)
+		if !slices.Equal(active, []string{"bash", "edit", "inactive_tool", "read"}) {
+			t.Fatal(active)
+		}
+	})
+	// .upstream/v0.99.1/packages/coding-agent/test/default-tools-setting.test.ts:100
 	t.Run("keeps extension and SDK custom tools enabled", func(t *testing.T) {
 		sdk := registryTool("sdk_tool", "SDK Tool", "SDK custom tool", "")
 		static := registryTool("static_tool", "Static Tool", "Statically registered extension tool", "")
@@ -170,7 +184,7 @@ func TestDefaultToolsInitialSelectionPort(t *testing.T) {
 			}
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/default-tools-setting.test.ts:126
+	// .upstream/v0.99.1/packages/coding-agent/test/default-tools-setting.test.ts:144
 	t.Run("preserves explicit tool option precedence", func(t *testing.T) {
 		allowed := newRegistryPortSession(t, []string{"grep"}, SessionOptions{AllowedTools: map[string]struct{}{"read": {}}}, nil, nil)
 		if !slices.Equal(allowed.ActiveToolNames(), []string{"read"}) {
@@ -183,10 +197,116 @@ func TestDefaultToolsInitialSelectionPort(t *testing.T) {
 		none := newRegistryPortSession(t, []string{"read"}, SessionOptions{NoTools: "all"}, nil, nil)
 		assertRegistryNames(t, none, []string{}, []string{})
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/default-tools-setting.test.ts:141
+	// .upstream/v0.99.1/packages/coding-agent/test/default-tools-setting.test.ts:159
 	t.Run("applies through service-based session creation", func(t *testing.T) {
 		session := newRegistryPortSession(t, []string{"ls"}, SessionOptions{}, nil, nil)
 		assertRegistryNames(t, session, []string{"bash", "edit", "find", "grep", "ls", "powershell", "read", "write"}, []string{"ls"})
+	})
+}
+
+// writeRegistryPortSettings replaces the session's global settings file, as the reload tests of default-tools-setting.test.ts do.
+func writeRegistryPortSettings(t *testing.T, session *Session, settings map[string]any) {
+	t.Helper()
+	raw, err := json.Marshal(settings)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(session.services.AgentDir(), "settings.json"), raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// reloadRegistryPort is upstream session.reload() (agent-session.ts:3591-3603) without resources: the settings reload, then the runtime rebuild that activates tools newly added to defaultTools. Interactive mode interleaves resource and extension reload between the two steps.
+func reloadRegistryPort(t *testing.T, session *Session) {
+	t.Helper()
+	session.ReloadSettings()
+	if err := session.RefreshTools(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func inactiveRegistryTool() extension.ToolDefinition {
+	inactive := registryTool("inactive_tool", "Inactive Tool", "Extension tool registered inactive", "")
+	inactive.DefaultActive = new(false)
+	return inactive
+}
+
+func sortedActiveNames(session *Session) []string {
+	active := session.ActiveToolNames()
+	slices.Sort(active)
+	return active
+}
+
+// .upstream/v0.99.2/packages/coding-agent/test/default-tools-setting.test.ts:159-235 (#10245): /reload enables tools newly added to the defaultTools setting.
+func TestDefaultToolsReloadPort(t *testing.T) {
+	// default-tools-setting.test.ts:193-207
+	t.Run("activates only tools newly added to defaultTools", func(t *testing.T) {
+		session := newRegistryPortSession(t, nil, SessionOptions{}, []extension.ToolDefinition{inactiveRegistryTool()}, nil)
+		bindRegistryPort(t, session)
+		if got := session.ActiveToolNames(); !slices.Equal(got, []string{"read", "bash", "edit", "write"}) {
+			t.Fatalf("initial active = %q", got)
+		}
+		session.SetActiveToolsByName([]string{"read", "edit", "write"})
+
+		writeRegistryPortSettings(t, session, map[string]any{"defaultTools": []string{"+inactive_tool", "+grep"}})
+		reloadRegistryPort(t, session)
+		// bash was disabled during the session and is not newly added, so it stays off.
+		if got, want := sortedActiveNames(session), []string{"edit", "grep", "inactive_tool", "read", "write"}; !slices.Equal(got, want) {
+			t.Fatalf("active after adding = %q, want %q", got, want)
+		}
+
+		// Removing tools from the setting does not disable them.
+		writeRegistryPortSettings(t, session, map[string]any{"defaultTools": []string{"-read"}})
+		reloadRegistryPort(t, session)
+		if got, want := sortedActiveNames(session), []string{"edit", "grep", "inactive_tool", "read", "write"}; !slices.Equal(got, want) {
+			t.Fatalf("active after removing = %q, want %q", got, want)
+		}
+	})
+	// default-tools-setting.test.ts:209-233
+	t.Run("keeps explicit tool options on reload", func(t *testing.T) {
+		static := []extension.ToolDefinition{inactiveRegistryTool()}
+		allowlisted := newRegistryPortSession(t, nil, SessionOptions{AllowedTools: map[string]struct{}{"read": {}}}, static, nil)
+		bindRegistryPort(t, allowlisted)
+		writeRegistryPortSettings(t, allowlisted, map[string]any{"defaultTools": []string{"+grep"}})
+		reloadRegistryPort(t, allowlisted)
+		if got := allowlisted.ActiveToolNames(); !slices.Equal(got, []string{"read"}) {
+			t.Fatalf("allowlisted active = %q", got)
+		}
+
+		builtinless := newRegistryPortSession(t, nil, SessionOptions{NoTools: "builtin"}, static, nil)
+		bindRegistryPort(t, builtinless)
+		writeRegistryPortSettings(t, builtinless, map[string]any{"defaultTools": []string{"+grep"}})
+		reloadRegistryPort(t, builtinless)
+		if got := builtinless.ActiveToolNames(); len(got) != 0 {
+			t.Fatalf("no-builtin active = %q", got)
+		}
+
+		excluded := newRegistryPortSession(t, nil, SessionOptions{ExcludedTools: map[string]struct{}{"grep": {}}}, static, nil)
+		bindRegistryPort(t, excluded)
+		writeRegistryPortSettings(t, excluded, map[string]any{"defaultTools": []string{"+grep", "+inactive_tool"}})
+		reloadRegistryPort(t, excluded)
+		if got, want := sortedActiveNames(excluded), []string{"bash", "edit", "inactive_tool", "read", "write"}; !slices.Equal(got, want) {
+			t.Fatalf("excluded active = %q, want %q", got, want)
+		}
+	})
+	// agent-session.ts:3591-3603: the CLI selects the initial built-ins itself (ActiveBuiltinTools, --no-builtin-tools as SkipBuiltinTools), which sdk.ts:448 treats as the default selection or a noTools override.
+	t.Run("treats the CLI's resolved defaults as default tools and --no-builtin-tools as an override", func(t *testing.T) {
+		static := []extension.ToolDefinition{inactiveRegistryTool()}
+		defaults := newRegistryPortSession(t, nil, SessionOptions{ActiveBuiltinTools: map[string]struct{}{"read": {}, "bash": {}, "edit": {}, "write": {}}}, static, nil)
+		bindRegistryPort(t, defaults)
+		writeRegistryPortSettings(t, defaults, map[string]any{"defaultTools": []string{"+grep"}})
+		reloadRegistryPort(t, defaults)
+		if got, want := sortedActiveNames(defaults), []string{"bash", "edit", "grep", "read", "write"}; !slices.Equal(got, want) {
+			t.Fatalf("CLI defaults active = %q, want %q", got, want)
+		}
+
+		skipped := newRegistryPortSession(t, nil, SessionOptions{SkipBuiltinTools: true}, static, nil)
+		bindRegistryPort(t, skipped)
+		writeRegistryPortSettings(t, skipped, map[string]any{"defaultTools": []string{"+grep"}})
+		reloadRegistryPort(t, skipped)
+		if got := sortedActiveNames(skipped); slices.Contains(got, "grep") {
+			t.Fatalf("--no-builtin-tools active = %q, want no grep", got)
+		}
 	})
 }
 
@@ -341,7 +461,7 @@ func TestAgentSessionDynamicToolsPort(t *testing.T) {
 		}
 		fmt.Println("REGISTRY env validated")
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/agent-session-dynamic-tools.test.ts:99
+	// .upstream/v0.99.1/packages/coding-agent/test/agent-session-dynamic-tools.test.ts:99
 	t.Run("refreshes tool registry when tools are registered after initialization", func(t *testing.T) {
 		guideline := "Use dynamic_tool when the user asks for dynamic behavior tests."
 		session := newRegistryPortSession(t, nil, SessionOptions{}, nil, func(_ *Session, registered map[string]extension.RegisteredTool) {
@@ -365,7 +485,8 @@ func TestAgentSessionDynamicToolsPort(t *testing.T) {
 		if dynamic.Name == "" || !slices.Equal(dynamic.PromptGuidelines, []string{guideline}) || !reflect.DeepEqual(dynamic.SourceInfo, icodingagent.PiSourceInfo{Path: "<inline:1>", Source: "inline", Scope: "temporary", Origin: "top-level"}) {
 			t.Fatalf("dynamic = %+v", dynamic)
 		}
-		if !reflect.DeepEqual(read.SourceInfo, syntheticToolSource("read", "builtin")) {
+		// .upstream/v0.99.1/packages/coding-agent/test/agent-session-dynamic-tools.test.ts:156-161 (path "builtin:read"; 0.87.1 had "<builtin:read>")
+		if !reflect.DeepEqual(read.SourceInfo, icodingagent.PiSourceInfo{Path: "builtin:read", Source: "builtin", Scope: "temporary", Origin: "top-level"}) {
 			t.Fatalf("read = %+v", read)
 		}
 		if !slices.Contains(session.ActiveToolNames(), "dynamic_tool") {

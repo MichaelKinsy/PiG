@@ -157,8 +157,9 @@ func TestModelRegistry_TogetherProviderEnvAndDisplayName(t *testing.T) {
 	if !isBuiltInProvider("together") {
 		t.Fatal("together should be treated as a built-in provider")
 	}
-	if got := r.GetProviderDisplayName("together"); got != "Together AI" {
-		t.Fatalf("display name = %q, want Together AI", got)
+	// Pi 0.99.2 model-registry.ts:176 getProviderDisplayName returns the runtime provider's `name` (providers/together.ts: "Together").
+	if got := r.GetProviderDisplayName("together"); got != "Together" {
+		t.Fatalf("display name = %q, want Together", got)
 	}
 	if count := r.AvailableProviderCount(); count < 1 {
 		t.Fatalf("expected together to count as available, got %d", count)
@@ -349,18 +350,24 @@ func TestModelRegistry_GetProviderDisplayName(t *testing.T) {
 	}
 }
 
-// Provider labels added upstream in 0.80.x (provider-display-names.js). These
-// providers ship selectable models in the generated catalog, so an unmapped
-// label surfaces the raw provider ID in the model selector.
-func TestModelRegistry_GetProviderDisplayName_Upstream0803Labels(t *testing.T) {
+// Pi 0.99.2 model-registry.ts:176 getProviderDisplayName is `runtime.getProvider(provider)?.name ?? provider`, and every
+// catalog provider's name is the `name` of its providers/<id>.ts (provider names and labels that ship selectable models
+// in the generated catalog). The 0.80.x provider-display-names table no longer exists upstream.
+func TestModelRegistry_GetProviderDisplayName_CatalogProviderNames(t *testing.T) {
 	r := NewModelRegistry(t.TempDir())
+	for _, id := range ai.GeneratedProviders {
+		if got, want := r.GetProviderDisplayName(id), ai.ProviderDisplayName(id); got != want {
+			t.Errorf("GetProviderDisplayName(%q) = %q, want the catalog provider name %q", id, got, want)
+		}
+	}
 	want := map[string]string{
 		"zai":                   "Z.AI",
-		"zai-coding-cn":         "ZAI Coding Plan (China)",
+		"zai-coding-cn":         "Z.AI Coding CN",
 		"ant-ling":              "Ant Ling",
-		"xiaomi-token-plan-cn":  "Xiaomi MiMo Token Plan (China)",
-		"xiaomi-token-plan-ams": "Xiaomi MiMo Token Plan (Amsterdam)",
-		"xiaomi-token-plan-sgp": "Xiaomi MiMo Token Plan (Singapore)",
+		"google":                "Google",
+		"xiaomi-token-plan-cn":  "Xiaomi Token Plan CN",
+		"xiaomi-token-plan-ams": "Xiaomi Token Plan AMS",
+		"xiaomi-token-plan-sgp": "Xiaomi Token Plan SGP",
 	}
 	for id, label := range want {
 		if got := r.GetProviderDisplayName(id); got != label {

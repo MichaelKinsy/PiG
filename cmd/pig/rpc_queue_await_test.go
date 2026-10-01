@@ -63,7 +63,7 @@ func TestRPCQueueErrorsYieldToInputBatch(t *testing.T) {
 	p.closeAndWait("after queue rejections")
 }
 
-// Pi rpc-mode.ts:417-424 awaits both Session queue APIs. Their nested fulfilled Promises do not publish a response inside jsonl.ts:onData's input batch.
+// Pi rpc-mode.ts:417-425 awaits both Session queue APIs and answers with their dispositions (agent-session.ts:2093,2130). Their nested fulfilled Promises do not publish a response inside jsonl.ts:onData's input batch.
 func TestRPCQueueRepliesYieldToInputBatch(t *testing.T) {
 	home := t.TempDir()
 	p := startRPCProcessAt(t, t.TempDir(), []string{"PIG_HOME=" + home, "PIG_CODING_AGENT_DIR=" + filepath.Join(home, "agent"), "PIG_TEST_FAUX=1"}, "--offline", "--no-session", "--no-extensions", "--model", "test-faux/faux-1")
@@ -81,8 +81,8 @@ func TestRPCQueueRepliesYieldToInputBatch(t *testing.T) {
 		{"type": "queue_update", "steering": []any{""}, "followUp": []any{}},
 		{"type": "queue_update", "steering": []any{""}, "followUp": []any{""}},
 		{"id": "sync", "type": "response", "command": "abort_retry", "success": true},
-		{"id": "steer", "type": "response", "command": "steer", "success": true},
-		{"id": "follow", "type": "response", "command": "follow_up", "success": true},
+		{"id": "steer", "type": "response", "command": "steer", "success": true, "data": map[string]any{"disposition": "queued"}},
+		{"id": "follow", "type": "response", "command": "follow_up", "success": true, "data": map[string]any{"disposition": "queued"}},
 	}
 	if !reflect.DeepEqual(records, want) {
 		t.Fatalf("records=%v want=%v", records, want)

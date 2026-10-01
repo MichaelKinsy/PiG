@@ -170,15 +170,17 @@ const ATTACHMENT_AUTOCOMPLETE_DEBOUNCE_MS = 20;
 const DEFAULT_AUTOCOMPLETE_TRIGGER_CHARACTERS = ["@", "#"];
 // Unquoted completions end at whitespace or CJK punctuation; quoted paths may contain either.
 const unquotedAutocompleteSuffixRegex = new RegExp(`(?:(?!${autocompleteSeparatorRegex.source}).)*`, "u");
+// Trigger tokens may be wrapped in prose, e.g. "(@src/foo" or "`@src/foo".
+const autocompleteTokenStartSource = `${autocompleteBoundaryRegex.source}[([{<\`]*`;
 function escapeCharacterClass(value) {
     return value.replace(/[\\^$.*+?()[\]{}|-]/g, "\\$&");
 }
 function buildTriggerPattern(triggerCharacters) {
-    return new RegExp(`${autocompleteBoundaryRegex.source}(?:@"[^"]*|[${triggerCharacters.map(escapeCharacterClass).join("")}]${unquotedAutocompleteSuffixRegex.source})$`, "u");
+    return new RegExp(`${autocompleteTokenStartSource}(?:@"[^"]*|[${triggerCharacters.map(escapeCharacterClass).join("")}]${unquotedAutocompleteSuffixRegex.source})$`, "u");
 }
 function buildDebouncePattern(triggerCharacters) {
     const escapedWithoutAt = triggerCharacters.filter((character) => character !== "@").map(escapeCharacterClass);
-    return new RegExp(`${autocompleteBoundaryRegex.source}(?:@(?:"[^"]*|${unquotedAutocompleteSuffixRegex.source})|[${escapedWithoutAt.join("")}]${unquotedAutocompleteSuffixRegex.source})$`, "u");
+    return new RegExp(`${autocompleteTokenStartSource}(?:@(?:"[^"]*|${unquotedAutocompleteSuffixRegex.source})|[${escapedWithoutAt.join("")}]${unquotedAutocompleteSuffixRegex.source})$`, "u");
 }
 function createScrollBorder(direction, hiddenLineCount, width) {
     const availableWidth = Math.max(0, width);

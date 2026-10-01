@@ -1,1 +1,0 @@
-- Deliver each stream partial with its exported fields set to the stream state at delivery, so listeners read `event.Partial` and `event.Message` directly without a special call. `ai.RefreshEvent` and `agent.RefreshEvent` re-read a retained event.

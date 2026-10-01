@@ -449,14 +449,16 @@ func (r *loopRun) streamAssistantResponse() (*AssistantMessage, []pendingToolCal
 
 	transcript := ai.NormalizeContext(ai.Context{Messages: llmMsgs})
 	streamOpts := ai.StreamOptions{
-		Thinking:         r.thinking,
-		ThinkingBudgets:  a.opts.ThinkingBudgets,
-		IsReasoning:      r.model.Capabilities.MaxThinking != "",
-		ModelCost:        r.model.CostRates(),
-		SessionID:        a.opts.SessionID,
-		Transport:        a.opts.Transport,
-		OnPayload:        a.beforeProviderHook,
-		TransformHeaders: a.transformHeaders,
+		Thinking:        r.thinking,
+		ThinkingBudgets: a.opts.ThinkingBudgets,
+		IsReasoning:     r.model.Capabilities.MaxThinking != "",
+		ModelCost:       r.model.CostRates(),
+		SessionID:       a.opts.SessionID,
+		Transport:       a.opts.Transport,
+		OnPayload:       a.beforeProviderHook,
+		// upstream: agent.ts:475 forwards onProviderStreamEvent to every request.
+		OnProviderStreamEvent: a.opts.OnProviderStreamEvent,
+		TransformHeaders:      a.transformHeaders,
 	}
 	// Upstream buildBaseOptions always sends model.maxTokens, clamped to the
 	// context the request leaves.
@@ -493,7 +495,10 @@ func (r *loopRun) requestStream(observation *ai.StreamObservation, streamFn Stre
 		// loop can classify the error (rate limit, network, etc.) and retry.
 		// Mirrors upstream providers, which push an error event carrying
 		// stopReason and errorMessage instead of throwing, and report
-		// "aborted" when the request's signal was aborted.
+		// "aborted" when the request's signal was aborted. Its result
+		// records the requested thinkingLevel like any other final
+		// response (upstream agent-loop.ts:409; ai/src/api/lazy.ts:52-58
+		// turns a request-setup failure into an error event).
 		stopReason := ai.StopReasonError
 		if r.ctx.Err() != nil {
 			stopReason = ai.StopReasonAborted
@@ -503,13 +508,14 @@ func (r *loopRun) requestStream(observation *ai.StreamObservation, streamFn Stre
 			providerID = r.model.Provider.ID()
 		}
 		errorAssistant := &AssistantMessage{
-			Role:         RoleAssistant,
-			Content:      []ai.AssistantContentBlock{ai.TextContent{Text: ""}},
-			StopReason:   stopReason,
-			ErrorMessage: err.Error(),
-			Timestamp:    time.Now().UnixMilli(),
-			Provider:     providerID,
-			ModelID:      r.model.ID,
+			Role:          RoleAssistant,
+			Content:       []ai.AssistantContentBlock{ai.TextContent{Text: ""}},
+			StopReason:    stopReason,
+			ErrorMessage:  err.Error(),
+			Timestamp:     time.Now().UnixMilli(),
+			Provider:      providerID,
+			ModelID:       r.model.ID,
+			ThinkingLevel: recordedThinkingLevel(r.thinking),
 		}
 		a.emit(MessageStartEvent{Message: AgentMessage{Assistant: cloneAssistantMessage(errorAssistant)}})
 		a.emit(MessageEndEvent{Message: AgentMessage{Assistant: errorAssistant}})
@@ -519,7 +525,7 @@ func (r *loopRun) requestStream(observation *ai.StreamObservation, streamFn Stre
 		}
 		return errorAssistant, nil, nil
 	}
-	return a.consumeStream(r.ctx, stream, r.model)
+	return a.consumeStream(r.ctx, stream, r.model, r.thinking)
 }
 
 func (r *loopRun) requestError(err error) *AssistantMessage {

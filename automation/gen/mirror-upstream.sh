@@ -93,7 +93,6 @@ verify_mirror_tree() {
   local source_count
   [[ -f "$directory/packages/coding-agent/src/core/extensions/types.ts" ]] || return 1
   [[ -f "$directory/packages/ai/src/providers/data/amazon-bedrock.json" ]] || return 1
-  [[ -f "$directory/packages/ai/src/image-models.generated.js" ]] || return 1
   source_count=$(find "$directory/packages" -path '*/src/*' -name '*.ts' 2>/dev/null | wc -l | tr -d ' ')
   (( source_count >= 200 ))
 }
@@ -101,7 +100,7 @@ verify_mirror_tree() {
 hydrate_provider_data() {
   local directory="$1" version="$2" candidate package_version matches
   local target="$directory/packages/ai/src/providers/data"
-  [[ -f "$target/amazon-bedrock.json" && -f "$directory/packages/ai/src/image-models.generated.js" ]] && return 0
+  [[ -f "$target/amazon-bedrock.json" ]] && return 0
   for candidate in \
     "${PIG_PUBLISHED_AI_DATA:-}" \
     "${PI_PACKAGE_ROOT:-}/node_modules/@earendil-works/pi-ai/dist/providers/data" \
@@ -117,7 +116,6 @@ hydrate_provider_data() {
     }
     mkdir -p "$target"
     cp "$candidate"/*.json "$target/"
-    cp "$(dirname "$(dirname "$candidate")")/image-models.generated.js" "$directory/packages/ai/src/image-models.generated.js"
     return 0
   done
   echo "error: upstream source tag omits generated provider data and no matching published pi-ai package was found" >&2

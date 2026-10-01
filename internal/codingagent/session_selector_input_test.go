@@ -110,7 +110,7 @@ func TestStartupSessionCancelParksFromSearchCursor(t *testing.T) {
 	ui := tui.NewWithOutput(&output, 100, 35)
 	done := make(chan error, 1)
 	go func() {
-		_, err := runStartupComponentWith(selector, StartupUIOptions{Settings: Settings{Theme: "dark"}}, false, ui, terminal, nil)
+		_, err := runStartupComponentWith(selector, StartupUIOptions{Settings: Settings{Theme: "dark"}}, false, ui, terminal)
 		done <- err
 	}()
 	terminal.send(t, "\x1b")

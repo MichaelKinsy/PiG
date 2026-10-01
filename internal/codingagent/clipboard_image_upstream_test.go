@@ -76,7 +76,7 @@ func TestUpstreamClipboardImage(t *testing.T) {
 		env           map[string]string
 	}{{"wayland", "wl-paste", map[string]string{"WAYLAND_DISPLAY": "1", "DISPLAY": ":0"}}, {"x11", "xclip", map[string]string{"DISPLAY": ":0"}}} {
 		for _, present := range []bool{true, false} {
-			// .upstream/v0.87.1/packages/coding-agent/test/clipboard-image.test.ts:33.
+			// .upstream/v0.99.1/packages/coding-agent/test/clipboard-image.test.ts:33.
 			t.Run(fmt.Sprintf("%s: command image present=%t stops fallback", backend.name, present), func(t *testing.T) {
 				f := newClipboardImageFixture(t, "linux", backend.env)
 				f.command = func(name string, args []string) ([]byte, error) {
@@ -106,8 +106,51 @@ func TestUpstreamClipboardImage(t *testing.T) {
 			})
 		}
 	}
+	// .upstream/v0.99.1/packages/coding-agent/test/clipboard-image.test.ts:47 (regression test for #9786).
+	t.Run("X11 does not probe image types when TARGETS fails", func(t *testing.T) {
+		f := newClipboardImageFixture(t, "linux", map[string]string{"DISPLAY": ":0"})
+		f.getImage = func() ([]byte, bool, error) { return nil, true, nil }
+		var xclipArgs [][]string
+		f.command = func(_ string, args []string) ([]byte, error) {
+			xclipArgs = append(xclipArgs, args)
+			if slices.Contains(args, "TARGETS") {
+				return nil, errors.New("TARGETS failed")
+			}
+			return []byte("hello"), nil
+		}
+		assertClipboardImage(t, nil)
+		if want := [][]string{{"-selection", "clipboard", "-t", "TARGETS", "-o"}}; !slices.EqualFunc(xclipArgs, want, slices.Equal[[]string]) {
+			t.Fatalf("xclip calls=%q, want exactly the TARGETS query", xclipArgs)
+		}
+		if f.imageCalls != 1 {
+			t.Fatalf("native image reads=%d, want 1", f.imageCalls)
+		}
+	})
+	// .upstream/v0.99.1/packages/coding-agent/test/clipboard-image.test.ts:62.
+	t.Run("X11 does not probe unadvertised image types", func(t *testing.T) {
+		f := newClipboardImageFixture(t, "linux", map[string]string{"DISPLAY": ":0"})
+		f.getImage = func() ([]byte, bool, error) { return nil, true, nil }
+		var requested []string
+		f.command = func(_ string, args []string) ([]byte, error) {
+			requested = append(requested, args[3])
+			if slices.Contains(args, "TARGETS") {
+				return []byte("image/png\n"), nil
+			}
+			if slices.Contains(args, "image/png") {
+				return nil, errors.New("image/png failed")
+			}
+			return []byte("hello"), nil
+		}
+		assertClipboardImage(t, nil)
+		if want := []string{"TARGETS", "image/png"}; !slices.Equal(requested, want) {
+			t.Fatalf("requested targets=%q, want %q", requested, want)
+		}
+		if f.imageCalls != 1 {
+			t.Fatalf("native image reads=%d, want 1", f.imageCalls)
+		}
+	})
 	for _, bytes := range [][]byte{upstreamClipboardPNG, nil, {}} {
-		// .upstream/v0.87.1/packages/coding-agent/test/clipboard-image.test.ts:47.
+		// .upstream/v0.99.1/packages/coding-agent/test/clipboard-image.test.ts:74.
 		t.Run(fmt.Sprintf("native X11 result %v stops fallback", bytes), func(t *testing.T) {
 			f := newClipboardImageFixture(t, "linux", map[string]string{"DISPLAY": ":0"})
 			f.getImage = func() ([]byte, bool, error) { return bytes, true, nil }
@@ -116,13 +159,13 @@ func TestUpstreamClipboardImage(t *testing.T) {
 				want = bytes
 			}
 			assertClipboardImage(t, want)
-			if f.helperCalls != 1 || f.imageCalls != 1 || !slices.Equal(f.commands, []string{"xclip", "xclip", "xclip", "xclip", "xclip"}) {
+			if f.helperCalls != 1 || f.imageCalls != 1 || !slices.Equal(f.commands, []string{"xclip"}) {
 				t.Fatalf("calls=%v helper=%d image=%d", f.commands, f.helperCalls, f.imageCalls)
 			}
 		})
 	}
 	for _, failure := range []string{"missing module", "unavailable display"} {
-		// .upstream/v0.87.1/packages/coding-agent/test/clipboard-image.test.ts:56.
+		// .upstream/v0.99.1/packages/coding-agent/test/clipboard-image.test.ts:83.
 		t.Run("Wayland: falls back to X11 after "+failure, func(t *testing.T) {
 			f := newClipboardImageFixture(t, "linux", map[string]string{"WAYLAND_DISPLAY": "1"})
 			if failure == "missing module" {
@@ -145,7 +188,7 @@ func TestUpstreamClipboardImage(t *testing.T) {
 			}
 		})
 	}
-	// .upstream/v0.87.1/packages/coding-agent/test/clipboard-image.test.ts:70.
+	// .upstream/v0.99.1/packages/coding-agent/test/clipboard-image.test.ts:97.
 	t.Run("WSL: tries PowerShell before a broken native X11 bridge", func(t *testing.T) {
 		f := newClipboardImageFixture(t, "linux", map[string]string{"WSL_DISTRO_NAME": "Ubuntu"})
 		f.getImage = func() ([]byte, bool, error) { return nil, false, errors.New("Broken X11 bridge") }
@@ -191,7 +234,7 @@ func TestUpstreamClipboardImage(t *testing.T) {
 			bytes     []byte
 			available bool
 		}{{"PNG", upstreamClipboardPNG, true}, {"null", nil, true}, {"empty", []byte{}, true}, {"undefined", nil, false}} {
-			// .upstream/v0.87.1/packages/coding-agent/test/clipboard-image.test.ts:97.
+			// .upstream/v0.99.1/packages/coding-agent/test/clipboard-image.test.ts:124.
 			t.Run(platform+": reads native image "+value.name+" once", func(t *testing.T) {
 				f := newClipboardImageFixture(t, platform, map[string]string{})
 				f.getImage = func() ([]byte, bool, error) { return value.bytes, value.available, nil }
@@ -206,7 +249,7 @@ func TestUpstreamClipboardImage(t *testing.T) {
 			})
 		}
 	}
-	// .upstream/v0.87.1/packages/coding-agent/test/clipboard-image.test.ts:107.
+	// .upstream/v0.99.1/packages/coding-agent/test/clipboard-image.test.ts:134.
 	t.Run("returns null without a native helper", func(t *testing.T) {
 		f := newClipboardImageFixture(t, "win32", map[string]string{})
 		f.missing = true
@@ -216,7 +259,7 @@ func TestUpstreamClipboardImage(t *testing.T) {
 		}
 	})
 	for _, platform := range []string{"linux", "win32"} {
-		// .upstream/v0.87.1/packages/coding-agent/test/clipboard-image.test.ts:113.
+		// .upstream/v0.99.1/packages/coding-agent/test/clipboard-image.test.ts:140.
 		t.Run(platform+": propagates native transfer errors without fallback", func(t *testing.T) {
 			f := newClipboardImageFixture(t, platform, map[string]string{"WAYLAND_DISPLAY": "1", "DISPLAY": ":0"})
 			failure := errors.New("Native clipboard operation failed")
@@ -227,14 +270,14 @@ func TestUpstreamClipboardImage(t *testing.T) {
 			}
 			var want []string
 			if platform == "linux" {
-				want = []string{"wl-paste", "xclip", "xclip", "xclip", "xclip", "xclip"}
+				want = []string{"wl-paste", "xclip"}
 			}
 			if !slices.Equal(f.commands, want) {
 				t.Fatalf("commands=%v", f.commands)
 			}
 		})
 	}
-	// .upstream/v0.87.1/packages/coding-agent/test/clipboard-image.test.ts:129.
+	// .upstream/v0.99.1/packages/coding-agent/test/clipboard-image.test.ts:156.
 	t.Run("Termux does not read image clipboards", func(t *testing.T) {
 		f := newClipboardImageFixture(t, "linux", map[string]string{"TERMUX_VERSION": "0.119"})
 		assertClipboardImage(t, nil)

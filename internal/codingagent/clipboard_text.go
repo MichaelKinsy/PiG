@@ -121,3 +121,16 @@ func (m *InteractiveMode) handleRightClickPaste() {
 		m.requestRender()
 	})
 }
+
+// readClipboardFilePaths reads file paths, such as Finder file copies, from the native clipboard, or nil when there are none or the helper cannot read them. Mirrors upstream readClipboardFilePaths (utils/clipboard.ts).
+func readClipboardFilePaths(ctx context.Context) ([]string, error) {
+	helper := getNativeClipboard()
+	if helper == nil || helper.GetFilePaths == nil {
+		return nil, nil
+	}
+	paths, _, err := helper.GetFilePaths(ctx)
+	if err != nil || len(paths) == 0 {
+		return nil, err
+	}
+	return paths, nil
+}

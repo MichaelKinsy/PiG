@@ -44,7 +44,7 @@ func TestExtractTypeScriptCurrentPin(t *testing.T) {
 		"terminal-progress", "steering-mode", "follow-up-mode", "transport", "http-idle-timeout", "cache-warming-mode",
 		"hide-thinking", "mermaid-rendering", "cache-miss-notices", "collapse-changelog", "quiet-startup",
 		"install-telemetry", "default-project-trust", "double-escape-action", "tree-filter-mode", "warnings",
-		"model-thinking", "tui-mode", "fullscreen-exit-output", "fullscreen-scrollbar", "fullscreen-copy-on-select", "theme",
+		"model-thinking", "tui-mode", "fullscreen-exit-output", "fullscreen-scrollbar", "fullscreen-copy-on-select", "fullscreen-wheel-scroll-lines", "theme",
 	}
 	if !reflect.DeepEqual(ids, wantIDs) {
 		t.Fatalf("settings IDs = %v, want %v", ids, wantIDs)

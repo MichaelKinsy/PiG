@@ -255,37 +255,6 @@ func TestTruncToWidth_CJK(t *testing.T) {
 	}
 }
 
-func TestParseDiffLine(t *testing.T) {
-	tests := []struct {
-		line    string
-		prefix  byte
-		lineNum string
-		content string
-		ok      bool
-	}{
-		{"+  1 added line", '+', "  1", "added line", true},
-		{"-  1 removed line", '-', "  1", "removed line", true},
-		{"   2 context line", ' ', "  2", "context line", true},
-		{"      ...", ' ', "    ", "...", true},
-		{"", 0, "", "", false},
-		{"x invalid", 0, "", "", false},
-	}
-	for _, tc := range tests {
-		p, ln, c, ok := parseDiffLine(tc.line)
-		if ok != tc.ok {
-			t.Errorf("parseDiffLine(%q): ok=%v, want %v", tc.line, ok, tc.ok)
-			continue
-		}
-		if !ok {
-			continue
-		}
-		if p != tc.prefix || ln != tc.lineNum || c != tc.content {
-			t.Errorf("parseDiffLine(%q) = (%c, %q, %q), want (%c, %q, %q)",
-				tc.line, p, ln, c, tc.prefix, tc.lineNum, tc.content)
-		}
-	}
-}
-
 func TestExtractDiffString(t *testing.T) {
 	m := map[string]any{"diff": "-1 old\n+1 new", "firstChangedLine": float64(1)}
 	got := extractDiffString(m)

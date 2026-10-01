@@ -59,7 +59,7 @@ func newDriveProcedureFixture(t *testing.T, structural bool) *driveProcedureFixt
 	stream := func(ctx context.Context, _ *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 		return faux.Stream(ctx, transcript, options)
 	}
-	fixture.provider = ai.CreateProvider(ai.CreateProviderOptions{ID: "faux", Models: []*ai.Model{model}, Auth: ai.ProviderAuth{APIKey: &ai.APIKeyAuth{Name: "Faux", Resolve: func(context.Context, ai.APIKeyAuthInput) (*ai.AuthResult, error) { return &ai.AuthResult{}, nil }}}, API: &ai.ProviderStreams{Stream: stream, StreamSimple: stream, CancelDeferred: func(ctx context.Context, model *ai.Model, handle ai.DeferredHandle, options ai.DeferredCancelOptions) error {
+	fixture.provider = ai.CreateProvider(ai.CreateProviderOptions{ID: "faux", Models: []ai.AnyModel{model}, Auth: ai.ProviderAuth{APIKey: &ai.APIKeyAuth{Name: "Faux", Resolve: func(context.Context, ai.APIKeyAuthInput) (*ai.AuthResult, error) { return &ai.AuthResult{}, nil }}}, API: &ai.ProviderStreams{Stream: stream, StreamSimple: stream, CancelDeferred: func(ctx context.Context, model *ai.Model, handle ai.DeferredHandle, options ai.DeferredCancelOptions) error {
 		fixture.mu.Lock()
 		fixture.cancelled = append(fixture.cancelled, handle)
 		fixture.mu.Unlock()

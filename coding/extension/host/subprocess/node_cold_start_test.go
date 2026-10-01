@@ -9,6 +9,7 @@ import (
 
 // The virtual modules in Pi's core/extensions/virtual-modules.ts:14-38 share exported values. Deferring their loading must not replace those values or cache extension factories (core/extensions/loader.ts:491-510).
 func TestNodeColdStartLoadsSDKOnlyOnImport(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join(findModuleRoot(t), "coding", "extension", "host", "subprocess", "runtime-node")
 	dir := t.TempDir()
 	entry := filepath.Join(dir, "light.ts")

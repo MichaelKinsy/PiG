@@ -1,0 +1,21 @@
+--- FAIL: TestModelsGlobalServesTheRegistryToScripts (0.41s)
+    models_global_test.go:87: script result "Script error:\nReferenceError: models is not defined\n    at <anonymous> (codemode.js:2:25)\n\nNo tool calls were made." (error=true): invalid character 'S' looking for beginning of value
+--- FAIL: TestExtensionServesModelsUnlessDisabled (0.00s)
+    models_global_test.go:134: the extension does not declare `models` by default
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode	0.458s
+FAIL
+--- FAIL: TestUpstreamCodemodeModels (0.67s)
+    --- FAIL: TestUpstreamCodemodeModels/declares_models_only_for_the_session's_own_codemode_tool (0.01s)
+        codemode_session_upstream_test.go:549: description lacks "declare const models: {"
+        codemode_session_upstream_test.go:549: description lacks "classify(model: ModelInfo, context: ClassifierContext): Promise<ClassifierResult>;"
+        codemode_session_upstream_test.go:549: description lacks "interface ClassifierResult {"
+    --- FAIL: TestUpstreamCodemodeModels/lists_models_and_classifies_with_catalog_auth,_ignoring_script-supplied_fields (0.43s)
+        codemode_session_upstream_test.go:575: isError: Script error:
+            ReferenceError: models is not defined
+                at <anonymous> (codemode.js:2:26)
+            
+            No tool calls were made.
+    --- FAIL: TestUpstreamCodemodeModels/reports_provider_errors_as_results_and_invalid_arguments_as_exceptions (0.23s)
+        codemode_session_upstream_test.go:633: isError: Script error:
+            ReferenceError: models is not defined

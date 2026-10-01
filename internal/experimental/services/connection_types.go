@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"slices"
 	"sync"
 )
@@ -126,14 +127,20 @@ type ReplicatedStateDelivery struct {
 }
 
 // SourceState is a read-only lifecycle snapshot with ordered, context-bearing subscriptions. Equal replacements do not publish. Subscribers must not mutate pointer fields. Callbacks run outside source locks and should return promptly.
+//
+// Each subscription has its own queue of at most stateSubscriberQueueLimit deliveries and runs one callback at a time, so a
+// callback that publishes sees its own later deliveries only after it returns. Unsubscribing drops the queued deliveries, even
+// those of a publication that already snapshotted the subscription. A callback panic never reaches the publisher: it is
+// reported and later deliveries continue. Go callbacks cannot return a Promise, so upstream's wait for one has no counterpart.
 type SourceState[T comparable] struct {
-	mu         sync.Mutex
-	value      T
-	sequence   int
-	next       int
-	listeners  []stateListener[T]
-	pending    []statePublication[T]
-	delivering bool
+	mu          sync.Mutex
+	value       T
+	sequence    int
+	subscribers []*stateSubscriber[T]
+	pending     []statePublication[T]
+	delivering  bool
+	// reportError receives callback failures; nil reports through throwAsync.
+	reportError func(error)
 }
 
 type statePublication[T any] struct {
@@ -142,11 +149,22 @@ type statePublication[T any] struct {
 	delivery ReplicatedStateDelivery
 }
 
-type stateListener[T any] struct {
-	id               int
-	hydratedSequence int
+// stateSubscriberQueueLimit is the pending delivery bound of chord state.ts StateSubscriber.push.
+// upstream: packages/chord/src/services/state.ts:StateSubscriber
+const stateSubscriberQueueLimit = 100
+
+// stateSubscriber is chord state.ts StateSubscriber; its fields are guarded by the state's mutex.
+type stateSubscriber[T any] struct {
 	call             func(T, context.Context, ReplicatedStateDelivery)
+	hydratedSequence int
+	queue            []statePublication[T]
+	running          bool
+	started          bool
+	closed           bool
 }
+
+// throwAsync is chord reportErrorAsync: the failure surfaces as an uncaught error outside the call that published it.
+var throwAsync = func(err error) { go func() { panic(err) }() }
 
 func (state *SourceState[T]) Value() T {
 	state.mu.Lock()
@@ -154,29 +172,91 @@ func (state *SourceState[T]) Value() T {
 	return state.value
 }
 
-// Subscribe synchronously hydrates the listener and returns an idempotent removal function. Removal affects publications that have not started delivery, not the current listener snapshot. A listener that panics during hydration is removed before the panic propagates.
+// Subscribe synchronously hydrates the listener and returns an idempotent removal function. Removal drops queued deliveries
+// but does not stop a callback that is running. A callback that panics is reported and stays subscribed.
 func (state *SourceState[T]) Subscribe(listener func(T, context.Context, ReplicatedStateDelivery)) func() {
 	state.mu.Lock()
-	id := state.next
-	state.next++
-	entry := stateListener[T]{id: id, call: listener, hydratedSequence: state.sequence}
-	state.listeners = append(state.listeners, entry)
-	value, sequence := state.value, state.sequence
-	state.mu.Unlock()
-	remove := func() {
-		state.mu.Lock()
-		defer state.mu.Unlock()
-		state.listeners = slices.DeleteFunc(state.listeners, func(entry stateListener[T]) bool { return entry.id == id })
+	subscriber := &stateSubscriber[T]{call: listener, hydratedSequence: state.sequence}
+	state.subscribers = append(state.subscribers, subscriber)
+	subscriber.push(statePublication[T]{value: state.value, context: context.Background(), delivery: ReplicatedStateDelivery{Kind: "hydrate", Sequence: state.sequence}})
+	// Claim the subscriber before releasing the mutex, as chord subscribe drains it without yielding: a publication on
+	// another goroutine then queues behind the hydration instead of running it there after Subscribe returns.
+	subscriber.running = true
+	state.run(subscriber)
+	return func() { state.unsubscribe(subscriber) }
+}
+
+func (state *SourceState[T]) unsubscribe(subscriber *stateSubscriber[T]) {
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	subscriber.closed = true
+	subscriber.queue = nil
+	state.subscribers = slices.DeleteFunc(state.subscribers, func(candidate *stateSubscriber[T]) bool { return candidate == subscriber })
+}
+
+// push is called with the state's mutex held.
+func (subscriber *stateSubscriber[T]) push(publication statePublication[T]) {
+	if subscriber.closed {
+		return
 	}
-	hydrated := false
-	defer func() {
-		if !hydrated {
-			remove()
+	if len(subscriber.queue) == stateSubscriberQueueLimit {
+		// A subscriber that has not started keeps its hydration, which is the first queued delivery.
+		var hydration []statePublication[T]
+		if !subscriber.started {
+			hydration = []statePublication[T]{subscriber.queue[0]}
 		}
-	}()
-	listener(value, context.Background(), ReplicatedStateDelivery{Kind: "hydrate", Sequence: sequence})
-	hydrated = true
-	return remove
+		subscriber.queue = hydration
+	}
+	subscriber.queue = append(subscriber.queue, publication)
+}
+
+// drain runs the subscriber's queued deliveries unless one of its callbacks is already running.
+func (state *SourceState[T]) drain(subscriber *stateSubscriber[T]) {
+	state.mu.Lock()
+	if subscriber.running || subscriber.closed {
+		state.mu.Unlock()
+		return
+	}
+	subscriber.running = true
+	state.run(subscriber)
+}
+
+// run delivers the queued deliveries of a subscriber that the caller marked running. It is called with the state's mutex
+// held and releases it.
+func (state *SourceState[T]) run(subscriber *stateSubscriber[T]) {
+	for len(subscriber.queue) > 0 {
+		publication := subscriber.queue[0]
+		subscriber.queue[0] = statePublication[T]{}
+		subscriber.queue = subscriber.queue[1:]
+		subscriber.started = true
+		state.mu.Unlock()
+		if failure := deliverStateListener(subscriber, publication); failure != nil {
+			state.report(failure)
+		}
+		state.mu.Lock()
+	}
+	subscriber.running = false
+	state.mu.Unlock()
+}
+
+// report never propagates a reporter failure to the delivering call; it surfaces through throwAsync.
+func (state *SourceState[T]) report(failure any) {
+	err := toStateError(failure)
+	reporter := state.reportError
+	if reporter == nil {
+		throwAsync(err)
+		return
+	}
+	if reportFailure := capturePublicationFailure(func() { reporter(err) }); reportFailure != nil {
+		throwAsync(toStateError(reportFailure))
+	}
+}
+
+func toStateError(failure any) error {
+	if err, ok := failure.(error); ok {
+		return err
+	}
+	return fmt.Errorf("%v", failure)
 }
 
 // replace commits before notifications so observers can query the source without holding its mutex.
@@ -193,6 +273,7 @@ func (state *SourceState[T]) replace(ctx context.Context, value T) func() {
 	return state.deliver
 }
 
+// deliver publishes queued revisions in commit order to the subscribers of each publication's snapshot.
 func (state *SourceState[T]) deliver() {
 	state.mu.Lock()
 	if state.delivering {
@@ -200,36 +281,36 @@ func (state *SourceState[T]) deliver() {
 		return
 	}
 	state.delivering = true
-	var failures []any
 	for len(state.pending) > 0 {
 		publication := state.pending[0]
 		state.pending[0] = statePublication[T]{}
 		state.pending = state.pending[1:]
-		listeners := slices.Clone(state.listeners)
+		subscribers := slices.Clone(state.subscribers)
 		state.mu.Unlock()
-		for _, listener := range listeners {
-			if publication.delivery.Sequence > listener.hydratedSequence {
-				if failure := deliverStateListener(listener, publication); failure != nil {
-					failures = append(failures, failure)
-				}
+		for _, subscriber := range subscribers {
+			if publication.delivery.Sequence <= subscriber.hydratedSequence {
+				continue
 			}
+			state.mu.Lock()
+			subscriber.push(publication)
+			state.mu.Unlock()
+			state.drain(subscriber)
 		}
 		state.mu.Lock()
 	}
 	state.pending = nil
 	state.delivering = false
 	state.mu.Unlock()
-	if len(failures) == 1 {
-		panic(failures[0])
-	}
-	if len(failures) > 1 {
-		panic(&AggregateError{Message: "Replicated state listeners failed", Errors: failures})
-	}
 }
 
-// Listener panics are collected so one subscriber cannot suppress another subscriber or poison later publications.
-func deliverStateListener[T any](listener stateListener[T], publication statePublication[T]) (failure any) {
+func deliverStateListener[T any](subscriber *stateSubscriber[T], publication statePublication[T]) (failure any) {
+	return capturePublicationFailure(func() { subscriber.call(publication.value, publication.context, publication.delivery) })
+}
+
+// capturePublicationFailure returns the panic value of call, if any, so one callback cannot suppress another callback or
+// poison later publications; the caller reports it.
+func capturePublicationFailure(call func()) (failure any) {
 	defer func() { failure = recover() }()
-	listener.call(publication.value, publication.context, publication.delivery)
+	call()
 	return nil
 }

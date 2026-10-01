@@ -187,6 +187,7 @@ includes = [
   "packages/coding-agent/src/modes/interactive/components/armin.ts",
   "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
   "packages/coding-agent/src/modes/interactive/components/bash-execution.ts",
+  "packages/coding-agent/src/modes/interactive/components/visual-truncate.ts",
   "packages/coding-agent/src/modes/interactive/components/user-message.ts",
   "packages/coding-agent/src/modes/interactive/components/diff.ts",
   "packages/coding-agent/src/modes/interactive/components/bordered-loader.ts",
@@ -201,6 +202,7 @@ includes = [
   "packages/coding-agent/src/modes/interactive/components/dynamic-border.ts",
   "packages/coding-agent/src/modes/interactive/components/keybinding-hints.ts",
   "packages/coding-agent/src/modes/interactive/components/status-indicator.ts",
+  "packages/coding-agent/src/modes/interactive/components/themed-text.ts",
   "packages/coding-agent/src/utils/syntax-highlight.ts",
 ]
 
@@ -235,6 +237,10 @@ includes = [
   "packages/coding-agent/src/core/extensions/wrapper.ts",
   "packages/coding-agent/src/core/agent-session.ts",
   "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/extensions/codemode/",
+  "packages/coding-agent/src/extensions/mcp/",
+  "packages/coding-agent/src/extensions/tool-search/",
+  "packages/codemode/src/",
 ]
 
 [families.interactive-input]
@@ -293,6 +299,7 @@ includes = [
   "packages/ai/src/providers/openai-responses-shared.ts",
   "packages/ai/src/providers/openai-responses.ts",
   "packages/ai/src/providers/register-builtins.ts",
+  "packages/ai/src/api/llama-cpp-classify.ts",
 ]
 
 [families.oauth]
@@ -301,7 +308,7 @@ includes = [
   "packages/ai/src/oauth.ts",
   "packages/ai/src/auth/oauth/anthropic.ts",
   "packages/ai/src/auth/oauth/github-copilot.ts",
-  "packages/ai/src/auth/oauth/oauth-page.ts",
+  "packages/ai/src/utils/oauth-page.ts",
   "packages/ai/src/auth/oauth/openai-codex.ts",
   "packages/ai/src/auth/oauth/pkce.ts",
   "packages/ai/src/auth/types.ts",

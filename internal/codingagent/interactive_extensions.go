@@ -154,6 +154,10 @@ func (m *InteractiveMode) wireInprocContextActions() {
 	actions := extension.ContextActions{
 		GetScopedModels: m.extensionScopedModels,
 		GetAllTools: func() []extension.ToolInfo {
+			// upstream: agent-session.ts:3353 (getAllTools): the Session's registry, with each tool's source, exposure and namespace.
+			if session, ok := m.opts.SessionHandle.(interface{ GetAllTools() []extension.ToolInfo }); ok {
+				return session.GetAllTools()
+			}
 			extTools := m.newRunner.Tools()
 			builtinNames := m.activeBuiltinToolNames(extTools...)
 			result := make([]extension.ToolInfo, 0, len(extTools)+len(builtinNames))
@@ -183,6 +187,7 @@ func (m *InteractiveMode) wireInprocContextActions() {
 		},
 		GetActiveTools: m.activeToolNames,
 		SetActiveTools: m.setActiveToolsByName,
+		RefreshTools:   func() error { return m.refreshSessionTools(false) },
 		GetFlagValue: func(name string) any {
 			if m.opts.UnknownFlags != nil {
 				if value, ok := m.opts.UnknownFlags[name]; ok {
@@ -198,6 +203,7 @@ func (m *InteractiveMode) wireInprocContextActions() {
 			return modelToExtModel(m.opts.Model)
 		},
 		IsIdle:           m.extensionIsIdle,
+		GetSignal:        m.extensionSignal,
 		IsProjectTrusted: func() bool { return m.projectTrusted() },
 		HasPendingMessages: func() bool {
 			if m.agent == nil {
@@ -249,6 +255,20 @@ func (m *InteractiveMode) setActiveToolsByName(names []string) {
 }
 
 func (m *InteractiveMode) selectActiveToolsByName(names []string) {
+	// The Session owns the tool registry and the loadout (exposure, namespaces, declarations): it admits the names, and
+	// this mode keeps the allow-list its own rebuilds apply.
+	if session, ok := m.opts.SessionHandle.(interface {
+		SetActiveToolsByName([]string)
+		ActiveToolNames() []string
+	}); ok {
+		session.SetActiveToolsByName(names)
+		active := session.ActiveToolNames()
+		m.opts.AllowedTools = make(map[string]struct{}, len(active))
+		for _, name := range active {
+			m.opts.AllowedTools[name] = struct{}{}
+		}
+		return
+	}
 	m.opts.AllowedTools = make(map[string]struct{}, len(names))
 	for _, name := range names {
 		if m.opts.ToolRegistryAllowed != nil {
@@ -344,9 +364,6 @@ func (m *InteractiveMode) publishSlashCommandCatalog() {
 		AgentDir:        m.opts.AgentDir,
 		SourceInfo:      cloneResourceSourceInfoMap(m.resourceSourceInfo),
 	}
-	if m.opts.Llama != nil {
-		catalog.Inline = []PiSlashCommand{LlamaSlashCommand()}
-	}
 	m.slashCatalog.Store(catalog)
 }
 
@@ -366,10 +383,19 @@ func (m *InteractiveMode) syncWidgets(widgets map[string]*subprocess.PushProxy) 
 	}
 }
 
+// sessionToolActions is the session's nested-call actions. Only a session that runs tools has them; the handle is read at call time because a replacement swaps it.
+func (m *InteractiveMode) sessionToolActions() (extension.ToolActions, bool) {
+	session, ok := m.opts.SessionHandle.(interface{ ToolActions() extension.ToolActions })
+	if !ok {
+		return extension.ToolActions{}, false
+	}
+	return session.ToolActions(), true
+}
+
 func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 	b := m.opts.SubprocessUIBridge
 	detachModelRegistry := WireModelOperations(b, ModelOperationBindings{
-		CurrentModel: func() *ai.Model { return m.opts.Model }, ModelLookup: m.opts.ModelLookup, ModelCatalog: m.opts.ModelCatalog,
+		CurrentModel: func() *ai.Model { return m.opts.Model }, ModelLookup: m.opts.ModelLookup, ModelCatalog: m.opts.ModelCatalog, Classify: m.opts.ModelClassify,
 		Registry: m.opts.ModelRegistry, ModelBuilder: m.opts.ModelBuilder, SessionHandle: m.opts.SessionHandle,
 		Thinking: ai.ThinkingLevel(m.thinkingLevel), Transport: ai.Transport(m.opts.Settings.Transport),
 	})
@@ -391,6 +417,25 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 		}
 		return ExtensionToolInfos(runner, m.opts.ToolRegistryAllowed, m.opts.ExcludedTools)
 	})
+	// upstream: agent-session.ts:3339, 3382-3383 bind getSettings, executeTool and getCallableTools to the session in every mode.
+	b.SetHostAction("getSettings", func() extension.Settings {
+		if m.opts.SettingsManager == nil {
+			return nil
+		}
+		return m.opts.SettingsManager.ExtensionSettings()
+	})
+	b.SetHostAction("getCallableTools", func() []extension.AgentTool {
+		if actions, ok := m.sessionToolActions(); ok {
+			return actions.GetCallableTools()
+		}
+		return nil
+	})
+	b.SetHostAction("executeTool", func(ctx context.Context, callerID, name string, args json.RawMessage, options extension.ExecuteToolOptions) (extension.AgentToolCallOutcome, error) {
+		if actions, ok := m.sessionToolActions(); ok {
+			return actions.ExecuteTool(ctx, callerID, name, args, options)
+		}
+		return subprocess.UnavailableNestedCall(callerID, name), nil
+	})
 	b.SetHostAction("getCommands", func() []subprocess.CommandInfo {
 		catalog := SlashCommandCatalog{}
 		if published := m.slashCatalog.Load(); published != nil {
@@ -402,23 +447,7 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 		return catalog.SubprocessCommands()
 	})
 	b.SetHostAction("setActiveTools", m.setActiveToolsByName)
-	b.SetHostAction("refreshTools", func() error {
-		refresh := func() error {
-			session, ok := m.opts.SessionHandle.(interface{ RefreshTools() error })
-			if !ok {
-				return errors.New("interactive Session cannot refresh tools")
-			}
-			if err := session.RefreshTools(); err != nil {
-				return err
-			}
-			m.rebuildToolSystemPrompt()
-			return nil
-		}
-		if m.runCtx == nil {
-			return refresh()
-		}
-		return m.runOnMainAndWait(m.runCtx, refresh)
-	})
+	b.SetHostAction("refreshTools", func() error { return m.refreshSessionTools(true) })
 	b.SetHostAction("getThinkingLevel", func() string {
 		return string(m.agent.ThinkingLevel())
 	})
@@ -434,6 +463,7 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 		m.runOnMain(m.runCtx, m.refreshThinkingLevel)
 	})
 	b.SetHostAction("isIdle", m.extensionIsIdle)
+	b.SetHostAction("getSignal", m.extensionSignal)
 	b.SetHostAction("isProjectTrusted", func() bool { return m.projectTrusted() })
 	if m.statusLine != nil {
 		b.SetHostAction("getGitBranch", func() string { return m.statusLine.GitBranch() })
@@ -473,29 +503,14 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 	b.SetHostAction("reload", m.reloadFromExtension)
 	b.SetHostAction("compact", func(ctx context.Context, opts *extension.CompactOptions) {
 		extension.CallInitiated(ctx)
-		if opts != nil && (opts.OnComplete != nil || opts.OnError != nil) {
-			m.compactForExtension(opts)
+		// upstream: agent-session.ts:3369-3379. The Session starts and owns the compaction and reports through the extension's callbacks; without callbacks the outcome is dropped.
+		if m.opts.SessionHandle != nil {
+			m.opts.SessionHandle.ExtensionCompact(opts)
 			return
 		}
-		if m.opts.SessionHandle == nil {
-			return
+		if opts != nil && opts.OnError != nil {
+			opts.OnError(errors.New("compaction is not available"))
 		}
-		type compactor interface {
-			Compact(ctx context.Context, customInstructions string) error
-		}
-		c, ok := m.opts.SessionHandle.(compactor)
-		if !ok {
-			return
-		}
-		customInstructions := ""
-		if opts != nil {
-			customInstructions = opts.CustomInstructions
-		}
-		go func() {
-			if err := c.Compact(m.abortCtx, customInstructions); err != nil && !errors.Is(err, context.Canceled) {
-				fmt.Fprintf(os.Stderr, "extension compact: %v\n", err)
-			}
-		}()
 	})
 	b.SetHostAction("setModel", func(ctx context.Context, spec string) (bool, error) {
 		m.invalidatePostLoginSelection()
@@ -507,21 +522,21 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 		if err != nil {
 			return false, err
 		}
+		// A Session answers the action itself: false without configured credentials, and it emits model_select only for a changed model (agent-session.ts:3343-3347, 2372-2384).
 		if m.opts.SessionHandle != nil {
-			if err := m.opts.SessionHandle.SetModel(newModel); err != nil {
+			switched, err := m.opts.SessionHandle.ExtensionSetModel(ctx, newModel)
+			if err != nil || !switched {
 				return false, err
 			}
 		} else if m.agent != nil {
 			m.agent.SetModel(newModel)
 		}
-		prevModel := m.opts.Model
 		m.opts.Model = newModel
 		if m.statusLine != nil {
 			m.statusLine.SetModel(newModel)
 		}
 		// Host actions run off the owner loop, which owns the editor.
 		m.runOnMain(m.runCtx, m.refreshThinkingLevel)
-		emitModelSelect(m.newRunner, modelToExtModel(newModel), modelToExtModel(prevModel), extension.ModelSelectSourceUser)
 		return true, nil
 	})
 	b.SetHostAction("getSessionName", func() string {
@@ -562,17 +577,6 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 		return *m.currentSystemPromptOptions()
 	})
 
-	// Session branch (conversation history).
-	b.SetHostAction("getBranch", func() []json.RawMessage {
-		if m.currentSession() == nil {
-			return nil
-		}
-		leaf := m.currentSession().LeafID()
-		if leaf == nil {
-			return sessionEntriesRaw(m.currentSession().Entries())
-		}
-		return sessionEntriesRaw(m.currentSession().Branch(*leaf))
-	})
 	// getEntriesPage backs bounded per-extension state pushes. Session entries
 	// are append-only, so a cursor beyond the current length means the session
 	// changed and the runtime is resent from zero.
@@ -593,12 +597,6 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 	})
 	b.SetHostAction("sessionRead", func(method string, args json.RawMessage) (any, error) {
 		return ExtensionSessionRead(ExtensionSessionView{Session: m.currentSession(), CWD: m.opts.CWD, SessionDir: ExtensionSessionDir(m.opts.SessionDir)}, method, args)
-	})
-	b.SetHostAction("getEntries", func() []json.RawMessage {
-		if m.currentSession() == nil {
-			return nil
-		}
-		return sessionEntriesRaw(m.currentSession().Entries())
 	})
 	b.SetHostAction("exec", func(ctx context.Context, command string, args []string, opts *extension.ExecOptions) (extension.ExecResult, error) {
 		return extension.ExecCommand(ctx, m.opts.CWD, command, args, opts)
@@ -785,35 +783,6 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 	return detachModelRegistry
 }
 
-// compactForExtension runs upstream ctx.compact({ onComplete, onError }):
-// compaction starts without being awaited, and its result or failure reaches
-// the extension's callbacks (agent-session-runtime.ts compact).
-func (m *InteractiveMode) compactForExtension(opts *extension.CompactOptions) {
-	fail := func(err error) {
-		if opts.OnError != nil {
-			opts.OnError(err)
-		}
-	}
-	type extensionCompactor interface {
-		CompactForExtension(ctx context.Context, customInstructions string) (any, error)
-	}
-	c, ok := m.opts.SessionHandle.(extensionCompactor)
-	if !ok {
-		fail(errors.New("compaction is not available"))
-		return
-	}
-	go func() {
-		result, err := c.CompactForExtension(m.abortCtx, opts.CustomInstructions)
-		if err != nil {
-			fail(err)
-			return
-		}
-		if opts.OnComplete != nil {
-			opts.OnComplete(result)
-		}
-	}()
-}
-
 func latestCompactionIndex(entries []SessionEntry) int {
 	for i, entrie := range slices.Backward(entries) {
 		if entrie.Base.Type == "compaction" {
@@ -865,22 +834,6 @@ func sessionEntriesRawPage(entries []SessionEntry, cursor, maxBytes int) ([]json
 		next++
 	}
 	return out, next
-}
-
-// sessionEntriesRaw passes session entries through as the JSON they already
-// are. Decoding each entry into a map only to re-encode it moments later cost
-// 159ms on a 7,891-entry session, per push, per extension.
-func sessionEntriesRaw(entries []SessionEntry) []json.RawMessage {
-	if len(entries) == 0 {
-		return nil
-	}
-	out := make([]json.RawMessage, 0, len(entries))
-	for _, entry := range entries {
-		if raw := entry.Raw(); len(raw) > 0 {
-			out = append(out, json.RawMessage(raw))
-		}
-	}
-	return out
 }
 
 func subprocessModelSpec(model map[string]any) string {
@@ -1503,8 +1456,10 @@ type ModelOperationBindings struct {
 	Registry      *ModelRegistry
 	ModelBuilder  func(spec string) (*ai.Model, error)
 	SessionHandle InteractiveSessionHandle
-	Thinking      ai.ThinkingLevel
-	Transport     ai.Transport
+	// Classify is the Session runtime's classify; an extension's ctx.modelRegistry.classify reaches it. Nil answers an error result.
+	Classify  func(context.Context, *ai.ClassifierModel, ai.ClassifierContext, ...ai.ModelsClassifierOptions) ai.ClassifierResult
+	Thinking  ai.ThinkingLevel
+	Transport ai.Transport
 }
 
 // WireModelOperations installs one Session-owned extension model surface and returns its catalog-listener detach function.
@@ -1610,6 +1565,12 @@ func WireModelOperations(bridge ModelOperationBridge, bindings ModelOperationBin
 		}
 		return catalogEncoding.state(bindings.Registry, catalog)
 	})
+	bridge.SetHostAction("getAvailableOfType", func(ctx context.Context, modelType, providerID string) ([]map[string]any, error) {
+		return extensionAvailableOfType(ctx, bindings.Registry, modelType, providerID)
+	})
+	bridge.SetHostAction("classify", func(ctx context.Context, model map[string]any, request json.RawMessage, options map[string]any) (json.RawMessage, error) {
+		return extensionClassify(ctx, bindings.Classify, model, request, options), nil
+	})
 	bridge.SetHostAction("getProviderAuth", func(ctx context.Context, providerID string) (map[string]any, error) {
 		if bindings.Registry == nil {
 			return nil, nil
@@ -1654,7 +1615,11 @@ func WireModelOperations(bridge ModelOperationBridge, bindings ModelOperationBin
 	if bindings.Registry == nil {
 		return func() {}
 	}
-	detach := bindings.Registry.SetChangeListener(bridge.PublishModelCatalog)
+	// The typed models are recomposed on the same committed registry changes that republish the catalog. The subscription is an observer: the registry's single listener slot belongs to ModelRuntime.SetChangeListener callers.
+	detach := bindings.Registry.ObserveChanges(func() {
+		catalogEncoding.invalidateTyped()
+		bridge.PublishModelCatalog()
+	})
 	bridge.PublishModelCatalog()
 	return detach
 }
@@ -1730,4 +1695,30 @@ func (m *InteractiveMode) streamForSubprocess(ctx context.Context, model map[str
 		ModelBuilder: m.opts.ModelBuilder, SessionHandle: m.opts.SessionHandle,
 		Thinking: ai.ThinkingLevel(m.thinkingLevel), Transport: ai.Transport(m.opts.Settings.Transport),
 	})
+}
+
+// refreshSessionTools is ctx.refreshTools / pi.refreshTools: the Session admits and declares the tools extensions registered, then this mode rebuilds its tool prompt. An in-process caller may run on the main goroutine, so it does not wait for the rebuild; a subprocess call does.
+// upstream: agent-session.ts:3353
+func (m *InteractiveMode) refreshSessionTools(wait bool) error {
+	session, ok := m.opts.SessionHandle.(interface{ RefreshTools() error })
+	if !ok {
+		return errors.New("interactive Session cannot refresh tools")
+	}
+	if wait && m.runCtx != nil {
+		return m.runOnMainAndWait(m.runCtx, func() error {
+			if err := session.RefreshTools(); err != nil {
+				return err
+			}
+			m.rebuildToolSystemPrompt()
+			return nil
+		})
+	}
+	if err := session.RefreshTools(); err != nil {
+		return err
+	}
+	if m.runCtx == nil {
+		m.rebuildToolSystemPrompt()
+		return nil
+	}
+	return m.postToMain(m.runCtx, m.rebuildToolSystemPrompt)
 }

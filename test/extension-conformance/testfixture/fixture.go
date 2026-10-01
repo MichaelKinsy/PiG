@@ -308,6 +308,22 @@ func Extension() *sdk.Extension {
 		return "done", nil
 	})
 
+	ext.Tool("ordered_details", "Return details whose members are not in alphabetical order", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(ctx sdk.Context, _ map[string]any) (any, error) {
+		details := json.RawMessage(`{"zeta":1,"alpha":{"yy":2,"bb":3},"mid":[{"qq":1,"aa":2}]}`)
+		if err := ctx.OnUpdate(sdk.ToolResult{Content: "partial", Details: details}); err != nil {
+			return nil, err
+		}
+		return sdk.ToolResult{Content: "done", Details: details}, nil
+	})
+
+	// The Go SDK writes a result from a struct, which has one member order (content, details, isError): not a row of the member-order test, but the same tool set as every other fixture.
+	ext.Tool("ordered_result", "Return a result whose members are not in the declared order", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(ctx sdk.Context, _ map[string]any) (any, error) {
+		if err := ctx.OnUpdate(sdk.ToolResult{Content: "partial", Details: map[string]any{"k": 1}}); err != nil {
+			return nil, err
+		}
+		return sdk.ToolResult{Content: "done", Details: map[string]any{"k": 1}, IsError: true}, nil
+	})
+
 	var abortObserved atomic.Bool
 	ext.Tool("abort_tool", "Wait for the abort signal", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(ctx sdk.Context, _ map[string]any) (any, error) {
 		if err := ctx.OnUpdate("waiting"); err != nil {
@@ -340,6 +356,13 @@ func Extension() *sdk.Extension {
 	}, func(_ sdk.Context, params map[string]any) (any, error) {
 		text, _ := params["text"].(string)
 		return map[string]string{"content": "prepared:" + text}, nil
+	})
+
+	// Reports the order in which calls start: the number of calls that started before it, plus its own argument.
+	var startedCalls atomic.Int64
+	ext.Tool("start_order", "Report the order in which calls start", sdk.Schema{"type": "object", "properties": map[string]any{"n": map[string]any{"type": "number"}}}, func(_ sdk.Context, params map[string]any) (any, error) {
+		number := startedCalls.Add(1)
+		return map[string]string{"content": fmt.Sprintf("start#%d n=%v", number, params["n"])}, nil
 	})
 
 	ext.Tool("tool_error", "Return a thrown tool error", sdk.Schema{"type": "object"}, func(ctx sdk.Context, params map[string]any) (any, error) {
@@ -452,6 +475,19 @@ func Extension() *sdk.Extension {
 	ext.Command("report_geometry", "Report observed terminal geometry", func(ctx sdk.Context, args string) error {
 		ctx.Notify(fmt.Sprintf("geometry:%dx%d", ctx.Width(), ctx.Height()), "info")
 		return nil
+	})
+	// A width handler makes a host call the way any other handler does; the host's reply must reach it (conformance TestConformance_WidthHandlerHostCall).
+	var widthProbeUnsub func()
+	ext.Command("arm_width_probe", "Notify from a width handler", func(ctx sdk.Context, args string) error {
+		if widthProbeUnsub != nil {
+			return nil
+		}
+		unsub, err := ctx.OnWidthChange(func(c sdk.Context, width int) {
+			c.Notify(fmt.Sprintf("width-probe:%d", width), "info")
+			c.Notify(fmt.Sprintf("width-probe-returned:%d", width), "info")
+		})
+		widthProbeUnsub = unsub
+		return err
 	})
 	ext.Command("surface_footer", "Install a footer renderer", func(ctx sdk.Context, args string) error {
 		return ctx.SetFooterRenderer(func(width int) []string { return []string{fmt.Sprintf("footer@%d", width)} })
@@ -569,6 +605,48 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 
+	// Upstream ctx.signal (runner.ts:917-920) is the active run's signal, undefined while no run is active.
+	ext.Command("signal-probe", "Report ctx.signal", func(ctx sdk.Context, _ string) error {
+		signal := ctx.Signal()
+		state := "none"
+		if signal != nil {
+			state = "live"
+			if signal.Err() != nil {
+				state = "aborted"
+			}
+		}
+		ctx.Notify("signal:"+state, "info")
+		return nil
+	})
+	ext.Command("signal-wait", "Wait for ctx.signal to abort", func(ctx sdk.Context, _ string) error {
+		signal := ctx.Signal()
+		if signal == nil {
+			ctx.Notify("wait:none", "info")
+			return nil
+		}
+		ctx.Notify("wait:start", "info")
+		select {
+		case <-signal.Done():
+			ctx.Notify("wait:aborted", "info")
+		case <-time.After(10 * time.Second):
+			ctx.Notify("wait:timeout", "info")
+		}
+		return nil
+	})
+	// signal-poll reads ctx.signal the way a timer that fires between requests does: no request reaches the runtime while it waits for the state in args ("live" or "none").
+	ext.Command("signal-poll", "Poll ctx.signal until it is live or none", func(ctx sdk.Context, args string) error {
+		ctx.Notify("poll:start", "info")
+		deadline := time.Now().Add(10 * time.Second)
+		for time.Now().Before(deadline) {
+			if (ctx.Signal() != nil) == (args == "live") {
+				ctx.Notify("poll:"+args, "info")
+				return nil
+			}
+			time.Sleep(5 * time.Millisecond)
+		}
+		ctx.Notify("poll:timeout", "info")
+		return nil
+	})
 	ext.Command("usage-probe", "Report context usage", func(ctx sdk.Context, _ string) error {
 		usage, err := ctx.GetContextUsage()
 		if err != nil {
@@ -1037,11 +1115,11 @@ func Extension() *sdk.Extension {
 		if event["toolName"] == "production_tool" {
 			args, _ := event["args"].(map[string]any)
 			nested, _ := args["nested"].(map[string]any)
-			ctx.Notify(fmt.Sprintf("tool-update=%v:%v:%v:%v:%v", event["toolName"], args["path"], nested["depth"], partial["content"], details["progress"]), "info")
+			ctx.Notify(fmt.Sprintf("tool-update=%v:%v:%v:%v:%v", event["toolName"], args["path"], nested["depth"], firstPartialText(partial), details["progress"]), "info")
 			return nil, nil
 		}
 		args, _ := json.Marshal(event["args"])
-		ctx.Notify(fmt.Sprintf("tool-update=%v:%s:%v:%v", event["toolName"], args, partial["content"], details["progress"]), "info")
+		ctx.Notify(fmt.Sprintf("tool-update=%v:%s:%v:%v", event["toolName"], args, firstPartialText(partial), details["progress"]), "info")
 		return nil, nil
 	})
 	ext.OnEvent("tool_execution_end", func(ctx sdk.Context, event map[string]any) (any, error) {
@@ -1190,4 +1268,14 @@ func errString(err error) string {
 		return ""
 	}
 	return err.Error()
+}
+
+// firstPartialText is the text of the first content block of a tool_execution_update partialResult, the AgentToolResult the tool passed to onUpdate (agent-loop.ts:778-786); absent when `content` is not an array of blocks.
+func firstPartialText(partial map[string]any) any {
+	blocks, _ := partial["content"].([]any)
+	if len(blocks) == 0 {
+		return nil
+	}
+	block, _ := blocks[0].(map[string]any)
+	return block["text"]
 }

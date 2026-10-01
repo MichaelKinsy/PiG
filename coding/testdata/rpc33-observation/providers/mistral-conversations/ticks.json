@@ -1,5 +1,5 @@
 {
-  "piVersion": "0.87.1",
+  "piVersion": "0.99.2",
   "node": "v24.19.0",
   "scenarios": [
     {
@@ -22,119 +22,99 @@
           2
         ],
         [
-          "push:text_start",
-          3
-        ],
-        [
-          "push:text_delta",
-          3
-        ],
-        [
-          "push:text_end",
-          5
-        ],
-        [
           "push:thinking_start",
-          5
+          7
         ],
         [
           "push:thinking_delta",
-          5
-        ],
-        [
-          "deliver:text_start",
-          6
-        ],
-        [
-          "push:thinking_end",
           7
-        ],
-        [
-          "push:text_start",
-          7
-        ],
-        [
-          "push:text_delta",
-          7
-        ],
-        [
-          "deliver:text_delta",
-          8
-        ],
-        [
-          "push:text_delta",
-          9
-        ],
-        [
-          "deliver:text_end",
-          10
-        ],
-        [
-          "push:text_end",
-          11
-        ],
-        [
-          "push:toolcall_start",
-          11
-        ],
-        [
-          "push:toolcall_delta",
-          11
         ],
         [
           "deliver:thinking_start",
-          12
+          10
         ],
         [
-          "push:toolcall_delta",
-          13
+          "push:thinking_end",
+          10
         ],
         [
-          "push:toolcall_start",
-          13
+          "push:text_start",
+          10
         ],
         [
-          "push:toolcall_delta",
-          13
+          "push:text_delta",
+          10
         ],
         [
           "deliver:thinking_delta",
-          14
+          12
+        ],
+        [
+          "push:text_delta",
+          13
         ],
         [
           "deliver:thinking_end",
-          16
-        ],
-        [
-          "push:toolcall_end",
-          17
-        ],
-        [
-          "push:toolcall_end",
-          17
+          14
         ],
         [
           "deliver:text_start",
+          16
+        ],
+        [
+          "push:text_end",
+          16
+        ],
+        [
+          "push:toolcall_start",
+          16
+        ],
+        [
+          "push:toolcall_delta",
+          16
+        ],
+        [
+          "deliver:text_delta",
           18
         ],
         [
-          "push:done",
-          18
+          "push:toolcall_delta",
+          19
+        ],
+        [
+          "push:toolcall_start",
+          19
+        ],
+        [
+          "push:toolcall_delta",
+          19
         ],
         [
           "deliver:text_delta",
           20
         ],
         [
-          "deliver:text_delta",
+          "deliver:text_end",
           22
         ],
         [
-          "deliver:text_end",
+          "deliver:toolcall_start",
           24
         ],
         [
-          "deliver:toolcall_start",
+          "push:toolcall_end",
+          24
+        ],
+        [
+          "push:toolcall_end",
+          24
+        ],
+        [
+          "push:done",
+          25
+        ],
+        [
+          "deliver:toolcall_delta",
           26
         ],
         [
@@ -142,15 +122,15 @@
           28
         ],
         [
-          "deliver:toolcall_delta",
+          "deliver:toolcall_start",
           30
         ],
         [
-          "deliver:toolcall_start",
+          "deliver:toolcall_delta",
           32
         ],
         [
-          "deliver:toolcall_delta",
+          "deliver:toolcall_end",
           34
         ],
         [
@@ -158,12 +138,8 @@
           36
         ],
         [
-          "deliver:toolcall_end",
-          38
-        ],
-        [
           "deliver:done",
-          40
+          38
         ]
       ],
       "stopReason": "toolUse",
@@ -171,10 +147,6 @@
       "result": {
         "role": "assistant",
         "content": [
-          {
-            "type": "text",
-            "text": ""
-          },
           {
             "type": "thinking",
             "thinking": "hm ✓"
@@ -247,63 +219,31 @@
           2
         ],
         [
-          "push:text_start",
-          3
-        ],
-        [
-          "push:text_delta",
-          3
-        ],
-        [
           "read:2",
-          3
-        ],
-        [
-          "deliver:text_start",
-          6
-        ],
-        [
-          "push:text_end",
-          6
+          4
         ],
         [
           "push:thinking_start",
-          6
-        ],
-        [
-          "push:thinking_delta",
-          6
-        ],
-        [
-          "read:3",
-          6
-        ],
-        [
-          "deliver:text_delta",
           8
         ],
         [
-          "push:thinking_end",
-          9
+          "push:thinking_delta",
+          8
         ],
         [
-          "push:text_start",
-          9
-        ],
-        [
-          "push:text_delta",
-          9
-        ],
-        [
-          "read:4",
-          9
-        ],
-        [
-          "deliver:text_end",
-          10
+          "read:3",
+          8
         ],
         [
           "deliver:thinking_start",
+          11
+        ],
+        [
+          "push:thinking_end",
+          12
+        ],
+        [
+          "push:text_start",
           12
         ],
         [
@@ -311,112 +251,120 @@
           12
         ],
         [
-          "read:5",
+          "read:4",
           12
         ],
         [
           "deliver:thinking_delta",
-          14
-        ],
-        [
-          "push:text_end",
-          15
-        ],
-        [
-          "push:toolcall_start",
-          15
-        ],
-        [
-          "push:toolcall_delta",
-          15
-        ],
-        [
-          "read:6",
-          15
+          13
         ],
         [
           "deliver:thinking_end",
+          15
+        ],
+        [
+          "push:text_delta",
+          16
+        ],
+        [
+          "read:5",
           16
         ],
         [
           "deliver:text_start",
-          18
-        ],
-        [
-          "push:toolcall_delta",
-          18
-        ],
-        [
-          "push:toolcall_start",
-          18
-        ],
-        [
-          "push:toolcall_delta",
-          18
-        ],
-        [
-          "read:7",
-          18
+          17
         ],
         [
           "deliver:text_delta",
+          19
+        ],
+        [
+          "push:text_end",
           20
         ],
         [
-          "read:8",
-          21
+          "push:toolcall_start",
+          20
+        ],
+        [
+          "push:toolcall_delta",
+          20
+        ],
+        [
+          "read:6",
+          20
         ],
         [
           "deliver:text_delta",
-          22
+          21
         ],
         [
           "deliver:text_end",
+          23
+        ],
+        [
+          "push:toolcall_delta",
           24
         ],
         [
-          "push:toolcall_end",
+          "push:toolcall_start",
           24
         ],
         [
-          "push:toolcall_end",
+          "push:toolcall_delta",
           24
         ],
         [
-          "push:done",
-          25
+          "read:7",
+          24
         ],
         [
           "deliver:toolcall_start",
-          26
+          25
         ],
         [
           "deliver:toolcall_delta",
+          27
+        ],
+        [
+          "read:8",
           28
         ],
         [
           "deliver:toolcall_delta",
-          30
+          29
         ],
         [
           "deliver:toolcall_start",
+          31
+        ],
+        [
+          "push:toolcall_end",
+          31
+        ],
+        [
+          "push:toolcall_end",
+          31
+        ],
+        [
+          "push:done",
           32
         ],
         [
           "deliver:toolcall_delta",
-          34
+          33
         ],
         [
           "deliver:toolcall_end",
-          36
+          35
         ],
         [
           "deliver:toolcall_end",
-          38
+          37
         ],
         [
           "deliver:done",
-          40
+          39
         ]
       ],
       "stopReason": "toolUse",
@@ -424,10 +372,6 @@
       "result": {
         "role": "assistant",
         "content": [
-          {
-            "type": "text",
-            "text": ""
-          },
           {
             "type": "thinking",
             "thinking": "hm ✓"
@@ -704,139 +648,107 @@
           15
         ],
         [
-          "push:text_start",
-          18
-        ],
-        [
-          "push:text_delta",
-          18
-        ],
-        [
           "read:17",
-          18
-        ],
-        [
-          "read:18",
           19
         ],
         [
-          "read:19",
+          "read:18",
           20
         ],
         [
-          "deliver:text_start",
+          "read:19",
           21
         ],
         [
           "read:20",
-          21
-        ],
-        [
-          "read:21",
           22
         ],
         [
-          "deliver:text_delta",
+          "read:21",
           23
         ],
         [
           "read:22",
-          23
-        ],
-        [
-          "read:23",
           24
         ],
         [
-          "read:24",
+          "read:23",
           25
         ],
         [
-          "read:25",
+          "read:24",
           26
         ],
         [
-          "read:26",
+          "read:25",
           27
         ],
         [
-          "read:27",
+          "read:26",
           28
         ],
         [
-          "read:28",
+          "read:27",
           29
         ],
         [
-          "read:29",
+          "read:28",
           30
         ],
         [
-          "read:30",
+          "read:29",
           31
         ],
         [
-          "read:31",
+          "read:30",
           32
         ],
         [
-          "read:32",
+          "read:31",
           33
         ],
         [
-          "read:33",
+          "read:32",
           34
         ],
         [
-          "read:34",
+          "read:33",
           35
         ],
         [
-          "read:35",
+          "read:34",
           36
         ],
         [
-          "read:36",
+          "read:35",
           37
         ],
         [
-          "read:37",
+          "read:36",
           38
         ],
         [
-          "push:text_end",
-          41
+          "read:37",
+          39
         ],
         [
           "push:thinking_start",
-          41
-        ],
-        [
-          "push:thinking_delta",
-          41
-        ],
-        [
-          "read:38",
-          41
-        ],
-        [
-          "read:39",
-          42
-        ],
-        [
-          "read:40",
           43
         ],
         [
-          "deliver:text_end",
+          "push:thinking_delta",
+          43
+        ],
+        [
+          "read:38",
+          43
+        ],
+        [
+          "read:39",
           44
         ],
         [
-          "read:41",
-          44
-        ],
-        [
-          "read:42",
+          "read:40",
           45
         ],
         [
@@ -844,11 +756,11 @@
           46
         ],
         [
-          "read:43",
+          "read:41",
           46
         ],
         [
-          "read:44",
+          "read:42",
           47
         ],
         [
@@ -856,540 +768,548 @@
           48
         ],
         [
-          "read:45",
+          "read:43",
           48
         ],
         [
-          "read:46",
+          "read:44",
           49
         ],
         [
-          "read:47",
+          "read:45",
           50
         ],
         [
-          "read:48",
+          "read:46",
           51
         ],
         [
-          "read:49",
+          "read:47",
           52
         ],
         [
-          "read:50",
+          "read:48",
           53
         ],
         [
-          "read:51",
+          "read:49",
           54
         ],
         [
-          "read:52",
+          "read:50",
           55
         ],
         [
+          "read:51",
+          56
+        ],
+        [
+          "read:52",
+          57
+        ],
+        [
           "push:thinking_end",
-          58
+          61
         ],
         [
           "push:text_start",
-          58
+          61
         ],
         [
           "push:text_delta",
-          58
+          61
         ],
         [
           "read:53",
-          58
+          61
         ],
         [
           "read:54",
-          59
-        ],
-        [
-          "read:55",
-          60
-        ],
-        [
-          "deliver:thinking_end",
-          61
-        ],
-        [
-          "read:56",
-          61
-        ],
-        [
-          "read:57",
           62
         ],
         [
-          "deliver:text_start",
+          "read:55",
           63
         ],
         [
-          "read:58",
-          63
-        ],
-        [
-          "read:59",
+          "deliver:thinking_end",
           64
         ],
         [
-          "deliver:text_delta",
+          "read:56",
+          64
+        ],
+        [
+          "read:57",
           65
         ],
         [
-          "read:60",
-          65
-        ],
-        [
-          "read:61",
+          "deliver:text_start",
           66
         ],
         [
-          "read:62",
+          "read:58",
+          66
+        ],
+        [
+          "read:59",
           67
         ],
         [
-          "read:63",
+          "deliver:text_delta",
           68
         ],
         [
-          "read:64",
+          "read:60",
+          68
+        ],
+        [
+          "read:61",
           69
         ],
         [
-          "read:65",
+          "read:62",
           70
         ],
         [
-          "read:66",
+          "read:63",
           71
         ],
         [
-          "read:67",
+          "read:64",
           72
         ],
         [
-          "read:68",
+          "read:65",
           73
         ],
         [
+          "read:66",
+          74
+        ],
+        [
+          "read:67",
+          75
+        ],
+        [
+          "read:68",
+          76
+        ],
+        [
           "push:text_delta",
-          76
-        ],
-        [
-          "read:69",
-          76
-        ],
-        [
-          "read:70",
-          77
-        ],
-        [
-          "read:71",
-          78
-        ],
-        [
-          "deliver:text_delta",
-          79
-        ],
-        [
-          "read:72",
-          79
-        ],
-        [
-          "read:73",
           80
         ],
         [
-          "read:74",
+          "read:69",
+          80
+        ],
+        [
+          "read:70",
           81
         ],
         [
-          "read:75",
+          "read:71",
           82
         ],
         [
-          "read:76",
+          "deliver:text_delta",
           83
         ],
         [
-          "read:77",
+          "read:72",
+          83
+        ],
+        [
+          "read:73",
           84
         ],
         [
-          "read:78",
+          "read:74",
           85
         ],
         [
-          "read:79",
+          "read:75",
           86
         ],
         [
-          "read:80",
+          "read:76",
           87
         ],
         [
-          "read:81",
+          "read:77",
           88
         ],
         [
-          "read:82",
+          "read:78",
           89
         ],
         [
-          "read:83",
+          "read:79",
           90
         ],
         [
-          "read:84",
+          "read:80",
           91
         ],
         [
-          "read:85",
+          "read:81",
           92
         ],
         [
-          "read:86",
+          "read:82",
           93
         ],
         [
-          "read:87",
+          "read:83",
           94
         ],
         [
-          "read:88",
+          "read:84",
           95
         ],
         [
-          "read:89",
+          "read:85",
           96
         ],
         [
-          "read:90",
+          "read:86",
           97
         ],
         [
-          "read:91",
+          "read:87",
           98
         ],
         [
-          "read:92",
+          "read:88",
           99
         ],
         [
-          "read:93",
+          "read:89",
           100
         ],
         [
-          "read:94",
+          "read:90",
           101
         ],
         [
-          "read:95",
+          "read:91",
           102
         ],
         [
-          "push:text_end",
+          "read:92",
+          103
+        ],
+        [
+          "read:93",
+          104
+        ],
+        [
+          "read:94",
           105
         ],
         [
-          "push:toolcall_start",
-          105
-        ],
-        [
-          "push:toolcall_delta",
-          105
-        ],
-        [
-          "read:96",
-          105
-        ],
-        [
-          "read:97",
+          "read:95",
           106
         ],
         [
-          "read:98",
-          107
-        ],
-        [
-          "deliver:text_end",
-          108
-        ],
-        [
-          "read:99",
-          108
-        ],
-        [
-          "read:100",
-          109
-        ],
-        [
-          "deliver:toolcall_start",
+          "push:text_end",
           110
-        ],
-        [
-          "read:101",
-          110
-        ],
-        [
-          "read:102",
-          111
-        ],
-        [
-          "deliver:toolcall_delta",
-          112
-        ],
-        [
-          "read:103",
-          112
-        ],
-        [
-          "read:104",
-          113
-        ],
-        [
-          "read:105",
-          114
-        ],
-        [
-          "read:106",
-          115
-        ],
-        [
-          "read:107",
-          116
-        ],
-        [
-          "read:108",
-          117
-        ],
-        [
-          "read:109",
-          118
-        ],
-        [
-          "read:110",
-          119
-        ],
-        [
-          "read:111",
-          120
-        ],
-        [
-          "read:112",
-          121
-        ],
-        [
-          "read:113",
-          122
-        ],
-        [
-          "read:114",
-          123
-        ],
-        [
-          "read:115",
-          124
-        ],
-        [
-          "read:116",
-          125
-        ],
-        [
-          "read:117",
-          126
-        ],
-        [
-          "read:118",
-          127
-        ],
-        [
-          "read:119",
-          128
-        ],
-        [
-          "read:120",
-          129
-        ],
-        [
-          "read:121",
-          130
-        ],
-        [
-          "read:122",
-          131
-        ],
-        [
-          "read:123",
-          132
-        ],
-        [
-          "read:124",
-          133
-        ],
-        [
-          "read:125",
-          134
-        ],
-        [
-          "read:126",
-          135
-        ],
-        [
-          "read:127",
-          136
-        ],
-        [
-          "read:128",
-          137
-        ],
-        [
-          "read:129",
-          138
-        ],
-        [
-          "push:toolcall_delta",
-          141
         ],
         [
           "push:toolcall_start",
-          141
+          110
         ],
         [
           "push:toolcall_delta",
-          141
+          110
         ],
         [
-          "read:130",
-          141
+          "read:96",
+          110
         ],
         [
-          "read:131",
-          142
+          "read:97",
+          111
         ],
         [
-          "read:132",
-          143
+          "read:98",
+          112
         ],
         [
-          "deliver:toolcall_delta",
-          144
+          "deliver:text_end",
+          113
         ],
         [
-          "read:133",
-          144
+          "read:99",
+          113
         ],
         [
-          "read:134",
-          145
+          "read:100",
+          114
         ],
         [
           "deliver:toolcall_start",
-          146
+          115
         ],
         [
-          "read:135",
-          146
+          "read:101",
+          115
         ],
         [
-          "read:136",
-          147
+          "read:102",
+          116
         ],
         [
           "deliver:toolcall_delta",
+          117
+        ],
+        [
+          "read:103",
+          117
+        ],
+        [
+          "read:104",
+          118
+        ],
+        [
+          "read:105",
+          119
+        ],
+        [
+          "read:106",
+          120
+        ],
+        [
+          "read:107",
+          121
+        ],
+        [
+          "read:108",
+          122
+        ],
+        [
+          "read:109",
+          123
+        ],
+        [
+          "read:110",
+          124
+        ],
+        [
+          "read:111",
+          125
+        ],
+        [
+          "read:112",
+          126
+        ],
+        [
+          "read:113",
+          127
+        ],
+        [
+          "read:114",
+          128
+        ],
+        [
+          "read:115",
+          129
+        ],
+        [
+          "read:116",
+          130
+        ],
+        [
+          "read:117",
+          131
+        ],
+        [
+          "read:118",
+          132
+        ],
+        [
+          "read:119",
+          133
+        ],
+        [
+          "read:120",
+          134
+        ],
+        [
+          "read:121",
+          135
+        ],
+        [
+          "read:122",
+          136
+        ],
+        [
+          "read:123",
+          137
+        ],
+        [
+          "read:124",
+          138
+        ],
+        [
+          "read:125",
+          139
+        ],
+        [
+          "read:126",
+          140
+        ],
+        [
+          "read:127",
+          141
+        ],
+        [
+          "read:128",
+          142
+        ],
+        [
+          "read:129",
+          143
+        ],
+        [
+          "push:toolcall_delta",
+          147
+        ],
+        [
+          "push:toolcall_start",
+          147
+        ],
+        [
+          "push:toolcall_delta",
+          147
+        ],
+        [
+          "read:130",
+          147
+        ],
+        [
+          "read:131",
           148
         ],
         [
-          "read:137",
-          148
-        ],
-        [
-          "read:138",
+          "read:132",
           149
         ],
         [
-          "read:139",
+          "deliver:toolcall_delta",
           150
         ],
         [
-          "read:140",
+          "read:133",
+          150
+        ],
+        [
+          "read:134",
           151
         ],
         [
-          "read:141",
+          "deliver:toolcall_start",
           152
         ],
         [
-          "read:142",
+          "read:135",
+          152
+        ],
+        [
+          "read:136",
           153
         ],
         [
-          "read:143",
+          "deliver:toolcall_delta",
           154
         ],
         [
-          "read:144",
+          "read:137",
+          154
+        ],
+        [
+          "read:138",
           155
         ],
         [
-          "read:145",
+          "read:139",
           156
         ],
         [
-          "read:146",
+          "read:140",
           157
         ],
         [
-          "read:147",
+          "read:141",
           158
         ],
         [
-          "read:148",
+          "read:142",
           159
         ],
         [
-          "read:149",
+          "read:143",
           160
         ],
         [
-          "read:150",
+          "read:144",
           161
         ],
         [
-          "read:151",
+          "read:145",
+          162
+        ],
+        [
+          "read:146",
+          163
+        ],
+        [
+          "read:147",
           164
         ],
         [
-          "read:152",
+          "read:148",
           165
         ],
         [
-          "push:toolcall_end",
-          168
+          "read:149",
+          166
         ],
         [
-          "push:toolcall_end",
-          168
+          "read:150",
+          167
         ],
         [
-          "push:done",
-          169
-        ],
-        [
-          "deliver:toolcall_end",
+          "read:151",
           171
         ],
         [
+          "read:152",
+          172
+        ],
+        [
+          "push:toolcall_end",
+          175
+        ],
+        [
+          "push:toolcall_end",
+          175
+        ],
+        [
+          "push:done",
+          176
+        ],
+        [
           "deliver:toolcall_end",
-          173
+          178
+        ],
+        [
+          "deliver:toolcall_end",
+          180
         ],
         [
           "deliver:done",
-          175
+          182
         ]
       ],
       "stopReason": "toolUse",
@@ -1397,10 +1317,6 @@
       "result": {
         "role": "assistant",
         "content": [
-          {
-            "type": "text",
-            "text": ""
-          },
           {
             "type": "thinking",
             "thinking": "hm ✓"
@@ -1467,123 +1383,103 @@
           2
         ],
         [
-          "push:text_start",
-          3
-        ],
-        [
-          "push:text_delta",
-          3
-        ],
-        [
-          "push:text_end",
-          5
-        ],
-        [
           "push:thinking_start",
-          5
+          7
         ],
         [
           "push:thinking_delta",
-          5
+          7
         ],
         [
           "read:2",
-          5
-        ],
-        [
-          "deliver:text_start",
-          6
-        ],
-        [
-          "deliver:text_delta",
-          8
-        ],
-        [
-          "push:thinking_end",
-          8
-        ],
-        [
-          "push:text_start",
-          8
-        ],
-        [
-          "push:text_delta",
-          8
-        ],
-        [
-          "deliver:text_end",
-          10
-        ],
-        [
-          "push:text_delta",
-          10
+          7
         ],
         [
           "deliver:thinking_start",
-          12
+          10
         ],
         [
-          "push:text_end",
-          12
+          "push:thinking_end",
+          11
         ],
         [
-          "push:toolcall_start",
-          12
+          "push:text_start",
+          11
         ],
         [
-          "push:toolcall_delta",
-          12
+          "push:text_delta",
+          11
         ],
         [
           "deliver:thinking_delta",
-          14
-        ],
-        [
-          "push:toolcall_delta",
-          14
-        ],
-        [
-          "push:toolcall_start",
-          14
-        ],
-        [
-          "push:toolcall_delta",
-          14
+          12
         ],
         [
           "deliver:thinking_end",
-          16
+          14
+        ],
+        [
+          "push:text_delta",
+          14
         ],
         [
           "deliver:text_start",
-          18
+          16
         ],
         [
-          "push:toolcall_end",
-          18
+          "push:text_end",
+          17
         ],
         [
-          "push:toolcall_end",
-          18
+          "push:toolcall_start",
+          17
         ],
         [
-          "push:done",
-          19
+          "push:toolcall_delta",
+          17
+        ],
+        [
+          "deliver:text_delta",
+          18
         ],
         [
           "deliver:text_delta",
           20
         ],
         [
-          "deliver:text_delta",
-          22
+          "push:toolcall_delta",
+          20
+        ],
+        [
+          "push:toolcall_start",
+          20
+        ],
+        [
+          "push:toolcall_delta",
+          20
         ],
         [
           "deliver:text_end",
-          24
+          22
         ],
         [
           "deliver:toolcall_start",
+          24
+        ],
+        [
+          "push:toolcall_end",
+          25
+        ],
+        [
+          "push:toolcall_end",
+          25
+        ],
+        [
+          "deliver:toolcall_delta",
+          26
+        ],
+        [
+          "push:done",
           26
         ],
         [
@@ -1591,15 +1487,15 @@
           28
         ],
         [
-          "deliver:toolcall_delta",
+          "deliver:toolcall_start",
           30
         ],
         [
-          "deliver:toolcall_start",
+          "deliver:toolcall_delta",
           32
         ],
         [
-          "deliver:toolcall_delta",
+          "deliver:toolcall_end",
           34
         ],
         [
@@ -1607,12 +1503,8 @@
           36
         ],
         [
-          "deliver:toolcall_end",
-          38
-        ],
-        [
           "deliver:done",
-          40
+          38
         ]
       ],
       "stopReason": "toolUse",
@@ -1620,10 +1512,6 @@
       "result": {
         "role": "assistant",
         "content": [
-          {
-            "type": "text",
-            "text": ""
-          },
           {
             "type": "thinking",
             "thinking": "hm ✓"
@@ -1689,119 +1577,99 @@
           2
         ],
         [
-          "push:text_start",
-          3
-        ],
-        [
-          "push:text_delta",
-          3
-        ],
-        [
-          "push:text_end",
-          5
-        ],
-        [
           "push:thinking_start",
-          5
+          7
         ],
         [
           "push:thinking_delta",
-          5
-        ],
-        [
-          "deliver:text_start",
-          6
-        ],
-        [
-          "push:thinking_end",
           7
-        ],
-        [
-          "push:text_start",
-          7
-        ],
-        [
-          "push:text_delta",
-          7
-        ],
-        [
-          "deliver:text_delta",
-          8
-        ],
-        [
-          "push:text_delta",
-          9
-        ],
-        [
-          "deliver:text_end",
-          10
-        ],
-        [
-          "push:text_end",
-          11
-        ],
-        [
-          "push:toolcall_start",
-          11
-        ],
-        [
-          "push:toolcall_delta",
-          11
         ],
         [
           "deliver:thinking_start",
-          12
+          10
         ],
         [
-          "push:toolcall_delta",
-          13
+          "push:thinking_end",
+          10
         ],
         [
-          "push:toolcall_start",
-          13
+          "push:text_start",
+          10
         ],
         [
-          "push:toolcall_delta",
-          13
+          "push:text_delta",
+          10
         ],
         [
           "deliver:thinking_delta",
-          14
+          12
+        ],
+        [
+          "push:text_delta",
+          13
         ],
         [
           "deliver:thinking_end",
-          16
-        ],
-        [
-          "push:toolcall_end",
-          17
-        ],
-        [
-          "push:toolcall_end",
-          17
+          14
         ],
         [
           "deliver:text_start",
+          16
+        ],
+        [
+          "push:text_end",
+          16
+        ],
+        [
+          "push:toolcall_start",
+          16
+        ],
+        [
+          "push:toolcall_delta",
+          16
+        ],
+        [
+          "deliver:text_delta",
           18
         ],
         [
-          "push:done",
-          18
+          "push:toolcall_delta",
+          19
+        ],
+        [
+          "push:toolcall_start",
+          19
+        ],
+        [
+          "push:toolcall_delta",
+          19
         ],
         [
           "deliver:text_delta",
           20
         ],
         [
-          "deliver:text_delta",
+          "deliver:text_end",
           22
         ],
         [
-          "deliver:text_end",
+          "deliver:toolcall_start",
           24
         ],
         [
-          "deliver:toolcall_start",
+          "push:toolcall_end",
+          24
+        ],
+        [
+          "push:toolcall_end",
+          24
+        ],
+        [
+          "push:done",
+          25
+        ],
+        [
+          "deliver:toolcall_delta",
           26
         ],
         [
@@ -1809,15 +1677,15 @@
           28
         ],
         [
-          "deliver:toolcall_delta",
+          "deliver:toolcall_start",
           30
         ],
         [
-          "deliver:toolcall_start",
+          "deliver:toolcall_delta",
           32
         ],
         [
-          "deliver:toolcall_delta",
+          "deliver:toolcall_end",
           34
         ],
         [
@@ -1825,12 +1693,8 @@
           36
         ],
         [
-          "deliver:toolcall_end",
-          38
-        ],
-        [
           "deliver:done",
-          40
+          38
         ]
       ],
       "stopReason": "toolUse",
@@ -1838,10 +1702,6 @@
       "result": {
         "role": "assistant",
         "content": [
-          {
-            "type": "text",
-            "text": ""
-          },
           {
             "type": "thinking",
             "thinking": "hm ✓"
@@ -1912,88 +1772,64 @@
           2
         ],
         [
-          "push:text_start",
-          4
-        ],
-        [
-          "push:text_delta",
-          4
-        ],
-        [
-          "push:text_end",
-          6
-        ],
-        [
           "push:thinking_start",
-          6
+          8
         ],
         [
           "push:thinking_delta",
-          6
-        ],
-        [
-          "deliver:text_start",
-          7
-        ],
-        [
-          "push:thinking_end",
           8
-        ],
-        [
-          "push:text_start",
-          8
-        ],
-        [
-          "push:text_delta",
-          8
-        ],
-        [
-          "read:3",
-          8
-        ],
-        [
-          "deliver:text_delta",
-          9
-        ],
-        [
-          "deliver:text_end",
-          11
-        ],
-        [
-          "push:text_end",
-          11
-        ],
-        [
-          "push:error",
-          12
         ],
         [
           "deliver:thinking_start",
-          13
+          11
+        ],
+        [
+          "push:thinking_end",
+          11
+        ],
+        [
+          "push:text_start",
+          11
+        ],
+        [
+          "push:text_delta",
+          11
+        ],
+        [
+          "read:3",
+          11
         ],
         [
           "deliver:thinking_delta",
-          15
+          13
+        ],
+        [
+          "push:text_end",
+          14
         ],
         [
           "deliver:thinking_end",
-          17
+          15
+        ],
+        [
+          "push:error",
+          15
         ],
         [
           "deliver:text_start",
-          19
+          17
         ],
         [
           "deliver:text_delta",
-          21
+          19
         ],
         [
           "deliver:text_end",
-          23
+          21
         ],
         [
           "deliver:error",
-          25
+          23
         ]
       ],
       "stopReason": "error",
@@ -2001,10 +1837,6 @@
       "result": {
         "role": "assistant",
         "content": [
-          {
-            "type": "text",
-            "text": ""
-          },
           {
             "type": "thinking",
             "thinking": "hm ✓"
@@ -2056,119 +1888,99 @@
           2
         ],
         [
-          "push:text_start",
-          3
-        ],
-        [
-          "push:text_delta",
-          3
-        ],
-        [
-          "push:text_end",
-          5
-        ],
-        [
           "push:thinking_start",
-          5
+          7
         ],
         [
           "push:thinking_delta",
-          5
-        ],
-        [
-          "deliver:text_start",
-          6
-        ],
-        [
-          "push:thinking_end",
           7
-        ],
-        [
-          "push:text_start",
-          7
-        ],
-        [
-          "push:text_delta",
-          7
-        ],
-        [
-          "deliver:text_delta",
-          8
-        ],
-        [
-          "push:text_delta",
-          9
-        ],
-        [
-          "deliver:text_end",
-          10
-        ],
-        [
-          "push:text_end",
-          11
-        ],
-        [
-          "push:toolcall_start",
-          11
-        ],
-        [
-          "push:toolcall_delta",
-          11
         ],
         [
           "deliver:thinking_start",
-          12
+          10
         ],
         [
-          "push:toolcall_delta",
-          13
+          "push:thinking_end",
+          10
         ],
         [
-          "push:toolcall_start",
-          13
+          "push:text_start",
+          10
         ],
         [
-          "push:toolcall_delta",
-          13
+          "push:text_delta",
+          10
         ],
         [
           "deliver:thinking_delta",
-          14
+          12
+        ],
+        [
+          "push:text_delta",
+          13
         ],
         [
           "deliver:thinking_end",
-          16
-        ],
-        [
-          "push:toolcall_end",
-          17
-        ],
-        [
-          "push:toolcall_end",
-          17
+          14
         ],
         [
           "deliver:text_start",
+          16
+        ],
+        [
+          "push:text_end",
+          16
+        ],
+        [
+          "push:toolcall_start",
+          16
+        ],
+        [
+          "push:toolcall_delta",
+          16
+        ],
+        [
+          "deliver:text_delta",
           18
         ],
         [
-          "push:done",
-          18
+          "push:toolcall_delta",
+          19
+        ],
+        [
+          "push:toolcall_start",
+          19
+        ],
+        [
+          "push:toolcall_delta",
+          19
         ],
         [
           "deliver:text_delta",
           20
         ],
         [
-          "deliver:text_delta",
+          "deliver:text_end",
           22
         ],
         [
-          "deliver:text_end",
+          "deliver:toolcall_start",
           24
         ],
         [
-          "deliver:toolcall_start",
+          "push:toolcall_end",
+          24
+        ],
+        [
+          "push:toolcall_end",
+          24
+        ],
+        [
+          "push:done",
+          25
+        ],
+        [
+          "deliver:toolcall_delta",
           26
         ],
         [
@@ -2176,15 +1988,15 @@
           28
         ],
         [
-          "deliver:toolcall_delta",
+          "deliver:toolcall_start",
           30
         ],
         [
-          "deliver:toolcall_start",
+          "deliver:toolcall_delta",
           32
         ],
         [
-          "deliver:toolcall_delta",
+          "deliver:toolcall_end",
           34
         ],
         [
@@ -2192,12 +2004,8 @@
           36
         ],
         [
-          "deliver:toolcall_end",
-          38
-        ],
-        [
           "deliver:done",
-          40
+          38
         ]
       ],
       "stopReason": "toolUse",
@@ -2205,10 +2013,6 @@
       "result": {
         "role": "assistant",
         "content": [
-          {
-            "type": "text",
-            "text": ""
-          },
           {
             "type": "thinking",
             "thinking": "hm ✓"
@@ -2274,119 +2078,99 @@
           2
         ],
         [
-          "push:text_start",
-          3
-        ],
-        [
-          "push:text_delta",
-          3
-        ],
-        [
-          "push:text_end",
-          5
-        ],
-        [
           "push:thinking_start",
-          5
+          7
         ],
         [
           "push:thinking_delta",
-          5
-        ],
-        [
-          "deliver:text_start",
-          6
-        ],
-        [
-          "push:thinking_end",
           7
-        ],
-        [
-          "push:text_start",
-          7
-        ],
-        [
-          "push:text_delta",
-          7
-        ],
-        [
-          "deliver:text_delta",
-          8
-        ],
-        [
-          "push:text_delta",
-          9
-        ],
-        [
-          "deliver:text_end",
-          10
-        ],
-        [
-          "push:text_end",
-          11
-        ],
-        [
-          "push:toolcall_start",
-          11
-        ],
-        [
-          "push:toolcall_delta",
-          11
         ],
         [
           "deliver:thinking_start",
-          12
+          10
         ],
         [
-          "push:toolcall_delta",
-          13
+          "push:thinking_end",
+          10
         ],
         [
-          "push:toolcall_start",
-          13
+          "push:text_start",
+          10
         ],
         [
-          "push:toolcall_delta",
-          13
+          "push:text_delta",
+          10
         ],
         [
           "deliver:thinking_delta",
-          14
+          12
+        ],
+        [
+          "push:text_delta",
+          13
         ],
         [
           "deliver:thinking_end",
-          16
-        ],
-        [
-          "push:toolcall_end",
-          17
-        ],
-        [
-          "push:toolcall_end",
-          17
+          14
         ],
         [
           "deliver:text_start",
+          16
+        ],
+        [
+          "push:text_end",
+          16
+        ],
+        [
+          "push:toolcall_start",
+          16
+        ],
+        [
+          "push:toolcall_delta",
+          16
+        ],
+        [
+          "deliver:text_delta",
           18
         ],
         [
-          "push:done",
-          18
+          "push:toolcall_delta",
+          19
+        ],
+        [
+          "push:toolcall_start",
+          19
+        ],
+        [
+          "push:toolcall_delta",
+          19
         ],
         [
           "deliver:text_delta",
           20
         ],
         [
-          "deliver:text_delta",
+          "deliver:text_end",
           22
         ],
         [
-          "deliver:text_end",
+          "deliver:toolcall_start",
           24
         ],
         [
-          "deliver:toolcall_start",
+          "push:toolcall_end",
+          24
+        ],
+        [
+          "push:toolcall_end",
+          24
+        ],
+        [
+          "push:done",
+          25
+        ],
+        [
+          "deliver:toolcall_delta",
           26
         ],
         [
@@ -2394,15 +2178,15 @@
           28
         ],
         [
-          "deliver:toolcall_delta",
+          "deliver:toolcall_start",
           30
         ],
         [
-          "deliver:toolcall_start",
+          "deliver:toolcall_delta",
           32
         ],
         [
-          "deliver:toolcall_delta",
+          "deliver:toolcall_end",
           34
         ],
         [
@@ -2410,12 +2194,8 @@
           36
         ],
         [
-          "deliver:toolcall_end",
-          38
-        ],
-        [
           "deliver:done",
-          40
+          38
         ]
       ],
       "stopReason": "toolUse",
@@ -2423,10 +2203,6 @@
       "result": {
         "role": "assistant",
         "content": [
-          {
-            "type": "text",
-            "text": ""
-          },
           {
             "type": "thinking",
             "thinking": "hm ✓"
@@ -2492,119 +2268,99 @@
           2
         ],
         [
-          "push:text_start",
-          3
-        ],
-        [
-          "push:text_delta",
-          3
-        ],
-        [
-          "push:text_end",
-          5
-        ],
-        [
           "push:thinking_start",
-          5
+          7
         ],
         [
           "push:thinking_delta",
-          5
-        ],
-        [
-          "deliver:text_start",
-          6
-        ],
-        [
-          "push:thinking_end",
           7
-        ],
-        [
-          "push:text_start",
-          7
-        ],
-        [
-          "push:text_delta",
-          7
-        ],
-        [
-          "deliver:text_delta",
-          8
-        ],
-        [
-          "push:text_delta",
-          9
-        ],
-        [
-          "deliver:text_end",
-          10
-        ],
-        [
-          "push:text_end",
-          11
-        ],
-        [
-          "push:toolcall_start",
-          11
-        ],
-        [
-          "push:toolcall_delta",
-          11
         ],
         [
           "deliver:thinking_start",
-          12
+          10
         ],
         [
-          "push:toolcall_delta",
-          13
+          "push:thinking_end",
+          10
         ],
         [
-          "push:toolcall_start",
-          13
+          "push:text_start",
+          10
         ],
         [
-          "push:toolcall_delta",
-          13
+          "push:text_delta",
+          10
         ],
         [
           "deliver:thinking_delta",
-          14
+          12
+        ],
+        [
+          "push:text_delta",
+          13
         ],
         [
           "deliver:thinking_end",
-          16
-        ],
-        [
-          "push:toolcall_end",
-          17
-        ],
-        [
-          "push:toolcall_end",
-          17
+          14
         ],
         [
           "deliver:text_start",
+          16
+        ],
+        [
+          "push:text_end",
+          16
+        ],
+        [
+          "push:toolcall_start",
+          16
+        ],
+        [
+          "push:toolcall_delta",
+          16
+        ],
+        [
+          "deliver:text_delta",
           18
         ],
         [
-          "push:done",
-          18
+          "push:toolcall_delta",
+          19
+        ],
+        [
+          "push:toolcall_start",
+          19
+        ],
+        [
+          "push:toolcall_delta",
+          19
         ],
         [
           "deliver:text_delta",
           20
         ],
         [
-          "deliver:text_delta",
+          "deliver:text_end",
           22
         ],
         [
-          "deliver:text_end",
+          "deliver:toolcall_start",
           24
         ],
         [
-          "deliver:toolcall_start",
+          "push:toolcall_end",
+          24
+        ],
+        [
+          "push:toolcall_end",
+          24
+        ],
+        [
+          "push:done",
+          25
+        ],
+        [
+          "deliver:toolcall_delta",
           26
         ],
         [
@@ -2612,15 +2368,15 @@
           28
         ],
         [
-          "deliver:toolcall_delta",
+          "deliver:toolcall_start",
           30
         ],
         [
-          "deliver:toolcall_start",
+          "deliver:toolcall_delta",
           32
         ],
         [
-          "deliver:toolcall_delta",
+          "deliver:toolcall_end",
           34
         ],
         [
@@ -2628,12 +2384,8 @@
           36
         ],
         [
-          "deliver:toolcall_end",
-          38
-        ],
-        [
           "deliver:done",
-          40
+          38
         ]
       ],
       "stopReason": "toolUse",
@@ -2641,10 +2393,6 @@
       "result": {
         "role": "assistant",
         "content": [
-          {
-            "type": "text",
-            "text": ""
-          },
           {
             "type": "thinking",
             "thinking": "hm ✓"
@@ -2715,119 +2463,99 @@
           2
         ],
         [
-          "push:text_start",
-          4
-        ],
-        [
-          "push:text_delta",
-          4
-        ],
-        [
-          "push:text_end",
-          6
-        ],
-        [
           "push:thinking_start",
-          6
+          8
         ],
         [
           "push:thinking_delta",
-          6
-        ],
-        [
-          "deliver:text_start",
-          7
-        ],
-        [
-          "push:thinking_end",
           8
-        ],
-        [
-          "push:text_start",
-          8
-        ],
-        [
-          "push:text_delta",
-          8
-        ],
-        [
-          "deliver:text_delta",
-          9
-        ],
-        [
-          "push:text_delta",
-          10
-        ],
-        [
-          "deliver:text_end",
-          11
-        ],
-        [
-          "push:text_end",
-          12
-        ],
-        [
-          "push:toolcall_start",
-          12
-        ],
-        [
-          "push:toolcall_delta",
-          12
         ],
         [
           "deliver:thinking_start",
-          13
+          11
         ],
         [
-          "push:toolcall_delta",
-          14
+          "push:thinking_end",
+          11
         ],
         [
-          "push:toolcall_start",
-          14
+          "push:text_start",
+          11
         ],
         [
-          "push:toolcall_delta",
-          14
+          "push:text_delta",
+          11
         ],
         [
           "deliver:thinking_delta",
-          15
+          13
+        ],
+        [
+          "push:text_delta",
+          14
         ],
         [
           "deliver:thinking_end",
-          17
-        ],
-        [
-          "push:toolcall_end",
-          18
-        ],
-        [
-          "push:toolcall_end",
-          18
+          15
         ],
         [
           "deliver:text_start",
+          17
+        ],
+        [
+          "push:text_end",
+          17
+        ],
+        [
+          "push:toolcall_start",
+          17
+        ],
+        [
+          "push:toolcall_delta",
+          17
+        ],
+        [
+          "deliver:text_delta",
           19
         ],
         [
-          "push:done",
-          19
+          "push:toolcall_delta",
+          20
+        ],
+        [
+          "push:toolcall_start",
+          20
+        ],
+        [
+          "push:toolcall_delta",
+          20
         ],
         [
           "deliver:text_delta",
           21
         ],
         [
-          "deliver:text_delta",
+          "deliver:text_end",
           23
         ],
         [
-          "deliver:text_end",
+          "deliver:toolcall_start",
           25
         ],
         [
-          "deliver:toolcall_start",
+          "push:toolcall_end",
+          25
+        ],
+        [
+          "push:toolcall_end",
+          25
+        ],
+        [
+          "push:done",
+          26
+        ],
+        [
+          "deliver:toolcall_delta",
           27
         ],
         [
@@ -2835,15 +2563,15 @@
           29
         ],
         [
-          "deliver:toolcall_delta",
+          "deliver:toolcall_start",
           31
         ],
         [
-          "deliver:toolcall_start",
+          "deliver:toolcall_delta",
           33
         ],
         [
-          "deliver:toolcall_delta",
+          "deliver:toolcall_end",
           35
         ],
         [
@@ -2851,12 +2579,8 @@
           37
         ],
         [
-          "deliver:toolcall_end",
-          39
-        ],
-        [
           "deliver:done",
-          41
+          39
         ]
       ],
       "stopReason": "toolUse",
@@ -2864,10 +2588,6 @@
       "result": {
         "role": "assistant",
         "content": [
-          {
-            "type": "text",
-            "text": ""
-          },
           {
             "type": "thinking",
             "thinking": "hm ✓"
@@ -2935,96 +2655,72 @@
           2
         ],
         [
-          "push:text_start",
-          3
-        ],
-        [
-          "push:text_delta",
-          3
-        ],
-        [
-          "push:text_end",
-          5
-        ],
-        [
           "push:thinking_start",
-          5
+          7
         ],
         [
           "push:thinking_delta",
-          5
+          7
         ],
         [
           "read:2",
-          5
-        ],
-        [
-          "deliver:text_start",
-          6
-        ],
-        [
-          "deliver:text_delta",
-          8
-        ],
-        [
-          "push:thinking_end",
-          8
-        ],
-        [
-          "push:text_start",
-          8
-        ],
-        [
-          "push:text_delta",
-          8
-        ],
-        [
-          "read:3",
-          8
-        ],
-        [
-          "deliver:text_end",
-          10
-        ],
-        [
-          "read:4",
-          11
+          7
         ],
         [
           "deliver:thinking_start",
-          12
+          10
+        ],
+        [
+          "push:thinking_end",
+          11
+        ],
+        [
+          "push:text_start",
+          11
+        ],
+        [
+          "push:text_delta",
+          11
+        ],
+        [
+          "read:3",
+          11
         ],
         [
           "deliver:thinking_delta",
-          14
-        ],
-        [
-          "push:text_end",
-          14
-        ],
-        [
-          "push:done",
-          15
+          12
         ],
         [
           "deliver:thinking_end",
-          16
+          14
+        ],
+        [
+          "read:4",
+          15
         ],
         [
           "deliver:text_start",
-          18
+          16
         ],
         [
           "deliver:text_delta",
-          20
+          18
+        ],
+        [
+          "push:text_end",
+          18
+        ],
+        [
+          "push:done",
+          19
         ],
         [
           "deliver:text_end",
-          22
+          21
         ],
         [
           "deliver:done",
-          24
+          23
         ]
       ],
       "stopReason": "toolUse",
@@ -3032,10 +2728,6 @@
       "result": {
         "role": "assistant",
         "content": [
-          {
-            "type": "text",
-            "text": ""
-          },
           {
             "type": "thinking",
             "thinking": "hm ✓"
@@ -3089,51 +2781,43 @@
         ],
         [
           "push:text_start",
-          3
+          7
         ],
         [
           "push:text_delta",
-          3
-        ],
-        [
-          "push:text_delta",
-          5
+          7
         ],
         [
           "read:2",
-          5
-        ],
-        [
-          "deliver:text_start",
-          6
+          7
         ],
         [
           "read:3",
-          6
-        ],
-        [
-          "deliver:text_delta",
           8
         ],
         [
+          "deliver:text_start",
+          10
+        ],
+        [
           "push:text_end",
-          9
+          11
         ],
         [
           "deliver:text_delta",
-          10
-        ],
-        [
-          "push:error",
-          10
-        ],
-        [
-          "deliver:text_end",
           12
         ],
         [
-          "deliver:error",
+          "push:error",
+          12
+        ],
+        [
+          "deliver:text_end",
           14
+        ],
+        [
+          "deliver:error",
+          16
         ]
       ],
       "stopReason": "error",
@@ -3189,43 +2873,43 @@
         ],
         [
           "push:text_start",
-          3
+          4
         ],
         [
           "push:text_delta",
-          3
+          4
         ],
         [
           "deliver:text_start",
-          6
-        ],
-        [
-          "push:text_delta",
           7
         ],
         [
           "deliver:text_delta",
-          8
-        ],
-        [
-          "push:text_end",
           9
         ],
         [
-          "deliver:text_delta",
+          "push:text_delta",
           10
         ],
         [
-          "push:error",
-          10
-        ],
-        [
-          "deliver:text_end",
+          "push:text_end",
           12
         ],
         [
+          "deliver:text_delta",
+          13
+        ],
+        [
+          "push:error",
+          13
+        ],
+        [
+          "deliver:text_end",
+          15
+        ],
+        [
           "deliver:error",
-          14
+          17
         ]
       ],
       "stopReason": "error",
@@ -3282,35 +2966,35 @@
         ],
         [
           "push:text_start",
-          3
+          4
         ],
         [
           "push:text_delta",
-          3
+          4
         ],
         [
           "deliver:text_start",
-          6
-        ],
-        [
-          "push:text_end",
           7
         ],
         [
           "deliver:text_delta",
-          8
+          9
+        ],
+        [
+          "push:text_end",
+          9
         ],
         [
           "push:error",
-          8
-        ],
-        [
-          "deliver:text_end",
           10
         ],
         [
-          "deliver:error",
+          "deliver:text_end",
           12
+        ],
+        [
+          "deliver:error",
+          14
         ]
       ],
       "stopReason": "error",
@@ -3367,35 +3051,35 @@
         ],
         [
           "push:text_start",
-          3
+          4
         ],
         [
           "push:text_delta",
-          3
+          4
         ],
         [
           "deliver:text_start",
-          6
-        ],
-        [
-          "push:text_end",
           7
         ],
         [
           "deliver:text_delta",
-          8
+          9
+        ],
+        [
+          "push:text_end",
+          9
         ],
         [
           "push:done",
-          8
-        ],
-        [
-          "deliver:text_end",
           10
         ],
         [
-          "deliver:done",
+          "deliver:text_end",
           12
+        ],
+        [
+          "deliver:done",
+          14
         ]
       ],
       "stopReason": "length",
@@ -3450,88 +3134,64 @@
           2
         ],
         [
-          "push:text_start",
-          3
-        ],
-        [
-          "push:text_delta",
-          3
-        ],
-        [
-          "push:text_end",
-          5
-        ],
-        [
           "push:thinking_start",
-          5
+          7
         ],
         [
           "push:thinking_delta",
-          5
-        ],
-        [
-          "deliver:text_start",
-          6
-        ],
-        [
-          "push:thinking_end",
           7
-        ],
-        [
-          "push:text_start",
-          7
-        ],
-        [
-          "push:text_delta",
-          7
-        ],
-        [
-          "read:2",
-          7
-        ],
-        [
-          "deliver:text_delta",
-          8
-        ],
-        [
-          "deliver:text_end",
-          10
-        ],
-        [
-          "push:text_end",
-          10
-        ],
-        [
-          "push:error",
-          11
         ],
         [
           "deliver:thinking_start",
-          12
+          10
+        ],
+        [
+          "push:thinking_end",
+          10
+        ],
+        [
+          "push:text_start",
+          10
+        ],
+        [
+          "push:text_delta",
+          10
+        ],
+        [
+          "read:2",
+          10
         ],
         [
           "deliver:thinking_delta",
-          14
+          12
+        ],
+        [
+          "push:text_end",
+          13
         ],
         [
           "deliver:thinking_end",
-          16
+          14
+        ],
+        [
+          "push:error",
+          14
         ],
         [
           "deliver:text_start",
-          18
+          16
         ],
         [
           "deliver:text_delta",
-          20
+          18
         ],
         [
           "deliver:text_end",
-          22
+          20
         ],
         [
           "deliver:error",
-          24
+          22
         ]
       ],
       "stopReason": "error",
@@ -3539,10 +3199,6 @@
       "result": {
         "role": "assistant",
         "content": [
-          {
-            "type": "text",
-            "text": ""
-          },
           {
             "type": "thinking",
             "thinking": "hm ✓"
@@ -3594,107 +3250,71 @@
           2
         ],
         [
-          "push:text_start",
-          3
-        ],
-        [
-          "push:text_delta",
-          3
-        ],
-        [
-          "push:text_end",
-          5
-        ],
-        [
           "push:thinking_start",
-          5
+          7
         ],
         [
           "push:thinking_delta",
-          5
-        ],
-        [
-          "deliver:text_start",
-          6
-        ],
-        [
-          "push:thinking_end",
           7
-        ],
-        [
-          "push:text_start",
-          7
-        ],
-        [
-          "push:text_delta",
-          7
-        ],
-        [
-          "deliver:text_delta",
-          8
-        ],
-        [
-          "push:text_delta",
-          9
-        ],
-        [
-          "deliver:text_end",
-          10
-        ],
-        [
-          "push:text_end",
-          11
-        ],
-        [
-          "push:toolcall_start",
-          11
-        ],
-        [
-          "push:toolcall_delta",
-          11
         ],
         [
           "deliver:thinking_start",
-          12
+          10
         ],
         [
-          "push:toolcall_delta",
-          13
+          "push:thinking_end",
+          10
         ],
         [
-          "push:toolcall_start",
-          13
+          "push:text_start",
+          10
         ],
         [
-          "push:toolcall_delta",
-          13
+          "push:text_delta",
+          10
         ],
         [
           "deliver:thinking_delta",
-          14
+          12
         ],
         [
-          "read:2",
-          15
+          "push:text_delta",
+          13
         ],
         [
           "deliver:thinking_end",
-          16
+          14
         ],
         [
           "deliver:text_start",
+          16
+        ],
+        [
+          "push:text_end",
+          16
+        ],
+        [
+          "push:toolcall_start",
+          16
+        ],
+        [
+          "push:toolcall_delta",
+          16
+        ],
+        [
+          "deliver:text_delta",
           18
         ],
         [
-          "push:toolcall_end",
-          18
+          "push:toolcall_delta",
+          19
         ],
         [
-          "push:toolcall_end",
-          18
+          "push:toolcall_start",
+          19
         ],
         [
-          "push:done",
+          "push:toolcall_delta",
           19
         ],
         [
@@ -3702,15 +3322,31 @@
           20
         ],
         [
-          "deliver:text_delta",
+          "deliver:text_end",
           22
         ],
         [
-          "deliver:text_end",
-          24
+          "read:2",
+          22
         ],
         [
           "deliver:toolcall_start",
+          24
+        ],
+        [
+          "push:toolcall_end",
+          25
+        ],
+        [
+          "push:toolcall_end",
+          25
+        ],
+        [
+          "deliver:toolcall_delta",
+          26
+        ],
+        [
+          "push:done",
           26
         ],
         [
@@ -3718,15 +3354,15 @@
           28
         ],
         [
-          "deliver:toolcall_delta",
+          "deliver:toolcall_start",
           30
         ],
         [
-          "deliver:toolcall_start",
+          "deliver:toolcall_delta",
           32
         ],
         [
-          "deliver:toolcall_delta",
+          "deliver:toolcall_end",
           34
         ],
         [
@@ -3734,12 +3370,8 @@
           36
         ],
         [
-          "deliver:toolcall_end",
-          38
-        ],
-        [
           "deliver:done",
-          40
+          38
         ]
       ],
       "stopReason": "toolUse",
@@ -3747,10 +3379,6 @@
       "result": {
         "role": "assistant",
         "content": [
-          {
-            "type": "text",
-            "text": ""
-          },
           {
             "type": "thinking",
             "thinking": "hm ✓"
@@ -3817,35 +3445,35 @@
         ],
         [
           "push:text_start",
-          3
+          4
         ],
         [
           "push:text_delta",
-          3
+          4
         ],
         [
           "deliver:text_start",
-          6
-        ],
-        [
-          "push:text_end",
           7
         ],
         [
           "deliver:text_delta",
-          8
+          9
+        ],
+        [
+          "push:text_end",
+          9
         ],
         [
           "push:done",
-          8
-        ],
-        [
-          "deliver:text_end",
           10
         ],
         [
-          "deliver:done",
+          "deliver:text_end",
           12
+        ],
+        [
+          "deliver:done",
+          14
         ]
       ],
       "stopReason": "stop",
@@ -3900,55 +3528,31 @@
           2
         ],
         [
-          "push:text_start",
-          3
-        ],
-        [
-          "push:text_delta",
-          3
-        ],
-        [
-          "push:text_end",
-          5
-        ],
-        [
           "push:thinking_start",
-          5
+          7
         ],
         [
           "push:thinking_delta",
-          5
+          7
         ],
         [
           "read:2",
-          5
-        ],
-        [
-          "deliver:text_start",
-          6
-        ],
-        [
-          "deliver:text_delta",
-          8
-        ],
-        [
-          "deliver:text_end",
-          10
-        ],
-        [
-          "push:thinking_end",
-          10
-        ],
-        [
-          "push:done",
-          11
+          7
         ],
         [
           "deliver:thinking_start",
-          12
+          10
         ],
         [
           "deliver:thinking_delta",
+          12
+        ],
+        [
+          "push:thinking_end",
+          13
+        ],
+        [
+          "push:done",
           14
         ],
         [
@@ -3965,10 +3569,6 @@
       "result": {
         "role": "assistant",
         "content": [
-          {
-            "type": "text",
-            "text": ""
-          },
           {
             "type": "thinking",
             "thinking": "hm ✓"
@@ -4016,64 +3616,40 @@
           2
         ],
         [
-          "push:text_start",
-          3
-        ],
-        [
-          "push:text_delta",
-          3
-        ],
-        [
-          "push:text_end",
-          5
-        ],
-        [
           "push:thinking_start",
-          5
+          7
         ],
         [
           "push:thinking_delta",
-          5
+          7
         ],
         [
           "read:2",
-          5
-        ],
-        [
-          "deliver:text_start",
-          6
-        ],
-        [
-          "deliver:text_delta",
-          8
-        ],
-        [
-          "push:thinking_end",
-          8
-        ],
-        [
-          "push:error",
-          9
-        ],
-        [
-          "deliver:text_end",
-          10
+          7
         ],
         [
           "deliver:thinking_start",
-          12
+          10
+        ],
+        [
+          "push:thinking_end",
+          10
+        ],
+        [
+          "push:error",
+          11
         ],
         [
           "deliver:thinking_delta",
-          14
+          12
         ],
         [
           "deliver:thinking_end",
-          16
+          14
         ],
         [
           "deliver:error",
-          18
+          16
         ]
       ],
       "stopReason": "error",
@@ -4081,10 +3657,6 @@
       "result": {
         "role": "assistant",
         "content": [
-          {
-            "type": "text",
-            "text": ""
-          },
           {
             "type": "thinking",
             "thinking": "hm ✓"
@@ -4132,52 +3704,28 @@
           2
         ],
         [
-          "push:text_start",
-          3
-        ],
-        [
-          "push:text_delta",
-          3
-        ],
-        [
-          "push:text_end",
-          5
-        ],
-        [
           "push:thinking_start",
-          5
+          7
         ],
         [
           "push:thinking_delta",
-          5
-        ],
-        [
-          "deliver:text_start",
-          6
-        ],
-        [
-          "deliver:text_delta",
-          8
-        ],
-        [
-          "push:error",
-          8
-        ],
-        [
-          "deliver:text_end",
-          10
+          7
         ],
         [
           "deliver:thinking_start",
-          12
+          10
+        ],
+        [
+          "push:error",
+          10
         ],
         [
           "deliver:thinking_delta",
-          14
+          12
         ],
         [
           "deliver:error",
-          16
+          14
         ]
       ],
       "stopReason": "error",
@@ -4185,10 +3733,6 @@
       "result": {
         "role": "assistant",
         "content": [
-          {
-            "type": "text",
-            "text": ""
-          },
           {
             "type": "thinking",
             "thinking": "hm ✓"
@@ -4236,52 +3780,28 @@
           2
         ],
         [
-          "push:text_start",
-          3
-        ],
-        [
-          "push:text_delta",
-          3
-        ],
-        [
-          "push:text_end",
-          5
-        ],
-        [
           "push:thinking_start",
-          5
+          7
         ],
         [
           "push:thinking_delta",
-          5
-        ],
-        [
-          "deliver:text_start",
-          6
-        ],
-        [
-          "deliver:text_delta",
-          8
-        ],
-        [
-          "push:error",
-          8
-        ],
-        [
-          "deliver:text_end",
-          10
+          7
         ],
         [
           "deliver:thinking_start",
-          12
+          10
+        ],
+        [
+          "push:error",
+          10
         ],
         [
           "deliver:thinking_delta",
-          14
+          12
         ],
         [
           "deliver:error",
-          16
+          14
         ]
       ],
       "stopReason": "error",
@@ -4289,10 +3809,6 @@
       "result": {
         "role": "assistant",
         "content": [
-          {
-            "type": "text",
-            "text": ""
-          },
           {
             "type": "thinking",
             "thinking": "hm ✓"
@@ -4340,52 +3856,28 @@
           2
         ],
         [
-          "push:text_start",
-          3
-        ],
-        [
-          "push:text_delta",
-          3
-        ],
-        [
-          "push:text_end",
-          5
-        ],
-        [
           "push:thinking_start",
-          5
+          7
         ],
         [
           "push:thinking_delta",
-          5
-        ],
-        [
-          "deliver:text_start",
-          6
-        ],
-        [
-          "deliver:text_delta",
-          8
-        ],
-        [
-          "push:error",
-          8
-        ],
-        [
-          "deliver:text_end",
-          10
+          7
         ],
         [
           "deliver:thinking_start",
-          12
+          10
+        ],
+        [
+          "push:error",
+          10
         ],
         [
           "deliver:thinking_delta",
-          14
+          12
         ],
         [
           "deliver:error",
-          16
+          14
         ]
       ],
       "stopReason": "error",
@@ -4393,10 +3885,6 @@
       "result": {
         "role": "assistant",
         "content": [
-          {
-            "type": "text",
-            "text": ""
-          },
           {
             "type": "thinking",
             "thinking": "hm ✓"
@@ -4445,35 +3933,35 @@
         ],
         [
           "push:text_start",
-          3
+          4
         ],
         [
           "push:text_delta",
-          3
+          4
         ],
         [
           "deliver:text_start",
-          6
+          7
         ],
         [
           "deliver:text_delta",
-          8
-        ],
-        [
-          "push:text_end",
           9
         ],
         [
-          "push:done",
-          10
-        ],
-        [
-          "deliver:text_end",
+          "push:text_end",
           12
         ],
         [
+          "push:done",
+          13
+        ],
+        [
+          "deliver:text_end",
+          15
+        ],
+        [
           "deliver:done",
-          14
+          17
         ]
       ],
       "stopReason": "stop",
@@ -4529,35 +4017,35 @@
         ],
         [
           "push:text_start",
-          3
+          4
         ],
         [
           "push:text_delta",
-          3
+          4
         ],
         [
           "deliver:text_start",
-          6
-        ],
-        [
-          "push:text_end",
           7
         ],
         [
           "deliver:text_delta",
-          8
+          9
+        ],
+        [
+          "push:text_end",
+          9
         ],
         [
           "push:done",
-          8
-        ],
-        [
-          "deliver:text_end",
           10
         ],
         [
-          "deliver:done",
+          "deliver:text_end",
           12
+        ],
+        [
+          "deliver:done",
+          14
         ]
       ],
       "stopReason": "stop",
@@ -4612,56 +4100,19 @@
           2
         ],
         [
-          "push:text_start",
-          3
-        ],
-        [
-          "push:text_delta",
-          3
-        ],
-        [
-          "push:text_delta",
-          5
-        ],
-        [
-          "deliver:text_start",
-          6
-        ],
-        [
-          "deliver:text_delta",
-          8
-        ],
-        [
-          "deliver:text_delta",
-          10
-        ],
-        [
-          "push:text_end",
-          11
-        ],
-        [
           "push:done",
-          12
-        ],
-        [
-          "deliver:text_end",
-          14
+          16
         ],
         [
           "deliver:done",
-          16
+          19
         ]
       ],
       "stopReason": "stop",
       "errorMessage": null,
       "result": {
         "role": "assistant",
-        "content": [
-          {
-            "type": "text",
-            "text": ""
-          }
-        ],
+        "content": [],
         "api": "mistral-conversations",
         "provider": "p",
         "model": "strict",
@@ -4705,27 +4156,27 @@
         ],
         [
           "push:text_start",
-          3
+          4
         ],
         [
           "push:text_delta",
-          3
+          4
         ],
         [
           "deliver:text_start",
-          6
+          7
         ],
         [
           "deliver:text_delta",
-          8
-        ],
-        [
-          "push:error",
           9
         ],
         [
+          "push:error",
+          11
+        ],
+        [
           "deliver:error",
-          12
+          14
         ]
       ],
       "stopReason": "error",
@@ -4781,35 +4232,35 @@
         ],
         [
           "push:text_start",
-          3
+          4
         ],
         [
           "push:text_delta",
-          3
+          4
         ],
         [
           "deliver:text_start",
-          6
+          7
         ],
         [
           "deliver:text_delta",
-          8
-        ],
-        [
-          "push:text_end",
           9
         ],
         [
-          "push:done",
-          10
-        ],
-        [
-          "deliver:text_end",
+          "push:text_end",
           12
         ],
         [
+          "push:done",
+          13
+        ],
+        [
+          "deliver:text_end",
+          15
+        ],
+        [
           "deliver:done",
-          14
+          17
         ]
       ],
       "stopReason": "stop",
@@ -4865,35 +4316,35 @@
         ],
         [
           "push:text_start",
-          3
+          4
         ],
         [
           "push:text_delta",
-          3
-        ],
-        [
-          "push:text_end",
-          5
+          4
         ],
         [
           "deliver:text_start",
-          6
+          7
+        ],
+        [
+          "push:text_end",
+          7
         ],
         [
           "deliver:text_delta",
-          8
-        ],
-        [
-          "push:error",
           9
         ],
         [
           "deliver:text_end",
-          10
+          11
+        ],
+        [
+          "push:error",
+          11
         ],
         [
           "deliver:error",
-          12
+          14
         ]
       ],
       "stopReason": "error",
@@ -4949,27 +4400,27 @@
         ],
         [
           "push:text_start",
-          3
+          4
         ],
         [
           "push:text_delta",
-          3
+          4
         ],
         [
           "deliver:text_start",
-          6
+          7
         ],
         [
           "deliver:text_delta",
-          8
-        ],
-        [
-          "push:error",
           9
         ],
         [
+          "push:error",
+          11
+        ],
+        [
           "deliver:error",
-          12
+          14
         ]
       ],
       "stopReason": "error",
@@ -5024,80 +4475,56 @@
           2
         ],
         [
-          "push:text_start",
-          3
-        ],
-        [
-          "push:text_delta",
-          3
-        ],
-        [
-          "push:text_end",
-          5
-        ],
-        [
           "push:thinking_start",
-          5
+          7
         ],
         [
           "push:thinking_delta",
-          5
-        ],
-        [
-          "deliver:text_start",
-          6
-        ],
-        [
-          "push:thinking_end",
           7
-        ],
-        [
-          "push:text_start",
-          7
-        ],
-        [
-          "push:text_delta",
-          7
-        ],
-        [
-          "read:2",
-          7
-        ],
-        [
-          "deliver:text_delta",
-          8
-        ],
-        [
-          "deliver:text_end",
-          10
-        ],
-        [
-          "push:error",
-          11
         ],
         [
           "deliver:thinking_start",
-          12
+          10
+        ],
+        [
+          "push:thinking_end",
+          10
+        ],
+        [
+          "push:text_start",
+          10
+        ],
+        [
+          "push:text_delta",
+          10
+        ],
+        [
+          "read:2",
+          10
         ],
         [
           "deliver:thinking_delta",
-          14
+          12
         ],
         [
           "deliver:thinking_end",
-          16
+          14
+        ],
+        [
+          "push:error",
+          14
         ],
         [
           "deliver:text_start",
-          18
+          16
         ],
         [
           "deliver:text_delta",
-          20
+          18
         ],
         [
           "deliver:error",
-          22
+          20
         ]
       ],
       "stopReason": "error",
@@ -5105,10 +4532,6 @@
       "result": {
         "role": "assistant",
         "content": [
-          {
-            "type": "text",
-            "text": ""
-          },
           {
             "type": "thinking",
             "thinking": "hm ✓"

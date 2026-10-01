@@ -529,7 +529,7 @@ func cloneFrameToolCall(toolCall ToolCall) (ToolCall, error) {
 		return ToolCall{}, err
 	}
 	return ToolCall{
-		ID: toolCall.ID, Name: toolCall.Name, Arguments: arguments,
+		ID: toolCall.ID, Name: toolCall.Name, Arguments: arguments, argumentOrder: toolCall.argumentOrder,
 		ThoughtSignature: toolCall.ThoughtSignature, Namespace: toolCall.Namespace,
 	}, nil
 }
@@ -802,7 +802,7 @@ func (reducer *assistantMessageFrameReducer) applyToolCallFrame(frame AssistantM
 	case ToolCallCheckpointFrame:
 		return reducer.updateToolCall(frame.ContentIndex, frame.FrameType(), func(toolCall *ToolCall, state *reducerBlockState) error {
 			state.json = frame.JSON
-			toolCall.Arguments = parseStreamingJsonObject(frame.JSON)
+			toolCall.SetStreamingArguments(frame.JSON)
 			return nil
 		})
 	case ToolCallDeltaFrame:
@@ -855,7 +855,7 @@ func (reducer *assistantMessageFrameReducer) finish() (*AssistantMessage, error)
 			continue
 		}
 		toolCall := reducer.message.Content[contentIndex].(ToolCall)
-		toolCall.Arguments = parseStreamingJsonObject(state.json)
+		toolCall.SetStreamingArguments(state.json)
 		reducer.message.Content[contentIndex] = toolCall
 	}
 	return reducer.message, nil

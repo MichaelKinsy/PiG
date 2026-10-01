@@ -767,7 +767,8 @@ func TestValidateRegisterPayloadRejectsInvalidRegistration(t *testing.T) {
 		{
 			name: "empty command",
 			reg:  &RegisterPayload{Name: "bad", Commands: []CommandDecl{{Name: ""}}},
-			want: "command name is required",
+			// loader.ts:302-305 (#10054)
+			want: `Command registered by extension "bad" must have a non-empty string name.`,
 		},
 	}
 	for _, tc := range tests {

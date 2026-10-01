@@ -63,7 +63,7 @@ func TestAfterProviderResponseSession(t *testing.T) {
 }
 
 // Pi agent-session.ts:1347-1394,3178-3194 normalizes definition metadata;
-// system-prompt.ts:108-116,148-152 selects and deduplicates in active-tool order.
+// system-prompt.ts:108-116,148-152 selects and deduplicates in active-tool order. 0.99.1 also deduplicates the active names themselves (agent-session.ts:1502, `new Set(toolNames)`), so a repeated name lists once.
 func TestRegisteredToolPromptContributions(t *testing.T) {
 	definitions := []extension.RegisteredTool{
 		{Definition: extension.ToolDefinition{Name: "read", Description: "not a snippet", PromptGuidelines: []string{"  override read  "}}},
@@ -104,7 +104,7 @@ func TestRegisteredToolPromptContributions(t *testing.T) {
 					t.Fatalf("tools:\n%s\nrules:\n%s\nwant:\n%s\n%s", sections["tools"], sections["rules"], wantTools, wantRules)
 				}
 			}
-			check([]string{"zeta", "read", "alpha", "hidden", "zeta", "unknown"}, "- zeta: Zeta summary\n- alpha: Alpha summary\n- zeta: Zeta summary", "- shared\n- zeta rule\n- override read\n- alpha rule\n")
+			check([]string{"zeta", "read", "alpha", "hidden", "zeta", "unknown"}, "- zeta: Zeta summary\n- alpha: Alpha summary", "- shared\n- zeta rule\n- override read\n- alpha rule\n")
 			check([]string{"alpha", "zeta"}, "- alpha: Alpha summary\n- zeta: Zeta summary", "- alpha rule\n- shared\n- zeta rule\n")
 			check([]string{}, "(none)", "")
 			if structured && !strings.Contains(*session.baseSystemPrompt.Load(), "/probe") {

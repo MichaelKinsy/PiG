@@ -16,10 +16,11 @@ import { getTextOutput, renderToolPath, replaceTabs, str } from "../render-utils
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, formatSize } from "../truncate.js";
 const COMPACT_RESOURCE_FILE_NAMES = new Set(["AGENTS.override.md", "AGENTS.md", "AGENTS.MD", "CLAUDE.md", "CLAUDE.MD"]);
 function formatReadLineRange(args, theme) {
-    if (args?.offset === undefined && args?.limit === undefined)
+    // Strict tool schemas make models send null for omitted optional fields.
+    if (args?.offset == null && args?.limit == null)
         return "";
     const startLine = args.offset ?? 1;
-    const endLine = args.limit !== undefined ? startLine + args.limit - 1 : "";
+    const endLine = args.limit != null ? startLine + args.limit - 1 : "";
     return theme.fg("warning", `:${startLine}${endLine ? `-${endLine}` : ""}`);
 }
 function formatReadCall(args, theme, cwd) {

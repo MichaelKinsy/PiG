@@ -15,6 +15,7 @@ import (
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/agent/harness"
+	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
 // NodeExecutionEnvOptions configure a NodeExecutionEnv.
@@ -433,13 +434,14 @@ func (env *NodeExecutionEnv) Cleanup(context.Context) {
 	}
 }
 
-// startChild starts cmd and registers its pid as one step under the lock
+// startChild starts cmd with nodespawn.Start, which closes the parent's copies
+// of the child's files, and registers its pid as one step under the lock
 // Cleanup takes, as upstream's synchronous spawn-then-add does: a child is
 // never running yet unknown to a concurrent Cleanup.
 func (env *NodeExecutionEnv) startChild(cmd *exec.Cmd) error {
 	env.mu.Lock()
 	defer env.mu.Unlock()
-	if err := cmd.Start(); err != nil {
+	if err := nodespawn.Start(cmd); err != nil {
 		return err
 	}
 	env.activeChildPids[cmd.Process.Pid] = struct{}{}

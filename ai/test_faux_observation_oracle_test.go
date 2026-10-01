@@ -114,7 +114,7 @@ func testFauxTickObservation(t testing.TB, prompt string) []json.RawMessage {
 // The oracle is providers/test-faux/probe.mjs; each record carries the push count at delivery.
 func TestTestFauxObservationOracle(t *testing.T) {
 	oracle := readTestFauxOracle(t)
-	if oracle.Pi != "0.87.1" {
+	if oracle.Pi != "0.99.2" {
 		t.Fatalf("oracle pins Pi %s", oracle.Pi)
 	}
 	for _, result := range oracle.Results {

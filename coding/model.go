@@ -314,6 +314,7 @@ func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry ico
 		return ai.NewAnthropicProvider(config), nil
 	case ai.APIGoogleGenerativeAI:
 		return ai.NewGoogleProvider(ai.GoogleConfig{
+			ModelMetadata:    modelFromEntry(entry, nil),
 			BaseURL:          baseURL,
 			APIKey:           apiKey,
 			Model:            modelID,
@@ -324,6 +325,7 @@ func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry ico
 		}), nil
 	case ai.APIGoogleVertex:
 		return ai.NewGoogleVertexProvider(ai.GoogleVertexConfig{
+			ModelMetadata:    modelFromEntry(entry, nil),
 			BaseURL:          baseURL,
 			APIKey:           apiKey,
 			Model:            modelID,
@@ -351,11 +353,12 @@ func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry ico
 		}), nil
 	case ai.APIPiMessages:
 		config := ai.PiMessagesConfig{
-			BaseURL:      baseURL,
-			APIKey:       apiKey,
-			Model:        modelID,
-			ProviderID:   providerID,
-			ExtraHeaders: extraHeaders,
+			ModelMetadata: modelFromEntry(entry, nil),
+			BaseURL:       baseURL,
+			APIKey:        apiKey,
+			Model:         modelID,
+			ProviderID:    providerID,
+			ExtraHeaders:  extraHeaders,
 		}
 		if _, radius := svcs.Registry().RadiusOAuth(providerID); radius && !resolvedAuth {
 			registry := svcs.Registry().ModelRegistry

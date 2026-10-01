@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// The reviewed Pi 0.87.1 snapshot retains JavaScript localeCompare selection, not Go map or byte ordering.
+// The Pi 0.99.1 snapshot retains JavaScript localeCompare selection, not Go map or byte ordering.
 // upstream: packages/ai/test/anthropic-eager-tool-input-e2e.test.ts:34-85 and anthropic-long-cache-retention-e2e.test.ts:22-70.
 type anthropicAcceptanceCases struct {
 	All, Configured, ForcedEager []string
@@ -38,7 +38,7 @@ func assertAnthropicCatalogDenominator(t *testing.T, cases anthropicAcceptanceCa
 	}
 	slices.Sort(expected)
 	if !slices.Equal(cases.All, expected) {
-		t.Fatal("Anthropic model denominator differs from reviewed Pi 0.87.1 fixture; see testdata/port-wave-13/README.md")
+		t.Fatal("Anthropic model denominator differs from the Pi 0.99.2 fixture; see testdata/port-wave-13/README.md")
 	}
 }
 

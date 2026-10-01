@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// packages/coding-agent/test/suite/regressions/5943-session-start-notify.test.ts:256.
+// packages/coding-agent/test/suite/regressions/5943-session-start-notify.test.ts:218.
 // Pi showLoadedResources clears only the resource container, which precedes chat in the root.
 func TestSessionStartNotifyOriginalLoadedResources(t *testing.T) {
 	mode := &InteractiveMode{
@@ -40,7 +40,7 @@ func TestSessionStartNotifyOriginalLoadedResources(t *testing.T) {
 		t.Fatalf("resource/chat observations = %v\nchat: %q\nroot: %q", observations, chat, rendered)
 	}
 	if os.Getenv("PIG_RUNTIME_ORIGINAL_PROBE") != "" {
-		data, err := json.Marshal([]any{"notify", 256, observations})
+		data, err := json.Marshal([]any{"notify", 218, observations})
 		if err != nil {
 			t.Fatal(err)
 		}

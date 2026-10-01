@@ -3,6 +3,7 @@ import {
   AgentSessionRuntime,
   CacheWarmer,
   DEFAULT_THINKING_LEVEL,
+  DEFAULT_TOOL_NAMES,
   DefaultResourceLoader,
   ModelRuntime,
   SessionImportFileNotFoundError,
@@ -14,10 +15,12 @@ import {
   createAgentSessionServices,
   findInitialModel,
   formatNoModelsAvailableMessage,
+  getBranchSelection,
   getDefaultSessionDir,
   isInstallTelemetryEnabled,
   time
-} from "./chunk-DB45HMOM.js";
+} from "./chunk-672C4CEP.js";
+import "./chunk-F4GPDE7R.js";
 import {
   createBashTool,
   createCodingTools,
@@ -29,10 +32,16 @@ import {
   createReadOnlyTools,
   createReadTool,
   createWriteTool,
-  getAgentDir,
-  resolvePath,
   withFileMutationQueue
-} from "./chunk-42BDWAQD.js";
+} from "./chunk-GH7V3PY4.js";
+import "./chunk-M5LAR3ND.js";
+import "./chunk-RUCWNNX6.js";
+import "./chunk-KZ5CDRCP.js";
+import "./chunk-YJMZRBMJ.js";
+import {
+  getAgentDir,
+  resolvePath
+} from "./chunk-CBPXJ43O.js";
 import {
   __name
 } from "./chunk-SHUYVCID.js";
@@ -140,13 +149,14 @@ async function createAgentSession(options = {}) {
   const hasThinkingEntry = sessionManager.getBranch().some((entry) => entry.type === "thinking_level_change");
   let model = options.model;
   let modelFallbackMessage;
-  if (!model && hasExistingSession && existingSession.model) {
-    const restoredModel = modelRuntime.getModel(existingSession.model.provider, existingSession.model.modelId);
+  const sessionModel = getBranchSelection(sessionManager.getBranch(), (provider, modelId) => modelRuntime.getModel(provider, modelId));
+  if (!model && hasExistingSession && sessionModel) {
+    const restoredModel = modelRuntime.getModel(sessionModel.provider, sessionModel.modelId);
     if (restoredModel && modelRuntime.hasConfiguredAuth(restoredModel.provider)) {
       model = restoredModel;
     }
     if (!model) {
-      modelFallbackMessage = `Could not restore model ${existingSession.model.provider}/${existingSession.model.modelId}`;
+      modelFallbackMessage = `Could not restore model ${sessionModel.provider}/${sessionModel.modelId}`;
     }
   }
   if (!model) {
@@ -184,12 +194,11 @@ async function createAgentSession(options = {}) {
   } else {
     thinkingLevel = clampThinkingLevel(model, thinkingLevel);
   }
-  const defaultActiveToolNames = ["read", "bash", "edit", "write"];
   const configuredDefaultToolNames = settingsManager.getDefaultTools();
   const allowedToolNames = options.tools ?? (options.noTools === "all" ? [] : void 0);
   const excludedToolNames = options.excludeTools;
   const excludedToolNameSet = excludedToolNames ? new Set(excludedToolNames) : void 0;
-  const initialActiveToolNames = (options.tools ?? (options.noTools ? [] : configuredDefaultToolNames ?? defaultActiveToolNames)).filter((name) => !excludedToolNameSet?.has(name));
+  const initialActiveToolNames = (options.tools ?? (options.noTools ? [] : configuredDefaultToolNames ?? DEFAULT_TOOL_NAMES)).filter((name) => !excludedToolNameSet?.has(name));
   const convertToLlmWithBlockImages = /* @__PURE__ */ __name((messages) => {
     const converted = convertToLlm(messages);
     if (!settingsManager.getBlockImages()) {
@@ -255,6 +264,18 @@ async function createAgentSession(options = {}) {
       headers: response.headers
     });
   }, "handleProviderResponse");
+  const handleProviderStreamEvent = /* @__PURE__ */ __name(async (data, model2) => {
+    const runner = extensionRunnerRef.current;
+    if (!runner?.hasHandlers("provider_stream_event"))
+      return;
+    await runner.emit({
+      data,
+      type: "provider_stream_event",
+      provider: model2.provider,
+      api: model2.api,
+      model: model2.id
+    });
+  }, "handleProviderStreamEvent");
   const agent = new Agent({
     initialState: {
       systemPrompt: "",
@@ -273,6 +294,7 @@ async function createAgentSession(options = {}) {
     }, "streamFn"),
     onPayload: transformProviderPayload,
     onResponse: handleProviderResponse,
+    onProviderStreamEvent: handleProviderStreamEvent,
     sessionId: sessionManager.getSessionId(),
     transformContext: /* @__PURE__ */ __name(async (messages) => {
       const runner = extensionRunnerRef.current;
@@ -307,6 +329,7 @@ async function createAgentSession(options = {}) {
     modelRuntime,
     cacheWarmer,
     initialActiveToolNames,
+    usesDefaultTools: options.tools === void 0 && !options.noTools,
     allowedToolNames,
     excludedToolNames,
     extensionRunnerRef,

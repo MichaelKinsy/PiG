@@ -20,7 +20,6 @@ Pig preserves upstream pi-coding-agent's observable behavior unless an entry bel
 | D55 | Debug hotkey | The `ctrl+shift+d` debug hotkey fires once per press, not again on key release. |
 | D56 | Subprocess liveness | Heartbeats, request-state reporting, and renderer isolation for subprocess extensions. See [Extension API](extension-api.md). |
 | D57 | Unloadable install source refused | `pig install` fails when a complete conventional extension source is selected as a Package root and nothing would load, and records nothing. Pi reports success and the resources never load. Empty packages still install. See [Extensions](extensions.md). |
-| D59 | Recoverable generic tool details | An extension tool card without renderers uses a width-aware argument preview. Press Ctrl+O to show the complete retained arguments and available result. Pi hides arguments when a registered extension tool provides no renderers. |
 | D61 | Session replacement | Replacing the session keeps the startup project's Services and Resources. |
 | D62 | `/bug` | Writes a local report archive and prints a prefilled PiG issue link. Nothing is uploaded. |
 | D63 | `pig --version` | Prints the composite version, the PiG release then the Pi release it ports (`coding.Version`). `pig version` keeps separate fields. |
@@ -38,6 +37,7 @@ Pig preserves upstream pi-coding-agent's observable behavior unless an entry bel
 | D83 | Cross-process event-bus boundaries (known gap) | Every Node extension shares one `pi.events` bus and listeners in other processes receive the original payload by reference. Independent tasks in different processes are ordered by timing, only a listener's first post-await continuation is ordered with the emitter's microtasks, cross-process reference cycles are released when a process exits, and brand checks such as `util.types.isMap` fail on foreign objects, where `util.types.isProxy` also returns true. Because V8 offers no hook, `util.inspect` with `customInspect: false` (`console.dir`) prints an empty placeholder object (inside `Proxy(...)` on Node 26.0.0 and later), `util.inspect` with `showProxy: true` shows the Proxy wrapper, and on Node 26.0.0 and later `util.inspect` of a non-extensible foreign payload prints it inside `Proxy(...)`; Node 25 and earlier print that payload as Pi does. Every other inspect, clone and write case must match Pi; the Promise nesting level and cross-owner shared clones are open defects targeted at 0.3.1. |
 | D84 | Direct Go provider registration | A Go caller that registers a Provider directly on the Model Registry or Model Runtime, without an extension host, sees the synchronous projection until its next awaited model-runtime call runs Pi's local refresh. Extension-host registrations match Pi. |
 | D85 | RPC stdin-end residuals | After RPC stdin ends, a suspended extension command's continuation (timer, I/O, nested `setImmediate`, child process) can still run its side effects before PiG stops that runtime process; Pi never runs it, and stdout matches Pi. A suspended `session_shutdown` handler in one runtime process does not keep another runtime process's command alive, so PiG does not print a response that Pi prints. |
+| D86 | RPC settle-tail stdin hold | In RPC mode PiG holds stdin from `agent_end` until `agent_settled`, as Pi does in effect. A settle-tail handler in the Go, Rust or Python SDK that waits on a timer or I/O keeps the hold closed, so a command sent during its wait is answered after `agent_settled`, where Pi answers it during the wait. Node handlers report their wait and match Pi. Temporary: removed when those SDK runtimes report a tail handler's suspension. |
 
 ## Known gaps for 0.3.x
 
@@ -64,7 +64,7 @@ These add PiG-only capability without changing a Pi behavior. The additive ledge
 Items below are sometimes mistaken for divergences but are intentional **parity**:
 
 - **Mermaid fallback.** Unsupported or oversized diagrams retain the original code block. Pig does not add an unsupported-diagram hint or narrow labels to force a diagram to fit.
-- **Fenced-code wrapping.** Pi 0.87.1 wraps code rows in the final Markdown content-width pass. PiG uses the same pass and breakpoints.
+- **Fenced-code wrapping.** Pi 0.99.2 wraps code rows in the final Markdown content-width pass. PiG uses the same pass and breakpoints.
 - **TUI scrollback.** Pig now emits `\x1b[2J\x1b[H\x1b[3J` on full redraw, matching upstream `pi-tui`. Earlier pig builds omitted the `3J` (scrollback clear); that was a parity drift, fixed.
 - **Model cycling.** `Ctrl+P` / `Shift+Ctrl+P` cycle through provider-qualified specs. Bare model IDs are legacy-accepted but always rewritten on save.
 - **Provider auth precedence.** Environment variables override stored credentials at request time, identical to upstream.

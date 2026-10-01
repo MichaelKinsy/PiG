@@ -4,7 +4,7 @@ PiG stores each Session as JSON Lines. Line 1 is a Session header. Each later li
 
 The format follows the pinned upstream Pi Session format. PiG preserves unknown entry fields when it reads and writes a Session.
 
-Pi 0.87.1 also writes `context_edit` entries, which change the context an earlier entry contributes. PiG does not apply them yet, so a Session that contains context edits builds a different model context in PiG than in Pi.
+Pi also writes `context_edit` entries, which change the context an earlier entry contributes. PiG applies them as Pi does when it builds the model context: a `null` `replacement` omits the earlier entry, and a `replacement` with `content` replaces only that entry's content.
 
 ## File location
 

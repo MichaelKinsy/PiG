@@ -14,6 +14,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // childModeEnv makes the test binary act as a scripted RPC child process.
@@ -28,6 +30,11 @@ func TestMain(m *testing.M) {
 	dir, err := os.MkdirTemp("", "pig-rpcclient-")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	if err := testenv.ScopeTempDir(dir); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		_ = os.RemoveAll(dir)
 		os.Exit(1)
 	}
 	sourceRoot, err := filepath.Abs(filepath.Join("..", ".."))
@@ -131,14 +138,28 @@ func runCannedChild() int {
 		line := scanner.Text()
 		_, _ = fmt.Fprintln(logFile, line)
 		var cmd struct {
-			ID   string `json:"id"`
-			Type string `json:"type"`
+			ID                string `json:"id"`
+			Type              string `json:"type"`
+			Message           string `json:"message"`
+			StreamingBehavior string `json:"streamingBehavior"`
 		}
 		_ = json.Unmarshal([]byte(line), &cmd)
 		response := map[string]any{"id": cmd.ID, "type": "response", "command": cmd.Type, "success": true}
 		switch cmd.Type {
 		case "clear_queue":
 			response["data"] = map[string]any{"steering": []string{"Change direction"}, "followUp": []string{"Summarize when finished"}}
+		case "prompt", "steer", "follow_up":
+			// rpc-mode.ts:403-407,419-425: prompt, steer and follow_up answer with the input's disposition. "legacy" answers as a server without dispositions did.
+			disposition := "started"
+			if cmd.Type != "prompt" || cmd.StreamingBehavior != "" {
+				disposition = "queued"
+			}
+			if cmd.Message == "consumed" {
+				disposition = "handled"
+			}
+			if cmd.Message != "legacy" {
+				response["data"] = map[string]any{"disposition": disposition}
+			}
 		case "clone":
 			response["data"] = map[string]any{"cancelled": false}
 		case "get_entries":
@@ -230,10 +251,11 @@ func TestRpcClientSerializesCommandsLikeJSONStringify(t *testing.T) {
 	empty := ""
 	instructions := "keep <tags> & more"
 	steps := []func() error{
-		func() error { return client.Prompt("a<b&c", nil) },
-		func() error { return client.Steer("s", []ImageContent{}) },
+		func() error { _, err := client.Prompt("a<b&c", nil, nil); return err },
+		func() error { _, err := client.Steer("s", []ImageContent{}); return err },
 		func() error {
-			return client.FollowUp("f", []ImageContent{{Data: "AAA", MimeType: "image/png"}})
+			_, err := client.FollowUp("f", []ImageContent{{Data: "AAA", MimeType: "image/png"}})
+			return err
 		},
 		func() error { _, err := client.NewSession(nil); return err },
 		func() error { _, err := client.NewSession(&empty); return err },
@@ -314,10 +336,10 @@ func TestRpcClientDeliversStdoutRecordsToListeners(t *testing.T) {
 	}
 }
 
-// Upstream iterates the live listener array, so a listener that unsubscribes
-// itself while handling an event shifts the next listener into its slot and
-// that listener misses the event.
-func TestRpcClientListenerUnsubscribeDuringDispatchMatchesArrayIteration(t *testing.T) {
+// Upstream 0.99.1 iterates a snapshot of the listeners, so a listener that
+// unsubscribes itself while handling an event does not make a later listener
+// miss that event (rpc-client.ts:535-537).
+func TestRpcClientListenerUnsubscribeDuringDispatchDoesNotSkipLaterListeners(t *testing.T) {
 	client := NewRpcClient(RpcClientOptions{})
 	var calls []string
 	var unsubscribeA func()
@@ -326,8 +348,99 @@ func TestRpcClientListenerUnsubscribeDuringDispatchMatchesArrayIteration(t *test
 	client.OnEvent(func(JsonAgentSessionEvent) { calls = append(calls, "c") })
 	client.handleLine([]byte(`{"type":"x"}`))
 	client.handleLine([]byte(`{"type":"x"}`))
-	if want := []string{"a", "c", "b", "c"}; !slices.Equal(calls, want) {
+	if want := []string{"a", "b", "c", "b", "c"}; !slices.Equal(calls, want) {
 		t.Fatalf("calls = %v, want %v", calls, want)
+	}
+}
+
+// A listener subscribed during dispatch is not called for the event being
+// dispatched: upstream iterates a copy taken before the first call
+// (rpc-client.ts:535).
+func TestRpcClientListenerSubscribedDuringDispatchWaitsForTheNextEvent(t *testing.T) {
+	client := NewRpcClient(RpcClientOptions{})
+	var calls []string
+	subscribed := false
+	client.OnEvent(func(JsonAgentSessionEvent) {
+		calls = append(calls, "a")
+		if !subscribed {
+			subscribed = true
+			client.OnEvent(func(JsonAgentSessionEvent) { calls = append(calls, "late") })
+		}
+	})
+	client.handleLine([]byte(`{"type":"x"}`))
+	client.handleLine([]byte(`{"type":"x"}`))
+	if want := []string{"a", "a", "late"}; !slices.Equal(calls, want) {
+		t.Fatalf("calls = %v, want %v", calls, want)
+	}
+}
+
+// prompt, steer and followUp return the disposition of the response data
+// (rpc-client.ts:198-221); a prompt carries streamingBehavior after images.
+func TestRpcClientPromptSteerAndFollowUpReturnTheDisposition(t *testing.T) {
+	client, logPath := childClient(t, "canned")
+	if err := client.Start(); err != nil {
+		t.Fatal(err)
+	}
+	followUp := StreamingBehaviorFollowUp
+	steer := StreamingBehaviorSteer
+	type outcome struct {
+		disposition string
+		err         error
+	}
+	var got []outcome
+	record := func(disposition string, err error) { got = append(got, outcome{disposition, err}) }
+	started, err := client.Prompt("go", nil, nil)
+	record(string(started), err)
+	handled, err := client.Prompt("consumed", []ImageContent{}, nil)
+	record(string(handled), err)
+	queuedFollowUp, err := client.Prompt("later", nil, &followUp)
+	record(string(queuedFollowUp), err)
+	queuedSteer, err := client.Prompt("now", nil, &steer)
+	record(string(queuedSteer), err)
+	steered, err := client.Steer("s", nil)
+	record(string(steered), err)
+	steerHandled, err := client.Steer("consumed", nil)
+	record(string(steerHandled), err)
+	followed, err := client.FollowUp("f", nil)
+	record(string(followed), err)
+	followHandled, err := client.FollowUp("consumed", nil)
+	record(string(followHandled), err)
+	for i, want := range []string{"started", "handled", "queued", "queued", "queued", "handled", "queued", "handled"} {
+		if got[i].err != nil || got[i].disposition != want {
+			t.Fatalf("call %d = %+v, want disposition %q", i+1, got[i], want)
+		}
+	}
+	wantSent := []string{
+		`{"type":"prompt","message":"go","id":"req_1"}`,
+		`{"type":"prompt","message":"consumed","images":[],"id":"req_2"}`,
+		`{"type":"prompt","message":"later","streamingBehavior":"followUp","id":"req_3"}`,
+		`{"type":"prompt","message":"now","streamingBehavior":"steer","id":"req_4"}`,
+		`{"type":"steer","message":"s","id":"req_5"}`,
+		`{"type":"steer","message":"consumed","id":"req_6"}`,
+		`{"type":"follow_up","message":"f","id":"req_7"}`,
+		`{"type":"follow_up","message":"consumed","id":"req_8"}`,
+	}
+	if sent := loggedCommands(t, logPath); !slices.Equal(sent, wantSent) {
+		t.Fatalf("sent\n%s\nwant\n%s", strings.Join(sent, "\n"), strings.Join(wantSent, "\n"))
+	}
+}
+
+// A success response without data cannot yield a disposition: upstream reads
+// response.data.disposition and throws a TypeError (rpc-client.ts:203,212,220).
+func TestRpcClientDispositionOfAResponseWithoutDataIsAnError(t *testing.T) {
+	client, _ := childClient(t, "canned")
+	if err := client.Start(); err != nil {
+		t.Fatal(err)
+	}
+	const want = "Cannot read properties of undefined (reading 'disposition')"
+	if _, err := client.Prompt("legacy", nil, nil); err == nil || err.Error() != want {
+		t.Fatalf("Prompt error = %v, want %q", err, want)
+	}
+	if _, err := client.Steer("legacy", nil); err == nil || err.Error() != want {
+		t.Fatalf("Steer error = %v, want %q", err, want)
+	}
+	if _, err := client.FollowUp("legacy", nil); err == nil || err.Error() != want {
+		t.Fatalf("FollowUp error = %v, want %q", err, want)
 	}
 }
 

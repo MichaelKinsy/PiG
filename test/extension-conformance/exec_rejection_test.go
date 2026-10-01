@@ -28,6 +28,7 @@ func execOutcome(result extension.ExecResult, err error) string {
 // prefix or a fallback such as "None:" or "call_failed:" is drift. The host's
 // exec is the production ExecCommand; the in-process call is the reference.
 func TestExecRejectionsAcrossSDKs(t *testing.T) {
+	t.Parallel()
 	commands := []string{"", "tool.cmd", "TOOL.BAT ", "a\x00b", "pig-missing-program"}
 	probe, err := json.Marshal(commands)
 	if err != nil {

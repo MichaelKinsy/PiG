@@ -115,14 +115,18 @@ func (m *InteractiveMode) buildAutocompleteProvider() tui.AutocompleteProvider {
 	// Add prompt templates as slash commands in autocomplete.
 	// Mirrors upstream createBaseAutocompleteProvider templateCommands
 	// (interactive-mode.ts:445-452).
+	// Upstream templates always carry the resource loader's sourceInfo; the loaded ones here carry only their path, so
+	// the tag uses the same provenance pi.getCommands() reports for them (SlashCommandCatalog.Commands).
+	templateSources := SlashCommandCatalog{CWD: m.opts.CWD, AgentDir: m.opts.AgentDir, SourceInfo: m.resourceSourceInfo}
 	for _, pt := range m.promptTemplates {
-		desc := pt.Description
-		if pt.Scope != "" {
-			desc = "[" + pt.Scope + "] " + desc
+		info := sourceInfoOf(pt.SourceInfo)
+		if info == nil && pt.FilePath != "" {
+			resolved := templateSources.SourceInfoForPath(pt.FilePath, "prompts")
+			info = &resolved
 		}
 		sc := tui.SlashCommand{
 			Name:         pt.Name,
-			Description:  desc,
+			Description:  prefixAutocompleteDescription(pt.Description, info),
 			ArgumentHint: pt.ArgumentHint,
 		}
 		cmds = append(cmds, sc)
@@ -141,7 +145,7 @@ func (m *InteractiveMode) buildAutocompleteProvider() tui.AutocompleteProvider {
 		for _, s := range m.opts.Skills {
 			cmds = append(cmds, tui.SlashCommand{
 				Name:        "skill:" + s.Name,
-				Description: s.Description,
+				Description: prefixAutocompleteDescription(s.Description, sourceInfoOf(s.SourceInfo)),
 			})
 		}
 	}
@@ -276,6 +280,14 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 				return m.opts.Model.DisplayName
 			}
 			return ""
+		},
+		// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts handleSessionCommand selectedModelKey
+		// is `${model?.provider}/${model?.id}`: the declared provider, as usage entries record it, not the transport.
+		SelectedModelKey: func() string {
+			if m.opts.Model == nil {
+				return "undefined/undefined"
+			}
+			return m.opts.Model.ProviderID() + "/" + m.opts.Model.ID
 		},
 		ToolNames: func() []string {
 			names := []string{}
@@ -665,7 +677,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			if err != nil {
 				return err
 			}
-			prevModel := m.opts.Model
+			// The Session emits model_select once, for a changed selection (agent-session.ts:2372-2384, 2411).
 			if m.opts.SessionHandle != nil {
 				if err := m.opts.SessionHandle.SetModel(newModel); err != nil {
 					return err
@@ -681,11 +693,6 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 					return err
 				}
 			}
-			// Emit model_select for extensions.
-			emitModelSelect(m.newRunner,
-				modelToExtModel(newModel),
-				modelToExtModel(prevModel),
-				extension.ModelSelectSourceUser)
 			m.tuiInst.Render()
 			return nil
 		},
@@ -733,8 +740,20 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			}
 
 			// 2. Reload settings.
+			discardStagedTools := func() {}
 			if m.opts.SettingsManager != nil {
-				m.opts.SettingsManager.Reload()
+				// The Session reloads the settings itself so that tools newly added to defaultTools activate in the runtime rebuild below.
+				// upstream: agent-session.ts:3592-3609
+				if session, ok := m.opts.SessionHandle.(interface{ ReloadSettings() }); ok {
+					session.ReloadSettings()
+					// upstream: agent-session.ts:3598-3609 keeps the added tools in a local of reload(), which a throw before _buildRuntime drops. The rebuild below consumes them; any other exit leaves them staged for the next unrelated tool refresh, so drop them.
+					if discarder, ok := m.opts.SessionHandle.(interface{ DiscardAddedDefaultTools() }); ok {
+						discardStagedTools = discarder.DiscardAddedDefaultTools
+						defer discardStagedTools()
+					}
+				} else {
+					m.opts.SettingsManager.Reload()
+				}
 				m.opts.Settings = m.opts.SettingsManager.Get()
 			}
 
@@ -826,6 +845,8 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 					return context.Cause(ctx)
 				}
 				if reloadErr != nil {
+					// The rebuild does not run, so the staged tools must not activate when a handler of this reload registers a tool below.
+					discardStagedTools()
 					m.reloadIssues = append(m.reloadIssues, "[extension] reload failed: "+reloadErr.Error())
 					fmt.Fprintf(os.Stderr, "extension reload: %v\n", reloadErr)
 				} else {
@@ -851,7 +872,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 						fmt.Fprintf(os.Stderr, "tool reload: %v\n", err)
 					}
 				} else {
-					for _, err := range m.refreshAgentTools() {
+					for _, err := range m.refreshToolsAfterReload() {
 						m.reloadIssues = append(m.reloadIssues, "[tool] "+err.Error())
 						fmt.Fprintf(os.Stderr, "tool reload: %v\n", err)
 					}
@@ -877,6 +898,8 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 					return nil
 				}
 				_, err := runner.Emit(ctx, extension.SessionStartEvent{Type: EventSessionStart, Reason: "reload"})
+				// upstream: agent-session.ts:3620 (reload)
+				runner.ReportUnhandledMcpServers()
 				return err
 			}); err != nil {
 				return err
@@ -891,9 +914,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			if m.opts.SettingsManager != nil {
 				tui.SetCapabilityOverrides(m.opts.SettingsManager.GetTerminalCapabilityOverrides())
 			}
-			if err := m.initializeTerminalTheme(ctx, m.themeOutput()); err != nil {
-				m.failInputLoop(err)
-			}
+			m.applyThemeFromSettings(ctx)
 
 			// 8c. Upstream rebuilds the loaded-resources listing from the
 			//     reloaded resources (showLoadedResources after reload).
@@ -1029,6 +1050,11 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 				if m.altScreen != nil {
 					m.altScreen.SetCopyOnSelect(value == "true")
 				}
+			case "fullscreen-wheel-scroll-lines":
+				// interactive-mode.ts:5006-5008 (onFullscreenWheelScrollLinesChange).
+				if m.altScreen != nil {
+					m.altScreen.SetWheelScrollLines(tuiWheelScrollLines(parseWheelScrollLines(value)))
+				}
 			case "clear-on-shrink":
 				enabled := value == "true"
 				m.tuiInst.SetClearOnShrink(enabled)
@@ -1119,9 +1145,6 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 		},
 		ExtRunner: m.newRunner,
 		Skills:    m.opts.Skills,
-	}
-	if m.opts.Llama != nil {
-		sc.RunLlama = func() error { return m.runLlamaCommand(ctx) }
 	}
 	return sc
 }

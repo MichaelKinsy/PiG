@@ -57,10 +57,10 @@ func TestBuiltinByteTruncationWireLimit(t *testing.T) {
 func TestShellResultAndUpdateDetailsWire(t *testing.T) {
 	var mu sync.Mutex
 	var updates []any
-	r, err := (&BashTool{CWD: t.TempDir()}).Execute(t.Context(), "call", json.RawMessage(`{"command":"printf hello"}`), func(text string, details any) {
-		if text != "" {
+	r, err := (&BashTool{CWD: t.TempDir()}).Execute(t.Context(), "call", json.RawMessage(`{"command":"printf hello"}`), func(partial agent.AgentToolResult) {
+		if partial.Text() != "" {
 			mu.Lock()
-			updates = append(updates, details)
+			updates = append(updates, partial.Details)
 			mu.Unlock()
 		}
 	})

@@ -1,0 +1,69 @@
+# port-99-f6e red run (tests ported from upstream 0.99.1, signature stubs only)
+# Each test runs alone from one compiled ./coding test binary; a stub panic counts as FAIL.
+# Base: 906c8fe28 (6D contract) + porter/pi-0.99.1 (families 1-4) + port-99-f6d tip c73b7b8cd.
+FAIL TestNestedToolCallRunnerAssignsIDsBelowTheCallerEmitsEventsWithTheParentIDAndRecordsTheCalls :: panic: not implemented: NewNestedToolCallRunner [recovered, repanicked]
+FAIL TestNestedToolCallRunnerRecordsCallsOfNestedToolsOnTheModelIssuedCall :: panic: not implemented: NewNestedToolCallRunner [recovered, repanicked]
+FAIL TestNestedToolCallRunnerSumsTheUsageOfNestedResultsAtEveryDepth :: panic: not implemented: NewNestedToolCallRunner [recovered, repanicked]
+FAIL TestNestedToolCallRunnerSerializesConcurrentCallsToSequentialTools :: panic: not implemented: NewNestedToolCallRunner [recovered, repanicked]
+FAIL TestNestedCallRecorderOmitsOversizedArgumentsAndDropsCallsBeyondTheLimit :: panic: not implemented: NewNestedCallRecorder [recovered, repanicked]
+FAIL TestNestedCallRecorderCapsTheTotalArgumentSizeAndMarksUnfinishedCallsIncomplete :: panic: not implemented: NewNestedCallRecorder [recovered, repanicked]
+FAIL TestPromptRejectedDuringManualCompactionReportsNoDisposition ::     session_prompt_disposition_upstream_test.go:70: preflightResult was called with [""] for a rejected prompt
+PASS TestPromptReportsStartedForATurn
+PASS TestPromptReportsHandledForCommandsAndInputHandlers
+FAIL TestQueuedInputDispositions ::     session_prompt_disposition_upstream_test.go:161: steer = "", <nil>; want "queued"
+FAIL TestVirtualModelListsAndRoutesToAPhysicalModelWithAClampedThinkingLevel :: panic: not implemented: ModelRuntime.RegisterVirtualModel [recovered, repanicked]
+FAIL TestVirtualModelReportsTheFailedRequestOfARetrySeparatelyFromTheLatestSuccessfulResponse :: panic: not implemented: ModelRuntime.RegisterVirtualModel [recovered, repanicked]
+FAIL TestVirtualModelsListSeveralUnderAProviderWithPhysicalModels :: panic: not implemented: ModelRuntime.RegisterVirtualModel [recovered, repanicked]
+FAIL TestVirtualModelRejectsRoutesToVirtualOrUnknownModels :: panic: not implemented: ModelRuntime.RegisterVirtualModel [recovered, repanicked]
+FAIL TestVirtualModelRoutesDirectStreamSimpleCallsWithinTheRoutedModelsLimits :: panic: not implemented: ModelRuntime.RegisterVirtualModel [recovered, repanicked]
+FAIL TestVirtualModelDoesNotForwardCallerCredentialsToARoutedModelOfAnotherProvider :: panic: not implemented: ModelRuntime.RegisterVirtualModel [recovered, repanicked]
+FAIL TestVirtualModelFailsUnroutedStreamCallsOnVirtualModels :: panic: not implemented: ModelRuntime.RegisterVirtualModel [recovered, repanicked]
+FAIL TestVirtualSessionRestoresTheVirtualSelectionInsteadOfThePhysicalModelThatAnswered :: panic: not implemented: ModelRuntime.RegisterVirtualModel [recovered, repanicked]
+FAIL TestVirtualSessionRestoresAVirtualSelectionRegisteredRightBeforeTheSessionOpens :: panic: not implemented: ModelRuntime.RegisterVirtualModel [recovered, repanicked]
+FAIL TestVirtualSessionFallsBackToThePhysicalModelWhenTheVirtualModelIsNotRegistered :: panic: not implemented: ModelRuntime.RegisterVirtualModel [recovered, repanicked]
+FAIL TestVirtualSessionFallsBackToTheLastPhysicalResponseWhenTheTranscriptEndsWithARoutingFailure :: panic: not implemented: ModelRuntime.RegisterVirtualModel [recovered, repanicked]
+FAIL TestVirtualSessionResumesTheSelectionMadeBeforeTreeNavigationLeftItsModelChangeOnAnotherBranch :: panic: not implemented: ModelRuntime.RegisterVirtualModel [recovered, repanicked]
+FAIL TestVirtualSessionDoesNotRecordAPhysicalSelectionOnEveryPromptWhileRequestsAreRedirected :: panic: not implemented: ModelRuntime.RegisterVirtualModel [recovered, repanicked]
+FAIL TestVirtualSessionRecordsAnExplicitModelOverrideOnResumeWithTheNextPrompt :: panic: not implemented: ModelRuntime.RegisterVirtualModel [recovered, repanicked]
+FAIL TestVirtualSuiteRoutesEachRequestIncludingRetriesWhileTheSelectionStaysVirtual ::     virtual_models_suite_upstream_test.go:244: coding: SetModel: model is nil
+FAIL TestVirtualSuiteRetriesTheFirstRequestOfATurnOnTheModelRoutedForThatTurn ::     virtual_models_suite_upstream_test.go:272: coding: SetModel: model is nil
+FAIL TestVirtualSuiteRoutesTheCompactAndRetryAfterATruncatedResponseAsARetry ::     virtual_models_suite_upstream_test.go:295: coding: SetModel: model is nil
+FAIL TestVirtualSuiteRoutesRequestsAfterExtensionMessagesAsContinuations ::     virtual_models_suite_upstream_test.go:316: coding: SetModel: model is nil
+FAIL TestVirtualSuiteRoutesTheFirstRequestOfAPromptAsAUserTurnWhenExtensionMessagesFollowThePrompt ::     virtual_models_suite_upstream_test.go:333: coding: SetModel: model is nil
+FAIL TestVirtualSuiteEndsTheRunWithAnErrorResponseWhenRoutingFailsAndKeepsTheLastPhysicalLimits ::     virtual_models_suite_upstream_test.go:352: coding: SetModel: model is nil
+FAIL TestVirtualSuiteChecksCompactionAgainstThePhysicalModelThatProducedTheResponse ::     virtual_models_suite_upstream_test.go:386: coding: SetModel: model is nil
+FAIL TestVirtualSuiteCompactsBeforeARequestRoutedToAModelWithASmallerWindow ::     virtual_models_suite_upstream_test.go:400: coding: SetModel: model is nil
+FAIL TestVirtualSuiteCompactsBetweenTurnsOfARunWhenTheNextRequestIsRoutedToASmallerWindow ::     virtual_models_suite_upstream_test.go:438: coding: SetModel: model is nil
+FAIL TestVirtualSuiteStoresRouterStateOnTheBranchAndPassesItToLaterRequests ::     virtual_models_suite_upstream_test.go:480: coding: SetModel: model is nil
+FAIL TestVirtualSuiteDoesNotRouteCompactionsThatAnExtensionSupplies ::     virtual_models_suite_upstream_test.go:522: coding: SetModel: model is nil
+FAIL TestVirtualSuiteRoutesCompactionSummariesBeforeSizingThem ::     virtual_models_suite_upstream_test.go:538: coding: SetModel: model is nil
+FAIL TestSessionToolOrchestrationSupportsToolsThatCallOtherToolsUnderAnyNameThroughTheExtensionAPI ::     session_tool_orchestration_upstream_test.go:148: active tools = [echo helper run_tools], want [echo run_tools]
+PASS TestSessionToolOrchestrationLeavesResultsWithoutNestedCallsUnchanged
+FAIL TestToolsWithDefaultActiveFalseAreActiveOnlyWhenNamed ::     session_tool_orchestration_upstream_test.go:256: active by default = [plain lazy modelonly script search gone], want [plain modelonly]
+
+## internal/codingagent/compaction
+--- FAIL: TestCompactionFileOperationsIncludeFilesTouchedByNestedCallsRecordedOnToolResults (0.00s)
+    nested_calls_upstream_test.go:31: readFiles = [], want [a.ts]
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/internal/codingagent/compaction	0.040s
+FAIL
+
+## TestUpstreamConcurrentPrompt (changed upstream: steer/followUp resolve "queued")
+--- FAIL: TestUpstreamConcurrentPrompt (0.07s)
+    --- FAIL: TestUpstreamConcurrentPrompt/should_allow_steer()_while_streaming (0.01s)
+        session_concurrent_upstream_test.go:237: steer = "", <nil>; want "queued"
+    --- FAIL: TestUpstreamConcurrentPrompt/should_allow_followUp()_while_streaming (0.01s)
+        session_concurrent_upstream_test.go:242: followUp = "", <nil>; want "queued"
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/coding	0.106s
+FAIL
+
+## TestManualCompactionResolvesAuthOnlyWhenPiSummarizesItself + changed 'throws when compacting without configured auth' (passes in red: Go resolved auth first, so an unseeded and a seeded session both report the auth error)
+--- FAIL: TestManualCompactionResolvesAuthOnlyWhenPiSummarizesItself (0.01s)
+    --- FAIL: TestManualCompactionResolvesAuthOnlyWhenPiSummarizesItself/an_empty_session_reports_there_is_nothing_to_compact_instead_of_missing_auth (0.01s)
+        session_compaction_suite_upstream_test.go:334: error=No API key found for faux.
+    --- FAIL: TestManualCompactionResolvesAuthOnlyWhenPiSummarizesItself/an_extension-supplied_summary_needs_no_auth (0.00s)
+        session_compaction_suite_upstream_test.go:350: result=<nil> error=No API key found for faux.
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/coding	0.056s
+FAIL

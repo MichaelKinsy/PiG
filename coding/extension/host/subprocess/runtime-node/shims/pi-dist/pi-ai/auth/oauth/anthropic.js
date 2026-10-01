@@ -5,10 +5,8 @@
  * It is only intended for CLI use, not browser environments.
  */
 import { getProviderEnvValue } from "../../utils/provider-env.js";
-import { oauthErrorHtml, oauthSuccessHtml } from "./oauth-page.js";
+import { startOAuthCallbackServer, waitForCallbackOrManualInput } from "./callback-server.js";
 import { generatePKCE } from "./pkce.js";
-let nodeApis = null;
-let nodeApisPromise = null;
 const decode = (s) => atob(s);
 const CLIENT_ID = decode("OWQxYzI1MGEtZTYxYi00NGQ5LTg4ZWQtNTk0NGQxOTYyZjVl");
 const AUTHORIZE_URL = "https://claude.ai/oauth/authorize";
@@ -18,20 +16,6 @@ const CALLBACK_PORT = 53692;
 const CALLBACK_PATH = "/callback";
 const REDIRECT_URI = `http://localhost:${CALLBACK_PORT}${CALLBACK_PATH}`;
 const SCOPES = "org:create_api_key user:profile user:inference user:sessions:claude_code user:mcp_servers user:file_upload";
-async function getNodeApis() {
-    if (nodeApis)
-        return nodeApis;
-    if (!nodeApisPromise) {
-        if (typeof process === "undefined" || (!process.versions?.node && !process.versions?.bun)) {
-            throw new Error("Anthropic OAuth is only available in Node.js environments");
-        }
-        nodeApisPromise = import("node:http").then((httpModule) => ({
-            createServer: httpModule.createServer,
-        }));
-    }
-    nodeApis = await nodeApisPromise;
-    return nodeApis;
-}
 function parseAuthorizationInput(input) {
     const value = input.trim();
     if (!value)
@@ -76,69 +60,6 @@ function formatErrorDetails(error) {
         return details.join("; ");
     }
     return String(error);
-}
-async function startCallbackServer(expectedState) {
-    const { createServer } = await getNodeApis();
-    return new Promise((resolve, reject) => {
-        let settleWait;
-        const waitForCodePromise = new Promise((resolveWait) => {
-            let settled = false;
-            settleWait = (value) => {
-                if (settled)
-                    return;
-                settled = true;
-                resolveWait(value);
-            };
-        });
-        const server = createServer((req, res) => {
-            try {
-                const url = new URL(req.url || "", "http://localhost");
-                if (url.pathname !== CALLBACK_PATH) {
-                    res.writeHead(404, { "Content-Type": "text/html; charset=utf-8" });
-                    res.end(oauthErrorHtml("Callback route not found."));
-                    return;
-                }
-                const code = url.searchParams.get("code");
-                const state = url.searchParams.get("state");
-                const error = url.searchParams.get("error");
-                if (error) {
-                    res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
-                    res.end(oauthErrorHtml("Anthropic authentication did not complete.", `Error: ${error}`));
-                    return;
-                }
-                if (!code || !state) {
-                    res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
-                    res.end(oauthErrorHtml("Missing code or state parameter."));
-                    return;
-                }
-                if (state !== expectedState) {
-                    res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
-                    res.end(oauthErrorHtml("State mismatch."));
-                    return;
-                }
-                res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-                res.end(oauthSuccessHtml("Anthropic authentication completed. You can close this window."));
-                settleWait?.({ code, state });
-            }
-            catch {
-                res.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
-                res.end("Internal error");
-            }
-        });
-        server.on("error", (err) => {
-            reject(err);
-        });
-        server.listen(CALLBACK_PORT, CALLBACK_HOST, () => {
-            resolve({
-                server,
-                redirectUri: REDIRECT_URI,
-                cancelWait: () => {
-                    settleWait?.(null);
-                },
-                waitForCode: () => waitForCodePromise,
-            });
-        });
-    });
 }
 async function postJson(url, body, signal) {
     const response = await fetch(url, {
@@ -187,16 +108,15 @@ async function exchangeAuthorizationCode(code, state, verifier, redirectUri, sig
 }
 async function loginAnthropic(interaction) {
     const { verifier, challenge } = await generatePKCE();
-    const server = await startCallbackServer(verifier);
-    const manualAbort = new AbortController();
-    const onAbort = () => server.cancelWait();
-    interaction.signal.addEventListener("abort", onAbort, { once: true });
-    if (interaction.signal.aborted)
-        onAbort();
-    let code;
-    let state;
-    let manualInput;
-    let manualError;
+    const callback = await startOAuthCallbackServer({
+        providerName: "Anthropic",
+        host: CALLBACK_HOST,
+        port: CALLBACK_PORT,
+        path: CALLBACK_PATH,
+        state: verifier,
+        complete: async (code) => code,
+        signal: interaction.signal,
+    }).catch(() => undefined);
     try {
         const authParams = new URLSearchParams({
             code: "true",
@@ -213,58 +133,29 @@ async function loginAnthropic(interaction) {
             url: `${AUTHORIZE_URL}?${authParams.toString()}`,
             instructions: "Complete login in your browser. If the browser is on another machine, paste the final redirect URL here.",
         });
-        const manualPromise = interaction
-            .prompt({
-            type: "manual_code",
+        const result = await waitForCallbackOrManualInput(interaction, callback, {
             message: "Complete login in your browser, or paste the authorization code / redirect URL here:",
             placeholder: REDIRECT_URI,
-            signal: manualAbort.signal,
-        })
-            .then((input) => {
-            manualInput = input;
-            server.cancelWait();
-        })
-            .catch((error) => {
-            manualError = error instanceof Error ? error : new Error(String(error));
-            server.cancelWait();
         });
-        const result = await server.waitForCode();
-        if (manualError)
-            throw manualError;
-        if (result?.code) {
-            code = result.code;
-            state = result.state;
+        let code;
+        let state = verifier;
+        if (result.type === "callback") {
+            code = result.value;
         }
-        else if (manualInput) {
-            const parsed = parseAuthorizationInput(manualInput);
+        else {
+            const parsed = parseAuthorizationInput(result.input);
             if (parsed.state && parsed.state !== verifier)
                 throw new Error("OAuth state mismatch");
             code = parsed.code;
             state = parsed.state ?? verifier;
         }
-        if (!code) {
-            await manualPromise;
-            if (manualError)
-                throw manualError;
-            if (manualInput) {
-                const parsed = parseAuthorizationInput(manualInput);
-                if (parsed.state && parsed.state !== verifier)
-                    throw new Error("OAuth state mismatch");
-                code = parsed.code;
-                state = parsed.state ?? verifier;
-            }
-        }
         if (!code)
             throw new Error("Missing authorization code");
-        if (!state)
-            throw new Error("Missing OAuth state");
         interaction.notify({ type: "progress", message: "Exchanging authorization code for tokens..." });
-        return exchangeAuthorizationCode(code, state, verifier, REDIRECT_URI, interaction.signal);
+        return await exchangeAuthorizationCode(code, state, verifier, REDIRECT_URI, interaction.signal);
     }
     finally {
-        interaction.signal.removeEventListener("abort", onAbort);
-        manualAbort.abort();
-        server.server.close();
+        callback?.close();
     }
 }
 /**

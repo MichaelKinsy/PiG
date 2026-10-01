@@ -274,10 +274,11 @@ func (m *InteractiveMode) createInteractiveTui(ctx context.Context) interactiveT
 		m.currentTuiCleanup = func() { cancelUI(); reads.Wait() }
 		return interactiveTuiHandle{cleanup: m.currentTuiCleanup}
 	}
-	copyOnSelect := (&SettingsManager{merged: m.opts.Settings}).GetFullscreenCopyOnSelect()
+	settings := &SettingsManager{merged: m.opts.Settings}
+	copyOnSelect, wheelScrollLines := settings.GetFullscreenCopyOnSelect(), tuiWheelScrollLines(settings.GetFullscreenWheelScrollLines())
 	m.tuiInst = CreateInteractiveTui(InteractiveTuiOptions{
 		TuiMode: "fullscreen", Output: m.rendererOut, LogDirectory: m.opts.AgentDir,
-		FullscreenCopyOnSelect: &copyOnSelect, CopySelection: m.effectiveCopyClipboard(),
+		FullscreenCopyOnSelect: &copyOnSelect, FullscreenWheelScrollLines: &wheelScrollLines, CopySelection: m.effectiveCopyClipboard(),
 		OpenURL: func(url string) error { return m.effectiveOpenURL()(url) }, OnRightClickPaste: m.handleRightClickPaste,
 	})
 	m.altScreen = m.tuiInst.(*tui.TuiAltScreen)

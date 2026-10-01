@@ -112,3 +112,44 @@ func BenchmarkProviderRuntimeBind(b *testing.B) {
 		})
 	}
 }
+
+// Upstream runner.ts:500-512 flushes pendingVirtualModelRegistrations with a for-of loop over the live array, so a registration a callback queues during the flush is applied in the same flush, like the provider queue above. A failure is reported with its extension path and the flush continues.
+func TestVirtualModelRuntimeFlushAppliesRegistrationsQueuedDuringTheFlush(t *testing.T) {
+	runtime := CreateExtensionRuntime()
+	for _, id := range []string{"first", "broken", "last"} {
+		if err := runtime.RegisterVirtualModel(VirtualModelDefinition{Provider: "router", ID: id}, id+".ts"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var calls []string
+	sentinel := errors.New("Virtual model router/broken conflicts with a physical model.")
+	runtime.BindProviderActions(ProviderActions{
+		RegisterVirtualModel: func(definition VirtualModelDefinition) error {
+			calls = append(calls, "register:"+definition.ID)
+			switch definition.ID {
+			case "first":
+				if len(runtime.PendingVirtualModelRegistrations()) == 0 {
+					t.Error("queue cleared before its bind iteration completed")
+				}
+				return runtime.RegisterVirtualModel(VirtualModelDefinition{Provider: "router", ID: "nested"}, "nested.ts")
+			case "broken":
+				return sentinel
+			}
+			return nil
+		},
+		UnregisterVirtualModel: func(provider, id string) { calls = append(calls, "unregister:"+provider+"/"+id) },
+	}, func(err *ExtensionError) {
+		if err.ExtensionPath != "broken.ts" || err.Event != "register_virtual_model" || err.Error != sentinel.Error() {
+			t.Errorf("error=%+v", err)
+		}
+		calls = append(calls, "error")
+	})
+	want := []string{"register:first", "register:broken", "error", "register:last", "register:nested"}
+	if !reflect.DeepEqual(calls, want) || len(runtime.PendingVirtualModelRegistrations()) != 0 {
+		t.Fatalf("calls=%v; want %v and a drained queue", calls, want)
+	}
+	runtime.UnregisterVirtualModel("router", "last")
+	if got := calls[len(calls)-1]; got != "unregister:router/last" {
+		t.Fatalf("post-bind unregister = %q", got)
+	}
+}

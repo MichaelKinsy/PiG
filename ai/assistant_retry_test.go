@@ -48,6 +48,9 @@ func TestIsRetryableAssistantErrorClassification(t *testing.T) {
 		{"classifies assistant error messages/overloaded", "overloaded_error"},
 		{"classifies assistant error messages/520", "520 status code (no body)"},
 		{"classifies assistant error messages/524", "524 status code (no body)"},
+		// .upstream/v0.99.1/packages/ai/test/retry.test.ts:97 (both rows)
+		{"retries temporary ChatGPT subscription errors/usage_unavailable", "subscription_sharing_usage_unavailable: Usage cannot be checked."},
+		{"retries temporary ChatGPT subscription errors/user_unavailable", "subscription_sharing_user_unavailable: User cannot be loaded."},
 	}
 	for _, tc := range retryable {
 		t.Run(tc.name, func(t *testing.T) {
@@ -59,6 +62,10 @@ func TestIsRetryableAssistantErrorClassification(t *testing.T) {
 	// .upstream/v0.87.1/packages/ai/test/retry.test.ts:80
 	if IsRetryableAssistantError(errorFaux("429 quota exceeded")) {
 		t.Error("provider limit error must stay non-retryable")
+	}
+	// .upstream/v0.99.1/packages/ai/test/retry.test.ts:88
+	if IsRetryableAssistantError(errorFaux(`OpenAI API error (429): {"code":"subscription_sharing_usage_limit_exceeded","message":"Usage limit reached."}`)) {
+		t.Error("the ChatGPT subscription usage limit must stay non-retryable")
 	}
 	if IsRetryableAssistantError(retryFaux("not an error", "", "")) {
 		t.Error("successful message classified retryable")

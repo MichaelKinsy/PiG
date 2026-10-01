@@ -88,6 +88,9 @@ export async function dispatchProviderObject(runtime, id, request, ctx) {
         finally { runtime.providerUpdates.delete(token); }
       } });
     case "cancelDeferred": return provider.cancelDeferred(params.model, params.handle, { ...params.options, signal });
+    // pi-ai Provider.generateImages and Provider.classify (types.ts:307-322): the model, the context and the resolved request options, with the request's signal.
+    case "generateImages": return provider.generateImages(params.model, params.context, { ...params.options, signal });
+    case "classify": return provider.classify(params.model, params.context, { ...params.options, signal });
     default: {
       if (!streamMethods.has(method)) throw new Error(`Unknown Provider method ${method}`);
       const controller = new AbortController();

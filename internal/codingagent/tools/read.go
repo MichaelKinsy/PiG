@@ -58,7 +58,7 @@ func (t *ReadTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 		return agent.AgentToolResult{}, fmt.Errorf("read: invalid params: %w", err)
 	}
 	if ctx.Err() != nil {
-		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "Operation aborted"}}, Details: map[string]any{}, IsError: true}, nil
+		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "Operation aborted"}}, Details: map[string]any{}, IsError: true, Thrown: true}, nil
 	}
 
 	cwd, err := toolCWD(ctx, t.CWD)
@@ -70,14 +70,14 @@ func (t *ReadTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 		return agent.AgentToolResult{}, err
 	}
 	if err := checkReadable(path); err != nil {
-		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: NodeFSError(err, "access", path)}}, Details: map[string]any{}, IsError: true}, nil
+		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: NodeFSError(err, "access", path)}}, Details: map[string]any{}, IsError: true, Thrown: true}, nil
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: NodeFSError(err, "read", "")}}, Details: map[string]any{}, IsError: true}, nil
+		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: NodeFSError(err, "read", "")}}, Details: map[string]any{}, IsError: true, Thrown: true}, nil
 	}
 	if ctx.Err() != nil {
-		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "Operation aborted"}}, Details: map[string]any{}, IsError: true}, nil
+		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "Operation aborted"}}, Details: map[string]any{}, IsError: true, Thrown: true}, nil
 	}
 	if mime := SupportedImageMime(data); mime != "" {
 		return t.readImage(ctx, data, mime), nil
@@ -85,7 +85,7 @@ func (t *ReadTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	var decoder utf8StreamDecoder
 	result, err := readTextResult(p, decoder.decode(data, false))
 	if err != nil {
-		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: err.Error()}}, Details: map[string]any{}, IsError: true}, nil
+		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: err.Error()}}, Details: map[string]any{}, IsError: true, Thrown: true}, nil
 	}
 	return result, nil
 }

@@ -54,7 +54,7 @@ tables.
 
 | Action | Default key | Effect |
 |---|---|---|
-| `app.clipboard.pasteImage` | `ctrl+v` | Paste image from clipboard (text fallback) |
+| `app.clipboard.pasteImage` | `ctrl+v` | Paste files on macOS, images, or text from clipboard |
 | `app.editor.external` | `ctrl+g` | Open external editor |
 | `app.message.copy` | `ctrl+x` | Copy selection or last assistant message |
 | `app.message.dequeue` | `alt+up` | Restore queued messages |

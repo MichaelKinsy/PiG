@@ -38,19 +38,21 @@ type UserMessage struct {
 
 // AssistantMessage is a streamed response from the LLM. Streaming events retain a shallow provider view; Observe and JSON serialization read its current nested state without mutating these exported fields.
 type AssistantMessage struct {
-	Role                  string                          `json:"role"` // "assistant"
-	Content               []ai.AssistantContentBlock      `json:"content"`
-	Thinking              string                          `json:"-"`
-	Timestamp             int64                           `json:"timestamp"`
-	Usage                 *ai.Usage                       `json:"usage,omitempty"`
-	API                   ai.API                          `json:"api,omitempty"`
-	Provider              string                          `json:"provider,omitempty"`
-	ModelID               string                          `json:"model,omitempty"`
-	ResponseModel         string                          `json:"responseModel,omitempty"`
-	ResponseID            string                          `json:"responseId,omitempty"`
-	ProviderThinkingLevel string                          `json:"providerThinkingLevel,omitempty"`
-	Diagnostics           []ai.AssistantMessageDiagnostic `json:"diagnostics,omitempty"`
-	Deferred              *ai.DeferredHandle              `json:"deferred,omitempty"`
+	Role                  string                     `json:"role"` // "assistant"
+	Content               []ai.AssistantContentBlock `json:"content"`
+	Thinking              string                     `json:"-"`
+	Timestamp             int64                      `json:"timestamp"`
+	Usage                 *ai.Usage                  `json:"usage,omitempty"`
+	API                   ai.API                     `json:"api,omitempty"`
+	Provider              string                     `json:"provider,omitempty"`
+	ModelID               string                     `json:"model,omitempty"`
+	ResponseModel         string                     `json:"responseModel,omitempty"`
+	ResponseID            string                     `json:"responseId,omitempty"`
+	ProviderThinkingLevel string                     `json:"providerThinkingLevel,omitempty"`
+	// ThinkingLevel is the level the agent loop requested for this response; see ai.AssistantMessage.ThinkingLevel.
+	ThinkingLevel ai.ModelThinkingLevel           `json:"thinkingLevel,omitempty"`
+	Diagnostics   []ai.AssistantMessageDiagnostic `json:"diagnostics,omitempty"`
+	Deferred      *ai.DeferredHandle              `json:"deferred,omitempty"`
 	// StopReason records why the assistant turn ended. Mirrors upstream
 	// AssistantMessage.stopReason in packages/ai/src/types.ts.
 	// Values: "stop" (normal), "toolUse" (tool calls present),
@@ -77,8 +79,11 @@ type ToolResultMessage struct {
 	Content    []ai.ToolResultMessageContent `json:"content"`
 	Details    any                           `json:"details,omitempty"`
 	Usage      *ai.Usage                     `json:"usage,omitempty"`
-	IsError    bool                          `json:"isError"`
-	Timestamp  int64                         `json:"timestamp"`
+	// NestedCalls are the calls this tool made to other tools. Kept for the session record; not sent to the model.
+	// upstream: .upstream/v0.99.1/packages/ai/src/types.ts:604
+	NestedCalls *ai.NestedToolCalls `json:"nestedCalls,omitempty"`
+	IsError     bool                `json:"isError"`
+	Timestamp   int64               `json:"timestamp"`
 }
 
 func (m ToolResultMessage) Text() string {
@@ -170,8 +175,14 @@ func (m AgentMessage) ContentBlocks() []ai.ContentBlock {
 
 // ─── Tool Interface ───────────────────────────────────────────────────────────
 
-// ToolUpdateCallback is called when a tool emits a streaming progress update.
-type ToolUpdateCallback func(content string, details any)
+// ToolUpdateCallback is called when a tool emits a streaming progress update. The partial result is the complete-so-far AgentToolResult, which the tool_execution_update event carries verbatim as `partialResult`.
+// upstream: packages/agent/src/types.ts AgentToolUpdateCallback, agent-loop.ts:778-786
+type ToolUpdateCallback func(partial AgentToolResult)
+
+// ToolUpdateSink receives the progress updates of a tool call that [RunToolCall] runs. A non-nil error is upstream's rejected promise: the update is not delivered further, later updates still reach the sink, and the call fails with the first error once the tool returns.
+//
+// upstream: agent-loop.ts:685 (ToolUpdateSink), 820-849 (executePreparedToolCall)
+type ToolUpdateSink = func(partial AgentToolResult) error
 
 // ToolExecutionMode controls parallelism.
 type ToolExecutionMode string
@@ -184,9 +195,29 @@ const (
 // AgentToolResult carries the ordered text/image blocks returned by a tool.
 // Ports packages/agent/src/types.ts.
 type AgentToolResult struct {
-	Content []ai.ToolResultMessageContent
-	Details any
+	// MemberOrder names the members of the result object in the order its tool wrote them (content, details,
+	// isError, structuredContent, usage, terminate). Upstream hands the tool's own object on, so JSON.stringify
+	// writes its members in that order; a result without it (a built-in tool, a Go tool) has the declared order.
+	// upstream: agent-loop.ts:778-786, 912-919
+	MemberOrder []string
+	Content     []ai.ToolResultMessageContent
+	Details     any
+	// StructuredContent is the machine-readable result of a tool that declares
+	// an output schema. upstream: structuredContent?: JsonValue
+	StructuredContent json.RawMessage
+	// IsError is upstream's `result.isError`: the tool returned a failure instead of throwing it, so
+	// details and structuredContent are kept. A thrown error, an unknown tool, invalid arguments and a
+	// blocked call produce a result without it; the failure is reported by ToolExecutionEndEvent.IsError
+	// and AgentToolCallOutcome.IsError. upstream: types.ts:436-441, agent-loop.ts:906-910
 	IsError bool
+	// Thrown marks a result that stands for an error upstream's tool throws. The agent reports the call as failed, drops
+	// the result's IsError and Thrown, and keeps the rest, which is createErrorToolResult's content and empty details
+	// (agent-loop.ts:906-910). A tool that returns a Go error has the same effect.
+	Thrown bool
+	// StructuredContentAppended records that afterToolCall gave a result that had no structuredContent one. Upstream's
+	// `{...result}` spread keeps the tool's key order and assigning an existing key keeps its position, so only a key the
+	// hook adds follows every key the tool set (agent-loop.ts:877-889). It only orders the serialized result.
+	StructuredContentAppended bool
 	// Usage is the usage of the tool execution itself, if available. It is
 	// not used for main LLM context accounting. upstream: usage?: Usage
 	Usage *ai.Usage
@@ -203,6 +234,51 @@ type AgentToolResult struct {
 	// renderResult callbacks; subprocess extensions need a serializable
 	// alternative).
 	Preview string
+}
+
+// MemberNames lists the members of the result object this result holds (content, details, structuredContent, isError,
+// usage, terminate), in the order upstream's object keeps them. Without a recorded MemberOrder that is the order the
+// built-in tools build theirs in, with a structuredContent a hook added last. With one it is the tool's own order, and a
+// member the tool did not set, which a hook added, follows the tool's in the order of the hook's spread, `{...result,
+// content, details, usage, terminate}`, then the structuredContent assigned after it (agent-loop.ts:877-889). Content is
+// always listed. A member MemberOrder names is held even when its value is a zero value (details or usage null, isError or
+// terminate false): the tool wrote it, so upstream's object has it and JSON.stringify writes it.
+// upstream: agent-loop.ts:778-786, 877-889, 912-919; coding-agent/src/core/tools/bash.ts:403-409
+func (r AgentToolResult) MemberNames() []string {
+	written := func(name string) bool { return slices.Contains(r.MemberOrder, name) }
+	held := map[string]bool{
+		"content":           true,
+		"details":           r.Details != nil || written("details"),
+		"structuredContent": len(r.StructuredContent) > 0,
+		"isError":           r.IsError || written("isError"),
+		"usage":             r.Usage != nil || written("usage"),
+		"terminate":         r.Terminate || written("terminate"),
+	}
+	var names []string
+	add := func(name string) {
+		if held[name] && !slices.Contains(names, name) {
+			names = append(names, name)
+		}
+	}
+	if len(r.MemberOrder) == 0 {
+		for _, name := range []string{"content", "details"} {
+			add(name)
+		}
+		if !r.StructuredContentAppended {
+			add("structuredContent")
+		}
+		for _, name := range []string{"isError", "usage", "terminate", "structuredContent"} {
+			add(name)
+		}
+		return names
+	}
+	for _, name := range r.MemberOrder {
+		add(name)
+	}
+	for _, name := range []string{"content", "details", "usage", "terminate", "structuredContent", "isError"} {
+		add(name)
+	}
+	return names
 }
 
 // Text joins text blocks for text-only displays; Content retains their boundaries and image positions.
@@ -379,26 +455,30 @@ type ToolExecutionStartEvent struct {
 	ToolName   string
 	ToolLabel  string // human-readable display name (empty = use ToolName)
 	Args       json.RawMessage
+	// ParentToolCallID is set on the events of a call another tool made through `ctx.executeTool()`. upstream: agent-session.ts:182-189 (WithParentToolCallId)
+	ParentToolCallID string
 }
 type ToolExecutionUpdateEvent struct {
-	// Streaming partial output. Subsequent updates carry the full
-	// accumulated content so far (mirrors upstream pi's onUpdate
-	// contract: every update is a complete-so-far snapshot, not a
-	// delta). Tool components in the TUI replace their visible body
-	// with each update, giving a live tail.
 	ToolCallID string
 	ToolName   string
-	Content    string
-	Details    any
+	// PartialResult is the tool's streaming progress. Subsequent updates carry the full accumulated result so far (upstream's onUpdate contract: every update is a complete-so-far snapshot, not a delta). Tool components in the TUI replace their visible body with each update, giving a live tail. upstream: agent-loop.ts:778-786
+	PartialResult AgentToolResult
 	// Args is the original tool call arguments (same as ToolExecutionStartEvent.Args).
 	// Passed through for extensions that need to correlate updates with inputs.
 	Args json.RawMessage
+	// ParentToolCallID is set on the events of a call another tool made through `ctx.executeTool()`. upstream: agent-session.ts:182-189 (WithParentToolCallId)
+	ParentToolCallID string
 }
 type ToolExecutionEndEvent struct {
 	ToolCallID string
 	ToolName   string
 	Result     AgentToolResult
-	Duration   time.Duration
+	// IsError is upstream's `event.isError`: the call failed, whether the tool threw, returned `isError`, or an
+	// afterToolCall hook said so. It is not Result.IsError. upstream: agent-loop.ts:912-919
+	IsError  bool
+	Duration time.Duration
+	// ParentToolCallID is set on the events of a call another tool made through `ctx.executeTool()`. upstream: agent-session.ts:182-189 (WithParentToolCallId)
+	ParentToolCallID string
 }
 
 // TimingEvent retains the former diagnostic event shape for source compatibility.
@@ -547,6 +627,8 @@ type AfterToolCallResult struct {
 	IsError   *bool // nil = keep original
 	Usage     *ai.Usage
 	Terminate *bool
+	// StructuredContent replaces the result's structured content. When Content is replaced without it, the structured content is dropped, because it may no longer match the content.
+	StructuredContent json.RawMessage
 }
 
 // AfterToolCallHook is called after a tool executes and may override its result.
@@ -648,6 +730,8 @@ type AgentOptions struct {
 	// throwing message_end listener does upstream: the loop stops and the run
 	// ends with an error assistant message.
 	OnMessagePersist func(AgentMessage) error
+	// OnProviderStreamEvent is forwarded to every provider request. Mirrors upstream AgentOptions.onProviderStreamEvent (packages/agent/src/agent.ts:122).
+	OnProviderStreamEvent func(ctx context.Context, data any, model *ai.Model) error
 }
 
 // StreamFn starts one provider request for an already normalized transcript.
@@ -664,7 +748,9 @@ type Agent struct {
 	forcedSystemPrompt *string
 	// messagesMu guards writes to messages and MessagesSnapshot reads, so
 	// other goroutines can observe the transcript while a run appends to it.
-	messagesMu    sync.RWMutex
+	messagesMu sync.RWMutex
+	// toolsMu guards opts.Tools: an extension registers a tool, and the Session replaces the tool list, while a run reads it.
+	toolsMu       sync.RWMutex
 	messages      []AgentMessage
 	timings       *Recorder
 	steeringQueue *PendingMessageQueue
@@ -680,6 +766,7 @@ type Agent struct {
 	streaming         bool // true while Send/Continue is actively streaming
 	runContext        context.Context
 	runCancel         context.CancelFunc
+	runSignalWatchers []*runSignalWatcher
 	stopParentCancel  func() bool
 	runDone           chan struct{}
 	listeners         []*agentListener
@@ -745,14 +832,21 @@ func (a *Agent) Timings() *Recorder { return a.timings }
 
 // Tools returns the agent's current tool list. Defensive copy.
 func (a *Agent) Tools() []AgentTool {
-	out := make([]AgentTool, len(a.opts.Tools))
-	copy(out, a.opts.Tools)
-	return out
+	return a.toolList()
 }
 
 // SetTools replaces the active tool list for subsequent turns.
 func (a *Agent) SetTools(tools []AgentTool) {
+	a.toolsMu.Lock()
+	defer a.toolsMu.Unlock()
 	a.opts.Tools = append([]AgentTool(nil), tools...)
+}
+
+// toolList is a copy of the current tool list.
+func (a *Agent) toolList() []AgentTool {
+	a.toolsMu.RLock()
+	defer a.toolsMu.RUnlock()
+	return slices.Clone(a.opts.Tools)
 }
 
 // SetSystemPrompt projects a replacement system prompt onto subsequent provider requests without rewriting transcript history.
@@ -828,6 +922,14 @@ func (a *Agent) ensureModel() error {
 // beginRun claims the agent for one run, or returns busy when a run is active.
 // Mirrors upstream Agent's activeRun guard.
 func (a *Agent) beginRun(ctx context.Context, busy error) error {
+	if err := a.claimRun(ctx, busy); err != nil {
+		return err
+	}
+	a.notifyRunSignalObservers()
+	return nil
+}
+
+func (a *Agent) claimRun(ctx context.Context, busy error) error {
 	a.stateMu.Lock()
 	defer a.stateMu.Unlock()
 	if a.streaming {
@@ -853,6 +955,11 @@ func (a *Agent) beginRun(ctx context.Context, busy error) error {
 
 // finishRun releases the claim beginRun took.
 func (a *Agent) finishRun() {
+	a.releaseRun()
+	a.notifyRunSignalObservers()
+}
+
+func (a *Agent) releaseRun() {
 	a.stateMu.Lock()
 	defer a.stateMu.Unlock()
 	a.stopParentCancel()
@@ -1324,6 +1431,9 @@ func (a *Agent) SetPrepareNextTurn(fn PrepareNextTurn) { a.opts.PrepareNextTurn 
 // PrepareNextTurnHook returns the current PrepareNextTurn hook, or nil.
 func (a *Agent) PrepareNextTurnHook() PrepareNextTurn { return a.opts.PrepareNextTurn }
 
+// ToolExecutionMode returns the batch strategy for assistant messages with several tool calls. Mirrors upstream Agent.toolExecution.
+func (a *Agent) ToolExecutionMode() ToolExecutionMode { return a.opts.ToolExecution }
+
 // AddBeforeToolCallHook appends a hook that fires before each tool execution.
 // Mirrors upstream agent.beforeToolCall assignment (agent-session.ts:373).
 func (a *Agent) AddBeforeToolCallHook(h BeforeToolCallHook) {
@@ -1468,7 +1578,14 @@ type pendingToolCall struct {
 	thoughtSignature string // encrypted reasoning context for replay
 }
 
-func (a *Agent) consumeStream(ctx context.Context, stream *ai.AssistantMessageEventStream, model *ai.Model) (*AssistantMessage, []pendingToolCall, error) {
+// consumeStream drives one provider response into agent events. thinking is the level the request asked for; it is recorded on the final response, whichever stream function answered (upstream agent-loop.ts:408-409). Partial messages do not carry it.
+func (a *Agent) consumeStream(ctx context.Context, stream *ai.AssistantMessageEventStream, model *ai.Model, thinking ai.ThinkingLevel) (*AssistantMessage, []pendingToolCall, error) {
+	thinking = recordedThinkingLevel(thinking)
+	result := func(final *ai.AssistantMessage) *AssistantMessage {
+		message := agentAssistantMessage(final)
+		message.ThinkingLevel = thinking
+		return message
+	}
 	var message *AssistantMessage
 	started := false
 
@@ -1512,14 +1629,16 @@ func (a *Agent) consumeStream(ctx context.Context, stream *ai.AssistantMessageEv
 		case ai.ToolCallEndEvent:
 			message = a.emitAssistantUpdate(observation, event.Partial, event)
 		case ai.DoneEvent:
-			message = agentAssistantMessage(stream.Result())
+			message = result(stream.Result())
+			awaitResultWrapper(observation)
 			if !started {
 				a.emitObserved(observation, MessageStartEvent{Message: AgentMessage{Assistant: cloneAssistantMessage(message)}})
 			}
 			message = a.endAssistantMessage(observation, message)
 			return message, pendingToolCalls(message), nil
 		case ai.ErrorEvent:
-			message = agentAssistantMessage(stream.Result())
+			message = result(stream.Result())
+			awaitResultWrapper(observation)
 			if !started {
 				a.emitObserved(observation, MessageStartEvent{Message: AgentMessage{Assistant: cloneAssistantMessage(message)}})
 			}
@@ -1537,13 +1656,14 @@ func (a *Agent) consumeStream(ctx context.Context, stream *ai.AssistantMessageEv
 					providerID = model.Provider.ID()
 				}
 			}
-			message = agentAssistantMessage(&ai.AssistantMessage{
+			message = result(&ai.AssistantMessage{
 				Provider: providerID, Model: modelID,
 				StopReason: ai.StopReasonAborted, Timestamp: time.Now().UnixMilli(),
 			})
 		} else {
 			message = message.Observe()
 			message.StopReason = ai.StopReasonAborted
+			message.ThinkingLevel = thinking
 		}
 		if !started {
 			a.emit(MessageStartEvent{Message: AgentMessage{Assistant: cloneAssistantMessage(message)}})
@@ -1551,12 +1671,27 @@ func (a *Agent) consumeStream(ctx context.Context, stream *ai.AssistantMessageEv
 		return a.endAssistantMessage(nil, message), nil, ctx.Err()
 	}
 
-	result := agentAssistantMessage(final)
+	finished := result(final)
 	if !started {
-		a.emit(MessageStartEvent{Message: AgentMessage{Assistant: cloneAssistantMessage(result)}})
+		a.emit(MessageStartEvent{Message: AgentMessage{Assistant: cloneAssistantMessage(finished)}})
 	}
-	result = a.endAssistantMessage(nil, result)
-	return result, pendingToolCalls(result), nil
+	finished = a.endAssistantMessage(nil, finished)
+	return finished, pendingToolCalls(finished), nil
+}
+
+// awaitResultWrapper is the reaction that upstream's `result` wrapper adds to `await response.result()` (packages/agent/src/agent-loop.ts:409 `const result = async () => Object.assign(await response.result(), ...)`, awaited at :445 and :460): the wrapper's own promise settles one reaction after the inner await.
+func awaitResultWrapper(observation *ai.StreamObservation) {
+	if observation != nil {
+		observation.Yield()
+	}
+}
+
+// recordedThinkingLevel is the thinkingLevel a final response records for a request that asked for level (upstream agent-loop.ts:409, `config.reasoning ?? "off"`).
+func recordedThinkingLevel(level ai.ThinkingLevel) ai.ThinkingLevel {
+	if level == "" {
+		return ai.ThinkingOff
+	}
+	return level
 }
 
 // endAssistantMessage emits message_end for a finalized assistant response and
@@ -1610,6 +1745,7 @@ func agentAssistantMessage(message *ai.AssistantMessage) *AssistantMessage {
 		ResponseModel:         message.ResponseModel,
 		ResponseID:            message.ResponseID,
 		ProviderThinkingLevel: message.ProviderThinkingLevel,
+		ThinkingLevel:         message.ThinkingLevel,
 		Diagnostics:           append([]ai.AssistantMessageDiagnostic(nil), message.Diagnostics...),
 		Deferred:              message.Deferred,
 		StopReason:            message.StopReason,
@@ -1626,6 +1762,16 @@ func agentAssistantMessage(message *ai.AssistantMessage) *AssistantMessage {
 	return out
 }
 
+func newPendingToolCall(call ai.ToolCall) pendingToolCall {
+	arguments, err := call.ArgumentsJSON()
+	if err != nil {
+		arguments = []byte("{}")
+	}
+	pending := pendingToolCall{id: call.ID, name: call.Name, thoughtSignature: call.ThoughtSignature}
+	pending.args = append(pending.args, arguments...)
+	return pending
+}
+
 func pendingToolCalls(message *AssistantMessage) []pendingToolCall {
 	calls := make([]pendingToolCall, 0)
 	for _, block := range message.Content {
@@ -1633,14 +1779,7 @@ func pendingToolCalls(message *AssistantMessage) []pendingToolCall {
 		if !ok {
 			continue
 		}
-		arguments, err := json.Marshal(call.Arguments)
-		if err != nil {
-			arguments = []byte("{}")
-		}
-		pending := pendingToolCall{
-			id: call.ID, name: call.Name, thoughtSignature: call.ThoughtSignature,
-		}
-		pending.args = append(pending.args, arguments...)
+		pending := newPendingToolCall(call)
 		calls = append(calls, pending)
 	}
 	return calls

@@ -1,6 +1,7 @@
 # Behavior family: tui-components
 # Upstream evidence: Pi 0.87.1 terminal.test.ts:132-237 defines the negotiation cases. The probe also records batch callback/flag ordering, late-prefix completion and rejection, paste bypass, oversized numeric flags, and timer disposal.
 # The observation starts after decoder setup/query and ends before terminal teardown. It does not claim query/stop output coverage; those writes are asserted by the original unit cases.
+# Both sides run the private keyboard protocol query before recording, so the DA1 reply in the zero and DA steps is owed to it (upstream 0.99.1 terminal.ts:262,272 forwards unowned DA1 replies). The PiG side is the in-package test TestTerminalProtocolParityObservations, printed by terminal-protocol-pig.mjs; its timeout covers compiling the tui test binary.
 # Node's --disable-warning=ExperimentalWarning suppresses the node:test MockTimers diagnostic used by this fixture. No terminal bytes are normalized.
 name = "14-terminal-negotiation-framing"
 description = "Post-framing protocol deadlines, ordered callbacks, negotiated flags and progress clear match Pi"
@@ -12,12 +13,12 @@ driver = "cli-mode"
 override_base_args = true
 pig_bin = "/usr/bin/env"
 pi_bin = "/usr/bin/env"
-pig_args = ["go", "run", "./test/parity/testdata/terminal-protocol-pig"]
+pig_args = ["node", "./test/parity/testdata/terminal-protocol-pig.mjs"]
 pi_args = ["node", "--disable-warning=ExperimentalWarning", "./test/parity/testdata/terminal-protocol-pi.mjs"]
 
 [cli]
 cwd = "../../../.."
-timeout_seconds = 30
+timeout_seconds = 60
 
 [assert]
 exit_code = 0

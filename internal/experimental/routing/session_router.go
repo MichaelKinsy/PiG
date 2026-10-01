@@ -261,6 +261,11 @@ func (r *SessionRouter[C]) attachClientNow(ctx context.Context, client C, sessio
 	if r.options.IsClosing() || disconnected {
 		return NewServerDrainingError()
 	}
+	if current != nil && r.retireTerminatedAttachment(current) {
+		r.mu.Lock()
+		current = r.attachments[client]
+		r.mu.Unlock()
+	}
 	if current != nil && current.session.id == sessionID {
 		return nil
 	}
@@ -466,6 +471,15 @@ func (r *SessionRouter[C]) invalidateTerminated() {
 	for _, value := range hosted {
 		r.applyTermination(value)
 	}
+}
+
+// retireTerminatedAttachment completes the retirement of attachment when its Harness termination is already signalled and reports whether it did. session-router.ts:#invalidate starts the attachment release from the termination microtask, and that release settles in the same microtask drain, before a later request can read attachmentsByClient (:162). The Go watcher and its release run on other goroutines, so the attach joins the release itself. The release failure is the invalidation's to report (session-router.ts:307-309); it does not fail the attach.
+func (r *SessionRouter[C]) retireTerminatedAttachment(attachment *routerAttachment[C]) bool {
+	if !r.applyTermination(attachment.session) {
+		return false
+	}
+	_ = r.releaseAttachment(context.Background(), attachment, true)
+	return true
 }
 
 // applyTermination invalidates hosted when its Harness termination is already signalled and reports whether it did.

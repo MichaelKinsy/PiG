@@ -175,7 +175,7 @@ go = "Context.Done"
 rust = "Context::is_cancelled"
 python = "Context.is_cancelled"
 wire = "none"
-partial = "the command is killed when the calling request is cancelled (ctx.signal); an AbortSignal of its own cannot cross the process boundary"
+partial = "the command is killed when the calling request is cancelled (Context.Done/Err, is_cancelled); an AbortSignal of its own cannot cross the process boundary"
 
 [[row]]
 key = "pi.exec(options.timeout)"
@@ -264,6 +264,30 @@ go = "ToolInfo.SourceInfo"
 rust = "ToolInfo.source_info"
 python = "Context.get_all_tools"
 wire = "subprocess.ToolInfo.sourceInfo"
+
+[[row]]
+key = "pi.getAllTools → exposure"
+node = "api.getAllTools"
+go = "ToolInfo.Exposure"
+rust = "ToolInfo.exposure"
+python = "Context.get_all_tools"
+wire = "subprocess.ToolInfo.exposure"
+
+[[row]]
+key = "pi.getAllTools → namespace"
+node = "api.getAllTools"
+go = "ToolInfo.Namespace"
+rust = "ToolInfo.namespace"
+python = "Context.get_all_tools"
+wire = "subprocess.ToolInfo.namespace"
+
+[[row]]
+key = "pi.getAllTools → annotations"
+node = "api.getAllTools"
+go = "ToolInfo.Annotations"
+rust = "ToolInfo.annotations"
+python = "Context.get_all_tools"
+wire = "subprocess.ToolInfo.annotations"
 
 [[row]]
 key = "pi.getCommands → name"
@@ -394,10 +418,9 @@ python = "Context.get_thinking_level"
 
 [[row]]
 key = "ctx.signal"
-go = "Context.Done"
-rust = "Context::is_cancelled"
-python = "Context.is_cancelled"
-partial = "the handler request's cancellation: Go's Context.Done/Err, Rust's and Python's is_cancelled and cancellation_reason"
+go = "Context.Signal"
+rust = "Context::signal"
+python = "Context.signal"
 
 [[row]]
 key = "ctx.getContextUsage → tokens"
@@ -854,6 +877,18 @@ rust = "-"
 python = "-"
 
 [[row]]
+key = "ctx.ui.theme.appearance"
+go = "UITheme.Appearance"
+
+[[row]]
+key = "ctx.ui.theme.colors"
+go = "UITheme.Colors"
+
+[[row]]
+key = "ctx.ui.theme.style"
+go = "UITheme.Style"
+
+[[row]]
 key = "ctx.ui.theme.fg"
 go = "UITheme.Fg"
 
@@ -954,6 +989,22 @@ go = "ToolResult.Terminate"
 rust = "ToolResult::json"
 python = "Extension.tool"
 wire = "subprocess.ToolResult.terminate"
+
+[[row]]
+key = "tool execute result.structuredContent"
+node = "read:result.structuredContent"
+go = "ToolResult.StructuredContent"
+rust = "ToolResult::with_structured_content"
+python = "Extension.tool"
+wire = "subprocess.ToolResult.structured_content"
+
+[[row]]
+key = "tool execute result.isError"
+node = "read:result.isError"
+go = "ToolResult.IsError"
+rust = "ToolResult::with_is_error"
+python = "Extension.tool"
+wire = "subprocess.ToolResult.is_error"
 
 [[row]]
 key = "tool render context.args"
@@ -1120,6 +1171,22 @@ rust = "-"
 python = "-"
 
 [[row]]
+key = "provider.images"
+node = "read:config.images"
+go = "ProviderImagesFunc"
+rust = "ProviderOperations.images"
+python = "Extension.register_provider"
+wire = "subprocess.ProviderDecl.image_apis"
+
+[[row]]
+key = "provider.classifiers"
+node = "read:config.classifiers"
+go = "ProviderClassifyFunc"
+rust = "ProviderOperations.classifiers"
+python = "Extension.register_provider"
+wire = "subprocess.ProviderDecl.classifier_apis"
+
+[[row]]
 key = "provider.oauth"
 node = "api.registerProvider"
 go = "OAuthProvider"
@@ -1268,6 +1335,30 @@ go = "Extension.RegisterProvider"
 rust = "Extension::register_provider"
 python = "Extension.register_provider"
 wire = "extension.ProviderModelConfig.contextWindow"
+
+[[row]]
+key = "provider model.type"
+node = "api.registerProvider"
+go = "Extension.RegisterProvider"
+rust = "Extension::register_provider"
+python = "Extension.register_provider"
+wire = "extension.ProviderModelConfig.type"
+
+[[row]]
+key = "provider model.output"
+node = "api.registerProvider"
+go = "Extension.RegisterProvider"
+rust = "Extension::register_provider"
+python = "Extension.register_provider"
+wire = "extension.ProviderModelConfig.output"
+
+[[row]]
+key = "provider model.samplingParams"
+node = "api.registerProvider"
+go = "Extension.RegisterProvider"
+rust = "Extension::register_provider"
+python = "Extension.register_provider"
+wire = "extension.ProviderModelConfig.samplingParams"
 
 [[row]]
 key = "provider model.maxTokens"

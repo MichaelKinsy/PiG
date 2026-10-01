@@ -31,10 +31,10 @@ const (
 	eventBusRoutedEnv = "PIG_EVENT_BUS=routed"
 )
 
-// loadingBusCall reports whether a call may arrive while its factory is still loading, before the register handshake.
+// loadingBusCall reports whether a call may arrive while its factory is still loading, before the register handshake: the shared event bus, and the registry reads and checks of a Node factory's `pi` object, which Pi answers synchronously when the factory calls them.
 func loadingBusCall(method string) bool {
 	switch method {
-	case callXrefHello, callXrefOp, callEventsOn, callEventsOff, callEventsEmit, callEventsSettle:
+	case callXrefHello, callXrefOp, callEventsOn, callEventsOff, callEventsEmit, callEventsSettle, CallGetMcpServers, CallCheckMcpServer:
 		return true
 	}
 	return false
@@ -61,6 +61,8 @@ type busListener struct {
 	realm     string
 	handlerID string
 	channel   string
+	// value marks a native listener: it receives the payload as JSON, not as cross-process references.
+	value     bool
 	snapshots int
 	removed   bool
 	released  bool
@@ -86,8 +88,12 @@ type busHandlerKey struct {
 }
 
 type hostEventBus struct {
-	mu        sync.Mutex
-	routed    bool
+	// routeMu serializes the switch to the Host registry and each native realm's first binding.
+	routeMu sync.Mutex
+	mu      sync.Mutex
+	routed  bool
+	// routeDone is set once a native realm's first call has finished moving the in-heap node listeners to the registry.
+	routeDone bool
 	listeners map[string][]*busListener
 	handlers  map[busHandlerKey]*busListener
 	// local lists live Node processes that still keep their listeners in their own EventEmitter.
@@ -269,6 +275,10 @@ func (h *Host) migrateEventBus(ctx context.Context, me *managedExt) error {
 	for _, listener := range result.Listeners {
 		h.mu.Lock()
 		member := h.exts[listener.Extension]
+		if listener.Extension == me.config.Name {
+			// me may still be loading, before the Host lists it.
+			member = me
+		}
 		var memberConn *Conn
 		if member != nil {
 			memberConn = member.connection()
@@ -416,8 +426,8 @@ func proceed(id string, conns []*Conn) {
 	}
 }
 
-// handleEventBusCall serves a call on conn, the connection that delivered it.
-func (h *Host) handleEventBusCall(ctx context.Context, conn *Conn, callID string, call *CallPayload) (*CallResultPayload, error) {
+// handleEventBusCall serves a call on conn, the connection of me that delivered it. A native realm (Go, Rust, Python) marks its calls "value": its payloads cross as JSON under "json" and it is bound to a realm here, with no xref.hello.
+func (h *Host) handleEventBusCall(ctx context.Context, me *managedExt, conn *Conn, callID string, call *CallPayload) (*CallResultPayload, error) {
 	if call.Method == callEventsEmit {
 		defer h.xref.unhold(conn, callID)
 	}
@@ -425,24 +435,32 @@ func (h *Host) handleEventBusCall(ctx context.Context, conn *Conn, callID string
 		Channel   *string         `json:"channel"`
 		HandlerID string          `json:"handlerId"`
 		Data      json.RawMessage `json:"data"`
+		JSON      json.RawMessage `json:"json"`
+		Value     bool            `json:"value"`
 	}
 	if err := json.Unmarshal(call.Args, &args); err != nil {
 		return nil, fmt.Errorf("parse %s: %w", call.Method, err)
 	}
+	// Pi's emit cannot be interrupted between listeners; a dispatch ends only when its listener's realm answers or exits.
+	dispatchCtx := context.WithoutCancel(ctx)
 	realm := h.xref.realmOf(conn)
+	if args.Value {
+		var err error
+		if realm, err = h.joinNativeRealm(dispatchCtx, conn, me); err != nil {
+			return nil, err
+		}
+	}
 	if realm == "" {
 		return nil, fmt.Errorf("%s before xref.hello", call.Method)
 	}
-	// Pi's emit cannot be interrupted between listeners; a dispatch ends only when its listener's realm answers or exits.
-	dispatchCtx := context.WithoutCancel(ctx)
 	switch call.Method {
 	case callEventsOn:
 		if args.Channel == nil || args.HandlerID == "" {
 			return nil, errors.New("events.on requires channel and handlerId")
 		}
 		// EventEmitter emits newListener before adding the listener.
-		h.dispatchEvent(dispatchCtx, "newListener", mustJSON(*args.Channel), nil, realm, "", nil)
-		h.eventBus.add(&busListener{conn: conn, realm: realm, handlerID: args.HandlerID, channel: *args.Channel})
+		h.dispatchEvent(dispatchCtx, "newListener", newChannelPayload(*args.Channel), nil, realm, "", nil)
+		h.eventBus.add(&busListener{conn: conn, realm: realm, handlerID: args.HandlerID, channel: *args.Channel, value: args.Value})
 	case callEventsOff:
 		listener, release := h.eventBus.remove(busHandlerKey{realm, args.HandlerID})
 		if listener == nil {
@@ -452,17 +470,14 @@ func (h *Host) handleEventBusCall(ctx context.Context, conn *Conn, callID string
 			releaseBusHandler(listener)
 		}
 		// EventEmitter emits removeListener after removing the listener.
-		h.dispatchEvent(dispatchCtx, "removeListener", mustJSON(listener.channel), nil, realm, "", nil)
+		h.dispatchEvent(dispatchCtx, "removeListener", newChannelPayload(listener.channel), nil, realm, "", nil)
 	case callEventsEmit:
 		if args.Channel == nil {
 			return nil, errors.New("events.emit requires channel")
 		}
-		data := args.Data
-		if len(data) == 0 {
-			data = json.RawMessage(`{"$x":"undefined"}`)
-		}
+		payload := h.newEmitPayload(args.Value, args.Data, args.JSON)
 		id, emission := h.eventBus.newEmission(conn)
-		handled := h.dispatchEvent(dispatchCtx, *args.Channel, data, h.xref.held(conn, callID), realm, id, emission)
+		handled := h.dispatchEvent(dispatchCtx, *args.Channel, payload, h.xref.held(conn, callID), realm, id, emission)
 		h.eventBus.mu.Lock()
 		foreign := len(emission.pending) != 0
 		if !foreign {
@@ -472,7 +487,12 @@ func (h *Host) handleEventBusCall(ctx context.Context, conn *Conn, callID string
 		if !handled && *args.Channel == "error" {
 			return &CallResultPayload{Result: json.RawMessage(`{"unhandledError":true}`)}, nil
 		}
-		if foreign {
+		if foreign && args.Value {
+			// A native emitter has no microtask queue to settle in, so its emission settles before the call returns.
+			if err := h.eventBus.settle(ctx, id); err != nil {
+				return nil, err
+			}
+		} else if foreign {
 			return &CallResultPayload{Result: mustJSONObject(map[string]string{"emission": id})}, nil
 		}
 	case callEventsSettle:
@@ -492,23 +512,32 @@ func (h *Host) handleEventBusCall(ctx context.Context, conn *Conn, callID string
 }
 
 // dispatchEvent calls a snapshot of channel's listeners in order and reports whether the snapshot had any.
-func (h *Host) dispatchEvent(ctx context.Context, channel string, data json.RawMessage, refs []xrefRef, emitter, emissionID string, emission *busEmission) bool {
+func (h *Host) dispatchEvent(ctx context.Context, channel string, payload *busPayload, refs []xrefRef, emitter, emissionID string, emission *busEmission) bool {
 	listeners := h.eventBus.snapshot(channel)
 	defer h.eventBus.finish(listeners)
 	for _, listener := range listeners {
-		h.xref.deliver(listener.realm, refs)
-		foreign := emission != nil && listener.realm != emitter
-		var marker string
-		if foreign {
-			marker = emissionID
-			h.eventBus.addPending(emission, listener.conn, 1)
+		var (
+			args    json.RawMessage
+			err     error
+			foreign bool
+		)
+		if listener.value {
+			args, err = h.nativeDispatchArgs(ctx, listener, channel, payload)
+		} else {
+			h.xref.deliver(listener.realm, refs)
+			foreign = emission != nil && listener.realm != emitter
+			var marker string
+			if foreign {
+				marker = emissionID
+				h.eventBus.addPending(emission, listener.conn, 1)
+			}
+			args, err = json.Marshal(struct {
+				HandlerID string          `json:"handlerId"`
+				Channel   string          `json:"channel"`
+				Data      json.RawMessage `json:"data"`
+				Emission  string          `json:"emission,omitempty"`
+			}{listener.handlerID, channel, payload.encoded, marker})
 		}
-		args, err := json.Marshal(struct {
-			HandlerID string          `json:"handlerId"`
-			Channel   string          `json:"channel"`
-			Data      json.RawMessage `json:"data"`
-			Emission  string          `json:"emission,omitempty"`
-		}{listener.handlerID, channel, data, marker})
 		if err == nil {
 			var response *Envelope
 			response, err = listener.conn.Request(ctx, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: methodEventsDispatch, Args: args}})
@@ -527,11 +556,6 @@ func (h *Host) dispatchEvent(ctx context.Context, channel string, data json.RawM
 }
 
 func mustJSONObject(value any) json.RawMessage {
-	data, _ := json.Marshal(value)
-	return data
-}
-
-func mustJSON(value string) json.RawMessage {
 	data, _ := json.Marshal(value)
 	return data
 }

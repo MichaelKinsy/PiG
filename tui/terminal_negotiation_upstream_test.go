@@ -151,7 +151,16 @@ func TestUpstreamTerminalNegotiation(t *testing.T) {
 			}
 			h.writeCount(t, "\x1b[>4;2m", 1)
 		}},
-		// .upstream/v0.87.1/packages/tui/test/terminal.test.ts:190
+		// .upstream/v0.99.2/packages/tui/test/terminal.test.ts:190
+		{"forwards device attributes replies that answer other queries", func(t *testing.T, h *terminalNegotiationHarness) {
+			h.send("\x1b[?7u")
+			h.send("\x1b[?62;4;52c")
+			h.noInput(t)
+			// The TUI's color query uses DA1 as its own sentinel.
+			h.send("\x1b[?62;4;52c")
+			h.lastInput(t, "\x1b[?62;4;52c")
+		}},
+		// .upstream/v0.99.2/packages/tui/test/terminal.test.ts:205
 		{"forwards normal input while waiting for Kitty response", func(t *testing.T, h *terminalNegotiationHarness) {
 			h.send("a")
 			h.lastInput(t, "a")
@@ -159,7 +168,7 @@ func TestUpstreamTerminalNegotiation(t *testing.T) {
 				t.Fatal("Kitty active")
 			}
 		}},
-		// .upstream/v0.87.1/packages/tui/test/terminal.test.ts:202
+		// .upstream/v0.99.2/packages/tui/test/terminal.test.ts:217
 		{"tracks split Kitty confirmation", func(t *testing.T, h *terminalNegotiationHarness) {
 			h.send("\x1b[?7")
 			time.Sleep(10 * time.Millisecond)
@@ -171,7 +180,7 @@ func TestUpstreamTerminalNegotiation(t *testing.T) {
 			}
 			h.writeCount(t, "\x1b[>4;2m", 0)
 		}},
-		// .upstream/v0.87.1/packages/tui/test/terminal.test.ts:221
+		// .upstream/v0.99.2/packages/tui/test/terminal.test.ts:236
 		{"replays buffered CSI-prefix input when it is not a Kitty response", func(t *testing.T, h *terminalNegotiationHarness) {
 			h.send("\x1b[")
 			time.Sleep(50 * time.Millisecond)

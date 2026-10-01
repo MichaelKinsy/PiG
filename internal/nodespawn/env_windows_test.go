@@ -5,8 +5,10 @@ package nodespawn
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -66,19 +68,85 @@ process.stdout.write(result.stdout);
 	SetEnv(cmd, env)
 	SetProgram(cmd)
 	SetCommandLine(cmd)
-	output, err := cmd.Output()
-	if err != nil {
-		t.Fatalf("%v; output %s", err, output)
-	}
+	stdout := output(t, cmd)
 	var got []string
-	if err := json.Unmarshal(output, &got); err != nil {
-		t.Fatalf("decode %q: %v", output, err)
+	if err := json.Unmarshal(stdout, &got); err != nil {
+		t.Fatalf("decode %q: %v", stdout, err)
 	}
 	slices.Sort(got)
 	slices.Sort(want)
 	if !slices.Equal(got, want) {
 		t.Errorf("child environment\n got %q\nwant %q", got, want)
 	}
+}
+
+// libuv's find_path (src/win/process.c, libuv 1.52.1) searches for a bare name
+// in the PATH of the first entry of the block that starts with "PATH="
+// regardless of case, which is also the child's PATH, and the entry of a
+// property named "PATH=Z" starts so. The block keeps both "PATH" and "PATH=Z"
+// in the order of libuv's qsort. Node's spawn of the name from cwd is the
+// oracle: it either starts the program, which exits 0, or emits ENOENT.
+func TestSetProgramSearchesThePathOfTheFirstPathEntryAsLibuvDoes(t *testing.T) {
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir, cwd := t.TempDir(), t.TempDir()
+	copyFile(t, exe, filepath.Join(dir, "pigprobe.exe"))
+	if err := os.Mkdir(filepath.Join(cwd, "Z=dir"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	copyFile(t, exe, filepath.Join(cwd, "Z=dir", "pigprobe.exe"))
+	helper := EnvProperty{testenv.EnvironHelper, "1"}
+	for _, c := range []struct {
+		name string
+		env  []EnvProperty
+	}{
+		{"PATH names the program's directory", []EnvProperty{helper, {"PATH", dir}, {"PATH=Z", "nothing"}}},
+		{"PATH=Z makes the PATH Z=dir", []EnvProperty{helper, {"PATH", "nothing"}, {"PATH=Z", "dir"}}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			input := []byte(`{"cwd":` + mustJSON(t, cwd) + `,"env":` + orderedObject(t, c.env) + `}`)
+			node := exec.CommandContext(t.Context(), "node", "-e", `
+const { spawnSync } = require("node:child_process");
+const { cwd, env } = JSON.parse(require("node:fs").readFileSync(0, "utf8"));
+const result = spawnSync("pigprobe", [], { cwd, env, stdio: "ignore" });
+process.stdout.write(result.error ? result.error.code : "exit " + result.status);
+`)
+			node.Stdin = bytes.NewReader(input)
+			out, err := node.Output()
+			if err != nil {
+				t.Fatalf("node spawn: %v; output %s", err, out)
+			}
+			cmd := exec.Command("pigprobe")
+			cmd.Dir = cwd
+			SetEnvProperties(cmd, c.env)
+			SetProgram(cmd)
+			SetCommandLine(cmd)
+			got := "exit 0"
+			if err := Start(cmd); err != nil {
+				spawnErr, ok := errors.AsType[*Error](err)
+				if !ok {
+					t.Fatalf("start: %v", err)
+				}
+				got = spawnErr.Code
+			} else if err := cmd.Wait(); err != nil {
+				t.Fatalf("wait: %v", err)
+			}
+			if want := string(out); got != want {
+				t.Errorf("spawn of pigprobe: got %s, want %s", got, want)
+			}
+		})
+	}
+}
+
+func mustJSON(t *testing.T, value any) string {
+	t.Helper()
+	data, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(data)
 }
 
 // libuv's make_program_env (src/win/process.c, libuv 1.52.1) adds a required

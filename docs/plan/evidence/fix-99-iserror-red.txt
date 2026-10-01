@@ -1,0 +1,166 @@
+--- FAIL: TestAgentLoop_DoesNotExecuteToolCallsFromLengthTruncatedMessage (0.00s)
+    agent_loop_upstream_test.go:233: tool_execution_end = &{ToolCallID:tool-1 ToolName:echo Result:{Content:[{Text:Tool call "echo" was not executed: the response hit the output token limit, so its arguments may be truncated. Re-issue the tool call with comple
+--- FAIL: TestAgentLoop_ToolExecutionEndKeepsResultIsErrorApartFromTheEventFlag (0.01s)
+    --- FAIL: TestAgentLoop_ToolExecutionEndKeepsResultIsErrorApartFromTheEventFlag/returned_failure (0.00s)
+        tool_result_iserror_test.go:121: event.IsError = false, want true
+    --- FAIL: TestAgentLoop_ToolExecutionEndKeepsResultIsErrorApartFromTheEventFlag/thrown_error (0.00s)
+        tool_result_iserror_test.go:121: event.IsError = false, want true
+        tool_result_iserror_test.go:124: event.Result.IsError = true, want false
+    --- FAIL: TestAgentLoop_ToolExecutionEndKeepsResultIsErrorApartFromTheEventFlag/panic (0.00s)
+        tool_result_iserror_test.go:121: event.IsError = false, want true
+        tool_result_iserror_test.go:124: event.Result.IsError = true, want false
+    --- FAIL: TestAgentLoop_ToolExecutionEndKeepsResultIsErrorApartFromTheEventFlag/result_marked_Thrown (0.00s)
+        tool_result_iserror_test.go:121: event.IsError = false, want true
+        tool_result_iserror_test.go:124: event.Result.IsError = true, want false
+    --- FAIL: TestAgentLoop_ToolExecutionEndKeepsResultIsErrorApartFromTheEventFlag/unknown_tool (0.00s)
+        tool_result_iserror_test.go:121: event.IsError = false, want true
+        tool_result_iserror_test.go:124: event.Result.IsError = true, want false
+    --- FAIL: TestAgentLoop_ToolExecutionEndKeepsResultIsErrorApartFromTheEventFlag/invalid_arguments (0.00s)
+        tool_result_iserror_test.go:121: event.IsError = false, want true
+        tool_result_iserror_test.go:124: event.Result.IsError = true, want false
+    --- FAIL: TestAgentLoop_ToolExecutionEndKeepsResultIsErrorApartFromTheEventFlag/blocked_call (0.00s)
+        tool_result_iserror_test.go:121: event.IsError = false, want true
+        tool_result_iserror_test.go:124: event.Result.IsError = true, want false
+    --- FAIL: TestAgentLoop_ToolExecutionEndKeepsResultIsErrorApartFromTheEventFlag/hook_sets_isError_on_a_success (0.00s)
+        tool_result_iserror_test.go:121: event.IsError = false, want true
+        tool_result_iserror_test.go:124: event.Result.IsError = true, want false
+    --- FAIL: TestAgentLoop_ToolExecutionEndKeepsResultIsErrorApartFromTheEventFlag/hook_clears_isError_of_a_returned_failure (0.00s)
+        tool_result_iserror_test.go:124: event.Result.IsError = false, want true
+    --- FAIL: TestAgentLoop_ToolExecutionEndKeepsResultIsErrorApartFromTheEventFlag/throwing_hook (0.00s)
+        tool_result_iserror_test.go:121: event.IsError = false, want true
+        tool_result_iserror_test.go:124: event.Result.IsError = true, want false
+--- FAIL: TestAgentLoop_BlockedCallResultCarriesTerminateWithoutIsError (0.00s)
+    tool_result_iserror_test.go:160: tool_execution_end = [{ToolCallID:c1 ToolName:t Result:{Content:[{Text:stop TextSignature: scratch:}] Details:map[] StructuredContent:null IsError:true Thrown:false StructuredContentAppended:false Usage:<nil> Terminate:true
+--- FAIL: TestAgentLoop_ToolExecutionEndRecordsAStructuredContentTheHookAppended (0.00s)
+    --- FAIL: TestAgentLoop_ToolExecutionEndRecordsAStructuredContentTheHookAppended/hook_adds_structuredContent_to_a_result_without_one (0.00s)
+        tool_result_iserror_test.go:198: tool_execution_end = [{ToolCallID:c1 ToolName:echo Result:{Content:[{Text:echoed: x TextSignature: scratch:}] Details:map[value:x] StructuredContent:{"added":true} IsError:false Thrown:false StructuredContentAppended:fa
+--- FAIL: TestRunToolCall_OutcomeKeepsResultIsErrorApartFromOutcomeFlag (0.00s)
+    --- FAIL: TestRunToolCall_OutcomeKeepsResultIsErrorApartFromOutcomeFlag/thrown_error (0.00s)
+        tool_result_iserror_test.go:235: outcome = {ToolCall:{scratch:{partialArgs: partialJson: hasPartialArgs:false hasPartialJson:false streamIndex:0 hasStreamIndex:false index:0 hasIndex:false customInput:false property: jsonBuffer:{Input: Started:false Cl
+    --- FAIL: TestRunToolCall_OutcomeKeepsResultIsErrorApartFromOutcomeFlag/unknown_tool (0.00s)
+        tool_result_iserror_test.go:235: outcome = {ToolCall:{scratch:{partialArgs: partialJson: hasPartialArgs:false hasPartialJson:false streamIndex:0 hasStreamIndex:false index:0 hasIndex:false customInput:false property: jsonBuffer:{Input: Started:false Cl
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/agent	0.059s
+FAIL
+--- FAIL: TestJSONModeToolExecutionEventsCarryNameAndErrorState (0.00s)
+    json_mode_test.go:228: tool end lost error state: [{"type":"tool_execution_start","toolCallId":"call-1","toolName":"read","args":{"path":"/tmp/x"}},{"type":"tool_execution_update","toolCallId":"call-1","toolName":"read","args":{"path":"/tmp/x"},"partialRes
+--- FAIL: TestJSONAndRPCProductionToolEventsMatchPersistedResult (0.01s)
+    json_mode_test.go:437: a returned isError must stay inside the result: map[string]interface {}{"content":[]interface {}{map[string]interface {}{"text":"done", "type":"text"}, map[string]interface {}{"data":"aW1n", "mimeType":"image/png", "type":"image"}}, 
+--- FAIL: TestRPCPlanModeEmptyToolsSurviveProcessResume (3.13s)
+    plan_mode_example_test.go:52: Session received snapshot map[enabled:true executing:false todos:[] toolsBeforePlanMode:[codemode tool_search]], want explicit empty tools
+--- FAIL: TestRPCFreshPromptDeclaresStructuredSystemOnce (0.08s)
+    rpc_initial_tools_test.go:121: declared tools [read bash edit write codemode tool_search]
+--- FAIL: TestRPCStartupDeclaresOnlyTheToolsPiActivates (0.31s)
+    --- FAIL: TestRPCStartupDeclaresOnlyTheToolsPiActivates/default_loadout (0.07s)
+        rpc_initial_tools_test.go:188: declared tools [read bash edit write codemode tool_search], want [read bash edit write]
+--- FAIL: TestRPCToolExecutionResultExactWire (0.00s)
+    rpc_tool_wire_test.go:79: event = map[string]interface {}{"isError":false, "result":map[string]interface {}{"content":[]interface {}{map[string]interface {}{"text":"result", "type":"text"}}}, "toolCallId":"call", "toolName":"read", "type":"tool_execution_e
+--- FAIL: TestRPCToolExecutionEndWritesResultIsErrorUsageAndTerminateInPiOrder (0.00s)
+    --- FAIL: TestRPCToolExecutionEndWritesResultIsErrorUsageAndTerminateInPiOrder/returned_failure_keeps_isError_inside_result (0.00s)
+        rpc_tool_wire_test.go:174: wire = {"type":"tool_execution_end","toolCallId":"call","toolName":"bash","result":{"content":[{"type":"text","text":"out\n\n\nCommand exited with code 3"}],"structuredContent":{"output":"out\n","truncated":false,"exit_code":
+    --- FAIL: TestRPCToolExecutionEndWritesResultIsErrorUsageAndTerminateInPiOrder/returned_failure_keeps_details_before_structuredContent (0.00s)
+        rpc_tool_wire_test.go:174: wire = {"type":"tool_execution_end","toolCallId":"call","toolName":"bash","result":{"content":[{"type":"text","text":"out\n\n\nCommand exited with code 3"}],"details":{"d":1},"structuredContent":{"output":"out\n","truncated":
+    --- FAIL: TestRPCToolExecutionEndWritesResultIsErrorUsageAndTerminateInPiOrder/thrown_error_has_no_result.isError (0.00s)
+        rpc_tool_wire_test.go:174: wire = {"type":"tool_execution_end","toolCallId":"call","toolName":"bash","result":{"content":[{"type":"text","text":"out\n\n\nCommand exited with code 3"}],"details":{}},"isError":false}
+    --- FAIL: TestRPCToolExecutionEndWritesResultIsErrorUsageAndTerminateInPiOrder/hook_cleared_isError_of_a_returned_failure (0.00s)
+        rpc_tool_wire_test.go:174: wire = {"type":"tool_execution_end","toolCallId":"call","toolName":"bash","result":{"content":[{"type":"text","text":"out\n\n\nCommand exited with code 3"}]},"isError":true}
+    --- FAIL: TestRPCToolExecutionEndWritesResultIsErrorUsageAndTerminateInPiOrder/blocked_call_terminates_without_isError (0.00s)
+        rpc_tool_wire_test.go:174: wire = {"type":"tool_execution_end","toolCallId":"call","toolName":"bash","result":{"content":[{"type":"text","text":"out\n\n\nCommand exited with code 3"}],"details":{}},"isError":false}
+    --- FAIL: TestRPCToolExecutionEndWritesResultIsErrorUsageAndTerminateInPiOrder/tool_usage_and_terminate_follow_isError (0.00s)
+        rpc_tool_wire_test.go:174: wire = {"type":"tool_execution_end","toolCallId":"call","toolName":"bash","result":{"content":[{"type":"text","text":"out\n\n\nCommand exited with code 3"}],"details":{},"structuredContent":{"output":"out\n","truncated":false
+    --- FAIL: TestRPCToolExecutionEndWritesResultIsErrorUsageAndTerminateInPiOrder/a_hook_that_kept_structuredContent_leaves_it_in_place (0.00s)
+        rpc_tool_wire_test.go:174: wire = {"type":"tool_execution_end","toolCallId":"call","toolName":"bash","result":{"content":[{"type":"text","text":"out\n\n\nCommand exited with code 3"}],"details":{"note":"kept"},"structuredContent":{"output":"out\n","tru
+    --- FAIL: TestRPCToolExecutionEndWritesResultIsErrorUsageAndTerminateInPiOrder/a_hook_that_added_structuredContent_puts_it_last (0.00s)
+        rpc_tool_wire_test.go:174: wire = {"type":"tool_execution_end","toolCallId":"call","toolName":"bash","result":{"content":[{"type":"text","text":"out\n\n\nCommand exited with code 3"}],"details":{"d":1},"structuredContent":{"output":"out\n","truncated":
+    --- FAIL: TestRPCToolExecutionEndWritesResultIsErrorUsageAndTerminateInPiOrder/a_hook_that_added_structuredContent_keeps_usage_and_terminate_before_it (0.00s)
+        rpc_tool_wire_test.go:174: wire = {"type":"tool_execution_end","toolCallId":"call","toolName":"bash","result":{"content":[{"type":"text","text":"out\n\n\nCommand exited with code 3"}],"details":{},"structuredContent":{"output":"out\n","truncated":false
+--- FAIL: TestRPCProcessToolExecutionEndKeepsReturnedIsErrorApartFromThrown (0.09s)
+    rpc_tool_wire_test.go:206: bash: result = map[string]interface {}{"content":[]interface {}{map[string]interface {}{"text":"out\n\n\nCommand exited with code 3", "type":"text"}}, "structuredContent":map[string]interface {}{"exit_code":3, "output":"out\n", "
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/cmd/pig	3.705s
+FAIL
+--- FAIL: TestExtensionToolStartsActive (0.00s)
+    --- FAIL: TestExtensionToolStartsActive/defaultActive_false_is_registered,_not_active (0.00s)
+    --- FAIL: TestExtensionToolStartsActive/model-only_defaultActive_false_(codemode,_tool_search) (0.00s)
+    --- FAIL: TestExtensionToolStartsActive/codemode_exposure_is_not_declarable (0.00s)
+    --- FAIL: TestExtensionToolStartsActive/deferred_exposure_is_not_declarable (0.00s)
+    --- FAIL: TestExtensionToolStartsActive/named_codemode-exposure_tool_stays_undeclared (0.00s)
+    --- FAIL: TestExtensionToolStartsActive/unnamed_tool_is_not_activated_by_an_allowlist (0.00s)
+    --- FAIL: TestExtensionToolStartsActive/an_empty_allowlist_activates_nothing (0.00s)
+--- FAIL: TestNestedToolCallEndEventsKeepTheResultFlagApartFromTheCallFlag (0.00s)
+    --- FAIL: TestNestedToolCallEndEventsKeepTheResultFlagApartFromTheCallFlag/returned_failure (0.00s)
+    --- FAIL: TestNestedToolCallEndEventsKeepTheResultFlagApartFromTheCallFlag/arguments_that_are_not_an_object (0.00s)
+    --- FAIL: TestNestedToolCallEndEventsKeepTheResultFlagApartFromTheCallFlag/unknown_tool (0.00s)
+--- FAIL: TestRPC33ObservationMatrix (0.06s)
+    --- FAIL: TestRPC33ObservationMatrix/0/openai-completions/tool/delayed-agent (0.18s)
+    --- FAIL: TestRPC33ObservationMatrix/0/openai-completions/tool/immediate-agent (0.19s)
+    --- FAIL: TestRPC33ObservationMatrix/0/openai-completions/tool/held-agent (0.24s)
+    --- FAIL: TestRPC33ObservationMatrix/2/openai-responses/tool/delayed-agent (0.24s)
+    --- FAIL: TestRPC33ObservationMatrix/2/openai-responses/tool/immediate-agent (0.21s)
+    --- FAIL: TestRPC33ObservationMatrix/1/openai-responses/tool/delayed-held-agent (0.21s)
+    --- FAIL: TestRPC33ObservationMatrix/1/openai-responses/tool/immediate-agent (0.24s)
+    --- FAIL: TestRPC33ObservationMatrix/0/openai-responses/tool/immediate-agent (0.25s)
+    --- FAIL: TestRPC33ObservationMatrix/2/openai-responses/tool/delayed-held-agent (0.25s)
+    --- FAIL: TestRPC33ObservationMatrix/2/openai-completions/tool/immediate-agent (0.26s)
+    --- FAIL: TestRPC33ObservationMatrix/0/openai-responses/tool/held-agent (0.26s)
+    --- FAIL: TestRPC33ObservationMatrix/1/openai-completions/tool/held-agent (0.27s)
+    --- FAIL: TestRPC33ObservationMatrix/2/openai-responses/tool/held-agent (0.23s)
+    --- FAIL: TestRPC33ObservationMatrix/0/openai-completions/tool/delayed-held-agent (0.23s)
+    --- FAIL: TestRPC33ObservationMatrix/1/openai-responses/tool/held-agent (0.13s)
+    --- FAIL: TestRPC33ObservationMatrix/2/openai-completions/tool/delayed-held-agent (0.16s)
+    --- FAIL: TestRPC33ObservationMatrix/0/openai-responses/tool/delayed-agent (0.28s)
+--- FAIL: TestDispatchAgentLoopEvent_DeliversAllAgentLoopEvents (0.00s)
+    event_bridge_dispatch_test.go:121: tool_execution_end: got extension.ToolExecutionEndEvent{Type:"tool_execution_end", ToolCallID:"tc1", ToolName:"bash", Result:map[string]interface {}{"content":[]interface {}{map[string]interface {}{"text":"done", "type":"
+--- FAIL: TestDispatchToolExecutionEndDeliversTheFinalizedResultAndTheCallFlag (0.00s)
+    --- FAIL: TestDispatchToolExecutionEndDeliversTheFinalizedResultAndTheCallFlag/returned_failure (0.00s)
+        event_bridge_dispatch_test.go:180: event = extension.ToolExecutionEndEvent{Type:"tool_execution_end", ToolCallID:"a", ToolName:"bash", Result:map[string]interface {}{"content":[]interface {}{map[string]interface {}{"text":"x", "type":"text"}}}, IsError
+    --- FAIL: TestDispatchToolExecutionEndDeliversTheFinalizedResultAndTheCallFlag/thrown_error_has_no_result.isError (0.00s)
+        event_bridge_dispatch_test.go:180: event = extension.ToolExecutionEndEvent{Type:"tool_execution_end", ToolCallID:"b", ToolName:"read", Result:map[string]interface {}{"content":[]interface {}{map[string]interface {}{"text":"x", "type":"text"}}, "details
+    --- FAIL: TestDispatchToolExecutionEndDeliversTheFinalizedResultAndTheCallFlag/a_hook_cleared_the_flag_of_a_returned_failure (0.00s)
+        event_bridge_dispatch_test.go:180: event = extension.ToolExecutionEndEvent{Type:"tool_execution_end", ToolCallID:"c", ToolName:"bash", Result:map[string]interface {}{"content":[]interface {}{map[string]interface {}{"text":"x", "type":"text"}}}, IsError
+--- FAIL: TestEmitToolExecutionEnd_PayloadFields (0.00s)
+    event_bridge_test.go:540: isError = false, want true
+--- FAIL: TestInteractiveToolEndRendersTheCallFlagNotTheResultFlag (0.00s)
+    --- FAIL: TestInteractiveToolEndRendersTheCallFlagNotTheResultFlag/thrown_error (0.00s)
+        tool_definition_renderers_test.go:241: renderResult saw isError [false], want last true
+    --- FAIL: TestInteractiveToolEndRendersTheCallFlagNotTheResultFlag/hook_cleared_a_returned_failure (0.00s)
+        tool_definition_renderers_test.go:241: renderResult saw isError [true], want last false
+--- FAIL: TestToolResultEventOverrideCarriesStructuredContent (0.00s)
+    tool_result_content_test.go:97: override = agent.AfterToolCallResult{Content:[]ai.ToolResultMessageContent{ai.TextContent{Text:"same", TextSignature:"", scratch:""}}, Details:map[string]interface {}{"note":"kept"}, IsError:(*bool)(nil), Usage:(*ai.Usage)(n
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/internal/codingagent	0.095s
+FAIL
+--- FAIL: TestBuiltinFailureDetails (0.01s)
+    --- FAIL: TestBuiltinFailureDetails/read/failure (0.00s)
+        failure_details_test.go:65: result={Content:[{Text:ENOENT: no such file or directory, access '/tmp/pig-tools-2789556911/TestBuiltinFailureDetails519154870/001/missing' TextSignature: scratch:}
+    --- FAIL: TestBuiltinFailureDetails/read/abort (0.00s)
+        failure_details_test.go:65: result={Content:[{Text:Operation aborted TextSignature: scratch:}] Details:map[] StructuredContent:null IsError:true Thrown:false StructuredContentAppended:false Us
+    --- FAIL: TestBuiltinFailureDetails/write/failure (0.00s)
+        failure_details_test.go:65: result={Content:[{Text:EISDIR: illegal operation on a directory, open '/tmp/pig-tools-2789556911/TestBuiltinFailureDetails519154870/001' TextSignature: scratch:}] D
+    --- FAIL: TestBuiltinFailureDetails/write/abort (0.00s)
+        failure_details_test.go:65: result={Content:[{Text:Operation aborted TextSignature: scratch:}] Details:map[] StructuredContent:null IsError:true Thrown:false StructuredContentAppended:false Us
+    --- FAIL: TestBuiltinFailureDetails/edit/failure (0.00s)
+        failure_details_test.go:65: result={Content:[{Text:Could not edit file: missing. Error code: ENOENT. TextSignature: scratch:}] Details:map[] StructuredContent:null IsError:true Thrown:false St
+    --- FAIL: TestBuiltinFailureDetails/edit/abort (0.00s)
+        failure_details_test.go:65: result={Content:[{Text:Operation aborted TextSignature: scratch:}] Details:map[] StructuredContent:null IsError:true Thrown:false StructuredContentAppended:false Us
+    --- FAIL: TestBuiltinFailureDetails/bash/abort (0.00s)
+        failure_details_test.go:65: result={Content:[{Text:Command aborted TextSignature: scratch:}] Details:map[] StructuredContent:null IsError:true Thrown:false StructuredContentAppended:false Usag
+    --- FAIL: TestBuiltinFailureDetails/grep/failure (0.00s)
+        failure_details_test.go:65: result={Content:[{Text:rg: regex parse error:
+    --- FAIL: TestBuiltinFailureDetails/grep/abort (0.00s)
+        failure_details_test.go:65: result={Content:[{Text:Operation aborted TextSignature: scratch:}] Details:map[] StructuredContent:null IsError:true Thrown:false StructuredContentAppended:false Us
+    --- FAIL: TestBuiltinFailureDetails/find/failure (0.00s)
+    --- FAIL: TestParity/05-json-failing-bash-result-iserror (0.39s)
+        runner_test.go:186: 05-json-failing-bash-result-iserror: pig output missing "\"structuredContent\":{\"output\":\"out\\n\",\"truncated\":false,\"exit_code\":3,\"wall_time_seconds\":0},\"isError\":true},\"isError\":true}"
+    --- FAIL: TestParity/07-json-failing-bash-result-iserror-content-hook (0.61s)
+        runner_test.go:186: 07-json-failing-bash-result-iserror-content-hook: pig output missing "Command exited with code 3\\n[parity-modified]\"}],\"isError\":true},\"isError\":true}"
+    --- FAIL: TestParity/06-json-failing-bash-result-iserror-hook (0.63s)
+        runner_test.go:186: 06-json-failing-bash-result-iserror-hook: pig output missing "\"details\":{\"note\":\"kept\"},\"structuredContent\":{\"output\":\"out\\n\",\"truncated\":false,\"exit_code\":3,\"wall_time_seconds\":0},\"isError\":true},\"isError\":tr
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/test/parity/runner	7.804s
+FAIL
+    --- FAIL: TestParity/42-rpc-failing-bash-result-iserror (0.68s)
+        runner_test.go:186: 42-rpc-failing-bash-result-iserror: pig output missing "\"structuredContent\":{\"output\":\"out\\n\",\"truncated\":false,\"exit_code\":3,\"wall_time_seconds\":0},\"isError\":true},\"isError\":true}"
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/test/parity/runner	41.665s
+FAIL

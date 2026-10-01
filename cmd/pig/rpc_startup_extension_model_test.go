@@ -8,6 +8,7 @@ import (
 
 // Pi main.ts:736 loads extensions in createAgentSessionServices before main.ts:801 buildSessionOptions resolves --model and --models against that model runtime, and runRpcMode (main.ts:932) receives the same runtime. A -e provider therefore selects the RPC startup model, and each scope diagnostic is reported once.
 func TestRPCStartupModelFromExtensionProvider(t *testing.T) {
+	t.Parallel()
 	fixture, err := filepath.Abs(filepath.Join("testdata", "startup-provider.mjs"))
 	if err != nil {
 		t.Fatal(err)

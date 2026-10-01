@@ -58,15 +58,45 @@ func anthropicAPIKeyAuth() *APIKeyAuth {
 			if input.Credential != nil && input.Credential.Key != "" {
 				return &AuthResult{Auth: ModelAuth{APIKey: input.Credential.Key}, Env: input.Credential.Env, Source: "stored credential"}, nil
 			}
-			if token, ok := input.Ctx.Env(AnthropicAuthTokenEnv); ok {
+			token, tokenSet := input.Ctx.Env(AnthropicAuthTokenEnv)
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+			// upstream tests each value for truthiness, so a variable set to "" is absent.
+			if tokenSet && token != "" {
 				return &AuthResult{Auth: ModelAuth{Headers: ProviderHeaders{"Authorization": new("Bearer " + token)}}, Source: AnthropicAuthTokenEnv}, nil
 			}
 			for _, envVar := range []string{AnthropicOAuthTokenEnv, AnthropicAPIKeyEnv} {
-				if value, ok := input.Ctx.Env(envVar); ok {
+				value, ok := input.Ctx.Env(envVar)
+				if err := ctx.Err(); err != nil {
+					return nil, err
+				}
+				if ok && value != "" {
 					return &AuthResult{Auth: ModelAuth{APIKey: value}, Source: envVar}, nil
 				}
 			}
-			return nil, nil
+			// Workload identity federation has no request credential: the rule, organization and identity token
+			// file are provider config, so they travel in Env and the provider exchanges the token.
+			// upstream: packages/ai/src/providers/anthropic.ts:47-69
+			var envErr error
+			federation := anthropicFederationEnvFrom(func(name string) string {
+				if envErr != nil {
+					return ""
+				}
+				value, _ := input.Ctx.Env(name)
+				envErr = ctx.Err()
+				if envErr != nil {
+					return ""
+				}
+				return value
+			})
+			if envErr != nil {
+				return nil, envErr
+			}
+			if federation == nil {
+				return nil, nil
+			}
+			return &AuthResult{Env: federation, Source: AnthropicFederationAuthSource}, nil
 		},
 	}
 }
@@ -371,6 +401,7 @@ var builtinOAuthNames = map[string]struct {
 	"github-copilot": {"GitHub Copilot", true},
 	"kimi-coding":    {"Kimi Code (subscription)", true},
 	"meta":           {"Meta (Muse subscription)", true},
+	"openai":         {OpenAIChatGPTOAuthName, true},
 	"openai-codex":   {"OpenAI (ChatGPT Plus/Pro)", true},
 	"openrouter":     {"OpenRouter OAuth", false},
 	"radius":         {"Radius", false},
@@ -379,6 +410,7 @@ var builtinOAuthNames = map[string]struct {
 
 // Provider-owned labels from the matching packages/ai/src/providers/*.ts lazyOAuth metadata.
 var builtinOAuthLoginLabels = map[string]string{
+	"openai":      "Sign in with ChatGPT",
 	"openrouter":  "Sign in with OpenRouter",
 	"kimi-coding": "Sign in with Kimi Code",
 	"meta":        "Sign in with Meta",
@@ -392,6 +424,11 @@ func OAuthProviderAuth(providerID string) (*OAuthAuth, bool) {
 	if !ok {
 		return nil, false
 	}
+	return oauthProviderAuth(providerID, provider), true
+}
+
+// oauthProviderAuth is the OAuth auth method of one registered provider. A caller that has looked the provider up uses this, so a concurrent unregister or replacement cannot hand it a different or missing provider.
+func oauthProviderAuth(providerID string, provider OAuthProviderInterface) *OAuthAuth {
 	name, subscription := provider.Name(), false
 	loginLabel := ""
 	if label, ok := builtinOAuthLoginLabels[providerID]; ok {
@@ -407,7 +444,7 @@ func OAuthProviderAuth(providerID string) (*OAuthAuth, bool) {
 		Login:          oauthNativeLogin(provider),
 		Refresh:        oauthRefresh(provider),
 		ToAuth:         oauthToAuth(providerID, provider),
-	}, true
+	}
 }
 
 // builtinAPIKeyAuth mirrors each built-in upstream provider's api-key auth.
@@ -464,6 +501,7 @@ var builtinAPIKeyNames = map[string]string{
 	"qwen-token-plan-individual": "Qwen Token Plan Individual API key",
 	"radius":                     "Radius API key",
 	"together":                   "Together API key",
+	"typesafe":                   "TypeSafe API key",
 	"vercel-ai-gateway":          "Vercel AI Gateway API key",
 	"xai":                        "xAI API key",
 	"xiaomi":                     "Xiaomi API key",

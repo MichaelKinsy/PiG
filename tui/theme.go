@@ -3,16 +3,14 @@ package tui
 import (
 	"fmt"
 	"maps"
-	"math"
-	"os"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 
-	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"golang.org/x/text/collate"
+	"golang.org/x/text/language"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -107,34 +105,38 @@ type Theme struct {
 	BgClose string
 	Reset   string
 
-	// colors is a map of all resolved colors keyed by token name.
-	// Used by Fg() and Bg() for dynamic lookup.
-	colors map[string]ThemeColorValue
-	// colorKeys preserves the insertion order of color tokens from the
-	// theme JSON file. Upstream JS iterates Object.entries(colors) which
-	// preserves insertion order; Go maps are unordered. The HTML export
-	// emits CSS vars in this order for byte-exact parity.
+	// colorKeys lists the color tokens in upstream's Theme construction order: concrete tokens (foregrounds, then backgrounds), then the tokens set to "" (terminal default). The HTML export emits CSS vars in this order.
 	colorKeys []string
+	// fgAnsi and bgAnsi hold the precomputed escape sequences, keeping Fg and Bg on the render hot path to a lookup.
+	fgAnsi, bgAnsi map[string]string
+	// concreteColors are the tokens with a color of their own; the others follow the terminal's default colors.
+	concreteColors                                   map[string]Color
+	defaultForegroundTokens, defaultBackgroundTokens []string
+	// dimTokens are the foreground tokens rendered faint (SGR 2) on top of their color.
+	dimTokens        map[string]bool
+	ownAppearance    TerminalTheme
+	sourcePath       string
+	resolvedColorSet atomic.Pointer[resolvedThemeColors]
 
 	// mode is the color mode the ANSI fields were built for (theme.ts
 	// Theme.mode). The zero value is truecolor.
-	mode ColorMode
+	mode TerminalColorMode
 	// source is the theme JSON this theme was resolved from; it rebuilds the
 	// theme in the other color mode. Nil for a theme assembled in code.
 	source *ThemeJSON
 }
 
-// ColorMode mirrors theme.ts Theme.getColorMode.
-func (t *Theme) ColorMode() ColorMode {
+// TerminalColorMode mirrors theme.ts Theme.getColorMode.
+func (t *Theme) ColorMode() TerminalColorMode {
 	if t.mode == "" {
-		return ColorModeTrueColor
+		return TerminalColorModeTrueColor
 	}
 	return t.mode
 }
 
 // WithColorMode returns this theme resolved in mode, mirroring theme.ts createTheme(themeJson, mode). Rebuilt themes are not cached, so obsolete themes can be collected. A theme without JSON source is returned unchanged.
 // The variant keeps the theme's name: it is the same theme in another mode, and a registry entry activated by name must stay that name even when its JSON names another theme.
-func (t *Theme) WithColorMode(mode ColorMode) *Theme {
+func (t *Theme) WithColorMode(mode TerminalColorMode) *Theme {
 	if t == nil || t.ColorMode() == mode || t.source == nil {
 		return t
 	}
@@ -148,11 +150,11 @@ func (t *Theme) WithColorMode(mode ColorMode) *Theme {
 
 // currentColorMode mirrors createTheme's default mode:
 // getCapabilities().trueColor ? "truecolor" : "256color".
-func currentColorMode() ColorMode {
+func currentColorMode() TerminalColorMode {
 	if GetCapabilities().TrueColor {
-		return ColorModeTrueColor
+		return TerminalColorModeTrueColor
 	}
-	return ColorMode256
+	return TerminalColorMode256
 }
 
 // storeActiveTheme activates t in the color mode the terminal supports now,
@@ -172,13 +174,23 @@ func RefreshActiveThemeColorMode() {
 	}
 }
 
-// ThemeHexFg returns the active theme's foreground escape for a fixed hex
-// color, in the theme's color mode.
-func ThemeHexFg(hex string) string { return hexFgANSI(hex, ActiveTheme().ColorMode()) }
+// ThemeHexFg returns the active theme's foreground escape for a fixed hex color, in the theme's color mode.
+func ThemeHexFg(hex string) string {
+	color, err := ParseColor(hex)
+	if err != nil {
+		return ""
+	}
+	return ForegroundAnsi(color, ActiveTheme().ColorMode())
+}
 
-// ThemeHexBg returns the active theme's background escape for a fixed hex
-// color, in the theme's color mode.
-func ThemeHexBg(hex string) string { return hexBgANSI(hex, ActiveTheme().ColorMode()) }
+// ThemeHexBg returns the active theme's background escape for a fixed hex color, in the theme's color mode.
+func ThemeHexBg(hex string) string {
+	color, err := ParseColor(hex)
+	if err != nil {
+		return ""
+	}
+	return BackgroundAnsi(color, ActiveTheme().ColorMode())
+}
 
 const (
 	// Scoped SGR resets mirror upstream Pi's theme helpers:
@@ -204,53 +216,96 @@ type RgbColor struct {
 	B float64
 }
 
-type TerminalThemeDetection struct {
-	Theme      TerminalTheme
-	Source     string
-	Detail     string
-	Confidence string
-}
-
-type TerminalThemeDetectionOptions struct {
-	Env map[string]string
-}
-
-var osc11BackgroundColorPattern = lazyregexp.New(`^\x1b\]11;([^\x07\x1b]*)(?:\x07|\x1b\\)$`)
-
-// Fg returns the ANSI foreground escape for a named color token.
-// Mirrors upstream theme.fg(tokenName, text).
-// Returns empty string if token not found (terminal default).
+// Fg returns the opening escape sequence of a foreground token; faint tokens include SGR 2, which "\x1b[22m" closes. It is empty for a token that is not a foreground color.
+// Mirrors upstream theme.getFgAnsi(tokenName).
 func (t *Theme) Fg(token string) string {
-	return themeFgANSI(t.colors[token], t.ColorMode())
+	ansi := t.fgAnsi[token]
+	if ansi != "" && t.dimTokens[token] {
+		return ansi + "\x1b[2m"
+	}
+	return ansi
 }
 
-// Bg returns the ANSI background escape for a named color token.
-// Mirrors upstream theme.bg(tokenName, text).
-func (t *Theme) Bg(token string) string {
-	return themeBgANSI(t.colors[token], t.ColorMode())
-}
+// Bg returns the opening escape sequence of a background token, empty for a token that is not a background color.
+// Mirrors upstream theme.getBgAnsi(tokenName).
+func (t *Theme) Bg(token string) string { return t.bgAnsi[token] }
 
 // ANSIPalette returns every resolved token as foreground and background ANSI
 // openings. It is used at process boundaries where theme helper functions
 // cannot cross but their current immutable token table can.
 func (t *Theme) ANSIPalette() (map[string]string, map[string]string) {
-	fg := make(map[string]string, len(t.colorKeys))
-	bg := make(map[string]string, len(t.colorKeys))
-	for _, token := range t.colorKeys {
+	fg := make(map[string]string, len(t.fgAnsi))
+	bg := make(map[string]string, len(t.bgAnsi))
+	for token := range t.fgAnsi {
 		fg[token] = t.Fg(token)
+	}
+	for token := range t.bgAnsi {
 		bg[token] = t.Bg(token)
 	}
 	return fg, bg
 }
 
-// FgText returns text wrapped in the foreground color and reset.
-// Mirrors upstream theme.fg(tokenName, text).
+// FgText returns text in the foreground color of a token, closing the color (and the faint attribute of a faint token).
+// Mirrors upstream theme.fg(tokenName, text); an unknown token returns text unchanged.
 func (t *Theme) FgText(token, text string) string {
-	esc := t.Fg(token)
-	if esc == "" {
+	ansi, ok := t.fgAnsi[token]
+	if !ok {
 		return text
 	}
-	return esc + text + SGRFgReset
+	if t.dimTokens[token] {
+		return ansi + "\x1b[2m" + text + "\x1b[22;39m"
+	}
+	return ansi + text + SGRFgReset
+}
+
+// BgText wraps text in the background color of a token and resets only the background (theme.bg). An unknown token returns text unchanged.
+func (t *Theme) BgText(token, text string) string {
+	ansi, ok := t.bgAnsi[token]
+	if !ok {
+		return text
+	}
+	return ansi + text + SGRBgReset
+}
+
+// ThemeStyle is the style theme.style applies: a foreground and a background, each a theme token or a concrete Color, and text attributes. Setting both the token and the color of a slot is an error.
+type ThemeStyle struct {
+	TextAttributes
+	FgToken, BgToken string
+	Fg, Bg           Color
+}
+
+// Style renders text in style. A token is only accepted in its own slot, because "" (terminal default) means the default foreground or background depending on the slot.
+// Mirrors upstream theme.style(text, options).
+func (t *Theme) Style(text string, style ThemeStyle) (string, error) {
+	if (style.FgToken != "" && style.Fg != nil) || (style.BgToken != "" && style.Bg != nil) {
+		return "", fmt.Errorf("theme style sets both a token and a color for one slot")
+	}
+	attributes := style.TextAttributes
+	var fgAnsi, bgAnsi string
+	switch {
+	case style.FgToken != "":
+		ansi, ok := t.fgAnsi[style.FgToken]
+		if !ok {
+			return "", fmt.Errorf("Unknown theme color: %s", style.FgToken)
+		}
+		fgAnsi = ansi
+		if t.dimTokens[style.FgToken] {
+			attributes.Dim = true
+		}
+	case style.Fg != nil:
+		fgAnsi = ForegroundAnsi(style.Fg, t.mode)
+	}
+	switch {
+	case style.BgToken != "":
+		ansi, ok := t.bgAnsi[style.BgToken]
+		if !ok {
+			return "", fmt.Errorf("Unknown theme color: %s", style.BgToken)
+		}
+		bgAnsi = ansi
+	case style.Bg != nil:
+		bgAnsi = BackgroundAnsi(style.Bg, t.mode)
+	}
+	return StyleTextWithAnsi(text, fgAnsi, bgAnsi, attributes), nil
 }
 
 // Inverse wraps text in reverse video. Mirrors upstream theme.inverse().
@@ -261,51 +316,57 @@ func (t *Theme) Inverse(text string) string {
 // Built-in production themes are resolved from the embedded pinned JSON so
 // fields used directly by components and dynamic color maps share one source.
 func mustLoadBuiltinTheme(name string) *Theme {
-	theme, err := LoadBuiltinTheme(name)
+	theme, err := loadBuiltinThemeWithMode(name, TerminalColorModeTrueColor)
 	if err != nil {
 		panic(fmt.Sprintf("load builtin theme %q: %v", name, err))
 	}
 	return theme
 }
 
-var (
-	darkTheme  = mustLoadBuiltinTheme("dark")
-	lightTheme = mustLoadBuiltinTheme("light")
-)
+// builtinThemePair resolves the built-in themes on first use, as theme.ts getBuiltinThemes reads them on demand; resolving them in package initialization would parse every theme color before main.
+var builtinThemePair = sync.OnceValues(func() (dark, light *Theme) {
+	return mustLoadBuiltinTheme("dark"), mustLoadBuiltinTheme("light")
+})
 
-// activeTheme is the current theme, set once at startup by DetectTheme() and
-// swapped by SetTheme/SetThemeByName. It is read on the hot render/highlight
+func builtinDarkTheme() *Theme {
+	dark, _ := builtinThemePair()
+	return dark
+}
+
+func builtinLightTheme() *Theme {
+	_, light := builtinThemePair()
+	return light
+}
+
+// activeTheme is the current theme, nil until ActiveTheme first falls back to
+// the built-in dark theme or SetTheme/SetThemeByName selects one. It is read on the hot render/highlight
 // path from the main goroutine and background render workers, so stores and
 // loads use an atomic pointer.
 var activeTheme atomic.Pointer[Theme]
 
-func init() {
-	activeTheme.Store(darkTheme)
+// ActiveTheme returns the current theme; before any selection it is the built-in dark theme.
+func ActiveTheme() *Theme {
+	if theme := activeTheme.Load(); theme != nil {
+		return theme
+	}
+	activeTheme.CompareAndSwap(nil, builtinDarkTheme())
+	return activeTheme.Load()
 }
 
-// ActiveTheme returns the current theme.
-func ActiveTheme() *Theme { return activeTheme.Load() }
-
-// Colors returns the resolved theme colors as CSS values keyed by token name,
-// with 256-color indexes converted to hex and terminal-default colors mapped
-// to Pi's light/dark HTML fallback (theme.ts getResolvedThemeColors).
-// Used by HTML export to mirror upstream CSS variable generation.
+// Colors returns the resolved theme colors as CSS values keyed by token name: the concrete colors as hex, and tokens set to "" as the terminal's default colors (theme.ts getResolvedThemeColors). Used by HTML export to mirror upstream CSS variable generation.
 func (t *Theme) Colors() map[string]string {
-	if t == nil || t.colors == nil {
+	if t == nil || t.fgAnsi == nil {
 		return nil
 	}
-	defaultText := "#e5e5e7"
-	if t.Name == "light" {
-		defaultText = "#000000"
-	}
-	css := make(map[string]string, len(t.colors))
-	for token, value := range t.colors {
-		css[token] = value.cssColor(defaultText)
+	values := t.ColorValues()
+	css := make(map[string]string, len(values))
+	for token, color := range values {
+		css[token] = ColorToHex(color)
 	}
 	return css
 }
 
-// ColorKeys returns the color token names in their original JSON insertion order.
+// ColorKeys returns the color token names in upstream's Theme construction order.
 // Used by HTML export to emit CSS variables in the same order as upstream.
 func (t *Theme) ColorKeys() []string {
 	if t == nil {
@@ -324,27 +385,40 @@ func SetTheme(name string, enableWatcher ...bool) {
 func setBuiltinTheme(name string, enableWatcher bool) {
 	switch name {
 	case "light":
-		storeActiveTheme(lightTheme)
+		storeActiveTheme(builtinLightTheme())
 		noteSelectedTheme("light", enableWatcher)
-	default:
-		storeActiveTheme(darkTheme)
+	case "dark":
+		storeActiveTheme(builtinDarkTheme())
 		noteSelectedTheme("dark", enableWatcher)
+	default:
+		// The system theme is generated from the terminal's current colors each time it is selected.
+		storeActiveTheme(createSystemTheme(currentColorMode()))
+		noteSelectedTheme(SystemThemeName, false)
 	}
 }
 
-// SetThemeByName activates a registered theme, or falls back to dark when absent. enableWatcher restarts the interactive owner's watch after a successful selection; it defaults to false for previews.
+// SetThemeByName activates a registered theme, or the system theme when it is absent or invalid (theme.ts setTheme). enableWatcher restarts the interactive owner's watch after a successful selection; it defaults to false for previews.
 func SetThemeByName(name string, enableWatcher ...bool) {
+	_ = SetThemeByNameChecked(name, enableWatcher...)
+}
+
+// SetThemeByNameChecked is SetThemeByName that reports why a theme could not be activated; the system theme is active then (theme.ts setTheme's `{ success: false, error }`).
+func SetThemeByNameChecked(name string, enableWatcher ...bool) error {
 	themeMutationMu.Lock()
 	defer themeMutationMu.Unlock()
 	watch := len(enableWatcher) > 0 && enableWatcher[0]
 	if r := globalRegistry.Load(); r != nil {
 		if t := r.Get(name); t != nil {
 			storeActiveTheme(t)
-			noteSelectedTheme(name, watch)
-			return
+			noteSelectedTheme(name, watch && name != SystemThemeName)
+			return nil
 		}
+	} else if name == "dark" || name == "light" || name == SystemThemeName {
+		setBuiltinTheme(name, watch && name != SystemThemeName)
+		return nil
 	}
-	setBuiltinTheme(name, watch && (name == "dark" || name == "light"))
+	setBuiltinTheme(SystemThemeName, false)
+	return fmt.Errorf("Theme not found: %s", name)
 }
 
 // globalRegistry holds the theme registry for /theme command. It is read on
@@ -368,13 +442,6 @@ func ActiveThemeRegistry() *ThemeRegistry {
 // SetThemeRegistry sets the global theme registry.
 func SetThemeRegistry(r *ThemeRegistry) {
 	globalRegistry.Store(r)
-}
-
-// DetectTheme auto-detects dark/light mode and sets the active theme.
-// Uses COLORFGBG env var (same heuristic as upstream theme.ts).
-// Falls back to dark if detection fails.
-func DetectTheme() {
-	SetTheme(string(DetectTerminalBackground(TerminalThemeDetectionOptions{}).Theme))
 }
 
 // ParseAutoThemeSetting parses "lightTheme/darkTheme", trimming ECMAScript whitespace around each name. Empty or malformed values are not automatic.
@@ -423,17 +490,13 @@ func ResolveThemeSetting(themeSetting string, terminalTheme TerminalTheme) (stri
 	return ResolveThemeSettingPresence(themeSettingPresence(themeSetting), terminalTheme)
 }
 
-// SetThemeSettingPresence applies a theme setting before the terminal
-// answers. A nil or malformed setting selects the environment-detected
-// built-in theme; a fixed name that is not registered, including an empty
-// one, falls back to dark.
+// SetThemeSettingPresence applies a theme setting before the terminal answers: the theme it resolves to for the terminal's appearance so far, or the system theme when there is no setting or it is malformed (theme.ts initTheme, interactive-mode.ts initTheme). A name that is not registered also selects the system theme.
 func SetThemeSettingPresence(themeSetting *string) {
-	detected := DetectTerminalBackground(TerminalThemeDetectionOptions{}).Theme
-	if name, ok := ResolveThemeSettingPresence(themeSetting, detected); ok {
+	if name, ok := ResolveThemeSettingPresence(themeSetting, GetTerminalTheme()); ok {
 		SetThemeByName(name)
 		return
 	}
-	SetTheme(string(detected))
+	SetThemeByName(SystemThemeName)
 }
 
 // SetThemeSetting applies a stored theme setting.
@@ -451,177 +514,6 @@ func themeSettingPresence(themeSetting string) *string {
 	return &themeSetting
 }
 
-func getColorFgBgBackgroundIndex(colorfgbg string) (int, bool) {
-	parts := strings.Split(colorfgbg, ";")
-	for _, part := range slices.Backward(parts) {
-		part = widthx.JSTrim(part)
-		end := 0
-		if strings.HasPrefix(part, "+") || strings.HasPrefix(part, "-") {
-			end++
-		}
-		for end < len(part) && part[end] >= '0' && part[end] <= '9' {
-			end++
-		}
-		// theme.ts uses parseInt(part.trim(), 10), which accepts a decimal prefix.
-		bg, err := strconv.Atoi(part[:end])
-		if err == nil && bg >= 0 && bg <= 255 {
-			return bg, true
-		}
-	}
-	return 0, false
-}
-
-func getRgbColorLuminance(rgb RgbColor) float64 {
-	toLinear := func(channel float64) float64 {
-		value := channel / 255
-		if value <= 0.03928 {
-			return value / 12.92
-		}
-		return math.Pow((value+0.055)/1.055, 2.4)
-	}
-	return 0.2126*toLinear(rgb.R) + 0.7152*toLinear(rgb.G) + 0.0722*toLinear(rgb.B)
-}
-
-func getAnsiColorLuminance(index int) float64 {
-	r, g, b, ok := parseHex(ansi256ToHex(index))
-	if !ok {
-		return 0
-	}
-	return getRgbColorLuminance(RgbColor{R: float64(r), G: float64(g), B: float64(b)})
-}
-
-func GetThemeForRgbColor(rgb RgbColor) TerminalTheme {
-	if getRgbColorLuminance(rgb) >= 0.5 {
-		return TerminalTheme("light")
-	}
-	return TerminalTheme("dark")
-}
-
-func parseOscHexChannel(channel string) (float64, bool) {
-	if channel == "" {
-		return 0, false
-	}
-	for _, r := range channel {
-		if !strings.ContainsRune("0123456789abcdefABCDEF", r) {
-			return 0, false
-		}
-	}
-	value, err := strconv.ParseFloat("0x"+channel+"p0", 64)
-	if err != nil && !math.IsInf(value, 1) {
-		return 0, false
-	}
-	maxValue := math.Pow(16, float64(len(channel))) - 1
-	if maxValue <= 0 {
-		return 0, false
-	}
-	return math.Round((value / maxValue) * 255), true
-}
-
-// ParseOsc11BackgroundColor uses JavaScript whitespace and numeric semantics for strict OSC 11 replies. Slash-separated colors use the first three channels; later channels do not change the RGB result.
-func ParseOsc11BackgroundColor(data string) *RgbColor {
-	match := osc11BackgroundColorPattern.FindStringSubmatch(data)
-	if match == nil {
-		return nil
-	}
-
-	value := widthx.JSTrim(match[1])
-	if after, ok := strings.CutPrefix(value, "#"); ok {
-		hex := after
-		switch len(hex) {
-		case 6, 12:
-			channelLength := len(hex) / 3
-			r, okR := parseOscHexChannel(hex[:channelLength])
-			g, okG := parseOscHexChannel(hex[channelLength : 2*channelLength])
-			b, okB := parseOscHexChannel(hex[2*channelLength:])
-			if !okR || !okG || !okB {
-				return nil
-			}
-			return &RgbColor{R: r, G: g, B: b}
-		default:
-			return nil
-		}
-	}
-
-	rgbValue := value
-	if stripped, ok := strings.CutPrefix(strings.ToLower(rgbValue), "rgb:"); ok {
-		rgbValue = stripped
-	} else if stripped, ok := strings.CutPrefix(strings.ToLower(rgbValue), "rgba:"); ok {
-		rgbValue = stripped
-	}
-	parts := strings.Split(rgbValue, "/")
-	if len(parts) < 3 {
-		return nil
-	}
-	r, okR := parseOscHexChannel(parts[0])
-	g, okG := parseOscHexChannel(parts[1])
-	b, okB := parseOscHexChannel(parts[2])
-	if !okR || !okG || !okB {
-		return nil
-	}
-	return &RgbColor{R: r, G: g, B: b}
-}
-
-// DetectTerminalBackground parses COLORFGBG with JavaScript whitespace and decimal-prefix semantics, then falls back to a low-confidence dark theme when no index is valid.
-func DetectTerminalBackground(options TerminalThemeDetectionOptions) TerminalThemeDetection {
-	env := options.Env
-	if env == nil {
-		env = map[string]string{"COLORFGBG": os.Getenv("COLORFGBG")}
-	}
-	colorfgbg := env["COLORFGBG"]
-	if bg, ok := getColorFgBgBackgroundIndex(colorfgbg); ok {
-		theme := TerminalTheme("dark")
-		if getAnsiColorLuminance(bg) >= 0.5 {
-			theme = TerminalTheme("light")
-		}
-		return TerminalThemeDetection{
-			Theme:      theme,
-			Source:     "COLORFGBG",
-			Detail:     fmt.Sprintf("background color index %d", bg),
-			Confidence: "high",
-		}
-	}
-	return TerminalThemeDetection{
-		Theme:      TerminalTheme("dark"),
-		Source:     "fallback",
-		Detail:     "no terminal background hint found",
-		Confidence: "low",
-	}
-}
-
-func GetDefaultTheme() string {
-	return string(DetectTerminalBackground(TerminalThemeDetectionOptions{}).Theme)
-}
-
-func ansi256ToHex(index int) string {
-	switch {
-	case index < 0:
-		index = 0
-	case index > 255:
-		index = 255
-	}
-
-	base := [16][3]int{
-		{0, 0, 0}, {128, 0, 0}, {0, 128, 0}, {128, 128, 0},
-		{0, 0, 128}, {128, 0, 128}, {0, 128, 128}, {192, 192, 192},
-		{128, 128, 128}, {255, 0, 0}, {0, 255, 0}, {255, 255, 0},
-		{0, 0, 255}, {255, 0, 255}, {0, 255, 255}, {255, 255, 255},
-	}
-	if index < 16 {
-		rgb := base[index]
-		return fmt.Sprintf("#%02x%02x%02x", rgb[0], rgb[1], rgb[2])
-	}
-	if index >= 232 {
-		level := 8 + (index-232)*10
-		return fmt.Sprintf("#%02x%02x%02x", level, level, level)
-	}
-	idx := index - 16
-	levels := []int{0, 95, 135, 175, 215, 255}
-	r := levels[idx/36]
-	g := levels[(idx/6)%6]
-	b := levels[idx%6]
-	return fmt.Sprintf("#%02x%02x%02x", r, g, b)
-}
-
 // ThemeRegistry holds all loaded themes and enables switching.
 type ThemeRegistry struct {
 	mu     sync.RWMutex
@@ -632,14 +524,14 @@ type ThemeRegistry struct {
 	paths map[string]string
 }
 
-// NewThemeRegistry creates a registry with the built-in dark and light themes.
+// NewThemeRegistry creates a registry with the system theme and the built-in dark and light themes.
 func NewThemeRegistry() *ThemeRegistry {
 	r := &ThemeRegistry{
 		themes: make(map[string]*Theme),
 	}
-	r.themes["dark"] = darkTheme
-	r.themes["light"] = lightTheme
-	r.names = []string{"dark", "light"}
+	r.themes["dark"] = builtinDarkTheme()
+	r.themes["light"] = builtinLightTheme()
+	r.names = []string{SystemThemeName, "dark", "light"}
 	return r
 }
 
@@ -653,7 +545,8 @@ func (r *ThemeRegistry) Add(t *Theme) {
 
 func (r *ThemeRegistry) addLocked(t *Theme) {
 	name := t.Name
-	if name == "" {
+	// The system theme name is reserved: it takes precedence over custom themes of the same name (theme.ts loadTheme).
+	if name == "" || name == SystemThemeName {
 		return
 	}
 	if _, exists := r.themes[name]; !exists {
@@ -668,7 +561,7 @@ func (r *ThemeRegistry) addLocked(t *Theme) {
 func (r *ThemeRegistry) AddFile(t *Theme, path string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if t.Name == "" {
+	if t.Name == "" || t.Name == SystemThemeName {
 		return
 	}
 	r.addLocked(t)
@@ -680,6 +573,9 @@ func (r *ThemeRegistry) AddFile(t *Theme, path string) {
 
 // Get returns a theme by name, or nil.
 func (r *ThemeRegistry) Get(name string) *Theme {
+	if name == SystemThemeName {
+		return createSystemTheme(currentColorMode())
+	}
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.themes[name]
@@ -692,11 +588,23 @@ func (r *ThemeRegistry) PathOf(name string) string {
 	return r.paths[name]
 }
 
-// Names returns the available theme names in registration order as a defensive copy.
+// Names returns a copy of the available theme names: the system theme first, then the others in localeCompare order (theme.ts getAvailableThemesWithPaths).
 func (r *ThemeRegistry) Names() []string {
 	r.mu.RLock()
-	defer r.mu.RUnlock()
-	return slices.Clone(r.names)
+	names := slices.Clone(r.names)
+	r.mu.RUnlock()
+	// The system theme comes first: it is the default and adapts to every terminal. The others follow in localeCompare order (theme.ts getAvailableThemesWithPaths).
+	collator := collate.New(language.Und)
+	slices.SortStableFunc(names, func(a, b string) int {
+		switch {
+		case a == SystemThemeName:
+			return -1
+		case b == SystemThemeName:
+			return 1
+		}
+		return collator.CompareString(a, b)
+	})
+	return names
 }
 
 // LoadDir scans a directory for .json theme files and registers them,
@@ -710,4 +618,272 @@ func (r *ThemeRegistry) LoadDir(dir string) error {
 		r.AddFile(themes[fileName], filepath.Join(dir, fileName+".json"))
 	}
 	return nil
+}
+
+type themeTokenValue struct {
+	token string
+	value ThemeColorValue
+}
+
+type themeOptions struct {
+	name       string
+	sourcePath string
+	appearance TerminalTheme
+	// dim lists the foreground tokens to render faint (SGR 2).
+	dim []string
+}
+
+// resolvedThemeColors caches ColorValues by the identity of the terminal colors it was resolved against.
+type resolvedThemeColors struct {
+	terminal *TerminalColors
+	colors   map[string]Color
+}
+
+// guessedDefaultColors are the terminal default colors assumed when the terminal does not report them.
+func guessedDefaultColors(appearance TerminalTheme) (foreground, background Color) {
+	if appearance == "light" {
+		return RgbColorValue{}, RgbColorValue{R: 255, G: 255, B: 255}
+	}
+	return RgbColorValue{R: 0xe5, G: 0xe5, B: 0xe7}, RgbColorValue{}
+}
+
+// averageLightness is the mean OKLCH lightness of the colors, ignoring palette colors 0-15, which follow the user's terminal palette and say nothing about the theme.
+func averageLightness(colors []Color) (float64, bool) {
+	sum, count := 0.0, 0
+	for _, color := range colors {
+		if indexed, ok := color.(IndexedColor); ok && indexed.Index < 16 {
+			continue
+		}
+		sum += ColorToOklch(color).L
+		count++
+	}
+	if count == 0 {
+		return 0, false
+	}
+	return sum / float64(count), true
+}
+
+// detectAppearance detects the background a theme is designed for from the lightness of its own colors, or "" when they say nothing.
+func detectAppearance(foregrounds, backgrounds []Color) TerminalTheme {
+	fg, hasFg := averageLightness(foregrounds)
+	bg, hasBg := averageLightness(backgrounds)
+	pick := func(dark bool) TerminalTheme {
+		if dark {
+			return "dark"
+		}
+		return "light"
+	}
+	switch {
+	case hasFg && hasBg:
+		return pick(bg < fg)
+	case hasBg:
+		return pick(bg < 0.5)
+	case hasFg:
+		return pick(fg > 0.5)
+	}
+	return ""
+}
+
+// newTheme mirrors the theme.ts Theme constructor: a token set to "" has no color of its own and follows the terminal's default colors.
+func newTheme(foregrounds, backgrounds []themeTokenValue, mode TerminalColorMode, options themeOptions) (*Theme, error) {
+	t := &Theme{
+		Name:           options.name,
+		sourcePath:     options.sourcePath,
+		mode:           mode,
+		fgAnsi:         make(map[string]string, len(foregrounds)),
+		bgAnsi:         make(map[string]string, len(backgrounds)),
+		concreteColors: make(map[string]Color, len(foregrounds)+len(backgrounds)),
+		dimTokens:      make(map[string]bool, len(options.dim)),
+	}
+	for _, token := range options.dim {
+		t.dimTokens[token] = true
+	}
+	var concreteForegrounds, concreteBackgrounds []Color
+	var concreteKeys []string
+	add := func(entry themeTokenValue, isBackground bool) error {
+		value := entry.value
+		var ansi string
+		switch {
+		case !value.isSet:
+			return fmt.Errorf("Invalid color value: undefined")
+		case !value.IsIndex && value.Text == "":
+			if isBackground {
+				t.defaultBackgroundTokens = append(t.defaultBackgroundTokens, entry.token)
+				ansi = "\x1b[49m"
+			} else {
+				t.defaultForegroundTokens = append(t.defaultForegroundTokens, entry.token)
+				ansi = "\x1b[39m"
+			}
+		default:
+			var color Color
+			if value.IsIndex {
+				indexed, err := NewIndexedColor(value.Index)
+				if err != nil {
+					return err
+				}
+				color = indexed
+			} else {
+				parsed, err := ParseColor(value.Text)
+				if err != nil {
+					return err
+				}
+				color = parsed
+			}
+			t.concreteColors[entry.token] = color
+			concreteKeys = append(concreteKeys, entry.token)
+			if isBackground {
+				concreteBackgrounds = append(concreteBackgrounds, color)
+				ansi = BackgroundAnsi(color, mode)
+			} else {
+				concreteForegrounds = append(concreteForegrounds, color)
+				ansi = ForegroundAnsi(color, mode)
+			}
+		}
+		if isBackground {
+			t.bgAnsi[entry.token] = ansi
+		} else {
+			t.fgAnsi[entry.token] = ansi
+		}
+		return nil
+	}
+	for _, entry := range foregrounds {
+		if err := add(entry, false); err != nil {
+			return nil, err
+		}
+	}
+	for _, entry := range backgrounds {
+		if err := add(entry, true); err != nil {
+			return nil, err
+		}
+	}
+	t.colorKeys = slices.Concat(concreteKeys, t.defaultForegroundTokens, t.defaultBackgroundTokens)
+	t.ownAppearance = options.appearance
+	if t.ownAppearance == "" {
+		t.ownAppearance = detectAppearance(concreteForegrounds, concreteBackgrounds)
+	}
+	t.populateFields()
+	return t, nil
+}
+
+// populateFields fills the exported escape fields from the token tables.
+func (t *Theme) populateFields() {
+	for token, dst := range map[string]*string{
+		"accent": &t.Accent, "success": &t.Success, "error": &t.Error, "warning": &t.Warning,
+		"muted": &t.Muted, "dim": &t.Dim, "text": &t.Text,
+		"border": &t.Border, "borderAccent": &t.BorderAccent, "borderMuted": &t.BorderMuted,
+		"userMessageText": &t.UserMessageText, "toolTitle": &t.ToolTitle, "toolOutput": &t.ToolOutput,
+		"customMessageText": &t.CustomMessageText, "customMessageLabel": &t.CustomMessageLabel,
+		"mdHeading": &t.MDHeading, "mdLink": &t.MDLink, "mdLinkUrl": &t.MDLinkUrl, "mdCode": &t.MDCode,
+		"mdCodeBlock": &t.MDCodeBlock, "mdCodeBlockBorder": &t.MDCodeBlockBorder, "mdQuote": &t.MDQuote,
+		"mdQuoteBorder": &t.MDQuoteBorder, "mdHr": &t.MDHr, "mdListBullet": &t.MDListBullet,
+		"toolDiffAdded": &t.ToolDiffAdded, "toolDiffRemoved": &t.ToolDiffRemoved, "toolDiffContext": &t.ToolDiffContext,
+		"syntaxComment": &t.SyntaxComment, "syntaxKeyword": &t.SyntaxKeyword, "syntaxFunction": &t.SyntaxFunction,
+		"syntaxVariable": &t.SyntaxVariable, "syntaxString": &t.SyntaxString, "syntaxNumber": &t.SyntaxNumber,
+		"syntaxType": &t.SyntaxType, "syntaxOperator": &t.SyntaxOperator, "syntaxPunctuation": &t.SyntaxPunctuation,
+		"thinkingText": &t.ThinkingText, "thinkingOff": &t.ThinkingOff, "thinkingMinimal": &t.ThinkingMinimal,
+		"thinkingLow": &t.ThinkingLow, "thinkingMedium": &t.ThinkingMedium, "thinkingHigh": &t.ThinkingHigh,
+		"thinkingXhigh": &t.ThinkingXhigh, "bashMode": &t.BashMode,
+	} {
+		*dst = t.Fg(token)
+	}
+	for token, dst := range map[string]*string{
+		"userMessageBg": &t.UserMessageBg, "toolPendingBg": &t.ToolPendingBg, "toolSuccessBg": &t.ToolSuccessBg,
+		"toolErrorBg": &t.ToolErrorBg, "selectedBg": &t.SelectedBg, "customMessageBg": &t.CustomMessageBg,
+	} {
+		*dst = t.Bg(token)
+	}
+	t.BgClose = SGRBgReset
+	t.Reset = SGRResetAll
+}
+
+// Appearance is the background the theme is designed for: declared in the theme JSON, detected from its colors, or, for a theme without usable colors, the terminal's appearance.
+func (t *Theme) Appearance() TerminalTheme {
+	if t.ownAppearance != "" {
+		return t.ownAppearance
+	}
+	return GetTerminalTheme()
+}
+
+// ColorValues returns a concrete color for every token. Tokens set to "" (terminal default) use the terminal's reported default colors, or a guess based on the appearance when the terminal did not report them. Faint tokens are approximated by mixing their color toward the background. The map is shared and must not be modified.
+func (t *Theme) ColorValues() map[string]Color {
+	terminal := currentTerminalColors()
+	if cached := t.resolvedColorSet.Load(); cached != nil && cached.terminal == terminal {
+		return cached.colors
+	}
+	guessForeground, guessBackground := guessedDefaultColors(t.Appearance())
+	foreground, background := guessForeground, guessBackground
+	if terminal.Foreground != nil {
+		foreground = RgbColorValue(*terminal.Foreground)
+	}
+	if terminal.Background != nil {
+		background = RgbColorValue(*terminal.Background)
+	}
+	colors := maps.Clone(t.concreteColors)
+	for _, token := range t.defaultForegroundTokens {
+		colors[token] = foreground
+	}
+	for _, token := range t.defaultBackgroundTokens {
+		colors[token] = background
+	}
+	for token := range t.dimTokens {
+		if color, ok := colors[token]; ok {
+			if mixed, err := MixColors(color, background, 0.4, ColorMixSpaceOklch); err == nil {
+				colors[token] = mixed
+			}
+		}
+	}
+	resolved := &resolvedThemeColors{terminal: terminal, colors: colors}
+	t.resolvedColorSet.Store(resolved)
+	return colors
+}
+
+// createSystemTheme generates the system theme from the terminal's reported colors (grayscale while they are pending).
+func createSystemTheme(mode TerminalColorMode) *Theme {
+	terminal := currentTerminalColors()
+	saturation := 1.0
+	if terminalColorsPending.Load() {
+		saturation = 0
+	}
+	generated := GenerateSystemThemeColors(SystemThemeInput{
+		Foreground: terminal.Foreground, Background: terminal.Background, Palette: terminal.Palette,
+		Saturation: &saturation, AppearanceHint: GetTerminalTheme(),
+	})
+	foregrounds, backgrounds := splitThemeTokenValues(generated.Colors)
+	theme, err := newTheme(foregrounds, backgrounds, mode, themeOptions{name: SystemThemeName, appearance: generated.Appearance, dim: generated.Dim})
+	if err != nil {
+		panic(fmt.Sprintf("generate system theme: %v", err))
+	}
+	return theme
+}
+
+// splitThemeTokenValues splits generated colors into foreground and background tokens in the recipe's order, with the optional tokens' fallbacks the Theme constructor applies.
+func splitThemeTokenValues(colors map[string]ThemeColorValue) (foregrounds, backgrounds []themeTokenValue) {
+	for _, entry := range systemTokenFamilies {
+		value, ok := colors[entry.token]
+		if !ok {
+			continue
+		}
+		if themeBackgroundTokens[entry.token] {
+			backgrounds = append(backgrounds, themeTokenValue{entry.token, value})
+		} else {
+			foregrounds = append(foregrounds, themeTokenValue{entry.token, value})
+		}
+	}
+	return foregrounds, backgrounds
+}
+
+// FgClose is the sequence that ends a foreground opened by prefix, a Theme.Fg result: a dim token sets faint too, so it closes both (theme.ts fg of a dim token, `\x1b[2m...\x1b[22;39m`).
+func FgClose(prefix string) string {
+	if strings.HasSuffix(prefix, "\x1b[2m") {
+		return "\x1b[22;39m"
+	}
+	return SGRFgReset
+}
+
+// ExportTheme is the theme HTML export reads: the selected theme, or a generated system theme until one is selected (theme.ts getResolvedThemeColors).
+func ExportTheme() *Theme {
+	if selectedThemeName.Load() == nil {
+		return createSystemTheme(currentColorMode())
+	}
+	return ActiveTheme()
 }

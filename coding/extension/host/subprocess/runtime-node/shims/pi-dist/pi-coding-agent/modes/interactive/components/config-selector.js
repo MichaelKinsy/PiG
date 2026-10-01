@@ -5,6 +5,7 @@ import { homedir } from "node:os";
 import { basename, dirname, join, relative } from "node:path";
 import { Container, getKeybindings, Input, matchesKey, Spacer, truncateToWidth, visibleWidth, } from "../../../../../pi-tui.mjs";
 import { CONFIG_DIR_NAME } from "../../../config.js";
+import { BUILTIN_PATH_PREFIX } from "../../../core/source-info.js";
 import { canonicalizePath, isLocalPath, resolvePath } from "../../../utils/paths.js";
 import { theme } from "../theme/theme.js";
 import { DynamicBorder } from "./dynamic-border.js";
@@ -35,6 +36,9 @@ function formatBaseDir(baseDir) {
 function getGroupLabel(metadata, agentDir) {
     if (metadata.origin === "package") {
         return `${metadata.source} (${metadata.scope})`;
+    }
+    if (metadata.source === "builtin") {
+        return metadata.scope === "user" ? "Built-in" : "Built-in (project override)";
     }
     // Top-level resources
     if (metadata.source === "auto") {
@@ -77,7 +81,10 @@ function buildGroups(resolved, agentDir) {
             const fileName = basename(path);
             const parentFolder = basename(dirname(path));
             let displayName;
-            if (resourceType === "extensions" && parentFolder !== "extensions") {
+            if (metadata.source === "builtin") {
+                displayName = path.slice(BUILTIN_PATH_PREFIX.length);
+            }
+            else if (resourceType === "extensions" && parentFolder !== "extensions") {
                 displayName = `${parentFolder}/${fileName}`;
             }
             else if (resourceType === "skills" && fileName === "SKILL.md") {
@@ -554,7 +561,8 @@ class ResourceList {
             return !(state === "inherit" && this.isInheritedGlobalItem(item) && target === pattern);
         });
         if (state !== "inherit") {
-            if (this.isInheritedGlobalItem(item) && !updated.includes(pattern))
+            // Project entries name inherited files to override them. Built-in paths need no entry.
+            if (this.isInheritedGlobalItem(item) && item.metadata.source !== "builtin" && !updated.includes(pattern))
                 updated.push(pattern);
             updated.push(`${state === "load" ? "+" : "-"}${pattern}`);
         }
@@ -658,7 +666,7 @@ class ResourceList {
     }
     getResourcePatternForScope(item, scope) {
         const sourceScope = this.getItemScope(item);
-        if (scope !== sourceScope)
+        if (scope !== sourceScope || item.metadata.source === "builtin")
             return item.path;
         const baseDir = item.metadata.baseDir ?? this.getTopLevelBaseDir(sourceScope);
         return relative(baseDir, item.path);
@@ -698,6 +706,8 @@ class ResourceList {
         return scope === "project" ? join(this.cwd, CONFIG_DIR_NAME) : this.agentDir;
     }
     getResourcePattern(item) {
+        if (item.metadata.source === "builtin")
+            return item.path;
         const scope = item.metadata.scope;
         const baseDir = item.metadata.baseDir ?? this.getTopLevelBaseDir(scope);
         return relative(baseDir, item.path);

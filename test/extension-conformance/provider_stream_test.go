@@ -18,6 +18,7 @@ import (
 )
 
 func TestProviderProducersAcrossSDKs(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name, source string
 		fused        bool

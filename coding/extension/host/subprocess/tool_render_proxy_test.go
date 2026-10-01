@@ -131,10 +131,7 @@ func waitForLines(t *testing.T, proxy *toolRenderProxy, width int, want ...strin
 // one renderer state per tool card shared by both renderers, a context
 // invalidate, and an error that draws the card's fallback.
 func TestToolRenderersAcrossSDKs(t *testing.T) {
-	root := findModuleRoot(t)
-	t.Setenv("PIG_SDK_GO_ROOT", filepath.Join(root, "extensions", "sdk"))
-	t.Setenv("PIG_SDK_PY_ROOT", filepath.Join(root, "extensions", "sdk-py"))
-	t.Setenv("PIG_SDK_RS_ROOT", filepath.Join(root, "extensions", "sdk-rs"))
+	t.Parallel()
 	for _, language := range []string{"go", "python", "rust"} {
 		t.Run(language, func(t *testing.T) {
 			config := toolRendererFactory(t, language, "renderers_"+language)

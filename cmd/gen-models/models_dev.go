@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 )
 
 type modelsDevModel struct {
@@ -40,6 +42,7 @@ type modelsDevProvider struct {
 }
 
 type generatedCatalogModel struct {
+	Type             string             `json:"type"`
 	ID               string             `json:"id"`
 	Name             string             `json:"name"`
 	API              string             `json:"api"`
@@ -70,7 +73,7 @@ func modelsDevCommon(id, provider string, source modelsDevModel) generatedCatalo
 	if maxTokens == 0 {
 		maxTokens = 4096
 	}
-	return generatedCatalogModel{ID: id, Name: name, Provider: provider, Reasoning: source.Reasoning, Input: input,
+	return generatedCatalogModel{Type: "chat", ID: id, Name: name, Provider: provider, Reasoning: source.Reasoning, Input: input,
 		Cost: jsonCost{Input: source.Cost.Input, Output: source.Cost.Output, CacheRead: source.Cost.CacheRead, CacheWrite: source.Cost.CacheWrite}, ContextWindow: contextWindow, MaxTokens: maxTokens}
 }
 
@@ -209,16 +212,45 @@ func generateModelsDev(ctx context.Context, options modelsDevGeneratorOptions) e
 		return err
 	}
 	models = append(models, qwen...)
-	providers := make(map[string]map[string]generatedCatalogModel)
-	for _, model := range models {
-		if providers[model.Provider] == nil {
-			providers[model.Provider] = make(map[string]generatedCatalogModel)
+	openRouter, err := fetchOpenRouterModels(ctx, options.Strict)
+	if err != nil {
+		return err
+	}
+	// models.dev takes priority over OpenRouter for an id both list (generate-models.ts:3443, `??=`).
+	catalogs := generatedCatalogs{Chat: make(map[string]map[string]generatedCatalogModel), Image: make(map[string]map[string]openRouterImageModel), Classifier: make(map[string]map[string]openRouterClassifierModel)}
+	for _, model := range append(models, openRouter.Chat...) {
+		if catalogs.Chat[model.Provider] == nil {
+			catalogs.Chat[model.Provider] = make(map[string]generatedCatalogModel)
 		}
-		providers[model.Provider][model.ID] = model
+		if _, exists := catalogs.Chat[model.Provider][model.ID]; !exists {
+			catalogs.Chat[model.Provider][model.ID] = model
+		}
+	}
+	for _, model := range openRouter.Images {
+		if catalogs.Image[model.Provider] == nil {
+			catalogs.Image[model.Provider] = make(map[string]openRouterImageModel)
+		}
+		if _, exists := catalogs.Image[model.Provider][model.ID]; !exists {
+			catalogs.Image[model.Provider][model.ID] = model
+		}
+	}
+	for _, model := range openRouter.Classifiers {
+		if catalogs.Classifier[model.Provider] == nil {
+			catalogs.Classifier[model.Provider] = make(map[string]openRouterClassifierModel)
+		}
+		if _, exists := catalogs.Classifier[model.Provider][model.ID]; !exists {
+			catalogs.Classifier[model.Provider][model.ID] = model
+		}
 	}
 	// Validation and serialization precede any mutation, as in upstream's staged generation.
 	if !options.JSONOnly {
-		rows := modelsDevRows(models)
+		var chat []generatedCatalogModel
+		for _, provider := range slices.Sorted(maps.Keys(catalogs.Chat)) {
+			for _, id := range slices.Sorted(maps.Keys(catalogs.Chat[provider])) {
+				chat = append(chat, catalogs.Chat[provider][id])
+			}
+		}
+		rows := modelsDevRows(chat)
 		if len(rows) == 0 {
 			return fmt.Errorf("gen-models: parsed 0 models: refusing to clobber output")
 		}
@@ -227,25 +259,122 @@ func generateModelsDev(ctx context.Context, options modelsDevGeneratorOptions) e
 		}
 	}
 	if options.JSONOutput != "" {
-		return writeModelsDevCatalog(options.JSONOutput, providers, options.Pretty)
+		return writeModelsDevCatalog(options.JSONOutput, catalogs, options.Pretty)
 	}
 	return nil
+}
+
+// generatedCatalogs is the hydrated catalog by provider id, then model id, per model type.
+type generatedCatalogs struct {
+	Chat       map[string]map[string]generatedCatalogModel
+	Image      map[string]map[string]openRouterImageModel
+	Classifier map[string]map[string]openRouterClassifierModel
+}
+
+func fetchOpenRouterList(ctx context.Context, query string) ([]openRouterModelListItem, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://openrouter.ai/api/v1/models"+query, nil)
+	if err != nil {
+		return nil, err
+	}
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = response.Body.Close() }()
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("OpenRouter API returned %d", response.StatusCode)
+	}
+	var list struct {
+		Data []openRouterModelListItem `json:"data"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&list); err != nil {
+		return nil, err
+	}
+	return list.Data, nil
+}
+
+// fetchOpenRouterModels ports generate-models.ts:1306-1327. The three listings are fetched concurrently and joined; the
+// first failing listing in request order is reported. A failure is fatal under strict and otherwise reported on stderr
+// with an empty catalog.
+func fetchOpenRouterModels(ctx context.Context, strict bool) (openRouterCatalog, error) {
+	queries := []string{"", "?output_modalities=image", "?output_modalities=decisions"}
+	lists := make([][]openRouterModelListItem, len(queries))
+	errs := make([]error, len(queries))
+	var group sync.WaitGroup
+	for i, query := range queries {
+		group.Go(func() { lists[i], errs[i] = fetchOpenRouterList(ctx, query) })
+	}
+	group.Wait()
+	var err error
+	for _, listErr := range errs {
+		if listErr != nil {
+			err = listErr
+			break
+		}
+	}
+	if err == nil {
+		catalog := buildOpenRouterCatalog(lists[0], lists[1], lists[2])
+		if strict && len(catalog.Images) == 0 {
+			err = errors.New("OpenRouter API returned no usable image models")
+		} else {
+			return catalog, nil
+		}
+	}
+	fmt.Fprintln(os.Stderr, "Failed to fetch OpenRouter models:", err)
+	if strict {
+		return openRouterCatalog{}, err
+	}
+	return openRouterCatalog{}, nil
 }
 
 func modelsDevRows(models []generatedCatalogModel) []modelRow {
 	var rows []modelRow
 	for _, model := range models {
-		rows = append(rows, modelRow{ID: model.ID, Provider: model.Provider, Name: model.Name, API: model.API, BaseURL: model.BaseURL, Compat: model.Compat, ThinkingLevelMap: model.ThinkingLevelMap,
+		rows = append(rows, modelRow{Type: model.Type, ID: model.ID, Provider: model.Provider, Name: model.Name, API: model.API, BaseURL: model.BaseURL, Compat: model.Compat, ThinkingLevelMap: model.ThinkingLevelMap,
 			ContextWindow: model.ContextWindow, MaxTokens: model.MaxTokens, InputCost: model.Cost.Input, OutputCost: model.Cost.Output, CacheRead: model.Cost.CacheRead, CacheWrite: model.Cost.CacheWrite, Reasoning: model.Reasoning, Inputs: model.Input})
 	}
 	return rows
 }
 
-func writeModelsDevCatalog(root string, providers map[string]map[string]generatedCatalogModel, pretty bool) error {
-	ids := slices.Sorted(maps.Keys(providers))
-	files := map[string]any{"models.json": providers, "providers.json": ids}
+// writeModelsDevCatalog writes generate-models.ts:3486-3505's --json-output tree: models.json and providers/<id>.json keep
+// the chat catalog keyed by id; the .all variants list every type, chat then image then classifier, so an id can appear
+// once per type.
+func writeModelsDevCatalog(root string, catalogs generatedCatalogs, pretty bool) error {
+	idSet := make(map[string]bool)
+	for id := range catalogs.Chat {
+		idSet[id] = true
+	}
+	for id := range catalogs.Image {
+		idSet[id] = true
+	}
+	for id := range catalogs.Classifier {
+		idSet[id] = true
+	}
+	ids := slices.Sorted(maps.Keys(idSet))
+	all := make(map[string][]any, len(ids))
+	chat := make(map[string]map[string]generatedCatalogModel, len(ids))
 	for _, id := range ids {
-		files[filepath.Join("providers", id+".json")] = providers[id]
+		chat[id] = catalogs.Chat[id]
+		if chat[id] == nil {
+			chat[id] = map[string]generatedCatalogModel{}
+		}
+		for _, modelID := range slices.Sorted(maps.Keys(catalogs.Chat[id])) {
+			all[id] = append(all[id], catalogs.Chat[id][modelID])
+		}
+		for _, modelID := range slices.Sorted(maps.Keys(catalogs.Image[id])) {
+			all[id] = append(all[id], catalogs.Image[id][modelID])
+		}
+		for _, modelID := range slices.Sorted(maps.Keys(catalogs.Classifier[id])) {
+			all[id] = append(all[id], catalogs.Classifier[id][modelID])
+		}
+		if all[id] == nil {
+			all[id] = []any{}
+		}
+	}
+	files := map[string]any{"models.json": chat, "models.all.json": all, "providers.json": ids}
+	for _, id := range ids {
+		files[filepath.Join("providers", id+".json")] = chat[id]
+		files[filepath.Join("providers", id+".all.json")] = all[id]
 	}
 	encoded := make(map[string][]byte, len(files))
 	for path, value := range files {

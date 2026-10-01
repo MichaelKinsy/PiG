@@ -12,22 +12,35 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
 
-type catalogFixtureTransport struct{ catalog []byte }
+type catalogFixtureTransport struct {
+	catalog []byte
+	// openRouter answers the OpenRouter listings by query string; a missing query answers an empty list.
+	openRouter map[string]string
+}
 
 func (transport catalogFixtureTransport) RoundTrip(request *http.Request) (*http.Response, error) {
 	var data []byte
-	switch request.URL.String() {
-	case "https://models.dev/api.json":
+	url := request.URL.String()
+	switch {
+	case url == "https://models.dev/api.json":
 		data = transport.catalog
-	case "https://openrouter.ai/api/v1/models", "https://ai-gateway.vercel.sh/v1/models":
+	case url == "https://models.dev/models.json?type=decision":
+		data = []byte(`{"typesafe/jev-latest":{"name":"Jev","type":"decision","limit":{"context":64000,"output":0}}}`)
+	case strings.HasPrefix(url, "https://openrouter.ai/api/v1/models"):
 		data = []byte(`{"data":[]}`)
-	case "https://radius.pi.dev/v1/config":
+		if listing, ok := transport.openRouter[strings.TrimPrefix(url, "https://openrouter.ai/api/v1/models")]; ok {
+			data = []byte(listing)
+		}
+	case url == "https://ai-gateway.vercel.sh/v1/models":
+		data = []byte(`{"data":[]}`)
+	case url == "https://radius.pi.dev/v1/config":
 		data = []byte(`{"baseUrl":"https://radius.pi.dev","models":[{"id":"test","name":"Test","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":4096,"maxTokens":4096}]}`)
 	default:
 		return nil, fmt.Errorf("Unexpected fetch: %s", request.URL)
@@ -45,7 +58,17 @@ func TestPortWave12GeneratorSubprocess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	http.DefaultClient = &http.Client{Transport: catalogFixtureTransport{catalog: data}}
+	transport := catalogFixtureTransport{catalog: data}
+	if listings := os.Getenv("PIG_WAVE12_OPENROUTER"); listings != "" {
+		encoded, err := os.ReadFile(listings)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(encoded, &transport.openRouter); err != nil {
+			t.Fatal(err)
+		}
+	}
+	http.DefaultClient = &http.Client{Transport: transport}
 	separator := slices.Index(os.Args, "--")
 	if separator < 0 {
 		t.Fatal("missing generator arguments")
@@ -68,6 +91,12 @@ func isolateGeneratorEnvironment(t *testing.T) {
 
 func runGeneratorSubprocess(t *testing.T, cwd string, catalog any, args ...string) (int, string, string) {
 	t.Helper()
+	return runGeneratorSubprocessWithOpenRouter(t, cwd, catalog, nil, args...)
+}
+
+// runGeneratorSubprocessWithOpenRouter also answers the OpenRouter listings: openRouter maps a query string ("", "?output_modalities=image", ...) to a response body.
+func runGeneratorSubprocessWithOpenRouter(t *testing.T, cwd string, catalog any, openRouter map[string]string, args ...string) (int, string, string) {
+	t.Helper()
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -84,6 +113,15 @@ func runGeneratorSubprocess(t *testing.T, cwd string, catalog any, args ...strin
 	command := exec.CommandContext(ctx, executable, append([]string{"-test.run=^TestPortWave12GeneratorSubprocess$", "--"}, args...)...)
 	command.Dir = cwd
 	command.Env = append(os.Environ(), "PIG_WAVE12_CATALOG="+preload)
+	if openRouter != nil {
+		encoded, err := json.Marshal(openRouter)
+		if err != nil {
+			t.Fatal(err)
+		}
+		listings := filepath.Join(t.TempDir(), "openrouter.json")
+		writeFile(t, listings, string(encoded))
+		command.Env = append(command.Env, "PIG_WAVE12_OPENROUTER="+listings)
+	}
 	var stdout, stderr bytes.Buffer
 	command.Stdout, command.Stderr = &stdout, &stderr
 	err = command.Run()

@@ -19,6 +19,7 @@ export function createInteractiveTui(options) {
             openUrl: openBrowser,
             onRightClickPaste: options.onRightClickPaste,
             copyOnSelect: options.fullscreenCopyOnSelect,
+            wheelScrollLines: options.fullscreenWheelScrollLines ?? "auto",
             copySelection: async (text) => {
                 try {
                     await copyToClipboard(text);

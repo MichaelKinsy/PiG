@@ -11,7 +11,6 @@ package codingagent
 
 import (
 	"fmt"
-	"maps"
 	"math"
 	"net/url"
 	"path/filepath"
@@ -21,6 +20,8 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 // ExtensionSessionView names the session an extension reads and the facts
@@ -70,6 +71,7 @@ func ExtensionSessionInfo(view ExtensionSessionView) map[string]any {
 // sessionReadEntry is the part of a raw session entry the reads inspect.
 type sessionReadEntry struct {
 	raw       json.RawMessage
+	parsed    *orderedjson.Object
 	Type      string  `json:"type"`
 	ID        string  `json:"id"`
 	ParentID  *string `json:"parentId"`
@@ -95,7 +97,12 @@ func newSessionReadLog(sess *Session) (sessionReadLog, error) {
 		if err := json.Unmarshal(raw, parsed); err != nil {
 			return log, fmt.Errorf("decode retained session entry: %w", err)
 		}
-		parsed.raw = json.RawMessage(raw)
+		// Upstream's SessionManager holds JSON.parse of each line, so a consumer sees the entry as JSON.stringify writes it: members in insertion order with integer-like keys first, numbers and strings in their JavaScript form.
+		canonical, err := jsonstringify.Canonicalize(raw)
+		if err != nil {
+			return log, fmt.Errorf("decode retained session entry: %w", err)
+		}
+		parsed.raw = json.RawMessage(canonical)
 		log.entries = append(log.entries, parsed)
 		log.byID[parsed.ID] = parsed
 	}
@@ -212,120 +219,209 @@ func jsTimestamp(timestamp string) any {
 	return float64(parsed.UnixMilli())
 }
 
-func decodeObject(raw json.RawMessage) map[string]any {
-	var object map[string]any
-	_ = json.Unmarshal(raw, &object)
-	if object == nil {
-		object = map[string]any{}
+// object is the entry's JSON as an insertion-ordered object, parsed once per read; callers do not modify it.
+func (e *sessionReadEntry) object() *orderedjson.Object {
+	if e.parsed == nil {
+		object, err := orderedjson.Parse(e.raw)
+		if err != nil {
+			object = orderedjson.New()
+		}
+		e.parsed = object
+	}
+	return e.parsed
+}
+
+// entryObject is raw JSON as an insertion-ordered object.
+func entryObject(raw json.RawMessage) *orderedjson.Object {
+	object, err := orderedjson.Parse(raw)
+	if err != nil {
+		return orderedjson.New()
 	}
 	return object
 }
 
-// contextMessages mirrors upstream sessionEntryToContextMessages.
-func contextMessages(entry *sessionReadEntry) []any {
-	object := decodeObject(entry.raw)
+// member is one member's raw JSON; absent (undefined) is nil.
+func member(object *orderedjson.Object, key string) json.RawMessage {
+	raw, _ := object.Get(key)
+	return raw
+}
+
+// isNullish is JavaScript's `== null` for a member: absent or JSON null.
+func isNullish(raw json.RawMessage) bool { return len(raw) == 0 || string(raw) == "null" }
+
+// jsTruthy is JavaScript truthiness of a parsed JSON value.
+func jsTruthy(raw json.RawMessage) bool {
+	switch string(raw) {
+	case "", "null", "false", `""`, "0", "-0":
+		return false
+	}
+	return true
+}
+
+func memberString(object *orderedjson.Object, key string) string {
+	var value string
+	_ = json.Unmarshal(member(object, key), &value)
+	return value
+}
+
+// setIfDefined sets key to the raw value of source's member when source has it, as an object literal member whose value is not undefined.
+func setIfDefined(target *orderedjson.Object, key string, raw json.RawMessage) {
+	if len(raw) > 0 {
+		target.Set(key, raw)
+	}
+}
+
+func marshalObject(object *orderedjson.Object) json.RawMessage {
+	encoded, _ := object.MarshalJSON()
+	return encoded
+}
+
+func jsTimestampRaw(timestamp string) json.RawMessage {
+	encoded, _ := json.Marshal(jsTimestamp(timestamp))
+	return encoded
+}
+
+// contextMessages mirrors upstream sessionEntryToContextMessages. Each message is raw JSON written in the member order upstream's object literals and spreads give it (core/messages.ts:100-137).
+func contextMessages(entry *sessionReadEntry) []json.RawMessage {
+	object := entry.object()
 	switch entry.Type {
 	case "message":
-		message, _ := object["message"].(map[string]any)
-		if message == nil {
-			return []any{nil}
+		raw := member(object, "message")
+		message, err := orderedjson.Parse(raw)
+		if err != nil {
+			// `entry.message` is not an object: upstream's message.role is not a role, so the value is the message.
+			if len(raw) == 0 {
+				raw = json.RawMessage("null")
+			}
+			return []json.RawMessage{raw}
 		}
-		role, _ := message["role"].(string)
-		if content, present := message["content"]; !present || content == nil {
-			switch role {
+		if isNullish(member(message, "content")) {
+			switch memberString(message, "role") {
 			case "system":
-				message["content"] = ""
+				message.Set("content", json.RawMessage(`""`))
+				return []json.RawMessage{marshalObject(message)}
 			case "user", "assistant", "toolResult":
-				message["content"] = []any{}
+				message.Set("content", json.RawMessage(`[]`))
+				return []json.RawMessage{marshalObject(message)}
 			}
 		}
-		return []any{message}
+		return []json.RawMessage{raw}
 	case "custom_message":
-		message := map[string]any{"role": "custom", "customType": object["customType"], "timestamp": jsTimestamp(entry.Timestamp)}
-		if content, ok := object["content"]; ok && content != nil {
-			message["content"] = content
+		message := orderedjson.New()
+		message.Set("role", json.RawMessage(`"custom"`))
+		setIfDefined(message, "customType", member(object, "customType"))
+		if content := member(object, "content"); !isNullish(content) {
+			message.Set("content", content)
 		} else {
-			message["content"] = []any{}
+			message.Set("content", json.RawMessage(`[]`))
 		}
-		for _, key := range []string{"display", "details"} {
-			if value, ok := object[key]; ok {
-				message[key] = value
-			}
-		}
-		return []any{message}
+		setIfDefined(message, "display", member(object, "display"))
+		setIfDefined(message, "details", member(object, "details"))
+		message.Set("timestamp", jsTimestampRaw(entry.Timestamp))
+		return []json.RawMessage{marshalObject(message)}
 	case "branch_summary":
-		if summary, _ := object["summary"].(string); summary != "" {
-			message := map[string]any{"role": "branchSummary", "summary": summary, "timestamp": jsTimestamp(entry.Timestamp)}
-			if fromID, ok := object["fromId"]; ok {
-				message["fromId"] = fromID
-			}
-			return []any{message}
+		// upstream tests `entry.summary` for truthiness (session-manager.ts:458), so a summary that is not a string still contributes.
+		if summary := member(object, "summary"); jsTruthy(summary) {
+			message := orderedjson.New()
+			message.Set("role", json.RawMessage(`"branchSummary"`))
+			message.Set("summary", summary)
+			setIfDefined(message, "fromId", member(object, "fromId"))
+			message.Set("timestamp", jsTimestampRaw(entry.Timestamp))
+			return []json.RawMessage{marshalObject(message)}
 		}
 	case "compaction":
-		summary := map[string]any{"role": "compactionSummary", "summary": object["summary"], "timestamp": jsTimestamp(entry.Timestamp)}
-		if tokensBefore, ok := object["tokensBefore"]; ok {
-			summary["tokensBefore"] = tokensBefore
+		summary := orderedjson.New()
+		summary.Set("role", json.RawMessage(`"compactionSummary"`))
+		setIfDefined(summary, "summary", member(object, "summary"))
+		setIfDefined(summary, "tokensBefore", member(object, "tokensBefore"))
+		summary.Set("timestamp", jsTimestampRaw(entry.Timestamp))
+		if system := member(object, "systemMessage"); jsTruthy(system) {
+			return []json.RawMessage{system, marshalObject(summary)}
 		}
-		if system, ok := object["systemMessage"]; ok && system != nil {
-			return []any{system, summary}
-		}
-		return []any{summary}
+		return []json.RawMessage{marshalObject(summary)}
 	}
-	return []any{}
+	return []json.RawMessage{}
 }
 
 // projectRawContextEntry mirrors upstream projectContextEntry: a context_edit
 // replaces the content of the messages its target contributes, or omits them.
-func projectRawContextEntry(entry *sessionReadEntry, edit *sessionReadEntry) []any {
+func projectRawContextEntry(entry *sessionReadEntry, edit *sessionReadEntry) []json.RawMessage {
 	messages := contextMessages(entry)
 	if edit == nil {
 		return messages
 	}
-	var fields struct {
-		Replacement *struct {
-			Content json.RawMessage `json:"content"`
-		} `json:"replacement"`
+	replacement := member(edit.object(), "replacement")
+	if isNullish(replacement) {
+		return []json.RawMessage{}
 	}
-	_ = json.Unmarshal(edit.raw, &fields)
-	if fields.Replacement == nil {
-		return []any{}
-	}
-	var content any
-	_ = json.Unmarshal(fields.Replacement.Content, &content)
-	out := make([]any, len(messages))
-	for index, value := range messages {
-		message, ok := value.(map[string]any)
-		role, _ := message["role"].(string)
-		if !ok || (role != "user" && role != "assistant" && role != "toolResult" && role != "custom") {
-			out[index] = value
+	content := member(entryObject(replacement), "content")
+	out := make([]json.RawMessage, len(messages))
+	for index, raw := range messages {
+		message, err := orderedjson.Parse(raw)
+		role := memberString(message, "role")
+		if err != nil || (role != "user" && role != "assistant" && role != "toolResult" && role != "custom") {
+			out[index] = raw
 			continue
 		}
-		replaced := make(map[string]any, len(message))
-		maps.Copy(replaced, message)
-		if text, isText := content.(string); isText && (role == "assistant" || role == "toolResult") {
-			replaced["content"] = []any{map[string]any{"type": "text", "text": text}}
-		} else {
-			replaced["content"] = content
+		// `{...message, content}`: the member keeps its position, or follows the message's; an undefined content is not written.
+		switch {
+		case len(content) == 0:
+			message.Delete("content")
+		case content[0] == '"' && (role == "assistant" || role == "toolResult"):
+			block := orderedjson.New()
+			block.Set("type", json.RawMessage(`"text"`))
+			block.Set("text", content)
+			message.Set("content", json.RawMessage("["+string(marshalObject(block))+"]"))
+		default:
+			message.Set("content", content)
 		}
-		out[index] = replaced
+		out[index] = marshalObject(message)
 	}
 	return out
 }
 
+// sessionModel is upstream's `{ provider, modelId }`; an undefined member is not written.
+type sessionModel struct {
+	Provider json.RawMessage `json:"provider,omitempty"`
+	ModelID  json.RawMessage `json:"modelId,omitempty"`
+}
+
+// projectedSessionEntry is upstream's ProjectedSessionEntry.
+type projectedSessionEntry struct {
+	SourceEntry json.RawMessage   `json:"sourceEntry"`
+	Messages    []json.RawMessage `json:"messages"`
+}
+
+// sessionContext is upstream's SessionContext, in its member order.
+type sessionContext struct {
+	Messages      []json.RawMessage `json:"messages"`
+	ThinkingLevel json.RawMessage   `json:"thinkingLevel,omitempty"`
+	Model         *sessionModel     `json:"model"`
+}
+
+// sessionProjection is upstream's SessionProjection, in its member order.
+type sessionProjection struct {
+	Entries       []projectedSessionEntry `json:"entries"`
+	Messages      []json.RawMessage       `json:"messages"`
+	ThinkingLevel json.RawMessage         `json:"thinkingLevel,omitempty"`
+	Model         *sessionModel           `json:"model"`
+}
+
 // projection mirrors upstream buildSessionProjection.
-func (l sessionReadLog) projection() map[string]any {
+func (l sessionReadLog) projection() sessionProjection {
 	path := l.sessionPath()
-	thinkingLevel, model := "off", any(nil)
+	thinkingLevel, model := json.RawMessage(`"off"`), (*sessionModel)(nil)
 	for _, entry := range path {
-		object := decodeObject(entry.raw)
 		switch entry.Type {
 		case "thinking_level_change":
-			thinkingLevel, _ = object["thinkingLevel"].(string)
+			thinkingLevel = member(entry.object(), "thinkingLevel")
 		case "model_change":
-			model = map[string]any{"provider": object["provider"], "modelId": object["modelId"]}
+			object := entry.object()
+			model = &sessionModel{Provider: member(object, "provider"), ModelID: member(object, "modelId")}
 		case "message":
-			if message, _ := object["message"].(map[string]any); message != nil && message["role"] == "assistant" {
-				model = map[string]any{"provider": message["provider"], "modelId": message["model"]}
+			message, err := orderedjson.Parse(member(entry.object(), "message"))
+			if err == nil && memberString(message, "role") == "assistant" {
+				model = &sessionModel{Provider: member(message, "provider"), ModelID: member(message, "model")}
 			}
 		}
 	}
@@ -336,21 +432,29 @@ func (l sessionReadLog) projection() map[string]any {
 			edits[entry.TargetID] = entry
 		}
 	}
-	projected := make([]any, 0, len(contextEntries))
-	messages := []any{}
+	projected := make([]projectedSessionEntry, 0, len(contextEntries))
+	messages := []json.RawMessage{}
 	for index, entry := range contextEntries {
-		entryMessages := []any{}
+		entryMessages := []json.RawMessage{}
 		if entry.Type != "compaction" || index == 0 {
 			entryMessages = projectRawContextEntry(entry, edits[entry.ID])
 		}
-		projected = append(projected, map[string]any{"sourceEntry": entry.raw, "messages": entryMessages})
+		projected = append(projected, projectedSessionEntry{SourceEntry: entry.raw, Messages: entryMessages})
 		messages = append(messages, entryMessages...)
 	}
-	return map[string]any{"entries": projected, "messages": messages, "thinkingLevel": thinkingLevel, "model": model}
+	return sessionProjection{Entries: projected, Messages: messages, ThinkingLevel: thinkingLevel, Model: model}
+}
+
+// extensionSessionTreeNode is upstream's SessionTreeNode, in its member order.
+type extensionSessionTreeNode struct {
+	Entry          json.RawMessage             `json:"entry"`
+	Children       []*extensionSessionTreeNode `json:"children"`
+	Label          *string                     `json:"label,omitempty"`
+	LabelTimestamp *string                     `json:"labelTimestamp,omitempty"`
 }
 
 // tree mirrors upstream SessionManager.getTree.
-func (l sessionReadLog) tree() []any {
+func (l sessionReadLog) tree() []*extensionSessionTreeNode {
 	type node struct {
 		entry    *sessionReadEntry
 		children []*node
@@ -379,8 +483,8 @@ func (l sessionReadLog) tree() []any {
 		}
 		return math.NaN()
 	}
-	var encode func(n *node) map[string]any
-	encode = func(n *node) map[string]any {
+	var encode func(n *node) *extensionSessionTreeNode
+	encode = func(n *node) *extensionSessionTreeNode {
 		// JavaScript's sort compares with NaN as equal, keeping order.
 		slices.SortStableFunc(n.children, func(a, b *node) int {
 			left, right := timeOf(a), timeOf(b)
@@ -393,18 +497,17 @@ func (l sessionReadLog) tree() []any {
 				return 0
 			}
 		})
-		children := make([]any, 0, len(n.children))
+		out := &extensionSessionTreeNode{Entry: n.entry.raw, Children: make([]*extensionSessionTreeNode, 0, len(n.children))}
 		for _, child := range n.children {
-			children = append(children, encode(child))
+			out.Children = append(out.Children, encode(child))
 		}
-		out := map[string]any{"entry": n.entry.raw, "children": children}
 		if label, ok := labels[n.entry.ID]; ok {
-			out["label"] = label
-			out["labelTimestamp"] = timestamps[n.entry.ID]
+			timestamp := timestamps[n.entry.ID]
+			out.Label, out.LabelTimestamp = &label, &timestamp
 		}
 		return out
 	}
-	out := make([]any, 0, len(roots))
+	out := make([]*extensionSessionTreeNode, 0, len(roots))
 	for _, root := range roots {
 		out = append(out, encode(root))
 	}
@@ -519,7 +622,7 @@ func ExtensionSessionRead(view ExtensionSessionView, method string, args json.Ra
 		return log.projection(), nil
 	case "buildSessionContext":
 		projection := log.projection()
-		return map[string]any{"messages": projection["messages"], "thinkingLevel": projection["thinkingLevel"], "model": projection["model"]}, nil
+		return sessionContext{Messages: projection.Messages, ThinkingLevel: projection.ThinkingLevel, Model: projection.Model}, nil
 	}
 	return nil, fmt.Errorf("sessionRead: unknown method %q", method)
 }

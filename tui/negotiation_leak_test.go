@@ -34,6 +34,7 @@ func TestReadInputStripsEveryNegotiationResponse(t *testing.T) {
 			defer func() { _ = r.Close(); _ = w.Close() }()
 
 			term := NewProcessTerminalWithOutput(r, nil, ioDiscard{})
+			expectKeyboardProtocolReply(term)
 			payload := tc.write
 			if tc.want == "" {
 				// readInput blocks until it has something to return, so give it

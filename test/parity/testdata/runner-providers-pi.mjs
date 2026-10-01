@@ -3,7 +3,7 @@ import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const pkg = resolve('extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent');
-if (JSON.parse(readFileSync(join(pkg, 'package.json'), 'utf8')).version !== '0.87.1') throw Error('unexpected Pi version');
+if (JSON.parse(readFileSync(join(pkg, 'package.json'), 'utf8')).version !== '0.99.2') throw Error('unexpected Pi version');
 const core = (name) => import(pathToFileURL(join(pkg, `dist/core/${name}.js`)));
 const { createExtensionRuntime } = await core('extensions/loader');
 const { ExtensionRunner } = await core('extensions/runner');

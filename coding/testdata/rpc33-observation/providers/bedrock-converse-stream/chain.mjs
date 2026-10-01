@@ -3,7 +3,7 @@
 // bedrock_observation_test.go checks them.
 //
 // Usage: node chain.mjs <chain.json>
-//   env PI_PACKAGE_ROOT installed @earendil-works/pi-coding-agent 0.87.1
+//   env PI_PACKAGE_ROOT installed @earendil-works/pi-coding-agent 0.99.1
 //
 // Records are (epoch, tick, what) with the probe.mjs tick model (async_hooks microtask jobs; an epoch is a byte-delivery macrotask). `hooks` installs Pi's deserialize
 // middleware, which awaits `onResponse` (bedrock-converse-stream.ts:510-523), as when the caller passes `onResponse`; without it Pi awaits `options?.onResponse?.()`
@@ -75,7 +75,7 @@ async function run(delivery, http, hooks) {
   return records;
 }
 
-const out = {piVersion: '0.87.1', awsSdkClientBedrockRuntime: '3.1127.0', smithyCore: '3.33.3', node: process.version, cases: {}};
+const out = {piVersion: '0.99.2', awsSdkClientBedrockRuntime: '3.1127.0', smithyCore: '3.33.3', node: process.version, cases: {}};
 for (const http of ['h1', 'h2']) for (const delivery of ['buffered', 'pending']) for (const hooks of [true, false]) {
   out.cases[`${http}/${delivery}/${hooks ? 'hooks' : 'nohooks'}`] = await run(delivery, http, hooks);
 }

@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -117,6 +118,54 @@ func TestAnthropicUpstreamOAuth(t *testing.T) {
 		}
 		if manualSignal.Err() != context.Canceled {
 			t.Fatalf("manual prompt signal not aborted: %v", manualSignal.Err())
+		}
+	})
+	// .upstream/v0.99.1/packages/ai/test/anthropic-oauth.test.ts:146
+	t.Run("completes login through the browser callback and shows the sign-in page", func(t *testing.T) {
+		var exchangedCode string
+		mockAnthropicOAuthToken(t, `{"access_token":"access","refresh_token":"refresh","expires_in":3600}`, func(_ *http.Request, body map[string]string) { exchangedCode = body["code"] })
+		host := os.Getenv("PI_OAUTH_CALLBACK_HOST")
+		type page struct {
+			status int
+			body   string
+		}
+		callbackPage := make(chan page, 1)
+
+		credential, err := (AnthropicOAuthProvider{}).LoginContext(t.Context(), OAuthLoginCallbacks{
+			OnAuth: func(info OAuthAuthInfo) {
+				parsed, err := url.Parse(info.URL)
+				if err != nil {
+					t.Error(err)
+					return
+				}
+				state := parsed.Query().Get("state")
+				go func() {
+					response, err := oauthNativeClient.Get("http://" + host + ":53692/callback?code=browser-code&state=" + url.QueryEscape(state))
+					if err != nil {
+						t.Error(err)
+						callbackPage <- page{}
+						return
+					}
+					defer func() { _ = response.Body.Close() }()
+					body, _ := io.ReadAll(response.Body)
+					callbackPage <- page{response.StatusCode, string(body)}
+				}()
+			},
+			OnManualCodeInputContext: func(ctx context.Context) (string, error) {
+				<-ctx.Done()
+				return "", errors.New("aborted")
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if credential.Access != "access" || exchangedCode != "browser-code" {
+			t.Fatalf("credential=%+v code=%q", credential, exchangedCode)
+		}
+		response := <-callbackPage
+		if response.status != 200 || !strings.Contains(response.body, "Signed in to Anthropic.") {
+			t.Fatalf("callback page=%d %q", response.status, response.body)
 		}
 	})
 }

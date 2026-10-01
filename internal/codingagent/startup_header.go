@@ -32,16 +32,18 @@ func (m *InteractiveMode) renderBuiltInHeader(width int) []string {
 		return themeFg(theme.Dim, key) + themeFg(theme.Muted, " "+description)
 	}
 	hint := func(action, description string) string { return rawHint(key(action), description) }
-	// pig divergence (D2): the command identity in the logo is pig.
-	logo := "\x1b[1m" + themeFg(theme.Accent, "pig") + "\x1b[22m"
+	// The logo's first line carries the version, its second line the first line of key hints (interactive-mode.ts:977-980).
+	logoTop, logoBottom := piLogoLines(theme.ColorMode())
 	// pig divergence (D63): the startup version is the composite PiG+Pi release identity.
-	logo += themeFg(theme.Dim, " v"+pigversion.Version)
+	withLogo := func(hints string) string {
+		return logoTop + " " + themeFg(theme.Dim, "v"+pigversion.Version) + "\n" + logoBottom + " " + hints
+	}
 	m.toolMu.Lock()
 	expanded := m.builtInHeaderExpanded
 	m.toolMu.Unlock()
 	var instructions string
 	if expanded {
-		instructions = strings.Join([]string{
+		instructions = withLogo(strings.Join([]string{
 			hint("app.interrupt", "to interrupt"),
 			hint("app.clear", "to clear"),
 			rawHint(key("app.clear")+" twice", "to exit"),
@@ -59,9 +61,9 @@ func (m *InteractiveMode) renderBuiltInHeader(width int) []string {
 			rawHint("!!", "to run bash (no context)"),
 			hint("app.message.followUp", "to queue follow-up"),
 			hint("app.message.dequeue", "to edit all queued messages"),
-			hint("app.clipboard.pasteImage", "to paste image (with text fallback)"),
+			hint("app.clipboard.pasteImage", "to paste files on macOS, images, or text"),
 			rawHint("drop files", "to attach"),
-		}, "\n")
+		}, "\n"))
 	} else {
 		instructions = strings.Join([]string{
 			hint("app.interrupt", "interrupt"),
@@ -70,9 +72,31 @@ func (m *InteractiveMode) renderBuiltInHeader(width int) []string {
 			rawHint("!", "bash"),
 			hint("app.tools.expand", "more"),
 		}, themeFg(theme.Muted, " · "))
-		instructions += "\n" + themeFg(theme.Dim, "Press "+key("app.tools.expand")+" to show full startup help and loaded resources.")
+		instructions = withLogo(instructions) + "\n" + themeFg(theme.Dim, "Press "+key("app.tools.expand")+" to show full startup help and loaded resources.")
 	}
 	// pig divergence (D2): self-help names PiG rather than the separate Pi executable.
 	onboarding := themeFg(theme.Dim, "PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.")
-	return tui.NewPaddedText(logo+"\n"+instructions+"\n\n"+onboarding, 1, 0, nil).Render(width)
+	return tui.NewPaddedText(instructions+"\n\n"+onboarding, 1, 0, nil).Render(width)
+}
+
+// Ports packages/coding-agent/src/modes/interactive/components/pi-logo.ts
+//
+// piLogoLines is the pi logo, 4 cells wide and 2 lines tall, in a terminal color mode.
+// It mirrors pi-logo.ts: the brand colors stay fixed across themes and follow the terminal's color mode.
+func piLogoLines(mode tui.TerminalColorMode) (top, bottom string) {
+	const reset = "\x1b[0m"
+	coral, blue, yellow := piLogoColor(228, 138, 122), piLogoColor(79, 142, 179), piLogoColor(234, 182, 93)
+	fg := func(color tui.Color) string { return tui.ForegroundAnsi(color, mode) }
+	// The fourth cell of the top line is empty, so it is padded to the width of the bottom line.
+	top = fg(coral) + tui.BackgroundAnsi(blue, mode) + "▀" + reset + fg(coral) + "▀█" + reset + " "
+	bottom = fg(blue) + "█▀" + reset + " " + fg(yellow) + "█" + reset
+	return top, bottom
+}
+
+func piLogoColor(r, g, b float64) tui.Color {
+	color, err := tui.NewRgbColor(r, g, b)
+	if err != nil {
+		panic(err) // the channels are constants inside 0..255
+	}
+	return color
 }

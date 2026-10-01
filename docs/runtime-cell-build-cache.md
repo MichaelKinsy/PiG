@@ -186,7 +186,7 @@ Use these commands for inspection and explicit pressure:
 
 ```bash
 pig extensions cache stats [--json]
-pig extensions cache prune [--retention <duration>] [--max-size <bytes>] [--dry-run] [--json]
+pig extensions cache prune [--retention <duration>] [--max-size <bytes>] [--failures] [--dry-run] [--json]
 ```
 
 Explicit size pressure removes inactive entries from oldest successful use to

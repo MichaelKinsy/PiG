@@ -1,0 +1,19 @@
+--- FAIL: TestAllListsTheCodemodeAndToolSearchBuiltinsAsReplaceable (0.00s)
+--- FAIL: TestResolveReportsUnknownBuiltinsLikePi (0.00s)
+--- FAIL: TestFactoriesRegisterTheirToolInactive (0.00s)
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/coding/extension/builtin	0.025s
+--- FAIL: TestCodemodeDescriptionListsEverythingWithoutABudget (0.00s)
+--- FAIL: TestCodemodeDescriptionFillsTheBudgetRoundRobinCheapestFirstAndSaysWhatIsMissing (0.00s)
+--- FAIL: TestCodemodeDescriptionNeverListsDeferredToolsAndStillCountsThem (0.00s)
+--- FAIL: TestCodemodeDescriptionListsOnlyNamespacesWithAZeroBudget (0.00s)
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode	0.027s
+--- FAIL: TestTokenizeSplitsCamelCaseAndSnakeCaseDropsStopWordsAndFoldsPlurals (0.00s)
+--- FAIL: TestBm25RankerRanksByTermRelevanceAndRespectsTheLimit (0.00s)
+--- PASS: TestBm25RankerReturnsNothingForUnknownOrEmptyQueries (0.00s)
+--- FAIL: TestBm25RankerIncludesTheNamespaceInTheSearchText (0.00s)
+--- FAIL: TestCreateDescriptionListsTheSources (0.00s)
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch	0.025s
+FAIL

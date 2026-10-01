@@ -10,11 +10,13 @@ import (
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
+// boxRenderCache holds the unpadded child lines and the padding they were rendered with. Upstream box.ts padding is fixed at construction; Box's exported padding fields can change between frames, so the padding is part of the cache key.
 type boxRenderCache struct {
-	childLines []string
-	width      int
-	bgSample   string
-	lines      []string
+	childLines         []string
+	width              int
+	paddingX, paddingY int
+	bgSample           string
+	lines              []string
 }
 
 // Box component - a container that applies padding and background to children.
@@ -73,7 +75,7 @@ func (b *Box) Invalidate() {
 
 func (b *Box) matchCache(width int, childLines []string, bgSample string) bool {
 	cache := b.cache
-	if cache == nil || cache.width != width || cache.bgSample != bgSample || len(cache.childLines) != len(childLines) {
+	if cache == nil || cache.width != width || cache.paddingX != b.PaddingX || cache.paddingY != b.PaddingY || cache.bgSample != bgSample || len(cache.childLines) != len(childLines) {
 		return false
 	}
 	for i := range childLines {
@@ -90,14 +92,13 @@ func (b *Box) Render(width int) []string {
 	}
 	contentWidth := max(1, width-b.PaddingX*2)
 	leftPad := strings.Repeat(" ", b.PaddingX)
+	// Keep the child lines unpadded: children usually return the same string values every frame, so the cache check below compares identical strings. Padding here would create new strings that must be compared byte by byte.
 	childLines := make([]string, 0, 8)
 	children := make([]mouseChild, len(b.children))
 	for i, child := range b.children {
 		lines := child.Render(contentWidth)
 		children[i] = mouseChild{component: child, height: len(lines)}
-		for _, line := range lines {
-			childLines = append(childLines, leftPad+line)
-		}
+		childLines = append(childLines, lines...)
 	}
 	b.mouseLayout = &mouseLayout{width: contentWidth, children: children}
 	if len(childLines) == 0 {
@@ -115,13 +116,12 @@ func (b *Box) Render(width int) []string {
 		result = append(result, b.applyBg("", width))
 	}
 	for _, line := range childLines {
-		result = append(result, b.applyBg(line, width))
+		result = append(result, b.applyBg(leftPad+line, width))
 	}
 	for range b.PaddingY {
 		result = append(result, b.applyBg("", width))
 	}
-	cacheLines := append([]string(nil), childLines...)
-	b.cache = &boxRenderCache{childLines: cacheLines, width: width, bgSample: bgSample, lines: result}
+	b.cache = &boxRenderCache{childLines: childLines, width: width, paddingX: b.PaddingX, paddingY: b.PaddingY, bgSample: bgSample, lines: result}
 	return result
 }
 

@@ -173,7 +173,7 @@ func (b *BashExecutionBlock) Render(width int) []string {
 	if len(displayLines) > 0 {
 		styled := make([]string, len(displayLines))
 		for i, line := range displayLines {
-			styled[i] = muted + line + SGRFgReset
+			styled[i] = muted + line + FgClose(muted)
 		}
 		text := "\n" + strings.Join(styled, "\n")
 		var rendered []string
@@ -253,9 +253,13 @@ func (b *BashExecutionBlock) statusLines(hidden int) []string {
 	return lines
 }
 
-// Color tokens. Each is the active theme's token (Pi bash-execution.ts
-// theme.fg("bashMode" | "dim" | "muted")), already built in the theme's color
-// mode. The theme schema requires every token, so none is ever empty.
+// Color tokens. Truecolor matches upstream theme/dark.json:
+//
+//	bashMode  #b5bd68  green   (181,189,104)
+//	dim       #666666  dimGray (102,102,102)
+//	muted     #808080  gray    (128,128,128)
+//
+// Each follows the active theme's color mode.
 func bashHeaderColor() string { return ActiveTheme().BashMode }
 func bashDimColor() string    { return ActiveTheme().Dim }
 func bashMutedColor() string  { return ActiveTheme().Muted }

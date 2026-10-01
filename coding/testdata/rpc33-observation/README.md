@@ -1,6 +1,6 @@
 # RPC33 exact-Pi fixtures
 
-`probe.mjs` runs the reference implementation. It pins Pi 0.87.1 and OpenAI 6.40.0 before constructing the matrix. `inputs.json` exports the probe's axes and exact HTTP response bodies. `pi.json` retains the complete raw first fresh oracle execution, including clocks. Do not replace it with Go output.
+`probe.mjs` runs the reference implementation. It pins Pi 0.99.1 and OpenAI 7.19.0 before constructing the matrix. `inputs.json` exports the probe's axes and exact HTTP response bodies. `pi.json` retains the complete raw first fresh oracle execution, including clocks. Do not replace it with Go output.
 
 The owning explanation is [`docs/findings/rpc33-observation-matrix.md`](../../../docs/findings/rpc33-observation-matrix.md). The Go differential test is `TestRPC33ObservationMatrix` in `coding/rpc33_observation_matrix_test.go`. Declared durability is three complete executions. No Node process or credentials are needed to replay the checked-in oracle against Go.
 

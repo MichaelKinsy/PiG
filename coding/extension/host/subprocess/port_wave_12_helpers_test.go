@@ -35,7 +35,7 @@ func isolateExampleHost(t *testing.T) {
 
 func upstreamExamplePath(t *testing.T, name string) string {
 	t.Helper()
-	path, err := filepath.Abs(filepath.Join("../../../..", ".upstream/v0.87.1/packages/coding-agent/examples/extensions", name+".ts"))
+	path, err := filepath.Abs(filepath.Join("../../../..", ".upstream/current/packages/coding-agent/examples/extensions", name+".ts"))
 	if err != nil {
 		t.Fatal(err)
 	}

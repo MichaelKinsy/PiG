@@ -50,7 +50,7 @@ func loadUpstreamExample(t *testing.T, name, cwd string, results map[string]exte
 		},
 	})
 	host.SetUIBridge(bridge)
-	entry := filepath.Join(findModuleRoot(t), ".upstream", "v0.87.1", "packages", "coding-agent", "examples", "extensions", name+".ts")
+	entry := filepath.Join(findModuleRoot(t), ".upstream", "current", "packages", "coding-agent", "examples", "extensions", name+".ts")
 	loaded, errs := host.LoadAll(t.Context(), []ExtConfig{{Name: name, Source: entry, Enabled: true}})
 	if len(errs) != 0 || len(loaded) != 1 {
 		t.Fatalf("load %s: %v (%d extensions)", name, errs, len(loaded))
@@ -59,6 +59,7 @@ func loadUpstreamExample(t *testing.T, name, cwd string, results map[string]exte
 }
 
 func TestInputTransformStreamingExample(t *testing.T) {
+	t.Parallel()
 	const diff = " src/index.ts | 5 ++---\n 1 file changed, 2 insertions(+), 3 deletions(-)"
 	success := extension.ExecResult{Stdout: diff}
 	for _, tt := range []struct {
@@ -106,6 +107,7 @@ func TestInputTransformStreamingExample(t *testing.T) {
 }
 
 func TestGitMergeAndResolveExample(t *testing.T) {
+	t.Parallel()
 	ok := extension.ExecResult{}
 	fail := extension.ExecResult{Stderr: "error", Code: 1}
 	withUpstream := func() map[string]extension.ExecResult {

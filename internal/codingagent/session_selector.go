@@ -267,7 +267,7 @@ func sessionFg(color, text string) string {
 	if color == "" {
 		return text
 	}
-	return color + text + tui.SGRFgReset
+	return color + text + tui.FgClose(color)
 }
 
 func sessionBold(text string) string { return "\x1b[1m" + text + tui.SGRBoldDimReset }

@@ -148,7 +148,7 @@ func TestFetchOptionUpstream(t *testing.T) {
 			customCalls.Add(1)
 			return &http.Response{StatusCode: http.StatusUnauthorized, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(`{"error":{"message":"upstream rejected request"}}`)), Request: request}, nil
 		})}
-		result := GenerateImagesOpenRouter(t.Context(), ImagesModel{ID: "test-model", API: APIImagesOpenRouter, Provider: ProviderImagesOpenRouter, BaseURL: fallback.URL, Output: []string{"image"}}, ImagesContext{Input: []ContentBlock{TextContent{Text: "draw"}}}, ProviderImagesOptions{APIKey: "test-key", Fetch: custom})
+		result := GenerateImagesOpenRouter(t.Context(), ImageModel{ID: "test-model", API: APIImagesOpenRouter, Provider: ProviderImagesOpenRouter, BaseURL: fallback.URL, Output: []string{"image"}}, ImagesContext{Input: []ContentBlock{TextContent{Text: "draw"}}}, ProviderImagesOptions{APIKey: "test-key", Fetch: custom})
 		if result.StopReason != ImagesStopReasonError || customCalls.Load() != 1 || fallbackCalls.Load() != 0 || http.DefaultClient != ambient {
 			t.Fatalf("result=%+v custom=%d fallback=%d", result, customCalls.Load(), fallbackCalls.Load())
 		}

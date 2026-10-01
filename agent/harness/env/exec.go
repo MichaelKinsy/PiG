@@ -2,9 +2,9 @@ package env
 
 import (
 	"context"
+	"io"
 	"os"
 	"os/exec"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -107,7 +107,7 @@ func newShellRun(ctx context.Context, env *NodeExecutionEnv, options *harness.Sh
 }
 
 func (run *shellRun) execute(command string, config shellConfig, cwd string, timeout time.Duration) (harness.ShellExecResult, error) {
-	cmd, stdout, stderr, err := run.start(command, config, cwd)
+	cmd, stdin, stdout, stderr, err := run.start(command, config, cwd)
 	if err != nil {
 		return harness.ShellExecResult{}, err
 	}
@@ -120,10 +120,17 @@ func (run *shellRun) execute(command string, config shellConfig, cwd string, tim
 	onAbort, drainAbort := ownedCallback(run.kill)
 	defer drainAbort(context.AfterFunc(run.ctx, onAbort))
 
+	var input sync.WaitGroup
+	if stdin != nil {
+		input.Go(func() { writeCommand(stdin, command) })
+	}
 	var pumps sync.WaitGroup
 	pumps.Go(func() { run.pump(stdout) })
 	pumps.Go(func() { run.pump(stderr) })
 	_ = cmd.Wait()
+	// os/exec's Wait also waits for the goroutine that copies a reader to the
+	// child's stdin.
+	input.Wait()
 	run.drain(&pumps, stdout, stderr)
 	run.finishSpill()
 	run.capture.Finish()
@@ -132,16 +139,21 @@ func (run *shellRun) execute(command string, config shellConfig, cwd string, tim
 }
 
 // start spawns the shell with piped stdout/stderr as the leader of its own
-// process group and registers it for Cleanup.
-func (run *shellRun) start(command string, config shellConfig, cwd string) (*exec.Cmd, *os.File, *os.File, error) {
+// process group and registers it for Cleanup. A shell that reads the command
+// from stdin gets a pipe, whose write end start returns; the command is an
+// argument otherwise, and stdin is nil.
+func (run *shellRun) start(command string, config shellConfig, cwd string) (*exec.Cmd, *os.File, *os.File, *os.File, error) {
+	spawnError := func(err error) error {
+		return &harness.ExecutionError{Code: harness.ExecutionErrorSpawnError, Message: err.Error(), Cause: err}
+	}
 	stdoutRead, stdoutWrite, err := os.Pipe()
 	if err != nil {
-		return nil, nil, nil, &harness.ExecutionError{Code: harness.ExecutionErrorSpawnError, Message: err.Error(), Cause: err}
+		return nil, nil, nil, nil, spawnError(err)
 	}
 	stderrRead, stderrWrite, err := os.Pipe()
 	if err != nil {
 		closeAll(stdoutRead, stdoutWrite)
-		return nil, nil, nil, &harness.ExecutionError{Code: harness.ExecutionErrorSpawnError, Message: err.Error(), Cause: err}
+		return nil, nil, nil, nil, spawnError(err)
 	}
 	args := config.args
 	if !config.commandFromStdin {
@@ -154,8 +166,14 @@ func (run *shellRun) start(command string, config shellConfig, cwd string) (*exe
 	cmd.Stderr = stderrWrite
 	cmd.SysProcAttr = detachedProcessAttributes()
 	stdin := nodespawn.Ignore
+	var stdinWrite *os.File
 	if config.commandFromStdin {
-		cmd.Stdin = strings.NewReader(command)
+		var stdinRead *os.File
+		if stdinRead, stdinWrite, err = os.Pipe(); err != nil {
+			closeAll(stdoutRead, stdoutWrite, stderrRead, stderrWrite)
+			return nil, nil, nil, nil, spawnError(err)
+		}
+		cmd.Stdin = stdinRead
 		stdin = nodespawn.Pipe
 	}
 	// Upstream spawns with stdio [commandFromStdin ? "pipe" : "ignore",
@@ -166,16 +184,27 @@ func (run *shellRun) start(command string, config shellConfig, cwd string) (*exe
 	// byte: Git Bash parses it with MSYS2 rules, not the C runtime's.
 	nodespawn.SetProgram(cmd)
 	nodespawn.SetCommandLine(cmd)
-	startErr := run.env.startChild(cmd)
-	closeAll(stdoutWrite, stderrWrite)
-	if startErr != nil {
+	// startChild closes the child's ends of the pipes.
+	if startErr := run.env.startChild(cmd); startErr != nil {
 		closeAll(stdoutRead, stderrRead)
-		return nil, nil, nil, &harness.ExecutionError{Code: harness.ExecutionErrorSpawnError, Message: spawnErrorMessage(config.shell, startErr), Cause: startErr}
+		if stdinWrite != nil {
+			closeAll(stdinWrite)
+		}
+		return nil, nil, nil, nil, &harness.ExecutionError{Code: harness.ExecutionErrorSpawnError, Message: spawnErrorMessage(config.shell, startErr), Cause: startErr}
 	}
 	run.errMu.Lock()
 	run.pid = cmd.Process.Pid
 	run.errMu.Unlock()
-	return cmd, stdoutRead, stderrRead, nil
+	return cmd, stdinWrite, stdoutRead, stderrRead, nil
+}
+
+// writeCommand writes command to the shell's stdin and closes it, as os/exec
+// copies a reader to a child's stdin. A write error means that the shell
+// stopped reading; Exec ignores it, as it ignores the error of cmd.Wait that
+// reports it.
+func writeCommand(stdin *os.File, command string) {
+	_, _ = io.WriteString(stdin, command)
+	closeAll(stdin)
 }
 
 // ownedCallback wraps fn for a timer or context callback. drain stops the

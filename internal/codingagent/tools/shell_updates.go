@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/ai"
 )
 
 // bashUpdateThrottle is the minimum time between streaming updates.
@@ -118,7 +119,7 @@ func (u *shellUpdateScheduler) emit() {
 		tr := snapshot.Truncation
 		details.Truncation = &tr
 	}
-	u.onUpdate(snapshot.Content, details)
+	u.onUpdate(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: snapshot.Content}}, Details: details})
 }
 
 // finish mirrors finishOutput's clearUpdateTimer + emitOutputUpdate: drop a

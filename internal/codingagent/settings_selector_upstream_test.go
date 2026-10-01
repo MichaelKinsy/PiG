@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -20,7 +21,7 @@ func TestSettingsSelectorUpstream(t *testing.T) {
 	tui.SetThemeByName("dark")
 	t.Cleanup(func() { tui.SetTUIKeybindings(previousKeys); tui.SetThemeByName(previousTheme) })
 
-	// packages/coding-agent/test/settings-selector.test.ts:25
+	// packages/coding-agent/test/settings-selector.test.ts:24 (upstream 0.99.1)
 	t.Run("cycles through fullscreen settings", func(t *testing.T) {
 		for _, tc := range []struct {
 			label string
@@ -30,6 +31,13 @@ func TestSettingsSelectorUpstream(t *testing.T) {
 			{"Fullscreen exit output", []string{"resume-hint", "transcript"}, (*SettingsManager).GetFullscreenExitOutput},
 			{"Fullscreen scrollbar", []string{"always", "hidden", "auto"}, (*SettingsManager).GetFullscreenScrollbar},
 			{"Fullscreen copy on select", []string{"false", "true"}, func(sm *SettingsManager) string { return fmt.Sprint(sm.GetFullscreenCopyOnSelect()) }},
+			// #9758: custom values from settings.json stay in the cycle.
+			{"Fullscreen wheel scrolling", []string{"10", "auto", "1"}, func(sm *SettingsManager) string {
+				if lines := sm.GetFullscreenWheelScrollLines(); !lines.Auto {
+					return fmt.Sprint(lines.Lines)
+				}
+				return "auto"
+			}},
 		} {
 			t.Run(tc.label, func(t *testing.T) {
 				sm := NewSettingsManager(t.TempDir(), t.TempDir())
@@ -37,6 +45,7 @@ func TestSettingsSelectorUpstream(t *testing.T) {
 					s.FullscreenExitOutput = "transcript"
 					s.FullscreenScrollbar = "auto"
 					s.FullscreenCopyOnSelect = new(true)
+					s.FullscreenWheelScrollLines = json.RawMessage("7")
 				}); err != nil {
 					t.Fatal(err)
 				}
@@ -71,10 +80,14 @@ func TestSettingsSelectorUpstream(t *testing.T) {
 			})
 		}
 	})
-	// packages/coding-agent/test/settings-selector.test.ts:60
+	// packages/coding-agent/test/settings-selector.test.ts:65 (upstream 0.99.1): the system theme comes first, then automatic.
 	t.Run("keeps the configured fixed theme marked while browsing", func(t *testing.T) {
-		frames := captureSettingsThemeBrowsing(t, "dark", "dark", []string{"dark", "light"}, "\x1b[B", "\x1b")
-		assertSettingsFrameMarkers(t, frames, 0, "    Automatic", "→ ✓ dark")
+		frames := captureSettingsThemeBrowsing(t, "dark", "dark", []string{"system", "dark", "light"}, "\x1b[B", "\x1b")
+		assertSettingsFrameMarkers(t, frames, 0, "→ ✓ dark")
+		listing := regexp.MustCompile(` {4}system +Theme created from your terminal's colors\n {4}automatic +Use separate themes`)
+		if !slices.ContainsFunc(frames, func(frame settingsSelectorFrame) bool { return frame.consumed == 0 && listing.MatchString(frame.text) }) {
+			t.Fatalf("no first frame lists the system theme before automatic: %+v", frames)
+		}
 		assertSettingsFrameMarkers(t, frames, 1, "  ✓ dark", "→   light")
 	})
 	// packages/coding-agent/test/settings-selector.test.ts:85
@@ -242,7 +255,9 @@ func captureSettingsThemeBrowsing(t *testing.T, current, appearance string, name
 	}
 	close(input)
 	m := &InteractiveMode{opts: InteractiveOptions{SettingsManager: sm, Settings: sm.Get()}, editor: tui.NewEditor(), editorContainer: tui.NewContainer(), modalInputCh: input}
-	m.themeState.terminalTheme = tui.TerminalTheme(appearance)
+	// upstream 0.99.1 interactive-mode.ts:4804 reads the appearance from themeController.getTerminalTheme(), which is theme.ts getTerminalTheme(): the process-wide terminal appearance rather than controller state.
+	tui.SetTerminalColorScheme(tui.TerminalTheme(appearance))
+	t.Cleanup(func() { tui.SetTerminalColorScheme("") })
 	var frames []settingsSelectorFrame
 	m.tuiInst = &settingsCaptureRenderer{TUI: tui.NewWithOutput(io.Discard, 120, 30), capture: func() {
 		frames = append(frames, settingsSelectorFrame{consumed: len(keys) - len(input), text: stripANSITest(strings.Join(m.editorContainer.Render(120), "\n")), theme: tui.ActiveTheme().Name})

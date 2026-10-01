@@ -18,6 +18,7 @@ package tui
 
 import (
 	"context"
+	"slices"
 	"strings"
 )
 
@@ -112,19 +113,30 @@ func (p *SlashOnlyProvider) GetSuggestions(lines []string, cursorLine, cursorCol
 		type item struct {
 			cmd  SlashCommand
 			text string
+			idx  int
 		}
 		all := make([]item, 0, len(p.Commands))
-		for _, c := range p.Commands {
-			all = append(all, item{cmd: c, text: c.Name})
+		for i, c := range p.Commands {
+			all = append(all, item{cmd: c, text: c.Name, idx: i})
 		}
 		// Upstream autocomplete.ts matches skill commands by their bare name
-		// unless the query itself names the skill: namespace.
-		filtered := FuzzyFilter(all, prefix, func(it item) string {
-			if !strings.HasPrefix(prefix, "skill:") && strings.HasPrefix(it.text, "skill:") {
-				return strings.TrimPrefix(it.text, "skill:")
-			}
-			return it.text
+		// first, then by their full skill: name, so `/skill` lists skills whose
+		// names lack its letters and `/skbra` still finds skill:brainstorm.
+		bareNameMatches := FuzzyFilter(all, prefix, func(it item) string {
+			return strings.TrimPrefix(it.text, "skill:")
 		})
+		bareNameMatched := make(map[int]bool, len(bareNameMatches))
+		for _, match := range bareNameMatches {
+			bareNameMatched[match.idx] = true
+		}
+		var fullNameCandidates []item
+		for _, it := range all {
+			if strings.HasPrefix(it.text, "skill:") && !bareNameMatched[it.idx] {
+				fullNameCandidates = append(fullNameCandidates, it)
+			}
+		}
+		fullNameOnlyMatches := FuzzyFilter(fullNameCandidates, prefix, func(it item) string { return it.text })
+		filtered := slices.Concat(bareNameMatches, fullNameOnlyMatches)
 		if len(filtered) == 0 {
 			return nil
 		}

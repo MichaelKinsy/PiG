@@ -79,6 +79,10 @@ pub const EVENT_TOOL_RESULT: &str = "tool_result";
 pub const EVENT_USER_BASH: &str = "user_bash";
 /// Upstream `pi.on("input", ...)`.
 pub const EVENT_INPUT: &str = "input";
+/// Upstream `pi.on("provider_stream_event", ...)` (`types.ts:884`, `1580`): a parsed provider stream event before Pi normalizes it.
+pub const EVENT_PROVIDER_STREAM_EVENT: &str = "provider_stream_event";
+/// Upstream `pi.on("mcp_servers_change", ...)` (`types.ts:699`, `1562`): an MCP server was registered or unregistered after the extensions are bound. Handling it marks an extension as the one that connects registered servers.
+pub const EVENT_MCP_SERVERS_CHANGE: &str = "mcp_servers_change";
 
 #[cfg(test)]
 mod tests {
@@ -126,8 +130,10 @@ mod tests {
             (EVENT_TOOL_RESULT, "tool_result"),
             (EVENT_USER_BASH, "user_bash"),
             (EVENT_INPUT, "input"),
+            (EVENT_PROVIDER_STREAM_EVENT, "provider_stream_event"),
+            (EVENT_MCP_SERVERS_CHANGE, "mcp_servers_change"),
         ];
-        assert_eq!(pairs.len(), 39);
+        assert_eq!(pairs.len(), 41);
         for (constant, name) in pairs {
             assert_eq!(constant, name);
         }

@@ -15,6 +15,8 @@ A model in PiG is identified by a **provider-qualified spec**: `provider/modelID
 
 The selector lists models from providers with configured authentication. It uses `GEMINI_API_KEY` for Google Gemini, not `GOOGLE_API_KEY`. Providers without configured authentication are omitted.
 
+An extension can add models that choose a physical model for each request. See [Virtual models](virtual-models.md).
+
 ## Scoped models
 
 Scoped models are the list `Ctrl+P` cycles through. They are stored in settings as provider-qualified IDs; PiG accepts legacy bare IDs and rewrites them on next save.

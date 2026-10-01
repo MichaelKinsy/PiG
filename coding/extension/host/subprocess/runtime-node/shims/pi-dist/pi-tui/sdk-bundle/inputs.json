@@ -7,7 +7,11 @@
     },
     {
       "path": "pi-dist/pi-tui/autocomplete.js",
-      "sha256": "1b18b10ff6232f95b8fb5c57390e706686de31449a8f3bd45f34af1038b33e23"
+      "sha256": "a1a66892014afcd095a8d2b2144fcdd1216147e8dcd6fca9a5b25a0082fbf458"
+    },
+    {
+      "path": "pi-dist/pi-tui/colors.js",
+      "sha256": "330cc45db7f9d6f2987ec939075f9142fdad58bc77989e2d0b2204389c5e0370"
     },
     {
       "path": "pi-dist/pi-tui/components/alt-screen-flash.js",
@@ -15,7 +19,7 @@
     },
     {
       "path": "pi-dist/pi-tui/components/box.js",
-      "sha256": "49d9b0afe534c3e2411db328c7d182333b87beefd4456b3ed401c8c0b982ba6b"
+      "sha256": "14e0c1596fde22ce7d67a0ca74ae027a671bb4f529499a2a4a062a5c44e3eb9c"
     },
     {
       "path": "pi-dist/pi-tui/components/cancellable-loader.js",
@@ -23,7 +27,7 @@
     },
     {
       "path": "pi-dist/pi-tui/components/editor.js",
-      "sha256": "eff9e5a18a5bbcd5804de70081f3629c2f99cc0e133c671ca104de2ed8bed747"
+      "sha256": "73e2bece8b520740d499533ab7d1ef7f04cab3fa41ad7053a0dd8b0deb323f8f"
     },
     {
       "path": "pi-dist/pi-tui/components/h-stack.js",
@@ -43,7 +47,7 @@
     },
     {
       "path": "pi-dist/pi-tui/components/markdown.js",
-      "sha256": "cd60f1bfc01eb36ef2ccdae21fd9f55d6369d8e0014cdc56719c1aeb8d2bb3fa"
+      "sha256": "aee81f922ca961f272e0885c33fc26b2c0e406e58a31495c5e6e46c775bd6877"
     },
     {
       "path": "pi-dist/pi-tui/components/mouse-region.js",
@@ -87,7 +91,7 @@
     },
     {
       "path": "pi-dist/pi-tui/index.js",
-      "sha256": "25522e4fc853aff657ca43de57d224548fd86d8631bb351ab9be578416f21d4d"
+      "sha256": "58038ea9abe2f66c98adb9e4058406584df706e344068b9282f13b237369598b"
     },
     {
       "path": "pi-dist/pi-tui/kill-ring.js",
@@ -110,20 +114,24 @@
       "sha256": "8ec9b2e44a2fb2f7f020f5a72be195742da2da148c91d93d359d829e6c0e07a4"
     },
     {
+      "path": "pi-dist/pi-tui/oklab.js",
+      "sha256": "9aa1e62e9770e7f6f81b204c9d0f039d5f0b5cef017920f6d3e5368520428bfe"
+    },
+    {
       "path": "pi-dist/pi-tui/stdin-buffer.js",
       "sha256": "37bcd9c0115f205ec05b7ed1ef44b9de96c6746612e263bd71fd32ba9457feb5"
     },
     {
       "path": "pi-dist/pi-tui/terminal-colors.js",
-      "sha256": "e26c8c31d161d175817b3335baab4476737719c389a2a39312aa2ece67ccb119"
+      "sha256": "ea51c6eb2eb2101b7f57895936e22b72b6caa8e86125dfa024c0312c285faeaa"
     },
     {
       "path": "pi-dist/pi-tui/terminal.js",
-      "sha256": "d9636fd679aed23830be7c8d248d9725883efd43469392228275dac6a85fcc68"
+      "sha256": "e3a594cb638d57da4e195bee6a4ad10e4ebeb3335dbf2bd9990d913ef03ee4fb"
     },
     {
       "path": "pi-dist/pi-tui/tui-alt-screen.js",
-      "sha256": "816b69efd87fa7991e08d68080ae8dad364bd0bd9fa06b31cb921685ef37f5f1"
+      "sha256": "52d3e8130eb5cde9f9bd0c5e11dd1ede90490648a467f2aa8cebf5dd72a2c2a0"
     },
     {
       "path": "pi-dist/pi-tui/tui-main-screen.js",
@@ -132,6 +140,10 @@
     {
       "path": "pi-dist/pi-tui/undo-stack.js",
       "sha256": "7fbb318db3521aa1fa6804ffe50245c18d9e9f210a85a48e175fae6a629259cb"
+    },
+    {
+      "path": "pi-dist/pi-tui/wheel-scroll.js",
+      "sha256": "8d4eb2d65ec42e97399ff827246bc938cf1c49d887d05a8fa47852ca958dfdeb"
     },
     {
       "path": "pi-dist/pi-tui/word-navigation.js",

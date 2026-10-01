@@ -9,8 +9,9 @@ import (
 )
 
 func (a *Agent) toolDeclarations() []ai.ToolSchema {
-	tools := make([]ai.ToolSchema, len(a.opts.Tools))
-	for i, t := range a.opts.Tools {
+	current := a.toolList()
+	tools := make([]ai.ToolSchema, len(current))
+	for i, t := range current {
 		tools[i] = ai.ToToolDeclaration(t.Schema())
 	}
 	return tools

@@ -127,13 +127,13 @@ func buildNativeArtifact(ctx context.Context, p *piglet.Piglet, cells []subproce
 		_, _ = fmt.Fprintf(stdout, "building Piglet Binary %s (%d embedded cell(s), %d fused, target %s)...\n", p.Name, len(built), len(fused), host)
 	}
 	buildArgs := buildprogress.ToolArgs(ctx, "go", pigletBinaryBuildArgs(abary, opts.Version, overlayPath))
-	goCommand, err := toolchain.Go()
+	goToolchain, err := toolchain.ResolveGo()
 	if err != nil {
 		return nil, err
 	}
-	cmd := exec.CommandContext(ctx, goCommand, buildArgs...)
+	cmd := exec.CommandContext(ctx, goToolchain.Command, buildArgs...)
 	cmd.Dir = sourceRoot
-	cmd.Env = sourceBuildEnv(sourceRoot, os.Environ())
+	cmd.Env = goToolchain.Environ(sourceBuildEnv(sourceRoot, os.Environ()))
 	if err := buildprogress.Run(buildprogress.Member(ctx, p.Name), cmd); err != nil {
 		return nil, fmt.Errorf("build Piglet Binary: %w", err)
 	}

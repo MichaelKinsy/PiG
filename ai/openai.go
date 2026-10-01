@@ -704,7 +704,7 @@ func convertCompletionsMessages(messages []Message, options completionsConvertOp
 						}
 						converted.ToolCalls = append(converted.ToolCalls, oaiRequestToolCall{ID: block.ID, Type: "custom", Custom: &oaiRequestToolCallCustom{Name: block.Name, Input: sanitizeSurrogates(input)}})
 					} else {
-						arguments, _ := json.Marshal(block.Arguments)
+						arguments, _ := block.ArgumentsJSON()
 						converted.ToolCalls = append(converted.ToolCalls, oaiRequestToolCall{ID: block.ID, Type: "function", Function: &oaiRequestToolCallFunction{Name: block.Name, Arguments: string(arguments)}})
 					}
 					if detail := parseLegacyOpenAIReasoningDetail(block.ThoughtSignature); detail != nil {
@@ -1257,7 +1257,7 @@ func (p *openAIProvider) convertTools(tools []ToolSchema) ([]oaiTool, error) {
 			Parameters:  t.Parameters,
 		}
 		if supportsStrict {
-			strict, err := resolveJSONSchemaStrictSampling(t, supportsStrict)
+			strict, err := resolveJSONSchemaStrictSampling(t, supportsStrict, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -1694,6 +1694,7 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 
 	builder := newObservedProviderBuilder(ctx, APIOpenAICompletions, p.cfg.ProviderID, p.cfg.Model)
 	builder.modelCost = opts.ModelCost
+	builder.setProviderEventObserver(opts, providerEventModel(p.cfg.ModelMetadata, APIOpenAICompletions, p.cfg.ProviderID, p.cfg.Model))
 	requestContext, abort := context.WithCancel(httpReq.Context())
 	builder.abort = abort
 	httpReq = httpReq.WithContext(requestContext)
@@ -1896,6 +1897,10 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 		var chunk oaiChunk
 		if err := json.Unmarshal([]byte(data), &chunk); err != nil {
 			fail(StopReasonError, fmt.Errorf("openai-completions: invalid SSE JSON: %w", err))
+			return
+		}
+		if err := builder.observeProviderEvent([]byte(data)); err != nil {
+			fail(StopReasonError, err)
 			return
 		}
 

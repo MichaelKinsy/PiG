@@ -1,0 +1,83 @@
+# port-99-f6d red run, 5ae087ce4 + uncommitted red tests
+# go test -run <ported names>; FAIL lines are the red proof, PASS lines are guards that already held
+--- PASS: TestProviderModelConfigJSONRoundTrip_ThinkingLevelMapAndBaseURL (0.00s)
+--- FAIL: TestProviderModelConfigRoundTripsEachVariantWithItsOwnFields (0.00s)
+    --- PASS: TestProviderModelConfigRoundTripsEachVariantWithItsOwnFields/chat_without_a_type (0.00s)
+    --- PASS: TestProviderModelConfigRoundTripsEachVariantWithItsOwnFields/chat_with_a_type (0.00s)
+    --- FAIL: TestProviderModelConfigRoundTripsEachVariantWithItsOwnFields/image (0.00s)
+    --- FAIL: TestProviderModelConfigRoundTripsEachVariantWithItsOwnFields/classifier (0.00s)
+    --- FAIL: TestProviderModelConfigRoundTripsEachVariantWithItsOwnFields/image_with_image_output_only (0.00s)
+--- PASS: TestProviderModelConfigDecodesTypeAndVariantFields (0.00s)
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/coding/extension	0.024s
+FAIL
+--- FAIL: TestRuntimeRegisterMcpServerValidatesChecksOwnershipAndReplacesOwnRegistration (0.00s)
+--- FAIL: TestRunnerEmitsMcpServersChangeForRegistrationsAfterBind (0.00s)
+--- FAIL: TestRunnerReportsRegisteredMcpServersWhenNoExtensionHandlesThem (0.00s)
+--- FAIL: TestRunnerDoesNotReportMcpServersWhenAnExtensionHandlesThem (0.00s)
+--- FAIL: TestRunnerToolContextRunsNestedCallsForTheCallingTool (0.00s)
+--- FAIL: TestRunnerToolContextWithoutExecuteToolActionReturnsErrorOutcome (0.00s)
+--- FAIL: TestRunnerToolContextRejectsCallsOnAStaleRunner (0.00s)
+--- PASS: TestEmitToolResult_NoHandlersReturnsNil (0.00s)
+--- PASS: TestEmitToolResult_StaleRunnerReturnsErrStaleContext (0.00s)
+--- PASS: TestEmitToolResult_HandlerThatReturnsNilDoesNotMarkModified (0.00s)
+--- PASS: TestEmitToolResult_MutationChainCompoundsAcrossHandlers (0.00s)
+--- PASS: TestEmitToolResult_IsErrorPropagates (0.00s)
+--- PASS: TestEmitToolResult_HandlerErrorRoutesViaEmitErrorAndContinues (0.00s)
+--- PASS: TestEmitToolResult_ContentOnlyKeepsIsError (0.00s)
+--- PASS: TestEmitToolResult_UsageChains (0.00s)
+--- PASS: TestEmitToolResult_NextHandlerSeesPredecessorValues (0.00s)
+--- PASS: TestEmitToolResult_TypedDetailsChain (0.00s)
+--- PASS: TestEmitToolResult_TypedVariantPreservesReplacementDetails (0.00s)
+--- PASS: TestEmitToolResult_TypedVariantKeptWhenLossless (0.00s)
+--- PASS: TestEmitToolResult_PowerShellVariantChainsContentAndDetails (0.00s)
+--- FAIL: TestEmitToolResultDropsStructuredContentWhenContentIsReplaced (0.00s)
+--- FAIL: TestEmitToolResultKeepsStructuredContentReturnedWithContent (0.00s)
+--- PASS: TestEmitToolResultWithoutModificationReturnsNothing (0.00s)
+--- FAIL: TestRuntimeQueuesVirtualModelsUntilBound (0.00s)
+--- FAIL: TestRunnerBindFlushesVirtualModelsAndAppliesLaterCallsImmediately (0.00s)
+--- FAIL: TestRuntimeCreateContextFailsUntilTheRunnerBinds (0.00s)
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/coding/extension/host/inproc	0.060s
+FAIL
+--- FAIL: TestRegisterPayloadCarriesToolExposureFields (0.00s)
+--- FAIL: TestPrepareLoadoutRunsInTheExtension (0.00s)
+--- FAIL: TestRegisterPayloadRegistersMcpServersWithTheRuntime (0.00s)
+--- FAIL: TestRegisterPayloadRejectsInvalidAndForeignMcpServers (0.00s)
+--- FAIL: TestRegisterMcpServerCalls (0.00s)
+--- FAIL: TestVirtualModelDeclarationRoutesThroughTheExtension (0.00s)
+--- FAIL: TestVirtualModelRouteCancellationAndErrors (0.00s)
+--- FAIL: TestRegisterVirtualModelCalls (0.00s)
+--- FAIL: TestExecuteToolCallRunsNestedCallsWithUpdatesAndCancellation (0.00s)
+--- FAIL: TestExecuteToolCallWithoutActionReturnsErrorOutcome (0.00s)
+--- FAIL: TestSnapshotCarriesSettingsMcpServersAndCallableTools (0.00s)
+--- FAIL: TestSubprocessToolResultCarriesStructuredContent (0.00s)
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/coding/extension/host/subprocess	0.091s
+FAIL
+--- PASS: TestSDKProviderAttributionUpstream (0.08s)
+--- PASS: TestSDKManagerOverrideUsesOneLiveLog (0.01s)
+--- PASS: TestSDKExplicitThinkingLevelPrecedesConfiguredDefaults (0.00s)
+--- PASS: TestSDKInjectedHistoryKeepsExplicitModelAndFillsThinkingMetadata (0.00s)
+--- PASS: TestSDKManagerReportsConfiguredDirectory (0.01s)
+--- PASS: TestSDKStreamOptionsDefaultsTimeoutForEveryProvider (0.01s)
+--- PASS: TestSDKRequestTimeoutOverridesIdleTimeout (0.01s)
+--- PASS: TestSDKForwardsWebSocketConnectTimeoutFromSettings (0.00s)
+--- PASS: TestSDKRequestWebSocketTimeoutOverridesSettings (0.00s)
+--- PASS: TestSDKForwardsProviderRetrySettings (0.01s)
+--- PASS: TestSDKStreamOptionsRunsHeadersHookOnAssembledHeaders (0.00s)
+--- FAIL: TestSDKForwardsProviderStreamEventsToExtensions (0.00s)
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/coding	0.180s
+FAIL
+
+# Notes
+# - Base: contract commit 906c8fe28 plus a merge of staging porter/pi-0.99.1 (family 4) so agent.AgentToolResult.StructuredContent exists.
+# - PASS lines under the new test names are guards that already held: TestProviderModelConfigDecodesTypeAndVariantFields (the struct gained Type/Output in the contract), TestEmitToolResultWithoutModificationReturnsNothing, and the chat rows of the round-trip test. They are not red-proven.
+# - Each red test fails on an assertion (errNotImplemented, an unset field, a missing behavior), not on a compile error or a panic.
+#
+# Upstream test files of this lane and how each is covered (per-case reasons, L1):
+# - test/sdk-stream-options.test.ts (9 -> 10): "forwards provider stream events to extensions" is TestSDKForwardsProviderStreamEventsToExtensions (:271-298). The header case now names v0.99.1. Per-case difference: upstream builds the extension from a factory with DefaultResourceLoader; the Go test binds an inproc.Runner extension with the same handler, as the header case already did.
+# - test/image-resize-callers.test.ts: the only change is the cast type at :73 (ExtensionContext -> ExtensionToolContext). Designed out per case: the Go read tool gets its model profile from agent.WithToolEnvironment (internal/codingagent/tools/image_resize_callers_upstream_test.go), never from an extension context, so the change has no Go counterpart. The file hash changes, so the integrator re-hashes it.
+# - test/extensions-runner.test.ts (50 -> 50): the only change is the helper line :91 `getSettings: () => ({})` in the bound actions. Go's extension.ExtensionActions.GetSettings is optional and nil-safe, no case asserts on it, and the 50 cases stay ported in coding/extension/host/inproc/upstream_*_test.go. The getSettings behavior itself is covered by TestSnapshotCarriesSettingsMcpServersAndCallableTools. The file hash changes, so the integrator re-hashes it.
+# - Runner behaviors that no upstream test file covers (D-C) have Go tests written from the upstream source, cited per test: createToolContext (runner.ts:948-985), mcp_servers_change and reportUnhandledMcpServers (runner.ts:459-462, 747-762; agent-session-mcp.test.ts:704,723), virtual-model queue and bind (runner.ts:497-541, loader.ts:225-233), emitToolResult structuredContent (runner.ts:1184-1231), registerMcpServer (loader.ts:456-478), ProviderModelConfig variants (types.ts:1929-1991), the wire shapes. The four SDKs' conformance rows belong to lane 6F.

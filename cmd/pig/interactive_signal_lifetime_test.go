@@ -22,6 +22,7 @@ import (
 )
 
 func TestInteractiveSignalsRetainHandlersThroughDisposalAndDrain(t *testing.T) {
+	t.Parallel()
 	binary := os.Getenv("PIG_SIGNAL_REFERENCE_BIN")
 	if binary == "" {
 		binary = buildPigBinaryForSignalTest(t)

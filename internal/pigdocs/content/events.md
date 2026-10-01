@@ -44,6 +44,7 @@ The Go SDK exposes helpers for common events:
 | `OnEvent("session_info_changed", handler)` | `session_info_changed` |
 | `OnEvent("session_before_compact", handler)` | `session_before_compact` |
 | `OnEvent("session_compact", handler)` | `session_compact` |
+| `OnEvent("session_compact_failed", handler)` | `session_compact_failed` |
 | `OnEvent(name, handler)` | any named event |
 
 The lower-level event bridge also emits agent, turn, message, tool-execution,

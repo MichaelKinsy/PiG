@@ -12,6 +12,16 @@ import (
 	"time"
 )
 
+// writeRunSignal sends the Host's run_signal frame. The "wait" commands of the liveness fixtures hold ctx.signal, which is the run's in Pi (runner.ts:917-920): the Host aborts it before it cancels a request (Conn.beforeCancel).
+func writeRunSignal(t *testing.T, peer net.Conn, aborted bool) {
+	t.Helper()
+	args, err := json.Marshal(runSignalFrame{Run: 1, Active: true, Aborted: aborted})
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeLivenessEnvelope(t, peer, Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: runSignalNotify, Args: args}})
+}
+
 func TestNodeRuntimeHeartbeatAndRequestStatesBypassHandlers(t *testing.T) {
 	node, err := exec.LookPath("node")
 	if err != nil {
@@ -120,10 +130,12 @@ func TestNodeRuntimeHeartbeatAndRequestStatesBypassHandlers(t *testing.T) {
 		t.Fatalf("title response = %+v", response)
 	}
 
+	writeRunSignal(t, peer, false)
 	writeLivenessEnvelope(t, peer, Envelope{Type: MsgRequest, ID: "req-cancel", Request: &RequestPayload{Method: "command", Tool: "wait"}})
 	if state := readLivenessEnvelope(t, peer); state.RequestState == nil || state.RequestState.State != "started" {
 		t.Fatalf("cancelled request start = %+v", state)
 	}
+	writeRunSignal(t, peer, true)
 	writeLivenessEnvelope(t, peer, Envelope{Type: MsgCancel, ID: "req-cancel", Cancel: &CancelPayload{RequestID: "req-cancel", Reason: "user cancelled"}})
 	if state := readLivenessEnvelope(t, peer); state.RequestState == nil || state.RequestState.State != "completed" {
 		t.Fatalf("cancelled request completion = %+v", state)

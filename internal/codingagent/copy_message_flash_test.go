@@ -18,7 +18,7 @@ func TestConfirmMessageCopied_FullscreenFlashesInsteadOfStatusLine(t *testing.T)
 		if m.chatContainer.ChildCount() == 0 {
 			t.Fatal("inline copy confirmation should append a status line")
 		}
-		if m.lastStatusText == nil || !strings.Contains(m.lastStatusText.Content, "Copied last agent message to clipboard") {
+		if m.lastStatusText == nil || !strings.Contains(lastStatusContent(m), "Copied last agent message to clipboard") {
 			t.Fatalf("inline status = %v, want the copy-confirmation status line", m.lastStatusText)
 		}
 	})

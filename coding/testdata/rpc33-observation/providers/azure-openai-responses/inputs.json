@@ -1,6 +1,6 @@
 {
-  "piVersion": "0.87.1",
-  "openaiVersion": "6.40.0",
+  "piVersion": "0.99.2",
+  "openaiVersion": "7.19.0",
   "axes": {
     "apis": [
       "azure-openai-responses"

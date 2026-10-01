@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 // This file ports packages/ai/src/api/constrained-sampling.ts: the provider-side
@@ -33,15 +34,47 @@ type grammarToolInputJSONBuffer struct {
 }
 
 // jsonStringJS encodes s the way JavaScript's JSON.stringify does: without Go's
-// default HTML escaping of <, >, &: so reconstructed grammar deltas are
-// byte-faithful to upstream.
+// default HTML escaping of <, >, & and with U+2028 and U+2029 written raw: so
+// reconstructed grammar deltas are byte-faithful to upstream.
 func jsonStringJS(s string) string {
+	// Encoding a string never fails.
+	encoded, _ := marshalJSONUnescaped(s)
+	return string(encoded)
+}
+
+// marshalJSONUnescaped encodes value as JSON the way JSON.stringify writes strings: Go's encoder escapes <, >, &,
+// U+2028 and U+2029, while JSON.stringify writes all five raw.
+func marshalJSONUnescaped(value any) ([]byte, error) {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	enc.SetEscapeHTML(false)
-	// Encode never fails for a string and appends a trailing newline.
-	_ = enc.Encode(s)
-	return strings.TrimSuffix(buf.String(), "\n")
+	if err := enc.Encode(value); err != nil {
+		return nil, err
+	}
+	return rawJSONLineTerminators(bytes.TrimSuffix(buf.Bytes(), []byte("\n"))), nil
+}
+
+// rawJSONLineTerminators rewrites the \u2028 and \u2029 escapes encoding/json always emits as the raw characters.
+// It walks escape pairs so an escaped backslash followed by literal "u2028" text is left unchanged.
+func rawJSONLineTerminators(encoded []byte) []byte {
+	if !bytes.Contains(encoded, []byte(`\u202`)) {
+		return encoded
+	}
+	out := make([]byte, 0, len(encoded))
+	for i := 0; i < len(encoded); i++ {
+		if encoded[i] != '\\' || i+1 >= len(encoded) {
+			out = append(out, encoded[i])
+			continue
+		}
+		if escape := encoded[i:min(i+6, len(encoded))]; bytes.Equal(escape, []byte(`\u2028`)) || bytes.Equal(escape, []byte(`\u2029`)) {
+			out = utf8.AppendRune(out, rune(0x2020+int(escape[5]-'0')))
+			i += 5
+			continue
+		}
+		out = append(out, encoded[i], encoded[i+1])
+		i++
+	}
+	return out
 }
 
 // getGrammarToolInput extracts the string input argument for a grammar tool
@@ -138,6 +171,10 @@ func toStringSlice(v any) []string {
 	}
 }
 
+// UnsupportedStrictSchemaKeywordCheck reports whether a provider's strict mode rejects a schema keyword with this
+// value. Mirrors upstream UnsupportedStrictSchemaKeywordCheck.
+type UnsupportedStrictSchemaKeywordCheck func(key string, value any) bool
+
 // unsupportedStrictJSONSchemaError identifies schemas that cannot be converted
 // without changing their accepted language.
 type unsupportedStrictJSONSchemaError struct {
@@ -190,7 +227,7 @@ func hasJSONSchemaKey(schema map[string]any, key string) bool {
 	return ok
 }
 
-func makeJSONSchemaNodeStrict(value any, order schemaObjectOrder, path string) error {
+func makeJSONSchemaNodeStrict(value any, order schemaObjectOrder, path string, isUnsupportedKeyword UnsupportedStrictSchemaKeywordCheck) error {
 	schema, ok := value.(map[string]any)
 	if !ok {
 		return strictSchemaError("boolean schemas are unsupported")
@@ -198,6 +235,19 @@ func makeJSONSchemaNodeStrict(value any, order schemaObjectOrder, path string) e
 	for _, key := range unsupportedStrictSchemaKeys {
 		if hasJSONSchemaKey(schema, key) {
 			return strictSchemaError(key + " schemas are unsupported")
+		}
+	}
+	if isUnsupportedKeyword != nil {
+		for _, key := range orderedSchemaKeys(schema, order, path) {
+			if isUnsupportedKeyword(key, schema[key]) {
+				// constrained-sampling.ts:65-70: JSON.stringify(value) keeps the authored key order of an object-valued keyword.
+				stringified, err := marshalSchemaWithOrder(schema[key], order, schemaPath(path, key))
+				if err != nil {
+					// JSON.stringify renders a non-finite number as null.
+					stringified = []byte("null")
+				}
+				return strictSchemaError(fmt.Sprintf("%s: %s is unsupported", key, stringified))
+			}
 		}
 	}
 
@@ -210,7 +260,7 @@ func makeJSONSchemaNodeStrict(value any, order schemaObjectOrder, path string) e
 			if isStructuredJSONSchema(variant) {
 				return strictSchemaError("object and array unions are unsupported")
 			}
-			if err := makeJSONSchemaNodeStrict(variant, order, schemaPath(schemaPath(path, "anyOf"), strconv.Itoa(index))); err != nil {
+			if err := makeJSONSchemaNodeStrict(variant, order, schemaPath(schemaPath(path, "anyOf"), strconv.Itoa(index)), isUnsupportedKeyword); err != nil {
 				return err
 			}
 		}
@@ -220,7 +270,7 @@ func makeJSONSchemaNodeStrict(value any, order schemaObjectOrder, path string) e
 		if _, tuple := items.([]any); tuple {
 			return strictSchemaError("tuple schemas are unsupported")
 		}
-		if err := makeJSONSchemaNodeStrict(items, order, schemaPath(path, "items")); err != nil {
+		if err := makeJSONSchemaNodeStrict(items, order, schemaPath(path, "items"), isUnsupportedKeyword); err != nil {
 			return err
 		}
 	}
@@ -262,7 +312,7 @@ func makeJSONSchemaNodeStrict(value any, order schemaObjectOrder, path string) e
 	}
 	for _, name := range propertyNames {
 		property := properties[name]
-		if err := makeJSONSchemaNodeStrict(property, order, schemaPath(schemaPath(path, "properties"), name)); err != nil {
+		if err := makeJSONSchemaNodeStrict(property, order, schemaPath(schemaPath(path, "properties"), name), isUnsupportedKeyword); err != nil {
 			return err
 		}
 		if !slices.Contains(required, name) && !jsonSchemaAllowsNull(property) {
@@ -277,10 +327,10 @@ func makeJSONSchemaNodeStrict(value any, order schemaObjectOrder, path string) e
 // makeStrictJSONSchema converts a tool schema to the strict subset accepted by
 // provider constrained sampling without mutating the authored schema.
 func makeStrictJSONSchema(parameters map[string]any) (map[string]any, error) {
-	return makeStrictJSONSchemaWithOrder(parameters, nil)
+	return makeStrictJSONSchemaWithOrder(parameters, nil, nil)
 }
 
-func makeStrictJSONSchemaWithOrder(parameters map[string]any, order schemaObjectOrder) (map[string]any, error) {
+func makeStrictJSONSchemaWithOrder(parameters map[string]any, order schemaObjectOrder, isUnsupportedKeyword UnsupportedStrictSchemaKeywordCheck) (map[string]any, error) {
 	body, err := json.Marshal(parameters)
 	if err != nil {
 		return nil, err
@@ -289,7 +339,7 @@ func makeStrictJSONSchemaWithOrder(parameters map[string]any, order schemaObject
 	if err := json.Unmarshal(body, &cloned); err != nil {
 		return nil, err
 	}
-	if err := makeJSONSchemaNodeStrict(cloned, order, ""); err != nil {
+	if err := makeJSONSchemaNodeStrict(cloned, order, "", isUnsupportedKeyword); err != nil {
 		return nil, err
 	}
 	if cloned["type"] != "object" {
@@ -300,7 +350,7 @@ func makeStrictJSONSchemaWithOrder(parameters map[string]any, order schemaObject
 
 func getJSONSchemaToolParameters(tool ToolSchema, strict *bool) (map[string]any, error) {
 	if strict != nil && *strict {
-		return makeStrictJSONSchemaWithOrder(tool.Parameters, tool.parameterOrder)
+		return makeStrictJSONSchemaWithOrder(tool.Parameters, tool.parameterOrder, nil)
 	}
 	return tool.Parameters, nil
 }
@@ -309,13 +359,13 @@ func getJSONSchemaToolParameters(tool ToolSchema, strict *bool) (map[string]any,
 // constrained tool should request strict mode, nil when it should not, and an
 // error when strict is required but unsupported. Mirrors upstream
 // resolveJsonSchemaStrictSampling.
-func resolveJSONSchemaStrictSampling(tool ToolSchema, supportsStrictMode bool) (*bool, error) {
+func resolveJSONSchemaStrictSampling(tool ToolSchema, supportsStrictMode bool, isUnsupportedKeyword UnsupportedStrictSchemaKeywordCheck) (*bool, error) {
 	config := tool.ConstrainedSampling
 	if config == nil || config.Type != "json_schema" {
 		return nil, nil
 	}
 	if supportsStrictMode {
-		if _, err := makeStrictJSONSchema(tool.Parameters); err != nil {
+		if _, err := makeStrictJSONSchemaWithOrder(tool.Parameters, tool.parameterOrder, isUnsupportedKeyword); err != nil {
 			var unsupported unsupportedStrictJSONSchemaError
 			if !errors.As(err, &unsupported) {
 				return nil, err

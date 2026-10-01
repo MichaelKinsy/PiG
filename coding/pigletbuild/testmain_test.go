@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // fakeGHStateEnv makes this test binary act as the GitHub CLI. The value is
@@ -30,7 +32,7 @@ func TestMain(m *testing.M) {
 	if state := os.Getenv(fakeGHStateEnv); state != "" {
 		os.Exit(runFakeGH(state, os.Args[1:]))
 	}
-	code := m.Run()
+	code := testenv.RunScoped(m, "pig-plb-")
 	if fakeGHBin != "" {
 		_ = os.RemoveAll(fakeGHBin)
 	}

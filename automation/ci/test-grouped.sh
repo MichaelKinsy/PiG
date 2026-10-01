@@ -70,6 +70,11 @@ echo "[test-grouped] fast-parallel ($FAST_PARALLEL): ${#FAST_PKGS[@]} packages"
 echo "[test-grouped] subprocess-bounded ($SUBPROCESS_PARALLEL): ${#HEAVY_PKGS[@]} packages"
 echo "[test-grouped] serial-exclusive ($SERIAL_PARALLEL): ${#SERIAL_PKGS[@]} packages"
 
+SCRATCH=
+trap '[[ -z "$SCRATCH" ]] || rm -rf "$SCRATCH"' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
 run_group() {
   local label="$1" parallel="$2"
   shift 2
@@ -78,7 +83,16 @@ run_group() {
     return 0
   fi
   echo "[test-grouped] >>> $label"
-  go test -p "$parallel" "${COUNT_FLAG[@]}" "${pkgs[@]}"
+  # Run under a private temporary directory so a test that leaks scratch files or directories fails this group instead of filling the shared one, and remove it on every exit path.
+  local status=0
+  SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/pig-tests.XXXXXX")
+  TMPDIR="$SCRATCH" go test -p "$parallel" "${COUNT_FLAG[@]}" "${pkgs[@]}" || status=$?
+  if [[ $status -eq 0 ]]; then
+    "$ROOT/automation/ci/assert-clean-tmp.sh" "$SCRATCH" || status=$?
+  fi
+  rm -rf "$SCRATCH"
+  SCRATCH=
+  return "$status"
 }
 
 case "$MODE" in

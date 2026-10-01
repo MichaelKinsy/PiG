@@ -31,9 +31,6 @@ func TestProviderObjectsAcrossSDKs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("PIG_SDK_GO_ROOT", filepath.Join(root, "extensions", "sdk"))
-	t.Setenv("PIG_SDK_PY_ROOT", filepath.Join(root, "extensions", "sdk-py"))
-	t.Setenv("PIG_SDK_RS_ROOT", filepath.Join(root, "extensions", "sdk-rs"))
 	for _, language := range []string{"go", "python", "rust"} {
 		placements := []string{"strict", "packed"}
 		if language == "go" {

@@ -18,6 +18,14 @@
       "sha256": "7ed84bd0e2dcd46223cc741b4217051e88c4972c4482e2f12367e5e5e3361dd7"
     },
     {
+      "path": "pi-dist/pi-ai/api/cloudflare-workers-ai-system-one.js",
+      "sha256": "856f69a1e928c02cbc422e0a70a92b4f5a7bba3a79aedbcc0301ee0c235e7470"
+    },
+    {
+      "path": "pi-dist/pi-ai/api/cloudflare-workers-ai-system-one.lazy.js",
+      "sha256": "12339f3ef1ebf42d4148098734c6e1035d704a58656f95f4cd601b1bb8f7e96c"
+    },
+    {
       "path": "pi-dist/pi-ai/api/google-generative-ai.js",
       "sha256": "d6386e6305951cc59951f285dd2fa6928c07b7db1b18dc4137b03a9fecd21080"
     },
@@ -82,6 +90,18 @@
       "sha256": "857a77e2a89923a9c88c136bc06072b9c9577574dd01da97ce2966a646f7d430"
     },
     {
+      "path": "pi-dist/pi-ai/api/system-one-shared.js",
+      "sha256": "2b33d289d2adc1810f1ce7fdb04f8516f24bfe64ace01d54fdc442e5971853d9"
+    },
+    {
+      "path": "pi-dist/pi-ai/api/typesafe-system-one.js",
+      "sha256": "d0f15d314902eb4af7cb52189e3ab5b22ffe306ab41eabbf3ba0788a0078647a"
+    },
+    {
+      "path": "pi-dist/pi-ai/api/typesafe-system-one.lazy.js",
+      "sha256": "9dff2f5316c78d265d02a1c908047bc890c4fa0b13769806f07f326d71adfac2"
+    },
+    {
       "path": "pi-dist/pi-ai/auth/context.js",
       "sha256": "5d0ea91a2fd2acf84e3b9717ce59e75006933c68d8efa91873894a9d963d41a0"
     },
@@ -91,11 +111,11 @@
     },
     {
       "path": "pi-dist/pi-ai/auth/helpers.js",
-      "sha256": "27d4b37f9eeeaa26733bf78437965bd63ae5606813260d4bab045b61009b951b"
+      "sha256": "afa67f03895ace888d574c0c86c226cab35521cecc51fe4c0320ba710fb32a97"
     },
     {
       "path": "pi-dist/pi-ai/auth/resolve.js",
-      "sha256": "82ee45ecec319f59536759312a4de25313a8bb8cb7ce43db43d18edc10fef305"
+      "sha256": "571c448966e4dfe789ab7233a008e4c0ed9f083dedc418c49142a6b81fa3782a"
     },
     {
       "path": "pi-dist/pi-ai/auth/types.js",
@@ -107,31 +127,23 @@
     },
     {
       "path": "pi-dist/pi-ai/env-api-keys.js",
-      "sha256": "3d62be1030de00110e130f25cdb90237ba3d136ce1968964e2c874dcec4ece7e"
-    },
-    {
-      "path": "pi-dist/pi-ai/image-models.generated.js",
-      "sha256": "175edbb6cbf6cd34907b683741644fa6e07cbe47b46fb520509abbbfb1ecd1ab"
+      "sha256": "3e317506825f0a314dfd340386ab0c49c5fed20bb7af33dd50fffa88fe4be9f3"
     },
     {
       "path": "pi-dist/pi-ai/image-models.js",
-      "sha256": "5bb32f6dac3942b14ca4abb6bc6e6c66758b07ca45ea43a426787d596e534d34"
+      "sha256": "281e5aeaaa5464a2a2761ced19c1ed4f9e486d9f5396fa7ce8f709e08e8135f8"
     },
     {
       "path": "pi-dist/pi-ai/images-api-registry.js",
       "sha256": "f0c1987d73ba7e84ee398e70755e309d9ec813d724f2a3116f2376b1cd1b0ab7"
     },
     {
-      "path": "pi-dist/pi-ai/images-models.js",
-      "sha256": "fa97dafcf53796801b1f66b068a26964de61af49099d2cb80b7f72b6f05941bb"
-    },
-    {
       "path": "pi-dist/pi-ai/images.js",
-      "sha256": "4d61c26c7ed224cb712a9c86ae34532f409ecd996606c4b911d2c51fd14be42f"
+      "sha256": "ba363450c047ac2573f1f65c60898b02b606c9258b9dd113755af5c1968a9915"
     },
     {
       "path": "pi-dist/pi-ai/index.js",
-      "sha256": "74ea9b14d448e5997fe4912e461cdb56708f43186c631af204f5b569bb7018ea"
+      "sha256": "35d401e305ef9a43fa88fb7b6db7b960f85c6fb66ffde8964003cec98556b875"
     },
     {
       "path": "pi-dist/pi-ai/legacy-api-aliases.js",
@@ -139,7 +151,7 @@
     },
     {
       "path": "pi-dist/pi-ai/model-catalog.js",
-      "sha256": "be8c8db997b1c49478ea13ae98f369074727d52826f091cd590c70dde90d765a"
+      "sha256": "dc494ba6ee6eaae2be181d8ad5b3247d0bb16c665ee34c26a27d71811935d200"
     },
     {
       "path": "pi-dist/pi-ai/models-store.js",
@@ -147,15 +159,15 @@
     },
     {
       "path": "pi-dist/pi-ai/models.generated.js",
-      "sha256": "220f1c9fad2cb2f62535492b6022e6ee40a8187d1465c2a3aa492f70f6baf6c6"
+      "sha256": "1910de1ff6829d44f7687f36b563c22ed388bf3c96c38293b7eee081a08edc4f"
     },
     {
       "path": "pi-dist/pi-ai/models.js",
-      "sha256": "75fa33149fb608bc4a7b7a0586c8ca8f0024465d580091b0c426c0baf3fbc80a"
+      "sha256": "2efdb7beab5730e2a77163c807b3648a97cd4593d0bda462eb79f69f0630613f"
     },
     {
       "path": "pi-dist/pi-ai/providers/all.js",
-      "sha256": "431a2f530214b57ed74ffb6745883b7b221df603c872e00fee5ae27e16e4e9d3"
+      "sha256": "3435bd777ed87f7271503c40eb81196f3db388a87b47c5b8bffa0618d18edc41"
     },
     {
       "path": "pi-dist/pi-ai/providers/amazon-bedrock.js",
@@ -163,7 +175,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/amazon-bedrock.models.js",
-      "sha256": "0748a4393a9881010d93304d222ef061c4bcd51eeaab506212fdb53dd38a9d30"
+      "sha256": "1e4b83835e8952d59b501ddbc04e8b8e15fedfb94a183c0595643a6923abdd28"
     },
     {
       "path": "pi-dist/pi-ai/providers/ant-ling.js",
@@ -171,15 +183,15 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/ant-ling.models.js",
-      "sha256": "8a95baed4c27976509044963e7dadb7b410482afa8bff4614b3205796371d350"
+      "sha256": "349aee512346a1d36d8b57294be3e31c05b6ff31f4a301b1691e16eef5ea6767"
     },
     {
       "path": "pi-dist/pi-ai/providers/anthropic.js",
-      "sha256": "a336a632990d2f50a17911ee4710ab3fd8680bfb1ad473763b7d4def8904bc17"
+      "sha256": "55a84e43fa8ee4382c41aa6872985f098080eaf73a5b8aa4451d7ce6db8c131d"
     },
     {
       "path": "pi-dist/pi-ai/providers/anthropic.models.js",
-      "sha256": "b819b6579da673c57acf8cdc4276e4783d50173526829aed4b68f5f86850edbd"
+      "sha256": "415abca5324e43073ee30cee8ad01c2b4150f93440a439c7c7a7933424dd5f7e"
     },
     {
       "path": "pi-dist/pi-ai/providers/azure-openai-responses.js",
@@ -187,7 +199,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/azure-openai-responses.models.js",
-      "sha256": "5ff40b9d359bab1265fe945bac51560c5f1f1c3db41c9df929cd1db9ef060572"
+      "sha256": "018e237db4a46ad9496cc866b80bc23a0367878dea5b66960b2a988b4b923e68"
     },
     {
       "path": "pi-dist/pi-ai/providers/baseten.js",
@@ -195,7 +207,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/baseten.models.js",
-      "sha256": "4fa9887b3818e27ebaa265d0936ce532e22fe8bfdfe82c941ff503ae031d0ff1"
+      "sha256": "b4d07108692210546d56568a666aead9bc4a713c8ee504caaafca14b9273b3c0"
     },
     {
       "path": "pi-dist/pi-ai/providers/cerebras.js",
@@ -203,7 +215,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/cerebras.models.js",
-      "sha256": "55431761583bfda11d7d2740ead58ecaf539b5d106a727d15ebc9a4f68a5f5d7"
+      "sha256": "711f7a401be91b8a9ed63493dec577f4d4725f9cfa3bb3251adc10040972bc35"
     },
     {
       "path": "pi-dist/pi-ai/providers/cloudflare-ai-gateway.js",
@@ -211,7 +223,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/cloudflare-ai-gateway.models.js",
-      "sha256": "a3df0210994f0d8987441981920560222e89936a242cf6a47de1b80fba8e448e"
+      "sha256": "18ccf3a6a5f7b31985bd97f7ed91be98f471f92519182d8a7ea9b559fe32b77c"
     },
     {
       "path": "pi-dist/pi-ai/providers/cloudflare-auth.js",
@@ -219,183 +231,187 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/cloudflare-stream.js",
-      "sha256": "8c02aa4d494297986b2d91388e13e7d56f8d9722282aa97b189e0382622a2b38"
+      "sha256": "b815d17959fe76c2b916d16f74be51f6393939aaf640e865db514832e0fadbf4"
     },
     {
       "path": "pi-dist/pi-ai/providers/cloudflare-workers-ai.js",
-      "sha256": "c737e89d1f737d8868827a1157a7e5deacc88629ee4f6a8fad732285fa5a4548"
+      "sha256": "d07ebc882420d601fd54493deda1fac0a0c37c4f48a65dc7f3b93e93786969c5"
     },
     {
       "path": "pi-dist/pi-ai/providers/cloudflare-workers-ai.models.js",
-      "sha256": "2f0748289941b14ce97138b45b02a4e71b4fa87623545c888aa769c31734a242"
+      "sha256": "6cc7dda625cb181225966377ecdc8d506c1067ea31f6bbc595411aeb7fd2e67c"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/.manifest.json",
-      "sha256": "bc6d998b30c71798e9be22f7098406ed380a146b17d0aa78b9ad8203d47f6250"
+      "sha256": "324b8ef8dd42c067ca43e2c4b0daca91f4f537c348266243efe761e324f43512"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/amazon-bedrock.json",
-      "sha256": "348babe9936d0d8efa54e3afa60aecacdc7ad39a9ca11687eeff92121367980d"
+      "sha256": "a780b6402760cb3c7f25233bc68057df76dfcd0feb0913d419bb059e984441f0"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/ant-ling.json",
-      "sha256": "335137fb6dc428544ca56ab8fd52b300e7d0dcf97869fa10c1022669da8bfdeb"
+      "sha256": "628feab3ef6c7d80ce96f75999804e1d9f05fec3851e5302e30fff3b69db90f6"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/anthropic.json",
-      "sha256": "474a010cd96c759d60419a6ba745747d9a87f172276dc85b7568da9d072b4e75"
+      "sha256": "3ff00b68990382e42626ebd1b65dcc28ae3cad9e6faa8920331ba92f067f1b3a"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/azure-openai-responses.json",
-      "sha256": "c351c6af1882660ffa8a8598594b86671b45817106e45ac920535aaeac59fc96"
+      "sha256": "adeb2cf9d944d84f81b0d633c2e4e6bfa548a806c431902bd037c5f36500be21"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/baseten.json",
-      "sha256": "60001c0aa6c7c9112b00c2ed6f646b58baed196782fe4db6028074e9ccedc5e5"
+      "sha256": "b04d1423d6958bec857ffccc36726f091ec1a8f3a09cf0836b64cc94b0ee697d"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/cerebras.json",
-      "sha256": "f180b9ca76bc103dede2c10827e859895742bcfda67f6205758c0bec6be391b4"
+      "sha256": "3eccb58c5de3d0dc7ba49dc6e477ba29f00cb3150ce0a35cc90d59e6b5ab368e"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/cloudflare-ai-gateway.json",
-      "sha256": "21ca8d9b740a752d6e70a8ca9f3cb75417ba3ff69ffc5b84440b2c1ff40d88cb"
+      "sha256": "52decade622d1d25f1af90385b1aec7331dad00d56e010a5e4d15118efae67ce"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/cloudflare-workers-ai.json",
-      "sha256": "7b07349dedfc2f47fda77d3d525b0c0e5d236f8d5cd97a17399275091721afa3"
+      "sha256": "b9f76cc83756a05920a8a7046c515919a1de918331b860a211f309bb716c4bb0"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/deepseek.json",
-      "sha256": "549a7ddbdcfd4c59272f1ea9c7d6d9a70bbbfccad3df3a75fb16d6918ac54d0d"
+      "sha256": "10a296fb3e898f7715c80890c8af0af4f5fd58f22dbcd6612fdc5d762157ccdc"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/fireworks.json",
-      "sha256": "b6a6490129c66a845bcc76957138db9b25b0b2afa3e12c5d2c502ba2026c7509"
+      "sha256": "d6144ba451bd7a0617669527bec1898f97a633f7d7ea5035d8e03234550340c0"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/github-copilot.json",
-      "sha256": "bb59f8e4ffca00a8e6031baee78f4bc39d0e95b7647452a3605decb7c4cff30a"
+      "sha256": "573f05c2dfc0c8158e252dd286d6b174cd323f965284d7ae157439d8e3dea92c"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/google-vertex.json",
-      "sha256": "51867a5cdb223c5b9d21f8b54c17790aff024d9a4855edf4a9856d6e1a39d7c1"
+      "sha256": "40090c680538bc867f2624d986a449f361be4dfa6ba96d7a27402050f036e009"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/google.json",
-      "sha256": "328822707e554d5977974d4b24695c2878aad48e5ca527c1efb0284141ff708c"
+      "sha256": "c0f5a633e5e5a5044432db3e537f4bc674d4de18df09325c6349547fcc13cabe"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/groq.json",
-      "sha256": "f1d03e0d6cdaef643f8d3a854d7caba784b2a820619a928c4711d08b6688de41"
+      "sha256": "910952ad9dad07856983459d63fce0148dba1203edd7b10d801a77c5824f3405"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/huggingface.json",
-      "sha256": "2afa4769c606655cf6c36df332ad41a41ec43a19cf9bae4e337243b54f5c9349"
+      "sha256": "1b8604bd31a5e05fe43a40ec1ec6dfc1a51a28b0b020151ef057fab43f57c923"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/kimi-coding.json",
-      "sha256": "9884f065fe5a0e68e3538590c28019476077712f0542198eef6fdb53b8edd2ee"
+      "sha256": "582250b920454d98940da3e7e99d30b807edbea28f2eb8ac15f658d2ef41e8fc"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/meta.json",
-      "sha256": "1b650998c0f9b404246cde1d353105e6d825d8a7292d8f8c43e85dd3402dc130"
+      "sha256": "0c7e9a370a7005c5a89dc94f0f93bc67b8935c3f802de324f11af6ff56fff429"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/minimax-cn.json",
-      "sha256": "17c6d6a27514af90d6c519b7971d8c7e7624ceb12bc94a1384ceb3393c297e97"
+      "sha256": "f962c20ee6a6a342820f778e9dc363a18a524bf11998f6e2c57f2989915d62e5"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/minimax.json",
-      "sha256": "29c0078460251b3e0224b4c5c994c108a83c028a7ffcb1ff85bdc0cdb3bad988"
+      "sha256": "17a432f80d0ea6dd26eade80a4314250d3a855678601728a5f70dd8fa0d21dd2"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/mistral.json",
-      "sha256": "df70e9066f39ffd93734895530653d642e9491bf66dd4b6ab1138f0cb400ae65"
+      "sha256": "10f33bff9adf1248f7e6848e5890c265399f1f94e5b42cfdc28c109d547af98d"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/moonshotai-cn.json",
-      "sha256": "6397ff35e9c3fc0928cbc3a4877c12a3bff615c7fa917a0fba4359c2767557e5"
+      "sha256": "79c9585dc84ee525ebaebbc78b3c55f3d369ec884d4f943488f1e0b14e3587f5"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/moonshotai.json",
-      "sha256": "7259c6884e0f858de650ee39974a670d0381cf9f6f9f6d2e46b921413fcf1544"
+      "sha256": "1da2c4e34f22aef17a07c974d85bdee8e1b68b6dc712e3769c935b3f1e7dadca"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/nvidia.json",
-      "sha256": "79452d78d25b41c9b1f16d645c9a6839c4721c4a29dd287513db796ad9763c84"
+      "sha256": "3b4e7b799bf3eaacd1af0491eef77fe33147ea7f72a3a9fa54d77af0e7eacf4c"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/openai-codex.json",
-      "sha256": "4bb30a26d1b40e1f67c9f24891fca0ce25b030bc4cbbb529be78608cd4466fdf"
+      "sha256": "3cc35a7e122e5c77ee8ec30a9a3bd8bd59629997e85ba2cb3f9e0ed62e9a09c0"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/openai.json",
-      "sha256": "3c52c8587e7e4a1829ed98ec6e0e3d7bbb2baf47e8618556ed1e95a9c0362835"
+      "sha256": "87faafcdd168c9b6fdaef521137834a207437daf0d71641fd0a2f3dddf4d1ecb"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/opencode-go.json",
-      "sha256": "d471bdb6a9f940fc732687d6749f92d2f3c7c9302ff39d2ce0af062f2472a4ad"
+      "sha256": "d05b3eb87b81c6e5a94801484e668e660fe60c68f06a972b716d581c3bbd7c25"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/opencode.json",
-      "sha256": "7dff0aba3c0cde09af480fb2e64a01360723b10b3dd1a4b14727435565251a8a"
+      "sha256": "50ea65154b6f3ec63fa03a99b663b00e194d22b54195a25ba3dd1306db659e26"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/openrouter.json",
-      "sha256": "b591a790d1c1664c92e3eb80c8d174098ea6fff9dd6d88fcf4ee1b55dd53270d"
+      "sha256": "5cf86aa12c4b0ff254b39410f2410cf972d1fe1340fc81251ecc5eb5bdfb37a6"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/qwen-token-plan-cn.json",
-      "sha256": "1bb24ea68feaec83612940e7413bf953d1664a86a521c90750f4c93dd572d8ae"
+      "sha256": "2469a4091c474ec3db0a49a9962d8d2726c074ad9065b96bc4e0c87861c4c6c5"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/qwen-token-plan-individual.json",
-      "sha256": "895804dbf586401e61c372e3edef8ee2530878e36a942e12fccf2469167921de"
+      "sha256": "0fb7cf64faf39d1a3b0a884210a86c87084b805eda15644f5f39293287b959dd"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/qwen-token-plan.json",
-      "sha256": "b626dba49c60a28ac9e6a128fa3e5bde97b43c865c4314e64b9b2191eb8afefa"
+      "sha256": "eff10620cb577142de4ec02698d5961a71fda2fe4f6ae7ea9432bad9d6844176"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/radius.json",
-      "sha256": "016d54b9b6f2f839c700fe5b05523712d6cde7699c65bf9a3f29517f505dc6ee"
+      "sha256": "c8e24a65119360946749c6d5e45782d84ab2794df661b369bb27c2bff3b72e67"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/together.json",
-      "sha256": "f7871c75e427b196abf3a1b5d839d50903a0532ebe2b04903eb26b41c93305fb"
+      "sha256": "94ec3839972061405885d64f5fdbde48eb1f29a159be5e607e9770befd54e28e"
+    },
+    {
+      "path": "pi-dist/pi-ai/providers/data/typesafe.json",
+      "sha256": "a4429a2f696d5cc5273969af61a7310bda07d6bdcd27bf9ac9c76c534cc43716"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/vercel-ai-gateway.json",
-      "sha256": "ca6038aabe7311632ac26e113cf4faede7e847db1163fd3aec534a91589fc926"
+      "sha256": "4b430ccfdee72e776fa5337931a245c49b2f7ec729cccce359953f04aa544c6a"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/xai.json",
-      "sha256": "4798b621df20e84db3a48a629ef8054723ebcc8b24314064f6437eb05036405f"
+      "sha256": "879c49b78b663a52a220ac4ee013e726b10c4f50aaa03bc58ee53a4b54c76928"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/xiaomi-token-plan-ams.json",
-      "sha256": "754a2b6fb127091f569eabbbc84c50862b319bf4ffad434fd0b2f86fd36007f5"
+      "sha256": "ca65178f4525d9705bc8d085ed136cecbe149c4080e857ea6a64ae643d2ac00a"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/xiaomi-token-plan-cn.json",
-      "sha256": "bebafd818b8cc9452405b16599bb3b4e74dc7bd629ad5847ea5c6ce7000706f3"
+      "sha256": "b065326926681c2262084e59c1c19ebdaf146c07107b5242c76b456becf74db0"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/xiaomi-token-plan-sgp.json",
-      "sha256": "edec21ee8d3d8839c96013b94bfa6a55616fb7fd62290fa99db2f3eec61713af"
+      "sha256": "92c3d6d707f81fd9cd2b6d1fb57dc431d90ba51e10fe49d97bc8806035c23492"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/xiaomi.json",
-      "sha256": "640f758f527639c6233d89e548797ffe8d97acc85d5d7dfd647dbb0d42efe146"
+      "sha256": "b81d01a374f7b558728c78d81f4168efa9c8996e6e2b5618409a8094b083c759"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/zai-coding-cn.json",
-      "sha256": "761cd1c3480519c3be2eaed82cff821993f652620d0787d0e38d7bf18ce2ba41"
+      "sha256": "ee5ee705fb6e413a6088db5e3616c27fce802a8ece6c355f1db35490d787f610"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/zai.json",
-      "sha256": "8f5776b5eaba607d898fb26015d46d040a68217e85860173af3bfbab5f8a9eb1"
+      "sha256": "58e6642fdfb736f0b9a4a277c760c536a3cea66a030abbfb2615f7b2851d5c6f"
     },
     {
       "path": "pi-dist/pi-ai/providers/deepseek.js",
@@ -403,7 +419,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/deepseek.models.js",
-      "sha256": "e4f6fcf16453062a9a7d79034ae08c52f74341b833ad355c8c755339d00d9f7d"
+      "sha256": "a0dd589c336e29eb1b8340afae64d06ae4a932b12f735dc717c944e55210f7e0"
     },
     {
       "path": "pi-dist/pi-ai/providers/faux.js",
@@ -415,7 +431,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/fireworks.models.js",
-      "sha256": "f2bbbc6e2c811f30766cd24096d505007161bf48afa1bb1fa7f8542daa5516c1"
+      "sha256": "ab1ad909e8779db90c44fcbb2cba9138877e81b05ed58a77d6d36caad52fed71"
     },
     {
       "path": "pi-dist/pi-ai/providers/github-copilot.js",
@@ -423,7 +439,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/github-copilot.models.js",
-      "sha256": "71b77f3c326fddee575dd498cae7d36ee820c03b3cffe159c378060cab9b4c48"
+      "sha256": "5d321843bc796f50f21c0cf5ecd33c20da80a7c7f1fff0e1a7914bb5ba727432"
     },
     {
       "path": "pi-dist/pi-ai/providers/google-vertex.js",
@@ -431,7 +447,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/google-vertex.models.js",
-      "sha256": "dff87b9670bbcc93118ee16f50c279cd1bd2674502dd6366640a5dc18c18cf1f"
+      "sha256": "0b4d455573c557a8142b4d6601673e6571ee5148c504ac1ac5e90cd71e9d41de"
     },
     {
       "path": "pi-dist/pi-ai/providers/google.js",
@@ -439,7 +455,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/google.models.js",
-      "sha256": "fa6aa05a4c887ee0cac82c27ee93c2d1a4487efbcb062f9676ee352d8ded7312"
+      "sha256": "823134094bd5a7edb97be1f5e6a0034e6e1d89b6648ba06c74f12e0b369cd61c"
     },
     {
       "path": "pi-dist/pi-ai/providers/groq.js",
@@ -447,7 +463,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/groq.models.js",
-      "sha256": "2eee220343e511ff4c0652807845071f850e7ede81768b9863d819169ff215a1"
+      "sha256": "1bbb0911366fadbe576544b1d4cafd61cbba5c6741a0507aa4272579cab919c8"
     },
     {
       "path": "pi-dist/pi-ai/providers/huggingface.js",
@@ -455,7 +471,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/huggingface.models.js",
-      "sha256": "8fbe09ec0a9830d648c87e0a6eeb4c697ef56116bc634eb6be750d885d5fd334"
+      "sha256": "fbf494c1f8e68d708d013d2ac9a66c6b3c876282ef3669fd702f8c1a55e94ab6"
     },
     {
       "path": "pi-dist/pi-ai/providers/images/register-builtins.js",
@@ -467,7 +483,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/kimi-coding.models.js",
-      "sha256": "022ca2caf149f2d5f57baabba03bdf2d445c7d426a799ee493b1c3a2329187b5"
+      "sha256": "4ab9826c07dfd709900e424ecccd3e971c6cc38bb63436c53a1d854583602808"
     },
     {
       "path": "pi-dist/pi-ai/providers/meta.js",
@@ -475,7 +491,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/meta.models.js",
-      "sha256": "77eb9134d2d0910260246414b890efeb600c0db0b2a0d205e1359dd5274f5e08"
+      "sha256": "7fe34a6a5d333069a8efb92eb5e7840a9eee798602e69228deede6b6ceda6fea"
     },
     {
       "path": "pi-dist/pi-ai/providers/minimax-cn.js",
@@ -483,7 +499,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/minimax-cn.models.js",
-      "sha256": "1d250e00d0c1ab5db8d0767f18a8b3a4a2c07ad48fa1f63d2d02642e23611010"
+      "sha256": "8684608a2950ee6ff517d5dfeb6ca23d4784107b6a367f78b77b69449418bc41"
     },
     {
       "path": "pi-dist/pi-ai/providers/minimax.js",
@@ -491,7 +507,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/minimax.models.js",
-      "sha256": "11ee4fc17479b9eaeb4bd1e4542dc7078a65d533b2df422400706ab1c10ac861"
+      "sha256": "16602fd0007482bbe43d74c2fde6acda50b9bc39ae389774306c7d1e2834a5d1"
     },
     {
       "path": "pi-dist/pi-ai/providers/mistral.js",
@@ -499,7 +515,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/mistral.models.js",
-      "sha256": "59cb6acc75c7ac269e7f3d4749f3fc78a2e2e5b36111240c3dea957b676972bb"
+      "sha256": "39fdbdc4d75347f3a64d767ea8bb3bde21ecb5c927c4d252485f4c9b44c3dd65"
     },
     {
       "path": "pi-dist/pi-ai/providers/moonshotai-cn.js",
@@ -507,7 +523,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/moonshotai-cn.models.js",
-      "sha256": "4122d20afd9fcc52e2f233632aa72939c068d474ba6c433919aeeb5fa26223b4"
+      "sha256": "652b4907f9794c5fe52fce656b91f97824403a2325ccf5a5975cb42847bd8861"
     },
     {
       "path": "pi-dist/pi-ai/providers/moonshotai.js",
@@ -515,7 +531,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/moonshotai.models.js",
-      "sha256": "ee07d04a15e1d99453ea950f59f24cd77cd5422b4b14e123ddefa25d57699cb6"
+      "sha256": "a5c3f3acee42dc2992ad225e600d6242c4e58775140f7bc655794ffba4042b85"
     },
     {
       "path": "pi-dist/pi-ai/providers/nvidia.js",
@@ -523,23 +539,23 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/nvidia.models.js",
-      "sha256": "abdc1cd0fbf354c8242b38ad6f2d6a3bb08df7b36738fe60aebdb0dd1a994d92"
+      "sha256": "9b6db60f03107618159128fe5ff29fa30e8fc7ba5747df2cbc66180f66710472"
     },
     {
       "path": "pi-dist/pi-ai/providers/openai-codex.js",
-      "sha256": "769490a94a5bcb062c22e768cf0621c91fb1c5d6be3565e6a6fa765eeeabe674"
+      "sha256": "44087142be22adfd09cf1a87edbbdb74ce155b5fd34e70fa4666f3a9f8a9a680"
     },
     {
       "path": "pi-dist/pi-ai/providers/openai-codex.models.js",
-      "sha256": "2957c06d0abb6dccbfbd154ff1adabbbba14242001a2ff9d56ce78c3fb4d146e"
+      "sha256": "6cf3121e84d836dccf2c738c205884dbecce844b80a168035de4adb9ba218343"
     },
     {
       "path": "pi-dist/pi-ai/providers/openai.js",
-      "sha256": "105d32833a3ff6654c04429e57dee6a710880c59a79fb0e064a34a684000a386"
+      "sha256": "0b5ce81ec2e4838ac3ac362c2bcd1c68f07f7aa30b198163d9c05e7cd3d6b0f8"
     },
     {
       "path": "pi-dist/pi-ai/providers/openai.models.js",
-      "sha256": "e145e1a744107013e2906f164a1b1bed6742e9bc5f69fb268a5fcc2a6295eb3c"
+      "sha256": "a83ebad953df78543c31a41c2f10bf4de1ec04ae59c30de676ef40b8b5736d35"
     },
     {
       "path": "pi-dist/pi-ai/providers/opencode-go.js",
@@ -547,7 +563,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/opencode-go.models.js",
-      "sha256": "3e65dfbea578822f2878eb1afbb98dd54a1a410a4db4e9c690f82125815dbf86"
+      "sha256": "1087ff6cbfe26b315e930a660ab324d3178ae2b58b3d8b69d4e7e56189c97435"
     },
     {
       "path": "pi-dist/pi-ai/providers/opencode-headers.js",
@@ -555,23 +571,19 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/opencode.js",
-      "sha256": "dbcc28f136dfc20592f1f160a34080021b3a5823b8f494a92afa37d3a370b43c"
+      "sha256": "36e5c35c6f449783c672d44b4cc59eb97c4bad858df8ad5ce52612ed7d3951f8"
     },
     {
       "path": "pi-dist/pi-ai/providers/opencode.models.js",
-      "sha256": "0c9bac732667ce6740d2fb4b6a164c5f13c378489c6c11aaa4ceb4d78483d1a4"
-    },
-    {
-      "path": "pi-dist/pi-ai/providers/openrouter-images.js",
-      "sha256": "63b661cbe4545210100cb4dbaeb5bbbe659eb6927cd76105cf1abae986d0ebda"
+      "sha256": "c6b25a0fc80752e27186b179178f93660655a4d8e13bfc972b3d07b383617a5d"
     },
     {
       "path": "pi-dist/pi-ai/providers/openrouter.js",
-      "sha256": "828db03dc04c3d9e06ecdf87799377d0475eff01c8bbb0a12a8ca6ee315fe5c4"
+      "sha256": "dc7eecd94e2f183cf716cf822ae5f93d9773e4489a24ad8cee89d10d32bc69f1"
     },
     {
       "path": "pi-dist/pi-ai/providers/openrouter.models.js",
-      "sha256": "b9bdcf07e4647ee7bdc8dcad74f13f9d4fb34a3076284d726e7254abcc2b3674"
+      "sha256": "9ce32674ee98465fbecbcf2500beded2744277e3915067a29e0f25ae8c2e26d8"
     },
     {
       "path": "pi-dist/pi-ai/providers/qwen-token-plan-cn.js",
@@ -579,7 +591,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/qwen-token-plan-cn.models.js",
-      "sha256": "4480ae6e07527811e974da584dafe0c5d83bfb5ac0859a9b6e561d42d968eee8"
+      "sha256": "e8d65b0d3e0e4aff0eca4dac25435696bb527d391b0eb2370feb42ab0b9ef777"
     },
     {
       "path": "pi-dist/pi-ai/providers/qwen-token-plan-individual.js",
@@ -587,7 +599,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/qwen-token-plan-individual.models.js",
-      "sha256": "e653b4b1d2c465e0b7a7986b0e9c24270f5226f8993c70fee0086dcaef932b65"
+      "sha256": "20b7b02af55cedd37b228b162fe529dbc5286661ec50a4f274d33f6892644bfa"
     },
     {
       "path": "pi-dist/pi-ai/providers/qwen-token-plan.js",
@@ -595,7 +607,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/qwen-token-plan.models.js",
-      "sha256": "38dd51f95ef816b12fddaf73c8cbc34b202b1a2c88dab41ef10b2cbff214b5ea"
+      "sha256": "ed6e45ed454723231bccb0d07b9b14fa9eabe1fce897f07c456e9ec2df4f64d0"
     },
     {
       "path": "pi-dist/pi-ai/providers/radius.js",
@@ -603,7 +615,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/radius.models.js",
-      "sha256": "a76aa681d5b3ec165fcc3f832df13a8e232fedd6576df5caa2c9c7e2eff20377"
+      "sha256": "62a1f3acd3b0a2b2ffe482370ea7e78de2032e6cf245aa3f2e6ac5eed3452386"
     },
     {
       "path": "pi-dist/pi-ai/providers/together.js",
@@ -611,15 +623,23 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/together.models.js",
-      "sha256": "ddc0383cdd0d39a5a5b2810cd5cf96c9b16fe4c5bf4a45ea6f7724a774cca7b0"
+      "sha256": "84228cabbab1c917fcb74170eee1e99c95275899cda33ff579ec0720d15beceb"
+    },
+    {
+      "path": "pi-dist/pi-ai/providers/typesafe.js",
+      "sha256": "83fc7cf71dc4fe705480c7494c3d624ddf3612f63818ec11434b2ad1e3e05460"
+    },
+    {
+      "path": "pi-dist/pi-ai/providers/typesafe.models.js",
+      "sha256": "01b9a4fd9a14ff0e92f93c192789322b62bdff2d07efbcabe2c10d1a1b015570"
     },
     {
       "path": "pi-dist/pi-ai/providers/vercel-ai-gateway.js",
-      "sha256": "ac94a094be3af21836212bf62ec7771c4826c12b3aafd85950721187d0aa76a7"
+      "sha256": "ab6bdd6097782f102bbd81bac979e30199c368e76a01e2f34980404ce2ba727c"
     },
     {
       "path": "pi-dist/pi-ai/providers/vercel-ai-gateway.models.js",
-      "sha256": "089134a4c5fe0071841b0ff787c769a0f2b294d6405ac275db8fd4a98f3b489f"
+      "sha256": "27c68f0eaa8c7d3d6689784e9e6fdba97d4f3c7ae9819d40007ba0beea0c95b9"
     },
     {
       "path": "pi-dist/pi-ai/providers/xai.js",
@@ -627,7 +647,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/xai.models.js",
-      "sha256": "8d753cb825702298c7bee8880effadf56460e8bf61540deadd623a35acb7d9a5"
+      "sha256": "b264e29d3ee5622a9881a2b199d2c71f096f96fce8a0513185a0b60924d3311c"
     },
     {
       "path": "pi-dist/pi-ai/providers/xiaomi-token-plan-ams.js",
@@ -635,7 +655,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/xiaomi-token-plan-ams.models.js",
-      "sha256": "34043fe91d32692116a912777c3c7f645de27fcf291580a4e9e9af14d952a843"
+      "sha256": "7cf04ec99fe505c4f5d7d725d4bd43749b45321697bb029cbf7dc54199911df7"
     },
     {
       "path": "pi-dist/pi-ai/providers/xiaomi-token-plan-cn.js",
@@ -643,7 +663,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/xiaomi-token-plan-cn.models.js",
-      "sha256": "f34bcda1ceec90489715723e9d02341f4c04aa6e08c2de603190c91d44a25ee5"
+      "sha256": "ad162db1a8847670e3dfb4dbcc09e2a16b4638aa09433820af3cc1e0dfcaa96e"
     },
     {
       "path": "pi-dist/pi-ai/providers/xiaomi-token-plan-sgp.js",
@@ -651,7 +671,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/xiaomi-token-plan-sgp.models.js",
-      "sha256": "158ccc3c399719a24558f257db7ada81facbd6d8f447b1f8913b2baf5ed2e037"
+      "sha256": "77357e88c0cfcdb321300fef586d4d75e1ce23205eee70f6946fd0d6095db102"
     },
     {
       "path": "pi-dist/pi-ai/providers/xiaomi.js",
@@ -659,7 +679,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/xiaomi.models.js",
-      "sha256": "5c7aa1de72f9b477cdc846a06279342a9679d69bc8578d548dcbd9110fa84116"
+      "sha256": "04f7cceef3219404e8d6214bf93f050a02ed732c55dbe2cbc00ac9e7cd8b5351"
     },
     {
       "path": "pi-dist/pi-ai/providers/zai-coding-cn.js",
@@ -667,7 +687,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/zai-coding-cn.models.js",
-      "sha256": "a5252728a948df6de4ac9d061b91617f8f8832290cb45b957c5e829ed975e6fe"
+      "sha256": "a3fcf259259d3fe29f3b66cf1579c91a46da03375d4c96a5b720cae7473e687c"
     },
     {
       "path": "pi-dist/pi-ai/providers/zai.js",
@@ -675,7 +695,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/zai.models.js",
-      "sha256": "9c286b005d44b6301ae14ae36bddfe637b4d717f351b3e12bf8176b60b79301f"
+      "sha256": "500e17ed8ff77ba19f297d44ad9aaa087434a0e1c2accdd844838efb42605525"
     },
     {
       "path": "pi-dist/pi-ai/session-resources.js",
@@ -698,16 +718,36 @@
       "sha256": "698070e564b12f303927b0c28845a0ec51f2f3dd29434724dcdffddd31b0b469"
     },
     {
+      "path": "pi-dist/pi-ai/utils/error-body.js",
+      "sha256": "3fbe4d7fdaa35ef2a65bd8d84f83317d774ad49db9403b00ef663a09ce1d454b"
+    },
+    {
+      "path": "pi-dist/pi-ai/utils/headers.js",
+      "sha256": "69a355967b3e735a9b22d46f4cf41b901eb2ce29c2c438b20d46de67668533c7"
+    },
+    {
       "path": "pi-dist/pi-ai/utils/json-parse.js",
       "sha256": "fb8eb0c1ee0ca3e1885cbab9bc5788b8e7cc07b49251587a3279ace0fff18bbf"
     },
     {
+      "path": "pi-dist/pi-ai/utils/model-operations.js",
+      "sha256": "1f05431db8497143a9d692bac4619380a18559d2547fd1e7e09e11e676de1a73"
+    },
+    {
+      "path": "pi-dist/pi-ai/utils/models-error.js",
+      "sha256": "7c8f802c2c77671f4b1721a07f3fefd007a2b332b222cd644ba285b3a74d9693"
+    },
+    {
       "path": "pi-dist/pi-ai/utils/overflow.js",
-      "sha256": "90a6616007318492a573cf4b298c6be8c6dedfb3c7512aecffd370c253d853e2"
+      "sha256": "85570a78e9ba3e0322fe1b3f14c991b6a439b1d3eb89af306e2e7e9ade3d53b4"
+    },
+    {
+      "path": "pi-dist/pi-ai/utils/provider-retry.js",
+      "sha256": "4aa5c34d72f58d3cb67bc8b71c486f11237cda02c86889e7a67c20d6418c35a9"
     },
     {
       "path": "pi-dist/pi-ai/utils/retry.js",
-      "sha256": "292e2a6654fdd48d6f020eedb2084a70b3ccceb289c37c65ad2d41c45dc664dc"
+      "sha256": "ae91b950515c239d8bbae9e6a85074b10d5ae4195b20effa228ea51898c0658d"
     },
     {
       "path": "pi-dist/pi-ai/utils/text.js",

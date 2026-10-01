@@ -1,0 +1,7 @@
+/**
+ * Worker entry for the codemode sandbox in bundled builds. The Node bundle and the Bun binary
+ * build this file as a separate entrypoint because pi-codemode's own worker file is not on disk
+ * there; `getCodemodeWorkerSpecifier()` in config.ts resolves it.
+ */
+import "../../../pi-codemode/runtime/worker.js";
+//# sourceMappingURL=worker.js.map

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 const root = fileURLToPath(new URL('../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent', import.meta.url));
-if (JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version !== '0.87.1') throw new Error('Expected Pi 0.87.1');
+if (JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version !== '0.99.2') throw new Error('Expected Pi 0.99.2');
 const { Editor } = await import(pathToFileURL(join(root, 'node_modules/@earendil-works/pi-tui/dist/components/editor.js')));
 const theme = {borderColor:s=>s,selectList:{selectedPrefix:s=>s,selectedText:s=>s,description:s=>s,scrollInfo:s=>s,noMatch:s=>s}};
 const tui = {terminal:{columns:80,rows:24},requestRender(){}};

@@ -3,12 +3,14 @@ package coding
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
 	"slices"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -104,6 +106,87 @@ func TestModelRuntimeNativeCompatibilityUpstream(t *testing.T) {
 			t.Fatal("unregister retained provider")
 		}
 	})
+	// .upstream/v0.99.2/packages/coding-agent/test/model-runtime-modify-models-compat.test.ts:94-136 (#9962, #10190): initial model selection reads the snapshot before the asynchronous refresh finishes.
+	t.Run("marks a native provider with a stored credential as configured when it registers", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			const id = "extension-native"
+			// The credential is stored before the runtime is created, as ModelRuntime.create({ credentials: AuthStorage.inMemory(...) }) does: the create-time refresh seeds the snapshot's stored providers.
+			dir := t.TempDir()
+			stored := fmt.Sprintf(`{%q:{"type":"oauth","access":"access","refresh":"refresh","expires":%d}}`, id, time.Now().Add(time.Hour).UnixMilli())
+			if err := os.WriteFile(filepath.Join(dir, "auth.json"), []byte(stored), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			services, err := NewServices(ServicesOptions{CWD: dir, AgentDir: dir})
+			if err != nil {
+				t.Fatal(err)
+			}
+			services.Registry().SetModelsStore(ai.NewInMemoryModelsStore())
+			t.Cleanup(services.Close)
+			runtime := services.ModelRuntime()
+			model := nativeCompatModel("native", id, "https://fallback.test/v1")
+			provider := &ai.ModelsProvider{ID: id, Name: "Extension Native", GetModels: func() ([]*ai.Model, error) { return []*ai.Model{model}, nil }, Auth: ai.ProviderAuth{OAuth: &ai.OAuthAuth{
+				Name: "Native OAuth",
+				Login: func(context.Context, ai.AuthInteraction, ai.LoginOptions) (ai.Credential, error) {
+					panic("unused")
+				},
+				Refresh: func(_ context.Context, credential ai.Credential) (ai.Credential, error) { return credential, nil },
+				ToAuth: func(credential ai.Credential) (ai.ModelAuth, error) {
+					return ai.ModelAuth{APIKey: credential.Access}, nil
+				},
+			}}, Stream: nativeUnusedStream, StreamSimple: nativeUnusedStream}
+
+			if err := runtime.RegisterNativeProvider(provider); err != nil {
+				t.Fatal(err)
+			}
+
+			if !runtime.HasConfiguredAuth(id) || !runtime.IsUsingOAuth(id) {
+				t.Fatalf("configured=%v oauth=%v right after registration, want both", runtime.HasConfiguredAuth(id), runtime.IsUsingOAuth(id))
+			}
+			if got := snapshotAuth(runtime, id); !reflect.DeepEqual(got, &ai.AuthCheck{Type: ai.CredentialOAuth, Source: "configured provider"}) {
+				t.Fatalf("provisional auth = %+v", got)
+			}
+			requireAvailableIDs(t, runtime, id, "native")
+			if result := runtime.Refresh(t.Context(), ai.ModelsRefreshOptions{AllowNetwork: new(false)}); result.Aborted || len(result.Errors) != 0 {
+				t.Fatalf("refresh = %+v", result)
+			}
+			if !runtime.HasConfiguredAuth(id) {
+				t.Fatal("a real availability pass dropped the stored-credential provider")
+			}
+		})
+	})
+	// model-runtime.ts markProvisionallyConfigured (model-runtime.ts:900-917): a provider with neither a stored credential nor configured request auth gets no provisional entry, and an API-key native provider's entry is an api_key check.
+	t.Run("keeps an unconfigured native provider unavailable until its check runs and types a configured API key provider as api_key", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			dir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(dir, "auth.json"), []byte(`{"stored-key":{"type":"api_key","key":"secret"}}`), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			services, err := NewServices(ServicesOptions{CWD: dir, AgentDir: dir})
+			if err != nil {
+				t.Fatal(err)
+			}
+			services.Registry().SetModelsStore(ai.NewInMemoryModelsStore())
+			t.Cleanup(services.Close)
+			runtime := services.ModelRuntime()
+			stored := nativeCompatProvider(nativeCompatModel("one", "stored-key", "https://stored.test/v1"))
+			stored.Auth.APIKey.Resolve = func(context.Context, ai.APIKeyAuthInput) (*ai.AuthResult, error) { return nil, nil }
+			bare := nativeCompatProvider(nativeCompatModel("two", "bare", "https://bare.test/v1"))
+			bare.Auth.APIKey.Resolve = func(context.Context, ai.APIKeyAuthInput) (*ai.AuthResult, error) { return nil, nil }
+			for _, provider := range []*ai.ModelsProvider{stored, bare} {
+				if err := runtime.RegisterNativeProvider(provider); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if got := snapshotAuth(runtime, "stored-key"); !reflect.DeepEqual(got, &ai.AuthCheck{Type: ai.CredentialAPIKey, Source: "configured provider"}) {
+				t.Fatalf("stored API-key provider auth = %+v", got)
+			}
+			requireAvailableIDs(t, runtime, "stored-key", "one")
+			if got := snapshotAuth(runtime, "bare"); got != nil {
+				t.Fatalf("unconfigured provider auth = %+v, want none", got)
+			}
+			requireAvailableIDs(t, runtime, "bare")
+		})
+	})
 	// .upstream/v0.87.1/packages/coding-agent/test/model-runtime-modify-models-compat.test.ts:94
 	t.Run("preserves native deferred methods through provider overlays", func(t *testing.T) {
 		services, _ := nativeCompatServices(t, `{"providers":{"extension-native-deferred":{"baseUrl":"https://overlay.test/v1"}}}`, nil)
@@ -174,8 +257,8 @@ func TestModelRuntimeNativeCompatibilityUpstream(t *testing.T) {
 	t.Run("publishes refreshModels results without forcing ModelsStore persistence", func(t *testing.T) {
 		services, store := nativeCompatServices(t, "", nil)
 		runtime := services.ModelRuntime()
-		if err := runtime.RegisterProvider("extension-dynamic", ProviderConfigInput{BaseURL: "http://localhost:8080/v1", API: ai.APIOpenAICompletions, APIKey: "local", RefreshModels: func(ai.RefreshModelsContext) ([]*ai.Model, error) {
-			return []*ai.Model{nativeCompatModel("live", "extension-dynamic", "http://localhost:8080/v1")}, nil
+		if err := runtime.RegisterProvider("extension-dynamic", ProviderConfigInput{BaseURL: "http://localhost:8080/v1", API: ai.APIOpenAICompletions, APIKey: "local", RefreshModels: func(ai.RefreshModelsContext) ([]ai.AnyModel, error) {
+			return []ai.AnyModel{nativeCompatModel("live", "extension-dynamic", "http://localhost:8080/v1")}, nil
 		}}); err != nil {
 			t.Fatal(err)
 		}
@@ -196,7 +279,7 @@ func TestModelRuntimeNativeCompatibilityUpstream(t *testing.T) {
 		services, _ := nativeCompatServices(t, "", map[string]ai.Credential{"extension-oauth": {Type: ai.CredentialOAuth, Access: "access", Refresh: "refresh", Expires: time.Now().Add(time.Minute).UnixMilli()}})
 		runtime := services.ModelRuntime()
 		model := nativeCompatModel("base", "extension-oauth", "https://example.test/v1")
-		if err := runtime.RegisterProvider("extension-oauth", ProviderConfigInput{BaseURL: model.ProviderMeta.BaseURL, API: model.ProviderMeta.API, Models: []*ai.Model{model}, OAuth: &ExtensionOAuthConfig{Name: "Extension OAuth", RefreshToken: func(_ context.Context, credential ai.Credential) (ai.Credential, error) { return credential, nil }, GetAPIKey: func(credential ai.Credential) string { return credential.Access }, ModifyModels: func(models []*ai.Model, credential ai.Credential) []*ai.Model {
+		if err := runtime.RegisterProvider("extension-oauth", ProviderConfigInput{BaseURL: model.ProviderMeta.BaseURL, API: model.ProviderMeta.API, Models: []ai.AnyModel{model}, OAuth: &ExtensionOAuthConfig{Name: "Extension OAuth", RefreshToken: func(_ context.Context, credential ai.Credential) (ai.Credential, error) { return credential, nil }, GetAPIKey: func(credential ai.Credential) string { return credential.Access }, ModifyModels: func(models []*ai.Model, credential ai.Credential) []*ai.Model {
 			if credential.Access == "access" {
 				return append(models, nativeCompatModel("credential-model", "extension-oauth", "https://example.test/v1"))
 			}

@@ -62,3 +62,23 @@ func (registry *ModelRegistry) GetAPIKeyForProvider(ctx context.Context, id stri
 	}
 	return new(auth.Auth.APIKey)
 }
+
+// FindOfType finds a model of a non-chat type, for example FindOfType(ai.ModelTypeClassifier, "typesafe", "jev-latest") (model-registry.ts findOfType).
+func (registry *ModelRegistry) FindOfType(modelType ai.ModelType, provider, modelID string) ai.AnyModel {
+	return registry.runtime.GetModelOfType(modelType, provider, modelID)
+}
+
+// GetModelsOfType lists every known model of a type, optionally for one provider (model-registry.ts getModelsOfType).
+func (registry *ModelRegistry) GetModelsOfType(modelType ai.ModelType, provider ...string) []ai.AnyModel {
+	return registry.runtime.GetModelsOfType(modelType, provider...)
+}
+
+// GetAvailableOfType lists the models of a type whose provider has working credentials (model-registry.ts getAvailableOfType).
+func (registry *ModelRegistry) GetAvailableOfType(ctx context.Context, modelType ai.ModelType, provider ...string) ([]ai.AnyModel, error) {
+	return registry.runtime.GetAvailableOfType(ctx, modelType, provider...)
+}
+
+// GetModelOfType looks up a model of a type by provider and ID (model-registry.ts getModelOfType).
+func (registry *ModelRegistry) GetModelOfType(modelType ai.ModelType, provider, modelID string) ai.AnyModel {
+	return registry.runtime.GetModelOfType(modelType, provider, modelID)
+}

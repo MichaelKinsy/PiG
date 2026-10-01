@@ -24,6 +24,11 @@ grep -q '"hello"' "$out"/go-factory.json
 
 PIG_PARITY_PIG_BIN="$PIG_BIN" go test -tags=parity ./test/parity/runner \
   -run 'TestParity/(01-version-flag|10-login-subscription-providers|01-register-handshake)$' \
-  -count=1 -v -timeout 5m
+  -count=1 -v -timeout 5m -args -pig-parity.results="$out"/parity-results.json
+ran=$(go run ./test/parity/cmd/checkparityran -results "$out"/parity-results.json)
+if [[ "$ran" -eq 0 ]]; then
+  echo "ERROR: qc-smoke compared 0 parity scenarios: the runner skipped before running any" >&2
+  exit 1
+fi
 
 echo "qc-smoke: ok"

@@ -68,6 +68,7 @@ func TestHeldRegistrationRefreshStartsOnlyAtRelease(t *testing.T) {
 
 // A /reload that loads several extension factories queues their provider registrations and starts the refresh after the last factory has loaded (Pi's bindCore flush). The stand-in host registers a Provider and then ends its callback the way cmd/pig's host callbacks do: it starts the queued refresh.
 func TestReloadRunsNoProviderCallbackWhileExtensionsLoad(t *testing.T) {
+	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
 	synctest.Test(t, func(t *testing.T) {
 		registry := NewModelRegistry(t.TempDir())
 		t.Cleanup(registry.CloseModelTasks)

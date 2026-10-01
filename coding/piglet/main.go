@@ -75,6 +75,8 @@ func RunCommand(args []string, stdout, stderr io.Writer) int {
 		return cmdPull(rest, stdout, stderr)
 	case "remove":
 		return cmdRemove(rest, stdout, stderr)
+	case "prune":
+		return cmdPrune(rest, stdout, stderr)
 	case "keygen":
 		return cmdKeygen(rest, stdout, stderr)
 	case "trust":
@@ -102,6 +104,9 @@ func printHelp(w io.Writer) {
   pig piglet publish <name|path> --to github --repo <owner/repo> --sign-key <key> [--yes]
                                       Dry-run or publish signed Binaries to GitHub Releases
   pig piglet remove <name> [facet] Remove --source, --binary, or --all
+  pig piglet prune [--keep <n>] [--max-size <size>] [--dry-run]
+                                      Remove old built Piglet Binaries, keeping the newest n
+                                      of each Piglet and target (default 2); pulled installs stay
   pig piglet build <name> --format <script|binary|image> --out <destination> [--sign-key <key>]
                                       Write a source script or build an artifact
   pig piglet keygen <key-path>     Create an ed25519 Piglet Binary signing key pair
@@ -1473,7 +1478,17 @@ func BuildExtensionWithPiglet(initial *Piglet) extension.Extension {
 	return buildExtension(initial)
 }
 
+// BuildExtensionWithPigletTools is BuildExtensionWithPiglet with the owner of extension-registered tools: owner names
+// the Piglet extension entry whose `tools` allowlist scopes a tool, or "" when no loaded extension registered it.
+func BuildExtensionWithPigletTools(initial *Piglet, owner func(extension.ToolInfo) string) extension.Extension {
+	return buildExtensionWithOwner(initial, owner)
+}
+
 func buildExtension(initial *Piglet) extension.Extension {
+	return buildExtensionWithOwner(initial, nil)
+}
+
+func buildExtensionWithOwner(initial *Piglet, owner func(extension.ToolInfo) string) extension.Extension {
 	activePiglet := initial
 	var resolvedSystemPrompt string // cached after first resolution
 
@@ -1551,6 +1566,11 @@ func buildExtension(initial *Piglet) extension.Extension {
 				if name, ok := s["name"].(string); ok {
 					source = name
 				}
+			}
+			// The session reports an extension tool's provenance object (path, source, scope, origin), which names no
+			// Piglet entry; the owner resolves the entry that registered the tool.
+			if source == "" && owner != nil {
+				source = owner(t)
 			}
 			if source == "" {
 				source = "builtin"

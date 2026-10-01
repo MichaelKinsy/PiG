@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
@@ -33,6 +34,13 @@ func sessionExtensionActions(current func() *coding.Session) (extension.Extensio
 		SendUserMessage: func(content any, opts *extension.SendUserMessageOptions) error {
 			return sendSessionUserMessage(current(), content, opts)
 		},
+	}
+	// upstream: agent-session.ts:3339 binds getSettings to the session's settings manager in every mode.
+	actions.GetSettings = func() extension.Settings {
+		if sess := current(); sess != nil {
+			return sess.Services().SettingsManager().ExtensionSettings()
+		}
+		return nil
 	}
 	contextActions := extension.ContextActions{
 		GetScopedModels: func() []extension.ScopedModel {
@@ -67,6 +75,13 @@ func sessionExtensionActions(current func() *coding.Session) (extension.Extensio
 		IsIdle: func() bool {
 			sess := current()
 			return sess == nil || sess.IsIdle()
+		},
+		// upstream: agent-session.ts:3368 binds getSignal to `this.agent.signal` in every mode; with no Session there is no run.
+		GetSignal: func() context.Context {
+			if sess := current(); sess != nil {
+				return sess.Signal()
+			}
+			return nil
 		},
 		Abort: func() {
 			if sess := current(); sess != nil {
@@ -138,9 +153,20 @@ func bindSessionExtensionActions(runner *inproc.Runner, bridge *subprocess.UIBri
 				}
 			}
 		}
+		// upstream: agent-session.ts:3353 binds refreshTools to the session in every mode, so a tool an extension registers
+		// after load is admitted and declared.
+		if contextActions.RefreshTools == nil {
+			contextActions.RefreshTools = func() error {
+				if sess := current(); sess != nil {
+					return sess.RefreshTools()
+				}
+				return errSessionNotReady
+			}
+		}
 		contextActions.GetSystemPrompt = sessionContext.GetSystemPrompt
 		contextActions.GetSystemPromptOptions = sessionContext.GetSystemPromptOptions
 		contextActions.IsIdle = sessionContext.IsIdle
+		contextActions.GetSignal = sessionContext.GetSignal
 		contextActions.Abort = sessionContext.Abort
 		contextActions.HasPendingMessages = sessionContext.HasPendingMessages
 		contextActions.GetScopedModels = sessionContext.GetScopedModels
@@ -152,6 +178,20 @@ func bindSessionExtensionActions(runner *inproc.Runner, bridge *subprocess.UIBri
 		return
 	}
 	bridge.SetHostAction("setSessionName", actions.SetSessionName)
+	// upstream: agent-session.ts:3339, 3382-3383 bind getSettings, executeTool and getCallableTools to the session in every mode. A subprocess extension reaches them through these host actions.
+	bridge.SetHostAction("getSettings", actions.GetSettings)
+	bridge.SetHostAction("getCallableTools", func() []extension.AgentTool {
+		if sess := current(); sess != nil {
+			return sess.ToolActions().GetCallableTools()
+		}
+		return nil
+	})
+	bridge.SetHostAction("executeTool", func(ctx context.Context, callerID, name string, args json.RawMessage, options extension.ExecuteToolOptions) (extension.AgentToolCallOutcome, error) {
+		if sess := current(); sess != nil {
+			return sess.ToolActions().ExecuteTool(ctx, callerID, name, args, options)
+		}
+		return subprocess.UnavailableNestedCall(callerID, name), nil
+	})
 	bridge.SetHostAction("getSessionName", actions.GetSessionName)
 	bridge.SetHostAction("sendMessage", func(message extension.CustomMessageRef, opts subprocess.SendMessageOptions) error {
 		return sendSessionCustomMessage(current(), message, &extension.SendMessageOptions{
@@ -196,10 +236,52 @@ func bindSessionExtensionActions(runner *inproc.Runner, bridge *subprocess.UIBri
 		return ""
 	})
 	bridge.SetHostAction("getContextUsage", sessionContext.GetContextUsage)
+	bridge.SetHostAction("getSignal", sessionContext.GetSignal)
 
 	bridge.SetHostAction("getSystemPrompt", sessionContext.GetSystemPrompt)
 	bridge.SetHostAction("getSystemPromptOptions", func() extension.BuildSystemPromptOptions {
 		return *sessionContext.GetSystemPromptOptions()
+	})
+	// Pi binds setModel, setThinkingLevel, isProjectTrusted and compact to the Session in every mode (agent-session.ts:3343-3349, 3355, 3369-3379 _bindExtensionCore).
+	bridge.SetHostAction("setModel", func(ctx context.Context, spec string) (bool, error) {
+		extension.CallInitiated(ctx)
+		sess := current()
+		if sess == nil {
+			return false, errSessionNotReady
+		}
+		model, err := coding.BuildModel(spec, sess.Services())
+		if err != nil {
+			return false, err
+		}
+		return sess.ExtensionSetModel(ctx, model)
+	})
+	bridge.SetHostAction("setThinkingLevel", func(level string) {
+		sess := current()
+		if sess == nil {
+			return
+		}
+		// The call is fire-and-forget on the wire, so a failure to persist the change reaches the error listeners, as Pi reports its unawaited Session actions (agent-session.ts:3303-3310).
+		if err := sess.SetThinkingLevel(ai.ThinkingLevel(level)); err != nil {
+			if runner := sess.ExtensionRunner(); runner != nil {
+				runner.EmitError(&extension.ExtensionError{ExtensionPath: "<runtime>", Event: "set_thinking_level", Error: err.Error()})
+			}
+		}
+	})
+	bridge.SetHostAction("isProjectTrusted", func() bool {
+		if contextActions.IsProjectTrusted != nil {
+			return contextActions.IsProjectTrusted()
+		}
+		// Pi answers from the Session's settings manager (agent-session.ts:3355); with no Session there is nothing that established trust, so the project is not trusted.
+		sess := current()
+		return sess != nil && sess.Services().SettingsManager().IsProjectTrusted()
+	})
+	bridge.SetHostAction("compact", func(ctx context.Context, opts *extension.CompactOptions) {
+		extension.CallInitiated(ctx)
+		if sess := current(); sess != nil {
+			sess.ExtensionCompact(opts)
+		} else if opts != nil && opts.OnError != nil {
+			opts.OnError(errSessionNotReady)
+		}
 	})
 	bridge.SetHostAction("isIdle", sessionContext.IsIdle)
 	bridge.SetHostAction("abort", sessionContext.Abort)
@@ -247,6 +329,20 @@ func bindSessionExtensionActions(runner *inproc.Runner, bridge *subprocess.UIBri
 				return sess.ExtensionCommandActions().NavigateTree(targetID, opts)
 			}
 			return extension.CancelledResult{}, errSessionNotReady
+		},
+		// print-mode.ts:97-99 and rpc-mode.ts:341-343 bind reload to session.reload() in every headless mode.
+		ReloadContext: func(ctx context.Context) error {
+			sess := current()
+			if sess == nil {
+				extension.CallInitiated(ctx)
+				return errSessionNotReady
+			}
+			reload := commandActions(sess).ReloadContext
+			if reload == nil {
+				extension.CallInitiated(ctx)
+				return errors.New("reload is not available without a mode runtime")
+			}
+			return reload(ctx)
 		},
 	})
 }

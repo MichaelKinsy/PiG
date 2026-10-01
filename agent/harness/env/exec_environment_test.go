@@ -135,8 +135,12 @@ process.stdout.write(JSON.stringify(outcomes));
 // A name in the env option may contain "=", and libuv writes the property into
 // the block as "name=value" without splitting the name from the rest. A
 // property whose entry shares the text before its first "=" with another's
-// still reaches the child, so the child's getenv sees the first of them, as it
-// does in Pi. The test binary reports that view.
+// still reaches the child, as it does in Pi. Pi's getShellEnv(undefined, env,
+// false) is {...env}, so Node's spawn of the test binary with env, in the key
+// order PiG gives it, is the oracle. Outside Windows the test binary's
+// os.Environ reports what its getenv sees, the first of such entries. On
+// Windows it reports the whole block in order, with the variables libuv's
+// make_program_env adds (src/win/process.c).
 func TestExecPassesEveryPropertyWhoseNameHoldsAnEqualsSign(t *testing.T) {
 	exe, err := os.Executable()
 	if err != nil {
@@ -154,7 +158,39 @@ func TestExecPassesEveryPropertyWhoseNameHoldsAnEqualsSign(t *testing.T) {
 	if err := json.Unmarshal([]byte(collected.text()), &got); err != nil {
 		t.Fatalf("decode %q: %v", collected.text(), err)
 	}
-	if want := []string{"PIG_A=one", testenv.EnvironHelper + "=1"}; !slices.Equal(got, want) {
+	want := nodeSpawnEnvironment(t, exe, env)
+	if !slices.Contains(want, "PIG_A=one") || (runtime.GOOS == "windows") != slices.Contains(want, "PIG_A=B=two") {
+		t.Fatalf("Node's child environment %q: want PIG_A=one, and PIG_A=B=two only on Windows", want)
+	}
+	if !slices.Equal(got, want) {
 		t.Errorf("environment\n got %q\nwant %q", got, want)
 	}
+}
+
+// nodeSpawnEnvironment is the environment that the test binary program reports
+// when Node's spawnSync starts it with env, whose keys JSON gives in sorted
+// order.
+func nodeSpawnEnvironment(t *testing.T, program string, env map[string]string) []string {
+	t.Helper()
+	input, err := json.Marshal(map[string]any{"file": program, "env": env})
+	if err != nil {
+		t.Fatal(err)
+	}
+	node := exec.CommandContext(t.Context(), "node", "-e", `
+const { spawnSync } = require("node:child_process");
+const { file, env } = JSON.parse(require("node:fs").readFileSync(0, "utf8"));
+const result = spawnSync(file, [], { env, encoding: "utf8" });
+if (result.error || result.status !== 0) throw result.error ?? new Error(result.stderr);
+process.stdout.write(result.stdout);
+`)
+	node.Stdin = bytes.NewReader(input)
+	out, err := node.Output()
+	if err != nil {
+		t.Fatalf("node spawn: %v; output %s", err, out)
+	}
+	var environment []string
+	if err := json.Unmarshal(out, &environment); err != nil {
+		t.Fatalf("decode %q: %v", out, err)
+	}
+	return environment
 }

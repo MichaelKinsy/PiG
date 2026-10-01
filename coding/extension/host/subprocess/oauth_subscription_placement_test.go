@@ -14,10 +14,8 @@ import (
 // The same provider declarations also run isolated, so neither SDK encoding nor
 // cell placement can silently replace explicit true with a false default.
 func TestOAuthSubscriptionSDKPlacements(t *testing.T) {
+	t.Parallel()
 	root := findModuleRoot(t)
-	t.Setenv("PIG_SDK_GO_ROOT", filepath.Join(root, "extensions", "sdk"))
-	t.Setenv("PIG_SDK_PY_ROOT", filepath.Join(root, "extensions", "sdk-py"))
-	t.Setenv("PIG_SDK_RS_ROOT", filepath.Join(root, "extensions", "sdk-rs"))
 	for _, language := range []string{"go", "python", "rust"} {
 		for _, packed := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/packed=%t", language, packed), func(t *testing.T) {

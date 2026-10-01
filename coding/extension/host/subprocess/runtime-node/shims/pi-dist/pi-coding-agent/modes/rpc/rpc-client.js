@@ -129,23 +129,26 @@ export class RpcClient {
     // =========================================================================
     /**
      * Send a prompt to the agent.
-     * Returns immediately after sending; use onEvent() to receive streaming events.
-     * Use waitForIdle() to wait for completion.
+     * Returns the prompt's disposition after acceptance; use onEvent() to receive streaming events.
+     * If the disposition is "handled", no run started for this prompt, so don't wait for agent_settled.
      */
-    async prompt(message, images) {
-        await this.send({ type: "prompt", message, images });
+    async prompt(message, images, streamingBehavior) {
+        const response = await this.send({ type: "prompt", message, images, streamingBehavior });
+        return this.getData(response).disposition;
     }
     /**
      * Queue a steering message to interrupt the agent mid-run.
      */
     async steer(message, images) {
-        await this.send({ type: "steer", message, images });
+        const response = await this.send({ type: "steer", message, images });
+        return this.getData(response).disposition;
     }
     /**
      * Queue a follow-up message to be processed after the agent finishes.
      */
     async followUp(message, images) {
-        await this.send({ type: "follow_up", message, images });
+        const response = await this.send({ type: "follow_up", message, images });
+        return this.getData(response).disposition;
     }
     /**
      * Abort current operation.
@@ -416,8 +419,9 @@ export class RpcClient {
                 pending.resolve(data);
                 return;
             }
-            // Otherwise it's an event
-            for (const listener of this.eventListeners) {
+            // Otherwise it's an event. Iterate a snapshot so listeners that unsubscribe during dispatch
+            // do not cause later listeners to miss this event.
+            for (const listener of [...this.eventListeners]) {
                 listener(data);
             }
         }

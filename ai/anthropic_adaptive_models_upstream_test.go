@@ -7,11 +7,11 @@ import (
 	"testing"
 )
 
-// Ports packages/ai/test/anthropic-adaptive-thinking-models.test.ts:33.
+// Ports .upstream/v0.99.1/packages/ai/test/anthropic-adaptive-thinking-models.test.ts:29 (0.99.1 moved the Fireworks DeepSeek row to deepseek-v4p1-flash).
 func TestAnthropicUpstreamAdaptiveThinkingModels(t *testing.T) {
 	expected := []string{
 		"anthropic/claude-fable-5", "anthropic/claude-opus-4-8", "anthropic/claude-opus-5", "anthropic/claude-sonnet-5", "cloudflare-ai-gateway/claude-fable-5",
-		"fireworks/accounts/fireworks/models/deepseek-v4-flash-0731", "fireworks/accounts/fireworks/models/gpt-oss-120b", "fireworks/accounts/fireworks/models/qwen3p8-max",
+		"fireworks/accounts/fireworks/models/deepseek-v4p1-flash", "fireworks/accounts/fireworks/models/gpt-oss-120b", "fireworks/accounts/fireworks/models/qwen3p8-max",
 		"kimi-coding/kimi-for-coding", "kimi-coding/k3", "kimi-coding/kimi-for-coding-highspeed", "opencode/claude-opus-4-8", "opencode/claude-opus-5",
 		"vercel-ai-gateway/anthropic/claude-opus-4.8", "vercel-ai-gateway/anthropic/claude-opus-5", "vercel-ai-gateway/anthropic/claude-sonnet-5",
 	}

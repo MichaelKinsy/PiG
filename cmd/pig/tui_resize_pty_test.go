@@ -131,6 +131,7 @@ func writeResizeTestSession(t *testing.T, exchanges int) string {
 // FORCE_COLOR=0 and TERM=dumb print plain text. NO_COLOR is not consulted by
 // the pinned chalk 6.0.0 supports-color and keeps the faint codes.
 func TestStartupResumeCancelUsesStdoutAndFaintStyle(t *testing.T) {
+	t.Parallel()
 	binary := buildPigBinaryForSignalTest(t)
 	for _, tc := range []struct {
 		name string
@@ -221,6 +222,7 @@ func startupResumeCancel(t *testing.T, binary string, env []string, want string)
 // window switches, terminal focus changes) must leave scrollback alone; a
 // real height change still repaints fully.
 func TestInteractiveSameSizeResizeKeepsScrollback(t *testing.T) {
+	t.Parallel()
 	binary := buildPigBinaryForSignalTest(t)
 	session := writeResizeTestSession(t, 60)
 	master, slave := openPTY(t, 30, 100)

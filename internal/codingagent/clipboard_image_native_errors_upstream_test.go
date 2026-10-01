@@ -3,6 +3,7 @@ package codingagent
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 
@@ -25,7 +26,7 @@ type clipboardNativeErrorRendererSpy struct {
 
 func (s *clipboardNativeErrorRendererSpy) RequestRender() { s.requests++ }
 
-// Ports packages/coding-agent/test/clipboard-image-native-errors.test.ts:18-31. The native getImage call itself rejects; no generic reader or temporary-file failure substitutes for that boundary.
+// Ports .upstream/v0.99.1/packages/coding-agent/test/clipboard-image-native-errors.test.ts:22-39. The native getImage call itself rejects; no generic reader or temporary-file failure substitutes for that boundary. Upstream's mock context supplies showError and expects no requestRender; Go's showError is the real one, which requests exactly one render for its own chat line, so that one request is the error's.
 func TestNativeImageErrorsAbortPasteWithoutReadingTextOrChangingEditor(t *testing.T) {
 	imageReads, textReads := 0, 0
 	useClipboardTextTestSeams(t, "linux", map[string]string{"TERMUX_VERSION": ""},
@@ -48,7 +49,7 @@ func TestNativeImageErrorsAbortPasteWithoutReadingTextOrChangingEditor(t *testin
 	editor.SetRemote(editorCalls)
 	renderer := &clipboardNativeErrorRendererSpy{}
 	m := &InteractiveMode{
-		editor: editor, tuiInst: renderer, clipboardCtx: t.Context(),
+		editor: editor, tuiInst: renderer, chatContainer: tui.NewContainer(), clipboardCtx: t.Context(),
 		clipboardReads: &sync.WaitGroup{}, uiTaskCh: make(chan func(), 1),
 	}
 	m.handleClipboardImagePaste()
@@ -60,7 +61,10 @@ func TestNativeImageErrorsAbortPasteWithoutReadingTextOrChangingEditor(t *testin
 	if imageReads != 1 {
 		t.Fatalf("native image reads=%d, want the one paste operation to reach the failing native call", imageReads)
 	}
-	if textReads != 0 || len(editorCalls.inserts) != 0 || renderer.requests != 0 {
+	if textReads != 0 || len(editorCalls.inserts) != 0 || renderer.requests != 1 {
 		t.Fatalf("text reads=%d editor insertions=%q render requests=%d", textReads, editorCalls.inserts, renderer.requests)
+	}
+	if want, got := "Error: Failed to paste from clipboard: Native clipboard operation failed", strings.Join(m.chatContainer.Render(200), "\n"); strings.Count(got, want) != 1 {
+		t.Fatalf("chat=%q, want %q exactly once", got, want)
 	}
 }

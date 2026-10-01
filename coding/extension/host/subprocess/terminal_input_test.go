@@ -60,6 +60,7 @@ func TestTerminalInputConsumeRoundTrip(t *testing.T) {
 // the input waits for the extension's verdict however long it takes, and a
 // slow answer never costs the extension its subscription.
 func TestTerminalInputWaitsForSlowVerdict(t *testing.T) {
+	t.Parallel()
 	ui := &terminalInputUI{UIContext: extension.NoopUIContext}
 	_, _, stop := newTerminalInputBridge(t, ui, func(string) (bool, time.Duration) {
 		return true, 300 * time.Millisecond

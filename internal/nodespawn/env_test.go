@@ -3,11 +3,15 @@ package nodespawn
 import (
 	"bytes"
 	"encoding/json"
+	"io"
+	"maps"
 	"os"
 	"os/exec"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
@@ -18,8 +22,7 @@ import (
 // env option has a property of exactly that name, so a child started with
 // an empty or allow-listed env still writes coverage. Node's spawn with the
 // same env option is the oracle; the test binary reports the environment it
-// received. Both environments are compared sorted, since libuv and os/exec
-// order the block of non-ASCII names differently on Windows.
+// received, in block order.
 func TestSetEnvPropagatesNodeV8CoverageAsNodeDoes(t *testing.T) {
 	helper := testenv.EnvironHelper + "=1"
 	cases := []struct {
@@ -48,10 +51,11 @@ func TestSetEnvPropagatesNodeV8CoverageAsNodeDoes(t *testing.T) {
 }
 
 // requireSameChildEnvironment starts the test binary through Node's spawn and
-// through SetEnv with env, and requires that it receives the same
+// through SetEnv and Start with env, and requires that it receives the same
 // environment. Node's spawn is the oracle; the test binary reports the
-// environment it received. Both are compared sorted, since libuv and os/exec
-// order the block of non-ASCII names differently on Windows.
+// environment it received. The block of names outside ASCII is compared
+// sorted, since os/exec can order it differently from libuv on Windows
+// (SetEnvProperties).
 func requireSameChildEnvironment(t *testing.T, env []string) {
 	t.Helper()
 	requireSameChildEnvironmentFor(t, EnvProperties(env))
@@ -83,8 +87,36 @@ func orderedObject(t *testing.T, properties []EnvProperty) string {
 	return object.String()
 }
 
+// output starts cmd with Start and returns what it writes to stdout, as
+// cmd.Output does.
+func output(t *testing.T, cmd *exec.Cmd) []byte {
+	t.Helper()
+	read, write, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = read.Close() }()
+	cmd.Stdout = write
+	if err := Start(cmd); err != nil {
+		t.Fatal(err)
+	}
+	out, readErr := io.ReadAll(read)
+	if err := cmd.Wait(); err != nil {
+		t.Fatalf("%v; output %s", err, out)
+	}
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	return out
+}
+
 // requireSameChildEnvironmentFor is requireSameChildEnvironment for an env
-// option whose properties are given, in order, to SetEnvProperties.
+// option whose properties are given, in order, to SetEnvProperties. Outside
+// Windows the environments must be equal in block order, the env option's. On
+// Windows they must hold the same entries, the entries whose names are ASCII
+// must be in the same order, which is libuv's, and each name must read the
+// same value, which is that of the first entry for it; os/exec orders the
+// names outside ASCII differently (SetEnvProperties).
 func requireSameChildEnvironmentFor(t *testing.T, properties []EnvProperty) {
 	t.Helper()
 	nodeBinary, err := exec.LookPath("node")
@@ -120,26 +152,66 @@ process.stdout.write(result.stdout);
 	SetEnvProperties(cmd, properties)
 	SetProgram(cmd)
 	SetCommandLine(cmd)
-	output, err := cmd.Output()
-	if err != nil {
-		t.Fatalf("%v; output %s", err, output)
-	}
+	stdout := output(t, cmd)
 	var got []string
-	if err := json.Unmarshal(output, &got); err != nil {
-		t.Fatalf("decode %q: %v", output, err)
+	if err := json.Unmarshal(stdout, &got); err != nil {
+		t.Fatalf("decode %q: %v", stdout, err)
 	}
-	slices.Sort(got)
-	slices.Sort(want)
+	if !caseInsensitiveEnv {
+		if !slices.Equal(got, want) {
+			t.Errorf("child environment in block order\n got %q\nwant %q", got, want)
+		}
+		return
+	}
+	asciiNamed := func(block []string) []string {
+		return slices.DeleteFunc(slices.Clone(block), func(entry string) bool {
+			name, _ := envName(entry)
+			return !isASCII(name)
+		})
+	}
+	if gotASCII, wantASCII := asciiNamed(got), asciiNamed(want); !slices.Equal(gotASCII, wantASCII) {
+		t.Errorf("child environment's ASCII names in block order\n got %q\nwant %q", gotASCII, wantASCII)
+	}
+	if gotView, wantView := getenvView(got), getenvView(want); !maps.Equal(gotView, wantView) {
+		t.Errorf("child's getenv\n got %q\nwant %q", gotView, wantView)
+	}
+	got, want = slices.Sorted(slices.Values(got)), slices.Sorted(slices.Values(want))
 	if !slices.Equal(got, want) {
 		t.Errorf("child environment\n got %q\nwant %q", got, want)
 	}
 }
 
+// getenvView is the value that Windows' GetEnvironmentVariableW reads for each
+// name of block: that of the first entry for the name, compared regardless of
+// case.
+func getenvView(block []string) map[string]string {
+	view := make(map[string]string, len(block))
+	for _, entry := range block {
+		name, value := envName(entry)
+		if _, ok := view[strings.ToUpper(name)]; !ok {
+			view[strings.ToUpper(name)] = value
+		}
+	}
+	return view
+}
+
+func isASCII(s string) bool {
+	for i := range len(s) {
+		if s[i] >= utf8.RuneSelf {
+			return false
+		}
+	}
+	return true
+}
+
 // A property name may contain "=", and libuv writes it into the block as
 // "name=value" with the first "=" of the entry ending no name. Two properties
 // whose entries share the text before the first "=" both reach the child, as
-// they do in Node; os/exec alone keeps only the last of them. The test binary
-// reports what its getenv sees, which is the first of such entries.
+// they do in Node; os/exec alone keeps only the last of them. Outside Windows
+// the test binary's os.Environ keeps the first of such entries, which its
+// getenv sees. On Windows it reports every entry in block order, where libuv's
+// qsort orders the entries whose names compare equal; a block of more than
+// eight entries takes qsort's partitioning path.
 func TestSetEnvPropertiesPassesAPropertyNameWithAnEqualsSign(t *testing.T) {
 	helper := EnvProperty{testenv.EnvironHelper, "1"}
 	for _, c := range []struct {
@@ -151,6 +223,48 @@ func TestSetEnvPropertiesPassesAPropertyNameWithAnEqualsSign(t *testing.T) {
 		{"the longer name comes first", []EnvProperty{helper, {"PIG_A=B", "two"}, {"PIG_A", "one"}}},
 		{"three names share the text", []EnvProperty{helper, {"PIG_A", "one"}, {"PIG_A=B", "two"}, {"PIG_A=B=C", "three"}, {"PIG_Z", "z"}}},
 		{"a value holds non-ASCII text", []EnvProperty{helper, {"PIG_A", "\u00e9"}, {"PIG_A=B", "x y"}}},
+		{"many names share the text", []EnvProperty{
+			helper, {"PIG_M", "m"}, {"PIG_A=5", "five"}, {"pig_a=2", "two"}, {"PIG_A", "zero"}, {"PIG_B", "b"},
+			{"PIG_A=3", "three"}, {"Pig_A=1", "one"}, {"PIG_C", "c"}, {"PIG_A=4", "four"}, {"PIG_D", "d"}, {"PIG_E", "e"},
+		}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			requireSameChildEnvironmentFor(t, c.env)
+		})
+	}
+}
+
+// Node keeps both of two names whose toUpperCase values differ, such as
+// "PIG_K" and "PIG_\u212a" (KELVIN SIGN, which has no uppercase mapping), and
+// libuv passes both. os/exec on Windows would keep only the last of them,
+// because strings.ToLower maps both to "pig_k".
+func TestSetEnvPropertiesPassesNamesThatOnlyLowercaseAlike(t *testing.T) {
+	helper := EnvProperty{testenv.EnvironHelper, "1"}
+	requireSameChildEnvironmentFor(t, []EnvProperty{helper, {"PIG_K", "letter"}, {"PIG_\u212a", "kelvin"}})
+}
+
+// libuv orders PIG_\u00e9 (U+00E9) before PIG_\u00ca (U+00CA), since
+// CompareStringOrdinal uppercases \u00e9 to U+00C9, and PIG_\U0001F600 before
+// PIG_\uff21 by UTF-16 code unit. os/exec's order compares UTF-8 bytes, with
+// only ASCII letters uppercased, and puts both pairs the other way round. The
+// entries whose names are ASCII, such as the ones that share the name PIG_A,
+// must still reach the child in libuv's order, so that the child's getenv of
+// PIG_A reads the value Node's child reads.
+func TestSetEnvPropertiesKeepsLibuvOrderBesideNamesOutsideASCII(t *testing.T) {
+	helper := EnvProperty{testenv.EnvironHelper, "1"}
+	shared := func(n int) []EnvProperty {
+		properties := []EnvProperty{{"PIG_A", "0"}}
+		for i := 1; i <= n; i++ {
+			properties = append(properties, EnvProperty{"PIG_A=" + strconv.Itoa(i), strconv.Itoa(i)})
+		}
+		return properties
+	}
+	for _, c := range []struct {
+		name string
+		env  []EnvProperty
+	}{
+		{"a Latin-1 pair", append([]EnvProperty{helper, {"PIG_\u00e9", "e"}, {"PIG_\u00ca", "E"}}, shared(9)...)},
+		{"a surrogate pair and a fullwidth letter", append([]EnvProperty{helper, {"PIG_\U0001F600", "smile"}, {"PIG_\uff21", "fullwidth"}}, shared(9)...)},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			requireSameChildEnvironmentFor(t, c.env)

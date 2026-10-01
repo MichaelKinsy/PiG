@@ -24,7 +24,6 @@
 name = "01-ai-sdk-helpers"
 description = "AI SDK helper surfaces produce the same normalized JSON behavior as upstream."
 covers = [
-  "packages/ai/src/image-models.generated.ts",
   "packages/ai/src/session-resources.ts",
   "packages/ai/src/api/openai-prompt-cache.ts",
   "packages/ai/src/api/cloudflare.ts",
@@ -38,13 +37,11 @@ covers = [
   "packages/ai/src/models.generated.ts",
   "packages/ai/src/models.ts",
   "packages/ai/src/compat.ts",
-  "packages/ai/src/images-models.ts",
   "packages/ai/src/auth/helpers.ts",
   "packages/ai/src/auth/types.ts",
   "packages/ai/src/auth/oauth/load.ts",
   "packages/ai/src/providers/openai-codex.ts",
   "packages/ai/src/providers/openai.ts",
-  "packages/ai/src/providers/openrouter-images.ts",
   "packages/ai/src/providers/images/register-builtins.ts",
   "packages/ai/src/providers/amazon-bedrock.models.ts",
   "packages/ai/src/providers/ant-ling.models.ts",

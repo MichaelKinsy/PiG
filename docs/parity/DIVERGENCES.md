@@ -17,9 +17,10 @@ Every active divergence must have:
 
 ## Retired divergences
 
-- D35 — Hidden `/arminsayshi` and `/dementedelves` commands. Retired by the Pi 0.87.1 component ports. `TestArminFramesMatchPinnedPi` compares every frame of all seven effects, and `TestEarendilAnnouncementMatchesPinnedPi` compares styled announcement rows. The `slash-commands/12-earendil-announcement` and `13-armin-bitmap` scenarios compare exact terminal output. The ID remains reserved.
+- D35 — Hidden `/arminsayshi` and `/dementedelves` commands. Retired by the Pi component ports (`armin.ts` and `earendil-announcement.ts` are identical in upstream 0.87.1 and 0.99.1). `TestArminFramesMatchPinnedPi` compares every frame of all seven effects, and `TestEarendilAnnouncementMatchesPinnedPi` compares styled announcement rows. The `slash-commands/12-earendil-announcement` and `13-armin-bitmap` scenarios compare exact terminal output. The ID remains reserved.
 - D77 — Explicit Node isolation prevented sharing `pi.events`. Retired by owner decision Q1 = B (2026-09-29). Every Node process is one cross-process reference realm, and every realm shares the one bus: packed cells, crash-recovery groups, quarantined members, strict isolation and exact standalones. Payloads cross by reference, so listeners in other processes see the emitter's original object; D83 records the remaining cross-realm scheduling and lifetime boundaries. Process, crash and memory isolation remain; a hung foreign listener blocks its emitter, as a hung listener blocks Pi. Tests: `TestXrefEventBusForeignPrefixMutationMatchesPi`, `TestXrefEventBusMatchesPiAcrossRealms`, `TestXrefEventBusListenerOrderMatchesPi` and `TestXrefEventBusReentrantDispatchMatchesPi` run strict isolation, packed and mixed topologies against Pi's own `createEventBus`. The ID remains reserved.
-- D50 — Extra unsupported/oversized Mermaid hints. Retired under the lead's parity-completion authority. Pi 0.87.1 `mermaid.ts:76-77` preserves the raw code block; partial-parse warnings remain display-only. `TestMermaidUnsupportedAndOversizedRemainSource`, `TestMermaidFallbackAssistantBlockMatchesDisabledTransform`, and the now byte-exact `TestMermaidTransformMatchesUpstream` verify the contract. The ID remains reserved.
+- D59 — Generic extension tool cards exposed complete recoverable details. Retired by the upstream 0.99.1 port: `formatToolCallWithArgs` (`render-utils.ts:71-96`) now draws the fallback call header of a registered tool without `renderCall`, as `key=value` pairs cut at 100 characters while collapsed and one `key: value` line per argument when expanded (`tool-execution.ts:155-157`). PiG uses that function and the definition card path for every registered tool; the structured-argument card, its width-aware preview, the extra Ctrl+O scrollback rebuild and the "Toggle tool details" key description are removed, so Ctrl+O is "Toggle tool output" again. Tests: `TestFormatToolCallWithArgs`, `TestToolExecutionComponentUpstream/shows_arguments_in_the_fallback_call_header` and `TestRegisteredToolWithoutRenderersDrawsTheFallbackHeaderThroughTheEventPath`. The ID remains reserved.
+- D50 — Extra unsupported/oversized Mermaid hints. Retired under the lead's parity-completion authority. upstream 0.99.1 `mermaid.ts:76-77` (unchanged since 0.87.1) preserves the raw code block; partial-parse warnings remain display-only. `TestMermaidUnsupportedAndOversizedRemainSource`, `TestMermaidFallbackAssistantBlockMatchesDisabledTransform`, and the now byte-exact `TestMermaidTransformMatchesUpstream` verify the contract. The ID remains reserved.
 - D58 — Automatic Mermaid label narrowing. Retired under the same authority. The transformer uses the natural layout and preserves source when it is too wide. The caller-free fitting search and its private bookkeeping are removed. The oversized transformer/caller cases retain the wide diagram input, and the natural engine corpus remains unchanged. The ID remains reserved.
 
 - D47 — Width stripping consumes DEC private-mode set/reset sequences. Retired by the width-parity change. `tui/widthx.ExtractAnsi` now delegates to the upstream-compatible `ExtractAnsiCode`; the ID remains reserved. `TestExtractAnsi_PrivateModeMatchesUpstream` and `TestPiWidthDifferential` verify the shared ANSI parsing behavior. No active divergence or source marker remains.
@@ -27,7 +28,7 @@ Every active divergence must have:
 
 - D76 — Untransformed Markdown before an extension reply. Retired by the off-loop transform-generation path. The complete ordered chain finishes before new Markdown content is painted. Each component retains at most one active and one replaceable pending generation; cancellation and stale-result rejection keep replacements from publishing late. Tests: `TestMarkdownTransformFirstPaintWaitsForWholeChain`, `TestAsyncMarkdownReplacesPendingGeneration`, `TestAsyncMarkdownOwnerCancellationDrains`, and `extensions-runtime/33-markdown-transformer`. D56 still governs failed or stalled subprocess rendering.
 
-- D54 — Fenced-code wrapping. Retired after re-probing Pi 0.87.1: `Markdown.render` already wraps every non-image rendered row, including code rows. PiG now uses that same final content-width pass and its continuation breakpoints. The ID remains reserved. Evidence: `tui/markdown_upstream_test.go`, `tui/markdown_codeblock_wrap_test.go`, and `test/parity/scenarios/tui-components/16-markdown-user-components.toml`.
+- D54 — Fenced-code wrapping. Retired after re-probing Pi: `Markdown.render` already wraps every non-image rendered row, including code rows (`markdown.ts` at 0.99.1 still passes each non-image line through `wrapTextWithAnsi`; the only change since 0.87.1 is a token cache). PiG now uses that same final content-width pass and its continuation breakpoints. The ID remains reserved. Evidence: `tui/markdown_upstream_test.go`, `tui/markdown_codeblock_wrap_test.go`, and `test/parity/scenarios/tui-components/16-markdown-user-components.toml`.
 
 ## Active divergences (32)
 
@@ -54,7 +55,7 @@ Call-site markers: `cmd/pig/guard.go`, `cmd/pig/main.go`, `internal/codingagent/
 
 The trust prompt and warning name the selected project directory and the `pig` command. Their wording, styling, and conditions otherwise match Pi. `test/parity/scenarios/project-trust/09-cancel-trust-shows-warning-with-extensions-off.toml` and `10-startup-trust-prompt-wording.toml` compare these surfaces with only the D2 identity substitution.
 
-The built-in header follows Pi's compact and expanded help layout. Only the logo and onboarding product name use PiG's identity; config/bin/cwd reports and a separate readiness paragraph are not part of this exception.
+The built-in header follows upstream 0.99.1's compact and expanded help layout and prints its pi logo unchanged. Only the composite version (D63) and the onboarding product name use PiG's identity; config/bin/cwd reports and a separate readiness paragraph are not part of this exception.
 
 Locked by: `test/parity/scenarios/startup/00-startup-banner.toml`, `02-startup-compact-help.toml`, `03-startup-expanded-help.toml`,
 `tui/terminal_test.go` (`TestBuildTerminalTitle_NoName`), and the command
@@ -109,7 +110,7 @@ SCRUTINIZED:approved
 
 What: every string upstream sends to identify Pi, and every Pi-owned endpoint it calls, is PiG's own. One file, `internal/coding/pigidentity/identity.json`, holds the values. The Go host reads it (`internal/coding/pigidentity`), and `automation/gen/pi-identity-patches.mjs` applies the same values to the Pi JavaScript the Node extension runtime vendors, so a Node extension that calls the Pi SDK (`createAgentSession`) or pi-ai sends the identity the Go host sends. The vendoring step (`automation/gen/vendor-pi-dist.sh`) runs the patch before it compiles the SDK bundle, so a re-vendor keeps it, and `vendor-manifest.json` labels each patched file. An exact-line patch that no longer matches a new Pi release fails the vendoring step.
 
-Replaced values (Pi 0.87.1 → PiG):
+Replaced values (audited against upstream 0.87.1; `pi-identity-patches.mjs` applies them to the vendored 0.99.2 dist and fails when a literal is missing):
 - Provider attribution (`provider-attribution.ts`, telemetry-gated, gate unchanged): OpenRouter `HTTP-Referer: https://pi.dev` → `https://github.com/MichaelKinsy/PiG`, `X-OpenRouter-Title: pi` → `PiG`, `X-OpenRouter-Categories: cli-agent` unchanged; NVIDIA NIM `X-BILLING-INVOKE-ORIGIN: Pi` → `PiG`; Cloudflare `User-Agent: pi-coding-agent` → `pig-coding-agent`. The OpenCode pair `x-opencode-session` and `x-opencode-client: pi` → `pig` stays independent of the telemetry gate, as upstream's `getSessionHeaders`. Host and provider matching are unchanged. Node: `core/provider-attribution.js` in the vendored SDK, which `createAgentSession` calls.
 - User agents: D65 (`pig/<coding.Version> (<platform> <release>; <arch>)`) now also covers the vendored `getPiUserAgent` of coding-agent and pi-ai. The host names its composite version to each Node runtime process in `PIG_PRODUCT_VERSION`.
 - OpenAI Codex: `originator: pi` on the SSE request, the websocket handshake and the OAuth authorize URL → `pig`. xAI device-code `referrer: pi` → `pig`.
@@ -143,7 +144,7 @@ SCRUTINIZED:approved
 
 ## D27 Word segmentation always uses ICU's warm dictionary-engine cache
 
-What: PiG's word segmenter always behaves like an ICU process whose `CjkBreakEngine` is already loaded. In a fresh Pi process that has not yet built a CJK dictionary span, a span starting at U+30FC (`ー`) or U+FF70 (`ｰ`) goes to ICU's `UnhandledEngine` instead. For example, Pi 0.87.1 in a fresh Node process returns 0 for `findWordBackward("ー你好", 3)`. After any earlier Han or Kana span in the same process, or on a later call, it returns 1. PiG always returns 1.
+What: PiG's word segmenter always behaves like an ICU process whose `CjkBreakEngine` is already loaded. In a fresh Pi process that has not yet built a CJK dictionary span, a span starting at U+30FC (`ー`) or U+FF70 (`ｰ`) goes to ICU's `UnhandledEngine` instead. For example, Pi 0.99.2 in a fresh Node process returns 0 for `findWordBackward("ー你好", 3)`. After any earlier Han or Kana span in the same process, or on a later call, it returns 1. PiG always returns 1.
 
 Why: ICU's `ICULanguageBreakFactory::getEngineFor` (`brkeng.cpp`) caches break engines for the whole process, so Pi's result depends on what anything in its Node process, including in-process extensions that call `Intl.Segmenter`, segmented earlier. Emulating that needs process-global mutable segmenter state whose value PiG cannot observe from Pi's process history. PiG models the per-iterator engine stack (`rbbi.cpp`) and uses the stable warm-cache result.
 
@@ -329,7 +330,7 @@ line. Any other manifest note is shown as the muted Markdown note block.
 Only the update *mechanism* diverges: upstream updates via the package manager,
 pig replaces the standalone binary. The self/package command surface matches upstream (`pi update` = self, `--self`, `--extensions`, `--all`,
 `--extension`, `--force`, positional package source, and conflict handling),
-with `pig` replacing Pi's product name. Upstream's separate `--models` command uses the shared model runtime and is not part of D39. The remote pi.dev catalog overlay remains unported and visible in PORT_MAP; D39 does not claim that model-catalog surface.
+with `pig` replacing Pi's product name. Upstream's separate `--models` command uses the shared model runtime and is not part of D39. The remote model-catalog overlay is D64's (pi-in-go.dev); D39 does not claim that model-catalog surface.
 
 Skip conditions:
 - `PIG_OFFLINE`/`PI_OFFLINE` disables the startup update check
@@ -515,7 +516,7 @@ SCRUTINIZED:approved
 
 ## D51 Interactive SIGINT restores the terminal before numeric exit 130
 
-What: when SIGINT terminates interactive mode, pig pops its extended-key protocols, restores the cooked state captured at startup, and exits with numeric status 130. Pi 0.87.1 leaves SIGINT to Node's default signal action, so process APIs report signal termination and the terminal stays raw. This exception does not cover print/JSON SIGINT, which must terminate by signal, or a dead terminal, which must exit 129. Both products restore a live terminal and exit 0 on SIGTERM or SIGHUP (`packages/coding-agent/src/modes/interactive/interactive-mode.ts:4145-4157,4231-4249`).
+What: when SIGINT terminates interactive mode, pig pops its extended-key protocols, restores the cooked state captured at startup, and exits with numeric status 130. upstream 0.99.1 leaves SIGINT to Node's default signal action, so process APIs report signal termination and the terminal stays raw. This exception does not cover print/JSON SIGINT, which must terminate by signal, or a dead terminal, which must exit 129. Both products restore a live terminal and exit 0 on SIGTERM or SIGHUP (`packages/coding-agent/src/modes/interactive/interactive-mode.ts:4174-4186,4260-4278`).
 
 Both halves matter. Without the tcsetattr the terminal stays raw, so the
 shell has no working Ctrl+C until `reset`. Without the protocol pop the Kitty
@@ -535,7 +536,7 @@ anyway, because pig holds the terminal in raw mode for the whole session, so
 `\x03` is consumed by the keymap. Measured on a live pty: `-isig` while idle
 and `-isig` while a bash tool runs. SIGINT is ignored while the temporary suspend listener is installed. If SIGINT and SIGCONT are pending together, a SIGINT dispatched after SIGCONT removes the listener can terminate the resumed process, matching upstream's dispatch-time listener semantics.
 
-Why: Pi 0.87.1 leaves the terminal raw after an external SIGINT. The wire audit re-probed this after a positional extension command completed, rather than at the first painted footer. The shell then has no working Ctrl+C until `reset`. The existing live-PTY regression checks PiG's restoration independently of tmux key encoding.
+Why: Pi 0.99.2 leaves the terminal raw after an external SIGINT. The wire audit re-probed this after a positional extension command completed, rather than at the first painted footer. The shell then has no working Ctrl+C until `reset`. The existing live-PTY regression checks PiG's restoration independently of tmux key encoding.
 
 The signal handler uses only the signal-safe keyboard-protocol disable and termios restoration. Normal teardown also drains stdin for up to a second, which would race the input reader and the render loop. The single-main-loop ownership invariant is enforced by `make test-race`.
 
@@ -736,85 +737,6 @@ Locked by: `cmd/pig/package_install_empty_test.go` -
 `TestEveryPackageResourceKindCountsAsAContribution`.
 Ratification: explicitly approved by the user for section SHA-256 `4e06f3d7200cce8f6aa65e6074a3632923f7324ac170bd4e93ae38165c31ca5d`.
 SCRUTINIZED:approved
-## D59 Generic extension tool cards expose complete recoverable details
-
-What: a generic extension tool card retains its complete structured arguments.
-Its collapsed header uses the current terminal-cell width for a compact preview
-and marks hidden input with `… (ctrl+o to expand)`. The expanded card shows the
-complete pretty-printed arguments and complete available result output. A
-resize recomputes both the preview budget and expanded wrapping from the
-retained value. A generic card is an extension tool that does not override a
-built-in tool name and whose definition has no `renderCall`, `renderResult` or
-`renderShell` "self". Built-in tools keep their renderers, an override of a
-built-in tool draws the built-in renderers it does not define, and an extension
-tool with renderers draws them as upstream does.
-
-Upstream state: `ToolExecutionComponent.expanded` starts false and is passed to
-custom call/result renderers, but the registered-tool fallback does not consume
-it. A registered extension tool counts as having a renderer definition even
-when `renderCall` is absent, so `createCallFallback()` shows only the tool name.
-Its arguments remain hidden before and after Ctrl+O. `formatToolExecution()`
-prints `JSON.stringify(args, null, 2)` only for an unknown tool with no built-in
-or extension definition. A custom renderer can define its own collapsed and
-expanded output.
-
-Why: Pig's old generic header first truncated every string to 40 characters and
-then truncated the combined header to 80 characters. It retained only that
-shortened string, so the ellipsis permanently hid the input and Ctrl+O could
-never recover it. Fixed character limits also wasted wider terminals. Retaining
-the source value makes every display omission explicit and reversible. It also
-keeps generic extension cards consistent with Pig's existing recoverable result
-preview rather than showing an unbounded argument payload in the transcript by
-default.
-
-Tradeoffs:
-- The component owns one copy of the argument JSON for its visible lifetime.
-  This costs memory proportional to the tool call, but avoids borrowing event
-  buffers and is bounded by data already carried in the provider request and
-  session record.
-- Expanded arguments can add many rows. That cost is explicit and user-driven;
-  collapsed cards stay compact.
-- Explicit Ctrl+O collapse clears and rebuilds terminal scrollback in collapsed
-  form. Native scrollback cannot delete only the expanded rows, so this action
-  snaps the reader to the live cursor. Automatic completion follows Pi's
-  ordinary main-screen redraw behavior.
-- Expanded wrapping preserves every grapheme and space instead of using the
-  ordinary word wrapper, which trims whitespace at line breaks. Copying wrapped
-  JSON includes display line breaks, but no retained argument character is
-  removed.
-- The collapsed preview preserves wire key order rather than sorting fields.
-  This keeps the displayed value faithful to the call and avoids manufacturing
-  a second canonical representation.
-- A result that the tool already truncated remains truncated. Pig preserves its
-  notice and does not claim Ctrl+O can recover bytes the tool never returned.
-
-Call sites:
-- `tui/tool_execution.go`: retained structured arguments, width-aware
-  header preview, expanded argument body, and generic final-state policy.
-- `internal/codingagent/interactive.go`: generic extension tool detection,
-  argument retention for streaming, execution, and resumed-session paths, and
-  explicit-collapse scrollback reconstruction.
-- `internal/codingagent/keybindings.go`, `internal/codingagent/interactive.go`,
-  `internal/codingagent/slash_commands.go`, and Pig docs: Ctrl+O is described
-  as toggling tool details.
-
-Locked by: `tui/tool_execution_test.go`
-(`TestGenericExtensionToolCollapsedDetailsScaleWithWidth`,
-`TestGenericExtensionToolExpandedDetailsShowCompleteInputAndOutput`, and
-`TestGenericExtensionToolStructuredArgsReflowAfterResize`) and
-`internal/codingagent/interactive_test.go`
-(`TestInteractiveMode_GenericExtensionToolDetailsRetainArguments`). The tests
-cover narrow/wide previews, complete nested arguments and output, source-level
-truncation notices, collapse/re-expansion identity, resize reflow, the
-production event path, and the custom-renderer boundary.
-
-Remove when: upstream gives generic extension tool calls a width-aware,
-recoverable details toggle that exposes complete arguments and result output.
-
-Ratification: user-ratified ("Let's completely close 705 in our PR") after the
-upstream generic fallback and the compact-versus-recoverable tradeoff were
-reviewed.
-SCRUTINIZED:approved
 ## D61 Session replacement keeps startup-project Services and Resources
 
 What: upstream `AgentSessionRuntime.switchSession()` opens the destination
@@ -857,11 +779,11 @@ SCRUTINIZED:approved
 
 ## D63 `--version` prints PiG's composite version
 
-What: `pi --version` prints Pi's bare version (for example `0.87.1`). `pig --version` prints one composite version: PiG's release with the Pi release PiG ports as semver build metadata (for example `0.2.0+0.87.1`, `coding.Version`). The help and diagnostics banner, the interactive startup line, `pig build`'s installed line, and `pig verify` show the same composite. `pig version` keeps its separate `pig:` and `upstream pi:` fields, which the Piglet image check and `pig build` read.
+What: `pi --version` prints Pi's bare version (for example `0.99.1`). `pig --version` prints one composite version: PiG's release with the Pi release PiG ports as semver build metadata (for example `0.3.0+0.99.1`, `coding.Version`). The help and diagnostics banner, the interactive startup line, `pig build`'s installed line, and `pig verify` show the same composite. `pig version` keeps its separate `pig:` and `upstream pi:` fields, which the Piglet image check and `pig build` read.
 
 Why: one string tells a user both which PiG they run and which Pi it ports. The owner chose this on 2026-09-23.
 
-Observable effect: a script that runs `pig --version` and expects Pi's bare version sees `0.2.0+0.87.1`. Semver precedence ignores build metadata, so the composite sorts as `0.2.0`; self-update comparisons, release tags, and the Piglet compatibility check still use `coding.PigVersion` itself.
+Observable effect: a script that runs `pig --version` and expects Pi's bare version sees `0.3.0+0.99.1`. Semver precedence ignores build metadata, so the composite sorts as `0.3.0`; self-update comparisons, release tags, and the Piglet compatibility check still use `coding.PigVersion` itself.
 
 Call sites:
 - `cmd/pig/main.go`: `cliVersionString`.
@@ -874,11 +796,13 @@ SCRUTINIZED:approved
 
 ## D64 PiG's hosted endpoints live on pi-in-go.dev
 
-What: Pi 0.87.1 points its hosted endpoints at pi.dev and uploads shared-session artifacts to Earendil's Radius gateway at `radius.pi.dev`. PiG serves its hosted paths from `https://pi-in-go.dev` through the private PiG platform repository. The version check, install report, and managed installer API keep Pi's response shapes at the PiG host; the installer API serves PiG GitHub Release archives and returns 404 for npm-only `package.json` and `package-lock.json` paths because PiG has no npm package.
+What: Pi 0.99.2 points its hosted endpoints at pi.dev and uploads shared-session artifacts to Earendil's Radius gateway at `radius.pi.dev`. PiG serves its hosted paths from `https://pi-in-go.dev` through the private PiG platform repository. The version check, install report, and managed installer API keep Pi's response shapes at the PiG host; the installer API serves PiG GitHub Release archives and returns 404 for npm-only `package.json` and `package-lock.json` paths because PiG has no npm package.
 
 Pi's `/share` uploads an organization-visible JSONL artifact to Radius only when Radius auth is available, then otherwise falls back to a private GitHub gist. PiG always requires the explicit `/share` command, displays a persistent privacy notice before the request, and uploads the same `exportSessionForShare` JSONL shape to `https://pi-in-go.dev/v1/artifacts?visibility=unlisted&title=PiG+session`. PiG needs neither Radius nor `gh` login for this path. The PiG platform stores at most 8 MiB per artifact, gives it an unlisted `https://pi-in-go.dev/session/p_<id>` URL, and expires it after 30 days. `PI_SHARE_GATEWAY_URL` explicitly replaces the complete upload URL; `PI_INSTALLER_API_BASE` keeps its upstream meaning for the installer.
 
-Pi's `reportInstallTelemetry` (interactive-mode.ts:1292-1307) sends its anonymous install/update ping to `https://pi.dev/api/report-install?version=<version>`. PiG sends the identical ping — only the `version` query parameter, plus PiG's own `User-Agent` — to `https://pi-in-go.dev/api/report-install?version=<version>` instead, fired at the same two occasions Pi fires it (a fresh install, and an update whose changelog has new entries), gated by the same `enableInstallTelemetry` setting and `PI_TELEMETRY`/`PI_OFFLINE` env overrides, with the same 5s timeout and fire-and-forget error handling. `PIG_INSTALL_TELEMETRY_URL` explicitly replaces the endpoint (tests use it to point at a local server; there is no upstream equivalent).
+Pi's built-in providers read a remote model-catalog overlay from `https://pi.dev/api/models/providers/<provider>` (remote-catalog-provider.ts:DEFAULT_CATALOG_BASE_URL). PiG reads the same route from `https://pi-in-go.dev` and never calls pi.dev for it. `CreateModelRuntimeOptions.CatalogBaseURL` (Pi's `catalogBaseUrl`) replaces the endpoint. The request, the `?types=` query, the 4 hour freshness window, etag revalidation and the 404/501 unavailable path are Pi's; the `User-Agent` is PiG's (D65), so a server that redirects `pi/` agents to a `pi-version` URL (Pi's catalog protocol) sends PiG no redirect. A host that does not serve the route leaves the bundled catalog, exactly as Pi's unavailable overlay does. PiG's generated catalogs carry no generation timestamp, so a stored remote catalog is always newer than the bundled one (Pi compares the stored catalog's `Last-Modified` with `getBuiltinModelDataGeneratedAt`).
+
+Pi's `reportInstallTelemetry` (interactive-mode.ts:1312-1327) sends its anonymous install/update ping to `https://pi.dev/api/report-install?version=<version>`. PiG sends the identical ping — only the `version` query parameter, plus PiG's own `User-Agent` — to `https://pi-in-go.dev/api/report-install?version=<version>` instead, fired at the same two occasions Pi fires it (a fresh install, and an update whose changelog has new entries), gated by the same `enableInstallTelemetry` setting and `PI_TELEMETRY`/`PI_OFFLINE` env overrides, with the same 5s timeout and fire-and-forget error handling. `PIG_INSTALL_TELEMETRY_URL` explicitly replaces the endpoint (tests use it to point at a local server; there is no upstream equivalent).
 
 The owner designed out experimental Radius composition on 2026-09-28. The experimental server and client use only native Unix sockets: `StartServer` opens no relay host and reports no Radius status, `radius://` connection addresses fail with the unsupported-transport diagnostic, `--auth-token` and `--auth-token-file` are unsupported experimental options, and `OpenClientRuntime` rejects non-Unix routes before discovery. This replaces Pi's `experimental/server.ts:637-677`, `experimental/commands.ts:14-29`, `experimental/client-runtime.ts:57-68,125-133,156-169` and the Radius branches of `cli/experimental/command-options.ts`. The explicit-gateway Radius relay library in `internal/experimental` and its ported tests are unchanged.
 
@@ -891,6 +815,7 @@ Call sites:
 - `internal/codingagent/interactive_share.go`: `shareSessionWithLoader`.
 - `internal/codingagent/slash_commands.go`: the `/share` destination and retention description.
 - `internal/codingagent/install_telemetry.go`: `defaultInstallTelemetryURL`, `installTelemetryURL`, and `sendInstallTelemetry`.
+- `internal/codingagent/remote_catalog_provider.go`: `DefaultCatalogBaseURL` and `builtinModelDataGeneratedAt`.
 - `internal/codingagent/interactive.go`: the startup changelog/install-telemetry block in `Run`.
 - `automation/gen/gen-help.sh`: drops `PI_SHARE_VIEWER_URL` from the rendered `cmd/pig/help_upstream.txt`.
 - `internal/experimental/server_runtime.go`: Unix-only `StartServer` composition.
@@ -906,7 +831,7 @@ SCRUTINIZED:approved
 
 ## D65 PiG identifies itself as `pig/<coding.Version>`
 
-What: upstream `getPiUserAgent()` has two package-local forms. The AI helper (`packages/ai/src/utils/pi-user-agent.ts`) sends every HTTP provider request's default `User-Agent` as `pi (<platform> <release>; <arch>)` (or `pi (browser)` with no Node/Bun runtime). The coding-agent helper (`packages/coding-agent/src/utils/pi-user-agent.ts`) reports `pi/<version> (<platform>; <runtime>; <arch>)` for management requests and bug-report metadata. PiG has no browser build and always runs as a native process, so both PiG surfaces use the one owner-approved product identity: `pig/<coding.Version> (<platform> <release>; <arch>)`, for example `pig/0.2.0+0.87.1 (darwin 25.6.0; arm64)`. The release comes from `uname` on unix (`ai/user_agent_unix.go`, `internal/codingagent/bug_report_unix.go`) and from `RtlGetVersion` on Windows (`ai/user_agent_windows.go`, `internal/codingagent/bug_report_windows.go`), matching Node's `os.release()` on each platform.
+What: upstream `getPiUserAgent()` has two package-local forms. The AI helper (`packages/ai/src/utils/pi-user-agent.ts`) sends every HTTP provider request's default `User-Agent` as `pi (<platform> <release>; <arch>)` (or `pi (browser)` with no Node/Bun runtime). The coding-agent helper (`packages/coding-agent/src/utils/pi-user-agent.ts`) reports `pi/<version> (<platform>; <runtime>; <arch>)` for management requests and bug-report metadata. PiG has no browser build and always runs as a native process, so both PiG surfaces use the one owner-approved product identity: `pig/<coding.Version> (<platform> <release>; <arch>)`, for example `pig/0.3.0+0.99.1 (darwin 25.6.0; arm64)`. The release comes from `uname` on unix (`ai/user_agent_unix.go`, `internal/codingagent/bug_report_unix.go`) and from `RtlGetVersion` on Windows (`ai/user_agent_windows.go`, `internal/codingagent/bug_report_windows.go`), matching Node's `os.release()` on each platform.
 
 Why: PiG is not Pi; providers, diagnostics, and their logs should distinguish PiG traffic and artifacts from Pi's, and identify both the PiG release and the Pi release it ports. The owner chose this shape on 2026-09-23 (delivery/OWNER-DECISIONS.md Q4).
 
@@ -967,11 +892,11 @@ SCRUTINIZED:approved
 
 ## D70 Session replacement re-evaluates every extension module, not only its factory
 
-What: on every session replacement (`/new`, `/resume`, `/fork`, `/clone`, `ctx.newSession()`, `ctx.fork()`, `ctx.switchSession()`, and RPC `new_session`, `switch_session`, `fork` and `clone`), Pig starts a new extension host for the replacement Session and its extensions run in fresh runtime processes. (`/reload` is not affected: it re-invokes each factory inside the extension runtime process that already holds its module, as Pi does.) The new process imports the extension module and calls its factory, so module-level state (top-level `let` bindings, module-scope caches, counters, open handles) and process-wide state (`process.env` changes, `globalThis` properties) start over after every reload and every replacement. Factory-scoped state starts over in both Pi and Pig.
+What: on every session replacement (`/new`, `/resume`, `/fork`, `/clone`, `ctx.newSession()`, `ctx.fork()`, `ctx.switchSession()`, and RPC `new_session`, `switch_session`, `fork` and `clone`), Pig starts a new extension host for the replacement Session and its extensions run in fresh runtime processes. (`/reload` is not affected: it re-invokes each factory inside the extension runtime process that already holds its module, as Pi does.) The new process imports the extension module and calls its factory, so module-level state (top-level `let` bindings, module-scope caches, counters, open handles) and process-wide state (`process.env` changes, `globalThis` properties) start over after every replacement. Factory-scoped state starts over in both Pi and Pig.
 
-Upstream state: Pi 0.87.1's `DefaultResourceLoader.reload` calls `clearExtensionCache()` and invokes every extension factory again inside the same Node process. `AgentSessionRuntime` builds the replacement Session's resource loader and extension factories again in the same process too (`agent-session-runtime.ts:197-353`, `main.ts` `createRuntime`). Whether the module body runs again depends on its loader: jiti (`moduleCache: false`) re-evaluates a `.ts` module, while a `.mjs` module stays in Node's native ESM cache and its module-level state survives the reload. Both behaviors were probed directly on Pi 0.87.1 (module-eval and factory-call logs across two reloads: `.ts` evaluated 2x with 2 factory calls; `.mjs` evaluated 1x with 3 factory calls).
+Upstream state: upstream 0.99.1's `DefaultResourceLoader.reload` calls `clearExtensionCache()` when its loader has loaded before (`resource-loader.ts:509`) and invokes every extension factory again inside the same Node process. `AgentSessionRuntime` builds the replacement Session's resource loader and extension factories again in the same process (`agent-session-runtime.ts:197-351`, `main.ts` `createRuntime`), but a replacement's new loader reads the module-level factory cache (`loader.ts:128-148`), which only `clearExtensionCache()` or a change of working directory empties. Whether the module body runs again therefore depends on the path. On reload, jiti (`moduleCache: false`) re-evaluates a `.ts` module, while a `.mjs` module stays in Node's native ESM cache and its module-level state survives. On a replacement in the same working directory, neither module is evaluated again. Both behaviors were probed directly on upstream 0.99.1, and the 0.87.1 release gave the same counts: two `ctx.reload()` calls logged `.ts` evaluated 3x with 3 factory calls and `.mjs` evaluated 1x with 3 factory calls, and two RPC `new_session` commands logged `.ts` evaluated 1x with 3 factory calls and `.mjs` evaluated 1x with 3 factory calls.
 
-Observable effect: an `.mjs` (or natively imported `.js`) extension that keeps state at module scope sees it reset by each session replacement, and retained by Pi's. An extension that assigns `process.env` or `globalThis` in one Session finds it in Pi's replacement Session and does not find it in Pig's. Extensions that keep state inside the factory behave the same on both. A `.ts` extension that keeps state only at module scope also behaves the same, because jiti re-evaluates it on both; a `.ts` extension that sets `process.env` or `globalThis` does not.
+Observable effect: an `.mjs`, `.ts` or natively imported `.js` extension that keeps state at module scope sees it reset by each session replacement, and retained by Pi's when the replacement keeps the working directory. An extension that assigns `process.env` or `globalThis` in one Session finds it in Pi's replacement Session and does not find it in Pig's. Extensions that keep state inside the factory behave the same on both.
 
 Why: Pig hosts extensions outside its own process, so an extension instance is a runtime process. Re-invoking a factory inside a retained process would need an in-process re-registration protocol and would keep a process whose registrations are being replaced, which the atomic start-beside/swap/stop-old reload transaction is built to avoid. A fresh process matches the part of the contract that holds for every Pi loader, which is that each factory runs again on reload and on session replacement. The outgoing process also has to outlive the command that requested the replacement, because that command awaits the replacement's result; the factory retires it when the command's handler returns. Once RPC mode's shutdown has started, retirement stops shutting hosts down, because a quit `session_shutdown` may still be pending on one and Pi leaves that handler pending; process exit terminates the held hosts.
 
@@ -983,13 +908,13 @@ Locked by: `cmd/pig/session_replacement_modes_test.go` `TestPrintModeNewSessionB
 
 Parity allowance: no paired scenario asserts module-scope state across `/reload`, because Pi's result depends on the extension's file type and Pig's is the same for all of them. Scenario 15 keeps its state in the factory, the per-reload contract both share. Scenarios `39-extension-session-replacement`, `40-json-extension-session-replacement`, `41-rpc-extension-session-replacement` and `42-tui-extension-session-replacement` (extensions-runtime) trace a session replacement through a fixture that assigns `process.env.FIN_REPLACEMENT_LOG` in one Session and reads it in the next; Pig's side of those scenarios receives the same value at startup, and each scenario's comment cites D70. No other comparator changes.
 
-Remove when: Pig re-invokes TS/JS extension factories inside a retained Node runtime on session replacement (the additive `subprocess.RuntimeRetention` host API exists for it), using Pi's loader semantics (jiti re-evaluation for `.ts`, the native module cache for `.mjs`), or when upstream reload and session replacement re-evaluate every extension module.
+Remove when: Pig re-invokes TS/JS extension factories inside a retained Node runtime on session replacement (the additive `subprocess.RuntimeRetention` host API exists for it), reusing each module's cached factory as Pi's module-level extension cache does for a replacement in the same working directory (`loader.ts:128-148`), or when upstream reload and session replacement re-evaluate every extension module.
 
 SCRUTINIZED:approved. The owner approved the session-replacement scope on 2026-09-29 (WSL QUESTIONS 04:50Z, lead note 04:50Z).
 
 ## D73 Live main-process object identity does not cross into Node extensions
 
-What: inside an extension process, `@earendil-works/pi-coding-agent`, `@earendil-works/pi-tui`, `@earendil-works/pi-ai`, and `@earendil-works/pi-agent-core` export every runtime value their Pi 0.87.1 packages export. Imported objects execute in the extension process, not in the Go host.
+What: inside an extension process, `@earendil-works/pi-coding-agent`, `@earendil-works/pi-tui`, `@earendil-works/pi-ai`, and `@earendil-works/pi-agent-core` export every runtime value that the Pi release vendored in `shims/pi-dist` exports. Imported objects execute in the extension process, not in the Go host.
 
 Pi's own code, copied verbatim from the pinned release into `shims/pi-dist` with the third-party releases Pi depends on (`yaml`, `marked`, `get-east-asian-width`, `partial-json`, `highlight.js`, `ignore`, `diff`, TypeBox):
 - pi-coding-agent: the complete published root module graph, including AgentSession, ModelRuntime, SessionManager, SettingsManager, ResourceLoader, tool factories and renderers, compaction, selectors, theme helpers, and the SDK factories. `createAgentSession` delegates to Pi's implementation and binds independent child cleanup to its extension connection. The main Go Session is not exposed as an imported JavaScript AgentSession.
@@ -999,7 +924,7 @@ Pi's own code, copied verbatim from the pinned release into `shims/pi-dist` with
 
 The imported pure helpers, tool definitions, components, and themes execute Pi's code. The host publishes its active palette to the extension process's global theme and publishes measured terminal dimensions, including `process.stdout.columns` and `process.stdout.rows`. D74 still governs built-in provider execution. Independent imported objects do not expose the Go Main Screen or let a prototype patch modify a Go component.
 
-Independent file-backed stores use PiG's configuration root by default (D2). `PIG_USE_PI_DIRS=1` selects `PI_CODING_AGENT_DIR` or `~/.pi/agent` and project `.pi` instead. `SettingsManager` reads the selected project settings unless the caller passes `{ projectTrusted: false }`. Node uses the exact pinned proper-lockfile dependency. Go auth, model, settings and trust stores use the same directory-lock protocol, so a Node child can open those stores without encountering a regular-file sidecar from its host. PiG reclaims an empty regular sidecar from v0.2.0 only after its mtime passes the operation's stale threshold (10 seconds synchronous, 30 seconds asynchronous), taking its old OS lock and rechecking file identity and mtime. Fresh regular sidecars use normal contention retries or caller cancellation. A live older writer keeps its lock; stop that older PiG if acquisition times out. Nonempty files, symlinks and live lock directories are not reclaimed. This recovers PiG-owned upgrade state; it does not change the directory protocol used by Pi and Node children.
+Independent file-backed stores use PiG's configuration root by default (D2). `PIG_USE_PI_DIRS=1` selects `PI_CODING_AGENT_DIR` or `~/.pi/agent` and project `.pi` instead. `SettingsManager` reads the selected project settings unless the caller passes `{ projectTrusted: false }`. Node uses the exact pinned proper-lockfile dependency. Go auth, model, settings and trust stores use the same directory-lock protocol, so a Node child can open those stores without encountering a regular-file sidecar from its host. PiG reclaims an empty regular sidecar from v0.2.0 only after its mtime passes the operation's stale threshold (10 seconds synchronous, 30 seconds asynchronous), taking its old OS lock and rechecking file identity and mtime. Fresh regular sidecars use normal contention retries or caller cancellation. A live older writer keeps its lock; stop that older PiG if acquisition times out. Only an empty regular file is a legacy sidecar. A nonempty file, a link and a lock directory at the lock path follow proper-lockfile's protocol, as in Pi: a fresh one is contention, and a stale one is removed with rmdir. That removes a stale lock directory, and on Windows a link to a stale directory, whose target stays. A stale nonempty file, a link to a stale file, and on Unix any stale link stay in place: acquisition fails with ELOCKED on Windows and ENOTDIR on Unix. A stale lock directory that is not empty stays in place, and acquisition fails with ENOTEMPTY. A dangling link stays in place, and acquisition reports ELOCKED. This recovers PiG-owned upgrade state; it does not change the directory protocol used by Pi and Node children.
 
 `CustomEditor` is Pi's, a subclass of pi-tui's `Editor`, and `ctx.ui.setEditorComponent` installs the factory's editor the way Pi's `setCustomEditorComponent` does. The editor runs in the extension process: the factory receives a TUI (terminal size, `requestRender`, `terminal.write`, `setShowHardwareCursor`/`getShowHardwareCursor`), Pi's editor theme and the keybindings manager below; the host sends it the editor text, padding, autocomplete size and focus Pi copies, every key while it is installed, a left click on its rows in fullscreen mode, and each `setText`, `insertTextAtCursor` and `addToHistory` Pi's host performs on its editor; it shows the rows the editor renders, cursor marker included, and runs the default editor's handlers for its callbacks (`onSubmit`, `onChange`, `onEscape`, `onCtrlD`, `onPasteImage`, `onExtensionShortcut` and the `app.*` action handlers). Editor-local clear, follow-up clearing and idle bash Escape run synchronously in the component process; their host callbacks do not replay those text mutations. An input-completion notification holds the input pump until the component's callbacks reach the owner loop, without blocking rendering or accumulating later keys. Its border color follows the thinking level and bash mode as Pi's `updateEditorBorderColor` sets it, and its autocomplete provider asks the host, which answers with the suggestions PiG's own editor would show for the same text.
 
@@ -1012,7 +937,7 @@ Partial, with the reason:
 - `CONFIG_DIR_NAME` and `getAgentDir` name PiG's configuration tree (D2).
 - `getPackageDir` identifies the shipped private Node SDK and its assets, not the Node interpreter or PiG executable directory. The harness package also exports that SDK for absolute package-root imports.
 
-No manufactured class/function stand-ins remain in the coding-agent or TUI package exports. The export audit is `test/parity/unit-evidence/node-shim-audit.md`; the restored TUI module tests and `test/parity/unit-evidence/fix-node-scrollview.md` qualify the TUI portion. The fabricated pi-ai `registerSessionResourceCleanup` and `cleanupSessionResources` values are removed because neither is a runtime export in Pi 0.87.1. Live main-process identity remains restricted as described above.
+No manufactured class/function stand-ins remain in the coding-agent or TUI package exports. The export audit is `test/parity/unit-evidence/node-shim-audit.md`; the restored TUI module tests and `test/parity/unit-evidence/fix-node-scrollview.md` qualify the TUI portion. The fabricated pi-ai `registerSessionResourceCleanup` and `cleanupSessionResources` values are removed because neither was a runtime export of the Pi release that the audit read. Live main-process identity remains restricted as described above.
 
 Independent construction is implemented by the pinned SDK modules. `extensions-runtime/53-node-independent-session` exercises child-only models, provider hooks, built-in and custom tools, persistence and cancellation without changing the parent. The locked `pi-btw@0.6.1` replay exercises side requests, overlay reuse, cancellation and a subsequent independent main turn. See `test/parity/unit-evidence/fix-node-createagentsession.md`.
 
@@ -1047,7 +972,7 @@ Call-site markers:
 
 Locked by: `coding/extension/host/subprocess` `TestVendoredPiDistMatchesThePinnedPackage` (every vendored pi-ai file is verbatim except the listed bridge stubs), `TestNodeRuntimeShimsExportEveryPinnedPiValue` (the compat surface), and `TestNodeCompatCompletionAbortCancelsHostRequest` (the extension's `apiKey` reaches the host, no session thinking level is applied, and an aborted signal cancels the host request).
 
-Parity allowance: no paired scenario runs an extension's direct provider call; the Pi-extension end-to-end run compares pi-hermes-memory's consolidation request and result against Pi 0.87.1 over a scripted OpenAI-compatible server.
+Parity allowance: no paired scenario runs an extension's direct provider call; the Pi-extension end-to-end run compares pi-hermes-memory's consolidation request and result against the pinned Pi over a scripted OpenAI-compatible server.
 
 Remove when: PiG ships the vendor SDKs to extensions and runs upstream's API implementations, or upstream removes the compat entry point's global dispatch.
 
@@ -1081,9 +1006,9 @@ SCRUTINIZED:approved
 
 What: metadata lookups for user-scoped (global) npm packages run from that source's managed npm install root, including an explicit registry source's managed root. PiG retains the caller's selected `npmCommand` argv and user/environment configuration. This applies to explicit package updates and available-update checks, including commands that select npm, pnpm or Bun. Trusted project-scoped packages continue to query from the project cwd. Missing user roots are initialized as managed npm projects; an inaccessible root fails the lookup instead of falling back to the invoking directory.
 
-Why: security. Pi 0.87.1 runs `npm view` in the invoking project even when project settings are denied. A repository's `.npmrc` can redirect global-package metadata requests, expose queried package names and influence update decisions without project approval. The owner selected the minimal cwd policy, not a new package-manager configuration sandbox.
+Why: security. Pi 0.99.2 runs `npm view` in the invoking project even when project settings are denied. A repository's `.npmrc` can redirect global-package metadata requests, expose queried package names and influence update decisions without project approval. The owner selected the minimal cwd policy, not a new package-manager configuration sandbox.
 
-Pi source: `.upstream/v0.87.1/packages/coding-agent/src/core/package-manager.ts:1150-1164` invokes the lookup for updates; `1481-1500` invokes it for available-update checks; `1511-1530` retains the selected command and explicitly passes `cwd: this.cwd`; `2613-2633` forwards that directory to the subprocess. `package-manager-cli.ts:750-756,928-944` supplies the trust-resolved settings but does not isolate native npm configuration.
+Pi source: `.upstream/v0.99.1/packages/coding-agent/src/core/package-manager.ts:1181-1195` invokes the lookup for updates; `1515-1534` invokes it for available-update checks; `1545-1564` retains the selected command and explicitly passes `cwd: this.cwd`; `2674-2694` forwards that directory to the subprocess. `package-manager-cli.ts:750-756,932-948` supplies the trust-resolved settings but does not isolate native npm configuration.
 
 Scope: user-package metadata only. The approved difference applies even when the invoking project is trusted, because scope determines the lookup directory. Trusted project packages retain Pi's cwd and registry behavior. The user's configuration and explicit command arguments can still select a registry or configuration file. Relative command paths and arguments now resolve from managed storage for user lookups; use absolute paths for wrappers or configuration files that must live elsewhere. This rule does not sandbox package-manager code, scrub the environment or alter self-update ownership.
 
@@ -1100,7 +1025,7 @@ SCRUTINIZED:approved
 
 What: `maskSecretInput` is a boolean setting with default `true`. `/settings` exposes **Mask secret input** and explains that false restores Pi's plain-text behavior. Masked prompts show up to eight dots, a grapheme count and the last four graphemes. Inputs shorter than five graphemes expose no suffix. Submitted dialog history retains only the preview. The hint reads `Input hidden (PiG default). Show like Pi: /settings → Mask secret input`.
 
-False restores Pi 0.87.1's complete ordinary prompt and submitted-text rendering without the extra count or hint. Ordinary text and manual-code prompts are unaffected. A new dialog captures the setting; change it in `/settings`, then reopen `/login`. Normal project/global precedence applies. Pi ignores the extra JSON key and preserves it when updating shared settings.
+False restores Pi 0.99.2's complete ordinary prompt and submitted-text rendering without the extra count or hint. Ordinary text and manual-code prompts are unaffected. A new dialog captures the setting; change it in `/settings`, then reopen `/login`. Normal project/global precedence applies. Pi ignores the extra JSON key and preserves it when updating shared settings.
 
 Authentication progress and errors redact masked input, including trimmed credential forms. Login input is not appended to Session messages. The authentication flow and authorized credential store still receive the credential: display privacy does not encrypt auth.json or a provider-owned store, and the shown suffix is intentionally visible.
 
@@ -1209,9 +1134,9 @@ SCRUTINIZED:approved
 
 What: when RPC stdin ends, PiG decides for each extension command whether Pi's process would still have answered it. A command answers if it settles inside the microtasks, ticks and check phase of its line's own event-loop iteration, or while a `session_shutdown` handler that awaits a timer or I/O keeps the process alive. Two differences remain in that decision.
 1. PiG stops a Node runtime process only after the host reaches its exit decision. A command handler that Pi never resumes (its continuation is a timer, file I/O, a nested `setImmediate` or a child process) is suspended in Pi's exited process. In PiG its continuation can still run in the runtime process between the suspension report and the host stopping that process, so its side effects (a file write, a recorded event, a host call the host still accepts) can happen. Pi never runs them. PiG never prints the held response.
-2. A suspended quit `session_shutdown` handler keeps Pi's process alive, so a suspended command can still settle and answer. PiG observes this only within one runtime process: a suspended `session_shutdown` handler in one runtime process does not keep a command of another runtime process alive. Node factories normally pack into one process, so this is reachable only with an extension in its own runtime process (a quarantined or isolated Node extension) or a non-Node runtime whose handler is suspended.
+2. A suspended quit `session_shutdown` handler keeps Pi's process alive, so a suspended command can still settle and answer. PiG observes this only within one runtime process: a suspended `session_shutdown` handler in one runtime process does not keep a command of another runtime process alive. Node factories normally pack into one process, so this is reachable only with an extension in its own runtime process (a quarantined or isolated Node extension) or a non-Node runtime whose handler is suspended. Since the per-process drain reports (`runtime_drained`, `runtime_commands_drained`) the host also counts a command of another isolated Node process as able to answer until that process reports that nothing keeps its own loop alive (`TestDrainSpansIsolatedNodeProcesses`, `TestDrainAwaitsIsolatedNodeCommandThatWaitsForSessionChange`). That covers a command that awaits a session change, a Promise or a dialog; no test covers a command that a suspended quit handler in another process keeps alive, so this difference is recorded as remaining.
 
-Why: extensions run in runtime processes outside the host. The host learns that a handler is suspended from a `request_state` frame and must then stop the process, so the continuation races the stop. An exact match would need the host to freeze or stop the runtime before the suspension frame is sent, which stays racy, or a keepalive aggregated across runtime processes with a new wire message for handler suspension. Pi runs every extension on its one event loop (`rpc-mode.ts:728-744,804-807`, `output-guard.ts:105-108`).
+Why: extensions run in runtime processes outside the host. The host learns that a handler is suspended from a `request_state` frame and must then stop the process, so the continuation races the stop. An exact match would need the host to freeze or stop the runtime before the suspension frame is sent, which stays racy, or a keepalive aggregated across runtime processes with a new wire message for handler suspension. Pi runs every extension on its one event loop (`rpc-mode.ts:726-742,802-805`, `output-guard.ts:105-108`).
 
 Observable effect: (1) an extension whose command continues through a timer or I/O after stdin ended can perform that continuation's side effects under PiG and not under Pi, in a short window before its runtime stops. Stdout is identical. (2) With extensions in separate runtime processes, a command that Pi answers because another extension's shutdown handler holds the process open is not answered by PiG.
 
@@ -1226,5 +1151,27 @@ Evidence: `TestRPCInputEndAfterExtensionCommandComparedWithPi` (stdout and the e
 Parity allowance: the Pi rows of the comparison tests are strict. The PiG rows drop the command's own event record for the shapes Pi does not answer (`afterExit`), which is difference 1. No test covers difference 2.
 
 Remove when: the host stops or freezes a runtime process before a suspended continuation can run and the stdin-end window is aggregated across runtime processes, or PiG runs extensions on one shared event loop as Pi does.
+
+SCRUTINIZED:approved
+
+## D86 RPC settle tail: a settle-tail handler of a runtime that cannot report its wait holds stdin
+
+What: in RPC mode Pi emits `agent_settled` in the microtasks that follow a published `agent_end`, so its stdin reader, which runs between macrotasks, reads no line between them (`agent-session.ts:1044-1058,1752-1777`, `rpc-mode.ts:355-360,808-810`). When an `agent_before_settle` or `agent_settled` handler awaits a timer, I/O or another real wait, Pi reads stdin while it waits. PiG reads stdin on its own goroutine, so `rpcSettleGate` holds each stdin batch, and stdin's end, from a published `agent_end` until `agent_settled` is written. The gate is open during a compaction, an auto-retry delay, a new run, an extension dialog and a settle-tail handler whose wait the host can see: a Node handler reports a suspended window to the host, as a command does. A handler of a runtime with no microtask continuation (the Go, Rust and Python SDKs) reports no window. While such a handler runs, the gate stays closed. A command sent during its wait is answered after the handler settles and `agent_settled` is written, where Pi answers it during the wait. After stdin's end, such a running handler counts as waiting, so shutdown does not wait for it.
+
+Why: the host learns of a wait only from a runtime's report, and those runtimes have no equivalent of the Node window that closes unresponded. Without the gate, a command sent on seeing `agent_end` would be answered before `agent_settled`, which Pi never does.
+
+Observable effect: with an `agent_before_settle` or `agent_settled` handler in the Go, Rust or Python SDK that waits on a timer or I/O, a command sent while it waits is answered later than in Pi: after `agent_settled` instead of before it. Output order for every other case, including every Node handler, is as in Pi.
+
+Scope: only a settle-tail handler of a runtime that reports no window, and only a command or stdin end sent during its wait. Outside that case the gate matches Pi and is not waived.
+
+Owner decision: 2026-10-01, owner Michael Kinsy approves this divergence as a temporary one ("Yes go with recommendations", in the lead session). Approval covers only the scope above.
+
+Call-site markers: `cmd/pig/rpc_settle_gate.go`: `rpcSettleGate`.
+
+Evidence: `TestRPCCommandAfterAgentEndAnswersAfterAgentSettledComparedWithPi`, `TestRPCCommandDuringSuspendedSettleTailAnswersComparedWithPi` and `TestRPCInputEndDuringSuspendedSettleTailShutsDownComparedWithPi` in `cmd/pig/rpc_input_end_order_test.go` (Pi and PiG for Node handlers), `TestRPCInputEndDuringGoSDKSettleTailHandlerShutsDown` in `cmd/pig/rpc_shutdown_drain_go_test.go`, `TestRPCSettleGate*` in `cmd/pig/rpc_settle_gate_test.go` and `TestSettleTailCountsHandlersPiServesStdinDuring` in `coding/extension/host/subprocess/command_window_test.go`.
+
+Parity allowance: the Pi comparison rows cover Node handlers only. No test compares a command sent during a Go, Rust or Python handler's wait with Pi, because those handlers have no Pi counterpart.
+
+Remove when: the Go, Rust and Python SDK runtimes report a settle-tail handler's suspension to the host, as the Node runtime does with a command's window, so the gate opens during their waits.
 
 SCRUTINIZED:approved

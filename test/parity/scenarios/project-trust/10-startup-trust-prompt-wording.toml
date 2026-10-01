@@ -2,6 +2,10 @@
 # Upstream evidence: Pi 0.87.1 core/project-trust.ts:24-37 and cli/project-trust.ts:18-29:
 # an undecided project prompts before loading local settings, even with -ne.
 # Probed with the same empty settings fixture as scenario 09, at 180x35.
+# Upstream 0.99.2 startup-ui.ts showStartupSelector awaits createStartupTui (themes registered, terminal colors marked pending,
+# initTheme) before it constructs ExtensionSelectorComponent, which builds its title and rows with theme.fg at construction
+# (extension-selector.ts:48-84): the heading and the selected row carry no foreground color, and keep that after the terminal
+# reports its colors. PiG used to theme them at every render, so the heading took the reported colors.
 # The complete prompt and ordered choices are compared, not just its title.
 name = "10-startup-trust-prompt-wording"
 description = "Startup trust describes exactly which project settings, resources, packages and code approval enables."

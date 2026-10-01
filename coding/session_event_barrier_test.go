@@ -18,7 +18,7 @@ func TestSessionFlushEventsWaitsForConsumerAcknowledgement(t *testing.T) {
 			t.Error(err)
 		}
 	}()
-	if err := s.Steer(t.Context(), "queued", nil, nil); err != nil {
+	if _, err := s.Steer(t.Context(), "queued", nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	done := make(chan error, 1)

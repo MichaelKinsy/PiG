@@ -80,9 +80,9 @@ All 26 assigned native original cases now have evidence, but the five file mappi
 
 ## Persistence fixes
 
-The first valid runtime red is `TestRuntimeOriginalDuplicateCurrentBranch/memory`: `SessionManager.Clone` unconditionally created a disk file. The shared clone path now constructs the retained log in memory, selects a path only for persisted sources, and writes only when the retained branch contains an assistant. The root-user fallback in `ForkToNewSession` also preserves memory-only storage.
+The first valid runtime red is `TestRuntimeOriginalDuplicateCurrentBranch/memory`: `SessionManager.Clone` unconditionally created a disk file. The shared clone path now constructs the retained log in memory, selects a path only for persisted sources, and writes only when the retained branch contains a user or assistant message (upstream 0.99.1 `session-manager.ts:1717-1725`). The root-user fallback in `ForkToNewSession` also preserves memory-only storage.
 
-The pure guard `TestClonePreservesPersistenceModeAndDefersAssistantFreeBranches` covers memory/disk and user-only/assistant-retaining branches. `TestForkBeforeRootUserKeepsMemoryOnlyStorage` covers the separate root fallback. The actual Runtime cases cover the caller boundary. The first-message branching cases assert that the selected disk path does not yet exist.
+The pure guard `TestClonePreservesPersistenceModeAndDefersConversationFreeBranches` covers memory/disk and setup-only/user/assistant-retaining branches. `TestForkBeforeRootUserKeepsMemoryOnlyStorage` covers the separate root fallback. The actual Runtime cases cover the caller boundary. The first-message branching cases assert that the selected disk path does not yet exist.
 
 Pi `src/core/agent-session-runtime.ts:335-352` retains the in-memory SessionManager object while replacing its owning Session. `session_branch_runtime.go` preserves that identity and clears the old log caches when it installs the new branch. `TestRuntimeOriginalDuplicateCurrentBranch/memory` checks both Session replacement and manager identity.
 

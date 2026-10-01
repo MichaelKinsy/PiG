@@ -10,7 +10,7 @@ import { spawnSync } from "node:child_process";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const require = createRequire(path.join(root, "extensions/sdk-ts/package.json"));
 const ts = require("typescript");
-const sourcePath = path.join(root, ".upstream/v0.87.1/packages/tui/test/editor.test.ts");
+const sourcePath = path.join(root, ".upstream/current/packages/tui/test/editor.test.ts");
 const source = ts.createSourceFile(sourcePath, fs.readFileSync(sourcePath, "utf8"), ts.ScriptTarget.Latest, true);
 const selected = new Set([2096, 2135, 2212, 2233, 2255, 2288, 2338, 2379, 2423, 2475, 2508, 2567, 2600, 2652, 2689, 2729, 2785, 2836, 2885, 2931, 2994, 3019, 3042]);
 const cases = [];
@@ -24,7 +24,7 @@ function walk(node) {
 walk(source);
 if (selected.size) throw new Error(`Missing original cases: ${[...selected]}`);
 const pkg = path.join(root, "extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-if (JSON.parse(fs.readFileSync(path.join(pkg, "package.json"), "utf8")).version !== "0.87.1") throw new Error("Pi version mismatch");
+if (JSON.parse(fs.readFileSync(path.join(pkg, "package.json"), "utf8")).version !== "0.99.2") throw new Error("Pi version mismatch");
 const dist = path.join(pkg, "node_modules/@earendil-works/pi-tui/dist");
 const harness = `
 import assert from "node:assert";

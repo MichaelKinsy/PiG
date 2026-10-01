@@ -34,6 +34,14 @@ export default function (pi) {
       record("tail_timer");
     });
   }
+  // RPC_SHUTDOWN_SETTLED_WAIT makes agent_settled wait that many milliseconds on a timer, or on a promise that never settles when it is "never".
+  if (process.env.RPC_SHUTDOWN_SETTLED_WAIT) {
+    pi.on("agent_settled", async () => {
+      const wait = process.env.RPC_SHUTDOWN_SETTLED_WAIT;
+      await new Promise(resolve => { if (wait !== "never") setTimeout(resolve, Number(wait)); });
+      record("settled_wait:done");
+    });
+  }
   if (process.env.RPC_SHUTDOWN_ON_SETTLED) {
     pi.on("agent_settled", (_event, ctx) => ctx.shutdown());
   }
@@ -83,6 +91,11 @@ export default function (pi) {
     },
   });
   settle("sync", async () => {});
+  // uiping records the mode of this extension's runtime, which pig reports and Pi does not: a restarted Node process serves commands before the host activates it, and until then its mode is not "rpc" and it runs a command without the RPC invocation acknowledgment.
+  pi.registerCommand("uiping", {
+    description: "Record the runtime mode",
+    handler: async (_args, ctx) => record("uiping:" + ctx.mode),
+  });
   settle("micro", async () => {
     await Promise.resolve();
     await null;

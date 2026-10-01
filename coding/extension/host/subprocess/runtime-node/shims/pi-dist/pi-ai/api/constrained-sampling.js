@@ -39,13 +39,20 @@ function schemaAllowsNull(schema) {
         return true;
     return Array.isArray(schema.anyOf) && schema.anyOf.some((variant) => schemaAllowsNull(variant));
 }
-function makeJsonSchemaNodeStrict(schema) {
+function makeJsonSchemaNodeStrict(schema, isUnsupportedKeyword) {
     if (!isJsonSchemaObject(schema)) {
         throw new UnsupportedStrictJsonSchemaError("boolean schemas are unsupported");
     }
     for (const key of UNSUPPORTED_STRICT_SCHEMA_KEYS) {
         if (schema[key] !== undefined) {
             throw new UnsupportedStrictJsonSchemaError(`${key} schemas are unsupported`);
+        }
+    }
+    if (isUnsupportedKeyword) {
+        for (const [key, value] of Object.entries(schema)) {
+            if (isUnsupportedKeyword(key, value)) {
+                throw new UnsupportedStrictJsonSchemaError(`${key}: ${JSON.stringify(value)} is unsupported`);
+            }
         }
     }
     if (schema.anyOf !== undefined) {
@@ -56,14 +63,14 @@ function makeJsonSchemaNodeStrict(schema) {
             if (isStructuredSchema(variant)) {
                 throw new UnsupportedStrictJsonSchemaError("object and array unions are unsupported");
             }
-            makeJsonSchemaNodeStrict(variant);
+            makeJsonSchemaNodeStrict(variant, isUnsupportedKeyword);
         }
     }
     if (schema.items !== undefined) {
         if (Array.isArray(schema.items)) {
             throw new UnsupportedStrictJsonSchemaError("tuple schemas are unsupported");
         }
-        makeJsonSchemaNodeStrict(schema.items);
+        makeJsonSchemaNodeStrict(schema.items, isUnsupportedKeyword);
     }
     const isObjectSchema = schema.type === "object";
     if (schema.properties !== undefined && !isObjectSchema) {
@@ -88,7 +95,7 @@ function makeJsonSchemaNodeStrict(schema) {
         throw new UnsupportedStrictJsonSchemaError("required contains an unknown property");
     }
     for (const [key, property] of Object.entries(properties)) {
-        makeJsonSchemaNodeStrict(property);
+        makeJsonSchemaNodeStrict(property, isUnsupportedKeyword);
         if (!required.has(key) && !schemaAllowsNull(property)) {
             properties[key] = { anyOf: [property, { type: "null" }] };
         }
@@ -97,12 +104,12 @@ function makeJsonSchemaNodeStrict(schema) {
     schema.additionalProperties = false;
 }
 /** Convert a tool schema to the strict subset expected by provider constrained sampling. */
-export function makeStrictJsonSchema(schema) {
+export function makeStrictJsonSchema(schema, isUnsupportedKeyword) {
     const cloned = structuredClone(schema);
     if (!isJsonSchemaObject(cloned)) {
         throw new UnsupportedStrictJsonSchemaError("root schema must have type object");
     }
-    makeJsonSchemaNodeStrict(cloned);
+    makeJsonSchemaNodeStrict(cloned, isUnsupportedKeyword);
     if (cloned.type !== "object") {
         throw new UnsupportedStrictJsonSchemaError("root schema must have type object");
     }
@@ -160,13 +167,17 @@ function inferGrammarInputProperty(tool) {
     }
     return inputProperty;
 }
-export function resolveJsonSchemaStrictSampling(tool, supportsStrictMode) {
+/**
+ * Decide whether a JSON-schema tool is sent in strict mode. `isUnsupportedKeyword` lets a provider
+ * reject extra keywords its strict mode does not accept, so "prefer" tools fall back to non-strict.
+ */
+export function resolveJsonSchemaStrictSampling(tool, supportsStrictMode, isUnsupportedKeyword) {
     const config = tool.constrainedSampling;
     if (!config || config.type !== "json_schema")
         return undefined;
     if (supportsStrictMode) {
         try {
-            makeStrictJsonSchema(tool.parameters);
+            makeStrictJsonSchema(tool.parameters, isUnsupportedKeyword);
             return true;
         }
         catch (error) {

@@ -5,10 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 func TestBoundedSlicesOversizedChunksAndCapsLines(t *testing.T) {
@@ -181,6 +184,10 @@ func TestTerminalTasksStayReadableAfterRetirementAndReopen(t *testing.T) {
 }
 
 func TestBashToolStreamsAndReportsExit(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// Pi's pico3 bashTool spawns "bash" from PATH (harness/pico3/bash.ts:17), as runBash does. On Windows the first bash.exe on PATH is usually WSL's launcher in System32, which hangs while WSL has no running distribution, so Git for Windows' bash leads PATH, as in the Windows bash-tool tests; the test skips without it.
+		t.Setenv("PATH", filepath.Dir(testenv.Bash(t))+string(os.PathListSeparator)+os.Getenv("PATH"))
+	}
 	declaration := BashTool(&ToolOutput{MaxBytes: new(5), MaxLines: new(10), Retain: "tail"})
 	cwd := t.TempDir()
 	models := newFake(fakeOptions{respond: func(messages []JsonObject, _ int) fakeResponse {

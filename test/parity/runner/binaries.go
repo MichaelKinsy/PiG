@@ -55,9 +55,9 @@ func ResolvePigBin(t *testing.T) BinaryRef {
 	t.Helper()
 	bin := pigBinUnderTest()
 	if bin == "" {
-		t.Skip("no pig binary under test: build one (`go build -o bin/pig-parity ./cmd/pig`) " +
-			"and set PIG_PARITY_PIG_BIN, or set PIG_BIN; `make parity` does this. The runner " +
-			"never falls back to an installed pig so it cannot silently compare against user state.")
+		failOrSkipMissingBinary(t, "no pig binary under test: build one (`go build -o bin/pig-parity ./cmd/pig`) "+
+			"and set PIG_PARITY_PIG_BIN, or set PIG_BIN; `make parity` does this. The runner "+
+			"never falls back to an installed pig so it cannot silently compare against user state")
 	}
 	if !filepath.IsAbs(bin) {
 		abs, err := filepath.Abs(bin)
@@ -66,7 +66,7 @@ func ResolvePigBin(t *testing.T) BinaryRef {
 		}
 	}
 	if _, err := os.Stat(bin); err != nil {
-		t.Skipf("pig binary not found at %s: build it and set PIG_PARITY_PIG_BIN or PIG_BIN", bin)
+		failOrSkipMissingBinary(t, fmt.Sprintf("pig binary not found at %s: build it and set PIG_PARITY_PIG_BIN or PIG_BIN", bin))
 	}
 
 	// Guard default pig state the same way ResolveUpstreamPiBin guards pi
@@ -90,6 +90,11 @@ func ResolvePigBin(t *testing.T) BinaryRef {
 	return BinaryRef{
 		Label: "pig",
 		Path:  bin,
+		// The same baseline as the pi oracle below: upstream 0.99.1 starts the built-in
+		// extensions (llama.cpp, MCP, ...) unless --no-extensions is given, and PiG's
+		// built-ins would otherwise add commands and tools to scenarios that compare
+		// the registered extension surface. (main.ts:569, resource-loader.ts:716)
+		Args: []string{"--no-extensions"},
 		Env: []string{
 			"PIG_USE_PI_DIRS=", // Sharing is selected only by a scenario, never by the operator's environment.
 			"PIG_QUIET_STARTUP=1",
@@ -127,6 +132,28 @@ func failOrSkipVersionMismatch(t *testing.T, reason string) {
 	}
 	t.Fatalf("%s; a broken or mismatched reference pi must fail parity, not silently skip it. "+
 		"Set PIG_PARITY_ALLOW_VERSION_SKEW=1 to accept this on purpose.", reason)
+}
+
+// allowZeroScenarios reports whether the operator explicitly accepted a parity
+// run that compares nothing. It is the same PIG_PARITY_ALLOW_ZERO that
+// require-parity-ran (automation/make/parity.mk) honors.
+func allowZeroScenarios() bool {
+	return os.Getenv("PIG_PARITY_ALLOW_ZERO") != ""
+}
+
+// failOrSkipMissingBinary reports a pig or pi binary the parity run needs but
+// cannot find. It FAILS the run by default: TestParity resolves both binaries
+// before it runs a scenario, so a skip here compares nothing and `go test`
+// still exits 0, which a family gate reports as ok. PIG_PARITY_ALLOW_ZERO=1
+// accepts that outcome on purpose.
+func failOrSkipMissingBinary(t *testing.T, reason string) {
+	t.Helper()
+	if allowZeroScenarios() {
+		t.Skipf("%s (PIG_PARITY_ALLOW_ZERO set: accepting a run that compares nothing)", reason)
+		return
+	}
+	t.Fatalf("%s; a parity run without its binaries compares nothing and must fail, not skip. "+
+		"Set PIG_PARITY_ALLOW_ZERO=1 to accept this on purpose.", reason)
 }
 
 // ResolveUpstreamPiBin finds the highest-versioned upstream pi binary
@@ -182,7 +209,7 @@ func ResolveUpstreamPiBin(t *testing.T) BinaryRef {
 			}
 		}
 		if _, err := os.Stat(bin); err != nil {
-			t.Skipf("PIG_PARITY_PI_BIN not found at %s", bin)
+			failOrSkipMissingBinary(t, fmt.Sprintf("PIG_PARITY_PI_BIN not found at %s", bin))
 		}
 		out, err := exec.Command(bin, "--version").Output()
 		if err != nil {
@@ -219,9 +246,9 @@ func ResolveUpstreamPiBin(t *testing.T) BinaryRef {
 		}
 	}
 
-	t.Skipf("upstream pi v%s not installed (required by coding.UpstreamVersion). Tried:\n  %s\nInstall with:\n  mise install npm:@earendil-works/pi-coding-agent@%s",
-		want, joinPaths(tried), want)
-	return BinaryRef{} // unreachable after t.Skipf
+	failOrSkipMissingBinary(t, fmt.Sprintf("upstream pi v%s not installed (required by coding.UpstreamVersion). Tried:\n  %s\nInstall with:\n  mise install npm:@earendil-works/pi-coding-agent@%s",
+		want, joinPaths(tried), want))
+	return BinaryRef{} // reached only when PIG_PARITY_ALLOW_ZERO skipped the test
 }
 
 func joinPaths(ps []string) string {

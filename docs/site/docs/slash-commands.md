@@ -32,7 +32,7 @@ The dispatcher is exhaustive - every command here is a parity-mirrored upstream 
 | `/hotkeys` | List keyboard shortcuts. |
 | `/quit` | Exit PiG. |
 | `/trust` | Set the trust decision for the current project. |
-| `/llama` | Manage a local llama.cpp server. |
+| `/llama` | Manage a local llama.cpp server. Registered by the built-in `llama.cpp` extension, so it is absent with `--no-extensions` or `-builtin:llama.cpp`. |
 
 There is no `/exit` or `/clear` command. Pi has neither, and PiG matches Pi. To
 leave, use `/quit`. To clear the editor, press the `app.clear` key (`ctrl+c` by

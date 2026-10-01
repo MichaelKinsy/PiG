@@ -7,5 +7,23 @@
     "source": "test/parity/dependency-sources/undici/8.10.2/lib/core/connect.js",
     "sha256": "4bf7ce84d6d31ffacebb0130164d50e619645b79cf6c4221ac374ab5ada677e3",
     "integrity": "sha512-/y4/bH9YNU5hi9NIrpOuvGXFcxrj3CMrV+/AYpowAYTpHn8gX/XPFjNy766FPoYY0miQhdW977JFWKGNhBdwyQ=="
+  },
+  {
+    "reference": "node_modules/@anthropic-ai/sdk/lib/credentials/types.mjs",
+    "manifest": "packages/ai/package.json",
+    "package": "@anthropic-ai/sdk",
+    "version": "0.124.0",
+    "source": "test/parity/dependency-sources/@anthropic-ai/sdk/0.124.0/lib/credentials/types.mjs",
+    "sha256": "611b406723f6c5965b1ec832c7aff49850cac8f6b3bf0c0eb2b8711f52772394",
+    "integrity": "sha512-cN5O8i9UVxHeOQAzj/XjshWXG8KiibJDw9OGpH2Z/eR3n/RBxdoLxDJOcfqAJWvjaMDFfHTBADU04hWRJVkDyA=="
+  },
+  {
+    "reference": "node_modules/@anthropic-ai/sdk/lib/credentials/oidc-federation.mjs",
+    "manifest": "packages/ai/package.json",
+    "package": "@anthropic-ai/sdk",
+    "version": "0.124.0",
+    "source": "test/parity/dependency-sources/@anthropic-ai/sdk/0.124.0/lib/credentials/oidc-federation.mjs",
+    "sha256": "076aedf8993c689ea2898b75f15518b6ff2ee79012420dc6281b45b0cf114146",
+    "integrity": "sha512-cN5O8i9UVxHeOQAzj/XjshWXG8KiibJDw9OGpH2Z/eR3n/RBxdoLxDJOcfqAJWvjaMDFfHTBADU04hWRJVkDyA=="
   }
 ]

@@ -1004,6 +1004,17 @@ func settingsItems() []settingItem {
 			},
 		},
 		{
+			id: "fullscreen-wheel-scroll-lines", label: "Fullscreen wheel scrolling",
+			desc:   "Lines per mouse-wheel event in fullscreen mode; 'auto' speeds up fast wheel spins where the terminal does not",
+			values: wheelScrollLinesValues(WheelScrollLines{Auto: true}),
+			get: func(s Settings) string {
+				return wheelScrollLinesLabel((&SettingsManager{merged: s}).GetFullscreenWheelScrollLines())
+			},
+			apply: func(s *Settings, v string) {
+				s.FullscreenWheelScrollLines = wheelScrollLinesJSON(parseWheelScrollLines(v))
+			},
+		},
+		{
 			id: "theme", label: "Theme",
 			desc:   "Color theme for the interface",
 			values: []string{"auto", "dark", "light"},
@@ -1110,6 +1121,10 @@ func settingsHandlerTUI(sc *SlashContext) error {
 		}
 		if item.id == "model-thinking" {
 			tuiItems[i].Submenu = sc.ModelThinkingSubmenu
+		}
+		if item.id == "fullscreen-wheel-scroll-lines" {
+			// The cycle keeps the configured count (#9758).
+			tuiItems[i].Values = wheelScrollLinesValues(sc.SettingsManager.GetFullscreenWheelScrollLines())
 		}
 	}
 

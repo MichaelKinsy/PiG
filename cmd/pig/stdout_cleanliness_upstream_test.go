@@ -14,6 +14,9 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
+// Upstream 0.99.1 changes only how its harness starts the CLI: `--import` receives the source resolver as a file URL (pathToFileURL) instead of a path
+// (.upstream/v0.99.1/packages/coding-agent/test/stdout-cleanliness.test.ts:11-12). The Go test starts the compiled binary and has no Node loader flag, so that substitution has no Go
+// counterpart: the inputs and expectations of every case are unchanged.
 func TestStdoutCleanlinessUpstream(t *testing.T) {
 	bin := buildPigBinaryForSignalTest(t)
 	node, err := exec.LookPath("node")
@@ -25,9 +28,9 @@ func TestStdoutCleanlinessUpstream(t *testing.T) {
 		args       []string
 		structured bool
 	}{
-		// .upstream/v0.87.1/packages/coding-agent/test/stdout-cleanliness.test.ts:88
+		// .upstream/v0.99.1/packages/coding-agent/test/stdout-cleanliness.test.ts:90
 		{"prints plain --help to stdout when stdout is redirected", []string{"--help"}, false},
-		// .upstream/v0.87.1/packages/coding-agent/test/stdout-cleanliness.test.ts:98
+		// .upstream/v0.99.1/packages/coding-agent/test/stdout-cleanliness.test.ts:100
 		{"keeps stdout empty for --mode json --help while routing trusted startup chatter to stderr", []string{"--mode", "json", "--help", "--approve"}, true},
 		// main.ts:129,638-642 also distinguishes explicit text/print/RPC metadata from plain help.
 		{"explicit text metadata reserves stdout", []string{"--mode", "text", "--help", "--approve"}, true},

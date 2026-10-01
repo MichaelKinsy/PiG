@@ -6,11 +6,6 @@
 # Exact entries fail when implemented; prefixes fail when no missing cell remains.
 
 [[exception]]
-prefix = "pi.events."
-sdks = ["go", "rust", "python"]
-reason = "No native SDK event-bus bridge exists. Node realms share one bus through cross-process references; native SDKs have no reader or owner for that wire yet (D83 boundary 5)."
-
-[[exception]]
 key = 'pi.on("cache_warming_decision")'
 sdks = ["node", "go", "rust", "python"]
 reason = "Generic handlers receive the emitted cache_warming_decision payload and result. Typed registration remains a separate API declaration gap in test/parity/known-gaps.toml api:OnCacheWarmingDecision."
@@ -78,7 +73,7 @@ reason = "The provider bridge has no host-to-extension refreshModels request or 
 [[exception]]
 key = "provider.oauth.usesCallbackServer"
 sdks = ["node", "go", "rust", "python"]
-reason = "Deprecated and ignored by Pi 0.87.1 canonical auth flows (core/extensions/types.ts); runtimes do not forward this inert legacy metadata."
+reason = "Deprecated and ignored by Pi 0.99.2 canonical auth flows (core/extensions/types.ts); runtimes do not forward this inert legacy metadata."
 
 [[exception]]
 key = "provider.oauth.modifyModels"

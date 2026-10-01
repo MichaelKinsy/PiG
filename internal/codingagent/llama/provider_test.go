@@ -134,12 +134,9 @@ func TestRefreshModelsPersistsAndRestoresSelectableModelsForCacheOnlyStartup(t *
 	if got := modelIDs(first.Provider.GetModels()); !reflect.DeepEqual(got, []string{"loaded", "sleeping"}) {
 		t.Fatalf("first models = %v", got)
 	}
-	if cached == nil || len(cached.Models) != 2 || cached.CheckedAt == nil {
-		t.Fatalf("cached entry = %+v", cached)
-	}
-	var persisted Model
-	if err := json.Unmarshal(cached.Models[0], &persisted); err != nil || persisted.ID != "loaded" {
-		t.Fatalf("persisted model = %+v, %v", persisted, err)
+	// .upstream/v0.99.1/packages/coding-agent/test/llama-extension.test.ts:180: the stored entry holds the chat models, then the classifier models.
+	if got, want := storedIDsAndAPIs(t, cached), [][2]string{{"loaded", "openai-completions"}, {"sleeping", "openai-completions"}, {"loaded", "llama-cpp-classify"}, {"sleeping", "llama-cpp-classify"}}; !reflect.DeepEqual(got, want) || cached.CheckedAt == nil {
+		t.Fatalf("cached entry = %v (checkedAt %v), want %v", got, cached.CheckedAt, want)
 	}
 
 	second := CreateLlamaProvider()
@@ -157,6 +154,116 @@ func TestRefreshModelsPersistsAndRestoresSelectableModelsForCacheOnlyStartup(t *
 		if model.BaseURL != url+"/v1" || model.ContextWindow != 32768 {
 			t.Fatalf("restored model = %+v", model)
 		}
+	}
+	// .upstream/v0.99.1/packages/coding-agent/test/llama-extension.test.ts:199
+	classifiers := classifierModels(second.Provider.GetAllModels())
+	if len(classifiers) != 2 {
+		t.Fatalf("restored classifiers = %+v", classifiers)
+	}
+	for i, id := range []string{"loaded", "sleeping"} {
+		if c := classifiers[i]; c.ID != id || c.API != "llama-cpp-classify" || c.BaseURL != url || c.ContextWindow != 32768 || c.Type != "classifier" {
+			t.Fatalf("restored classifier %d = %+v", i, c)
+		}
+	}
+}
+
+// storedIDsAndAPIs lists [id, api] of every stored model in order.
+func storedIDsAndAPIs(t *testing.T, entry *ai.ModelsStoreEntry) [][2]string {
+	t.Helper()
+	var out [][2]string
+	if entry == nil {
+		return out
+	}
+	for _, raw := range entry.Models {
+		var model struct{ ID, API string }
+		if err := json.Unmarshal(raw, &model); err != nil {
+			t.Fatal(err)
+		}
+		out = append(out, [2]string{model.ID, model.API})
+	}
+	return out
+}
+
+func classifierModels(models []AnyModel) []ClassifierModel {
+	var out []ClassifierModel
+	for _, model := range models {
+		if classifier, ok := model.(ClassifierModel); ok {
+			out = append(out, classifier)
+		}
+	}
+	return out
+}
+
+// storedContextWindows mirrors the upstream storedContextWindows helper.
+func storedContextWindows(t *testing.T, entry *ai.ModelsStoreEntry) []int {
+	t.Helper()
+	var out []int
+	if entry == nil {
+		return out
+	}
+	for _, raw := range entry.Models {
+		var model struct {
+			ContextWindow int `json:"contextWindow"`
+		}
+		if err := json.Unmarshal(raw, &model); err != nil {
+			t.Fatal(err)
+		}
+		out = append(out, model.ContextWindow)
+	}
+	return out
+}
+
+// .upstream/v0.99.1/packages/coding-agent/test/llama-extension.test.ts:206 (#10077)
+func TestRefreshModelsPreservesCachedLlamaContextForUnloadedAutoloadPresets(t *testing.T) {
+	loaded := true
+	var unloadedArgs []any
+	url := listen(t, func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.RequestURI() {
+		case "/models":
+			if loaded {
+				writeJSON(w, map[string]any{"data": []any{map[string]any{"id": "qwen", "status": map[string]any{"value": "loaded"}, "source": "preset", "meta": map[string]any{"n_ctx": 65536, "n_ctx_train": 128000}}}})
+				return
+			}
+			status := map[string]any{"value": "unloaded"}
+			if unloadedArgs != nil {
+				status["args"] = unloadedArgs
+			}
+			writeJSON(w, map[string]any{"data": []any{map[string]any{"id": "qwen", "status": status, "source": "preset", "meta": map[string]any{"n_ctx_train": 128000}}}})
+		case "/props?model=qwen&autoload=false":
+			writeJSON(w, map[string]any{})
+		case "/props":
+			writeJSON(w, map[string]any{"role": "router", "models_autoload": true})
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+	var cached *ai.ModelsStoreEntry
+	refresh := func(controller *LlamaProviderController) {
+		t.Helper()
+		if err := controller.Provider.RefreshModels(RefreshModelsContext{Ctx: context.Background(), Credential: apiKeyCredential("local", url), Stored: cached, Publish: publishInto(&cached), AllowNetwork: true}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	first := CreateLlamaProvider()
+	refresh(first)
+	if got := storedContextWindows(t, cached); !reflect.DeepEqual(got, []int{65536, 65536}) {
+		t.Fatalf("first stored context windows = %v", got)
+	}
+
+	loaded = false
+	second := CreateLlamaProvider()
+	refresh(second)
+	if models := second.Provider.GetModels(); len(models) != 1 || models[0].ID != "qwen" || models[0].ContextWindow != 65536 {
+		t.Fatalf("models after unload = %+v", models)
+	}
+	if got := storedContextWindows(t, cached); !reflect.DeepEqual(got, []int{65536, 65536}) {
+		t.Fatalf("stored context windows after unload = %v", got)
+	}
+
+	unloadedArgs = []any{"llama-server", "--ctx-size", "32768"}
+	refresh(second)
+	if got := storedContextWindows(t, cached); !reflect.DeepEqual(got, []int{32768, 32768}) {
+		t.Fatalf("stored context windows after --ctx-size = %v", got)
 	}
 }
 
@@ -195,8 +302,9 @@ func TestRefreshModelsExposesUnloadedPresetsOnlyWhenRouterAutoloadIsEnabled(t *t
 	if got := modelIDs(controller.Provider.GetModels()); !reflect.DeepEqual(got, []string{"preset"}) {
 		t.Fatalf("models = %v", got)
 	}
-	if cached == nil || len(cached.Models) != 1 {
-		t.Fatalf("cached = %+v", cached)
+	// .upstream/v0.99.1/packages/coding-agent/test/llama-extension.test.ts:325
+	if got, want := storedIDsAndAPIs(t, cached), [][2]string{{"preset", "openai-completions"}, {"preset", "llama-cpp-classify"}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("cached = %v, want %v", got, want)
 	}
 
 	autoload = false

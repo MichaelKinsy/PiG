@@ -178,13 +178,15 @@ type anthropicClient struct {
 	authToken      string
 	defaultHeaders anthropicHeaders
 	isOAuthToken   bool
+	// federation is the request's hold on the shared workload identity federation client; its token authorizes the request just before it is sent.
+	federation *anthropicFederationLease
 }
 
 // createClient mirrors upstream createClient. The Copilot branch (UseBearerAuth)
 // and the OAuth-token branch send the key as a bearer token; the OAuth-token
 // branch also presents the Claude Code identity. Every other request sends the
 // key as X-Api-Key, or leaves auth to the headers.
-func (p *anthropicProvider) createClient(apiKey string, optionsHeaders, dynamicHeaders, sessionAffinityHeaders anthropicHeaders) anthropicClient {
+func (p *anthropicProvider) createClient(apiKey string, optionsHeaders, dynamicHeaders, sessionAffinityHeaders anthropicHeaders, federation *anthropicFederationLease) anthropicClient {
 	modelHeaders := anthropicHeadersFromMap(p.cfg.ExtraHeaders)
 	var base anthropicHeaders
 	base.set("accept", "application/json")
@@ -207,22 +209,8 @@ func (p *anthropicProvider) createClient(apiKey string, optionsHeaders, dynamicH
 	return anthropicClient{
 		apiKey:         apiKey,
 		defaultHeaders: mergeAnthropicClientHeaders(base, sessionAffinityHeaders, modelHeaders, optionsHeaders),
+		federation:     federation,
 	}
-}
-
-// authTokenHeaders mirrors the ANTHROPIC_AUTH_TOKEN branch of upstream
-// anthropicApiKeyAuth().resolve. When the anthropic provider has no stored or
-// configured key, the token travels as an Authorization bearer header, and the
-// request keeps API-key request shaping.
-func (p *anthropicProvider) authTokenHeaders(apiKey string, env ProviderEnv) anthropicHeaders {
-	var headers anthropicHeaders
-	if p.cfg.ProviderID != "anthropic" || apiKey != "" {
-		return headers
-	}
-	if token := getProviderEnvValue(AnthropicAuthTokenEnv, env); token != "" {
-		headers.set("Authorization", "Bearer "+token)
-	}
-	return headers
 }
 
 // applyAnthropicRequestHeaders layers request headers the way the Anthropic SDK

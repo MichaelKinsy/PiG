@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -119,5 +120,5 @@ func TestMain(m *testing.M) {
 	// a test faking another platform's commands would read whatever the user
 	// last copied. Tests that exercise the native reader install a fake.
 	getNativeClipboard = func() *tui.NativeClipboard { return nil }
-	os.Exit(m.Run())
+	os.Exit(testenv.RunScoped(m, "pig-ca-"))
 }

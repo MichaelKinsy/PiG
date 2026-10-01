@@ -613,6 +613,7 @@ func TestRenderJSONReportRejectsReservedFieldsAndOrphanClaims(t *testing.T) {
 }
 
 func TestStructuredReportsPreserveCurrentAuthorityRows(t *testing.T) {
+	parallelHeavy(t)
 	root, err := filepath.Abs("../../..")
 	if err != nil {
 		t.Fatal(err)
@@ -676,6 +677,7 @@ func TestStructuredReportsPreserveCurrentAuthorityRows(t *testing.T) {
 }
 
 func TestMarkdownReportsPreserveCurrentAuthorityRows(t *testing.T) {
+	parallelHeavy(t)
 	root, err := filepath.Abs("../../..")
 	if err != nil {
 		t.Fatal(err)
@@ -739,6 +741,7 @@ func packageTableRows(t *testing.T, data []byte, denominatorFields int) [][]stri
 }
 
 func TestFamilyCoverageReportMatchesCurrentStaticDashboard(t *testing.T) {
+	parallelHeavy(t)
 	root, err := filepath.Abs("../../..")
 	if err != nil {
 		t.Fatal(err)
@@ -777,6 +780,7 @@ func TestFamilyCoverageReportMatchesCurrentStaticDashboard(t *testing.T) {
 }
 
 func TestDivergenceDashboardMatchesCurrentHeadingsAndScrutiny(t *testing.T) {
+	parallelHeavy(t)
 	root, err := filepath.Abs("../../..")
 	if err != nil {
 		t.Fatal(err)
@@ -849,6 +853,7 @@ func TestDivergenceDashboardMatchesCurrentHeadingsAndScrutiny(t *testing.T) {
 }
 
 func TestFoundationDashboardAccountsCurrentDenominatorsWithoutCredit(t *testing.T) {
+	parallelHeavy(t)
 	root, err := filepath.Abs("../../..")
 	if err != nil {
 		t.Fatal(err)

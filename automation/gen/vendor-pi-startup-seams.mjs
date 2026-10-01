@@ -2,10 +2,16 @@
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 
+const systemTheme = join(process.argv[2], "modes/interactive/theme/system-theme.js");
+const systemSource = readFileSync(systemTheme, "utf8");
+const systemBefore = 'import { colorToOkhsl, colorToOklch, okhslColor, oklabToOkhslLightness, rgbColor, } from "../../../../../pi-tui.mjs";';
+if (systemSource.split(systemBefore).length !== 2) throw new Error(`Pi startup import changed: ${systemBefore}`);
+writeFileSync(systemTheme, systemSource.replace(systemBefore, 'import { colorToOkhsl, colorToOklch, okhslColor, rgbColor, } from "../../../../pi-tui/colors.js";\nimport { oklabToOkhslLightness, } from "../../../../pi-tui/oklab.js";'));
+
 const theme = join(process.argv[2], "modes/interactive/theme/theme.js");
 let source = readFileSync(theme, "utf8");
 for (const [before, after] of [
-  ['import { getCapabilities, } from "../../../../../pi-tui.mjs";', 'import { getCapabilities, } from "../../../../pi-tui/terminal-image.js";'],
+  ['import { backgroundAnsi, colorToHex, colorToOklch, foregroundAnsi, getTerminalColorMode, indexedColor, mixColors, parseColor, rgbColor, styleTextWithAnsi, } from "../../../../../pi-tui.mjs";', 'import { backgroundAnsi, colorToHex, colorToOklch, foregroundAnsi, indexedColor, mixColors, parseColor, rgbColor, styleTextWithAnsi, } from "../../../../pi-tui/colors.js";\nimport { getTerminalColorMode, } from "../../../../pi-tui/terminal-image.js";'],
   ['import { highlight, supportsLanguage } from "../../../utils/syntax-highlight.js";', 'import { highlight, supportsLanguage } from "../../../../../syntax-highlight.mjs";'],
 ]) {
   if (source.split(before).length !== 2) throw new Error(`Pi startup import changed: ${before}`);

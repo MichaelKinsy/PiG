@@ -15,8 +15,8 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -258,28 +258,48 @@ func (o *RadiusOAuth) loginWithBrowser(ctx context.Context, authorizationEndpoin
 		"scope", radiusOAuthScope, "code_challenge", pkce.Challenge, "code_challenge_method", "S256",
 		"handoff", "url", "state", state,
 	)
-	server := o.startCallbackServer(ctx, state)
-	defer server.close()
+	host, port, err := net.SplitHostPort(o.callbackAddress)
+	if err != nil {
+		return OAuthCredentials{}, err
+	}
+	portNumber, err := strconv.Atoi(port)
+	if err != nil {
+		return OAuthCredentials{}, err
+	}
+	callback, err := StartOAuthCallbackServer(ctx, OAuthCallbackServerOptions[OAuthCredentials]{
+		ProviderName: "Radius",
+		Host:         host,
+		Port:         portNumber,
+		Path:         radiusCallbackPath,
+		State:        &state,
+		Complete: func(ctx context.Context, code string) (OAuthCredentials, error) {
+			return o.requestOAuthToken(ctx, url.Values{
+				"grant_type":    {"authorization_code"},
+				"client_id":     {radiusOAuthClientID},
+				"redirect_uri":  {o.redirectURI()},
+				"code":          {code},
+				"code_verifier": {pkce.Verifier},
+			})
+		},
+	})
+	if err != nil {
+		return OAuthCredentials{}, err
+	}
+	defer callback.Close()
 	if callbacks.OnProgress != nil {
 		callbacks.OnProgress("Listening for OAuth callback on " + o.redirectURI())
 	}
 	if callbacks.OnAuth != nil {
 		callbacks.OnAuth(OAuthAuthInfo{URL: authorizeURL.String(), Instructions: "Continue in your browser."})
 	}
-	code := server.waitForCode()
-	if code == "" {
-		if ctx.Err() != nil {
-			return OAuthCredentials{}, errors.New(radiusLoginCancelled)
-		}
+	credentials, ok, err := callback.Wait()
+	if err != nil {
+		return OAuthCredentials{}, err
+	}
+	if !ok {
 		return OAuthCredentials{}, errors.New("OAuth callback did not complete.")
 	}
-	return o.requestOAuthToken(ctx, url.Values{
-		"grant_type":    {"authorization_code"},
-		"client_id":     {radiusOAuthClientID},
-		"redirect_uri":  {o.redirectURI()},
-		"code":          {code},
-		"code_verifier": {pkce.Verifier},
-	})
+	return credentials, nil
 }
 
 // orderedQuery encodes key/value pairs in the given order, like
@@ -290,76 +310,6 @@ func orderedQuery(pairs ...string) string {
 		parts = append(parts, url.QueryEscape(pairs[i])+"="+url.QueryEscape(pairs[i+1]))
 	}
 	return strings.Join(parts, "&")
-}
-
-// radiusCallbackServer is the loopback OAuth callback listener. When the
-// port cannot be bound, waitForCode reports no code, as upstream does.
-type radiusCallbackServer struct {
-	once   sync.Once
-	result chan string
-	server *http.Server
-	stop   context.CancelFunc
-}
-
-func (s *radiusCallbackServer) finish(code string) {
-	s.once.Do(func() { s.result <- code })
-}
-
-func (s *radiusCallbackServer) waitForCode() string { return <-s.result }
-
-func (s *radiusCallbackServer) close() {
-	s.finish("")
-	s.stop()
-	if s.server != nil {
-		_ = s.server.Close()
-	}
-}
-
-func (o *RadiusOAuth) startCallbackServer(ctx context.Context, expectedState string) *radiusCallbackServer {
-	watchCtx, stop := context.WithCancel(ctx)
-	callback := &radiusCallbackServer{result: make(chan string, 1), stop: stop}
-	go func() {
-		<-watchCtx.Done()
-		callback.finish("")
-	}()
-	listener, err := net.Listen("tcp", o.callbackAddress)
-	if err != nil {
-		callback.finish("")
-		return callback
-	}
-	callback.server = &http.Server{Handler: radiusCallbackHandler(expectedState, callback.finish), ReadHeaderTimeout: 10 * time.Second}
-	go func() { _ = callback.server.Serve(listener) }()
-	return callback
-}
-
-func radiusCallbackHandler(expectedState string, finish func(string)) http.Handler {
-	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		query := request.URL.Query()
-		switch {
-		case request.URL.Path != radiusCallbackPath:
-			sendRadiusCallbackPage(writer, http.StatusNotFound, OAuthErrorHTML("Callback route not found.", ""))
-		case query.Get("state") != expectedState:
-			sendRadiusCallbackPage(writer, http.StatusBadRequest, OAuthErrorHTML("OAuth state mismatch.", ""))
-		case query.Get("error") != "":
-			message := query.Get("error")
-			if query.Has("error_description") {
-				message = query.Get("error_description")
-			}
-			sendRadiusCallbackPage(writer, http.StatusBadRequest, OAuthErrorHTML(message, ""))
-			finish("")
-		case query.Get("code") == "":
-			sendRadiusCallbackPage(writer, http.StatusBadRequest, OAuthErrorHTML("Missing authorization code.", ""))
-		default:
-			sendRadiusCallbackPage(writer, http.StatusOK, OAuthSuccessHTML("Signed in to Radius. You may now close this page."))
-			finish(query.Get("code"))
-		}
-	})
-}
-
-func sendRadiusCallbackPage(writer http.ResponseWriter, status int, html string) {
-	writer.Header().Set("content-type", "text/html; charset=utf-8")
-	writer.WriteHeader(status)
-	_, _ = io.WriteString(writer, html)
 }
 
 func (o *RadiusOAuth) requestDeviceAuthorization(ctx context.Context) (radiusDeviceAuthorization, error) {

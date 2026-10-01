@@ -113,6 +113,22 @@ func NewOpenAIResponsesProvider(cfg OpenAIResponsesConfig) Provider {
 	return &openAIResponsesProvider{cfg: cfg, client: streamingHTTPClient()}
 }
 
+const chatGPTUsageURL = "https://chatgpt.com/settings/usage"
+
+// withChatGPTUsageLink points a Sign in with ChatGPT user at their usage page: the subscription's usage limit is shared with other apps (openai-responses.ts stream catch).
+func withChatGPTUsageLink(message string) string {
+	if strings.Contains(message, "subscription_sharing_usage_limit_exceeded") {
+		return message + "\nCheck your ChatGPT usage: " + chatGPTUsageURL
+	}
+	return message
+}
+
+// isChatGPTSignIn reports whether apiKey is a Sign in with ChatGPT access token: OpenAI API keys start with `sk-`, so a different credential sent directly to OpenAI is one.
+// It rejects max_output_tokens, temperature and the prompt cache retention fields (openai-responses.ts isChatGPTSignIn).
+func (p *openAIResponsesProvider) isChatGPTSignIn(apiKey string) bool {
+	return p.cfg.ProviderID == "openai" && p.cfg.BaseURL == "https://api.openai.com/v1" && apiKey != "" && !strings.HasPrefix(apiKey, "sk-")
+}
+
 func (p *openAIResponsesProvider) ID() string   { return p.cfg.ProviderID }
 func (p *openAIResponsesProvider) Close() error { return nil }
 
@@ -656,7 +672,7 @@ func (p *openAIResponsesProvider) convertAnchoredMessages(messages []Message, gr
 						if !strings.HasPrefix(itemID, "fc_") {
 							itemID = ""
 						}
-						arguments, _ := json.Marshal(block.Arguments)
+						arguments, _ := block.ArgumentsJSON()
 						encoded, _ := json.Marshal(string(arguments))
 						items = append(items, respInputItem{Type: "function_call", ID: itemID, CallID: callID, Name: block.Name, Namespace: namespace, Arguments: encoded})
 					}
@@ -759,7 +775,7 @@ func (p *openAIResponsesProvider) convertTools(tools []ToolSchema, supportsStric
 			})
 			continue
 		}
-		strict, err := resolveJSONSchemaStrictSampling(t, supportsStrictMode)
+		strict, err := resolveJSONSchemaStrictSampling(t, supportsStrictMode, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -826,6 +842,16 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 		}
 	}
 
+	// upstream resolves the API key before it builds the request: Sign in with ChatGPT changes the request fields.
+	apiKey := p.cfg.APIKey
+	if p.cfg.GetAPIKey != nil {
+		if k, err := p.cfg.GetAPIKey(ctx); err != nil {
+			return nil, fmt.Errorf("%s: resolve API key: %w", p.cfg.ProviderID, err)
+		} else {
+			apiKey = k
+		}
+	}
+
 	inputJSON, marshalErr := json.Marshal(msgs)
 	if marshalErr != nil {
 		return nil, fmt.Errorf("openai-responses: marshal input: %w", marshalErr)
@@ -864,11 +890,12 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 		}
 		req.Tools = convertedTools
 	}
-	if !p.cfg.Codex && opts.MaxTokens > 0 && (p.cfg.Compat == nil || p.cfg.Compat.SupportsMaxOutputTokens == nil || *p.cfg.Compat.SupportsMaxOutputTokens) {
+	omitUnsupportedFields := p.isChatGPTSignIn(apiKey)
+	if !p.cfg.Codex && !omitUnsupportedFields && opts.MaxTokens > 0 && (p.cfg.Compat == nil || p.cfg.Compat.SupportsMaxOutputTokens == nil || *p.cfg.Compat.SupportsMaxOutputTokens) {
 		// OpenAI Responses rejects max_output_tokens below 16 (earendil-works/pi#6265).
 		req.MaxOutputTokens = max(opts.MaxTokens, openAIResponsesMinOutputTokens)
 	}
-	if opts.TemperatureSet || opts.Temperature != 0 {
+	if !omitUnsupportedFields && (opts.TemperatureSet || opts.Temperature != 0) {
 		req.Temperature = new(opts.Temperature)
 	}
 
@@ -921,7 +948,7 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 		req.PromptCacheKey = ClampOpenAIPromptCacheKey(opts.SessionID)
 	}
 	// Retention and write policy do not depend on a session-affinity key.
-	if !p.cfg.Codex {
+	if !p.cfg.Codex && !omitUnsupportedFields {
 		if ret := getPromptCacheRetention(compat, cacheRetention); ret != nil {
 			req.PromptCacheRetention = *ret
 		}
@@ -968,15 +995,6 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	baseURL, err = ResolveCloudflareBaseURL(p.cfg.ProviderID, baseURL, mergeProviderEnv(p.cfg.Env, opts.Env))
 	if err != nil {
 		return nil, fmt.Errorf("%s: resolve base URL: %w", p.cfg.ProviderID, err)
-	}
-
-	apiKey := p.cfg.APIKey
-	if p.cfg.GetAPIKey != nil {
-		if k, err := p.cfg.GetAPIKey(ctx); err != nil {
-			return nil, fmt.Errorf("%s: resolve API key: %w", p.cfg.ProviderID, err)
-		} else {
-			apiKey = k
-		}
 	}
 
 	accountID := ""
@@ -1085,6 +1103,10 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	builder := newObservedProviderBuilder(ctx, p.api(), p.cfg.ProviderID, p.cfg.Model)
 	builder.modelCost = opts.ModelCost
 	builder.requestServiceTier, _ = opts.SamplingParams["service_tier"].(string)
+	builder.setProviderEventObserver(opts, providerEventModel(p.cfg.ModelMetadata, p.api(), p.cfg.ProviderID, p.cfg.Model))
+	if p.api() == APIOpenAIResponses {
+		builder.errorMessage = withChatGPTUsageLink
+	}
 	requestContext, abort := context.WithCancel(httpReq.Context())
 	builder.abort = abort
 	httpReq = httpReq.WithContext(requestContext)
@@ -1180,11 +1202,17 @@ func (p *openAIResponsesProvider) streamResponse(ctx context.Context, httpReq *h
 	})
 }
 
-// getServiceTierCostMultiplier mirrors OpenAI and Codex service-tier pricing.
-func getServiceTierCostMultiplier(modelID, serviceTier string) float64 {
+// getServiceTierCostMultiplier mirrors OpenAI and Codex service-tier pricing. Only OpenAI prices the "fast" tier, which GPT-6 models report for
+// Fast mode (openai-responses.ts getServiceTierCostMultiplier); Codex bills it at the default rate (openai-codex-responses.ts getServiceTierCostMultiplier).
+func getServiceTierCostMultiplier(modelID, serviceTier string, codex bool) float64 {
 	switch serviceTier {
 	case "flex":
 		return 0.5
+	case "fast":
+		if codex {
+			return 1
+		}
+		fallthrough
 	case "priority":
 		if modelID == "gpt-5.5" {
 			return 2.5
@@ -1196,8 +1224,8 @@ func getServiceTierCostMultiplier(modelID, serviceTier string) float64 {
 }
 
 // applyServiceTierPricing scales an already priced usage by the tier multiplier.
-func applyServiceTierPricing(usage *Usage, serviceTier, modelID string) {
-	multiplier := getServiceTierCostMultiplier(modelID, serviceTier)
+func applyServiceTierPricing(usage *Usage, serviceTier, modelID string, codex bool) {
+	multiplier := getServiceTierCostMultiplier(modelID, serviceTier, codex)
 	if multiplier == 1 {
 		return
 	}
@@ -1305,6 +1333,13 @@ func (p *openAIResponsesProvider) parseResponses(ctx context.Context, decoder pr
 			builder.failUnfinished(StopReasonError, fmt.Errorf("openai-responses: invalid SSE JSON: %w", err))
 			return
 		}
+		// Codex observes the raw event before mapping it (mapCodexEvents). processResponsesStream still awaits its own, empty, observer for it.
+		if p.cfg.Codex {
+			builder.awaitProviderEvent()
+		} else if err := builder.observeProviderEvent([]byte(data)); err != nil {
+			builder.failUnfinished(StopReasonError, err)
+			return
+		}
 
 		if !p.cfg.ignoreSSEErrorObjects {
 			if errorMessage, ok := openAIStreamErrorMessage(event.StreamError); ok {
@@ -1323,6 +1358,12 @@ func (p *openAIResponsesProvider) parseResponses(ctx context.Context, decoder pr
 			var item respOutputItem
 			if err := json.Unmarshal(event.Item, &item); err != nil {
 				continue
+			}
+			// output_item.added always opens a new block and replaces the slot at its index (openai-responses-shared.ts createSlot); only output_item.done reuses one.
+			// An item type without a block leaves the slot in place.
+			switch item.Type {
+			case "reasoning", "message", "function_call", "custom_tool_call":
+				delete(states, event.OutputIndex)
 			}
 			createState(event.OutputIndex, item)
 
@@ -1504,7 +1545,7 @@ func (p *openAIResponsesProvider) parseResponses(ctx context.Context, decoder pr
 					if p.cfg.Codex && (serviceTier == "" || (serviceTier == "default" && (builder.requestServiceTier == "flex" || builder.requestServiceTier == "priority"))) {
 						serviceTier = builder.requestServiceTier
 					}
-					applyServiceTierPricing(usage, serviceTier, p.cfg.Model)
+					applyServiceTierPricing(usage, serviceTier, p.cfg.Model, p.cfg.Codex)
 				}
 				builder.setUsage(usage)
 			}
@@ -1532,7 +1573,9 @@ func (p *openAIResponsesProvider) parseResponses(ctx context.Context, decoder pr
 			builder.partial.ErrorMessage = errorMessage
 			sawTerminal = true
 			if p.cfg.Codex && !codexSSE {
-				if stopReason == StopReasonError {
+				if unfinished := unfinishedToolCallError(builder); unfinished != nil {
+					builder.failUnfinished(StopReasonError, unfinished)
+				} else if stopReason == StopReasonError {
 					builder.failUnfinished(stopReason, errors.New(errorMessage))
 				} else {
 					builder.done(stopReason, nil, "")
@@ -1579,6 +1622,10 @@ func (p *openAIResponsesProvider) parseResponses(ctx context.Context, decoder pr
 		return
 	}
 	if sawTerminal {
+		if err := unfinishedToolCallError(builder); err != nil {
+			builder.failUnfinished(StopReasonError, err)
+			return
+		}
 		if builder.turn != nil {
 			// processResponsesStream resolves before the outer Responses producer checks cancellation and publishes done.
 			suspendContinuation(builder.turn)
@@ -1646,6 +1693,20 @@ func encodeResponsesTextSignature(id, phase string) string {
 	}
 	encoded, _ := json.Marshal(signature)
 	return string(encoded)
+}
+
+// unfinishedToolCallError refuses to hand over a completed tool-use message that holds a tool call whose output_item.done never arrived: its arguments may be cut off or mixed up,
+// for example when a non-compliant server omits output_index. Finished calls have their scratch buffers cleared (openai-responses-shared.ts processResponsesStream).
+func unfinishedToolCallError(builder *assistantStreamBuilder) error {
+	if builder.partial.StopReason != StopReasonToolUse {
+		return nil
+	}
+	for _, block := range builder.partial.Content {
+		if call, ok := block.(ToolCall); ok && (call.scratch.hasPartialJson || call.scratch.customInput) {
+			return fmt.Errorf("OpenAI Responses stream completed with an unfinished tool call: %s (%s)", call.Name, call.ID)
+		}
+	}
+	return nil
 }
 
 func responseBuilderHasToolCall(builder *assistantStreamBuilder) bool {

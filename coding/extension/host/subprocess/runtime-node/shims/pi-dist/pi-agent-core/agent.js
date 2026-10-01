@@ -101,6 +101,7 @@ export class Agent {
     getApiKey;
     onPayload;
     onResponse;
+    onProviderStreamEvent;
     beforeToolCall;
     afterToolCall;
     finishTurn;
@@ -128,6 +129,7 @@ export class Agent {
         this.getApiKey = runtimeOptions.getApiKey;
         this.onPayload = runtimeOptions.onPayload;
         this.onResponse = runtimeOptions.onResponse;
+        this.onProviderStreamEvent = runtimeOptions.onProviderStreamEvent;
         this.beforeToolCall = runtimeOptions.beforeToolCall;
         this.afterToolCall = runtimeOptions.afterToolCall;
         this.finishTurn = runtimeOptions.finishTurn;
@@ -306,6 +308,7 @@ export class Agent {
             sessionId: this.sessionId,
             onPayload: this.onPayload,
             onResponse: this.onResponse,
+            onProviderStreamEvent: this.onProviderStreamEvent,
             transport: this.transport,
             thinkingBudgets: this.thinkingBudgets,
             maxRetryDelayMs: this.maxRetryDelayMs,

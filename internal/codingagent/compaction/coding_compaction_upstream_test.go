@@ -65,7 +65,7 @@ func (b *upstreamCompactionBuilder) compact(summary, kept string) codingagent.Se
 }
 func largeUpstreamSession(t *testing.T) []codingagent.SessionEntry {
 	t.Helper()
-	data, err := os.ReadFile("../../../.upstream/v0.87.1/packages/coding-agent/test/fixtures/large-session.jsonl")
+	data, err := os.ReadFile("../../../.upstream/current/packages/coding-agent/test/fixtures/large-session.jsonl")
 	if err != nil {
 		t.Fatal(err)
 	}

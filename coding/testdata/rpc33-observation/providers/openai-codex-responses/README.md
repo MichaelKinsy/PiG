@@ -1,6 +1,6 @@
 # openai-codex-responses SSE oracle (D82 W5)
 
-`probe.mjs` drives Pi 0.87.1's real Codex SSE pipeline (`packages/ai/src/api/openai-codex-responses.ts`) and writes `pi.json`. Do not replace `pi.json` with Go output.
+`probe.mjs` drives Pi 0.99.1's real Codex SSE pipeline (`packages/ai/src/api/openai-codex-responses.ts`) and writes `pi.json`. Do not replace `pi.json` with Go output.
 
 - `inproc` runs Pi's exported `stream` against a loopback server. Each client-socket data event (`external`: headers or body bytes arriving), each `push` of the `AssistantMessageEventStream` and each consumer delivery records `segment`, `tick` and the visible partial state. An `external` entry starts a segment and restarts the microtask counter chain at tick 0; `tick` counts chain steps completed when the entry is logged. Within a segment the tick distance between two entries is exact.
 - `rpc` runs the real Pi CLI in `--mode rpc` and records the first assistant `message_start` the RPC writer emits.

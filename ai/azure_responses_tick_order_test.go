@@ -49,7 +49,7 @@ func TestAzureResponsesTickOrder(t *testing.T) {
 	if err := json.Unmarshal(data, &oracle); err != nil {
 		t.Fatal(err)
 	}
-	if oracle.PiVersion != "0.87.1" {
+	if oracle.PiVersion != "0.99.2" {
 		t.Fatalf("oracle pins Pi %s", oracle.PiVersion)
 	}
 	direct := 0

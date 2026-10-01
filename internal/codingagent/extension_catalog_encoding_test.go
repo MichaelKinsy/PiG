@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"math"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -297,5 +298,72 @@ func BenchmarkExtensionCatalogEncoding(b *testing.B) {
 				}
 			}
 		})
+	}
+}
+
+// The typed models (image and classifier) are the composed providers' models: composing a provider per typed provider
+// costs far more than encoding the unchanged chat catalog, so a publication with no registry change reuses the encoding
+// the previous one produced, and a committed registry change drops it.
+func TestExtensionCatalogEncodingReusesTypedModelsUntilTheRegistryChanges(t *testing.T) {
+	registry := NewModelRegistry(t.TempDir())
+	cache := &extensionCatalogEncoding{}
+	catalog := registry.GetAllModelData()
+	first, err := json.Marshal(cache.state(registry, catalog))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cache.typed) == 0 {
+		t.Fatal("no typed model encoding retained: the built-in image and classifier models are missing")
+	}
+	retained := &cache.typed[0]
+	second, err := json.Marshal(cache.state(registry, catalog))
+	if err != nil || !bytes.Equal(first, second) {
+		t.Fatalf("second publication differs: %v", err)
+	}
+	if &cache.typed[0] != retained {
+		t.Fatal("an unchanged registry recomposed the typed models")
+	}
+	cache.invalidateTyped()
+	third, err := json.Marshal(cache.state(registry, catalog))
+	if err != nil || !bytes.Equal(first, third) {
+		t.Fatalf("publication after invalidation differs: %v", err)
+	}
+	if &cache.typed[0] == retained {
+		t.Fatal("a registry change kept the typed model encoding")
+	}
+	want, err := json.Marshal(ExtensionModelRegistryState(registry, catalog))
+	if err != nil || !bytes.Equal(first, want) {
+		t.Fatalf("cached state differs from the uncached registry state: %v", err)
+	}
+}
+
+// A publication racing a registry change never stores an encoding computed before the change: after the last
+// invalidation, the next publication equals the uncached state.
+func TestExtensionCatalogEncodingTypedInvalidationRacesPublications(t *testing.T) {
+	registry := NewModelRegistry(t.TempDir())
+	cache := &extensionCatalogEncoding{}
+	catalog := registry.GetAllModelData()
+	var wg sync.WaitGroup
+	for range 4 {
+		wg.Go(func() {
+			for range 20 {
+				cache.state(registry, catalog)
+			}
+		})
+	}
+	wg.Go(func() {
+		for range 20 {
+			cache.invalidateTyped()
+		}
+	})
+	wg.Wait()
+	cache.invalidateTyped()
+	got, err := json.Marshal(cache.state(registry, catalog))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := json.Marshal(ExtensionModelRegistryState(registry, catalog))
+	if err != nil || !bytes.Equal(got, want) {
+		t.Fatalf("state after racing invalidations differs from the uncached state: %v", err)
 	}
 }

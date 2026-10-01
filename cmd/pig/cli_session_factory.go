@@ -110,7 +110,11 @@ func (f *cliSessionFactory[S]) create(ctx context.Context, options coding.Create
 			f.mu.Unlock()
 		}
 	}
-	low, err := coding.NewRuntime(coding.RuntimeOptions{Services: inputs.Services, NewExtensions: inputs.Extensions, AbortContext: f.ctx})
+	var hostRuntime *extension.ExtensionRuntime
+	if inputs.Host != nil {
+		hostRuntime = inputs.Host.Runtime()
+	}
+	low, err := coding.NewRuntime(coding.RuntimeOptions{Services: inputs.Services, NewExtensions: inputs.Extensions, ExtensionRuntime: hostRuntime, AbortContext: f.ctx})
 	if err != nil {
 		release("construct runtime failed")
 		return coding.CreateAgentSessionRuntimeResult{}, err

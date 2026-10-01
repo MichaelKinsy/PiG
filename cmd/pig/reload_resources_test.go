@@ -122,6 +122,7 @@ func TestResourceLoaderUpstreamHeadlessFileURLs(t *testing.T) {
 
 // The complete RPC startup path carries decoded resources_discover URLs through the Node host into get_commands, including when automatic discovery is disabled.
 func TestResourceLoaderUpstreamRPCFileURLs(t *testing.T) {
+	t.Parallel()
 	binary := buildPigBinaryForSignalTest(t)
 	for _, invalid := range []bool{false, true} {
 		t.Run(fmt.Sprint(invalid), func(t *testing.T) {

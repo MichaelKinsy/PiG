@@ -41,6 +41,8 @@ type CacheEntry struct {
 	Bytes    int64      `json:"bytes"`
 	LastUsed int64      `json:"lastUsed,omitempty"`
 	Reason   string     `json:"reason,omitempty"`
+	// Failure marks a recorded build failure, not a built artifact.
+	Failure bool `json:"failure,omitempty"`
 }
 
 type CacheReport struct {
@@ -62,9 +64,12 @@ type CacheLifecycleOptions struct {
 	Retention        time.Duration
 	CrashGrace       time.Duration
 	MaxSize          *int64
-	DryRun           bool
-	Rename           func(string, string) error
-	RemoveAll        func(string) error
+	// RemoveFailures removes every recorded build failure, so the next start
+	// compiles those cells again. A failure whose build is in progress stays.
+	RemoveFailures bool
+	DryRun         bool
+	Rename         func(string, string) error
+	RemoveAll      func(string) error
 }
 
 type UsageLease struct {
@@ -216,6 +221,13 @@ func inspectOrPruneCache(options CacheLifecycleOptions, prune bool) (CacheReport
 			remove[entry.Path] = true
 		}
 	}
+	if options.RemoveFailures {
+		for _, entry := range report.Entries {
+			if entry.Failure && entry.Class != CacheActive && entry.Class != CacheBuilding {
+				remove[entry.Path] = true
+			}
+		}
+	}
 	if options.MaxSize != nil {
 		remaining := report.TotalBytes
 		for _, entry := range report.Entries {
@@ -355,6 +367,9 @@ func cacheEntryPaths(cacheRoot string) ([]string, error) {
 
 func classifyCacheEntry(path string, options CacheLifecycleOptions) CacheEntry {
 	entry := CacheEntry{Path: path, Bytes: cacheDirSize(path)}
+	if _, built := readReadyMetadata(path); !built {
+		_, entry.Failure = readCellFailureMetadata(path)
+	}
 	if strings.HasPrefix(filepath.Base(path), ".tombstone-") {
 		entry.Class = CacheInvalid
 		entry.Reason = "managed tombstone"

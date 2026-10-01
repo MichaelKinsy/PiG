@@ -47,7 +47,7 @@ assert.deepEqual(getSystemPromptOptions(), {});
 
 // A per-request context still reads the live runtime through bound methods.
 const requestCtx = Object.create(runtime.ctx);
-requestCtx.signal = new AbortController().signal;
+// ctx.signal is a getter of the run's signal (runner.ts:917-920), never assigned.
 assert.equal(requestCtx.isIdle(), false);
 `, (&url.URL{Scheme: "file", Path: filepath.ToSlash(path)}).String())
 	if output, err := exec.CommandContext(t.Context(), "node", "--input-type=module", "--eval", script).CombinedOutput(); err != nil {

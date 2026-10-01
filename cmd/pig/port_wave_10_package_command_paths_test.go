@@ -275,7 +275,7 @@ func TestPortWave10PackageCommandPaths(t *testing.T) {
 		writeStartupFixtureFile(t, filepath.Join(packageRoot, "extensions", "bar.ts"), "export default function (pi) {}\n")
 		global := codingagent.NewSettingsManagerWithProjectTrust(f.projectDir, f.agentDir, false)
 		settings := codingagent.NewSettingsManagerWithProjectTrust(f.projectDir, f.agentDir, true)
-		selector, err := newScopedConfigSelector(f.projectDir, f.agentDir, global, settings, true, true)
+		selector, err := newScopedConfigSelector(f.projectDir, f.agentDir, global, settings, true, true, nil)
 		require.NoError(t, err)
 		selector.SetTerminalRows(24)
 
@@ -441,15 +441,21 @@ func TestPortWave10ModelRuntimeCreation(t *testing.T) {
 		newPackageCommandPathsFixture(t)
 		require.NoError(t, os.Unsetenv("PI_OFFLINE"))
 		synctest.Test(t, func(t *testing.T) {
+			// Every provider that refreshes reads the store from its own goroutine.
+			var causeMu sync.Mutex
 			var cause error
 			store := initialCatalogStore{InMemoryModelsStore: ai.NewInMemoryModelsStore(), read: func(ctx context.Context, _ string) (*ai.ModelsStoreEntry, error) {
 				<-ctx.Done()
+				causeMu.Lock()
+				defer causeMu.Unlock()
 				cause = context.Cause(ctx)
 				return nil, cause
 			}}
 			runtime, err := coding.CreateModelRuntime(t.Context(), coding.CreateModelRuntimeOptions{ModelsStore: store, AllowModelNetwork: true, ModelRefreshTimeoutMs: new(1)})
 			require.NoError(t, err)
 			assert.NotNil(t, runtime)
+			causeMu.Lock()
+			defer causeMu.Unlock()
 			assert.ErrorIs(t, cause, context.DeadlineExceeded)
 		})
 	})

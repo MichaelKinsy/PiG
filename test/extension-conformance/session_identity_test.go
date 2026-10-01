@@ -12,6 +12,7 @@ import (
 
 // Pi's getSessionId/getSessionFile/getLeafId read the current SessionManager (session-manager.ts:1152-1166). Context convenience methods must return the same identity as the SessionManager facade, including cleared file/leaf state after replacement.
 func TestContextSessionIdentityAcrossSDKs(t *testing.T) {
+	t.Parallel()
 	cases := allHarnessCases()
 	for _, language := range []string{"go", "rust", "python"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})

@@ -106,7 +106,8 @@ func run(args []string) error {
 	releasePolicyPath := flags.String("release-policy", "", "reviewed hot-path tags and committed ported baseline; enforce release closure")
 	writeKnownGaps := flags.String("write-known-gaps", "", "with -release-policy, regenerate the marked known-gaps block in this Markdown file")
 	checkKnownGaps := flags.String("check-known-gaps", "", "with -release-policy, fail when the marked known-gaps block in this Markdown file is stale")
-	generatePending := flags.Bool("generate-pending", false, "write an all-pending mapping for the inventory to stdout")
+	generatePending := flags.Bool("generate-pending", false, "write a pending mapping for the inventory to stdout")
+	previousMappingPath := flags.String("previous-mapping", "", "with -generate-pending, keep each reviewed entry of this earlier mapping whose upstream test hash is unchanged")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
@@ -114,7 +115,7 @@ func run(args []string) error {
 		return fmt.Errorf("-write-known-gaps and -check-known-gaps require -release-policy")
 	}
 	if *generatePending {
-		return writePendingMapping(*inventoryPath)
+		return writePendingMapping(*inventoryPath, *previousMappingPath)
 	}
 	if err := checkNodeBridgeHarness(*mappingPath, *repoRoot); err != nil {
 		return err
@@ -131,9 +132,10 @@ func run(args []string) error {
 	return nil
 }
 
-// writePendingMapping prints one pending entry per inventory file, in inventory
-// order, bound to the file's current content hash.
-func writePendingMapping(inventoryPath string) error {
+// writePendingMapping prints one entry per inventory file, in inventory order, bound to the file's current content
+// hash. When previousPath names an earlier version's mapping, a file whose hash is unchanged keeps its reviewed entry;
+// a new or changed file is pending.
+func writePendingMapping(inventoryPath, previousPath string) error {
 	var inv inventory
 	if err := decodeJSON(inventoryPath, &inv); err != nil {
 		return err
@@ -141,13 +143,33 @@ func writePendingMapping(inventoryPath string) error {
 	if inv.UpstreamVersion != coding.UpstreamVersion {
 		return fmt.Errorf("inventory upstreamVersion = %q, want %q", inv.UpstreamVersion, coding.UpstreamVersion)
 	}
-	m := mapping{UpstreamVersion: inv.UpstreamVersion, Entries: make([]mappingEntry, 0, len(inv.Files))}
-	for _, file := range inv.Files {
-		m.Entries = append(m.Entries, mappingEntry{Path: file.Path, Disposition: "pending", UpstreamTestHash: file.SHA256})
+	var previous mapping
+	if previousPath != "" {
+		if err := decodeJSON(previousPath, &previous); err != nil {
+			return err
+		}
 	}
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
-	return encoder.Encode(m)
+	return encoder.Encode(carryMapping(inv, previous))
+}
+
+// carryMapping keeps the reviewed entry of every file whose upstream hash is unchanged since previous and marks the
+// rest pending, so a changed file is reviewed and re-ported before its entry can claim more than pending.
+func carryMapping(inv inventory, previous mapping) mapping {
+	reviewed := make(map[string]mappingEntry, len(previous.Entries))
+	for _, entry := range previous.Entries {
+		reviewed[entry.Path] = entry
+	}
+	m := mapping{UpstreamVersion: inv.UpstreamVersion, Entries: make([]mappingEntry, 0, len(inv.Files))}
+	for _, file := range inv.Files {
+		if entry, ok := reviewed[file.Path]; ok && entry.UpstreamTestHash == file.SHA256 {
+			m.Entries = append(m.Entries, entry)
+			continue
+		}
+		m.Entries = append(m.Entries, mappingEntry{Path: file.Path, Disposition: "pending", UpstreamTestHash: file.SHA256})
+	}
+	return m
 }
 
 func check(inventoryPath, mappingPath, divergencesPath, repoRoot string, strict bool) error {

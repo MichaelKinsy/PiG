@@ -151,6 +151,8 @@ fn make_provider() -> Arc<Provider> {
                 Err("wrong deferred handle".into())
             }
         })),
+        generate_images: None,
+        classify: None,
     })
 }
 fn probe(ctx: &Context, path: &str) -> Result<(), String> {

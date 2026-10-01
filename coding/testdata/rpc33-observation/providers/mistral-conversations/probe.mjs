@@ -1,4 +1,4 @@
-// D82 W5 oracle for the mistral-conversations API (Pi 0.87.1, packages/ai/src/api/mistral-conversations.ts).
+// D82 W5 oracle for the mistral-conversations API (Pi 0.99.1, packages/ai/src/api/mistral-conversations.ts).
 //
 // Drives Pi's real pipeline for mistral-conversations against a loopback backend that serves the Mistral chat-completion SSE
 // protocol under five delivery shapes:
@@ -40,7 +40,7 @@ import { join } from 'node:path';
 
 const root = process.env.PI_PACKAGE_ROOT;
 const scope = root + '/node_modules/@earendil-works/';
-for (const [path, version] of [[root, '0.87.1'], [scope + 'pi-ai', '0.87.1'], [scope + 'pi-agent-core', '0.87.1']]) {
+for (const [path, version] of [[root, '0.99.2'], [scope + 'pi-ai', '0.99.2'], [scope + 'pi-agent-core', '0.99.2']]) {
   assert.equal(JSON.parse(await readFile(path + '/package.json', 'utf8')).version, version);
 }
 const outPath = process.argv[2];
@@ -276,7 +276,7 @@ for (const [name, fixture, delivery, abort] of [['pending-body', 'tool', 'pendin
   cancels.push({ name, fixture, delivery, abort, ...(await runPath('direct', fixture, fixtures[fixture], delivery, abort)) });
 }
 await writeFile(outPath, JSON.stringify({
-  piVersion: '0.87.1',
+  piVersion: '0.99.2',
   node: process.version,
   api: 'mistral-conversations',
   bodies: Object.fromEntries(Object.entries(fixtures).map(([name, records]) => [name, wire(records).join('')])),

@@ -197,8 +197,8 @@ func applySettingsTuiMode(t *testing.T, mode *InteractiveMode, target, want stri
 func chatTexts(m *InteractiveMode) []string {
 	var texts []string
 	for _, child := range m.chatContainer.Children() {
-		if text, ok := child.(*tui.Text); ok {
-			texts = append(texts, stripANSITest(text.Content))
+		if content, ok := chatTextContent(child); ok {
+			texts = append(texts, stripANSITest(content))
 		}
 	}
 	return texts

@@ -1,1 +1,0 @@
-- Stop setting `responseModel` from Gemini `modelVersion`; Pi reads only `responseId` from Google Generative AI and Vertex chunks.

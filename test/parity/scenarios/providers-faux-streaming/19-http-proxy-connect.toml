@@ -1,5 +1,6 @@
 # Pi 0.87.1 http-dispatcher.ts enables proxyTunnel for HTTP, and main.ts applies global httpProxy without overriding env.
 # Each real CLI prints through both native OpenAI API paths. A hermetic TCP proxy records the actual CONNECT request before forwarding to an SSE origin.
+# Re-probed on Pi 0.99.2: the fixture origin speaks HTTP/1.1 keep-alive (see testdata/http-proxy-print.py); an HTTP/1.0 close origin made undici open a second empty tunnel after the first closed.
 # Only the assigned origin's ephemeral address is represented as targetIsOrigin; method, HTTP version, request count and exact print stdout remain in the equality comparison.
 name = "19-http-proxy-connect"
 description = "Global proxy settings reach native provider requests through CONNECT, including loopback HTTP origins."

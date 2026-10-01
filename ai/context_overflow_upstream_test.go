@@ -28,7 +28,7 @@ func TestContextOverflowMatrixUpstream(t *testing.T) {
 		{"openai-codex", "gpt-5.5", "responses", ""}, {"amazon-bedrock", "global.anthropic.claude-sonnet-4-5-20250929-v1:0", "bedrock", ""},
 		{"xai", "grok-4.3", "xai", `maximum prompt length is \d+`}, {"groq", "llama-3.3-70b-versatile", "groq", "reduce the length of the messages"},
 		{"cerebras", "gpt-oss-120b", "cerebras", `4(00|13|29).*\(no body\)`}, {"huggingface", "moonshotai/Kimi-K2.5", "generic", ""},
-		{"together", "moonshotai/Kimi-K2.6", "together", ""}, {"zai", "glm-5.2", "zai", ""},
+		{"together", "moonshotai/Kimi-K3", "together", ""}, {"zai", "glm-5.2", "zai", ""},
 		{"mistral", "devstral-medium-latest", "mistral", `too large for model with \d+ maximum context length`}, {"minimax", "MiniMax-M2.7", "minimax", ""},
 		{"xiaomi", "mimo-v2.5-pro", "length", ""}, {"xiaomi-token-plan-cn", "mimo-v2.5-pro", "length", ""},
 		{"xiaomi-token-plan-ams", "mimo-v2.5-pro", "length", ""}, {"xiaomi-token-plan-sgp", "mimo-v2.5-pro", "length", ""},
@@ -44,7 +44,7 @@ func TestContextOverflowMatrixUpstream(t *testing.T) {
 	}
 	for index, tc := range cases {
 		t.Run(tc.ID, func(t *testing.T) {
-			t.Logf(".upstream/v0.87.1/packages/ai/test/context-overflow.test.ts:%d", tc.Line)
+			t.Logf(".upstream/current/packages/ai/test/context-overflow.test.ts:%d", tc.Line)
 			spec := specs[index]
 			var model ai.GeneratedModel
 			if spec.provider == "ollama" || spec.provider == "lm-studio" || spec.provider == "llama.cpp" {
@@ -75,7 +75,7 @@ func TestContextOverflowMatrixUpstream(t *testing.T) {
 					model.API = ai.APIOpenAICompletions
 				}
 			}
-			// .upstream/v0.87.1/packages/ai/test/context-overflow.test.ts:31-36.
+			// .upstream/v0.99.1/packages/ai/test/context-overflow.test.ts:31-36.
 			targetChars := (model.ContextWindow + 10000) * 6
 			content := strings.Repeat(overflowLorem, (targetChars+len(overflowLorem)-1)/len(overflowLorem))
 			kinds := []string{spec.kind}

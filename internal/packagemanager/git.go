@@ -79,7 +79,11 @@ func InstallGitDependencies(packageRoot string, sm *codingagent.SettingsManager)
 	}
 	command := DefaultNpmCommand(sm)
 	args := append([]string{}, command[1:]...)
-	args = append(args, GetGitDependencyInstallArgs(sm)...)
+	installArgs, err := GetGitDependencyInstallArgs(sm)
+	if err != nil {
+		return err
+	}
+	args = append(args, installArgs...)
 	return RunPackageProcess(packageRoot, command[0], args...)
 }
 

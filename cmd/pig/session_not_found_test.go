@@ -41,7 +41,7 @@ func TestMissingSessionCLIComparedWithPi(t *testing.T) {
 	if err := json.Unmarshal(metadata, &pkg); err != nil {
 		t.Fatal(err)
 	}
-	if pkg.Version != "0.87.1" {
+	if pkg.Version != "0.99.2" {
 		t.Fatalf("Pi version=%q", pkg.Version)
 	}
 	node, err := exec.LookPath("node")

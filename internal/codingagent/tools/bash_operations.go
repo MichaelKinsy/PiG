@@ -10,11 +10,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"math"
 	"os"
 	"os/exec"
-	"strings"
 	"sync"
 	"time"
 
@@ -113,9 +113,6 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 	cmd.Dir = cwd
 	// Upstream passes env as the spawn's env option.
 	nodespawn.SetEnv(cmd, env)
-	if commandFromStdin {
-		cmd.Stdin = strings.NewReader(command)
-	}
 	// The shell writes straight into an OS pipe (no exec copy goroutine), so
 	// Wait returns when the shell exits even if a background descendant still
 	// holds the write end. waitForStdioIdle then applies upstream's grace.
@@ -125,6 +122,16 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 	}
 	cmd.Stdout = pw
 	cmd.Stderr = pw
+	var stdinWrite *os.File
+	if commandFromStdin {
+		var stdinRead *os.File
+		if stdinRead, stdinWrite, err = os.Pipe(); err != nil {
+			_ = pw.Close()
+			_ = pr.Close()
+			return BashOperationsResult{}, err
+		}
+		cmd.Stdin = stdinRead
+	}
 	// Process group so abort and timeout reap descendants (upstream spawns
 	// detached on non-win32 and kills the tree).
 	setProcessGroup(cmd)
@@ -140,12 +147,24 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 	// byte: Git Bash parses it with MSYS2 rules, not the C runtime's.
 	nodespawn.SetProgram(cmd)
 	nodespawn.SetCommandLine(cmd)
-	if err := cmd.Start(); err != nil {
-		_ = pw.Close()
+	// Start closes the child's ends of the pipes.
+	if err := nodespawn.Start(cmd); err != nil {
 		_ = pr.Close()
+		if stdinWrite != nil {
+			_ = stdinWrite.Close()
+		}
 		return BashOperationsResult{}, &shellSpawnError{path: shell.Path, cause: err}
 	}
-	_ = pw.Close()
+	// os/exec copies a reader to the child's stdin the same way, and Wait
+	// waits for that copy.
+	var input sync.WaitGroup
+	if stdinWrite != nil {
+		input.Go(func() {
+			// A write error means that the shell stopped reading.
+			_, _ = io.WriteString(stdinWrite, command)
+			_ = stdinWrite.Close()
+		})
+	}
 
 	var (
 		killOnce sync.Once
@@ -208,6 +227,7 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 	}()
 
 	waitErr := cmd.Wait()
+	input.Wait()
 	if !waitForStdioIdle(readDone, activity) {
 		acceptMu.Lock()
 		accepting = false

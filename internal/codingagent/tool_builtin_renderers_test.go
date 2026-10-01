@@ -53,7 +53,7 @@ func TestBuiltInOverrideWithoutRenderersMatchesBuiltInCard(t *testing.T) {
 				}
 				m.handleAgentEvent(agent.ToolExecutionStartEvent{ToolCallID: "c", ToolName: c.name, Args: json.RawMessage(c.args)})
 				card := m.toolByID["c"]
-				m.handleAgentEvent(agent.ToolExecutionEndEvent{ToolCallID: "c", ToolName: c.name, Result: c.result})
+				m.handleAgentEvent(agent.ToolExecutionEndEvent{ToolCallID: "c", ToolName: c.name, Result: c.result, IsError: c.result.IsError})
 				// The built-in card erases to the end of each row; the
 				// definition shell pads it, which draws the same.
 				// Durations depend on the run.

@@ -19,22 +19,20 @@ func TestImagesUpstream(t *testing.T) {
 	}
 	encoded := base64.StdEncoding.EncodeToString(image)
 	for _, tc := range []struct {
-		name, prompt           string
-		imageInput, textOutput bool
+		name, prompt string
+		imageInput   bool
 	}{
-		// .upstream/v0.87.1/packages/ai/test/images.test.ts:77; helper assertions at :15-26.
-		{"should generate a basic image", "Generate a simple red circle on a plain white background. No text.", false, false},
-		// .upstream/v0.87.1/packages/ai/test/images.test.ts:81; helper assertions at :28-46.
-		{"should handle text plus image output", "Generate a red circle and include a brief description of the image.", false, true},
-		// .upstream/v0.87.1/packages/ai/test/images.test.ts:85; helper assertions at :48-72.
-		{"should handle image input", "Create a variation of this image with a blue background.", true, false},
+		// .upstream/v0.99.1/packages/ai/test/images.test.ts:57; helper assertions at :14-25.
+		{"should generate a basic image", "Generate a simple red circle on a plain white background. No text.", false},
+		// .upstream/v0.99.1/packages/ai/test/images.test.ts:61; helper assertions at :27-49.
+		{"should handle image input", "Create a variation of this image with a blue background.", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			model, ok := GetImageModel(ProviderImagesOpenRouter, "google/gemini-2.5-flash-image")
 			if !ok {
 				t.Fatal("missing upstream image model")
 			}
-			if !slices.Contains(model.Input, "image") || !slices.Contains(model.Output, "text") {
+			if !slices.Contains(model.Input, "image") {
 				t.Fatal("upstream test model no longer supports the exercised capabilities")
 			}
 			input := []ContentBlock{TextContent{Text: tc.prompt}}
@@ -73,20 +71,17 @@ func TestImagesUpstream(t *testing.T) {
 			if response.StopReason != ImagesStopReasonStop || response.ErrorMessage != "" {
 				t.Fatalf("generation=%+v", response)
 			}
-			hasImage, hasText := false, false
+			hasImage := false
 			for _, block := range response.Output {
-				switch block := block.(type) {
-				case ImageContent:
+				if block, ok := block.(ImageContent); ok {
 					hasImage = true
 					if block.Data != encoded || block.MimeType != "image/png" {
 						t.Error("output image bytes changed")
 					}
-				case TextContent:
-					hasText = strings.TrimSpace(block.Text) != ""
 				}
 			}
-			if !hasImage || (tc.textOutput && !hasText) || response.Timestamp <= 0 || requests != 1 {
-				t.Fatalf("image=%v text=%v timestamp=%d requests=%d", hasImage, hasText, response.Timestamp, requests)
+			if !hasImage || response.Timestamp <= 0 || requests != 1 {
+				t.Fatalf("image=%v timestamp=%d requests=%d", hasImage, response.Timestamp, requests)
 			}
 		})
 	}

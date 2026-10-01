@@ -239,6 +239,7 @@ type Context struct {
 	requestID  string
 	parent     *requestParent
 	ctx        context.Context
+	start      *toolStart // set for a tool_call request: its place in the order the handlers start
 }
 
 // RegisterTool registers a model-callable tool and waits for the host registry refresh. It shares Extension.RegisterTool's validation and panic behavior.
@@ -281,12 +282,26 @@ func (c Context) Err() error {
 }
 
 func (c Context) callHost(method string, args any) (*callResultMsg, error) {
+	return c.callHostAfterBegin(method, args, false, nil)
+}
+
+// callHostAfterBegin is callHost that runs sent once the call's frame is written and before it waits for the result, so a follow-up call of the caller is ordered after the call. A detached call is not tied to the handler's request: cancelling the request neither cancels it on the host nor ends the wait.
+func (c Context) callHostAfterBegin(method string, args any, detached bool, sent func()) (*callResultMsg, error) {
 	if method != "ui.select" && method != "ui.confirm" && method != "ui.input" && method != "ui.editor" && method != "ui.custom" {
 		c.reportRequestState("blocked", "host_call")
 	}
-	pending, err := c.beginHostCall(method, args)
+	var pending pendingCall
+	var err error
+	if detached {
+		pending, err = c.hostConnection().beginCallFor("", method, args)
+	} else {
+		pending, err = c.beginHostCall(method, args)
+	}
 	if err != nil {
 		return nil, err
+	}
+	if sent != nil {
+		sent()
 	}
 	result, err := c.hostConnection().waitCall(pending)
 	c.reportRequestState("progress", "")
@@ -691,6 +706,11 @@ type ToolInfo struct {
 	// PromptGuidelines is nil when the definition has none.
 	PromptGuidelines []string   `json:"promptGuidelines,omitempty"`
 	SourceInfo       SourceInfo `json:"sourceInfo"`
+	// Exposure, Namespace and Annotations are the tool definition's fields; Exposure is never empty in upstream.
+	// upstream: types.ts:2063 (ToolInfo)
+	Exposure    ToolExposure     `json:"exposure,omitempty"`
+	Namespace   *ToolNamespace   `json:"namespace,omitempty"`
+	Annotations *ToolAnnotations `json:"annotations,omitempty"`
 	// Source is PiG's per-tool source attribution: "builtin", the
 	// registering extension's name, or the source a tool declares with
 	// ToolWithSource.
@@ -1967,9 +1987,14 @@ func (c Context) Reload() error {
 // [Context.SetFooterRenderer] and [Context.SetHeaderRenderer] follow a resize
 // with no handler.
 //
-// Handlers run on the message loop, so they must not block. A string list
-// [Context.SetWidget] returns without waiting for the host; send footer or
-// header rows from a goroutine. The returned unsubscribe is idempotent.
+// Handlers run on their own goroutine, one at a time in the order the host
+// sent the widths, never on the message loop or the goroutine that reads the
+// host's replies, so a handler can make a blocking host call such as
+// SetFooter. A slow handler delays the later deliveries, not the extension's
+// other handlers. A handler that panics is recovered and does not stop the
+// others. Context.Width in a handler is that width or a newer one. The
+// returned unsubscribe is idempotent; a delivery already queued still reaches
+// the handlers that were subscribed when the width arrived.
 func (c Context) OnWidthChange(handler WidthChangeHandler) (func(), error) {
 	if handler == nil {
 		return func() {}, fmt.Errorf("OnWidthChange: handler must not be nil")

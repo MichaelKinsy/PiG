@@ -6,18 +6,20 @@
 # API-key provider picker, but this scenario locks the subscription path so
 # Copilot cannot silently disappear from the OAuth provider list again.
 #
-# Upstream evidence (Pi 0.87.1, re-probed with this fixture):
-# interactive-mode.ts:5628-5662 projects the runtime's status source; oauth-selector.ts:164-179 preserves "stored" as a visible source label. Logout instead supplies "stored credential" and renders "configured".
-# The account-login list is sorted by provider display name. With the fixture's
-# stored GitHub Copilot credential, the stable prefix is:
+# Upstream evidence (Pi 0.99.2, re-probed with this fixture): interactive-mode.ts:5668-5694 getLoginProviderOptions
+# names every entry with provider.name and sorts by name, so the OAuth list shows the catalog name, not the OAuth flow's name
+# (providers/openai.ts:11 "OpenAI", whose flow is "OpenAI (ChatGPT subscription)"; providers/openai-codex.ts:10 "OpenAI Codex (legacy)").
+# oauth-selector.ts:164-179 preserves "stored" as a visible source label. Logout instead supplies "stored credential" and renders "configured".
+# With the fixture's stored GitHub Copilot credential, the stable prefix is:
 #   Anthropic • unconfigured
 #   GitHub Copilot ✓ stored
 #   Kimi For Coding • unconfigured
 #   Meta • unconfigured
-#   OpenAI Codex • unconfigured
+#   OpenAI • unconfigured
+#   OpenAI Codex (legacy) • unconfigured
 #
-# Later entries (OpenRouter, Radius, xAI) sort after OpenAI Codex. This crop ends after
-# OpenAI Codex and excludes only those later entries. Kimi's
+# Later entries (OpenRouter, Radius, xAI) sort after OpenAI Codex (legacy). This crop ends after
+# OpenAI Codex (legacy) and excludes only those later entries. Kimi's
 # appearance verifies provider registration/name wiring; its device-flow and
 # refresh behavior require separate caller-path evidence.
 #
@@ -42,7 +44,7 @@ ready_pattern_pi = "(auto)"
 ready_timeout_seconds = 25
 capture_start = "Select provider to configure"
 # Keep the original row boundary when ANSI separates the name and status; the captured ANSI itself is still compared.
-capture_end_regex = 'OpenAI Codex(?:\x1b\[[0-9;]*m)* • unconfigured'
+capture_end_regex = 'OpenAI Codex \(legacy\)(?:\x1b\[[0-9;]*m)* • unconfigured'
 
 [[tmux.steps]]
 keys = ["/login", "Enter"]
@@ -52,7 +54,7 @@ settle_seconds = 1
 
 [[tmux.steps]]
 keys = ["Enter"]
-wait_contains = ["Select provider to configure:", "OpenAI Codex • unconfigured"]
+wait_contains = ["Select provider to configure:", "OpenAI Codex (legacy) • unconfigured"]
 wait_timeout_seconds = 10
 settle_seconds = 1
 
@@ -72,6 +74,7 @@ both_contain = [
   "Anthropic • unconfigured",
   "GitHub Copilot ✓ stored",
   "Kimi For Coding • unconfigured",
-  "OpenAI Codex • unconfigured",
+  "OpenAI • unconfigured",
+  "OpenAI Codex (legacy) • unconfigured",
 ]
 runs = 3

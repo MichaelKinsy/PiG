@@ -32,18 +32,11 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// fgReset closes a foreground color with SGR 39 (default foreground),
-// mirroring upstream theme.fg's `${ansi}${text}\x1b[39m` ("Reset only
-// foreground color"). A scoped reset preserves a surrounding
-// background (e.g. /tree's selected-row highlight) that a full
-// `\x1b[0m` would clear mid-line.
-const fgReset = "\x1b[39m"
-
 func fg(color, s string) string {
 	if color == "" {
 		return s
 	}
-	return color + s + fgReset
+	return color + s + tui.FgClose(color)
 }
 
 // treeRowFormatter renders a SessionEntry into the single-line

@@ -126,11 +126,16 @@ type Extension struct {
 	eventMu     sync.Mutex
 	eventNextID int
 
+	// run is the replicated signal of the run in progress (Context.Signal).
+	run runSignal
+
 	providerStreams         map[string]ProviderStreamSimpleFunc
+	providerOperations      map[string]providerOperations
 	toolMu                  sync.RWMutex
 	toolConn                *conn
 	toolFuncs               map[string]ToolFunc
 	toolPrepareFuncs        map[string]ToolPrepareArgumentsFunc
+	toolStarts              toolStartOrder
 	commandFuncs            map[string]CommandFunc
 	eventFuncs              map[int]EventFunc
 	shortcutFuncs           map[string]ShortcutFunc
@@ -167,6 +172,12 @@ type Extension struct {
 	widthChangeMu     sync.RWMutex
 	widthChangeFuncs  []widthChangeSub
 	widthChangeNextID uint64
+
+	// widthMu guards the width deliveries waiting for their worker goroutine. A width handler can block on a host call, so it never runs on the message loop or the read loop (see notifyWidthChange).
+	widthMu         sync.Mutex
+	widthDeliveries []widthDelivery
+	widthRunning    bool
+	widthStopped    bool
 
 	// surfaceMu guards surfaces, the footer and header renderers keyed by the
 	// host method that installs them.
@@ -220,8 +231,30 @@ type Extension struct {
 	notifyHandled uint64
 	notifyChanged chan struct{}
 
+	// eventBus holds the pi.events listeners.
+	eventBus busRegistry
+
 	// commandCompletions are the commands' getArgumentCompletions.
 	commandCompletions map[string]ArgumentCompletionsFunc
+
+	// The registrations of the upstream 0.99.1 API are guarded by toolMu like the tools: the queues hold what a factory registered before Run, and the maps hold the callbacks the host's requests reach.
+	mcpServerDecls    []mcpServerDecl
+	virtualModelDecls []virtualModelDecl
+	// virtualModelUnregistrations are the unregistrations made before Run, in call order.
+	virtualModelUnregistrations []virtualModelRef
+	virtualModelRoutes          map[virtualModelKey]ModelRouteFunc
+	toolLoadoutFuncs            map[string]ToolPrepareLoadoutFunc
+
+	// The host's replicated state of the upstream 0.99.1 API, as raw JSON so each read decodes a copy the caller owns. It is guarded by mu.
+	settingsRaw   json.RawMessage
+	mcpServersRaw json.RawMessage
+	// mcpServersAt is the position of mcpServersRaw in the host's frame order: 2k for the state of the k-th notify frame, 2n+1 for the reply of a registration call routed after n notify frames. A list from an earlier position never replaces it.
+	mcpServersAt uint64
+
+	// executeUpdates holds the OnUpdate callbacks of the executeTool calls in flight, by execute id.
+	executeSeq     atomic.Uint64
+	executeMu      sync.Mutex
+	executeUpdates map[string]func(AgentToolResult)
 }
 
 const (
@@ -437,6 +470,9 @@ func New(name string) *Extension {
 		requests:           make(map[string]context.CancelFunc),
 		modelStreams:       make(map[string]*ModelEventStream),
 		overlays:           make(map[string]*remoteOverlay),
+		virtualModelRoutes: make(map[virtualModelKey]ModelRouteFunc),
+		toolLoadoutFuncs:   make(map[string]ToolPrepareLoadoutFunc),
+		executeUpdates:     make(map[string]func(AgentToolResult)),
 	}
 }
 
@@ -512,6 +548,7 @@ func (e *Extension) ToolWithConstrainedSampling(name, description string, schema
 
 // Command registers a slash command (e.g. /hello).
 func (e *Extension) Command(name, description string, handler CommandFunc) {
+	e.validateCommand(name, handler != nil)
 	e.commands = append(e.commands, cmdDef{
 		Name:        name,
 		Description: description,
@@ -548,10 +585,30 @@ func (e *Extension) Flag(name string, options FlagOptions) {
 // RegisterProvider registers or overrides a model provider. When config carries
 // an *OAuthProvider under the "oauth" key, its closures are stored for oauth_*
 // dispatch and the wire config gets a serializable capability descriptor in
-// their place.
+// their place. Before Run registers the extension the call is queued; after
+// that it takes effect at once through the host, as Pi's pi.registerProvider
+// does once the runner is bound (types.ts:1766-1803, runner.ts:517-523), and a
+// registration the host refuses panics like Pi's throwing call.
 func (e *Extension) RegisterProvider(name string, config ProviderConfig) {
+	e.toolMu.Lock()
+	conn := e.toolConn
+	if conn != nil {
+		e.toolMu.Unlock()
+		if err := e.registerProviderNow(nil, conn, name, config); err != nil {
+			panic(fmt.Errorf("registerProvider: %w", err))
+		}
+		return
+	}
+	defer e.toolMu.Unlock()
 	e.providerMu.Lock()
 	defer e.providerMu.Unlock()
+	// The register payload carries a config JSON cannot encode as null.
+	def, _ := e.takeProviderDef(name, config)
+	e.providers = append(e.providers, def)
+}
+
+// takeProviderDef keeps the callbacks of a provider config in the extension and returns the declaration the host receives: the register payload's entry and the registerProvider call after the factory carry the same one. An invalid callback panics, and a config JSON cannot encode is an error with a nil Config; the caller restores the held callbacks in both cases when it needs them. The caller holds providerMu.
+func (e *Extension) takeProviderDef(name string, config ProviderConfig) (providerDef, error) {
 	config = maps.Clone(config)
 	streaming := false
 	if raw, exists := config["streamSimple"]; exists {
@@ -566,6 +623,21 @@ func (e *Extension) RegisterProvider(name string, config ProviderConfig) {
 		delete(config, "streamSimple")
 		streaming = true
 	}
+	// A re-registration replaces only the kinds it defines, as registerProvider merges defined values (model-runtime.ts registerProvider) and the host keeps the APIs it wired.
+	ops, imageAPIs, classifierAPIs := takeProviderOperations(config)
+	if len(imageAPIs)+len(classifierAPIs) > 0 {
+		if e.providerOperations == nil {
+			e.providerOperations = make(map[string]providerOperations)
+		}
+		kept := e.providerOperations[name]
+		if len(imageAPIs) > 0 {
+			kept.images = ops.images
+		}
+		if len(classifierAPIs) > 0 {
+			kept.classifiers = ops.classifiers
+		}
+		e.providerOperations[name] = kept
+	}
 	if raw, ok := config["oauth"]; ok {
 		if provider, ok := raw.(*OAuthProvider); ok && provider != nil {
 			e.registerOAuthProvider(name, provider)
@@ -575,15 +647,67 @@ func (e *Extension) RegisterProvider(name string, config ProviderConfig) {
 			config = cfg
 		}
 	}
-	data, _ := json.Marshal(config)
-	e.providers = append(e.providers, providerDef{Name: name, Config: data, StreamSimple: streaming})
+	data, err := json.Marshal(config)
+	return providerDef{Name: name, Config: data, StreamSimple: streaming, ImageAPIs: imageAPIs, ClassifierAPIs: classifierAPIs}, err
 }
 
-// UnregisterProvider removes a previously queued provider registration.
+// heldCallbacks are the callbacks an extension holds for one provider name.
+type heldCallbacks struct {
+	stream     ProviderStreamSimpleFunc
+	operations providerOperations
+	hasOps     bool
+	oauth      *OAuthProvider
+}
+
+// heldProviderCallbacks returns what the extension holds for a provider. The caller holds providerMu.
+func (e *Extension) heldProviderCallbacks(name string) heldCallbacks {
+	kept := heldCallbacks{stream: e.providerStreams[name], oauth: e.oauthProviders[name]}
+	kept.operations, kept.hasOps = e.providerOperations[name]
+	return kept
+}
+
+// restoreHeldProviderCallbacks makes the extension hold exactly kept for a provider, deleting what kept lacks. The caller holds providerMu.
+func (e *Extension) restoreHeldProviderCallbacks(name string, kept heldCallbacks) {
+	if kept.stream != nil {
+		e.providerStreams[name] = kept.stream
+	} else {
+		delete(e.providerStreams, name)
+	}
+	if kept.hasOps {
+		e.providerOperations[name] = kept.operations
+	} else {
+		delete(e.providerOperations, name)
+	}
+	if kept.oauth != nil {
+		e.oauthProviders[name] = kept.oauth
+	} else {
+		delete(e.oauthProviders, name)
+	}
+}
+
+// UnregisterProvider removes a provider registration. Before Run registers the
+// extension it drops the queued registration; after that the host removes the
+// provider at once, as Pi's pi.unregisterProvider does (types.ts:1805-1819), and
+// a removal the host refuses panics.
 func (e *Extension) UnregisterProvider(name string) {
+	e.toolMu.Lock()
+	conn := e.toolConn
+	e.toolMu.Unlock()
+	if conn != nil {
+		if err := e.unregisterProviderNow(nil, conn, name); err != nil {
+			panic(fmt.Errorf("unregisterProvider: %w", err))
+		}
+		return
+	}
+	e.dropQueuedProvider(name)
+}
+
+// dropQueuedProvider removes a queued registration and the callbacks the extension holds for it.
+func (e *Extension) dropQueuedProvider(name string) {
 	e.providerMu.Lock()
 	defer e.providerMu.Unlock()
 	delete(e.providerStreams, name)
+	delete(e.providerOperations, name)
 	filtered := e.providers[:0]
 	for _, provider := range e.providers {
 		if provider.Name != name {
@@ -715,6 +839,11 @@ func (e *Extension) RunWithConn(nc net.Conn) error {
 	conn := e.conn
 	e.eventMu.Unlock()
 	conn.start()
+	defer e.resetEventBus()
+	// A node factory's pi.events.on runs before its runtime registers; a native listener subscribed before Run does the same.
+	if err := e.registerPendingListeners(conn); err != nil {
+		return err
+	}
 
 	e.toolMu.Lock()
 	defer func() {
@@ -726,25 +855,47 @@ func (e *Extension) RunWithConn(nc net.Conn) error {
 	if err := conn.send(envelope{
 		Type: msgRegister,
 		Register: &registerMsg{
-			Name:                e.name,
-			Tools:               e.tools,
-			Commands:            e.commands,
-			Shortcuts:           e.shortcuts,
-			Handlers:            e.handlers,
-			Flags:               e.flags,
-			Providers:           e.providers,
-			Renderers:           e.renderers,
-			EntryRenderers:      e.entryRenderers,
-			MarkdownTransformer: e.markdownTransform != nil,
+			Name:                    e.name,
+			Tools:                   e.tools,
+			Commands:                e.commands,
+			Shortcuts:               e.shortcuts,
+			Handlers:                e.handlers,
+			Flags:                   e.flags,
+			Providers:               e.providers,
+			Renderers:               e.renderers,
+			EntryRenderers:          e.entryRenderers,
+			MarkdownTransformer:     e.markdownTransform != nil,
+			McpServers:              e.mcpServerDecls,
+			VirtualModels:           e.virtualModelDecls,
+			UnregisterVirtualModels: e.virtualModelUnregistrations,
 		},
 	}); err != nil {
 		return fmt.Errorf("send register: %w", err)
 	}
 
-	// Wait for ready.
-	env, ok := <-conn.incoming
-	if !ok {
-		return fmt.Errorf("connection closed before ready")
+	// Wait for ready. A listener the Host dispatches to while the extension loads is served here, as a node runtime serves it during its factory.
+	var env envelope
+	for {
+		var ok bool
+		env, ok = <-conn.incoming
+		if !ok {
+			return fmt.Errorf("connection closed before ready")
+		}
+		if env.Type == msgRequest && env.Request != nil && env.Request.Method == methodEventsDispatch {
+			ctx, finish := e.armRequest(env.ID)
+			e.requestWG.Go(func() {
+				defer finish()
+				e.handleArmedRequest(env.ID, env.Request, ctx)
+			})
+			continue
+		}
+		// A listener that a load-time dispatch unsubscribed is released as soon as its dispatch ends, which can precede ready.
+		if env.Type == msgNotify && env.Notify != nil && env.Notify.Method == notifyEventsRelease {
+			e.releaseEventListener(env.Notify.Args)
+			e.markNotifyHandled()
+			continue
+		}
+		break
 	}
 	if env.Type != msgReady || env.Ready == nil {
 		return fmt.Errorf("expected ready message, got %s", env.Type)
@@ -787,14 +938,21 @@ func (e *Extension) loop() error {
 		switch env.Type {
 		case msgRequest:
 			ctx, finish := e.armRequest(env.ID)
+			if env.Request != nil && env.Request.Method == "tool_call" {
+				ctx.start = e.toolStarts.reserve()
+			}
 			e.requestWG.Go(func() {
 				defer finish()
+				defer ctx.start.release()
 				e.handleArmedRequest(env.ID, env.Request, ctx)
 			})
 		case msgCancel:
 			e.cancelRequest(env)
 		case msgNotify:
-			e.handleNotify(env)
+			e.notifyMu.Lock()
+			seq := e.notifyHandled + 1
+			e.notifyMu.Unlock()
+			e.handleNotifyAt(env, seq)
 			e.markNotifyHandled()
 		case msgShutdown:
 			return e.stopRequests()
@@ -804,10 +962,14 @@ func (e *Extension) loop() error {
 }
 
 func (e *Extension) stopRequests() error {
+	e.stopWidthDeliveries()
 	if e.runCancel != nil {
 		e.runCancel()
 	}
 	e.cancelAllRequests()
+	if e.conn != nil {
+		e.conn.stopCalls()
+	}
 	done := make(chan struct{})
 	go func() {
 		e.requestWG.Wait()
@@ -877,7 +1039,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 				result = map[string]any{"_pigBoundaryEntries": boundaryData["entries"], "_pigBoundaryResult": nil}
 			}
 			if promptOptions != nil {
-				result = map[string]any{"_pigPromptSections": promptOptions["sections"], "_pigPromptSelectedTools": promptOptions["selectedTools"], "_pigPromptResult": nil}
+				result = map[string]any{"_pigPromptSections": promptOptions["sections"], "_pigPromptSelectedTools": promptOptions["selectedTools"], "_pigPromptOptions": promptOptions, "_pigPromptResult": nil}
 			}
 			_ = e.conn.respond(id, result, fmt.Errorf("handler panicked: %v", r))
 		}
@@ -889,6 +1051,9 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		_ = e.conn.respond(id, result, err)
 	case "provider_stream_simple":
 		e.dispatchProviderStream(ctx, id, req)
+	case "provider_operation":
+		result, err := e.dispatchProviderOperation(ctx, req)
+		_ = e.conn.respond(id, result, err)
 	case "provider_call", "provider_stream", "provider_sync":
 		result, err := e.dispatchProviderObject(ctx, req)
 		_ = e.conn.respond(id, result, err)
@@ -902,10 +1067,23 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 	case "terminal_input":
 		e.dispatchTerminalInput(id, req)
 
+	case "virtual_model_route":
+		result, err := e.dispatchVirtualModelRoute(ctx, req.Args)
+		_ = e.conn.respond(id, result, err)
+
+	case requestExecuteToolUpdate:
+		_ = e.conn.respond(id, nil, e.dispatchExecuteToolUpdate(req.Args))
+
+	case "tool_prepare_loadout":
+		result, err := e.dispatchPrepareLoadout(req.Tool, req.Args)
+		_ = e.conn.respond(id, result, err)
+
+	case methodEventsDispatch:
+		e.dispatchEventBus(ctx, id, req)
+
 	case "tool_call":
 		e.toolMu.RLock()
 		handler, ok := e.toolFuncs[req.Tool]
-		prepare := e.toolPrepareFuncs[req.Tool]
 		e.toolMu.RUnlock()
 		if !ok {
 			_ = e.conn.respond(id, nil, fmt.Errorf("unknown tool: %s", req.Tool))
@@ -919,16 +1097,29 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 				return
 			}
 		}
-		if prepare != nil {
-			var err error
-			params, err = prepare(params)
-			if err != nil {
-				_ = e.conn.respond(id, nil, err)
+		// agent-loop.ts:619-647: the handlers of a batch start in source order.
+		ctx.start.begin()
+		result, err := handler(ctx, params)
+		_ = e.conn.respond(id, result, err)
+
+	case "tool_prepare_arguments":
+		// agent-loop.ts:707-716: prepareToolCall runs the hook on the model's arguments and validates what it returns, so the host asks for it before tool_call.
+		e.toolMu.RLock()
+		prepare := e.toolPrepareFuncs[req.Tool]
+		e.toolMu.RUnlock()
+		if prepare == nil {
+			_ = e.conn.respond(id, nil, fmt.Errorf("tool %s has no prepareArguments", req.Tool))
+			return
+		}
+		var params map[string]any
+		if len(req.Args) > 0 {
+			if err := json.Unmarshal(req.Args, &params); err != nil {
+				_ = e.conn.respond(id, nil, fmt.Errorf("decode tool arguments: %w", err))
 				return
 			}
 		}
-		result, err := handler(ctx, params)
-		_ = e.conn.respond(id, result, err)
+		prepared, err := prepare(params)
+		_ = e.conn.respond(id, prepared, err)
 
 	case "command":
 		handler, ok := e.commandFuncs[req.Tool]
@@ -975,7 +1166,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			result = contextEventResult(data, snapshot, result)
 		}
 		if req.Event == "before_agent_start" {
-			result = map[string]any{"_pigPromptSections": promptOptions["sections"], "_pigPromptSelectedTools": promptOptions["selectedTools"], "_pigPromptResult": result}
+			result = map[string]any{"_pigPromptSections": promptOptions["sections"], "_pigPromptSelectedTools": promptOptions["selectedTools"], "_pigPromptOptions": promptOptions, "_pigPromptResult": result}
 		}
 		// pig additive (D19): return boundary mutations separately from the handler result and error.
 		if req.Event == "agent_before_settle" || req.Event == "turn_end" {
@@ -1114,11 +1305,18 @@ func (e *Extension) waitNotifications(target uint64, stop <-chan struct{}) {
 // handleNotify processes broadcast notifications from the host.
 // Currently handles "state_update" to keep cached fields (model, thinking,
 // etc.) in sync with the host.
-func (e *Extension) handleNotify(env envelope) {
+func (e *Extension) handleNotify(env envelope) { e.handleNotifyAt(env, 0) }
+
+// handleNotifyAt is handleNotify for the seq-th notify frame the read loop queued; 0 is a state that precedes every frame, such as the ready snapshot.
+func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 	if env.Notify == nil {
 		return
 	}
 	switch env.Notify.Method {
+	case notifyRunSignal:
+		e.run.apply(env.Notify.Args)
+	case notifyEventsRelease:
+		e.releaseEventListener(env.Notify.Args)
 	case "tool_render_release":
 		e.releaseToolRenderCard(env.Notify.Args)
 	case "provider_release":
@@ -1161,10 +1359,12 @@ func (e *Extension) handleNotify(env envelope) {
 	case "state_update":
 		var payload struct {
 			State struct {
-				HasUI   *bool           `json:"hasUI"`
-				Model   map[string]any  `json:"model"`
-				Session json.RawMessage `json:"session"`
-				Theme   json.RawMessage `json:"theme"`
+				HasUI      *bool           `json:"hasUI"`
+				Model      map[string]any  `json:"model"`
+				Session    json.RawMessage `json:"session"`
+				Theme      json.RawMessage `json:"theme"`
+				Settings   json.RawMessage `json:"settings"`
+				McpServers json.RawMessage `json:"mcpServers"`
 			} `json:"state"`
 		}
 		if err := json.Unmarshal(env.Notify.Args, &payload); err != nil {
@@ -1190,6 +1390,7 @@ func (e *Extension) handleNotify(env envelope) {
 		if theme, ok := decodeUITheme(payload.State.Theme); ok {
 			e.uiTheme = theme
 		}
+		e.applyReplicatedState(payload.State.Settings, payload.State.McpServers, 2*seq)
 		defer e.mu.Unlock()
 		if m := payload.State.Model; m != nil {
 			if id, ok := m["id"].(string); ok && id != "" {
@@ -1354,17 +1555,21 @@ func NewToolError(content string) *ToolError {
 // upstream's terminate: the agent stops after the current tool batch when every
 // result in it sets Terminate.
 //
+// IsError is upstream's isError: the model sees Content as an error result, like a thrown error, and Details and StructuredContent are kept.
+//
 // Usage is upstream AgentToolResult.usage: the tool execution's own model
 // usage, in upstream's Usage JSON shape (input, output, cacheRead, cacheWrite,
 // totalTokens, cost). Nil leaves it unset.
 type ToolResult struct {
-	Content   string
-	Images    []ImageContent
-	Preview   string
-	Details   any
-	IsError   bool
-	Usage     any
-	Terminate bool
+	Content string
+	Images  []ImageContent
+	Preview string
+	Details any
+	// StructuredContent is upstream AgentToolResult.structuredContent: the machine-readable result matching the tool's OutputSchema, for programmatic callers. It is not sent to the model. Nil leaves it unset.
+	StructuredContent any
+	IsError           bool
+	Usage             any
+	Terminate         bool
 }
 
 // ImageContent is an image block in a tool result, mirroring upstream's
@@ -1395,13 +1600,14 @@ func (r ToolResult) MarshalJSON() ([]byte, error) {
 		content = blocks
 	}
 	return json.Marshal(struct {
-		Content   any    `json:"content"`
-		Preview   string `json:"preview,omitempty"`
-		Details   any    `json:"details,omitempty"`
-		IsError   bool   `json:"is_error,omitempty"`
-		Usage     any    `json:"usage,omitempty"`
-		Terminate bool   `json:"terminate,omitempty"`
-	}{content, r.Preview, r.Details, r.IsError, r.Usage, r.Terminate})
+		Content           any    `json:"content"`
+		Preview           string `json:"preview,omitempty"`
+		Details           any    `json:"details,omitempty"`
+		StructuredContent any    `json:"structured_content,omitempty"`
+		IsError           bool   `json:"is_error,omitempty"`
+		Usage             any    `json:"usage,omitempty"`
+		Terminate         bool   `json:"terminate,omitempty"`
+	}{content, r.Preview, r.Details, r.StructuredContent, r.IsError, r.Usage, r.Terminate})
 }
 
 // widthChangeSub pairs a width handler with the token used to remove it.
@@ -1589,10 +1795,13 @@ func (e *Extension) subscribeSessionLog() error {
 	}
 }
 
-// notifyWidthChange runs width handlers after e.width is updated, so a handler
-// that calls Context.Width observes the new value. Handlers run on the message
-// loop goroutine and must not block it; a handler that re-pushes a footer only
-// issues a host call, which is what this exists for.
+// widthDelivery is one width and the handlers subscribed when it arrived.
+type widthDelivery struct {
+	width int
+	subs  []widthChangeSub
+}
+
+// notifyWidthChange queues width handlers to run after e.width is updated, so a handler that calls Context.Width observes that width or a newer one. A handler may block on a host call, whose reply the read loop routes and whose notifies the message loop applies, so handlers run on their own goroutine: one at a time, in the order the host sent the widths. An unsubscribe after this call changes only the next delivery.
 func (e *Extension) notifyWidthChange(width int) {
 	e.widthChangeMu.RLock()
 	subs := slices.Clone(e.widthChangeFuncs)
@@ -1600,8 +1809,53 @@ func (e *Extension) notifyWidthChange(width int) {
 	if len(subs) == 0 {
 		return
 	}
-	ctx := Context{ext: e}
-	for _, sub := range subs {
-		sub.handler(ctx, width)
+	e.widthMu.Lock()
+	defer e.widthMu.Unlock()
+	if e.widthStopped {
+		return
 	}
+	e.widthDeliveries = append(e.widthDeliveries, widthDelivery{width: width, subs: subs})
+	if e.widthRunning {
+		return
+	}
+	e.widthRunning = true
+	e.requestWG.Go(e.runWidthDeliveries)
+}
+
+// runWidthDeliveries delivers queued widths until none is left.
+func (e *Extension) runWidthDeliveries() {
+	ctx := Context{ext: e}
+	for {
+		e.widthMu.Lock()
+		if len(e.widthDeliveries) == 0 || e.widthStopped {
+			e.widthDeliveries = nil
+			e.widthRunning = false
+			e.widthMu.Unlock()
+			return
+		}
+		delivery := e.widthDeliveries[0]
+		e.widthDeliveries = e.widthDeliveries[1:]
+		e.widthMu.Unlock()
+		for _, sub := range delivery.subs {
+			e.callWidthHandler(ctx, sub.handler, delivery.width)
+		}
+	}
+}
+
+// callWidthHandler isolates one handler's panic, as a handler panic fails one request and not the process.
+func (e *Extension) callWidthHandler(ctx Context, handler WidthChangeHandler, width int) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "extension: recovered from panic in a width change handler: %v\n%s\n", r, debug.Stack())
+		}
+	}()
+	handler(ctx, width)
+}
+
+// stopWidthDeliveries drops the queued widths; the running handler finishes, and stopRequests waits for it.
+func (e *Extension) stopWidthDeliveries() {
+	e.widthMu.Lock()
+	e.widthStopped = true
+	e.widthDeliveries = nil
+	e.widthMu.Unlock()
 }

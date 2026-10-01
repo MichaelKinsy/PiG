@@ -214,7 +214,7 @@ require-parity-ran:
 	  if [ "$$n" -eq 0 ]; then \
 	    echo "require-parity-ran: 0 parity scenarios ran (results file: $(RESULTS))." >&2; \
 	    echo "This means the parity suite skipped before comparing anything against real Pi -" >&2; \
-	    echo "check PIG_PARITY_PIG_BIN/PIG_BIN, tmux, and the pinned Pi 0.87.1 install." >&2; \
+	    echo "check PIG_PARITY_PIG_BIN/PIG_BIN, tmux, and the pinned Pi install." >&2; \
 	    echo "A green 'go test' exit code here is a skip, not a pass." >&2; \
 	    echo "Set PIG_PARITY_ALLOW_ZERO=1 to accept this on purpose." >&2; \
 	    exit 1; \
@@ -254,22 +254,30 @@ parity-fast: parity-bin ## One strict Pig/Pi pair per hermetic scenario for the 
 	    -args -pig-parity.tags=hermetic -pig-parity.runs=1 -pig-parity.group-limits=$(PARITY_GROUP_LIMITS) -pig-parity.results=$(RESULTS)
 	@$(MAKE) -s require-parity-ran RESULTS=$(RESULTS)
 
+# A scoped run writes its results file under this worktree, named for its selection, so a concurrent run in another worktree cannot supply the scenarios this run counts.
+parity-family: SCOPED_RESULTS = $(CURDIR)/tmp/parity-results/family-$(FAMILY).json
+parity-driver: SCOPED_RESULTS = $(CURDIR)/tmp/parity-results/driver-$(DRIVER).json
+
 parity-family: parity-bin ## Run one hermetic family and stop on the first failed pair
 	@test -n "$(FAMILY)" || (echo "FAMILY is required (for example: make parity-family FAMILY=compaction)" >&2; exit 2)
 	@test -d "test/parity/scenarios/$(FAMILY)" || (echo "unknown parity family: $(FAMILY)" >&2; exit 2)
+	@mkdir -p "$(dir $(SCOPED_RESULTS))" && rm -f "$(SCOPED_RESULTS)"
 	@run_id=$$$$; \
 	  cleanup_tmux() { tmux -L "pig-parity-$$run_id" list-sessions -F '#{session_name}' 2>/dev/null | xargs -I{} tmux -L "pig-parity-$$run_id" kill-session -t {} 2>/dev/null || true; }; \
 	  trap cleanup_tmux EXIT; \
 	  PIG_PARITY_RUN_ID="$$run_id" PIG_PARITY_PIG_BIN="$(PARITY_PIG_BIN)" go test -tags=parity -count=1 -timeout $(PARITY_TIMEOUT) -parallel $(PARITY_PARALLEL) ./test/parity/runner \
-	    -args -pig-parity.dir="$(CURDIR)/test/parity/scenarios/$(FAMILY)" -pig-parity.tags=hermetic -pig-parity.group-limits=$(PARITY_GROUP_LIMITS)
+	    -args -pig-parity.dir="$(CURDIR)/test/parity/scenarios/$(FAMILY)" -pig-parity.tags=hermetic -pig-parity.group-limits=$(PARITY_GROUP_LIMITS) -pig-parity.results=$(SCOPED_RESULTS)
+	@$(MAKE) -s require-parity-ran RESULTS=$(SCOPED_RESULTS)
 
 parity-driver: parity-bin ## Run one pair for selected execution modes
 	@test -n "$(DRIVER)" || (echo "DRIVER is required (for example: make parity-driver DRIVER=rpc-mode)" >&2; exit 2)
+	@mkdir -p "$(dir $(SCOPED_RESULTS))" && rm -f "$(SCOPED_RESULTS)"
 	@run_id=$$$$; \
 	  cleanup_tmux() { tmux -L "pig-parity-$$run_id" list-sessions -F '#{session_name}' 2>/dev/null | xargs -I{} tmux -L "pig-parity-$$run_id" kill-session -t {} 2>/dev/null || true; }; \
 	  trap cleanup_tmux EXIT; \
 	  PIG_PARITY_RUN_ID="$$run_id" PIG_PARITY_PIG_BIN="$(PARITY_PIG_BIN)" go test -tags=parity -count=1 -timeout $(PARITY_TIMEOUT) -parallel $(PARITY_PARALLEL) ./test/parity/runner \
-	    -args -pig-parity.tags=hermetic -pig-parity.drivers="$(DRIVER)" -pig-parity.runs=1 -pig-parity.group-limits=$(PARITY_GROUP_LIMITS)
+	    -args -pig-parity.tags=hermetic -pig-parity.drivers="$(DRIVER)" -pig-parity.runs=1 -pig-parity.group-limits=$(PARITY_GROUP_LIMITS) -pig-parity.results=$(SCOPED_RESULTS)
+	@$(MAKE) -s require-parity-ran RESULTS=$(SCOPED_RESULTS)
 
 # Scheduler stress repeats the complete suite twice with one pair per scenario.
 # parity-durable owns each scenario's declared multi-run durability separately.
@@ -461,8 +469,11 @@ interface-delta-strict:
 		-manifest test/parity/interfaces/delta-v$(UPSTREAM_REVIEWED_VERSION)-v$(UPSTREAM_VERSION).json \
 		-strict
 
+# Run under a private temporary directory and fail on anything a test leaves in it, as test-grouped.sh does for Go packages.
 interface-inventory-test:
-	@cd test/parity/interface-extractor && npm test
+	@set -eu; tmp=$$($(MKTEMP_DIR)); trap 'rm -rf "$$tmp"' EXIT; \
+		(cd test/parity/interface-extractor && TMPDIR="$$tmp" TMP="$$tmp" TEMP="$$tmp" npm test); \
+		./automation/ci/assert-clean-tmp.sh "$$tmp"
 
 # The extraction (TypeScript compiler over the pinned upstream source tree and
 # the exact published Pi package) is expensive and its inputs almost never

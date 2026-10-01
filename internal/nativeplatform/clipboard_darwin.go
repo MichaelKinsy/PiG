@@ -21,6 +21,7 @@ func syscall_syscall6(fn, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2, err uintptr)
 type darwinClipboardSymbols struct {
 	message, class, selector, pushPool, popPool uintptr
 	text, png, tiff                             uintptr
+	fileURLsOnlyKey                             uintptr
 }
 
 var loadDarwinClipboard = sync.OnceValue(func() *darwinClipboardSymbols {
@@ -43,7 +44,7 @@ var loadDarwinClipboard = sync.OnceValue(func() *darwinClipboardSymbols {
 		}
 		return **(**uintptr)(unsafe.Pointer(&address)) //nolint:gosec // G103: dlsym supplies an AppKit-owned pointer constant, not an address from CLI or clipboard data.
 	}
-	symbols := &darwinClipboardSymbols{message: symbol("objc_msgSend"), class: symbol("objc_getClass"), selector: symbol("sel_registerName"), pushPool: symbol("objc_autoreleasePoolPush"), popPool: symbol("objc_autoreleasePoolPop"), text: value("NSPasteboardTypeString"), png: value("NSPasteboardTypePNG"), tiff: value("NSPasteboardTypeTIFF")}
+	symbols := &darwinClipboardSymbols{message: symbol("objc_msgSend"), class: symbol("objc_getClass"), selector: symbol("sel_registerName"), pushPool: symbol("objc_autoreleasePoolPush"), popPool: symbol("objc_autoreleasePoolPop"), text: value("NSPasteboardTypeString"), png: value("NSPasteboardTypePNG"), tiff: value("NSPasteboardTypeTIFF"), fileURLsOnlyKey: value("NSPasteboardURLReadingFileURLsOnlyKey")}
 	if symbols.message == 0 || symbols.class == 0 || symbols.selector == 0 || symbols.pushPool == 0 || symbols.popPool == 0 || symbols.text == 0 || symbols.png == 0 || symbols.tiff == 0 {
 		return nil
 	}
@@ -150,6 +151,64 @@ func readDarwinClipboardImage(ctx context.Context) ([]byte, bool, error) {
 	return data, true, err
 }
 
+// readDarwinFilePaths reads the file URLs on the general pasteboard as POSIX paths. Mirrors darwin-platform.m's CLIPBOARD_FILES branch: `readObjectsForClasses:options:` with NSPasteboardURLReadingFileURLsOnlyKey, then each URL's fileSystemRepresentation. No file URLs is a nil result with available=true.
+func readDarwinFilePaths(ctx context.Context) ([]string, bool, error) {
+	s, board, cleanup, err := openDarwinClipboard(ctx)
+	if err != nil {
+		return nil, true, err
+	}
+	defer cleanup()
+	if s.fileURLsOnlyKey == 0 {
+		return nil, false, nil
+	}
+	paths, err := s.pasteboardFilePaths(board)
+	return paths, true, err
+}
+
+// pasteboardFilePaths runs inside the caller's autorelease pool, which owns every object it creates.
+func (s *darwinClipboardSymbols) pasteboardFilePaths(board uintptr) ([]string, error) {
+	urlClass := [1]uintptr{s.typeNamed("NSURL")}
+	classes := s.send(s.typeNamed("NSArray"), "arrayWithObjects:count:", uintptr(unsafe.Pointer(&urlClass[0])), 1, 0) //nolint:gosec // G103: the one AppKit-owned class object is copied synchronously; the Go array stays alive through KeepAlive.
+	runtime.KeepAlive(urlClass)
+	yes := s.send(s.typeNamed("NSNumber"), "numberWithBool:", 1, 0, 0)
+	options := s.send(s.typeNamed("NSDictionary"), "dictionaryWithObject:forKey:", yes, s.fileURLsOnlyKey, 0)
+	urls := s.send(board, "readObjectsForClasses:options:", classes, options, 0)
+	if urls == 0 {
+		return nil, nil
+	}
+	count := s.send(urls, "count", 0, 0, 0)
+	var paths []string
+	for index := range count {
+		url := s.send(urls, "objectAtIndex:", index, 0, 0)
+		if url == 0 {
+			continue
+		}
+		address := s.send(url, "fileSystemRepresentation", 0, 0, 0)
+		if address == 0 {
+			continue
+		}
+		path, err := copyDarwinCString(address)
+		if err != nil {
+			return nil, err
+		}
+		paths = append(paths, jsstring.FromUTF8(path))
+	}
+	return paths, nil
+}
+
+// copyDarwinCString copies the NUL-terminated bytes at address, which AppKit owns until the caller's autorelease pool drains.
+func copyDarwinCString(address uintptr) ([]byte, error) {
+	if address == 0 {
+		return nil, errors.New("Could not create clipboard value")
+	}
+	base := *(**byte)(unsafe.Pointer(&address)) //nolint:gosec // G103: AppKit provides this C string and it lives through the same-thread pool; the scan below stops at its terminator.
+	var length int
+	for *(*byte)(unsafe.Add(unsafe.Pointer(base), length)) != 0 { //nolint:gosec // G103: reads the bytes of the NUL-terminated string AppKit returned, one at a time, up to its terminator.
+		length++
+	}
+	return slices.Clone(unsafe.Slice(base, length)), nil //nolint:gosec // G103: the scan above bounded length by the terminator.
+}
+
 func writeDarwinClipboardText(ctx context.Context, text string) error {
 	s, board, cleanup, err := openDarwinClipboard(ctx)
 	if err != nil {
@@ -173,7 +232,7 @@ func writeDarwinClipboardText(ctx context.Context, text string) error {
 	return nil
 }
 
-var darwinClipboardAPI = NativeClipboard{GetText: readDarwinClipboardText, GetImage: readDarwinClipboardImage, SetText: writeDarwinClipboardText, IsModifierPressed: IsModifierPressed}
+var darwinClipboardAPI = NativeClipboard{GetText: readDarwinClipboardText, GetImage: readDarwinClipboardImage, GetFilePaths: readDarwinFilePaths, SetText: writeDarwinClipboardText, IsModifierPressed: IsModifierPressed}
 
 func platformClipboard() *NativeClipboard {
 	if loadDarwinClipboard() == nil {

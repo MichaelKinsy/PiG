@@ -31,10 +31,10 @@ func TestSessionQueueOperationsPreserveModesAndEmitUpdates(t *testing.T) {
 		t.Fatalf("queue modes = %q/%q", sess.Agent().SteeringMode(), sess.Agent().FollowUpMode())
 	}
 
-	if err := sess.Steer(t.Context(), "redirect", []ai.ImageContent{{MimeType: "image/png", Data: "aW1n"}}, nil); err != nil {
+	if _, err := sess.Steer(t.Context(), "redirect", []ai.ImageContent{{MimeType: "image/png", Data: "aW1n"}}, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := sess.FollowUp(t.Context(), "later", nil, nil); err != nil {
+	if _, err := sess.FollowUp(t.Context(), "later", nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	if got := sess.PendingMessageCount(); got != 2 {

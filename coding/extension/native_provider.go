@@ -23,6 +23,10 @@ type NativeProvider struct {
 	ResolveRefreshCredential func(context.Context, *ai.Credential) (*ai.Credential, *ai.Credential, error)
 	RefreshModels            func(context.Context, *ai.Credential, *ai.ModelsStoreEntry, bool, *bool, func(NativeProviderPublication) error) ([]ProviderModelConfig, error)
 	Stream                   func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions, bool) (*ai.AssistantMessageEventStream, error)
+	// GenerateImages and Classify are the provider object's image and classifier operations; nil when it has none.
+	// upstream: pi-ai Provider.generateImages, Provider.classify
+	GenerateImages func(context.Context, *ai.ImageModel, ai.ImagesContext, ai.ImagesOptions) (ai.AssistantImages, error)
+	Classify       func(context.Context, *ai.ClassifierModel, ai.ClassifierContext, ai.ClassifierOptions) (ai.ClassifierResult, error)
 }
 
 type NativeProviderPublication struct {

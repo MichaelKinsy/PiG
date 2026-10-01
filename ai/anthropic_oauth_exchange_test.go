@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-// Pi's loginAnthropic returns the exchange Promise from try, so finally dismisses the prompt before login settles. Drive that boundary through the native Model Runtime, including persisted credentials and rejected exchanges.
+// Pi's waitForCallbackOrManualInput aborts the manual prompt in its own finally (.upstream/v0.99.1/packages/ai/src/auth/oauth/callback-server.ts:172-174), so the prompt is dismissed before loginAnthropic notifies exchange progress and awaits the exchange (anthropic.ts:184). Drive that boundary through the native Model Runtime, including persisted credentials and rejected exchanges.
 func TestAnthropicNativeLoginCleansUpBeforeExchangeSettles(t *testing.T) {
 	for _, winner := range []string{"manual", "browser"} {
 		for _, outcome := range []string{"success", "failure", "cancel"} {
@@ -81,8 +81,8 @@ func TestAnthropicNativeLoginCleansUpBeforeExchangeSettles(t *testing.T) {
 								callbackURL = "http://" + net.JoinHostPort(host, "53692") + "/callback?code=browser-code&state=" + url.QueryEscape(parsed.Query().Get("state"))
 							case AuthProgressEvent:
 								<-promptStarted
-								if promptContext.Err() != nil {
-									t.Error("prompt canceled before exchange progress notification")
+								if promptContext.Err() == nil {
+									t.Error("prompt still open at the exchange progress notification")
 								}
 							}
 						},

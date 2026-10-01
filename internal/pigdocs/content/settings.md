@@ -101,6 +101,7 @@ set it in `~/.pig/agent/settings.json`:
 | `fullscreenScrollbar` | string | `auto` | Scrollbar in fullscreen mode: `auto`, `always`, or `hidden`. No effect in regular mode. |
 | `fullscreenExitOutput` | string | `transcript` | `transcript` prints the final transcript when fullscreen exits. `resume-hint` restores the previous screen and prints only the resume hint. |
 | `fullscreenCopyOnSelect` | boolean | `true` | Copy selected fullscreen text automatically. When disabled, `ctrl+x` copies the active selection. No effect in regular mode. |
+| `fullscreenWheelScrollLines` | `"auto"` \| number | `"auto"` | Lines per mouse-wheel event in fullscreen mode, from 1 to 100. `"auto"` moves one line per event in local macOS terminals, which already accelerate wheel and trackpad input; elsewhere, and over SSH, it speeds up fast wheel spins to at most 6 lines per event. A fractional value is rounded down, and any other value falls back to `"auto"`. No effect in regular mode. |
 | `maskSecretInput` | boolean | `true` | PiG-only login-input privacy (divergence D80). Show dots, a character count and the last four characters; fewer than five characters show no suffix. False restores Pi's plain-text typing and submitted history. Change **Mask secret input** in `/settings`. Pi harmlessly ignores this key in shared settings. |
 | `hideThinkingBlock` | boolean | `false` | Hide thinking blocks in the transcript. |
 | `doubleEscapeAction` | string | `tree` | Action bound to pressing escape twice. |
@@ -174,7 +175,18 @@ in the 256-color palette, as Pi does. See [terminal setup](terminal-setup.md).
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `defaultTools` | string[] | `read`, `bash`, `edit`, `write` | Built-in tools active at startup. An empty array turns off every built-in tool but keeps extension and SDK tools. |
+| `defaultTools` | string[] | `read`, `bash`, `edit`, `write` | Tools active at startup. Plain names replace the defaults; `+name` adds a tool and `-name` removes one. An empty array turns off every built-in tool but keeps extension and SDK tools. |
+| `codemode` | object | see meaning | How the `codemode` tool presents tools while it is active. `mode` is `on` (default) or `only`. `inlineBudget` is the estimated number of tokens (characters divided by 4) its description may spend on tool declarations, default `3000`. |
+
+A list of only `+name` and `-name` entries changes the inherited selection instead of replacing it, so a project can adjust the tools a user chose. For example, this enables `codemode` next to the default tools:
+
+```json
+{
+  "defaultTools": ["+codemode"]
+}
+```
+
+`/reload` enables tools newly added to `defaultTools`. It does not turn off tools removed from it or turn on unchanged tools you turned off. `--tools`, `--no-tools` and `--no-builtin-tools` override `defaultTools`, also on reload.
 
 The built-in tools are `read`, `bash`, `powershell`, `edit`, `write`, `grep`,
 `find`, and `ls`. The CLI tool options override this setting for one run. See
@@ -189,6 +201,7 @@ The built-in tools are `read`, `bash`, `powershell`, `edit`, `write`, `grep`,
 | `enableInstallTelemetry` | boolean | `true` | Gate for the anonymous install/update ping and the pig-branded OpenRouter, NVIDIA, and Cloudflare attribution headers. When on, PiG sends one HTTPS GET carrying only your PiG version (`?version=<version>`) and PiG's `User-Agent` header to `https://pi-in-go.dev/api/report-install`, after a fresh install and after an update that has new changelog entries, and at no other time. The site stores one data point (the version and arrival time) per call and never logs your IP address or User-Agent. Set to `false`, or set `PI_TELEMETRY=0`, to opt out; `PI_OFFLINE=1` also stops it. Override with `PI_TELEMETRY`. |
 | `enableAnalytics` | boolean | `false` | Opt in to analytics data sharing. PiG stores the choice; nothing sends data. |
 | `trackingId` | string |  | Analytics tracking identifier. PiG writes this on the first opt-in and keeps it when you toggle `enableAnalytics`. Bug reports omit it. |
+| `deviceId` | string |  | Stable random ID of this installation. PiG writes it to the global settings file the first time a sign-in needs it and ignores a `deviceId` in a project file. Bug reports omit it. |
 
 ## Related
 

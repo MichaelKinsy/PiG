@@ -68,6 +68,34 @@ type registerMsg struct {
 	// MarkdownTransformer reports a registered Markdown transformer; the host
 	// runs it with markdown_transform requests.
 	MarkdownTransformer bool `json:"markdown_transformer,omitempty"`
+	// McpServers and VirtualModels are the registrations made while the factory ran; the host applies them when the extension loads.
+	McpServers    []mcpServerDecl    `json:"mcp_servers,omitempty"`
+	VirtualModels []virtualModelDecl `json:"virtual_models,omitempty"`
+	// UnregisterVirtualModels are the unregistrations made while the factory ran. The host removes them from the runtime-wide queue of models registered before the runner binds, including another extension's (loader.ts:228-232).
+	UnregisterVirtualModels []virtualModelRef `json:"unregister_virtual_models,omitempty"`
+}
+
+// mcpServerDecl is one MCP server registration: the register payload entry and the registerMcpServer call argument.
+type mcpServerDecl struct {
+	Name   string          `json:"name"`
+	Config McpServerConfig `json:"config"`
+}
+
+// virtualModelRef names one virtual model.
+type virtualModelRef struct {
+	Provider string `json:"provider"`
+	ID       string `json:"id"`
+}
+
+// virtualModelDecl is a virtual model without its route: the register payload entry and the registerVirtualModel call argument.
+type virtualModelDecl struct {
+	Provider       string   `json:"provider"`
+	ID             string   `json:"id"`
+	Name           string   `json:"name"`
+	ThinkingLevels []string `json:"thinkingLevels,omitempty"`
+	ContextWindow  int      `json:"contextWindow,omitempty"`
+	MaxTokens      int      `json:"maxTokens,omitempty"`
+	Input          []string `json:"input,omitempty"`
 }
 
 type toolDef struct {
@@ -83,6 +111,18 @@ type toolDef struct {
 	RenderShell         string   `json:"render_shell,omitempty"`      // "self" when the renderers draw their own framing
 	RendersCall         bool     `json:"renders_call,omitempty"`      // the tool has a call renderer
 	RendersResult       bool     `json:"renders_result,omitempty"`    // the tool has a result renderer
+	// The upstream 0.99.1 tool definition fields, in the host's ToolDecl shape.
+	OutputSchema    Schema           `json:"output_schema,omitempty"`
+	Exposure        ToolExposure     `json:"exposure,omitempty"`
+	Namespace       *ToolNamespace   `json:"namespace,omitempty"`
+	Annotations     *ToolAnnotations `json:"annotations,omitempty"`
+	DefaultActive   *bool            `json:"default_active,omitempty"`
+	PreparesLoadout bool             `json:"prepares_loadout,omitempty"`
+	// PreparesArguments reports that the tool defines PrepareArguments; the host asks for it with tool_prepare_arguments before it validates the arguments.
+	PreparesArguments bool `json:"prepares_arguments,omitempty"`
+
+	// prepareLoadout is the tool's PrepareLoadout; the host asks for it with tool_prepare_loadout when PreparesLoadout is set.
+	prepareLoadout ToolPrepareLoadoutFunc
 }
 
 type handlerDef struct {
@@ -116,6 +156,9 @@ type providerDef struct {
 	Name         string                     `json:"name"`
 	Config       json.RawMessage            `json:"config"`
 	Native       *providerObjectDeclaration `json:"native,omitempty"`
+	// ImageAPIs and ClassifierAPIs name the APIs whose implementations (ProviderConfig images and classifiers) run in the extension.
+	ImageAPIs      []string `json:"image_apis,omitempty"`
+	ClassifierAPIs []string `json:"classifier_apis,omitempty"`
 }
 
 type rendererDef struct {
@@ -160,6 +203,9 @@ type callMsg struct {
 type callResultMsg struct {
 	Result json.RawMessage `json:"result,omitempty"`
 	Error  *errorInfo      `json:"error,omitempty"`
+
+	// notifySeq is the number of notify frames the read loop had queued for the main loop when it routed this result. It orders the result among the notifies, so a state the host sent before the result never overwrites what the result says: a caller off the main loop may wait for the loop to apply that many, and a registration reply records it as the position of the list it installs.
+	notifySeq uint64
 }
 
 // widgetPushMsg carries a string list widget. It has no width: the host lays
@@ -216,6 +262,10 @@ type conn struct {
 	// done is closed when the connection is shutting down.
 	done chan struct{}
 
+	// stopped is closed when the extension stops serving (shutdown or end of input). Every call waiting for a result ends then, and no call starts after it, as the Rust SDK's cancel_pending_calls and the Python SDK's _stop_runtime end them: a handler that is not tied to a request, such as a width handler, cannot hold shutdown on a reply the host no longer sends.
+	stopped  chan struct{}
+	stopOnce sync.Once
+
 	// notifications counts notify frames queued for the main loop. The read
 	// loop increments it before it delivers any later call_result, so a caller
 	// can wait until the loop has applied every notification that preceded
@@ -228,6 +278,8 @@ type pendingCall struct {
 	method string
 	ch     <-chan *callResultMsg
 	ctx    context.Context
+	// parent is the request the call was made under; nil for a call made outside one.
+	parent *requestParent
 }
 
 func newConn(nc net.Conn) *conn {
@@ -237,7 +289,13 @@ func newConn(nc net.Conn) *conn {
 		pendingParents: make(map[string]string),
 		incoming:       make(chan envelope, 16),
 		done:           make(chan struct{}),
+		stopped:        make(chan struct{}),
 	}
+}
+
+// stopCalls ends every waiting call and rejects later ones; see stopped.
+func (c *conn) stopCalls() {
+	c.stopOnce.Do(func() { close(c.stopped) })
 }
 
 // start begins the read loop goroutine.
@@ -280,6 +338,9 @@ func (c *conn) readLoop() {
 			}
 			c.pendingMu.Unlock()
 			if ok && ch != nil {
+				if env.CallResult != nil {
+					env.CallResult.notifySeq = c.notifications.Load()
+				}
 				ch <- env.CallResult
 			}
 			continue
@@ -392,6 +453,9 @@ func (c *conn) beginCall(parentRequestID string, parent *requestParent, method s
 	case <-c.done:
 		c.pendingMu.Unlock()
 		return pendingCall{}, fmt.Errorf("extension connection closed")
+	case <-c.stopped:
+		c.pendingMu.Unlock()
+		return pendingCall{}, fmt.Errorf("extension connection closed")
 	default:
 	}
 	if parent != nil {
@@ -420,7 +484,7 @@ func (c *conn) beginCall(parentRequestID string, parent *requestParent, method s
 		c.pendingMu.Unlock()
 		return pendingCall{}, err
 	}
-	return pendingCall{id: id, method: method, ch: ch, ctx: callCtx}, nil
+	return pendingCall{id: id, method: method, ch: ch, ctx: callCtx, parent: parent}, nil
 }
 
 func (c *conn) waitCall(call pendingCall) (*callResultMsg, error) {
@@ -430,16 +494,28 @@ func (c *conn) waitCall(call pendingCall) (*callResultMsg, error) {
 		delete(c.pendingParents, call.id)
 		c.pendingMu.Unlock()
 	}()
-	select {
-	case <-call.ctx.Done():
-		return nil, fmt.Errorf("host call %s: %w", call.method, call.ctx.Err())
-	case result, ok := <-call.ch:
-		if !ok {
-			return nil, fmt.Errorf("host call %s cancelled with its parent request", call.method)
+	ctx := call.ctx
+	for {
+		select {
+		case <-ctx.Done():
+			// Pi's host calls belong to no request: a call the handler left running when it returned continues until it ends or its own cancellation arrives. The request's context ends with the handler, so a completed request hands the wait to the runtime's context. A cancelled request never completes.
+			if call.parent != nil {
+				if runtime, completed := call.parent.lifetime(); completed && ctx != runtime {
+					ctx = runtime
+					continue
+				}
+			}
+			return nil, fmt.Errorf("host call %s: %w", call.method, ctx.Err())
+		case result, ok := <-call.ch:
+			if !ok {
+				return nil, fmt.Errorf("host call %s cancelled with its parent request", call.method)
+			}
+			return result, nil
+		case <-c.done:
+			return nil, fmt.Errorf("connection closed while waiting for %s response", call.method)
+		case <-c.stopped:
+			return nil, fmt.Errorf("extension stopped while waiting for %s response", call.method)
 		}
-		return result, nil
-	case <-c.done:
-		return nil, fmt.Errorf("connection closed while waiting for %s response", call.method)
 	}
 }
 
@@ -485,11 +561,16 @@ func (c *conn) respond(id string, result any, respErr error) error {
 		parent.finished = true
 		parent.completed = !parent.cancelled
 		delete(c.requestParents, id)
+		if parent.completed {
+			// A call the handler left pending is no longer scoped to the finished request, so a later cancel frame for it does not reach it.
+			for callID, owner := range c.pendingParents {
+				if owner == id {
+					c.pendingParents[callID] = ""
+				}
+			}
+		}
 	}
 	c.pendingMu.Unlock()
-	if id != "" {
-		c.cancelParentCalls(id)
-	}
 	if err := c.sendLocked(envelope{Type: msgRequestState, RequestState: &requestStateMsg{RequestID: id, State: "completed"}}); err != nil {
 		return err
 	}

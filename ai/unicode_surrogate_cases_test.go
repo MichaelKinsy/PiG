@@ -86,12 +86,12 @@ func unicodeUpstreamCases() []unicodeUpstreamCase {
 		{"should handle real-world LinkedIn comment data with emoji", "huggingface", "moonshotai/Kimi-K2.5", 1, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:543
 		{"should handle unpaired high surrogate (0xD83D) in tool results", "huggingface", "moonshotai/Kimi-K2.5", 2, false, ""},
-		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:552
-		{"should handle emoji in tool results", "together", "moonshotai/Kimi-K2.6", 0, false, "high"},
-		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:556
-		{"should handle real-world LinkedIn comment data with emoji", "together", "moonshotai/Kimi-K2.6", 1, false, "high"},
-		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:560
-		{"should handle unpaired high surrogate (0xD83D) in tool results", "together", "moonshotai/Kimi-K2.6", 2, false, "high"},
+		// .upstream/v0.99.1/packages/ai/test/unicode-surrogate.test.ts:552 (0.99.1 moved Together to Kimi-K3)
+		{"should handle emoji in tool results", "together", "moonshotai/Kimi-K3", 0, false, "high"},
+		// .upstream/v0.99.1/packages/ai/test/unicode-surrogate.test.ts:556
+		{"should handle real-world LinkedIn comment data with emoji", "together", "moonshotai/Kimi-K3", 1, false, "high"},
+		// .upstream/v0.99.1/packages/ai/test/unicode-surrogate.test.ts:560
+		{"should handle unpaired high surrogate (0xD83D) in tool results", "together", "moonshotai/Kimi-K3", 2, false, "high"},
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:569
 		{"should handle emoji in tool results", "baseten", "zai-org/GLM-5.2", 0, false, "high"},
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:573

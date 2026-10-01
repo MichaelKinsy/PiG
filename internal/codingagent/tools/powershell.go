@@ -60,6 +60,10 @@ type PowerShellTool struct {
 func (t *PowerShellTool) Name() string  { return "powershell" }
 func (t *PowerShellTool) Label() string { return "" }
 
+// OutputSchema mirrors upstream bashOutputSchema: the structuredContent of a
+// completed command.
+func (t *PowerShellTool) OutputSchema() json.RawMessage { return json.RawMessage(shellOutputSchema) }
+
 func (t *PowerShellTool) Schema() ai.ToolSchema {
 	return shellToolSchema("powershell", "PowerShell", !t.HideSessionEnvironment)
 }

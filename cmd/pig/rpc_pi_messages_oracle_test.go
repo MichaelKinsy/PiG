@@ -243,6 +243,7 @@ func TestRPCPiMessagesMatchesPi(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds and runs the pig binary")
 	}
+	t.Parallel()
 	runs := 3
 	if value := os.Getenv("PIG_D82_RUNS"); value != "" {
 		parsed, err := strconv.Atoi(value)

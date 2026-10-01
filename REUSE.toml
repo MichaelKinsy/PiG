@@ -36,7 +36,6 @@ SPDX-License-Identifier = "MIT AND CC-BY-4.0"
 path = [
   "agent/**",
   "ai/**",
-  "cmd/gen-image-models/**",
   "cmd/gen-models/**",
   "cmd/pig/**",
   "coding/**",
@@ -353,3 +352,22 @@ SPDX-FileCopyrightText = [
   "Copyright (c) 2013, LeRoy Benjamin Sharon",
 ]
 SPDX-License-Identifier = "MIT AND Unicode-3.0 AND LicenseRef-ICU-CJK AND LicenseRef-ICU-SEA"
+
+# The QuickJS WebAssembly module and the codemode prelude are Pi's, embedded byte for byte.
+[[annotations]]
+path = "codemode/assets/quickjs.wasm"
+precedence = "closest"
+SPDX-FileCopyrightText = [
+  "Copyright (c) 2026 Vercel, Inc.",
+  "Copyright (c) 2017-2021 Fabrice Bellard",
+  "Copyright (c) 2017-2021 Charlie Gordon",
+  "Copyright (c) 2023 Ben Noordhuis",
+  "Copyright (c) 2023 Saul Ibarra Corretge",
+]
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "codemode/assets/prelude.js"
+precedence = "closest"
+SPDX-FileCopyrightText = "Copyright (c) 2025 Mario Zechner"
+SPDX-License-Identifier = "MIT"

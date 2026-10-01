@@ -30,5 +30,9 @@ for (const api of apis) {
     for (const [line, count] of counts) if (line !== want) console.log(`  ${count}x ${line}\n  want ${want}`);
   }
 }
-if (oracleMode) writeFileSync(oraclePath, JSON.stringify(oracle, null, 2) + '\n');
+if (oracleMode) {
+  // <cli.js> sits in dist/ of the Pi package; record the version the oracle was taken from.
+  oracle.piVersion = JSON.parse(readFileSync(new URL('../package.json', 'file://' + bin), 'utf8')).version;
+  writeFileSync(oraclePath, JSON.stringify(oracle, null, 2) + '\n');
+}
 process.exit(failed ? 1 : 0);

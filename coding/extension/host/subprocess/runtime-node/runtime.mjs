@@ -22,7 +22,9 @@ import { getKeybindings, KeybindingsManager, setKeybindings } from "./shims/pi-d
 import { EditorComponentHost } from "./editor-component.mjs";
 import { setCapabilities as setTerminalCapabilities } from "./shims/pi-dist/pi-tui/terminal-image.js";
 import { loadAllHighlightLanguages } from "./shims/syntax-highlight.mjs";
-import { themeFromPalette } from "./theme-palette.mjs";
+import { themeFromPalette, wireColors } from "./theme-palette.mjs";
+import { classifierErrorResult } from "./shims/pi-dist/pi-ai/utils/model-operations.js";
+import { backgroundAnsi, foregroundAnsi, styleTextWithAnsi } from "./shims/pi-dist/pi-tui/colors.js";
 import { initTheme, setThemeInstance } from "./shims/pi-dist/pi-coding-agent/modes/interactive/theme/theme.js";
 import { createExtensionRuntime } from "./shims/pi-dist/pi-coding-agent/core/extensions/loader.js";
 import { installCloneHooks, Realm } from "./xref.mjs";
@@ -267,7 +269,7 @@ class RuntimeSessionManager {
   }
 
   isPersisted() { return this._info().persisted ?? Boolean(this.runtime.state.session?.sessionFile); }
-  getCwd() { return this._info().cwd ?? this.runtime.ctx.cwd; }
+  getCwd() { return this._info().cwd ?? this.runtime.contextValues.cwd; }
   getSessionDir() { return this._info().sessionDir ?? ""; }
   usesDefaultSessionDir() { return this._info().usesDefaultSessionDir === true; }
   getSessionId() { return this.runtime.state.session?.sessionId || ""; }
@@ -395,6 +397,42 @@ class RuntimeModelRegistry {
   find(provider, modelId) {
     return this.runtime.getModel(provider, modelId);
   }
+  // model-registry.ts:71-79,135-177. Chat models come from the registry snapshot's models and the others from its typedModels, in the host's order (model-registry.ts:145-161); getAvailableOfType and classify ask the host.
+  findOfType(type, provider, modelId) { return this.getModelOfType(type, provider, modelId); }
+  getModelsOfType(type, provider) {
+    const typed = this.runtime.registryState.typedModels ?? [];
+    return [...this.getAll(), ...typed].filter((model) => (model.type ?? "chat") === type && (provider === undefined || model.provider === provider));
+  }
+  async getAvailableOfType(type, provider, options) {
+    return (await this.runtime.call("getAvailableOfType", { type, provider })) ?? [];
+  }
+  getModelOfType(type, provider, modelId) { return this.getModelsOfType(type, provider).find((model) => model.id === modelId); }
+  // Never rejects: a failure, and an aborted request, are a result that names the model (model-registry.ts:168-177, model-runtime.ts:800-815). The result is aborted when the caller's signal aborted or, as in the Go, Rust and Python SDKs, when the calling request was cancelled.
+  async classify(model, context, options) {
+    const signal = options?.signal;
+    const owner = this.runtime.requestContext.getStore();
+    let onAbort;
+    try {
+      // The signal and any callback of the options cannot cross the process boundary.
+      const { signal: _signal, ...rest } = options ?? {};
+      const sent = options === undefined ? undefined : JSON.parse(JSON.stringify(rest));
+      const aborted = new Promise((_, reject) => {
+        const reason = () => reject(signal.reason ?? new Error("The operation was aborted"));
+        if (signal?.aborted) reason();
+        else if (signal) { onAbort = reason; signal.addEventListener("abort", onAbort, { once: true }); }
+      });
+      aborted.catch(() => {});
+      const request = this.runtime.call("classify", { model, context, options: sent });
+      return await (signal ? Promise.race([request, aborted]) : request);
+    } catch (error) {
+      return classifierErrorResult(model, error, signal?.aborted === true || owner?.controller?.signal.aborted === true);
+    } finally {
+      if (onAbort) signal.removeEventListener("abort", onAbort);
+    }
+  }
+  // model-registry.ts:211-213 and model-runtime.ts:955-963: the facade's registrations are the runtime's, and its route gets the request alone. pi.registerVirtualModel's route also gets a context (loader.ts:493-501).
+  registerVirtualModel(definition) { this.runtime.registerVirtualModel(Object.assign(Object.create(definition), { route: (request) => definition.route(request) })); }
+  unregisterVirtualModel(provider, id) { this.runtime.unregisterVirtualModel(provider, id); }
   hasConfiguredAuth(model) { return this._providerState(model?.provider)?.configured === true; }
   async getApiKeyAndHeaders(model) {
     return this.runtime.call("getModelAuth", { provider: providerIDFromModel(model), modelId: modelIDFromModel(model) });
@@ -467,6 +505,9 @@ export class ThemeShim {
     // Upstream's bold, italic, underline, inverse and strikethrough are chalk
     // styles, which chalk drops when the host's stdout has no color support.
     this.modifiers = true;
+    // The host resolves the appearance and the concrete colors with the palette (they depend on the terminal's reported colors, which this process cannot see). Before a palette there is none.
+    this.appearance = undefined;
+    this.colors = Object.freeze({});
   }
   setPalette(palette = {}) {
     this.foregrounds = palette.foregrounds && typeof palette.foregrounds === "object" ? palette.foregrounds : {};
@@ -475,28 +516,46 @@ export class ThemeShim {
     this.name = typeof palette.name === "string" ? palette.name : undefined;
     this.sourcePath = typeof palette.sourcePath === "string" && palette.sourcePath !== "" ? palette.sourcePath : undefined;
     this.mode = palette.mode === "256color" ? "256color" : "truecolor";
+    this.appearance = palette.appearance === "light" || palette.appearance === "dark" ? palette.appearance : undefined;
+    this.colors = wireColors(palette.colors);
     setThemeInstance(this);
   }
-  style(open, close, text) {
+  // Upstream Theme.style over the palette's escape sequences (theme.ts:342-367). The attributes are SGR drawn directly, whatever the host's chalk level is.
+  style(text, options) {
+    const { fg, bg } = options;
+    // The palette's foreground appends SGR 2 to a faint token's color; a color never ends in it.
+    const faint = typeof fg === "string" && this.tokenAnsi(this.foregrounds, fg).endsWith("\x1b[2m");
+    const fgAnsi = fg === undefined ? undefined : typeof fg === "string" ? this.tokenAnsi(this.foregrounds, fg) : foregroundAnsi(fg, this.getColorMode());
+    const bgAnsi = bg === undefined ? undefined : typeof bg === "string" ? this.tokenAnsi(this.backgrounds, bg) : backgroundAnsi(bg, this.getColorMode());
+    return styleTextWithAnsi(String(text ?? ""), faint ? fgAnsi.slice(0, -"\x1b[2m".length) : fgAnsi, bgAnsi, faint ? { ...options, dim: true } : options);
+  }
+  tokenAnsi(tokens, token) {
+    const ansi = Object.hasOwn(tokens, token) ? tokens[token] : undefined;
+    if (typeof ansi !== "string" || ansi === "") throw new Error(`Unknown theme color: ${token}`);
+    return ansi;
+  }
+  modifier(open, close, text) {
     const value = String(text ?? "");
     return this.modifiers ? `${open}${value}${close}` : value;
   }
+  // The host sends each foreground as Pi's getFgAnsi opening, which ends in SGR 2 for a faint token (theme.ts:399-402). Pi's fg closes a faint token with SGR 22;39 (theme.ts:363), so the faint attribute does not leak past the text.
   fg(token, text) {
     const value = String(text ?? "");
     const open = this.foregrounds[token] || "";
-    return open ? `${open}${value}\x1b[39m` : value;
+    if (!open) return value;
+    return `${open}${value}${open.endsWith("\x1b[2m") ? "\x1b[22;39m" : "\x1b[39m"}`;
   }
   bg(token, text) {
     const value = String(text ?? "");
     const open = this.backgrounds[token] || "";
     return open ? `${open}${value}\x1b[49m` : value;
   }
-  bold(text) { return this.style("\x1b[1m", "\x1b[22m", text); }
+  bold(text) { return this.modifier("\x1b[1m", "\x1b[22m", text); }
   dim(text) { return `\x1b[2m${String(text ?? "")}\x1b[22m`; }
-  italic(text) { return this.style("\x1b[3m", "\x1b[23m", text); }
-  underline(text) { return this.style("\x1b[4m", "\x1b[24m", text); }
-  inverse(text) { return this.style("\x1b[7m", "\x1b[27m", text); }
-  strikethrough(text) { return this.style("\x1b[9m", "\x1b[29m", text); }
+  italic(text) { return this.modifier("\x1b[3m", "\x1b[23m", text); }
+  underline(text) { return this.modifier("\x1b[4m", "\x1b[24m", text); }
+  inverse(text) { return this.modifier("\x1b[7m", "\x1b[27m", text); }
+  strikethrough(text) { return this.modifier("\x1b[9m", "\x1b[29m", text); }
   // Upstream Theme.getFgAnsi, getBgAnsi, getColorMode, getThinkingBorderColor
   // and getBashModeBorderColor over the host's palette.
   getFgAnsi(color) {
@@ -517,32 +576,35 @@ export class ThemeShim {
   getBashModeBorderColor() { return (text) => this.fg("bashMode", text); }
 }
 
-// pig additive (D19): after RPC stdin ends, the transport must not keep an otherwise drained Node event loop alive. Report the drain to the process owner without resolving any pending extension Promise.
-const quitDrain = { active: false, inputEnded: false, reported: false, tailCheck: false, runtimes: new Set() };
+// pig additive (D19): after RPC stdin ends, the transport must not keep an otherwise drained Node event loop alive. Report the drain to the process owner without resolving any pending extension Promise. A process reports when its loop drained with a pending quit session_shutdown handler (runtime_drained: Pi's exit when its loop empties), and, when it has none, with an unanswered command it has not reported yet (runtime_commands_drained: the host then knows the process cannot answer the commands it had started, as Pi's single loop would not either). A command that arrives after a report makes the loop reportable again.
+const quitDrain = { active: false, inputEnded: false, reported: false, listening: false, tailCheck: false, runtimes: new Set() };
 
 function quitDrainState() {
   let outstanding = false;
+  let commands = false;
   let tail = false;
   let hostWaits = false;
   for (const runtime of quitDrain.runtimes) {
     for (const request of runtime.requestRecords.values()) {
       if (request.responded) continue;
       outstanding ||= request.quit;
+      commands ||= request.command && !request.drainReported;
       tail ||= request.quitTail;
     }
     for (const pending of runtime.conn?.pending.values() ?? []) {
       if (pending.synchronous || !USER_BLOCKING_CALLS.has(pending.method)) hostWaits = true;
     }
   }
-  return { outstanding, tail, hostWaits };
+  return { outstanding, commands, tail, hostWaits };
 }
 
 function refreshQuitDrain() {
-  if (!quitDrain.active || !quitDrain.inputEnded || quitDrain.reported) return;
-  const { outstanding, tail, hostWaits } = quitDrainState();
-  setProviderSocketsRef(!outstanding || hostWaits);
+  if (!quitDrain.inputEnded) return;
+  const { outstanding, commands, tail, hostWaits } = quitDrainState();
+  const quitWaits = quitDrain.active && !quitDrain.reported && outstanding;
+  setProviderSocketsRef(!(quitWaits || commands) || hostWaits);
   // Pi flushRawStdout lets immediately fulfilled Promise continuations run, but does not await a post-disposal handler's future timer or I/O. IPC must not turn that suspension into a Session join.
-  if (tail && !outstanding && !hostWaits && !quitDrain.tailCheck) {
+  if (quitDrain.active && !quitDrain.reported && tail && !outstanding && !hostWaits && !quitDrain.tailCheck) {
     quitDrain.tailCheck = true;
     setImmediate(() => {
       quitDrain.tailCheck = false;
@@ -554,7 +616,7 @@ function refreshQuitDrain() {
 
 // pig additive (D19): Pi reads the prompt line, and stdin's end one event-loop iteration later; then shutdown() exits within microtasks and one tick unless a session_shutdown handler awaits a timer or I/O (rpc-mode.ts:728-744, output-guard.ts:105-108). A command therefore answers after stdin ended only if it settles inside its own window: its microtasks and the setImmediate queued behind its handler's synchronous prefix. The runtime measures that window from the invocation and reports the request suspended (request_state) when the window closes unresponded; the host decides what stdin's end makes of that: it holds a suspended command's response unless a quit session_shutdown handler is suspended too, which keeps Pi's process alive. Only a host call that settles synchronously or through microtasks in Pi keeps a window open; these host calls are I/O, a child process, a dialog or a session change there.
 const WINDOW_CLOSING_CALLS = new Set([
-  ...USER_BLOCKING_CALLS, "exec", "modelStream", "getModelAuth", "getProviderAuth", "refreshModelRegistry", "compact", "waitForIdle",
+  ...USER_BLOCKING_CALLS, "exec", "modelStream", "getModelAuth", "getProviderAuth", "getAvailableOfType", "classify", "refreshModelRegistry", "compact", "waitForIdle",
   "setModel", "newSession", "fork", "navigateTree", "switchSession", "reload", "oauth.cb.onSelect", "oauth.cb.onPrompt", "oauth.cb.onManualCodeInput",
 ]);
 
@@ -575,11 +637,39 @@ function armRequestWindow(owner, early = false) {
       return;
     }
     owner.turned = true;
+    // A command's suspension decides only what stdin's end makes of it. Reporting it before then would latch a continuation that Pi runs before it reads stdin's end, so the report waits for runtime_input_end (releaseCommandSuspensions).
+    if (owner.command && !owner.quit && !quitDrain.inputEnded) {
+      owner.unreportedAt = hostCallEpoch(owner);
+      return;
+    }
     if (!owner.connection.closed) owner.connection.requestState(owner.id, "suspended");
   };
   if (early) {
     closeInCloseCallbacks(close);
   } else setImmediate(close);
+}
+
+// hostCallEpoch counts the host calls the request started or finished, so a command whose window closed can be told apart from one that has run since.
+function hostCallEpoch(owner) {
+  return owner.connection?.callEpochs?.get(owner.id) ?? 0;
+}
+
+// pig additive (D19): Pi's commands share one event loop with stdin, so it has no report to defer; this runtime is a separate process and must tell the host what Pi's loop would have done at stdin's end.
+// releaseCommandSuspensions applies runtime_input_end to the commands whose window closed unresponded earlier. Pi reads stdin's end in the iteration after the line that starts a command only when the client closes stdin at once; a client that closes it later (on seeing the handler's notification, say) finds every continuation that ran in between answered. A command that started or finished a host call since its window closed ran meanwhile, so it gets a fresh window from here: it is suspended again only if it still waits when that window closes. A command that did nothing since is suspended now.
+function releaseCommandSuspensions() {
+  for (const runtime of quitDrain.runtimes) {
+    for (const request of runtime.requestRecords.values()) {
+      if (request.unreportedAt === undefined || request.responded) continue;
+      const at = request.unreportedAt;
+      request.unreportedAt = undefined;
+      if (hostCallEpoch(request) !== at) {
+        request.turned = false;
+        armRequestWindow(request);
+      } else if (!request.connection.closed) {
+        request.connection.requestState(request.id, "suspended");
+      }
+    }
+  }
 }
 
 // closeInCloseCallbacks runs fn in the closing phase of the current loop iteration: after the iteration's check-phase immediates and before the next timers and poll. It closes a MessagePort, a libuv handle whose 'close' event fires from the handle's close callback. The port is unref'd and opens no fd or socket. Verified on Node 22, 24 and 25. If the mechanism throws, fn runs two immediates later, the previous behaviour, and the failure never reaches the command. fn runs exactly once.
@@ -614,32 +704,50 @@ function resumeRequestWindows() {
 }
 
 function drainQuitRequests() {
-  const { outstanding, hostWaits } = quitDrainState();
-  if (outstanding && !hostWaits) reportQuitExit("runtime_drained");
+  if (!quitDrain.inputEnded) return;
+  const { outstanding, commands, hostWaits } = quitDrainState();
+  if (hostWaits) return;
+  if (outstanding && quitDrain.active && !quitDrain.reported) reportQuitExit("runtime_drained");
+  else if (commands) reportQuitExit("runtime_commands_drained");
 }
 
 function reportQuitExit(method) {
-  if (!quitDrain.active || !quitDrain.inputEnded || quitDrain.reported) return;
-  quitDrain.reported = true;
-  setProviderSocketsRef(true);
-  for (const runtime of quitDrain.runtimes) {
-    if (runtime.conn) {
-      runtime.conn.notify(method);
-      break;
+  if (!quitDrain.inputEnded) return;
+  if (method !== "runtime_commands_drained") {
+    if (!quitDrain.active || quitDrain.reported) return;
+    quitDrain.reported = true;
+  }
+  // The report covers the commands the process started before it: the host marks those whose started state precedes the report on their connection. A drained loop with a pending quit handler cannot answer its commands either.
+  if (method !== "runtime_quit_yield") {
+    for (const runtime of quitDrain.runtimes) {
+      for (const request of runtime.requestRecords.values()) {
+        if (request.command && !request.responded) request.drainReported = true;
+      }
     }
+  }
+  setProviderSocketsRef(true);
+  // Every hosted connection reports, so the host has read each connection's earlier frames, such as a command's response, before it acts on the drain.
+  for (const runtime of quitDrain.runtimes) {
+    if (runtime.conn && !runtime.conn.closed) runtime.conn.notify(method);
   }
 }
 
-function enterQuitDrain() {
-  if (quitDrain.active) return;
-  quitDrain.active = true;
+function listenForQuitDrain() {
+  if (quitDrain.listening) return;
+  quitDrain.listening = true;
   process.on("beforeExit", drainQuitRequests);
+}
+
+function enterQuitDrain() {
+  quitDrain.active = true;
+  listenForQuitDrain();
 }
 
 export class Connection {
   constructor(socket) {
     this.socket = socket;
     this.pending = new Map();
+    this.callEpochs = new Map();
     this.queue = [];
     this.waiters = [];
     this.closed = false;
@@ -700,6 +808,7 @@ export class Connection {
     const pending = this.pending.get(env.id);
     if (!pending) return;
     this.pending.delete(env.id);
+    this.touchRequest(pending.parentRequestId);
     resumeRequestWindows();
     refreshQuitDrain();
     if (env.call_result?.error) {
@@ -731,10 +840,16 @@ export class Connection {
     return new Promise((resolve) => this.waiters.push(resolve));
   }
 
+  touchRequest(requestId) {
+    const epoch = this.callEpochs.get(requestId);
+    if (epoch !== undefined) this.callEpochs.set(requestId, epoch + 1);
+  }
+
   call(method, args = {}, parentRequestId = "") {
     if (this.closed) return Promise.reject(new Error("extension connection closed"));
     const id = uuid();
     return new Promise((resolve, reject) => {
+      this.touchRequest(parentRequestId);
       this.pending.set(id, { resolve, reject, parentRequestId, method });
       refreshQuitDrain();
       try {
@@ -749,6 +864,7 @@ export class Connection {
   callSync(method, args = {}, parentRequestId = "") {
     const id = uuid();
     let done = false, value, error;
+    this.touchRequest(parentRequestId);
     this.pending.set(id, {
       synchronous: true,
       parentRequestId,
@@ -766,6 +882,7 @@ export class Connection {
     let started = false, startError;
     this.streamStarts.set(args.streamId, () => { started = true; });
     const id = uuid();
+    this.touchRequest(parentRequestId);
     const promise = new Promise((resolve, reject) => {
       this.pending.set(id, {
         synchronous: true,
@@ -841,23 +958,39 @@ function bindOwnMethods(target) {
   }
 }
 
+// requestSignal keys a request's own AbortSignal on its context. Pi's ctx.signal is the run's (runner.ts:917-920), so the request's cancellation travels under this key, which no extension can enumerate or collide with.
+export const requestSignal = Symbol("pig.requestSignal");
+
+// Pi's createContext (runner.ts:868-960) and createCommandContext (runner.ts:981-1016) guard every member with runner.assertActive(), so a context kept past a stale runtime throws the runner's message instead of answering. Here a member throws once extensionRuntime is stale; the runtime's own code reads the values it holds in runtime.contextValues, which no guard stands in front of.
 class RuntimeContext {
   constructor(runtime) {
     bindOwnMethods(this);
     this.runtime = runtime;
-    Object.defineProperty(this, "scopedModels", { enumerable: true, get: () => runtime.state.scopedModels ?? [] });
-    Object.defineProperties(this, {
-      ui: { enumerable: true, get: () => runtime.state.hasUI ? runtime.ui : runtime.noOpUI },
-      hasUI: { enumerable: true, get: () => runtime.state.hasUI },
-    });
-    this.cwd = runtime.ready.cwd || process.cwd();
+    const active = () => runtime.extensionRuntime.assertActive();
+    const guarded = (read) => ({ enumerable: true, get: () => { active(); return read(); } });
     // Pi defaults to print until the host binds a mode (runner.ts:357).
-    this.mode = runtime.ready.mode || "print";
-    this.theme = this.ui.theme;
-    this.model = normalizeModel(runtime.state.model) ?? (runtime.ready.model ? normalizeModel({ id: runtime.ready.model }) : undefined);
-    this.sessionManager = new RuntimeSessionManager(runtime);
-    this.modelRegistry = new RuntimeModelRegistry(runtime);
-    this.signal = undefined;
+    const values = runtime.contextValues = {
+      cwd: runtime.ready.cwd || process.cwd(),
+      mode: runtime.ready.mode || "print",
+      model: undefined,
+      sessionManager: new RuntimeSessionManager(runtime),
+      modelRegistry: new RuntimeModelRegistry(runtime),
+    };
+    Object.defineProperties(this, {
+      scopedModels: guarded(() => runtime.state.scopedModels ?? []),
+      ui: guarded(() => runtime.state.hasUI ? runtime.ui : runtime.noOpUI),
+      hasUI: guarded(() => runtime.state.hasUI),
+      cwd: guarded(() => values.cwd),
+      mode: guarded(() => values.mode),
+      sessionManager: guarded(() => values.sessionManager),
+      modelRegistry: guarded(() => values.modelRegistry),
+      model: guarded(() => values.model),
+      thinkingLevel: guarded(() => runtime.state.thinkingLevel || undefined),
+      // runner.ts:917-920: the signal of the run in progress, one object for the whole run, undefined while no run is active. The Host replicates it with run_signal frames (applyRunSignal).
+      signal: guarded(() => runtime.runSignal?.controller.signal),
+    });
+    this.theme = runtime.ui.theme;
+    values.model = normalizeModel(runtime.state.model) ?? (runtime.ready.model ? normalizeModel({ id: runtime.ready.model }) : undefined);
   }
 
   // Live terminal geometry. Getters rather than snapshots so a resize is
@@ -866,38 +999,41 @@ class RuntimeContext {
   get width() { return Number(this.runtime.ready?.width || 0); }
   get height() { return Number(this.runtime.ready?.height || 0); }
 
-  isIdle() { return this.runtime.state.isIdle; }
-  isProjectTrusted() { return this.runtime.state.projectTrusted; }
-  abort() { this.runtime.fireAndForget("abort", {}); }
-  hasPendingMessages() { return this.runtime.state.hasPendingMessages; }
+  isIdle() { this.runtime.extensionRuntime.assertActive(); return this.runtime.state.isIdle; }
+  isProjectTrusted() { this.runtime.extensionRuntime.assertActive(); return this.runtime.state.projectTrusted; }
+  abort() { this.runtime.extensionRuntime.assertActive(); this.runtime.fireAndForget("abort", {}); }
+  hasPendingMessages() { this.runtime.extensionRuntime.assertActive(); return this.runtime.state.hasPendingMessages; }
   // Pi's shutdown() stops the TUI only after the frame the current input
   // produced is painted (it drains input first), so a shutdown requested
   // from an editor's handleInput reaches the host after that frame.
-  shutdown() { queueMicrotask(() => this.runtime.fireAndForget("shutdown", {})); }
-  getContextUsage() { return this.runtime.state.contextUsage; }
+  shutdown() { this.runtime.extensionRuntime.assertActive(); queueMicrotask(() => this.runtime.fireAndForget("shutdown", {})); }
+  getContextUsage() { this.runtime.extensionRuntime.assertActive(); return this.runtime.state.contextUsage; }
   // The host reads the options flat. Upstream starts compaction without
   // awaiting it and reports the outcome through onComplete/onError, so a call
-  // with callbacks carries no parent request and outlives its handler.
+  // with callbacks carries no parent request and outlives its handler
+  // (agent-session.ts:3369-3378), while the handler that waits for them is
+  // reported blocked so the events behind it are dispatched.
   compact(options = {}) {
+    this.runtime.extensionRuntime.assertActive();
     const { onComplete, onError, ...rest } = options ?? {};
     if (typeof onComplete !== "function" && typeof onError !== "function") {
       this.runtime.fireAndForget("compact", rest);
       return;
     }
-    void this.runtime.conn?.call("compact", { ...rest, awaitCompletion: true }).then(
+    void this.runtime.call("compact", { ...rest, awaitCompletion: true }, { detached: true }).then(
       (result) => { if (typeof onComplete === "function") onComplete(result); },
       (err) => { if (typeof onError === "function") onError(err instanceof Error ? err : new Error(String(err))); },
     );
   }
-  getSystemPrompt() { return this.runtime.state.systemPrompt; }
-  getSystemPromptOptions() { return this.runtime.state.systemPromptOptions ?? {}; }
-  get thinkingLevel() { return this.runtime.state.thinkingLevel || undefined; }
-  async waitForIdle() { return this.runtime.call("waitForIdle", {}); }
-  async newSession(options = {}) { return this.runtime.call("newSession", { ...options }); }
-  async fork(entryId, options = {}) { return this.runtime.call("fork", { ...options, entryId }); }
-  async navigateTree(targetId, options = {}) { return this.runtime.call("navigateTree", { ...options, targetId }); }
-  async switchSession(sessionPath, options = {}) { return this.runtime.call("switchSession", { sessionPath, options }); }
-  async reload() { return this.runtime.call("reload", {}); }
+  getSystemPrompt() { this.runtime.extensionRuntime.assertActive(); return this.runtime.state.systemPrompt; }
+  getSystemPromptOptions() { this.runtime.extensionRuntime.assertActive(); return this.runtime.state.systemPromptOptions ?? {}; }
+  // runner.ts:993-1016: the command context's methods throw synchronously when stale, so none is async.
+  waitForIdle() { this.runtime.extensionRuntime.assertActive(); return this.runtime.call("waitForIdle", {}); }
+  newSession(options = {}) { this.runtime.extensionRuntime.assertActive(); return this.runtime.call("newSession", { ...options }); }
+  fork(entryId, options = {}) { this.runtime.extensionRuntime.assertActive(); return this.runtime.call("fork", { ...options, entryId }); }
+  navigateTree(targetId, options = {}) { this.runtime.extensionRuntime.assertActive(); return this.runtime.call("navigateTree", { ...options, targetId }); }
+  switchSession(sessionPath, options = {}) { this.runtime.extensionRuntime.assertActive(); return this.runtime.call("switchSession", { sessionPath, options }); }
+  reload() { this.runtime.extensionRuntime.assertActive(); return this.runtime.call("reload", {}); }
 }
 
 // Ports packages/coding-agent/src/core/extensions/runner.ts: noOpUIContext.
@@ -1001,7 +1137,7 @@ class RuntimeUI {
     }
     // 0.3.0: replaced by Pi runner wiring
     if (Array.isArray(content)) {
-      if (this.runtime.ctx.mode !== "tui") {
+      if (this.runtime.contextValues.mode !== "tui") {
         this.runtime.fireAndForget("ui.setWidget", { key, content, options });
         return;
       }
@@ -1275,6 +1411,16 @@ export class Runtime {
     this.handlers = new Map();
     this.nextHandlerId = 1;
     this.tools = new Map();
+    // Registrations made while the factory runs. Upstream queues them and applies them in order when the factory succeeds (loader.ts:259-262, 456-497), so a queued unregister removes an earlier queued registration. The Host applies them when it accepts this extension.
+    this.mcpServersPending = new Map();
+    this.virtualModelsPending = [];
+    // The unregistrations the factory made, in call order. Pi filters the runtime-wide queue of models registered before the runner binds (loader.ts:228-232); the Host applies these to it.
+    this.virtualModelUnregistrations = [];
+    // The virtual models this extension registered, by provider and id. The declaration travels to the Host; the route stays here and runs when the Host routes a request (loader.ts:480-490).
+    this.virtualModels = new Map();
+    // ctx.executeTool calls in flight, by the id the Host knows them by.
+    this.nestedCalls = new Map();
+    this.nextExecuteId = 1;
     // Raw terminal-input handlers, consulted synchronously while the host
     // waits for a consume decision. Empty means the host never round-trips.
     this.terminalInputHandlers = [];
@@ -1287,6 +1433,8 @@ export class Runtime {
     this.providers = new Map();
     this.oauthProviders = new Map();
     this.providerStreams = new Map();
+    // The image and classifier implementations of each provider config (types.ts:1896-1903). They cannot cross the process boundary: the register frame names their APIs and the host calls back with provider_operation.
+    this.providerOperations = new Map();
     // registeredProviderConfigs holds the provider configs this extension
     // registered, merged per upstream registerProvider, and nativeProviders
     // the provider objects it registered (upstream registerNativeProvider).
@@ -1332,6 +1480,7 @@ export class Runtime {
     this.specialSurfaceComponents = new Map();
     this.customOverlaySeq = 0;
     this.ready = { cwd: process.cwd(), width: 80, model: "" };
+    this.runSignal = undefined;
     this.sessionLogRequested = false;
     this.sessionLogGeneration = 0;
     this.sessionLogSync = undefined;
@@ -1353,6 +1502,8 @@ export class Runtime {
       systemPromptOptions: {},
       flags: {},
       hasUI: false,
+      // Replicated by the Host: pi.getSettings() reads it (StatePayload.settings). The MCP server registry and ctx.tools are read from the Host when they are read.
+      settings: undefined,
       footerData: { gitBranch: null, extensionStatuses: {}, availableProviderCount: 0 },
     };
     this.autocomplete = new AutocompleteRuntime(this);
@@ -1412,6 +1563,16 @@ export class Runtime {
       // The host call also carries PiG's legacy per-tool "source" for the Go,
       // Rust and Python SDKs; Pi's ToolInfo has only sourceInfo, so drop it.
       getAllTools: action(() => (this.callSync("getAllTools")?.tools || []).map(({ source: _legacySource, ...tool }) => tool)),
+      // loader.ts:411-414: a copy of the effective settings, from the state the Host replicated.
+      getSettings: action(() => {
+        if (this.state.settings === undefined) throw new Error("settings are not available: the host has not sent them");
+        return structuredClone(this.state.settings);
+      }),
+      registerMcpServer: (name, config) => this.registerMcpServer(name, config),
+      unregisterMcpServer: (name) => this.unregisterMcpServer(name),
+      getMcpServers: () => this.getMcpServers(),
+      registerVirtualModel: (model) => this.registerVirtualModel(model),
+      unregisterVirtualModel: (provider, id) => this.unregisterVirtualModel(provider, id),
       getCommands: action(() => structuredClone(this.state.commands || [])),
       getThinkingLevel: action(() => this.state.thinkingLevel || ""),
       setThinkingLevel: action((level) => {
@@ -1472,6 +1633,7 @@ export class Runtime {
     this.registryProviders.delete(name);
     this.providers.delete(name);
     this.providerStreams.delete(name);
+    this.providerOperations.delete(name);
     this.oauthProviders.delete(name);
     this.registeredProviderConfigs.delete(name);
     this.nativeProviders.delete(name);
@@ -1542,6 +1704,125 @@ export class Runtime {
     if (this.conn) this.applyState(this.callSync("registerTool", this.toolDeclaration(definition)));
   }
 
+  // A host call the factory may make before the extension registers: it opens the connection a loading factory needs, as the shared event bus does.
+  factoryCall(method, args) {
+    if (this.conn) return this.callSync(method, args);
+    this.ensureConnectionSync();
+    return this.earlyConn.callSync(method, args, "");
+  }
+
+  // loader.ts:456-468. The Host validates the config with Pi's own rules and refuses a name another extension owns, and Pi does both when the call is made: the throw reaches the factory, which may catch it. A registration the factory makes is queued once it passed, and reaches the Host in the register frame, as Pi commits it when the factory returns; later ones apply at once.
+  registerMcpServer(name, config) {
+    const declaration = { name, config: structuredClone(config) };
+    // A replaced name keeps its position, as the registry's Map does (mcp-servers.ts:212-215).
+    if (!this.conn) {
+      this.factoryCall("mcpServers.check", declaration);
+      this.mcpServersPending.set(name, declaration.config);
+      return;
+    }
+    this.callSync("registerMcpServer", declaration);
+  }
+
+  // loader.ts:472-475. A server another extension registered is left alone by the Host.
+  unregisterMcpServer(name) {
+    if (!this.conn) {
+      this.mcpServersPending.delete(name);
+      return;
+    }
+    this.callSync("unregisterMcpServer", { name });
+  }
+
+  // loader.ts:475-478. The live registry: the servers earlier-loaded extensions committed, and not the ones this factory has only queued.
+  getMcpServers() {
+    return this.factoryCall("getMcpServers", {})?.servers ?? [];
+  }
+
+  // loader.ts:480-490. The declaration carries the VirtualModelDefinition fields but route (virtual-models.ts:84-102); the Host calls the route with virtual_model_route. Pi ignores any other property of the object, so none travels: the Host rejects unknown register-frame fields.
+  registerVirtualModel(model) {
+    const declaration = {
+      provider: model.provider,
+      id: model.id,
+      name: model.name,
+      thinkingLevels: model.thinkingLevels,
+      contextWindow: model.contextWindow,
+      maxTokens: model.maxTokens,
+      input: model.input,
+    };
+    const key = JSON.stringify([model.provider, model.id]);
+    const previous = this.virtualModels.get(key);
+    this.virtualModels.set(key, model);
+    if (!this.conn) {
+      this.virtualModelsPending.push(declaration);
+      return;
+    }
+    try {
+      this.callSync("registerVirtualModel", declaration);
+    } catch (error) {
+      if (previous === undefined) this.virtualModels.delete(key);
+      else this.virtualModels.set(key, previous);
+      throw error;
+    }
+  }
+
+  // loader.ts:492-495.
+  unregisterVirtualModel(provider, id) {
+    const key = JSON.stringify([provider, id]);
+    if (!this.conn) {
+      this.virtualModelsPending = this.virtualModelsPending.filter((declaration) => declaration.provider !== provider || declaration.id !== id);
+      this.virtualModelUnregistrations.push({ provider, id });
+    } else {
+      this.callSync("unregisterVirtualModel", { provider, id });
+    }
+    this.virtualModels.delete(key);
+  }
+
+  // runner.ts:952-985 (createToolContext). The context of a tool call also lists the tools executeTool can call and runs one. An explicit signal replaces the calling tool's, so the call is not tied to the calling request; without one the Host cancels the call with the request.
+  addToolContext(ctx, toolCallId) {
+    const runtime = this;
+    return Object.defineProperties(ctx, {
+      tools: {
+        get() {
+          runtime.extensionRuntime.assertActive();
+          return runtime.callSync("getCallableTools")?.tools ?? [];
+        },
+      },
+      executeTool: {
+        value: async (name, args, options = {}) => {
+          runtime.extensionRuntime.assertActive();
+          return runtime.executeTool(toolCallId, name, args, options ?? {});
+        },
+      },
+    });
+  }
+
+  async executeTool(toolCallId, name, args, options) {
+    const executeId = `e${this.nextExecuteId++}`;
+    // runner.ts:979-981 (`options.signal ?? signal`): a null or undefined signal leaves the call with the calling tool's.
+    const signal = options.signal ?? undefined;
+    const nested = { onUpdate: typeof options.onUpdate === "function" ? options.onUpdate : undefined, signal, hasFailure: false, failure: undefined };
+    this.nestedCalls.set(executeId, nested);
+    const payload = { callerId: toolCallId, name, args, executeId, ...(nested.onUpdate ? { wantsUpdates: true } : {}), ...(signal !== undefined ? { ownSignal: true } : {}) };
+    let stopListening;
+    try {
+      const outcome = this.call("executeTool", payload, { detached: signal !== undefined });
+      if (signal !== undefined) {
+        // After the call is sent: the Host applies a cancel only after the call it names started.
+        const cancel = () => { this.conn?.call("executeTool.cancel", { executeId }, "").catch(() => {}); };
+        if (signal.aborted) cancel();
+        else {
+          signal.addEventListener("abort", cancel, { once: true });
+          stopListening = () => signal.removeEventListener("abort", cancel);
+        }
+      }
+      // The Host rejects a call whose onUpdate threw, after the tool returned (nested-tool-calls.ts:219-248); the call rejects with the error the callback threw, as Pi's rejection carries that object.
+      try { return await outcome; }
+      catch (error) { throw nested.hasFailure ? nested.failure : error; }
+    } finally {
+      stopListening?.();
+      this.nestedCalls.delete(executeId);
+    }
+  }
+
   toolDeclaration(tool) {
     return {
       name: tool.name,
@@ -1567,6 +1848,12 @@ export class Runtime {
       prompt_snippet: tool.promptSnippet,
       prompt_guidelines: tool.promptGuidelines,
       annotations: tool.annotations,
+      output_schema: tool.outputSchema,
+      exposure: tool.exposure,
+      namespace: tool.namespace,
+      default_active: tool.defaultActive,
+      prepares_loadout: typeof tool.prepareLoadout === "function" || undefined,
+      prepares_arguments: typeof tool.prepareArguments === "function" || undefined,
       source: tool.source,
       render_shell: tool.renderShell === "self" ? "self" : undefined,
       renders_call: (typeof tool.renderCall === "function" && !tool.renderCall[builtInToolRenderer]) || undefined,
@@ -1576,9 +1863,12 @@ export class Runtime {
   }
 
   registerCommand(name, definition) {
-    if (typeof name === "object" && name) {
-      definition = name;
-      name = definition.name;
+    // upstream: packages/coding-agent/src/core/extensions/loader.ts:302-311 (#10054)
+    if (typeof name !== "string" || name.length === 0) {
+      throw new Error(`Command registered by extension "${this.entry}" must have a non-empty string name. Use pi.registerCommand("name", { description, handler }).`);
+    }
+    if (typeof definition?.handler !== "function") {
+      throw new Error(`Command "/${name}" registered by extension "${this.entry}" must define handler().`);
     }
     this.commands.set(name, { name, ...definition });
   }
@@ -1748,10 +2038,13 @@ export class Runtime {
           handlers.filter(({ removed }) => !removed).map(({ id }) => ({ event, can_block: BLOCKING_EVENTS.has(event), handler_id: id })),
         ),
         flags: this.flagRegistrations.map((f) => ({ name: f.name, description: f.description || "", type: f.type || "string", default: f.default })),
-        providers: [...this.providers.entries()].map(([name, config]) => ({ name, config, ...(this.providerStreams.has(name) ? {stream_simple:true} : {}) })).concat([...this.nativeProviders.values()].map(provider=>({name:provider.id,config:{},native:nativeDeclaration(provider, this.nativeProviderKeys.get(provider))}))),
+        providers: [...this.providers.entries()].map(([name, config]) => this.providerDeclaration(name, config)).concat([...this.nativeProviders.values()].map(provider=>({name:provider.id,config:{},native:nativeDeclaration(provider, this.nativeProviderKeys.get(provider))}))),
         message_renderers: [...this.renderers.keys()].map((customType) => ({ custom_type: customType })),
         entry_renderers: [...this.entryRenderers.keys()].map((customType) => ({ custom_type: customType })),
         markdown_transformer: typeof this.markdownTransformer === "function" || undefined,
+        mcp_servers: this.mcpServersPending.size > 0 ? [...this.mcpServersPending].map(([name, config]) => ({ name, config })) : undefined,
+        virtual_models: this.virtualModelsPending.length > 0 ? this.virtualModelsPending : undefined,
+        unregister_virtual_models: this.virtualModelUnregistrations.length > 0 ? this.virtualModelUnregistrations : undefined,
         // The host sends no session log until an extension asks for it, so the
         // majority which never inspect the session do not each hold a full copy
         // of it resident. The Go, Rust and Python SDKs ask on the first read,
@@ -1792,14 +2085,14 @@ export class Runtime {
           this.ready = env.ready || this.ready;
           syncTerminalGeometry(this.ready);
           this.replaceModels(this.ready.models);
-          this.ctx.cwd = this.ready.cwd || this.ctx.cwd;
-          this.ctx.mode = this.ready.mode || this.ctx.mode;
-          this.ctx.model = this.ready.model ? { id: this.ready.model } : this.ctx.model;
+          this.contextValues.cwd = this.ready.cwd || this.contextValues.cwd;
+          this.contextValues.mode = this.ready.mode || this.contextValues.mode;
+          this.contextValues.model = this.ready.model ? { id: this.ready.model } : this.contextValues.model;
           if (env.ready?.state) this.applyState(env.ready.state);
           // Pi's interactive mode loads every highlight.js language at
           // startup (interactive-mode.ts); print, JSON and RPC mode keep the
           // eager set.
-          if (this.ctx.mode === "tui") void loadAllHighlightLanguages();
+          if (this.contextValues.mode === "tui") void loadAllHighlightLanguages();
           // The host owns process teardown, so flush bytecode when processing ready rather than relying on normal Node exit. Factory/module state is not persisted.
           flushCompileCache();
           continue;
@@ -1826,12 +2119,12 @@ export class Runtime {
           // Pi's context getters are enumerable own properties. Forward reads to the live context instead of snapshotting values or hiding them on a prototype; extensions can spread a context and retain ui/session/model access.
           const requestCtx = Object.create(Object.getPrototypeOf(this.ctx));
           for (const key of Object.keys(this.ctx)) {
-            if (key === "signal") continue;
-            const value = this.ctx[key];
-            const descriptor = typeof value === "function" ? { value, writable: true } : { get: () => this.ctx[key] };
+            // The descriptor decides, so a guarded getter is not read until the extension reads it (runner.ts:982-988).
+            const descriptor = typeof Object.getOwnPropertyDescriptor(this.ctx, key).value === "function" ? { value: this.ctx[key], writable: true } : { get: () => this.ctx[key] };
             Object.defineProperty(requestCtx, key, { enumerable: true, configurable: true, ...descriptor });
           }
-          Object.defineProperty(requestCtx, "signal", { enumerable: true, configurable: true, get: () => controller.signal });
+          // The request's own cancellation is not ctx.signal, which is the run's. The runtime's internals read it through this key, which no extension can enumerate or collide with.
+          Object.defineProperty(requestCtx, requestSignal, { value: controller.signal });
           // Dispatch concurrently so long-running interactive calls
           // (e.g. ui.custom blocking on done()) don't starve incoming
           // notifications such as ui.custom.input. The handler will
@@ -1839,8 +2132,9 @@ export class Runtime {
           // own when it resolves.
           const quitting = env.request?.method === "event" && env.request.event === "session_shutdown" && env.request.args?.reason === "quit";
           const quitTail = quitDrain.active && env.request?.method === "event" && ["turn_end", "agent_settled"].includes(env.request.event);
-          const request = { id: env.id, controller, connection: this.conn, pendingHostCalls: new Set(), settled: false, responded: false, cancelled: false, quit: quitting, quitTail };
+          const request = { id: env.id, controller, connection: this.conn, pendingHostCalls: new Set(), settled: false, responded: false, cancelled: false, quit: quitting, quitTail, command: env.request?.method === "command" };
           this.requestRecords.set(env.id, request);
+          this.conn?.callEpochs?.set(env.id, 0);
           if (quitting) enterQuitDrain();
           refreshQuitDrain();
           const task = this.requestContext.run(request, async () => {
@@ -1851,6 +2145,7 @@ export class Runtime {
               request.settled = true;
               this.activeRequests.delete(env.id);
               this.requestRecords.delete(env.id);
+              request.connection?.callEpochs?.delete(env.id);
               refreshQuitDrain();
             }
           });
@@ -2013,7 +2308,7 @@ export class Runtime {
       // the outgoing log before folding pages from the destination.
       if (snapshot.session.sessionId && snapshot.session.sessionId !== this.state.session.sessionId) {
         this.pendingEntries = [];
-        this.ctx.sessionManager._cachedIndex = undefined;
+        this.contextValues.sessionManager._cachedIndex = undefined;
         this.state.session = { entries: [] };
         this.sessionLogRequested = false;
         this.sessionLogGeneration++;
@@ -2058,6 +2353,8 @@ export class Runtime {
       this.state.systemPrompt = snapshot.systemPrompt;
     }
     if (Object.hasOwn(snapshot, "flags")) this.state.flags = { ...snapshot.flags };
+    // Settings are absent until the Host has some (StatePayload).
+    if (Object.hasOwn(snapshot, "settings")) this.state.settings = snapshot.settings;
     // Pi's TUI and its extensions share one capability cache; here the host
     // owns the terminal, so its resolved capabilities seed the cache pi-tui's
     // Markdown reads.
@@ -2067,7 +2364,7 @@ export class Runtime {
     applyTerminalCapabilities(snapshot.terminalCapabilities);
     if (snapshot.keybindings && typeof snapshot.keybindings === "object") this.applyKeybindings(snapshot.keybindings);
     if (typeof snapshot.hasUI === "boolean") this.state.hasUI = snapshot.hasUI;
-    this.ctx.model = normalizeModel(this.state.model);
+    this.contextValues.model = normalizeModel(this.state.model);
     this.renderSpecialSurface("header");
     this.renderSpecialSurface("footer");
   }
@@ -2527,6 +2824,7 @@ export class Runtime {
     if (Array.isArray(state.models)) this.replaceModels(state.models);
     this.registryProviders.clear();
     this.registryState = {
+      typedModels: Array.isArray(state.typedModels) ? state.typedModels.map((model) => ({ ...model })) : [],
       providers: state.providers && typeof state.providers === "object" ? state.providers : {},
       registered: Array.isArray(state.registered) ? state.registered : [],
       error: typeof state.error === "string" && state.error !== "" ? state.error : undefined,
@@ -2536,7 +2834,7 @@ export class Runtime {
   // Compose the same built-in, models.json and extension layers as Pi. Auth
   // methods receive the caller's AuthContext; they do not capture host secrets.
   getRegistryProvider(id) {
-    const native = this.ctx.modelRegistry.getRegisteredNativeProvider(id);
+    const native = this.contextValues.modelRegistry.getRegisteredNativeProvider(id);
     if (native) return native;
     const state = this.registryState.providers?.[id];
     const models = [...this.models.values()].filter((model) => model.provider === id);
@@ -2565,6 +2863,22 @@ export class Runtime {
     }
   }
 
+  // The signal of a tool's execute(). Pi hands every tool the run's signal, which is also ctx.signal (agent-loop.ts, runner.ts:917-920), except a nested call whose caller passed options.signal: that call runs with it (runner.ts:979-981), which this runtime holds when the caller is one of its own extensions (the call's executeId) and otherwise sees as the request's own cancellation. Without a run, as when a host executes a tool outside one, the request's cancellation is all there is.
+  toolSignal(request, ctx) {
+    if (request.own_signal) return this.nestedCalls.get(request.execute_id)?.signal ?? ctx[requestSignal];
+    return this.runSignal ? this.runSignal.controller.signal : ctx[requestSignal];
+  }
+
+  // The Host's run_signal frame (run_signal.go): a run in progress has one AbortSignal for its whole life, aborted with the run, and none exists while no run is active (runner.ts:917-920, agent.ts:336-338).
+  applyRunSignal({ run, active, aborted }) {
+    if (!active) {
+      this.runSignal = undefined;
+      return;
+    }
+    if (this.runSignal?.id !== run) this.runSignal = { id: run, controller: new AbortController() };
+    if (aborted) this.runSignal.controller.abort();
+  }
+
   handleNotify(notify) {
     if (notify.method?.startsWith("ui.editor.")) {
       let args = notify.args;
@@ -2577,8 +2891,20 @@ export class Runtime {
       return;
     }
     switch (notify.method) {
+      case "run_signal": {
+        let args = notify.args;
+        try {
+          if (typeof args === "string") args = JSON.parse(args);
+        } catch {
+          return;
+        }
+        this.applyRunSignal(args ?? {});
+        return;
+      }
       case "runtime_input_end":
         quitDrain.inputEnded = true;
+        releaseCommandSuspensions();
+        listenForQuitDrain();
         refreshQuitDrain();
         return;
       case "tool_render_release": {
@@ -2746,6 +3072,12 @@ export class Runtime {
       const {streamSimple, ...serializable} = config;
       config = serializable;
     }
+    // Pi merges the defined values of a re-registration over the previous root (model-runtime.ts:753-766), so a registration that defines neither keeps the implementations of the root it merged over.
+    if (config.images !== undefined || config.classifiers !== undefined) {
+      this.providerOperations.set(name, { images: config.images, classifiers: config.classifiers });
+      const {images, classifiers, ...serializable} = config;
+      config = serializable;
+    } else this.providerOperations.delete(name);
     const oauth = config.oauth;
     if (oauth && typeof oauth === "object") {
       this.oauthProviders.set(name, oauth);
@@ -2761,7 +3093,21 @@ export class Runtime {
       };
     }
     this.providers.set(name, config);
-    if (this.providersSent) this.fireAndForget("registerProvider", { name, config, configRef: this.providerConfigRef(merged) });
+    if (this.providersSent) this.fireAndForget("registerProvider", { ...this.providerDeclaration(name, config), configRef: this.providerConfigRef(merged) });
+  }
+
+  // The declaration of a provider config, as the register frame and a registration after the factory carry it: the config without its callbacks, and the operations that run in this process.
+  providerDeclaration(name, config) {
+    return { name, config, ...(this.providerStreams.has(name) ? { stream_simple: true } : {}), ...this.providerOperationAPIs(name) };
+  }
+
+  // The APIs a provider config implements, as the register frame names them.
+  providerOperationAPIs(name) {
+    const operations = this.providerOperations.get(name);
+    const apis = (implementations, method) => Object.entries(implementations ?? {}).filter(([, implementation]) => typeof implementation?.[method] === "function").map(([api]) => api).sort();
+    const images = apis(operations?.images, "generateImages");
+    const classifiers = apis(operations?.classifiers, "classify");
+    return { ...(images.length > 0 ? { image_apis: images } : {}), ...(classifiers.length > 0 ? { classifier_apis: classifiers } : {}) };
   }
 
   // Native callbacks remain in their owning process; the host installs reverse-call proxies.
@@ -2775,6 +3121,7 @@ export class Runtime {
     const declaration=nativeDeclaration(provider, key);
     this.registeredProviderConfigs.delete(provider.id);
     this.providerStreams.delete(provider.id);
+    this.providerOperations.delete(provider.id);
     this.providers.delete(provider.id);
     this.nativeProviders.set(provider.id, provider);
     if (this.loadState === "active") {
@@ -2790,6 +3137,7 @@ export class Runtime {
     this.registryProviders.delete(name);
     this.providers.delete(name);
     this.providerStreams.delete(name);
+    this.providerOperations.delete(name);
     this.oauthProviders.delete(name);
     this.registeredProviderConfigs.delete(name);
     this.nativeProviders.delete(name);
@@ -2863,7 +3211,7 @@ export class Runtime {
     try {
       switch (request.method) {
         case "facet": {
-          await this.respond(id, await dispatchFacet(this, request, ctx));
+          await this.respond(id, await dispatchFacet(this, request, { signal: ctx[requestSignal] }));
           return;
         }
         case "provider_object_callback": {
@@ -2873,7 +3221,7 @@ export class Runtime {
         }
         case "provider_call":
         case "provider_stream": {
-          const result=await dispatchNativeProvider(this,id,request,ctx);
+          const result=await dispatchNativeProvider(this,id,request,{ signal: ctx[requestSignal] });
           await this.respond(id,result);
           return;
         }
@@ -2882,23 +3230,35 @@ export class Runtime {
           if (!callback) throw new Error(`unknown provider stream: ${request.tool}`);
           const {model, context, options} = request.args;
           // Pi's composer calls extension.streamSimple with the effective registered root as its receiver (provider-composer.ts:500-501).
-          const stream = await callback.call(this.registeredProviderConfig(request.tool), model, context, {...options, signal:ctx.signal});
+          const stream = await callback.call(this.registeredProviderConfig(request.tool), model, context, {...options, signal:ctx[requestSignal]});
           for await (const event of stream) {
-            if (ctx.signal.aborted) throw new Error("provider stream aborted");
+            if (ctx[requestSignal].aborted) throw new Error("provider stream aborted");
             const accepted = this.conn.send({type:"notify", notify:{method:"provider_stream_event",args:{request_id:id,result:event}}});
             if (!accepted) await new Promise((resolve,reject)=>{
-              const finish=(error)=>{this.conn.socket.off("drain",drain);this.conn.socket.off("close",closed);ctx.signal.removeEventListener("abort",aborted);error?reject(error):resolve();};
+              const finish=(error)=>{this.conn.socket.off("drain",drain);this.conn.socket.off("close",closed);ctx[requestSignal].removeEventListener("abort",aborted);error?reject(error):resolve();};
               const drain=()=>finish();const closed=()=>finish(new Error("extension connection closed"));const aborted=()=>finish(new Error("provider stream aborted"));
-              this.conn.socket.once("drain",drain);this.conn.socket.once("close",closed);ctx.signal.addEventListener("abort",aborted,{once:true});if(ctx.signal.aborted)aborted();
+              this.conn.socket.once("drain",drain);this.conn.socket.once("close",closed);ctx[requestSignal].addEventListener("abort",aborted,{once:true});if(ctx[requestSignal].aborted)aborted();
             });
           }
           await this.respond(id, await stream.result());
           return;
         }
+        case "provider_operation": {
+          // types.ts:1896-1898: the implementation of the config's image or classifier API runs here with the model, the context and the resolved request options; its result, or its error, is the answer.
+          const { kind, api, model, context, options } = request.args ?? {};
+          if (kind !== "images" && kind !== "classifiers") throw new Error(`Unknown provider operation ${JSON.stringify(kind)}`);
+          const label = kind === "images" ? "image" : "classifier";
+          const method = kind === "images" ? "generateImages" : "classify";
+          const implementation = this.providerOperations.get(request.tool)?.[kind]?.[api];
+          if (typeof implementation?.[method] !== "function") throw new Error(`Provider ${request.tool} has no ${label} implementation for ${JSON.stringify(api)}`);
+          await this.respond(id, await implementation[method](model, context, { ...options, signal: ctx[requestSignal] }));
+          return;
+        }
         case "tool_call": {
           const tool = this.tools.get(request.tool);
           if (!tool) throw new Error(`unknown tool: ${request.tool}`);
-          const params = tool.prepareArguments ? tool.prepareArguments(request.args || {}) : (request.args || {});
+          // agent-loop.ts:707-716: the Host ran prepareArguments (tool_prepare_arguments) before it validated, so these arguments are the prepared ones.
+          const params = request.args || {};
           // Upstream passes a live AbortSignal and an onUpdate that streams
           // partial results; both end with this request.
           let done = false;
@@ -2907,11 +3267,65 @@ export class Runtime {
           };
           let result;
           try {
-            result = await tool.execute?.(request.tool_call_id, params, ctx.signal, onUpdate, ctx);
+            result = await tool.execute?.(request.tool_call_id, params, this.toolSignal(request, ctx), onUpdate, this.addToolContext(ctx, request.tool_call_id));
           } finally {
             done = true;
           }
           await this.respond(id, this.normalizeToolResult(result));
+          return;
+        }
+        case "tool_prepare_arguments": {
+          // agent-loop.ts:707-716: prepareToolCall runs the synchronous hook on the model's arguments, then validates what it returns.
+          const tool = this.tools.get(request.tool);
+          if (typeof tool?.prepareArguments !== "function") throw new Error(`tool ${request.tool} has no prepareArguments`);
+          await this.respond(id, tool.prepareArguments(request.args || {}));
+          return;
+        }
+        case "tool_prepare_loadout": {
+          // agent-session.ts:1514-1519: the hook is synchronous and answers from the loadout the session built.
+          const tool = this.tools.get(request.tool);
+          if (typeof tool?.prepareLoadout !== "function") throw new Error(`tool ${request.tool} has no prepareLoadout`);
+          const payload = request.args ?? {};
+          const exposures = payload.exposures ?? {};
+          const namespaces = payload.namespaces ?? {};
+          const loadout = {
+            declared: payload.declared ?? [],
+            callable: payload.callable ?? [],
+            registered: payload.registered ?? [],
+            // A tool without a definition is "direct" (agent-session.ts:1480-1482).
+            getExposure: (name) => (Object.hasOwn(exposures, name) ? exposures[name] : "direct"),
+            getNamespace: (name) => (Object.hasOwn(namespaces, name) ? namespaces[name] : undefined),
+          };
+          await this.respond(id, tool.prepareLoadout(loadout) ?? null);
+          return;
+        }
+        case "execute_tool_update": {
+          // The Host waits for each partial result of a nested call, in order and before the outcome. Pi calls onUpdate for every partial result, even after one threw; the throw skips that update's event and rejects the call with the first error after the tool returned (nested-tool-calls.ts:219-231, agent-loop.ts:833-845). The answer tells the Host.
+          const nested = this.nestedCalls.get(request.args?.executeId);
+          if (nested?.onUpdate === undefined) { await this.respond(id, null); return; }
+          try { nested.onUpdate(request.args.result); }
+          catch (error) {
+            if (!nested.hasFailure) { nested.hasFailure = true; nested.failure = error; }
+            await this.respond(id, null, error);
+            return;
+          }
+          await this.respond(id, null);
+          return;
+        }
+        case "virtual_model_route": {
+          // loader.ts:485-487: the route runs with the request and a fresh context, after the runner bound.
+          const { provider, id: modelId, request: routeRequest } = request.args ?? {};
+          const model = this.virtualModels.get(JSON.stringify([provider, modelId]));
+          if (!model) throw new Error(`unknown virtual model ${provider}/${modelId}`);
+          const routed = await model.route({
+            ...routeRequest,
+            model: normalizeModel(routeRequest.model),
+            ...(routeRequest.previous ? { previous: { ...routeRequest.previous, model: normalizeModel(routeRequest.previous.model) } } : {}),
+            ...(routeRequest.failed ? { failed: { ...routeRequest.failed, model: normalizeModel(routeRequest.failed.model) } } : {}),
+            signal: ctx[requestSignal],
+          }, ctx);
+          // agent-session.ts:788 keeps the state when `route.state === request.state`. Identity is observable here and not across the process boundary, so the reply says it.
+          await this.respond(id, { model: routed.model, thinkingLevel: routed.thinkingLevel, state: routed.state, ...(routed.state !== undefined && routed.state === routeRequest.state ? { stateUnchanged: true } : {}) });
           return;
         }
         case "model_stream_callback": {
@@ -2923,7 +3337,7 @@ export class Runtime {
           if (typeof fn !== "function") throw new Error(`unknown model stream callback ${streamId}/${callback}`);
           let result;
           try {
-            result = await fn(value, owned.model, ctx.signal);
+            result = await fn(value, owned.model, ctx[requestSignal]);
           } finally {
             // Pi's provider sees the aborted signal before classifying a callback rejection. Wait for the host to apply cancellation before publishing the reverse-call response.
             if (owned.cancellation) await owned.cancellation;
@@ -2943,9 +3357,9 @@ export class Runtime {
           if (!cmd) throw new Error(`unknown command: ${request.tool}`);
           const owner = this.requestContext.getStore();
           if (owner?.id === id) owner.command = true;
-          if (owner?.id === id && ctx.mode === "rpc") armRequestWindow(owner, true);
+          if (owner?.id === id && this.contextValues.mode === "rpc") armRequestWindow(owner, true);
           const pending = cmd.handler?.(request.args ?? "", ctx);
-          if (ctx.mode === "rpc") await this.acknowledgeInvocation(id, pending);
+          if (this.contextValues.mode === "rpc") await this.acknowledgeInvocation(id, pending);
           await pending;
           await this.respond(id, null);
           return;
@@ -2961,7 +3375,7 @@ export class Runtime {
           // Upstream hands these handlers an AbortSignal; the host cancels the
           // request when Pi would abort it.
           if (request.event === "session_before_compact" || request.event === "session_before_tree") {
-            event.signal = ctx.signal;
+            event.signal = ctx[requestSignal];
           }
           if (fileOps) {
             for (const key of ["read", "written", "edited"]) fileOps[key] = new Set(fileOps[key] ?? []);
@@ -2972,7 +3386,9 @@ export class Runtime {
             let result;
             let error;
             try {
-              result = await selected.handler(event, ctx);
+              const pending = selected.handler(event, ctx);
+              if (request.event === "agent_before_settle") this.armSettleTailWindow(id, ctx);
+              result = await pending;
             } catch (err) {
               error = err instanceof Error ? err : new Error(String(err));
             }
@@ -2981,8 +3397,10 @@ export class Runtime {
           }
           if (request.event === "before_agent_start") {
             const options = event.systemPromptOptions;
-            // Pi's normalized options always carry a selectedTools array; the host omits an empty one.
-            if (options.selectedTools === undefined) options.selectedTools = [];
+            // Pi's normalized options always carry every collection; the host omits an empty one. A handler's own null stays.
+            for (const [name, empty] of [["selectedTools", () => []], ["toolSnippets", () => ({})], ["toolGuidelines", () => ({})], ["promptGuidelines", () => []], ["contextFiles", () => []], ["skills", () => []]]) {
+              if (options[name] === undefined) options[name] = empty();
+            }
             let result;
             let error;
             try {
@@ -2990,19 +3408,20 @@ export class Runtime {
             } catch (err) {
               error = err instanceof Error ? err : new Error(String(err));
             }
-            await this.respond(id, { _pigPromptSections: options.sections, _pigPromptSelectedTools: options.selectedTools, _pigPromptResult: result }, error);
+            await this.respond(id, { _pigPromptSections: options.sections, _pigPromptSelectedTools: options.selectedTools, _pigPromptOptions: options, _pigPromptResult: result }, error);
             return;
           }
           const messages = event.messages;
           const snapshot = Array.isArray(messages) ? messages.slice() : undefined;
           const pending = selected.handler(event, ctx);
           const shutdownOwner = this.requestContext.getStore();
-          if (shutdownOwner?.id === id && shutdownOwner.quit && ctx.mode === "rpc") armRequestWindow(shutdownOwner);
+          if (shutdownOwner?.id === id && shutdownOwner.quit && this.contextValues.mode === "rpc") armRequestWindow(shutdownOwner);
+          if (request.event === "agent_settled") this.armSettleTailWindow(id, ctx);
           // Calling an async handler executes its synchronous prefix before returning its Promise. Unawaited notifications admit the next caller at that boundary.
           if (request.event === "ui_prompt_start" || request.event === "ui_prompt_end" || request.event === "session_info_changed") {
             this.conn.requestState(id, "blocked", "external_io");
           }
-          if (request.event === "session_shutdown" && ctx.mode === "rpc") await this.acknowledgeInvocation(id, pending);
+          if (request.event === "session_shutdown" && this.contextValues.mode === "rpc") await this.acknowledgeInvocation(id, pending);
           let result = await pending;
           if ((request.event === "context" || request.event === "context_with_system") && snapshot) {
             const returned = result?.messages ?? messages;
@@ -3099,7 +3518,7 @@ export class Runtime {
           return;
         }
         case "autocomplete.suggest": {
-          await this.respond(id, await this.autocomplete.suggest(request.args, ctx.signal));
+          await this.respond(id, await this.autocomplete.suggest(request.args, ctx[requestSignal]));
           return;
         }
         case "terminal_input": {
@@ -3131,7 +3550,7 @@ export class Runtime {
         case "oauth_login":
         case "oauth_refresh":
         case "oauth_get_api_key":
-          await this.dispatchOAuth(id, request, ctx.signal);
+          await this.dispatchOAuth(id, request, ctx[requestSignal]);
           return;
         default:
           throw new Error(`unknown request method: ${request.method}`);
@@ -3169,13 +3588,23 @@ export class Runtime {
     if (result == null) return {};
     if (typeof result === "string") return { content: result };
     if (typeof result !== "object") return { content: String(result) };
-    return {
-      content: toolContent(result.content ?? result),
-      details: result.details,
-      is_error: Boolean(result.isError ?? result.is_error),
-      terminate: result.terminate === true ? true : undefined,
-      usage: result.usage ?? undefined,
+    // Pi hands the tool's own object on, so the events and the JSON stream write its members in the order the tool wrote them (agent-loop.ts:778-786, 912-919): the wire object lists the members the tool set first, in its order, then the rest.
+    const members = {
+      content: () => toolContent(result.content ?? result),
+      details: () => result.details,
+      is_error: () => Boolean(result.isError ?? result.is_error),
+      structured_content: () => result.structuredContent,
+      terminate: () => (typeof result.terminate === "boolean" ? result.terminate : undefined),
+      usage: () => result.usage,
     };
+    const wireNames = { isError: "is_error", structuredContent: "structured_content" };
+    // isError is sent only when the tool wrote it: a false one the tool did not write would be a member of the object that Pi's has not.
+    const own = Object.keys(result).map((name) => wireNames[name] ?? name);
+    const wire = {};
+    for (const key of [...own, ...Object.keys(members).filter((name) => name !== "is_error")]) {
+      if (Object.hasOwn(members, key) && !Object.hasOwn(wire, key)) wire[key] = members[key]();
+    }
+    return wire;
   }
 
   startModelStream(model, context, options = {}, simple = false, apiRequest = false) {
@@ -3221,7 +3650,7 @@ export class Runtime {
     const providerMethod = method === "provider.object" && ["getModels", "filterModels", "update"].includes(args.method);
     const providerCallback = method === "provider.callback" && args.method === "notify";
     const themeMethod = ["ui.getTheme", "ui.setTheme", "ui.theme", "ui.addAutocompleteProvider", "ui.autocomplete.invoke", "ui.autocomplete.current"].includes(method);
-    if (!facetMethod && !themeMethod && !["registerTool", "getAllTools", "getActiveTools", "xref.hello", "xref.op", "provider.config", "events.on", "events.off", "events.emit", "events.settle"].includes(method) && method !== "ui.custom.control" && method !== "provider.retain" && method !== "provider.release" && !providerMethod && !providerCallback) {
+    if (!facetMethod && !themeMethod && !["registerTool", "registerMcpServer", "unregisterMcpServer", "registerVirtualModel", "unregisterVirtualModel", "mcpServers.check", "getMcpServers", "getCallableTools", "getAllTools", "getActiveTools", "xref.hello", "xref.op", "provider.config", "events.on", "events.off", "events.emit", "events.settle"].includes(method) && method !== "ui.custom.control" && method !== "provider.retain" && method !== "provider.release" && !providerMethod && !providerCallback) {
       throw new Error(`Host method ${method} is not a synchronous bridge operation`);
     }
     if (!this.conn) throw new Error("runtime not connected");
@@ -3231,21 +3660,23 @@ export class Runtime {
     finally { if (parent) this.conn.requestState(parent, "progress"); }
   }
 
-  async call(method, args = {}) {
+  // A detached call is not tied to the request that made it: the host does not cancel it with that request. The request still reports it as blocked while it waits.
+  async call(method, args = {}, { detached = false } = {}) {
     const owner = this.requestContext.getStore();
     const connection = owner?.connection ?? this.conn;
     if (!connection || connection.closed || connection !== this.conn) throw new Error("extension connection closed or replaced");
-    if (owner?.cancelled || (!owner?.settled && owner?.controller.signal.aborted)) {
+    if (!detached && (owner?.cancelled || (!owner?.settled && owner?.controller.signal.aborted))) {
       throw hostCancelled("host call cancelled with its parent request");
     }
-    const parentRequestId = owner && !owner.settled ? owner.id : "";
-    if (parentRequestId && !USER_BLOCKING_CALLS.has(method)) {
-      connection.requestState(parentRequestId, "blocked", "host_call");
+    const reportedRequestId = owner && !owner.settled ? owner.id : "";
+    const parentRequestId = detached ? "" : reportedRequestId;
+    if (reportedRequestId && !USER_BLOCKING_CALLS.has(method)) {
+      connection.requestState(reportedRequestId, "blocked", "host_call");
     }
     try {
       return await connection.call(method, args, parentRequestId);
     } finally {
-      if (parentRequestId && !owner.responded && !connection.closed) connection.requestState(parentRequestId, "progress");
+      if (reportedRequestId && !owner.responded && !connection.closed) connection.requestState(reportedRequestId, "progress");
     }
   }
 
@@ -3304,6 +3735,12 @@ export class Runtime {
     return out;
   }
 
+  // pig additive (D19): Pi emits agent_settled in the microtasks after agent_end unless a handler on that tail waits on a timer, I/O or another real wait, during which Pi reads stdin (agent-session.ts:1044-1058,1752-1777; rpc-mode.ts:808-810). The host holds stdin through the tail, so a tail handler reports request_state suspended when its window closes unresponded, and the host then serves stdin until the handler answers.
+  armSettleTailWindow(id, ctx) {
+    const owner = this.requestContext.getStore();
+    if (owner?.id === id && ctx.mode === "rpc") armRequestWindow(owner);
+  }
+
   // Host-backed synchronous effects belong to the handler's prefix, not its suspension. Flush them before releasing the caller that awaits invocation. A handler whose Promise has already settled never entered an awaited operation: its response releases the caller with the result, as Pi continues a settled await before its next input event.
   async acknowledgeInvocation(id, pending) {
     let settled = false;
@@ -3323,7 +3760,7 @@ export class Runtime {
     const owner = this.activeRequest();
     const parentRequestId = owner?.id || "";
     // These synchronous RPC effects must reach the host before invocation acknowledgment.
-    const synchronousRPC = this.ctx.mode === "rpc";
+    const synchronousRPC = this.contextValues.mode === "rpc";
     if (parentRequestId && !synchronousRPC) this.conn.requestState(parentRequestId, "blocked", "host_call");
     let operation;
     operation = this.conn.call(method, args, parentRequestId).catch((err) => {

@@ -303,19 +303,26 @@ func (p *mistralProvider) Stream(ctx context.Context, transcript TranscriptConte
 		}
 		req.Tools = convertedTools
 	}
-	if opts.IsReasoning {
-		reasoning := ClampThinkingLevel(model, opts.Thinking)
-		if reasoning != "" && reasoning != ThinkingOff {
-			if usesMistralPromptModeReasoning(p.cfg.Model, model.ProviderMeta.Reasoning) {
-				req.PromptMode = "reasoning"
+	if opts.IsReasoning && model.ProviderMeta.Reasoning {
+		// Models with a thinking level map use reasoning_effort; other reasoning models use prompt_mode (mistral-conversations.ts:streamSimple).
+		var reasoning ThinkingLevel
+		if opts.Thinking != "" {
+			if clamped := ClampThinkingLevel(model, opts.Thinking); clamped != ThinkingOff {
+				reasoning = clamped
 			}
-			if usesMistralReasoningEffort(p.cfg.Model) {
-				if mapped, ok := model.ThinkingLevelMap[reasoning]; ok && mapped != nil {
-					req.ReasoningEffort = *mapped
-				} else {
-					req.ReasoningEffort = "high"
+		}
+		if levels := model.ThinkingLevelMap; levels != nil {
+			if reasoning == "" {
+				if off := levels[ThinkingOff]; off != nil {
+					req.ReasoningEffort = *off
 				}
+			} else if mapped := levels[reasoning]; mapped != nil {
+				req.ReasoningEffort = *mapped
+			} else {
+				req.ReasoningEffort = "high"
 			}
+		} else if reasoning != "" {
+			req.PromptMode = "reasoning"
 		}
 	}
 	if opts.TemperatureSet || opts.Temperature != 0 {
@@ -451,6 +458,7 @@ func (p *mistralProvider) Stream(ctx context.Context, transcript TranscriptConte
 
 	builder := newObservedProviderBuilder(ctx, APIMistralConversations, p.cfg.ProviderID, p.cfg.Model)
 	builder.modelCost = opts.ModelCost
+	builder.setProviderEventObserver(opts, model)
 	_, builder.managed = resp.Body.(*observedResponseBody)
 	streamOwnsRequest = true
 	go func() {
@@ -657,6 +665,9 @@ func (consumer *mistralChunkConsumer) consume(raw json.RawMessage) error {
 	if err := json.Unmarshal(raw, &chunk); err != nil {
 		return err
 	}
+	if err := builder.observeProviderEvent(raw); err != nil { // :597 await onProviderStreamEvent?.(chunk, model)
+		return err
+	}
 	if chunk.ID != "" { // :593 output.responseId ||= chunk.id
 		builder.setResponseMetadata(chunk.ID, "", "", "", nil)
 	}
@@ -726,7 +737,10 @@ func (consumer *mistralChunkConsumer) content(raw json.RawMessage) error {
 	for _, rawItem := range items {
 		var text string
 		if json.Unmarshal(rawItem, &text) == nil && bytes.HasPrefix(bytes.TrimSpace(rawItem), []byte(`"`)) {
-			builder.textDelta(sanitizeSurrogates(text)) // :623-644 A string item: an empty one still opens a text block.
+			// GLM models on Mistral send empty content deltas around thinking and tool calls; opening a block for them splits thinking (mistral-conversations.ts:633-635).
+			if delta := sanitizeSurrogates(text); delta != "" {
+				builder.textDelta(delta)
+			}
 			continue
 		}
 		if string(bytes.TrimSpace(rawItem)) == "null" {
@@ -752,7 +766,9 @@ func (consumer *mistralChunkConsumer) content(raw json.RawMessage) error {
 			if item.Text != nil {
 				delta = *item.Text
 			}
-			builder.textDelta(sanitizeSurrogates(delta))
+			if delta = sanitizeSurrogates(delta); delta != "" {
+				builder.textDelta(delta)
+			}
 		}
 	}
 	return nil
@@ -846,15 +862,6 @@ func mapMistralStopReason(reason string) (StopReason, string) {
 	}
 }
 
-func usesMistralReasoningEffort(modelID string) bool {
-	// upstream: packages/ai/src/api/mistral-conversations.ts:usesReasoningEffort
-	return modelID == "mistral-small-2603" || modelID == "mistral-small-latest" || strings.HasPrefix(modelID, "mistral-medium-") || modelID == "zai-glm-5-2"
-}
-
-func usesMistralPromptModeReasoning(modelID string, reasoning bool) bool {
-	return reasoning && !usesMistralReasoningEffort(modelID)
-}
-
 // ─── Message conversion ─────────────────────────────────────────────────────
 
 func (p *mistralProvider) convertMessages(messages []Message, supportsImages bool) []mistralMessage {
@@ -916,10 +923,7 @@ func (p *mistralProvider) convertAssistantMessage(message AssistantMessage) mist
 				content = append(content, mistralContentChunk{Type: "thinking", Thinking: []map[string]string{{"type": "text", "text": sanitizeSurrogates(block.Thinking)}}})
 			}
 		case ToolCall:
-			arguments, _ := json.Marshal(block.Arguments)
-			if block.Arguments == nil {
-				arguments = []byte("{}")
-			}
+			arguments, _ := block.ArgumentsJSON()
 			toolCalls = append(toolCalls, mistralToolCallMsg{
 				ID: block.ID, Type: "function",
 				Function: mistralToolCallFnMsg{Name: block.Name, Arguments: string(arguments)},
@@ -986,7 +990,7 @@ func buildMistralToolResultText(text string, hasImages, supportsImages, isError 
 func (p *mistralProvider) convertTools(tools []ToolSchema) ([]mistralTool, error) {
 	result := make([]mistralTool, len(tools))
 	for i, tool := range tools {
-		strict, err := resolveJSONSchemaStrictSampling(tool, true)
+		strict, err := resolveJSONSchemaStrictSampling(tool, true, nil)
 		if err != nil {
 			return nil, err
 		}

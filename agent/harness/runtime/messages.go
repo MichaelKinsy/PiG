@@ -10,7 +10,7 @@ func runtimeAssistantMessage(message *ai.AssistantMessage) agent.AssistantMessag
 	return agent.AssistantMessage{
 		Role: "assistant", Content: message.Content, Timestamp: message.Timestamp, Usage: &message.Usage,
 		API: message.API, Provider: message.Provider, ModelID: message.Model, ResponseModel: message.ResponseModel, ResponseID: message.ResponseID,
-		ProviderThinkingLevel: message.ProviderThinkingLevel, Diagnostics: message.Diagnostics, Deferred: message.Deferred, StopReason: message.StopReason,
+		ProviderThinkingLevel: message.ProviderThinkingLevel, ThinkingLevel: message.ThinkingLevel, Diagnostics: message.Diagnostics, Deferred: message.Deferred, StopReason: message.StopReason,
 		ErrorMessage: message.ErrorMessage, RawStopReason: message.RawStopReason, EndTurn: message.EndTurn,
 	}
 }

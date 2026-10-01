@@ -56,6 +56,7 @@ func TestNewInteractiveModeAppliesTerminalCapabilitySettings(t *testing.T) {
 // Upstream /reload runs applyRuntimeSettings, which re-applies the terminal
 // capability overrides from the reloaded settings.
 func TestReloadAppliesTerminalCapabilitySettings(t *testing.T) {
+	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
 	isolateTerminalCapabilities(t)
 	agentDir := t.TempDir()
 	cwd := t.TempDir()
@@ -85,7 +86,7 @@ func TestStartupPromptAppliesTerminalCapabilitySettings(t *testing.T) {
 	opts := StartupUIOptions{Settings: settingsFromJSON(t, `{"theme": "dark", "terminal": {"trueColor": false}}`)}
 	done := make(chan error, 1)
 	go func() {
-		_, err := runStartupComponentWith(selector, opts, false, tui.NewWithOutput(io.Discard, 80, 24), terminal, map[string]string{})
+		_, err := runStartupComponentWith(selector, opts, false, tui.NewWithOutput(io.Discard, 80, 24), terminal)
 		done <- err
 	}()
 	terminal.send(t, "\r")
@@ -156,7 +157,7 @@ func TestStartupPromptUsesAlreadyNormalizedTerminalInput(t *testing.T) {
 	opts := StartupUIOptions{Settings: settingsFromJSON(t, `{"theme": "dark"}`)}
 	done := make(chan error, 1)
 	go func() {
-		_, err := runStartupComponentWith(input, opts, false, tui.NewWithOutput(io.Discard, 80, 24), terminal, map[string]string{})
+		_, err := runStartupComponentWith(input, opts, false, tui.NewWithOutput(io.Discard, 80, 24), terminal)
 		done <- err
 	}()
 	terminal.send(t, "x")

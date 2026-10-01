@@ -17,9 +17,8 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
-// parseDiffLine extracts prefix, lineNum, content from a diff line.
-// Format: "+123 content" or "-123 content" or " 123 content"
-var diffLineRe = lazyregexp.New(`^([+\- ])([ ]*\d*)[ ](.*)$`)
+// diffLineRe is upstream components/diff.ts parseDiffLine's /^([+-\s])(\s*\d*)\s(.*)$/: group 1 is the prefix, group 2 the padded line number, then one separator space and the content. The classes are JavaScript's: `\s` includes the Unicode spaces, and `.` excludes CR, LS and PS, so a line holding U+2028 or U+2029 does not parse.
+var diffLineRe = lazyregexp.New(`^([-+\t\n\v\f\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}])([\t\n\v\f\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]*\d*)[\t\n\v\f\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]([^\n\r\x{2028}\x{2029}]*)$`)
 
 type diffLineParsed struct {
 	prefix  string
@@ -40,13 +39,11 @@ func replaceTabs(text string) string {
 	return strings.ReplaceAll(text, "\t", "   ")
 }
 
-// RenderDiff renders a diff string with colored lines and intra-line highlighting.
-// Uses theme colors for added/removed/context lines.
+// RenderDiff renders a diff string with colored lines and intra-line highlighting, as upstream renderDiff does: each row is theme.fg of the toolDiffContext, toolDiffRemoved or toolDiffAdded token.
 func RenderDiff(diffText string) string {
 	th := ActiveTheme()
 	lines := strings.Split(diffText, "\n")
 	var result []string
-	reset := "\x1b[0m"
 
 	i := 0
 	for i < len(lines) {
@@ -55,7 +52,7 @@ func RenderDiff(diffText string) string {
 
 		if parsed == nil {
 			// Unparseable line: show as context.
-			result = append(result, colorize(th.ToolDiffContext, th.Muted, line)+reset)
+			result = append(result, th.FgText("toolDiffContext", line))
 			i++
 			continue
 		}
@@ -89,40 +86,26 @@ func RenderDiff(diffText string) string {
 				newContent := replaceTabs(added[0].content)
 				removedLine, addedLine := RenderIntraLineDiff(oldContent, newContent)
 
-				remColor := colorize(th.ToolDiffRemoved, th.Error, "-"+removed[0].lineNum+" "+removedLine)
-				addColor := colorize(th.ToolDiffAdded, th.Success, "+"+added[0].lineNum+" "+addedLine)
-				result = append(result, remColor+reset)
-				result = append(result, addColor+reset)
+				result = append(result, th.FgText("toolDiffRemoved", "-"+removed[0].lineNum+" "+removedLine))
+				result = append(result, th.FgText("toolDiffAdded", "+"+added[0].lineNum+" "+addedLine))
 			} else {
 				for _, r := range removed {
-					result = append(result, colorize(th.ToolDiffRemoved, th.Error, "-"+r.lineNum+" "+replaceTabs(r.content))+reset)
+					result = append(result, th.FgText("toolDiffRemoved", "-"+r.lineNum+" "+replaceTabs(r.content)))
 				}
 				for _, a := range added {
-					result = append(result, colorize(th.ToolDiffAdded, th.Success, "+"+a.lineNum+" "+replaceTabs(a.content))+reset)
+					result = append(result, th.FgText("toolDiffAdded", "+"+a.lineNum+" "+replaceTabs(a.content)))
 				}
 			}
 		case "+":
-			result = append(result, colorize(th.ToolDiffAdded, th.Success, "+"+parsed.lineNum+" "+replaceTabs(parsed.content))+reset)
+			result = append(result, th.FgText("toolDiffAdded", "+"+parsed.lineNum+" "+replaceTabs(parsed.content)))
 			i++
 		default:
-			result = append(result, colorize(th.ToolDiffContext, th.Muted, " "+parsed.lineNum+" "+replaceTabs(parsed.content))+reset)
+			result = append(result, th.FgText("toolDiffContext", " "+parsed.lineNum+" "+replaceTabs(parsed.content)))
 			i++
 		}
 	}
 
 	return strings.Join(result, "\n")
-}
-
-// colorize wraps text in a color escape. Prefers themeColor, falls back to fallback.
-func colorize(themeColor, fallback, text string) string {
-	c := themeColor
-	if c == "" {
-		c = fallback
-	}
-	if c == "" {
-		return text
-	}
-	return c + text
 }
 
 // RenderIntraLineDiff produces word-level diff with inverse highlighting on changes.

@@ -4,6 +4,7 @@ import (
 	"context"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding"
@@ -41,9 +42,6 @@ func TestCompactionSettingsCorrespondenceCurrentPin(t *testing.T) {
 	for _, table := range source.Tables {
 		wantMappings += len(table.Items) + len(rules.AdditiveTableItems[rules.TableTargets[table.ID]])
 	}
-	if len(report.Mappings) != wantMappings {
-		t.Fatalf("mapping count = %d, want %d from Pi inventory and explicit additive lineage", len(report.Mappings), wantMappings)
-	}
 	// Every finding must be a listed known gap, and every listed gap must still
 	// be observed; test/parity/known-gaps.toml is the denominator.
 	ledger, err := knowngaps.Load(root)
@@ -51,6 +49,16 @@ func TestCompactionSettingsCorrespondenceCurrentPin(t *testing.T) {
 		t.Fatal(err)
 	}
 	known := ledger.Scope("correspondence")
+	// A Pi table item the Pig table lacks yields a missing-table-item finding
+	// and no mapping, so each listed one leaves the mapping denominator.
+	for key := range known {
+		if strings.HasPrefix(key, "finding:table-item:missing:") {
+			wantMappings--
+		}
+	}
+	if len(report.Mappings) != wantMappings {
+		t.Fatalf("mapping count = %d, want %d from Pi inventory and explicit additive lineage, less the listed missing table items", len(report.Mappings), wantMappings)
+	}
 	observed := make(map[string]struct{}, len(report.Findings))
 	for _, finding := range report.Findings {
 		observed[finding.ID] = struct{}{}

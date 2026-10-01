@@ -9,8 +9,6 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
-
-	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // ToolExecutionState is the lifecycle stage of a tool call display.
@@ -50,16 +48,14 @@ const (
 type ToolExecutionComponent struct {
 	invalidatable
 
-	Name  string
-	Label string // human-readable display name (if set, used in header instead of Name)
+	Name string
+	// Label is ignored: the fallback call header names the tool by Name, as upstream createCallFallback does.
+	//
+	// Deprecated: a registered tool's card draws its definition; Label has no effect.
+	Label string
 	// ArgsPreview is a short human-readable rendering of the tool args.
 	// Build it with FormatToolArgs() before assigning, or use SetRunning().
 	ArgsPreview string
-
-	// pig divergence (D59): generic extension cards retain structured args so
-	// their collapsed preview can scale with width and Ctrl+O can reveal all data.
-	structuredArgs       json.RawMessage
-	renderStructuredArgs bool
 
 	// Cwd is the session working directory, used to resolve relative tool
 	// paths to absolute file:// URLs for OSC-8 hyperlinks in the header.
@@ -85,17 +81,15 @@ type ToolExecutionComponent struct {
 	BodyMaxLines      int // default 40
 
 	// Render cache: short-circuits Render() when nothing changed.
-	cachedState          ToolExecutionState
-	cachedOutput         string
-	cachedCollapsed      bool
-	cachedWidth          int
-	cachedIsPartial      bool
-	cachedArgsPreview    string
-	cachedStructuredArgs string
-	cachedStructured     bool
-	cachedLines          []string
-	cachedTheme          *Theme
-	cachedHeaderBody     string
+	cachedState       ToolExecutionState
+	cachedOutput      string
+	cachedCollapsed   bool
+	cachedWidth       int
+	cachedIsPartial   bool
+	cachedArgsPreview string
+	cachedLines       []string
+	cachedTheme       *Theme
+	cachedHeaderBody  string
 
 	// BodyRenderer, when non-nil, replaces the default plain-text body
 	// rendering. Used for per-tool rich displays: unified diff for
@@ -299,16 +293,6 @@ func (c *ToolExecutionComponent) SetStreaming(snapshot string) {
 	c.Invalidate()
 }
 
-// SetStructuredArgs enables the generic extension tool-details renderer and
-// retains a valid argument value for width-aware collapsed and expanded views.
-func (c *ToolExecutionComponent) SetStructuredArgs(args json.RawMessage) {
-	c.renderStructuredArgs = true
-	if len(args) > 0 && json.Valid(args) {
-		c.structuredArgs = append(c.structuredArgs[:0], args...)
-	}
-	c.Invalidate()
-}
-
 // UpdateArgs updates the displayed header from partial/complete args.
 // Called progressively during streaming as ToolCallDelta events arrive.
 // Mirrors upstream tool-execution.ts updateArgs.
@@ -323,12 +307,8 @@ func (c *ToolExecutionComponent) UpdateArgs(name string, partialArgsJSON string)
 		if c.definition != nil {
 			c.definitionArgs = append(c.definitionArgs[:0], raw...)
 		}
-		if c.renderStructuredArgs {
-			c.structuredArgs = append(c.structuredArgs[:0], raw...)
-		} else {
-			c.ArgsPreview = HeaderForTool(c.Name, raw, c.Cwd)
-			c.SetHeaderArgs(raw)
-		}
+		c.ArgsPreview = HeaderForTool(c.Name, raw, c.Cwd)
+		c.SetHeaderArgs(raw)
 	}
 	c.Invalidate()
 }
@@ -369,10 +349,6 @@ func (c *ToolExecutionComponent) SetResult(output string, isError bool, elapsed 
 			// Errors are always auto-expanded: the LLM (and the user) need
 			// to see what went wrong without an extra keystroke.
 			c.Collapsed = false
-		case c.renderStructuredArgs:
-			// pig divergence (D59): generic extension cards stay compact even
-			// when their result is short because their arguments may be hidden.
-			c.Collapsed = true
 		case c.BodyRenderer != nil:
 			// Tools with BodyRenderer handle their own preview/expanded toggle.
 			c.Collapsed = true
@@ -597,8 +573,6 @@ func (c *ToolExecutionComponent) Render(width int) []string {
 		c.cachedIsPartial == c.IsPartial &&
 		c.cachedArgsPreview == c.ArgsPreview &&
 		c.cachedHeaderBody == c.headerBody() &&
-		c.cachedStructuredArgs == string(c.structuredArgs) &&
-		c.cachedStructured == c.renderStructuredArgs &&
 		c.cachedTheme == ActiveTheme() {
 		return c.cachedLines
 	}
@@ -623,7 +597,7 @@ func (c *ToolExecutionComponent) Render(width int) []string {
 		out = append(out, paintBgWith(bgOpen, " "+hl, width))
 	}
 
-	if c.Output == "" && c.BodyRenderer == nil && (!c.renderStructuredArgs || c.Collapsed) {
+	if c.Output == "" && c.BodyRenderer == nil {
 		// No output yet. While a shell tool runs, Text supplies the footer's
 		// leading separator and any wrapped continuation rows.
 		for _, line := range c.runningElapsedRows(width - 2) {
@@ -664,7 +638,7 @@ func (c *ToolExecutionComponent) Render(width int) []string {
 	// or a renderShell:"self" extension renderer with no lines), skip the
 	// separator so the empty body doesn't leave a stray blank row inside
 	// the box: mirrors upstream #5299 (read.ts collapsed returns "").
-	body := c.renderBody(width - 2)
+	body := c.renderResultBody(width - 2)
 	footer := c.runningElapsedRows(width - 2)
 	if len(body) > 0 {
 		out = append(out, paintBgWith(bgOpen, "", width))
@@ -692,8 +666,6 @@ func (c *ToolExecutionComponent) saveCachedRender(width int, lines []string) {
 	c.cachedIsPartial = c.IsPartial
 	c.cachedArgsPreview = c.ArgsPreview
 	c.cachedHeaderBody = c.headerBody()
-	c.cachedStructuredArgs = string(c.structuredArgs)
-	c.cachedStructured = c.renderStructuredArgs
 	c.cachedLines = lines
 	c.cachedTheme = ActiveTheme()
 }
@@ -711,54 +683,7 @@ func (c *ToolExecutionComponent) bgOpenSGR() string {
 	}
 }
 
-// renderHeaderInner builds the header content (no surrounding bg)
-// for an inner width budget. Caller paints + pads.
-//
-// Upstream renders tool call headers via per-tool `renderCall` functions:
-//   - bash/powershell: bold "$ <command>" / "PS> <command>" (renderers/bash.ts formatShellCall)
-//   - read: bold "read" + accent "<path>"          (read.ts formatReadCall)
-//   - write: bold "write" + accent "<path>"        (write.ts formatWriteCall)
-//   - edit: bold "edit" + accent "<path>"          (edit.ts formatEditCall)
-//   - grep: bold "grep" + accent "/<pat>/" + " in <path>"  (grep.ts)
-//   - find: bold "find" + accent "<pat>" + " in <path>"    (find.ts)
-//   - ls: bold "ls" + accent "<path>"              (ls.ts formatLsCall)
-//   - fallback: bold "<toolName>"                  (ToolExecutionComponent)
-//
-// No lifecycle markers (✓/▶/✗): upstream conveys state only via bg color.
-// No "(N lines, Xs)" annotation: upstream shows duration in body footer.
-func (c *ToolExecutionComponent) renderStructuredArgsHeader(width int) string {
-	name := c.Name
-	if c.Label != "" {
-		name = c.Label
-	}
-	title := toolTitleText(name)
-	if !c.Collapsed || len(c.structuredArgs) == 0 {
-		return title
-	}
-
-	var compact bytes.Buffer
-	if json.Compact(&compact, c.structuredArgs) != nil || compact.Len() == 0 {
-		return title
-	}
-	args := compact.String()
-	full := title + " " + args
-	if widthx.VisibleWidth(full) <= width {
-		return full
-	}
-
-	hint := "… (ctrl+o to expand)"
-	budget := width - widthx.VisibleWidth(title) - widthx.VisibleWidth(hint) - 2
-	if budget < 1 {
-		return title + "\n" + hint
-	}
-	preview := widthx.TruncateToWidth(args, budget, "", false)
-	return title + " " + preview + " " + hint
-}
-
 func (c *ToolExecutionComponent) renderHeaderInner(width int) string {
-	if c.renderStructuredArgs {
-		return c.renderStructuredArgsHeader(width)
-	}
 	body := c.headerBody()
 	if body == "" {
 		// Fallback: bold toolTitle tool name, matching upstream
@@ -788,60 +713,6 @@ func flattenVisualRows(lines []string) []string {
 		out = append(out, strings.Split(l, "\n")...)
 	}
 	return out
-}
-
-func (c *ToolExecutionComponent) renderBody(width int) []string {
-	var out []string
-	if c.renderStructuredArgs && !c.Collapsed {
-		out = append(out, c.renderExpandedStructuredArgs(width)...)
-	}
-
-	result := c.renderResultBody(width)
-	if len(out) > 0 && len(result) > 0 {
-		out = append(out, "")
-	}
-	return append(out, result...)
-}
-
-func (c *ToolExecutionComponent) renderExpandedStructuredArgs(width int) []string {
-	if len(c.structuredArgs) == 0 {
-		return nil
-	}
-	var pretty bytes.Buffer
-	if err := json.Indent(&pretty, c.structuredArgs, "", "  "); err != nil {
-		return nil
-	}
-	out := []string{"Arguments:"}
-	for line := range strings.SplitSeq(pretty.String(), "\n") {
-		out = append(out, wrapPreservingCells(line, width)...)
-	}
-	return out
-}
-
-func wrapPreservingCells(text string, width int) []string {
-	if width < 1 {
-		width = 1
-	}
-	segments := graphemeSegments(text)
-	if len(segments) == 0 {
-		return []string{""}
-	}
-	var rows []string
-	var row strings.Builder
-	rowWidth := 0
-	for _, segment := range segments {
-		if rowWidth > 0 && rowWidth+segment.Width > width {
-			rows = append(rows, row.String())
-			row.Reset()
-			rowWidth = 0
-		}
-		row.WriteString(segment.Text)
-		rowWidth += segment.Width
-	}
-	if row.Len() > 0 {
-		rows = append(rows, row.String())
-	}
-	return rows
 }
 
 func (c *ToolExecutionComponent) renderResultBody(width int) []string {

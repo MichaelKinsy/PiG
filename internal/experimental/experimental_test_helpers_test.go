@@ -23,6 +23,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/experimental/client"
 	"github.com/MichaelKinsy/PiG/internal/experimental/services"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // upstream: packages/coding-agent/test/experimental-remote-runtime.test.ts:153-166. The spy covers only the static Client.connect constructor; instance Connect in discovery and activation remains real. Call from a non-parallel test and join its runtime before cleanup.
@@ -82,21 +83,8 @@ func isolateExperimentalTest(t *testing.T) string {
 			}
 		}
 	}
-	// Upstream remote-runtime fixtures use /tmp explicitly. Named testing directories exceed sun_path once backend UUID filenames are appended.
-	var root string
-	if runtime.GOOS == "windows" {
-		root = t.TempDir()
-	} else {
-		root, err = os.MkdirTemp("/tmp", "pe")
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(func() {
-			if err := os.RemoveAll(root); err != nil {
-				t.Error(err)
-			}
-		})
-	}
+	// Upstream remote-runtime fixtures use /tmp explicitly. Named testing directories exceed sun_path once backend UUID filenames are appended, on Windows too: the extension host's sockets live under the TMP set below.
+	root := testenv.ShortTempDir(t, "pe")
 	agentDir := filepath.Join(root, "agent")
 	for _, directory := range []string{agentDir, filepath.Join(root, "pig"), filepath.Join(root, "config"), filepath.Join(root, "cache"), filepath.Join(root, "data"), filepath.Join(root, "state"), filepath.Join(root, "run"), filepath.Join(root, "tmp"), filepath.Join(root, "appdata"), filepath.Join(root, "localappdata")} {
 		if err := os.MkdirAll(directory, 0o700); err != nil {
@@ -116,6 +104,18 @@ func isolateExperimentalTest(t *testing.T) string {
 		t.Setenv("PIG_SDK_GO_ROOT", sdk)
 	}
 	return agentDir
+}
+
+// requirePOSIXServerDirectory skips a test that runs an experimental server on
+// Windows. There Pi's ensurePrivateServerDirectory throws "Unix socket
+// directory requires a POSIX user ID" (packages/coding-agent/src/experimental/server.ts:59)
+// before any server starts, as EnsurePrivateServerDirectory does;
+// TestRunningServerRoutesServicesAndJoinsClose asserts that error on Windows.
+func requirePOSIXServerDirectory(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("Pi's experimental server requires a POSIX user ID (packages/coding-agent/src/experimental/server.ts:59)")
+	}
 }
 
 // upstream: packages/coding-agent/test/experimental-remote-runtime.test.ts:39-45.
@@ -487,29 +487,6 @@ func waitExperimentalWorkerRetired(t *testing.T, server *RunningServer, id strin
 		case <-t.Context().Done():
 			t.Fatalf("wait for manager to retire %s: %v", id, context.Cause(t.Context()))
 		}
-	}
-}
-
-// waitExperimentalWorkerExit waits on the spawned child's own exit authority. Manager removal follows control-socket disconnection, which can precede process exit and reaping.
-func waitExperimentalWorkerExit(t *testing.T, pid int) {
-	t.Helper()
-	resources := experimentalResourcesFor(t)
-	resources.mu.Lock()
-	var exited *InternalProcess
-	for _, child := range resources.children {
-		if child.PID() == pid {
-			exited = child
-			break
-		}
-	}
-	resources.mu.Unlock()
-	if exited == nil {
-		t.Fatalf("worker PID %d was not spawned through the tracked server", pid)
-	}
-	select {
-	case <-exited.Done():
-	case <-t.Context().Done():
-		t.Fatalf("wait for worker %d to exit: %v", pid, context.Cause(t.Context()))
 	}
 }
 

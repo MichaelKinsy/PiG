@@ -9,6 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/compaction"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 type sessionCompactionData struct {
@@ -76,12 +77,8 @@ func (s *Session) extensionCompaction(
 	if err := json.Unmarshal(envelope.Compaction, &wire); err != nil {
 		return nil, false, err
 	}
-	var details any
-	if len(wire.Details) > 0 && string(wire.Details) != "null" {
-		if err := json.Unmarshal(wire.Details, &details); err != nil {
-			return nil, false, err
-		}
-	}
+	// The details are the value the extension wrote; keep its member order.
+	details := orderedjson.Value(wire.Details)
 	return &sessionCompactionData{
 		Summary:          wire.Summary,
 		FirstKeptEntryID: wire.FirstKeptEntryID,

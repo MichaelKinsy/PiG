@@ -204,34 +204,25 @@ func tryXclip() ([]byte, string, clipboardImageResult) {
 }
 
 func tryXclipContext(parent context.Context) ([]byte, string, clipboardImageResult) {
-	// First probe TARGETS to learn what the clipboard advertises.
-	targetsOut, targetsErr := runClipboardImageCommandContext(parent, clipboardListTimeout, "xclip", "-selection", "clipboard", "-t", "TARGETS", "-o")
-
-	var candidates []string
-	if targetsErr == nil {
-		candidates = strings.Split(string(targetsOut), "\n")
+	// Probe TARGETS to learn what the clipboard advertises; without it no image type is probed (upstream clipboard-image.ts readClipboardImageViaXclip).
+	targetsOut, err := runClipboardImageCommandContext(parent, clipboardListTimeout, "xclip", "-selection", "clipboard", "-t", "TARGETS", "-o")
+	if err != nil {
+		return nil, "", clipboardImageFailed
 	}
-	preferred := selectPreferredImageMIME(candidates)
-	if targetsErr == nil && preferred == "" {
+	// The preferred type keeps its advertised spelling.
+	preferred := selectPreferredImageMIME(strings.Split(string(targetsOut), "\n"))
+	if preferred == "" {
 		return nil, "", clipboardImageNone
 	}
 
-	// The preferred type keeps its advertised spelling; like upstream's Set,
-	// only exact duplicates are dropped.
-	tryOrder := slices.Clone(SupportedImageMIMEs)
-	if preferred != "" {
-		tryOrder = slices.DeleteFunc(tryOrder, func(m string) bool { return m == preferred })
-		tryOrder = slices.Insert(tryOrder, 0, preferred)
+	data, err := runClipboardImageCommandContext(parent, clipboardCommandTimeout, "xclip", "-selection", "clipboard", "-t", preferred, "-o")
+	if err != nil {
+		return nil, "", clipboardImageFailed
 	}
-
-	for _, mime := range tryOrder {
-		data, err := runClipboardImageCommandContext(parent, clipboardCommandTimeout, "xclip", "-selection", "clipboard", "-t", mime, "-o")
-		if err != nil || len(data) == 0 {
-			continue
-		}
-		return data, baseMIME(mime), clipboardImageFound
+	if len(data) == 0 {
+		return nil, "", clipboardImageNone
 	}
-	return nil, "", clipboardImageFailed
+	return data, baseMIME(preferred), clipboardImageFound
 }
 
 // readClipboardImageViaPowerShell reads the Windows clipboard from WSL, where

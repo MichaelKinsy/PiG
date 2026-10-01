@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const packageRoot = resolve('extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent');
 const parent = pathToFileURL(join(packageRoot, 'package.json')).href;
 const dist = dirname(fileURLToPath(import.meta.resolve('@earendil-works/pi-agent-core', parent)));
-assert.equal(JSON.parse(readFileSync(join(dist, '..', 'package.json'), 'utf8')).version, '0.87.1');
+assert.equal(JSON.parse(readFileSync(join(dist, '..', 'package.json'), 'utf8')).version, '0.99.2');
 const load = path => import(pathToFileURL(join(dist, 'harness', path + '.js')).href);
 const { NodeExecutionEnv } = await load('env/nodejs');
 const { BACKGROUND_CONTEXT: background, withAbortSignal } = await load('context');

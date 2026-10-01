@@ -457,10 +457,14 @@ func observationAgentEvent(t *testing.T, event agent.AgentEvent) any {
 		if event.Result.Details != nil {
 			result["details"] = event.Result.Details
 		}
+		if event.Result.IsError {
+			result["isError"] = true
+		}
 		if event.Result.Usage != nil {
 			result["usage"] = event.Result.Usage
 		}
-		return map[string]any{"type": "tool_execution_end", "toolCallId": event.ToolCallID, "toolName": event.ToolName, "result": result, "isError": event.Result.IsError}
+		// upstream: agent-loop.ts:912-919 emits `isError: finalized.isError` beside `result`; result.isError exists only when the tool returned it.
+		return map[string]any{"type": "tool_execution_end", "toolCallId": event.ToolCallID, "toolName": event.ToolName, "result": result, "isError": event.IsError}
 	default:
 		t.Errorf("unexpected AgentEvent %T", event)
 		return map[string]any{"unexpected": reflect.TypeOf(event).String(), "value": event}

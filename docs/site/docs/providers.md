@@ -8,13 +8,13 @@ Most hosted providers accept an API key, and some also accept a browser or devic
 
 Raw Provider-object access from extensions has documented 0.3.x gaps (D78, owner decision 2026-09-28). Registered-native methods cross the SDK bridge, but Go, Rust and Python cannot yet retrieve every builtin/composed raw Provider object. Foreign registered-configuration data is a snapshot, not a live alias of the author's object; callable handles do not synchronize arbitrary property writes. Same-process Node roots, children, functions and receivers must retain Pi's behavior. This limit does not change normal model selection or approve incorrect authentication, refresh, cancellation or registration cleanup.
 
-PiG ships the same built-in provider set as Pi 0.87.1. The provider key is the first part of a `provider/model` spec. The wire column lists the APIs that the provider's built-in models use.
+PiG ships the same built-in chat providers as Pi 0.99.2. Pi 0.99.2 also lists classifier models, which PiG does not list: `typesafe` has only classifier models, and `cloudflare-workers-ai`, `opencode`, `openrouter` and `vercel-ai-gateway` list them beside their chat models. The provider key is the first part of a `provider/model` spec. The wire column lists the APIs that the provider's built-in chat models use.
 
 | Provider key | Name | Wire | Credential |
 |---|---|---|---|
 | `amazon-bedrock` | Amazon Bedrock | `bedrock-converse-stream` | AWS credential chain or `AWS_BEARER_TOKEN_BEDROCK`. See [Amazon Bedrock](#amazon-bedrock). |
 | `ant-ling` | Ant Ling | `openai-completions` | `ANT_LING_API_KEY` |
-| `anthropic` | Anthropic | `anthropic-messages` | `ANTHROPIC_API_KEY`, `ANTHROPIC_OAUTH_TOKEN`, `ANTHROPIC_AUTH_TOKEN`, or OAuth |
+| `anthropic` | Anthropic | `anthropic-messages` | `ANTHROPIC_API_KEY`, `ANTHROPIC_OAUTH_TOKEN`, `ANTHROPIC_AUTH_TOKEN`, workload identity federation, or OAuth. See [Anthropic workload identity federation](#anthropic-workload-identity-federation). |
 | `azure-openai-responses` | Azure OpenAI Responses | `azure-openai-responses` | `AZURE_OPENAI_API_KEY` plus an endpoint. See [Azure OpenAI](#azure-openai). |
 | `baseten` | Baseten | `openai-completions` | `BASETEN_API_KEY` |
 | `cerebras` | Cerebras | `openai-completions` | `CEREBRAS_API_KEY` |
@@ -71,6 +71,14 @@ Each provider in the table above reads the variable in its credential column. Us
 
 `anthropic` reads three variables. `ANTHROPIC_AUTH_TOKEN` is sent as an `Authorization: Bearer` token and takes precedence over the other two. `ANTHROPIC_OAUTH_TOKEN` is used as an API key and takes precedence over `ANTHROPIC_API_KEY`. Subscription tokens (`sk-ant-oat`) are sent with the Claude Code identity, and subscription auth shows a warning at session start.
 
+### Anthropic workload identity federation
+
+When no key, stored credential, `ANTHROPIC_AUTH_TOKEN` or authorization header is available, `anthropic` can authenticate with workload identity federation. Set `ANTHROPIC_FEDERATION_RULE_ID`, `ANTHROPIC_ORGANIZATION_ID` and `ANTHROPIC_IDENTITY_TOKEN_FILE`. `ANTHROPIC_SERVICE_ACCOUNT_ID` and `ANTHROPIC_WORKSPACE_ID` are optional.
+
+PiG reads the identity token (a JWT) from the file on every exchange, so a rotated token is picked up. It exchanges the token for an access token with a `jwt-bearer` grant at `<base URL>/v1/oauth/token` and sends the access token as `Authorization: Bearer`. PiG keeps the access token and refreshes it before it expires. After a 401 the next request exchanges again. The token endpoint must use `https`; `http` is accepted only for `localhost`, `127.0.0.1` and `::1`. An identity token over 16 KiB is rejected before the request. An exchange failure is the request's error, and no message request is sent. Error bodies keep only the `error`, `error_description` and `error_uri` fields.
+
+Federation applies to the `anthropic` provider only. Other `anthropic-messages` providers still require a key or an authorization header.
+
 `github-copilot` reads only `COPILOT_GITHUB_TOKEN`. A general `GITHUB_TOKEN` is not a Copilot credential.
 
 `PI_CACHE_RETENTION` sets the prompt cache retention that PiG passes to the provider.
@@ -89,7 +97,7 @@ PiG stores credentials in `~/.pig/agent/auth.json`. Agent startup creates a miss
 
 `auth.json` can contain API keys and OAuth tokens. Keep it private and do not commit it.
 
-Interactive login prompts marked as secret use PiG's `maskSecretInput` setting (default `true`). **Mask secret input** in `/settings` shows dots, a character count and the last four characters while typing, then retains only the masked preview after submission. Inputs shorter than five characters show no suffix. Set `maskSecretInput` to `false` to restore Pi 0.87.1's plain-text behavior. This configurable feature is recorded as divergence D80. Ordinary text and manual-code prompts remain visible. Credentials still belong in `auth.json` or the provider's credential store; the setting protects dialog and authentication-diagnostic output, not credential storage.
+Interactive login prompts marked as secret use PiG's `maskSecretInput` setting (default `true`). **Mask secret input** in `/settings` shows dots, a character count and the last four characters while typing, then retains only the masked preview after submission. Inputs shorter than five characters show no suffix. Set `maskSecretInput` to `false` to restore Pi 0.99.2's plain-text behavior. This configurable feature is recorded as divergence D80. Ordinary text and manual-code prompts remain visible. Credentials still belong in `auth.json` or the provider's credential store; the setting protects dialog and authentication-diagnostic output, not credential storage.
 
 ### Interactive login and logout
 

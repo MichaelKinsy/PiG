@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 func TestPackageCaptureTimeoutWaitsForChild(t *testing.T) {
@@ -34,7 +36,7 @@ func TestPackageCaptureOutputAndFailure(t *testing.T) {
 		t.Run(mode, func(t *testing.T) {
 			cmd := exec.CommandContext(t.Context(), executable, "-test.run=^TestPackageCaptureChild$")
 			cmd.Env = append(os.Environ(), "PIG_PACKAGE_CAPTURE_CHILD="+mode)
-			output, err := runWithTimeout(cmd, time.Minute)
+			output, err := runWithTimeout(cmd, testbudget.Wait(t))
 			if mode == "success" {
 				if err != nil || output != "captured output" {
 					t.Fatalf("output=%q error=%v", output, err)

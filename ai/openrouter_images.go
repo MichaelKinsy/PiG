@@ -26,7 +26,7 @@ func RegisterBuiltInImagesAPIProviders() {
 }
 
 // GenerateImagesOpenRouter implements upstream providers/images/openrouter.ts.
-func GenerateImagesOpenRouter(ctx context.Context, model ImagesModel, imagesCtx ImagesContext, options ProviderImagesOptions) AssistantImages {
+func GenerateImagesOpenRouter(ctx context.Context, model ImageModel, imagesCtx ImagesContext, options ProviderImagesOptions) AssistantImages {
 	out := AssistantImages{
 		API:        model.API,
 		Provider:   model.Provider,
@@ -170,7 +170,7 @@ func openRouterImagesHeaders(apiKey string, modelHeaders map[string]string, opti
 	return headers
 }
 
-func buildOpenRouterImagesPayload(model ImagesModel, imagesCtx ImagesContext) map[string]any {
+func buildOpenRouterImagesPayload(model ImageModel, imagesCtx ImagesContext) map[string]any {
 	content := make([]map[string]any, 0, len(imagesCtx.Input))
 	for _, item := range imagesCtx.Input {
 		switch v := item.(type) {
@@ -266,7 +266,7 @@ type openRouterImagesUsage struct {
 
 // parseOpenRouterImagesUsage mirrors upstream openrouter-images.ts parseUsage,
 // which prices each bucket at the image model's flat rates.
-func parseOpenRouterImagesUsage(raw openRouterImagesUsage, model ImagesModel) *Usage {
+func parseOpenRouterImagesUsage(raw openRouterImagesUsage, model ImageModel) *Usage {
 	reportedCachedTokens := 0
 	cacheWriteTokens := 0
 	if raw.PromptTokensDetails != nil {

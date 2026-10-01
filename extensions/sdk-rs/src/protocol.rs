@@ -29,6 +29,10 @@ fn is_zero(value: &u32) -> bool {
     *value == 0
 }
 
+fn is_zero_u64(value: &u64) -> bool {
+    *value == 0
+}
+
 /// JSON Schema type alias.
 pub type Schema = Value;
 
@@ -107,6 +111,48 @@ pub struct RegisterMsg {
     /// `markdown_transform` requests.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub markdown_transformer: bool,
+    /// MCP servers registered while loading (upstream `registerMcpServer` in the factory). The host validates them.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub mcp_servers: Vec<McpServerDecl>,
+    /// Virtual models registered while loading. Routing calls back with `virtual_model_route`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub virtual_models: Vec<VirtualModelDecl>,
+    /// Virtual models unregistered while loading, in call order. Upstream's `unregisterVirtualModel` filters the runtime-wide queue of models registered before the runner binds, including another extension's (`loader.ts:228-232`); the host applies these to it.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub unregister_virtual_models: Vec<VirtualModelRef>,
+}
+
+/// One partial result of a nested call and the channel for the answer the host waits for: `None`, or the message the callback panicked with.
+pub(crate) type ExecuteUpdate = (crate::AgentToolResult, mpsc::Sender<Option<String>>);
+
+/// Names one virtual model.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub struct VirtualModelRef {
+    pub provider: String,
+    pub id: String,
+}
+
+/// One MCP server an extension registered: the `registerMcpServer` call and `register` payload entry.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct McpServerDecl {
+    pub name: String,
+    pub config: Value,
+}
+
+/// A virtual model declaration: every `VirtualModelDefinition` field but `route`.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct VirtualModelDecl {
+    pub provider: String,
+    pub id: String,
+    pub name: String,
+    #[serde(default, rename = "thinkingLevels", skip_serializing_if = "Vec::is_empty")]
+    pub thinking_levels: Vec<String>,
+    #[serde(default, rename = "contextWindow", skip_serializing_if = "is_zero_u64")]
+    pub context_window: u64,
+    #[serde(default, rename = "maxTokens", skip_serializing_if = "is_zero_u64")]
+    pub max_tokens: u64,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub input: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -138,6 +184,27 @@ pub struct ToolDef {
     /// The tool has a result renderer.
     #[serde(skip_serializing_if = "std::ops::Not::not", default)]
     pub renders_result: bool,
+    /// Upstream ToolDefinition.outputSchema.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub output_schema: Option<Value>,
+    /// Upstream ToolDefinition.exposure; absent is "direct".
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub exposure: Option<crate::ToolExposure>,
+    /// Upstream ToolDefinition.namespace.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub namespace: Option<crate::ToolNamespace>,
+    /// Upstream ToolDefinition.annotations.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub annotations: Option<crate::ToolAnnotations>,
+    /// Upstream ToolDefinition.defaultActive; absent is the exposure's default.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub default_active: Option<bool>,
+    /// The tool defines prepareLoadout; the host asks with `tool_prepare_loadout`.
+    #[serde(skip_serializing_if = "std::ops::Not::not", default)]
+    pub prepares_loadout: bool,
+    /// The tool defines prepareArguments; the host asks with `tool_prepare_arguments` before it validates the arguments.
+    #[serde(skip_serializing_if = "std::ops::Not::not", default)]
+    pub prepares_arguments: bool,
 }
 
 /// Provider-side constrained sampling request for a tool. `type` is "json_schema"
@@ -208,6 +275,11 @@ pub struct ProviderDef {
     pub native: Option<Value>,
     #[serde(default)]
     pub stream_simple: bool,
+    /// The APIs whose image and classifier implementations run in the extension.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub image_apis: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub classifier_apis: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -466,6 +538,16 @@ pub struct Connection {
     pub(crate) tool_registration_lock: Mutex<()>,
     pub(crate) autocomplete: crate::autocomplete::AutocompleteRegistry,
     pub(crate) provider_objects: std::sync::OnceLock<Arc<crate::provider::ProviderObjects>>,
+    pub(crate) provider_callbacks: std::sync::OnceLock<Arc<crate::provider::ProviderCallbacks>>,
+    /// Settings, MCP servers and callable tools the host replicates for synchronous getters.
+    pub(crate) api_state: Mutex<crate::extension_api::ApiState>,
+    /// The replicated signal of the run in progress, with the host's run number. None while no run is active (`Context::signal`).
+    pub(crate) run_signal: Mutex<Option<(u64, crate::provider::ProviderSignal)>>,
+    /// Virtual models by provider and id, load-time and post-load registrations alike.
+    pub(crate) virtual_models: crate::extension_api::VirtualModels,
+    /// Dispatchers of in-flight nested calls, by execute id. Each update travels with the channel its answer returns on.
+    pub(crate) execute_updates: Mutex<HashMap<String, mpsc::Sender<ExecuteUpdate>>>,
+    pub(crate) execute_seq: std::sync::atomic::AtomicU64,
     reader: Mutex<UnixStream>,
     writer: Mutex<UnixStream>,
     // control ends the socket for every clone without waiting on a reader or writer lock.
@@ -480,6 +562,33 @@ pub struct Connection {
 struct PendingCallSender {
     parent_request_id: Option<String>,
     sender: mpsc::Sender<CallResultMsg<Box<serde_json::value::RawValue>>>,
+}
+
+impl Connection {
+    /// Installs the host's `run_signal` frame: one signal for the whole run, cancelled when the run aborts.
+    pub(crate) fn apply_run_signal(&self, args: &serde_json::Value) {
+        let active = args.get("active").and_then(|v| v.as_bool()).unwrap_or(false);
+        let run = args.get("run").and_then(|v| v.as_u64()).unwrap_or(0);
+        let aborted = args.get("aborted").and_then(|v| v.as_bool()).unwrap_or(false);
+        let signal = {
+            let mut held = self.run_signal.lock().unwrap();
+            if !active {
+                *held = None;
+                return;
+            }
+            match held.as_ref() {
+                Some((id, signal)) if *id == run => signal.clone(),
+                _ => {
+                    let signal = crate::provider::ProviderSignal::new();
+                    *held = Some((run, signal.clone()));
+                    signal
+                }
+            }
+        };
+        if aborted {
+            signal.cancel();
+        }
+    }
 }
 
 pub(crate) struct PendingCall {
@@ -505,6 +614,12 @@ impl Connection {
             closed: AtomicBool::new(false),
             closed_signal: crate::provider::ProviderSignal::new(),
             provider_objects: std::sync::OnceLock::new(),
+            provider_callbacks: std::sync::OnceLock::new(),
+            api_state: Mutex::new(Default::default()),
+            run_signal: Mutex::new(None),
+            virtual_models: Mutex::new(HashMap::new()),
+            execute_updates: Mutex::new(HashMap::new()),
+            execute_seq: std::sync::atomic::AtomicU64::new(0),
             registered_tools: Mutex::new(HashMap::new()),
             tool_registration_lock: Mutex::new(()),
             autocomplete: crate::autocomplete::AutocompleteRegistry::default(),
@@ -582,7 +697,12 @@ impl Connection {
             parent.finished.store(true, Ordering::Release);
             let _ = parent.state.compare_exchange(0, 1, Ordering::AcqRel, Ordering::Acquire);
         }
-        self.cancel_pending_calls_for(id);
+        // Pi's host calls belong to no request: a call the handler left running when it returned continues until it ends. A cancelled request's calls were cancelled by its cancel frame. A completed request's pending calls are no longer scoped to it, so a later cancel frame for it does not reach them.
+        for pending in self.pending_calls.lock().unwrap().values_mut() {
+            if pending.parent_request_id.as_deref() == Some(id) {
+                pending.parent_request_id = None;
+            }
+        }
         Self::write_envelope_to(&mut writer, &Envelope::<Value> {
             msg_type: "request_state".to_string(),
             request_state: Some(RequestStateMsg { request_id: id.to_string(), state: "completed".to_string(), reason: None }),
@@ -701,7 +821,7 @@ impl Connection {
         self.wait_call_typed(pending)
     }
 
-    fn wait_call_typed<R: serde::de::DeserializeOwned>(&self, pending: PendingCall) -> io::Result<CallResultMsg<R>> {
+    pub(crate) fn wait_call_typed<R: serde::de::DeserializeOwned>(&self, pending: PendingCall) -> io::Result<CallResultMsg<R>> {
         let reply = pending.receiver.recv().map_err(|_| {
             io::Error::new(
                 io::ErrorKind::ConnectionAborted,

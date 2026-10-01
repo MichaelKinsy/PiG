@@ -28,6 +28,22 @@ var pathDelimiters = map[byte]bool{
 	'=':  true,
 }
 
+// pathWrappers maps the opening wrappers that may precede a path in prose to their closing counterpart (autocomplete.ts:11, PATH_WRAPPERS).
+var pathWrappers = map[byte]byte{'(': ')', '[': ']', '{': '}', '<': '>', '`': '`'}
+
+// stripLeadingWrappers strips opening wrappers before a path, e.g. "(~/Dev" becomes "~/Dev" and "`src/ma" becomes "src/ma". A wrapper stays if the token also contains its closer, e.g. "app/[slug]/pa" or "(group)/pa". Mirrors autocomplete.ts:61 stripLeadingWrappers.
+func stripLeadingWrappers(token string) string {
+	result := token
+	for len(result) > 0 {
+		closer, ok := pathWrappers[result[0]]
+		if !ok || strings.IndexByte(result[1:], closer) >= 0 {
+			break
+		}
+		result = result[1:]
+	}
+	return result
+}
+
 // CombinedProvider handles both slash-command and @-file autocomplete.
 // Mirrors upstream CombinedAutocompleteProvider (autocomplete.ts:238).
 type CombinedProvider struct {
@@ -226,6 +242,7 @@ func extractPathPrefix(text string, force bool) (string, bool) {
 	if lastDelim >= 0 {
 		prefix = text[lastDelim+1:]
 	}
+	prefix = stripLeadingWrappers(prefix)
 	if force {
 		return prefix, true
 	}
@@ -234,7 +251,7 @@ func extractPathPrefix(text string, force bool) (string, bool) {
 		strings.HasPrefix(prefix, "~/") {
 		return prefix, true
 	}
-	if prefix == "" && text != "" && isTokenStart(text, len(text)) {
+	if prefix == "" && text != "" && endsAtTokenBoundary(text) {
 		return prefix, true
 	}
 	return "", false
@@ -254,24 +271,18 @@ func parsePathOnlyPrefix(prefix string) (raw string, isQuoted bool) {
 // Returns "" if no @ token is found. Handles both @path and @"path with
 // spaces". Mirrors upstream extractAtPrefix (autocomplete.ts:460-475).
 func extractAtPrefix(text string) string {
-	// Check for quoted @ prefix first: @"partial or @"path/to
-	quoteStart := findUnclosedQuoteStart(text)
-	if quoteStart >= 0 && quoteStart > 0 && text[quoteStart-1] == '@' {
-		// Ensure @ is at a token boundary.
-		if isTokenStart(text, quoteStart-1) {
-			return text[quoteStart-1:]
-		}
-		return ""
+	if quoted := extractQuotedPrefix(text); strings.HasPrefix(quoted, `@"`) {
+		return quoted
 	}
 
-	// Unquoted: find the last delimiter, check if @ follows.
+	// Unquoted: find the last delimiter, then check whether an @ token follows any opening wrappers.
 	lastDelim := findLastDelimiter(text)
-	tokenStart := 0
+	token := text
 	if lastDelim >= 0 {
-		tokenStart = lastDelim + 1
+		token = text[lastDelim+1:]
 	}
-	if tokenStart < len(text) && text[tokenStart] == '@' {
-		return text[tokenStart:]
+	if token = stripLeadingWrappers(token); strings.HasPrefix(token, "@") {
+		return token
 	}
 	return ""
 }
@@ -308,14 +319,27 @@ func findUnclosedQuoteStart(text string) int {
 }
 
 // isTokenStart returns true if index is at the start of a token
-// (index 0 or preceded by a delimiter).
+// (index 0 or preceded by a delimiter, ignoring opening wrappers such as "(" or a backtick).
 // Mirrors upstream isTokenStart (autocomplete.ts:70).
 func isTokenStart(text string, index int) bool {
-	if index == 0 {
+	start := index
+	for start > 0 && pathWrappers[text[start-1]] != 0 {
+		start--
+	}
+	if start == 0 {
 		return true
 	}
-	previous, _ := utf8.DecodeLastRuneInString(text[:index])
+	previous, _ := utf8.DecodeLastRuneInString(text[:start])
 	return (previous < utf8.RuneSelf && pathDelimiters[byte(previous)]) || autocompleteSeparator(previous)
+}
+
+// endsAtTokenBoundary reports whether text is empty or ends in a whitespace or CJK punctuation separator, upstream's tokenStartRegex.
+func endsAtTokenBoundary(text string) bool {
+	if text == "" {
+		return true
+	}
+	last, _ := utf8.DecodeLastRuneInString(text)
+	return autocompleteSeparator(last)
 }
 
 // parseAtPrefix extracts the raw path and quote state from an @ prefix.

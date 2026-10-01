@@ -8,15 +8,13 @@ package codingagent
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
-	"github.com/MichaelKinsy/PiG/internal/pilock"
-
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
@@ -196,11 +194,12 @@ func (s *ProjectTrustStore) write(data map[string]*bool) error {
 	if err != nil {
 		return fmt.Errorf("write trust store %s: %w", s.trustPath, err)
 	}
-	if err := os.MkdirAll(filepath.Dir(s.trustPath), 0o755); err != nil {
-		return fmt.Errorf("create trust store directory: %w", err)
+	// writeTrustFile rethrows Node's mkdirSync and writeFileSync errors (trust-manager.ts:122-132).
+	if err := nodeerrno.MkdirAll(filepath.Dir(s.trustPath), 0o755); err != nil {
+		return err
 	}
 	if err := os.WriteFile(s.trustPath, append(encoded, '\n'), 0o644); err != nil {
-		return fmt.Errorf("write trust store %s: %w", s.trustPath, err)
+		return nodeerrno.FromPathError(err)
 	}
 	return nil
 }
@@ -209,21 +208,15 @@ func (s *ProjectTrustStore) withLock(fn func() error) (err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if err := os.MkdirAll(filepath.Dir(s.trustPath), 0o755); err != nil {
-		return fmt.Errorf("create trust store directory: %w", err)
+	// acquireTrustLockSync rethrows Node's mkdirSync error (trust-manager.ts:137-140).
+	if err := nodeerrno.MkdirAll(filepath.Dir(s.trustPath), 0o755); err != nil {
+		return err
 	}
-	lock, err := pilock.AcquireSync(s.trustPath)
-	if errors.Is(err, pilock.ErrLocked) && !errors.Is(err, pilock.ErrLegacyLocked) {
-		return errors.New("failed to acquire trust store lock")
-	}
+	release, err := acquireSyncLockWithRetry(s.trustPath)
 	if err != nil {
-		return fmt.Errorf("acquire trust store lock: %w", err)
+		return err
 	}
-	defer func() {
-		if unlockErr := lock.Release(); unlockErr != nil {
-			err = errors.Join(err, fmt.Errorf("release trust store lock: %w", unlockErr))
-		}
-	}()
+	defer releaseSyncLock(release, &err)
 	return fn()
 }
 

@@ -12,6 +12,7 @@ import (
 
 // .upstream/v0.87.1/packages/coding-agent/test/extensions-runner.test.ts:708 creates two distinct source factories with identity transformers and expects both. Keep that fixture separate from the order-sensitive guard.
 func TestUpstreamRunnerMarkdownSourceFactories(t *testing.T) {
+	t.Parallel()
 	nodeCellRequireNode(t)
 	for _, isolation := range []string{"", "isolated"} {
 		t.Run("isolation="+isolation, func(t *testing.T) {

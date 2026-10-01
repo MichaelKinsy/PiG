@@ -35,6 +35,13 @@ func (s *Session) installExtensionHooks() {
 // an error tool result. A handler may block (with terminate) or mutate
 // event.input in place; mutated input runs without revalidation.
 func (s *Session) extensionToolCallHook(ctx context.Context, toolCallID, toolName string, args json.RawMessage) agent.ToolCallHookResult {
+	return s.toolCallHook(ctx, toolCallID, "", toolName, args)
+}
+
+// toolCallHook is [Session.extensionToolCallHook] for a call another tool made: parentToolCallID is that tool's call id, and is empty for a call the model issued.
+//
+// upstream: agent-session.ts:_beforeToolCall(context, parentToolCallId)
+func (s *Session) toolCallHook(ctx context.Context, toolCallID, parentToolCallID, toolName string, args json.RawMessage) agent.ToolCallHookResult {
 	runner := s.currentRunner()
 	if runner == nil || !runner.HasHandlers(icodingagent.EventToolCall) {
 		return agent.ToolCallHookResult{}
@@ -45,7 +52,7 @@ func (s *Session) extensionToolCallHook(ctx context.Context, toolCallID, toolNam
 	}
 	before, _ := json.Marshal(input)
 	result, err := runner.EmitToolCall(ctx, extension.CustomToolCallEvent{
-		ToolCallEventBase: extension.ToolCallEventBase{Type: icodingagent.EventToolCall, ToolCallID: toolCallID},
+		ToolCallEventBase: extension.ToolCallEventBase{Type: icodingagent.EventToolCall, ToolCallID: toolCallID, ParentToolCallID: parentToolCallID},
 		ToolName:          toolName,
 		Input:             input,
 	})
@@ -66,6 +73,13 @@ func (s *Session) extensionToolCallHook(ctx context.Context, toolCallID, toolNam
 
 // extensionToolResultHook emits tool_result and applies the chained override.
 func (s *Session) extensionToolResultHook(ctx context.Context, toolCallID, toolName string, args json.RawMessage, result agent.AgentToolResult) agent.AfterToolCallResult {
+	return s.toolResultHook(ctx, toolCallID, "", toolName, args, result)
+}
+
+// toolResultHook is [Session.extensionToolResultHook] for a call another tool made; see [Session.toolCallHook].
+//
+// upstream: agent-session.ts:_afterToolCall(context, parentToolCallId)
+func (s *Session) toolResultHook(ctx context.Context, toolCallID, parentToolCallID, toolName string, args json.RawMessage, result agent.AgentToolResult) agent.AfterToolCallResult {
 	runner := s.currentRunner()
 	if runner == nil || !runner.HasHandlers(icodingagent.EventToolResult) {
 		return agent.AfterToolCallResult{}
@@ -76,12 +90,15 @@ func (s *Session) extensionToolResultHook(ctx context.Context, toolCallID, toolN
 	}
 	hookResult, err := runner.EmitToolResult(ctx, extension.CustomToolResultEvent{
 		ToolResultEventBase: extension.ToolResultEventBase{
-			Type:       icodingagent.EventToolResult,
-			ToolCallID: toolCallID,
-			Input:      input,
-			Content:    icodingagent.ToolResultEventContent(result),
-			IsError:    result.IsError,
-			Usage:      toolResultEventUsage(result.Usage),
+			Type:              icodingagent.EventToolResult,
+			ToolCallID:        toolCallID,
+			ParentToolCallID:  parentToolCallID,
+			Input:             input,
+			WireInput:         args,
+			Content:           icodingagent.ToolResultEventContent(result),
+			StructuredContent: result.StructuredContent,
+			IsError:           result.IsError,
+			Usage:             toolResultEventUsage(result.Usage),
 		},
 		ToolName: toolName,
 		Details:  extension.ToolResultDetailsFor(result.Details),
@@ -262,6 +279,22 @@ func (s *Session) extensionProviderResponseHook(ctx context.Context, response ai
 	return err
 }
 
+// extensionProviderStreamEventHook emits provider_stream_event for a parsed provider stream event before normalization, awaiting observers.
+//
+// upstream: sdk.ts:372-386 (handleProviderStreamEvent)
+func (s *Session) extensionProviderStreamEventHook(ctx context.Context, data any, model *ai.Model) error {
+	runner := s.currentRunner()
+	if runner == nil || !runner.HasHandlers(icodingagent.EventProviderStreamEvent) {
+		return nil
+	}
+	providerID := model.ProviderMeta.ProviderID
+	if providerID == "" && model.Provider != nil {
+		providerID = model.Provider.ID()
+	}
+	_, err := runner.Emit(ctx, extension.ProviderStreamEvent{Type: icodingagent.EventProviderStreamEvent, Provider: providerID, API: string(model.ProviderMeta.API), Model: model.ID, Data: data})
+	return err
+}
+
 // extensionProviderHeadersHook emits before_provider_headers on the merged
 // request headers (sdk.ts buildRequestOptions.transformHeaders).
 func (s *Session) extensionProviderHeadersHook(ctx context.Context, headers ai.ProviderHeaders) (ai.ProviderHeaders, error) {
@@ -433,10 +466,11 @@ func (s *Session) bindExtensionCommandActions(runner *inproc.Runner) {
 		runner.BindSystemPromptOptions(s.GetSystemPromptOptions)
 		runner.BindTools(extension.ContextActions{
 			GetAllTools: s.GetAllTools, GetActiveTools: s.ActiveToolNames,
-			SetActiveTools: s.SetActiveToolsByName, GetSystemPrompt: s.systemPrompt,
-			GetModel: func() extension.Model { return s.Model() }, SessionManager: s,
-			ModelRegistry: s.ModelRegistry(), IsIdle: s.IsIdle, HasPendingMessages: s.HasPendingMessages,
+			SetActiveTools: s.SetActiveToolsByName, RefreshTools: s.RefreshTools, GetSystemPrompt: s.systemPrompt,
+			GetModel: func() extension.Model { return s.Model() }, SessionManager: s.inner,
+			ModelRegistry: s.ModelRegistry(), IsIdle: s.IsIdle, HasPendingMessages: s.HasPendingMessages, GetSignal: s.Signal,
 			SendUserMessage: s.SendExtensionUserMessage,
+			ToolActions:     s.ToolActions(),
 		})
 		runner.BindCommandActions(s.ExtensionCommandActions())
 	}
@@ -448,4 +482,16 @@ func toolResultEventUsage(usage *ai.Usage) any {
 		return nil
 	}
 	return usage
+}
+
+// ReloadExtensions is the runtime rebuild of upstream's reload() for the extensions the mode loaded again (agent-session.ts:3547-3567 _buildRuntime): a runner over them, bound to the Session, replaces the current one, which goes stale, and the tool registry is rebuilt so the tools a settings reload newly added to defaultTools activate and every extension tool that activates on registration is active again (agent-session.ts:3598-3609, RefreshToolsAfterReload). The caller binds its own UI and command actions to the returned runner and then emits session_start.
+func (s *Session) ReloadExtensions(extensions []extension.Extension) (*inproc.Runner, error) {
+	previous := s.currentRunner()
+	runner := inproc.NewRunner(extensions, s.services.CWD())
+	s.bindExtensionCore(runner)
+	s.ReplaceRunner(runner)
+	if previous != nil {
+		previous.Invalidate("")
+	}
+	return runner, s.RefreshToolsAfterReload()
 }

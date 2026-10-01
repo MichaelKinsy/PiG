@@ -1,19 +1,26 @@
+import { getModelType, isModelType, } from "../../pi-ai/sdk-bundle/index.js";
 import { VERSION } from "../config.js";
 import { fetchWithRetry } from "../utils/management-http.js";
 import { getPiUserAgent } from "../utils/pi-user-agent.js";
 const DEFAULT_CATALOG_BASE_URL = "https://pi-in-go.dev";
 const REMOTE_CATALOG_ATTEMPT_TIMEOUT_MS = 4_000;
 export const REMOTE_CATALOG_REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000;
+/**
+ * Model types this client can consume. Sent as `?types=` so the catalog server
+ * returns the full-type shard instead of the chat-only one served to clients
+ * that predate model types. A server that ignores the parameter still returns
+ * the chat-only shard, which this client handles unchanged.
+ */
+export const REMOTE_CATALOG_MODEL_TYPES = ["chat", "image", "classifier"];
+function isSupportedModelType(model) {
+    return (model.type === undefined ||
+        (typeof model.type === "string" && REMOTE_CATALOG_MODEL_TYPES.includes(model.type)));
+}
 function mergeModels(baseline, dynamic) {
-    const merged = [...baseline];
-    for (const model of dynamic) {
-        const index = merged.findIndex((entry) => entry.id === model.id);
-        if (index >= 0)
-            merged[index] = model;
-        else
-            merged.push(model);
-    }
-    return merged;
+    const merged = new Map();
+    for (const model of [...baseline, ...dynamic])
+        merged.set(`${getModelType(model)}\0${model.id}`, model);
+    return [...merged.values()];
 }
 function parseCatalog(providerId, value) {
     const entries = Array.isArray(value)
@@ -27,6 +34,7 @@ function parseCatalog(providerId, value) {
         throw new Error(`Invalid model catalog for provider "${providerId}"`);
     return entries
         .filter((entry) => typeof entry === "object" && entry !== null && "id" in entry)
+        .filter(isSupportedModelType)
         .map((model) => ({ ...model, provider: providerId }));
 }
 function remoteModels(entry, localGeneratedAt) {
@@ -42,7 +50,8 @@ export function withRemoteCatalog(provider, catalogBaseUrl = DEFAULT_CATALOG_BAS
     let dynamicModels = [];
     return {
         ...provider,
-        getModels: () => mergeModels(provider.getModels(), dynamicModels),
+        getModels: () => mergeModels(provider.getModels(), dynamicModels.filter((model) => isModelType(model, "chat"))),
+        getAllModels: () => mergeModels(provider.getAllModels?.() ?? provider.getModels(), dynamicModels),
         refreshModels: async (context) => {
             const stored = context.stored;
             const restored = remoteModels(stored, localGeneratedAt).filter((model) => model.provider === provider.id);
@@ -63,8 +72,9 @@ export function withRemoteCatalog(provider, catalogBaseUrl = DEFAULT_CATALOG_BAS
             }
             // Only revalidate when a cached body backs the validator, so a 304 can never
             // leave the overlay empty.
-            const validator = stored?.models.length ? stored.etag : undefined;
+            const validator = stored && stored.models.length > 0 ? stored.etag : undefined;
             const url = new URL(`/api/models/providers/${encodeURIComponent(provider.id)}`, catalogBaseUrl);
+            url.searchParams.set("types", REMOTE_CATALOG_MODEL_TYPES.join(","));
             const response = await fetchWithRetry(url, {
                 headers: {
                     accept: "application/json",

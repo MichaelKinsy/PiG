@@ -8,7 +8,8 @@ import (
 
 // A header/footer/widget is sent to the host as static lines, so unlike
 // upstream's component factories it does not follow a resize. OnWidthChange is
-// the trigger an extension re-pushes from.
+// the trigger an extension re-pushes from. Handlers run on their own goroutine,
+// so each test waits for the deliveries it queued (requestWG) before it reads.
 func TestOnWidthChangeDeliversNewWidth(t *testing.T) {
 	e := &Extension{}
 	ctx := Context{ext: e}
@@ -28,7 +29,9 @@ func TestOnWidthChangeDeliversNewWidth(t *testing.T) {
 	}
 
 	e.handleNotify(widthNotify(t, 100))
+	e.requestWG.Wait()
 	e.handleNotify(widthNotify(t, 42))
+	e.requestWG.Wait()
 
 	mu.Lock()
 	defer mu.Unlock()
@@ -58,9 +61,11 @@ func TestOnWidthChangeUnsubscribeIsIdempotent(t *testing.T) {
 	}
 
 	e.handleNotify(widthNotify(t, 80))
+	e.requestWG.Wait()
 	unsub()
 	unsub() // must not panic or double-remove
 	e.handleNotify(widthNotify(t, 90))
+	e.requestWG.Wait()
 
 	mu.Lock()
 	defer mu.Unlock()
@@ -80,6 +85,7 @@ func TestOnWidthChangeIgnoresNonPositiveWidth(t *testing.T) {
 		t.Fatalf("subscribe: %v", err)
 	}
 	e.handleNotify(widthNotify(t, 0))
+	e.requestWG.Wait()
 	if called {
 		t.Error("a width_change of 0 was delivered to the handler")
 	}

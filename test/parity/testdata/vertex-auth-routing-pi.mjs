@@ -2,7 +2,7 @@ import {createServer} from "node:http";
 import {readFileSync} from "node:fs";
 import {createRequire} from "node:module";
 const root = new URL("../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/", import.meta.url);
-if(JSON.parse(readFileSync(new URL("package.json",root),"utf8")).version!=="0.87.1")throw new Error("Expected Pi 0.87.1");
+if(JSON.parse(readFileSync(new URL("package.json",root),"utf8")).version!=="0.99.2")throw new Error("Expected Pi 0.99.2");
 const fromAi=createRequire(new URL("dist/api/google-vertex.js",root));
 const fromGoogle=createRequire(fromAi.resolve("@google/genai"));
 const {GoogleAuth}=fromGoogle("google-auth-library");

@@ -104,8 +104,20 @@ func (m *InteractiveMode) refreshAgentTools() []error {
 	if m.agent == nil {
 		return nil
 	}
+	// A Session owns the active selection across a reload: tools newly added to defaultTools are active, removed ones stay active and tools disabled during the session stay disabled (agent-session.ts:3591-3609). Rebuilding from the startup selection alone would undo that.
+	session, ownsSelection := m.opts.SessionHandle.(interface {
+		ActiveToolNames() []string
+		SetActiveToolsByName([]string)
+	})
+	var active []string
+	if ownsSelection {
+		active = session.ActiveToolNames()
+	}
 	allTools, errs := m.buildAgentTools()
 	m.agent.SetTools(allTools)
+	if ownsSelection {
+		session.SetActiveToolsByName(active)
+	}
 	m.rebuildToolSystemPrompt()
 	return errs
 }
@@ -136,7 +148,12 @@ func (m *InteractiveMode) buildAgentTools() ([]agent.AgentTool, []error) {
 func (m *InteractiveMode) replaceExtensionRunner(exts []extension.Extension) []error {
 	previousRunner := m.newRunner
 	allExts := ExtensionsInLoadOrder(exts, m.opts.BuiltinExtensions)
-	m.newRunner = inproc.NewRunner(allExts, m.opts.CWD)
+	// The runner shares the host's registrations (MCP servers, providers, virtual models) as the Session's first runner does.
+	var hostRuntime *extension.ExtensionRuntime
+	if m.opts.SubprocessHost != nil && previousRunner != nil {
+		hostRuntime = previousRunner.Runtime()
+	}
+	m.newRunner = inproc.NewRunner(allExts, m.opts.CWD, hostRuntime)
 	m.opts.ExtensionRunner = m.newRunner
 	m.wireInprocContextActions()
 	if session, ok := m.opts.SessionHandle.(interface{ ReplaceRunner(*inproc.Runner) }); ok {
@@ -153,8 +170,18 @@ func (m *InteractiveMode) replaceExtensionRunner(exts []extension.Extension) []e
 	}
 	m.setupExtensionShortcutListener(ctx)
 	m.reconfigureRemoteEditor()
+	return m.refreshToolsAfterReload()
+}
+
+// refreshToolsAfterReload rebuilds the Session's tool registry as a reload does, which activates the tools a settings reload newly added to defaultTools and every extension tool that activates on registration, then the agent's tools.
+func (m *InteractiveMode) refreshToolsAfterReload() []error {
 	var errs []error
-	if session, ok := m.opts.SessionHandle.(interface{ RefreshTools() error }); ok {
+	// upstream: agent-session.ts:3604-3609 rebuilds the registry with includeAllExtensionTools, so an extension tool disabled during the session is active again.
+	if session, ok := m.opts.SessionHandle.(interface{ RefreshToolsAfterReload() error }); ok {
+		if err := session.RefreshToolsAfterReload(); err != nil {
+			errs = append(errs, err)
+		}
+	} else if session, ok := m.opts.SessionHandle.(interface{ RefreshTools() error }); ok {
 		if err := session.RefreshTools(); err != nil {
 			errs = append(errs, err)
 		}

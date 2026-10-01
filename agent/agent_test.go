@@ -539,7 +539,7 @@ func TestOnMessagePersistSkipsResumedHistory(t *testing.T) {
 func TestStopReasonStop(t *testing.T) {
 	evs := textSeq("hello")
 	a := &Agent{}
-	msg, calls, err := a.consumeStream(context.Background(), agentTestStream(evs), a.Model())
+	msg, calls, err := a.consumeStream(context.Background(), agentTestStream(evs), a.Model(), "")
 	if err != nil {
 		t.Fatalf("consumeStream error: %v", err)
 	}
@@ -556,7 +556,7 @@ func TestStopReasonStop(t *testing.T) {
 func TestStopReasonToolUse(t *testing.T) {
 	evs := toolCallSeq(struct{ id, name string }{"call_1", "bash"})
 	a := &Agent{}
-	msg, calls, err := a.consumeStream(context.Background(), agentTestStream(evs), a.Model())
+	msg, calls, err := a.consumeStream(context.Background(), agentTestStream(evs), a.Model(), "")
 	if err != nil {
 		t.Fatalf("consumeStream error: %v", err)
 	}
@@ -584,7 +584,7 @@ func TestStopReasonAborted(t *testing.T) {
 	}
 
 	a := &Agent{}
-	msg, _, err := a.consumeStream(ctx, stream, nil)
+	msg, _, err := a.consumeStream(ctx, stream, nil, "")
 	if err == nil {
 		t.Fatal("expected context error, got nil")
 	}

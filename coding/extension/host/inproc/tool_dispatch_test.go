@@ -11,6 +11,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 // extWithToolCallHandler wraps a typed tool_call handler into the
@@ -514,7 +515,7 @@ func TestEmitToolResult_NextHandlerSeesPredecessorValues(t *testing.T) {
 		t.Fatal(err)
 	}
 	usage, _ := seen.Usage.(map[string]any)
-	details, _ := seen.Details.(map[string]any)
+	details, _ := orderedjson.Map(seen.Details)
 	if !seen.IsError || usage["output"] != float64(7) || details["n"] != float64(1) {
 		t.Fatalf("second handler saw isError=%v usage=%v details=%v; want the first handler's values", seen.IsError, seen.Usage, seen.Details)
 	}

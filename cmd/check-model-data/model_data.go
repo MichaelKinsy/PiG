@@ -17,7 +17,7 @@ import (
 	"syscall"
 )
 
-const ModelDataSchemaVersion = 3
+const ModelDataSchemaVersion = 6
 const ModelDataManifestFile = ".manifest.json"
 
 type ModelDataStructure map[string]map[string]string
@@ -29,7 +29,7 @@ type ModelDataManifest struct {
 	Files         map[string]string `json:"files"`
 }
 
-var modelDataImportPattern = regexp.MustCompile(`(?m)^import \{ [A-Z][A-Z0-9_]*_MODELS \} from "\./providers/([^"/]+)\.models\.ts";$`)
+var modelDataImportPattern = regexp.MustCompile(`(?m)^import \{ [A-Z][A-Z0-9_]*_CLASSIFIER_MODELS, [A-Z][A-Z0-9_]*_IMAGE_MODELS, [A-Z][A-Z0-9_]*_MODELS \} from "\./providers/([^"/]+)\.models\.ts";$`)
 
 func modelDataSHA256(value string) string {
 	hash := sha256.Sum256([]byte(value))
@@ -124,11 +124,11 @@ func ReadModelDataStructure(packageRoot string) (ModelDataStructure, error) {
 			if group == nil {
 				return nil, fmt.Errorf("%s API group %s must be an object", path, modelDataQuote(api))
 			}
-			for _, id := range group.keys {
-				if _, exists := models[id]; exists {
-					return nil, fmt.Errorf("%s contains model %s in more than one API group", path, id)
+			for _, key := range group.keys {
+				if _, exists := models[key]; exists {
+					return nil, fmt.Errorf("%s contains %s in more than one API group", path, key)
 				}
-				models[id] = api
+				models[key] = api
 			}
 		}
 		if len(models) == 0 {
@@ -257,13 +257,20 @@ func ValidateModelDataDirectory(structure ModelDataStructure, dataDir string) er
 				errs = append(errs, filename+" API group "+modelDataQuote(api)+" must be an object")
 				continue
 			}
-			for _, id := range group.keys {
-				if _, exists := actualModels[id]; exists {
-					errs = append(errs, provider+"/"+id+" appears in more than one API group")
+			for _, key := range group.keys {
+				if _, exists := actualModels[key]; exists {
+					errs = append(errs, provider+"/"+key+" appears in more than one API group")
 					continue
 				}
-				actualModels[id] = api
-				validateModelValue(group.get(id), provider, id, api, &errs)
+				actualModels[key] = api
+				id := key
+				if _, after, found := strings.Cut(key, ":"); found {
+					id = after
+				}
+				validateModelValue(group.get(key), provider, id, api, &errs)
+				if model := parseModelDataObject(group.get(key)); model != nil && key != modelDataJSString(model.get("type"))+":"+modelDataJSString(model.get("id")) {
+					errs = append(errs, provider+"/"+key+" has mismatched type/id identity")
+				}
 			}
 		}
 		wantIDs, actualIDs := slices.Collect(maps.Keys(structure[provider])), slices.Collect(maps.Keys(actualModels))

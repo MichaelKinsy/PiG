@@ -83,6 +83,8 @@ func TestDocumentedSlashCommandsExist(t *testing.T) {
 		"/pig-runner": "Stock Pig has no runner alias",
 	}
 	fromExtensions := map[string]string{
+		"/llama":     "built-in llama.cpp extension (extensions/index.ts builtInExtensions)",
+		"/mcp":       "built-in mcp extension (mcp.md)",
 		"/piglet":    "generic Piglet runtime extension",
 		"/sprite":    "PiG Standard piglogin extension",
 		"/review":    "example prompt template a user creates (prompt-templates.md)",

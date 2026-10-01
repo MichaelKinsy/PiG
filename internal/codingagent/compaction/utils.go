@@ -26,8 +26,30 @@ type FileOperations = harnesscompaction.FileOperations
 // NewFileOps initializes the shared file-operation accumulator.
 func NewFileOps() FileOperations { return harnesscompaction.CreateFileOps() }
 
-// ExtractFileOpsFromMessage records read/write/edit tool calls.
+// ExtractFileOpsFromMessage records read/write/edit tool calls in an assistant message, or the nested calls recorded on a tool result. Calls made from codemode scripts are recorded on the script's result.
+//
+// upstream: .upstream/v0.99.1/packages/coding-agent/src/core/compaction/utils.ts:31-35,47-59 (extractFileOpsFromMessage, addFileOp)
 func ExtractFileOpsFromMessage(msg agent.AgentMessage, ops *FileOperations) {
+	if result := msg.ToolResult; result != nil {
+		if result.NestedCalls == nil {
+			return
+		}
+		for _, call := range result.NestedCalls.Calls {
+			path, _ := call.Arguments["path"].(string)
+			if path == "" {
+				continue
+			}
+			switch call.Name {
+			case "read":
+				ops.AddRead(path)
+			case "write":
+				ops.AddWritten(path)
+			case "edit":
+				ops.AddEdited(path)
+			}
+		}
+		return
+	}
 	harnesscompaction.ExtractFileOpsFromMessage(msg, ops)
 }
 

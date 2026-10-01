@@ -3,6 +3,7 @@ package codingagent_test
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -43,8 +44,9 @@ func TestMissingConfiguredThemeExportsWithActiveFallback(t *testing.T) {
 		t.Fatalf("faux reply = %v, want hello", text)
 	}
 	tui.SetThemeSettingPresence(settings.GetThemeSetting())
-	if got := tui.ActiveTheme().Name; got != "dark" {
-		t.Fatalf("fallback theme = %q, want dark", got)
+	// upstream 0.99.1 theme.ts:772-790 setTheme falls back to the system theme; the regression test's initTheme("dark") only resets the theme between cases.
+	if got := tui.ActiveTheme().Name; got != tui.SystemThemeName {
+		t.Fatalf("fallback theme = %q, want system", got)
 	}
 
 	outputPath := filepath.Join(cwd, "export.html")
@@ -63,9 +65,13 @@ func TestMissingConfiguredThemeExportsWithActiveFallback(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"<!DOCTYPE html>", "--accent: " + tui.ActiveTheme().Colors()["accent"] + ";", "--exportPageBg: " + tui.ActiveTheme().ExportPageBg + ";"} {
+	for _, want := range []string{"<!DOCTYPE html>", "--accent: " + tui.ActiveTheme().Colors()["accent"] + ";"} {
 		if !strings.Contains(string(html), want) {
 			t.Errorf("export is missing %q", want)
 		}
+	}
+	// upstream 0.99.1 theme.ts getThemeExportColors returns no export colors for the system theme, so export-html/index.ts:42-107,121 derives the page background from userMessageBg as an rgb() value.
+	if tui.ActiveTheme().ExportPageBg != "" || !regexp.MustCompile(`--exportPageBg: rgb\(\d+, \d+, \d+\);`).Match(html) {
+		t.Errorf("the system theme's export must derive its page background (theme export color %q)", tui.ActiveTheme().ExportPageBg)
 	}
 }

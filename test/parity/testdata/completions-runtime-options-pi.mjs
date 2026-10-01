@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
 const root = new URL("../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/", import.meta.url);
-if (JSON.parse(readFileSync(new URL("package.json", root), "utf8")).version !== "0.87.1") throw new Error("Expected Pi 0.87.1");
+if (JSON.parse(readFileSync(new URL("package.json", root), "utf8")).version !== "0.99.2") throw new Error("Expected Pi 0.99.2");
 const { getModel, streamSimple } = await import(new URL("dist/compat.js", root));
 Object.assign(process.env, { CLOUDFLARE_API_KEY: "cf-token", CLOUDFLARE_ACCOUNT_ID: "account-id", CLOUDFLARE_GATEWAY_ID: "gateway-id" });
 const cases = JSON.parse(readFileSync(new URL("completions-runtime-options.json", import.meta.url), "utf8"));

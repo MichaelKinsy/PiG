@@ -242,6 +242,12 @@ func (c *Container) renderBorrowedLocked(width int) []string {
 	if c.cacheWidth != width || c.cacheTheme != ActiveTheme() {
 		c.childCache = nil
 		c.cacheWidth = width
+		if c.cacheTheme != nil && c.cacheTheme != ActiveTheme() {
+			// Upstream's UI invalidates every component when the theme changes (container.ts invalidate forwards to its children); components that bake theme colors into their strings, like ThemedText, rebuild on the next render.
+			for _, child := range c.children {
+				child.Invalidate()
+			}
+		}
 		c.cacheTheme = ActiveTheme()
 		c.renderedValid = false
 	}

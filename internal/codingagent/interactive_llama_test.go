@@ -245,18 +245,7 @@ func TestLlamaAppearsInTheAPIKeyLoginList(t *testing.T) {
 	}
 }
 
-func TestLlamaSlashHandlerAndLoginRouting(t *testing.T) {
-	var appended []string
-	sc := &SlashContext{Append: func(text string) { appended = append(appended, text) }}
-	if err := llamaHandler(sc); err != nil || len(appended) != 1 {
-		t.Fatalf("llamaHandler without a host = %v, %v", err, appended)
-	}
-	called := false
-	sc.RunLlama = func() error { called = true; return nil }
-	if err := llamaHandler(sc); err != nil || !called {
-		t.Fatalf("llamaHandler = %v, called %v", err, called)
-	}
-
+func TestLlamaLoginRouting(t *testing.T) {
 	var routed string
 	provider := tui.OAuthProvider{ID: llama.LlamaProviderID, Name: "llama.cpp", AuthType: "api_key"}
 	login := &SlashContext{

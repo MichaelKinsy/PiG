@@ -40,6 +40,7 @@ func (source readyOverrideSessionSource) Open(options chord.RemoteServiceSourceO
 // upstream: packages/coding-agent/src/experimental/client-runtime.ts:221
 // `await Promise.all([serverServices.ready(...), sessionServices.ready(...)])` rejects with the first failure instead of waiting for the other namespace, which may never hydrate.
 func TestActivateBuiltinClientServicesSurfacesTheFirstReadinessFailureAndReleasesTheOtherWait(t *testing.T) {
+	requirePOSIXServerDirectory(t)
 	for _, failing := range []string{"server", "session"} {
 		t.Run(failing+" namespace fails first", func(t *testing.T) {
 			setupExperimentalRemoteTest(t)

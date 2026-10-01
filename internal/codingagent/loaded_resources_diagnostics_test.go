@@ -150,7 +150,7 @@ func TestLoadThemeResourcesDiagnostics(t *testing.T) {
 	winner := writeNamedTheme(t, dir, "a-sunset.json", "sunset")
 	loser := writeNamedTheme(t, dir, "b-sunset.json", "sunset")
 	registry := tui.NewThemeRegistry()
-	_, diagnostics := loadThemeResources(registry, []string{missing, text, bad, winner, loser})
+	_, diagnostics := loadThemeResources(registry, []string{missing, text, bad, winner, loser}, tui.GetTerminalColorMode())
 	if len(diagnostics) != 4 ||
 		diagnostics[0] != (extension.ResourceDiagnostic{Type: extension.DiagnosticWarning, Message: "theme path does not exist", Path: missing}) ||
 		diagnostics[1] != (extension.ResourceDiagnostic{Type: extension.DiagnosticWarning, Message: "theme path is not a json file", Path: text}) ||
@@ -174,7 +174,7 @@ func TestLoadThemeResourcesDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry := tui.NewThemeRegistry()
-	_, diagnostics := loadThemeResources(registry, []string{dir})
+	_, diagnostics := loadThemeResources(registry, []string{dir}, tui.GetTerminalColorMode())
 	if len(diagnostics) != 1 || diagnostics[0].Path != bad || diagnostics[0].Type != extension.DiagnosticWarning {
 		t.Fatalf("diagnostics = %#v", diagnostics)
 	}

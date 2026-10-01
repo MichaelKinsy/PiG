@@ -38,6 +38,11 @@ type RuntimeOptions struct {
 	// Their tools layer into every Session created by this Runtime.
 	NewExtensions []extension.Extension
 
+	// ExtensionRuntime is the registration state the extension host that loaded NewExtensions already holds (MCP servers,
+	// providers, virtual models). The Session's runner shares it, so a registration by an out-of-process extension reaches
+	// the runner's `mcp_servers_change` dispatch and `getMcpServers`. Nil gives the runner its own state.
+	ExtensionRuntime *extension.ExtensionRuntime
+
 	// AbortContext is the parent context for the runtime's own
 	// cancellation signals. If nil, context.Background() is used.
 	AbortContext context.Context
@@ -73,7 +78,8 @@ type SessionStartOptions struct {
 	AllowedTools map[string]struct{}
 
 	// ActiveBuiltinTools, when non-nil, restricts which built-in coding tools
-	// are active (extension/extra tools are unaffected). nil means all
+	// are active (extension/extra tools are unaffected, and a name that is
+	// not a built-in activates the extension tool of that name). nil means all
 	// built-in tools. Mirrors upstream defaultActiveToolNames (sdk.ts:244):
 	// the CLI default is [read, bash, edit, write], so grep/find/ls are
 	// registered but inactive unless requested via --tools.
@@ -138,7 +144,7 @@ func NewRuntime(opts RuntimeOptions) (*Runtime, error) {
 		AbortFunc:   abortFn,
 	}
 
-	newRunner := inproc.NewRunner(opts.NewExtensions, opts.Services.CWD())
+	newRunner := inproc.NewRunner(opts.NewExtensions, opts.Services.CWD(), opts.ExtensionRuntime)
 	newRunner.BindCore(extension.ExtensionActions{}, extension.ContextActions{
 		ModelRegistry:    opts.Services.Registry(),
 		IsProjectTrusted: opts.Services.SettingsManager().IsProjectTrusted,

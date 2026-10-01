@@ -49,9 +49,6 @@ func viewEventTypes(envelope *Envelope) []string {
 	}
 	return types
 }
-func viewHasEvent(envelope *Envelope, name string) bool {
-	return slices.Contains(viewEventTypes(envelope), name)
-}
 func viewOp(op Op, kind, root string) bool {
 	if len(op) < 2 {
 		return false
@@ -59,7 +56,9 @@ func viewOp(op Op, kind, root string) bool {
 	path, _ := op[1].([]any)
 	return op[0] == kind && len(path) > 0 && path[0] == root
 }
-
+func viewHasEvent(envelope *Envelope, name string) bool {
+	return slices.Contains(viewEventTypes(envelope), name)
+}
 func TestViewSnapshotExcludesRawPrivateState(t *testing.T) {
 	env := openEnv(t, openOptions{})
 	watch := must(env.root.Watch(bg))
@@ -174,25 +173,29 @@ func TestViewLateJoinerSeesPartialWithoutReplay(t *testing.T) {
 	}
 }
 
-func TestViewHeadCommitSplicesAndEmitsMatchingEvents(t *testing.T) {
+// Source: packages/agent/test/harness/pico3/spec-view-events.test.ts:175 (v0.99.1),
+// "a self-head commit rewrites one transcript entry with matching entry/head events".
+func TestViewSelfHeadCommitRewritesOneTranscriptEntryWithMatchingEntryHeadEvents(t *testing.T) {
 	env := openEnv(t, openOptions{})
 	must(env.root.Write(bg, NewEntry{Kind: "before"}))
 	collector := collectWatch(t, env.root)
+	before := cloneObject(collector.view)
 	check(t, env.root.Reset(bg, new("fresh")))
 	envelopes := collector.Envelopes()
 	equal(t, len(envelopes), 1, "one reset envelope")
 	envelope := envelopes[0]
-	var ops []Op
-	for _, op := range envelope.Ops {
-		if viewOp(op, "p", "entries") {
-			ops = append(ops, op)
+	applied, err := Apply(before, envelope.Ops)
+	check(t, err)
+	previousEntry := asObject(arr(collector.view, "entries")[0])
+	nextEntry := asObject(arr(asObject(applied), "entries")[0])
+	var changedKeys []string
+	for _, key := range slices.Concat(sortedKeys(previousEntry), sortedKeys(nextEntry)) {
+		if !jsonEqual(previousEntry[key], nextEntry[key]) && !slices.Contains(changedKeys, key) {
+			changedKeys = append(changedKeys, key)
 		}
 	}
-	equal(t, len(ops), 2, "truncate then insert")
-	equal(t, ops[0][2], 0, "truncate starts at zero")
-	if numberOr(ops[0][3], 0) <= 0 {
-		t.Fatal("did not remove old range")
-	}
+	slices.Sort(changedKeys)
+	equal(t, changedKeys, []string{"head", "id", "kind", "model"}, "rewritten entry fields")
 	equal(t, viewEventTypes(envelope), []string{"head.moved", "entry.added"}, "head event order")
 }
 
@@ -281,5 +284,33 @@ func TestViewListenerFailureDoesNotAffectSiblingOrWriter(t *testing.T) {
 	defer mu.Unlock()
 	if len(reports) != 1 || !strings.Contains(reports[0].Error(), "listener failed") {
 		t.Fatalf("reports: %v", reports)
+	}
+}
+
+// Go regression guard for spec-view-events.test.ts:175 (v0.99.1). Upstream 0.99.1
+// no longer emits an explicit transcript splice for a head commit: view.ts
+// applyEntries edits the tracked entries in place and the tracker publishes
+// what changed, which for one entry replaced by one entry is a rewrite of that
+// entry's fields (.upstream/v0.99.1/packages/agent/src/harness/pico3/view.ts:90,337-347).
+func TestViewSelfHeadCommitPublishesFieldRewritesNotATranscriptSplice(t *testing.T) {
+	env := openEnv(t, openOptions{})
+	must(env.root.Write(bg, NewEntry{Kind: "before"}))
+	collector := collectWatch(t, env.root)
+	check(t, env.root.Reset(bg, new("fresh")))
+	envelopes := collector.Envelopes()
+	equal(t, len(envelopes), 1, "one reset envelope")
+	var entryOps []Op
+	for _, op := range envelopes[0].Ops {
+		if viewOp(op, "p", "entries") || viewOp(op, "s", "entries") {
+			entryOps = append(entryOps, op)
+		}
+	}
+	if len(entryOps) == 0 {
+		t.Fatal("the reset published no entry operation")
+	}
+	for _, op := range entryOps {
+		if op.Verb() != "s" || len(op.Path()) < 3 || op.Path()[1] != 0 {
+			t.Fatalf("entry operation %v is not a field rewrite of entry 0", op)
+		}
 	}
 }

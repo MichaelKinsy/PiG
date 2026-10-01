@@ -6,6 +6,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 func TestRPCUISelectRoundTrip(t *testing.T) {
@@ -143,7 +145,7 @@ func TestRPCUIDialogTimeoutIsAJavaScriptNumber(t *testing.T) {
 			if !errors.Is(err, context.Canceled) {
 				t.Errorf("timeout %v: error = %v, want context.Canceled", timeout, err)
 			}
-		case <-time.After(3 * time.Second):
+		case <-time.After(testbudget.Wait(t)):
 			t.Errorf("timeout %v did not dismiss the dialog", timeout)
 		}
 	}

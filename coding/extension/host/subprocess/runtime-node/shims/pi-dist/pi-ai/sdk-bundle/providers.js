@@ -1,21 +1,28 @@
 import {
-  builtinImagesModels,
-  builtinImagesProviders,
   builtinModels,
   builtinProviders,
+  getAllBuiltinModels,
+  getBuiltinClassifierModel,
+  getBuiltinClassifierModels,
+  getBuiltinImageModel,
+  getBuiltinImageModels,
   getBuiltinModel,
   getBuiltinModelDataGeneratedAt,
   getBuiltinModels,
   getBuiltinProviders,
   radiusProvider
-} from "./chunk-5CXRZVQK.js";
-import "./chunk-VLBMMG2Q.js";
+} from "./chunk-QJOM6OEA.js";
+import "./chunk-VLLDVPPZ.js";
+import "./chunk-JUG7GWVD.js";
 import "./chunk-SHUYVCID.js";
 export {
-  builtinImagesModels,
-  builtinImagesProviders,
   builtinModels,
   builtinProviders,
+  getAllBuiltinModels,
+  getBuiltinClassifierModel,
+  getBuiltinClassifierModels,
+  getBuiltinImageModel,
+  getBuiltinImageModels,
   getBuiltinModel,
   getBuiltinModelDataGeneratedAt,
   getBuiltinModels,

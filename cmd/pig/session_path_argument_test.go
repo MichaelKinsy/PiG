@@ -101,6 +101,7 @@ func TestResolveStartupSessionSelectionReportsFileURLError(t *testing.T) {
 // `pi -p --session <new file>` runs and persists that session at the given
 // path. Compare the persisted record sequence with the pinned Pi 0.87.1.
 func TestPrintSessionPathCreatesSessionLikePi(t *testing.T) {
+	t.Parallel()
 	binary := buildPigBinaryForSignalTest(t)
 	piRoot, err := filepath.Abs("../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent")
 	if err != nil {
@@ -114,7 +115,7 @@ func TestPrintSessionPathCreatesSessionLikePi(t *testing.T) {
 	if err := json.Unmarshal(metadata, &pkg); err != nil {
 		t.Fatal(err)
 	}
-	if pkg.Version != "0.87.1" {
+	if pkg.Version != "0.99.2" {
 		t.Fatalf("Pi version=%q", pkg.Version)
 	}
 	fauxProvider, err := filepath.Abs("../../test/parity/testdata/test-faux-provider.ts")
@@ -176,6 +177,7 @@ func TestPrintSessionPathCreatesSessionLikePi(t *testing.T) {
 // The CLI reports the uncaught file URL error with the line Node prints for
 // Pi, and exits 1 before any session starts.
 func TestSessionFileURLErrorComparedWithPi(t *testing.T) {
+	t.Parallel()
 	binary := buildPigBinaryForSignalTest(t)
 	piCLI, err := filepath.Abs("../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/dist/cli.js")
 	if err != nil {
@@ -220,6 +222,7 @@ func TestSessionFileURLErrorComparedWithPi(t *testing.T) {
 // session file is empty or invalid: <path>" (session-manager.ts:1818-1823);
 // forkSessionOrExit prints it as "Error: <message>" and exits 1.
 func TestForkMissingOrInvalidSessionPathComparedWithPi(t *testing.T) {
+	t.Parallel()
 	binary := buildPigBinaryForSignalTest(t)
 	piCLI, err := filepath.Abs("../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/dist/cli.js")
 	if err != nil {

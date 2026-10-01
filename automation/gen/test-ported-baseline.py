@@ -3,8 +3,30 @@
 
 import argparse
 import json
+import re
 from pathlib import Path
 import subprocess
+
+
+def version_key(version):
+    return tuple(int(part) for part in version.split("."))
+
+
+def previous_mapping(commit, version):
+    """Return the newest committed mapping of an upstream version older than version."""
+    names = subprocess.check_output(["git", "ls-tree", "-r", "--name-only", commit], text=True).split("\n")
+    found = []
+    for name in names:
+        match = re.fullmatch(r"test-mapping-v(\d+(?:\.\d+)*)\.json", Path(name).name)
+        if match and version_key(match.group(1)) < version_key(version):
+            found.append((version_key(match.group(1)), name))
+    if not found:
+        raise SystemExit(f"commit {commit} has no mapping for {version} or an older upstream version")
+    newest = max(found)[0]
+    candidates = [name for key, name in found if key == newest]
+    if len(candidates) != 1:
+        raise SystemExit(f"commit {commit} has {len(candidates)} mappings of the newest older upstream version; the carried floor is ambiguous")
+    return json.loads(subprocess.check_output(["git", "show", f"{commit}:{candidates[0]}"]))
 
 
 def main():
@@ -16,15 +38,25 @@ def main():
     policy = json.loads(path.read_text())
     commit = subprocess.check_output(["git", "rev-parse", "--verify", f"{args.commit}^{{commit}}"], text=True).strip()
     mapping_path = f"test/parity/interfaces/test-mapping-v{policy['upstreamVersion']}.json"
-    mapping = json.loads(subprocess.check_output(["git", "show", f"{commit}:{mapping_path}"]))
-    if mapping["upstreamVersion"] != policy["upstreamVersion"]:
-        raise SystemExit("upstream version mismatch; review the new denominator")
-    paths = sorted(entry["path"] for entry in mapping["entries"] if entry["disposition"] == "ported")
-    if len(paths) < len(policy["baselinePorted"]):
-        raise SystemExit("refusing to lower the committed ported-test baseline")
+    shown = subprocess.run(["git", "show", f"{commit}:{mapping_path}"], capture_output=True)
+    if shown.returncode == 0:
+        mapping = json.loads(shown.stdout)
+        if mapping["upstreamVersion"] != policy["upstreamVersion"]:
+            raise SystemExit("upstream version mismatch; review the new denominator")
+        paths = sorted(entry["path"] for entry in mapping["entries"] if entry["disposition"] == "ported")
+        if len(paths) < len(policy["baselinePorted"]):
+            raise SystemExit("refusing to lower the committed ported-test baseline")
+    else:
+        # The commit predates this upstream version (the first release of a leap): keep the stored baseline and require it to carry the previous floor, as the release gate does.
+        paths = policy["baselinePorted"]
+        current = {entry["path"] for entry in json.loads(Path(mapping_path).read_text())["entries"]}
+        previous = previous_mapping(commit, policy["upstreamVersion"])
+        dropped = sorted(entry["path"] for entry in previous["entries"] if entry["disposition"] == "ported" and entry["path"] in current and entry["path"] not in paths)
+        if dropped:
+            raise SystemExit(f"refusing to lower the committed ported-test baseline: {len(dropped)} carried paths dropped, first {dropped[0]}")
     policy["baselineCommit"] = commit
     policy["baselinePorted"] = paths
-    path.write_text(json.dumps(policy, indent=2) + "\n")
+    path.write_text(json.dumps(policy, indent=2, ensure_ascii=False) + "\n")
     print(f"ported-test baseline: {len(paths)} paths at {commit}")
 
 

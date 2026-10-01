@@ -87,7 +87,7 @@ func TestKimiOAuthUpstream(t *testing.T) {
 					creds, loginErr = oauthNativeLogin(p)(t.Context(), AuthInteraction{Notify: func(event AuthEvent) { notifications = append(notifications, event) }, Prompt: func(context.Context, AuthPrompt) (string, error) {
 						t.Error("Kimi login must not prompt")
 						return "", nil
-					}})
+					}}, LoginOptions{})
 				}()
 				synctest.Wait()
 				wantInfo := AuthDeviceCodeEvent{UserCode: "ABCD-1234", VerificationURI: "https://www.kimi.com/code?user_code=ABCD-1234", IntervalSeconds: new(float64(tc.interval)), ExpiresInSeconds: new(float64(600))}

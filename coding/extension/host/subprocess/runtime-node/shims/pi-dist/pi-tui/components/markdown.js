@@ -159,6 +159,8 @@ export class Markdown {
     cachedText;
     cachedWidth;
     cachedLines;
+    // Parsed tokens depend only on the source, so they survive theme and width invalidation.
+    cachedTokens;
     constructor(text, paddingX, paddingY, theme, defaultTextStyle, options) {
         this.text = text;
         this.paddingX = paddingX;
@@ -196,8 +198,12 @@ export class Markdown {
         // Replace tabs with 3 spaces for consistent rendering
         const normalizedText = text.replace(/\t/g, "   ");
         // Parse markdown to HTML-like tokens
-        const tokens = markdownParser.lexer(normalizedText);
-        trimPartialClosingFences(tokens);
+        let tokens = this.cachedTokens?.source === normalizedText ? this.cachedTokens.tokens : undefined;
+        if (!tokens) {
+            tokens = markdownParser.lexer(normalizedText);
+            trimPartialClosingFences(tokens);
+            this.cachedTokens = { source: normalizedText, tokens };
+        }
         // Convert tokens to styled terminal output
         const renderedLines = [];
         for (let i = 0; i < tokens.length; i++) {

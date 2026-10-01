@@ -42,7 +42,8 @@ Product distributions may contribute additional top-level or nested command path
 | `pig extension init <path> [--name <matching-name>] [--lang go\|python\|rust] [--login] [--isolated] [--force] [--json]` | Scaffold an extension that resolves the staged SDK offline (Go default). `--login` scaffolds a Go login factory with standard PiG art. |
 | `pig extension preview-login <path>` | Start exactly one extension and render the login set during `session_start`; no model session starts. |
 | `pig extensions cache stats [--json]` | Inspect extension and runtime-cell cache classifications without changing use metadata. |
-| `pig extensions cache prune [--retention <duration>] [--max-size <bytes>] [--dry-run] [--json]` | Remove eligible inactive cache entries. Hard roots always remain. |
+| `pig extensions cache prune [--retention <duration>] [--max-size <bytes>] [--failures] [--dry-run] [--json]` | Remove eligible inactive cache entries. Hard roots always remain. `--failures` also removes recorded build failures, so the next start compiles those extensions again. |
+| `pig piglet prune [--keep <n>] [--max-size <size>] [--dry-run]` | Remove old built Piglet Binaries, keeping the newest `n` of each Piglet and target (default 2). Pulled installs always remain. |
 | `pig reload` | Stage the embedded extension SDKs and drop extension builds an older SDK produced. |
 | `pig list` | List installed Packages with Pi-compatible output. |
 | `pig package list [--json]` | Inspect configured Package state without starting runtimes. |
@@ -59,6 +60,7 @@ Product distributions may contribute additional top-level or nested command path
 | `pig config [--local]` | Open the Resource filter TUI. Press Tab to switch global and project scope. |
 | `pig setup [status\|go\|container]` | Show the toolchains that extensions and Piglet builds use (default), install a verified Go toolchain under `$PIG_HOME/toolchains/go`, or show how to install a container runtime. |
 | `pig verify [--json] [--checksums <file>] [--provenance] [--packages] [path...]` | Verify this binary, downloaded files, Piglet files, Packages, and extension directories by SHA-256 digest. Piglet Binary signatures are checked offline against the local trust policy. |
+| `pig mcp add\|remove\|list\|login\|logout` | Configure and check MCP servers without starting a session. See [MCP servers](mcp.md#mcp-commands). |
 | `pig docs [sync\|path\|list\|show <name>]` | Materialize and read the documentation bundled with Stock PiG. |
 
 `pig install` accepts one source. Missing sources and unknown options show the ordinary single-source usage. Use `pig install --help` for the separate multi-source `--validate-only` forms (D28).
@@ -137,6 +139,8 @@ Without these options, PiG enables `read`, `bash`, `edit`, and `write`, unless t
 | `grep` | Search file contents | no |
 | `find` | Find paths by glob pattern | no |
 | `ls` | List directory contents | no |
+
+Two built-in extensions add tools that are off by default. `codemode` runs JavaScript that calls the other tools, and `tool_search` finds tools that are not declared to the model. The `mcp` extension turns them on when an MCP server needs them. To enable them yourself, name them in `--tools` or in the `defaultTools` setting, for example `pig --tools read,bash,edit,write,codemode`. See [Codemode and tool search](codemode.md) and [MCP servers](mcp.md).
 
 For a read-only session, allow only the tools that cannot change files:
 

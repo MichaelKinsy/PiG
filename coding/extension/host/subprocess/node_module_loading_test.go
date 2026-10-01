@@ -41,6 +41,7 @@ func loadNodeCommandDescription(t *testing.T, h *Host, entry, isolation, command
 // (@gotgenes/pi-permission-system imports "#src/..." without an extension,
 // confluence-cli reads __dirname).
 func TestNodeExtensionModulesLoadLikePinnedPi(t *testing.T) {
+	t.Parallel()
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Fatalf("node is required: %v", err)

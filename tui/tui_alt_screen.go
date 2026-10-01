@@ -85,11 +85,11 @@ type TuiAltScreen struct {
 
 	fullRedrawCount int
 
-	wheelScrollLines int
-	mouseEnabled     bool
-	copyOnSelect     bool
-	copySelection    func(text string) error
-	openURL          func(url string)
+	wheelScroll   *WheelScrollAccelerator
+	mouseEnabled  bool
+	copyOnSelect  bool
+	copySelection func(text string) error
+	openURL       func(url string)
 
 	searchMatchStyle            func(text string) string
 	searchCurrentMatchStyle     func(text string) string
@@ -160,9 +160,10 @@ type TuiAltScreen struct {
 // TuiAltScreenOptions configures the alt-screen renderer. Mirrors upstream
 // TuiAltScreenOptions.
 type TuiAltScreenOptions struct {
-	// WheelScrollLines is the number of logical lines moved per wheel event
-	// (default 1).
-	WheelScrollLines int
+	// WheelScrollLines is the logical lines moved per wheel event (default 1);
+	// Auto accelerates fast wheel spins on terminals that send one event per notch.
+	// Alt+wheel moves five times as far.
+	WheelScrollLines WheelScrollLines
 	// Mouse captures mouse events for viewport scrolling and selection.
 	Mouse *bool
 	// CopyOnSelect copies a completed text selection. The default is true.
@@ -225,7 +226,7 @@ func newTuiAltScreen(out io.Writer, showHardwareCursor bool, options TuiAltScree
 			},
 		},
 		uploadedKittyImages: map[int]cachedKittyImage{},
-		wheelScrollLines:    max(1, options.WheelScrollLines),
+		wheelScroll:         NewWheelScrollAccelerator(options.WheelScrollLines),
 		mouseEnabled:        options.Mouse == nil || *options.Mouse,
 		copyOnSelect:        copyOnSelect,
 		copySelection:       options.CopySelection,
@@ -289,6 +290,9 @@ func (t *TuiAltScreen) GetCopyOnSelect() bool {
 	defer t.mu.Unlock()
 	return t.copyOnSelect
 }
+
+// SetWheelScrollLines changes the wheel line setting at runtime and resets any acceleration gesture.
+func (t *TuiAltScreen) SetWheelScrollLines(lines WheelScrollLines) { t.wheelScroll.SetLines(lines) }
 
 // SetCopyOnSelect changes automatic selection copy without rebuilding the renderer.
 func (t *TuiAltScreen) SetCopyOnSelect(enabled bool) {

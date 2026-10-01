@@ -14,6 +14,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/invocation"
 )
 
@@ -96,8 +97,12 @@ func (e *TransportError) Unwrap() error { return e.Err }
 // goroutines. Only the reader reads the socket, and only the writer writes it.
 // pig-specific: no upstream equivalent.
 type Conn struct {
+	// toolOrder keeps the tool_call requests of one batch in source order on the wire.
+	toolOrder extension.CallLane
 	// onDispatch records the owner before a request can run in a shared process.
 	onDispatch func()
+	// beforeCancel runs before the cancel frame of a cancelled request is queued. The Host uses it to send the run signal's abort first, so a handler the run's abort cancels finds ctx.signal aborted when it sees its own cancellation: upstream aborts one signal for both.
+	beforeCancel func()
 	// inbound observes each decoded frame on the read loop, in wire order, before routing. Cross-process reference accounting uses it so a later release on this connection can never overtake an earlier transmission.
 	inbound func(*Envelope)
 	// onClosed runs once when the read loop ends.
@@ -116,13 +121,23 @@ type Conn struct {
 
 	// Pending request tracking: maps request ID → response channel, and
 	// request ID → the sink for that request's tool_update notifications.
-	pendingMu     sync.Mutex
-	pending       map[string]chan *Envelope
-	updates       map[string]func(json.RawMessage)
+	pendingMu sync.Mutex
+	pending   map[string]chan *Envelope
+	updates   map[string]func(json.RawMessage)
+	// answered runs on the read loop when the response of a request routes to its waiter.
+	answered map[string]func()
+	// hostCalls counts, per request, the host calls the host applies for it.
+	hostCallCounts map[string]func(dialog bool, delta int)
+	// drainable holds, per request, the function that records that its runtime reported its event loop drained with the request unanswered, and whether the runtime's started state for the request has been read. drainCovered holds, per drain report the read loop passed to the host and the host has not handled, the drained functions of the requests the report covers.
+	drainable     map[string]*drainableRequest
+	drainCovered  map[*Envelope][]func()
 	producerTasks sync.WaitGroup
 
 	// Incoming messages that aren't responses go here for the host to process.
 	inCh chan *Envelope
+
+	// runSignal is the last run signal state the runtime was sent.
+	runSignal runSignalSync
 
 	stateMu       sync.Mutex
 	requestStates map[string]chan RequestStatePayload
@@ -201,6 +216,10 @@ func newConnWithOptions(name string, c net.Conn, options connOptions) *Conn {
 		outCh:              make(chan outboundFrame, 64),
 		pending:            make(map[string]chan *Envelope),
 		updates:            make(map[string]func(json.RawMessage)),
+		answered:           make(map[string]func()),
+		hostCallCounts:     make(map[string]func(dialog bool, delta int)),
+		drainable:          make(map[string]*drainableRequest),
+		drainCovered:       make(map[*Envelope][]func()),
 		inCh:               make(chan *Envelope, 32),
 		done:               make(chan struct{}),
 		requestStates:      make(map[string]chan RequestStatePayload),
@@ -522,6 +541,15 @@ func (c *Conn) request(ctx context.Context, env *Envelope, inactivity time.Durat
 	respCh := make(chan *Envelope, 1)
 	c.pendingMu.Lock()
 	c.pending[env.ID] = respCh
+	if fn := requestAnswered(ctx); fn != nil {
+		c.answered[env.ID] = fn
+	}
+	if fn := requestHostCalls(ctx); fn != nil {
+		c.hostCallCounts[env.ID] = fn
+	}
+	if fn := requestDrained(ctx); fn != nil {
+		c.drainable[env.ID] = &drainableRequest{drained: fn}
+	}
 	c.pendingMu.Unlock()
 	stateCh := make(chan RequestStatePayload, 8)
 	c.stateMu.Lock()
@@ -532,6 +560,9 @@ func (c *Conn) request(ctx context.Context, env *Envelope, inactivity time.Durat
 	defer func() {
 		c.pendingMu.Lock()
 		delete(c.pending, env.ID)
+		delete(c.answered, env.ID)
+		delete(c.hostCallCounts, env.ID)
+		delete(c.drainable, env.ID)
 		c.pendingMu.Unlock()
 		c.stateMu.Lock()
 		delete(c.requestStates, env.ID)
@@ -555,6 +586,9 @@ func (c *Conn) request(ctx context.Context, env *Envelope, inactivity time.Durat
 	}
 	if err := c.sendAndWait(ctx, env); err != nil {
 		return nil, err
+	}
+	if issued := requestIssued(ctx); issued != nil {
+		issued()
 	}
 	// Admission ends only after the handler reaches an observable suspension
 	// boundary or finishes, not when its request reaches the socket.
@@ -618,6 +652,9 @@ func (c *Conn) request(ctx context.Context, env *Envelope, inactivity time.Durat
 			c.cancelHostCalls(env.ID)
 			return nil, &HandlerStalledError{Extension: c.name, Operation: operation, HeartbeatHealthy: !c.closed.Load()}
 		case <-cancelled:
+			if c.beforeCancel != nil {
+				c.beforeCancel()
+			}
 			// pig additive (D19): the cancel is queued before the request's calls are cancelled, so a call's cancellation result follows it on the wire. The extension cancels its own pending calls on the cancel, and the result finds none.
 			_ = c.Send(&Envelope{
 				Type: MsgCancel,
@@ -852,6 +889,9 @@ func (c *Conn) readLoop(ctx context.Context) {
 				}
 				continue
 			}
+			if env.RequestState.State == "started" {
+				c.markRequestStarted(env.RequestState.RequestID)
+			}
 			c.deliverRequestState(*env.RequestState)
 			continue
 		}
@@ -871,11 +911,16 @@ func (c *Conn) readLoop(ctx context.Context) {
 			if env.ID != "" {
 				c.pendingMu.Lock()
 				ch, ok := c.pending[env.ID]
+				answered := c.answered[env.ID]
 				c.pendingMu.Unlock()
 				if ok {
 					select {
 					case ch <- &env:
 					default:
+					}
+					// The frames after this response, such as a drain notification, are read after answered ran.
+					if answered != nil {
+						answered()
 					}
 				}
 			}
@@ -885,6 +930,9 @@ func (c *Conn) readLoop(ctx context.Context) {
 			continue
 		}
 
+		if env.Type == MsgNotify && env.Notify != nil && coversStartedRequests(env.Notify.Method) {
+			c.coverDrainReport(&env)
+		}
 		// A call frame owns its parent-scoped context from the moment it is read, while the frames before a response are still ahead of it.
 		if env.Type == MsgCall && env.Call != nil && env.ID != "" {
 			c.reserveHostCall(env.Call.ParentRequestID, env.ID)
@@ -1369,6 +1417,113 @@ type requestSuspension struct {
 // withRequestSuspension has request report the runtime's suspended state of the request to fn, in frame order before the response. A suspension affects the response only while decides reports true, or always when decides is nil; otherwise the response does not wait for a suspension that the host has not delivered yet.
 func withRequestSuspension(ctx context.Context, fn func(suspended bool), decides func() bool) context.Context {
 	return context.WithValue(ctx, requestSuspensionKey{}, requestSuspension{report: fn, decides: decides})
+}
+
+type requestAnsweredKey struct{}
+
+// withRequestAnswered has request run fn on the connection's read loop when the request's response routes to its waiter, before any later frame is read. It marks that the response exists before the goroutine that waits for it has run.
+func withRequestAnswered(ctx context.Context, fn func()) context.Context {
+	return context.WithValue(ctx, requestAnsweredKey{}, fn)
+}
+
+func requestAnswered(ctx context.Context) func() {
+	fn, _ := ctx.Value(requestAnsweredKey{}).(func())
+	return fn
+}
+
+type requestIssuedKey struct{}
+
+// withRequestIssued has request run fn once the request's frame is written. A call that holds a place in a call order hands the place on then: the next call's frame follows this one on the wire.
+func withRequestIssued(ctx context.Context, fn func()) context.Context {
+	return context.WithValue(ctx, requestIssuedKey{}, fn)
+}
+
+func requestIssued(ctx context.Context) func() {
+	fn, _ := ctx.Value(requestIssuedKey{}).(func())
+	return fn
+}
+
+type requestHostCallsKey struct{}
+
+// withRequestHostCalls has request run fn each time the host starts (delta 1) or finishes (delta -1) applying a host call that names the request as its parent. dialog reports a user dialog. fn runs on the goroutine that applies the call.
+func withRequestHostCalls(ctx context.Context, fn func(dialog bool, delta int)) context.Context {
+	return context.WithValue(ctx, requestHostCallsKey{}, fn)
+}
+
+func requestHostCalls(ctx context.Context) func(dialog bool, delta int) {
+	fn, _ := ctx.Value(requestHostCallsKey{}).(func(dialog bool, delta int))
+	return fn
+}
+
+type requestDrainedKey struct{}
+
+// drainableRequest is one request whose runtime may report its event loop drained with the request unanswered. started records, on the read loop, that the runtime's started state for the request was read.
+type drainableRequest struct {
+	drained func()
+	started bool
+}
+
+// withRequestDrained has request run fn when the connection's runtime reports that its event loop drained after the runtime had started the request (requestsDrained).
+func withRequestDrained(ctx context.Context, fn func()) context.Context {
+	return context.WithValue(ctx, requestDrainedKey{}, fn)
+}
+
+func requestDrained(ctx context.Context) func() {
+	fn, _ := ctx.Value(requestDrainedKey{}).(func())
+	return fn
+}
+
+// markRequestStarted records, on the read loop, that the runtime started the request, so a drain report read after it covers the request.
+func (c *Conn) markRequestStarted(requestID string) {
+	c.pendingMu.Lock()
+	if r := c.drainable[requestID]; r != nil {
+		r.started = true
+	}
+	c.pendingMu.Unlock()
+}
+
+// coversStartedRequests reports whether a runtime notification reports that the runtime's event loop drained with the requests it had started unanswered.
+func coversStartedRequests(method string) bool {
+	return method == notifyRuntimeCommandsDrained || method == notifyRuntimeDrained
+}
+
+// coverDrainReport records, on the read loop as it reads the drain report report, the requests whose started state it read before the report. The runtime sends a request's started state as it reads the request, so these are exactly the requests the runtime held when its loop drained; a request whose started state follows the report is not covered.
+func (c *Conn) coverDrainReport(report *Envelope) {
+	c.pendingMu.Lock()
+	defer c.pendingMu.Unlock()
+	var fns []func()
+	for _, r := range c.drainable {
+		if r.started {
+			fns = append(fns, r.drained)
+		}
+	}
+	c.drainCovered[report] = fns
+}
+
+// requestsDrained runs the drained function of every request the drain report report covers (coverDrainReport). The host calls it when it handles the report, after the calls the runtime sent before it.
+func (c *Conn) requestsDrained(report *Envelope) {
+	c.pendingMu.Lock()
+	fns := c.drainCovered[report]
+	delete(c.drainCovered, report)
+	c.pendingMu.Unlock()
+	for _, fn := range fns {
+		fn()
+	}
+}
+
+// countHostCall counts one host call of the request parentRequestID and returns the function that uncounts it. A call without a running command of that request is not counted.
+func (c *Conn) countHostCall(parentRequestID string, dialog bool) func() {
+	if parentRequestID == "" {
+		return func() {}
+	}
+	c.pendingMu.Lock()
+	fn := c.hostCallCounts[parentRequestID]
+	c.pendingMu.Unlock()
+	if fn == nil {
+		return func() {}
+	}
+	fn(dialog, 1)
+	return func() { fn(dialog, -1) }
 }
 
 // requestSuspensionDecides reports whether the request's response must wait for the suspensions that preceded it.

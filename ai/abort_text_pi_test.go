@@ -42,6 +42,7 @@ func readAbortGolden(t *testing.T) map[string]map[string]abortObservation {
 
 // The golden is real Pi 0.87.1 --mode rpc output for an abort at each phase. This proves it is not stale.
 func TestAbortGoldenMatchesPi(t *testing.T) {
+	t.Parallel()
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Fatalf("node is required for the Pi differential probe: %v", err)

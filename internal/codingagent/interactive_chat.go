@@ -181,7 +181,7 @@ func (m *InteractiveMode) appendChatBlock(comp tui.Component) {
 
 // noticeFg and noticeBold style notice text as upstream theme.fg and
 // theme.bold (chalk.bold) do: each closes only its own attribute.
-func noticeFg(color, text string) string { return color + text + tui.SGRFgReset }
+func noticeFg(color, text string) string { return color + text + tui.FgClose(color) }
 
 func noticeBold(text string) string { return "\x1b[1m" + text + tui.SGRBoldDimReset }
 
@@ -200,7 +200,7 @@ func binaryUpdateNoticeBody(t *tui.Theme, latestVersion, command string) string 
 // Changelog line, each padded by one column.
 func (m *InteractiveMode) showNewVersionNotification(update *BinaryUpdate) {
 	t := tui.ActiveTheme()
-	blocks := []tui.Component{tui.NewPaddedText(binaryUpdateNoticeBody(t, update.LatestVersion, update.Command), 1, 0, nil)}
+	blocks := []tui.Component{tui.NewThemedText(func() string { return binaryUpdateNoticeBody(tui.ActiveTheme(), update.LatestVersion, update.Command) }, 1, 0)}
 	if note := strings.TrimSpace(update.Notes); note != "" {
 		muted := func(text string) string { return noticeFg(t.Muted, text) }
 		blocks = append(blocks,
@@ -210,11 +210,14 @@ func (m *InteractiveMode) showNewVersionNotification(update *BinaryUpdate) {
 		)
 	}
 	if update.ChangelogURL != "" {
-		link := noticeFg(t.Accent, update.ChangelogURL)
-		if tui.GetCapabilities().Hyperlinks {
-			link = tui.Hyperlink(link, update.ChangelogURL)
-		}
-		blocks = append(blocks, tui.NewPaddedText(noticeFg(t.Muted, "Changelog: ")+link, 1, 0, nil))
+		blocks = append(blocks, tui.NewThemedText(func() string {
+			t := tui.ActiveTheme()
+			link := noticeFg(t.Accent, update.ChangelogURL)
+			if tui.GetCapabilities().Hyperlinks {
+				link = tui.Hyperlink(link, update.ChangelogURL)
+			}
+			return noticeFg(t.Muted, "Changelog: ") + link
+		}, 1, 0))
 	}
 	m.appendBorderedNotice(blocks...)
 }
@@ -252,7 +255,7 @@ func packageUpdateNoticeBody(t *tui.Theme, packages []string) string {
 // restores the title in the check's finally on win32.
 func (m *InteractiveMode) finishPackageUpdateCheck(goos string, updates []string) {
 	if len(updates) > 0 {
-		m.appendBorderedNotice(tui.NewPaddedText(packageUpdateNoticeBody(tui.ActiveTheme(), updates), 1, 0, nil))
+		m.appendBorderedNotice(tui.NewThemedText(func() string { return packageUpdateNoticeBody(tui.ActiveTheme(), updates) }, 1, 0))
 	}
 	if goos == "windows" {
 		m.updateTerminalTitle()
@@ -274,13 +277,12 @@ var setTerminalTitle = tui.SetTerminalTitle
 // Spacer(1), a DynamicBorder, the body blocks, and a closing DynamicBorder, all
 // in the warning color. Callers supply pre-colored components.
 func (m *InteractiveMode) appendBorderedNotice(blocks ...tui.Component) {
-	warning := tui.ActiveTheme().Warning
 	m.chatContainer.Add(tui.NewSpacer(1))
-	m.chatContainer.Add(tui.NewDynamicBorder(warning))
+	m.chatContainer.Add(tui.NewDynamicBorderToken("warning"))
 	for _, b := range blocks {
 		m.chatContainer.Add(b)
 	}
-	m.chatContainer.Add(tui.NewDynamicBorder(warning))
+	m.chatContainer.Add(tui.NewDynamicBorderToken("warning"))
 	m.tuiInst.Render()
 }
 
@@ -314,7 +316,7 @@ func (m *InteractiveMode) maybeSuggestBugReport(message *agent.AssistantMessage)
 		return
 	}
 	m.bugReportHintShown = true
-	m.chatContainer.Add(tui.NewPaddedText(tui.ActiveTheme().FgText("muted", "If this looks like a pig bug, /bug sends a report to the developers."), m.outputPad, 0, nil))
+	m.chatContainer.Add(themedNotice("muted", "If this looks like a pig bug, /bug sends a report to the developers.", m.outputPad))
 	m.tuiInst.RequestRender()
 }
 
@@ -324,7 +326,7 @@ func (m *InteractiveMode) showError(msg string) {
 	if m.chatContainer == nil {
 		return
 	}
-	m.appendChatBlock(tui.NewPaddedText(tui.ActiveTheme().FgText("error", "Error: "+msg), m.outputPad, 0, nil))
+	m.appendChatBlock(themedNotice("error", "Error: "+msg, m.outputPad))
 	if m.tuiInst != nil {
 		m.tuiInst.RequestRender()
 	}
@@ -354,12 +356,11 @@ func (m *InteractiveMode) showManagedToolStatus(status tools.ToolStatus) {
 		m.chatContainer.Add(tui.NewSpacer(1))
 		m.managedToolStatusStarted = true
 	}
-	theme := tui.ActiveTheme()
-	message, color := status.Message, theme.Dim
+	message, token := status.Message, "dim"
 	if status.Type == "warning" {
-		message, color = "Warning: "+status.Message, theme.Warning
+		message, token = "Warning: "+status.Message, "warning"
 	}
-	m.chatContainer.Add(tui.NewPaddedText(themeFg(color, message), 1, 0, nil))
+	m.chatContainer.Add(themedNotice(token, message, 1))
 	m.lastStatusSpacer = nil
 	m.lastStatusText = nil
 	if m.tuiInst != nil {
@@ -371,13 +372,14 @@ func (m *InteractiveMode) showStatus(msg string) {
 	if m.chatContainer == nil {
 		return
 	}
-	status := tui.ActiveTheme().FgText("dim", msg)
 	secondLast, last := m.chatContainer.LastTwoChildren()
 	if last != nil && secondLast != nil && last == m.lastStatusText && secondLast == m.lastStatusSpacer {
-		m.lastStatusText.SetText(status)
+		m.lastStatusMessage = msg
+		m.lastStatusText.Invalidate()
 	} else {
 		spacer := tui.NewSpacer(1)
-		text := tui.NewPaddedText(status, 1, 0, nil)
+		m.lastStatusMessage = msg
+		text := tui.NewThemedText(func() string { return tui.ActiveTheme().FgText("dim", m.lastStatusMessage) }, 1, 0)
 		m.chatContainer.Add(spacer)
 		m.chatContainer.Add(text)
 		m.lastStatusSpacer = spacer
@@ -407,4 +409,9 @@ func (m *InteractiveMode) setWorkingVisible(visible bool) {
 	if m.tuiInst != nil {
 		m.tuiInst.Render()
 	}
+}
+
+// themedNotice is a chat notice whose color follows theme changes: ThemedText rebuilds it after the UI invalidates the chat (interactive-mode.ts ThemedText call sites).
+func themedNotice(token, message string, paddingX int) *tui.ThemedText {
+	return tui.NewThemedText(func() string { return tui.ActiveTheme().FgText(token, message) }, paddingX, 0)
 }

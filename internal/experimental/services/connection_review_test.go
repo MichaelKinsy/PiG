@@ -195,8 +195,10 @@ func TestServerAlwaysWrapsBindingAggregate(t *testing.T) {
 	}
 }
 
-// connection.ts publishes before registering transition work. A thrown listener leaves neither a transition nor a binding rebind for disposal to drain.
-func TestListenerPanicDoesNotOrphanTransition(t *testing.T) {
+// connection.ts publishes before registering transition work. At 0.99.1 a listener failure never reaches the publisher
+// (chord state.ts:90-98 reports it through reportErrorAsync), so publication registers the same transition work with or
+// without a failing listener, and disposal drains it.
+func TestListenerFailureDoesNotChangeTransitionWork(t *testing.T) {
 	for _, kind := range []string{"server", "session"} {
 		for _, reconnect := range []bool{false, true} {
 			name := kind + "/dispose"
@@ -204,64 +206,72 @@ func TestListenerPanicDoesNotOrphanTransition(t *testing.T) {
 				name = kind + "/reconnect"
 			}
 			t.Run(name, func(t *testing.T) {
-				client := &localClient{state: "connected"}
-				local := &localBinding{}
-				var dispose func(context.Context) error
-				var change, remove func()
-				var binding *RoutedServiceBinding
-				var err error
-				if kind == "server" {
-					source := CreateServerServiceSource(client, localOptions(local))
-					binding, err = source.Open(openOptions())
-					dispose = source.Dispose
-					change = func() { client.connect("disconnected", nil) }
-					remove = source.Connection.Subscribe(func(_ ServerConnectionState, _ context.Context, delivery ReplicatedStateDelivery) {
-						if delivery.Kind == "update" {
+				run := func(fail bool) (history []bool, reports []error) {
+					client := &localClient{state: "connected"}
+					local := &localBinding{}
+					var dispose func(context.Context) error
+					var change, remove func()
+					var binding *RoutedServiceBinding
+					var err error
+					listener := func(delivery ReplicatedStateDelivery) {
+						if fail && delivery.Kind == "update" {
 							panic("listener failed")
 						}
-					})
-				} else {
-					source := CreateSessionServiceSource(client, localOptions(local))
-					binding, err = source.Open(openOptions())
-					dispose = source.Dispose
-					change = func() { client.attach(&SessionTarget{ServerID: "server", SessionID: "session", AttachmentID: "a"}) }
-					remove = source.Attachment.Subscribe(func(_ SessionAttachmentState, _ context.Context, delivery ReplicatedStateDelivery) {
-						if delivery.Kind == "update" {
-							panic("listener failed")
-						}
-					})
-				}
-				if err != nil {
-					t.Fatal(err)
-				}
-				if err := binding.Ready(t.Context()); err != nil {
-					t.Fatal(err)
-				}
-				if got := capturePanic(change); got != "listener failed" {
-					t.Fatalf("publication panic = %v", got)
-				}
-				remove()
-				want := []bool{kind == "server"}
-				if reconnect {
-					if kind == "server" {
-						client.connect("connected", nil)
-					} else {
-						client.attach(nil)
 					}
-					want = append(want, kind == "server")
-				}
-				done := make(chan error, 1)
-				go func() { done <- dispose(t.Context()) }()
-				select {
-				case err := <-done:
+					report := func(err error) { reports = append(reports, err) }
+					if kind == "server" {
+						source := CreateServerServiceSource(client, localOptions(local))
+						source.Connection.reportError = report
+						binding, err = source.Open(openOptions())
+						dispose = source.Dispose
+						change = func() { client.connect("disconnected", nil) }
+						remove = source.Connection.Subscribe(func(_ ServerConnectionState, _ context.Context, delivery ReplicatedStateDelivery) { listener(delivery) })
+					} else {
+						source := CreateSessionServiceSource(client, localOptions(local))
+						source.Attachment.reportError = report
+						binding, err = source.Open(openOptions())
+						dispose = source.Dispose
+						change = func() { client.attach(&SessionTarget{ServerID: "server", SessionID: "session", AttachmentID: "a"}) }
+						remove = source.Attachment.Subscribe(func(_ SessionAttachmentState, _ context.Context, delivery ReplicatedStateDelivery) {
+							listener(delivery)
+						})
+					}
 					if err != nil {
 						t.Fatal(err)
 					}
-				case <-time.After(5 * time.Second):
-					t.Fatal("listener panic orphaned transition work; disposal did not finish")
+					if err := binding.Ready(t.Context()); err != nil {
+						t.Fatal(err)
+					}
+					if got := capturePanic(change); got != nil {
+						t.Fatalf("publication threw %v", got)
+					}
+					remove()
+					if reconnect {
+						if kind == "server" {
+							client.connect("connected", nil)
+						} else {
+							client.attach(nil)
+						}
+					}
+					done := make(chan error, 1)
+					go func() { done <- dispose(t.Context()) }()
+					select {
+					case err := <-done:
+						if err != nil {
+							t.Fatal(err)
+						}
+					case <-time.After(5 * time.Second):
+						t.Fatal("disposal did not finish")
+					}
+					return local.history(), reports
 				}
-				if got := local.history(); !reflect.DeepEqual(got, want) {
-					t.Fatalf("failed publication started binding work: %v; want %v", got, want)
+				want, none := run(false)
+				got, reports := run(true)
+				if len(none) != 0 || len(reports) != 1 || fmt.Sprint(reports[0]) != "listener failed" {
+					t.Fatalf("reports without failure = %v, with failure = %v", none, reports)
+				}
+				if !reflect.DeepEqual(got, want) {
+					t.Fatalf("listener failure changed binding work: %v; want %v", got, want)
 				}
 			})
 		}

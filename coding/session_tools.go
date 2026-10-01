@@ -3,6 +3,7 @@ package coding
 // Ports packages/coding-agent/src/core/agent-session.ts.
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -21,28 +22,23 @@ func (s *Session) ActiveToolNames() []string {
 	return names
 }
 
-// SetActiveToolsByName activates registered tools in the requested order and ignores unknown names. The next provider request declares the loadout and rebuilt structured tool prompt. Opaque caller prompts and forced run prompts remain unchanged.
+// SetActiveToolsByName activates registered tools in the requested order and ignores unknown and hidden names. The next provider request declares the loadout and rebuilt structured tool prompt. Opaque caller prompts and forced run prompts remain unchanged.
 // Mirrors upstream AgentSession.setActiveToolsByName.
 func (s *Session) SetActiveToolsByName(names []string) {
+	s.loadout.applyMu.Lock()
+	defer s.loadout.applyMu.Unlock()
 	s.toolRegistryMu.Lock()
 	defer s.toolRegistryMu.Unlock()
 	s.setActiveToolsByName(names)
 }
 
 func (s *Session) setActiveToolsByName(names []string) {
-	var active []agent.AgentTool
-	valid := []string{}
-	registry := make(map[string]agent.AgentTool, len(s.tools))
-	for _, tool := range s.tools {
-		registry[tool.Name()] = tool
+	declared := s.applyToolLoadout(names)
+	valid := make([]string, len(declared))
+	for i, tool := range declared {
+		valid[i] = tool.Name()
 	}
-	for _, name := range names {
-		if tool := registry[name]; tool != nil {
-			active = append(active, s.bindTool(tool))
-			valid = append(valid, name)
-		}
-	}
-	s.agent.SetTools(active)
+	s.agent.SetTools(declared)
 	s.rebuildSystemPrompt(valid)
 }
 
@@ -71,15 +67,21 @@ func (s *Session) rebuildSystemPrompt(toolNames []string) {
 	s.baseSystemPrompt.Store(new(ai.GetCurrentSystemPrompt([]ai.Message{ai.SystemMessage{Sections: s.baseSystemSections}})))
 }
 
-// toolPromptMetadata returns the registry's normalized prompt snippets and guidelines, keeping only tools that have one (agent-session.ts:3178-3192).
+// toolPromptMetadata returns the registry's normalized prompt snippets and guidelines, keeping only tools that have one (agent-session.ts:3178-3192). Tools whose declarations the loadout hides are not listed: they are only callable through another tool, and the list must match the declarations the request carries (agent-session.ts:1634-1638, 1671-1677).
 func (s *Session) toolPromptMetadata() (map[string]string, map[string][]string) {
 	hints := make(map[string]string)
 	guidelines := make(map[string][]string)
+	var hidden map[string]struct{}
+	if hiddenSet := s.loadout.hidden.Load(); hiddenSet != nil {
+		hidden = *hiddenSet
+	}
 	for _, entry := range s.toolRegistry.entries {
 		definition := entry.registration.Definition
 		name := definition.Name
 		if snippet := strings.Join(strings.FieldsFunc(definition.PromptSnippet, widthx.IsJSSpace), " "); snippet != "" {
-			hints[name] = snippet
+			if _, isHidden := hidden[name]; !isHidden {
+				hints[name] = snippet
+			}
 		}
 		var unique []string
 		seen := make(map[string]struct{})
@@ -151,4 +153,40 @@ func (s *Session) restoreToolsFromTranscript() {
 		names[i] = tool.Name
 	}
 	s.SetActiveToolsByName(names)
+}
+
+// DiscardAddedDefaultTools drops the tools ReloadSettings staged for the next RefreshTools. A reload that stops before it rebuilds the runtime calls it, because upstream's list is local to one reload() call and a later registry refresh must not activate it (agent-session.ts:3592-3609).
+func (s *Session) DiscardAddedDefaultTools() {
+	s.toolRegistryMu.Lock()
+	s.toolRegistry.addedDefaultTools = nil
+	s.toolRegistryMu.Unlock()
+}
+
+// ReloadSettings reloads the settings files. When the initial tools came from the `defaultTools` setting, the next RefreshTools activates the tools the reload newly added to it, replacing the list an earlier reload staged (each reload() call computes its own, agent-session.ts:3598-3601); removed tools stay active and tools disabled during the session stay disabled unless the setting newly adds them.
+// upstream: agent-session.ts:3592-3609
+func (s *Session) ReloadSettings() {
+	settings := s.services.SettingsManager()
+	s.toolRegistryMu.Lock()
+	usesDefaultTools := s.toolRegistry.usesDefaultTools
+	s.toolRegistryMu.Unlock()
+	var previous []string
+	if usesDefaultTools {
+		previous = settings.ResolvedDefaultTools()
+	}
+	settings.Reload()
+	// upstream: agent-session.ts:3596 syncQueueModesFromSettings
+	s.agent.SetSteeringMode(agent.QueueMode(settings.GetSteeringMode()))
+	s.agent.SetFollowUpMode(agent.QueueMode(settings.GetFollowUpMode()))
+	if !usesDefaultTools {
+		return
+	}
+	var added []string
+	for _, name := range settings.ResolvedDefaultTools() {
+		if !slices.Contains(previous, name) {
+			added = append(added, name)
+		}
+	}
+	s.toolRegistryMu.Lock()
+	s.toolRegistry.addedDefaultTools = added
+	s.toolRegistryMu.Unlock()
 }

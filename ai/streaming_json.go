@@ -2,6 +2,8 @@ package ai
 
 import (
 	"encoding/json"
+	"maps"
+	"strconv"
 	"strings"
 )
 
@@ -16,42 +18,54 @@ func ParseStreamingJson(input string) JsonObject {
 // streamed tool arguments: strict and repaired JSON first, partial parsing second,
 // and an empty object when neither can produce an object.
 func parseStreamingJsonObject(input string) JsonObject {
+	arguments, _ := parseStreamingJsonArguments(input)
+	return arguments
+}
+
+// parseStreamingJsonArguments is parseStreamingJsonObject with the member order of the parsed text. The order is nil when every object of the result is in sorted order.
+func parseStreamingJsonArguments(input string) (JsonObject, schemaObjectOrder) {
 	if strings.TrimSpace(input) == "" {
-		return JsonObject{}
+		return JsonObject{}, nil
 	}
 	candidates := []string{input, repairJSON(input)}
 	for _, candidate := range candidates {
 		var strict JsonObject
 		if json.Unmarshal([]byte(candidate), &strict) == nil && strict != nil {
-			return strict
+			order, err := readSchemaObjectOrder([]byte(candidate))
+			if err != nil {
+				order = nil
+			}
+			return strict, order
 		}
 	}
 	for _, candidate := range candidates {
 		parser := partialJSONParser{input: candidate}
-		if value, ok := parser.parseValue(); ok {
-			if object, ok := value.(JsonObject); ok && object != nil {
-				return object
+		if value, ok := parser.parseValue(""); ok {
+			if object, ok := value.(map[string]any); ok && object != nil {
+				return JsonObject(object), parser.order
 			}
 		}
 	}
-	return JsonObject{}
+	return JsonObject{}, nil
 }
 
 type partialJSONParser struct {
 	input string
 	index int
+	order schemaObjectOrder
 }
 
-func (parser *partialJSONParser) parseValue() (any, bool) {
+// parseValue parses the value at the JSON pointer path, which keys the member order the parser records. Only a container reads path.
+func (parser *partialJSONParser) parseValue(path string) (any, bool) {
 	parser.skipSpace()
 	if parser.index >= len(parser.input) {
 		return nil, false
 	}
 	switch parser.input[parser.index] {
 	case '{':
-		return parser.parseObject()
+		return parser.parseObject(path)
 	case '[':
-		return parser.parseArray()
+		return parser.parseArray(path)
 	case '"':
 		return parser.parseString()
 	case 't':
@@ -65,9 +79,27 @@ func (parser *partialJSONParser) parseValue() (any, bool) {
 	}
 }
 
-func (parser *partialJSONParser) parseObject() (any, bool) {
+// childPath is the path of the member the parser is about to read, or "" when that member is not a container and never reads it.
+func (parser *partialJSONParser) childPath(parent, segment string) string {
+	parser.skipSpace()
+	if parser.index < len(parser.input) && (parser.input[parser.index] == '{' || parser.input[parser.index] == '[') {
+		return schemaPath(parent, segment)
+	}
+	return ""
+}
+
+func (parser *partialJSONParser) parseObject(path string) (any, bool) {
 	parser.index++
-	object := JsonObject{}
+	object := map[string]any{}
+	var keys []string
+	defer func() {
+		if enumerated := unsortedKeyOrder(keys); enumerated != nil {
+			if parser.order == nil {
+				parser.order = schemaObjectOrder{}
+			}
+			parser.order[path] = enumerated
+		}
+	}()
 	for {
 		parser.skipSpace()
 		if parser.index >= len(parser.input) {
@@ -86,11 +118,23 @@ func (parser *partialJSONParser) parseObject() (any, bool) {
 			return object, true
 		}
 		parser.index++
-		value, ok := parser.parseValue()
+		name := key.(string)
+		_, repeated := object[name]
+		var replaced schemaObjectOrder
+		if repeated && parser.order != nil {
+			// partial-json assigns obj[key] = value: the first position stays and the new value's member order replaces the old one's.
+			replaced = parser.order.dropSubtree(schemaPath(path, name))
+		}
+		value, ok := parser.parseValue(parser.childPath(path, name))
 		if !ok {
+			// No value was read, so the earlier value and its order stay.
+			maps.Copy(parser.order, replaced)
 			return object, true
 		}
-		object[key.(string)] = value
+		if !repeated {
+			keys = append(keys, name)
+		}
+		object[name] = value
 		parser.skipSpace()
 		if parser.index >= len(parser.input) {
 			return object, true
@@ -107,7 +151,7 @@ func (parser *partialJSONParser) parseObject() (any, bool) {
 	}
 }
 
-func (parser *partialJSONParser) parseArray() (any, bool) {
+func (parser *partialJSONParser) parseArray(path string) (any, bool) {
 	parser.index++
 	values := []any{}
 	for {
@@ -119,7 +163,7 @@ func (parser *partialJSONParser) parseArray() (any, bool) {
 			parser.index++
 			return values, true
 		}
-		value, ok := parser.parseValue()
+		value, ok := parser.parseValue(parser.childPath(path, strconv.Itoa(len(values))))
 		if !ok {
 			return values, true
 		}

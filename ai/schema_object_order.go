@@ -21,8 +21,9 @@ func readSchemaObjectOrder(data []byte) (schemaObjectOrder, error) {
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.UseNumber()
 	order := make(schemaObjectOrder)
-	var read func(string) error
-	read = func(path string) error {
+	// read decodes the value at segment below parent (the root has no segment). Only a container needs its path, so a scalar allocates none.
+	var read func(parent, segment string, nested bool) error
+	read = func(parent, segment string, nested bool) error {
 		token, err := decoder.Token()
 		if err != nil {
 			return err
@@ -31,10 +32,14 @@ func readSchemaObjectOrder(data []byte) (schemaObjectOrder, error) {
 		if !ok {
 			return nil
 		}
+		path := parent
+		if nested {
+			path = schemaPath(parent, segment)
+		}
 		switch delimiter {
 		case '{':
 			var keys []string
-			seen := make(map[string]bool)
+			var seen map[string]bool // built only for an object with many keys; a few keys are searched in keys
 			for decoder.More() {
 				name, err := decoder.Token()
 				if err != nil {
@@ -44,24 +49,38 @@ func readSchemaObjectOrder(data []byte) (schemaObjectOrder, error) {
 				if !ok {
 					return fmt.Errorf("schema object key is not a string")
 				}
-				if !seen[key] {
+				repeated := false
+				if seen != nil {
+					if repeated = seen[key]; !repeated {
+						keys = append(keys, key)
+						seen[key] = true
+					}
+				} else if repeated = slices.Contains(keys, key); !repeated {
 					keys = append(keys, key)
-					seen[key] = true
+					if len(keys) > 16 {
+						seen = make(map[string]bool, len(keys))
+						for _, existing := range keys {
+							seen[existing] = true
+						}
+					}
 				}
-				if err = read(schemaPath(path, key)); err != nil {
+				if repeated {
+					// JSON.parse keeps a repeated key's first position but its last value, whose own member order replaces the earlier value's.
+					order.dropSubtree(schemaPath(path, key))
+				}
+				if err = read(path, key, true); err != nil {
 					return err
 				}
 			}
-			keys = javascriptObjectKeyOrder(keys)
-			canonical := slices.Clone(keys)
-			slices.Sort(canonical)
-			canonical = javascriptObjectKeyOrder(canonical)
-			if !slices.Equal(keys, canonical) {
-				order[path] = keys
+			// JSON.parse keeps a duplicate key's first position but its last value, so a later object whose order needs no record clears an earlier one.
+			if enumerated := unsortedKeyOrder(keys); enumerated != nil {
+				order[path] = enumerated
+			} else {
+				delete(order, path)
 			}
 		case '[':
 			for i := 0; decoder.More(); i++ {
-				if err = read(schemaPath(path, strconv.Itoa(i))); err != nil {
+				if err = read(path, strconv.Itoa(i), true); err != nil {
 					return err
 				}
 			}
@@ -71,7 +90,7 @@ func readSchemaObjectOrder(data []byte) (schemaObjectOrder, error) {
 		_, err = decoder.Token()
 		return err
 	}
-	if err := read(""); err != nil {
+	if err := read("", "", false); err != nil {
 		return nil, err
 	}
 	if len(order) == 0 {
@@ -80,7 +99,51 @@ func readSchemaObjectOrder(data []byte) (schemaObjectOrder, error) {
 	return order, nil
 }
 
+// unsortedKeyOrder returns the enumeration order of an object's distinct keys when it differs from the byte-sorted order encoding/json writes for an unrecorded object, and nil otherwise. Integer-like keys enumerate first and ascending, so an object with one is recorded unless that order is also byte-sorted.
+func unsortedKeyOrder(keys []string) []string {
+	keys = javascriptObjectKeyOrder(keys)
+	if slices.IsSorted(keys) {
+		return nil
+	}
+	return keys
+}
+
+// dropSubtree removes the order recorded at path and below it, and returns what it removed.
+func (order schemaObjectOrder) dropSubtree(path string) schemaObjectOrder {
+	var removed schemaObjectOrder
+	for recorded, keys := range order {
+		if recorded == path || strings.HasPrefix(recorded, path+"/") {
+			if removed == nil {
+				removed = schemaObjectOrder{}
+			}
+			removed[recorded] = keys
+			delete(order, recorded)
+		}
+	}
+	return removed
+}
+
+// mayBeArrayIndex reports whether key can be an array index: ASCII digits only. It keeps ParseUint, which allocates an error for every other key, off the common path.
+func mayBeArrayIndex(key string) bool {
+	if key == "" || len(key) > 10 {
+		return false
+	}
+	for i := 0; i < len(key); i++ {
+		if key[i] < '0' || key[i] > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func hasArrayIndexKey(keys []string) bool {
+	return slices.ContainsFunc(keys, mayBeArrayIndex)
+}
+
 func javascriptObjectKeyOrder(keys []string) []string {
+	if !hasArrayIndexKey(keys) {
+		return keys
+	}
 	type indexKey struct {
 		key   string
 		index uint64
@@ -88,12 +151,13 @@ func javascriptObjectKeyOrder(keys []string) []string {
 	var indices []indexKey
 	var names []string
 	for _, key := range keys {
-		index, err := strconv.ParseUint(key, 10, 32)
-		if err == nil && index < 1<<32-1 && strconv.FormatUint(index, 10) == key {
-			indices = append(indices, indexKey{key, index})
-		} else {
-			names = append(names, key)
+		if mayBeArrayIndex(key) {
+			if index, err := strconv.ParseUint(key, 10, 32); err == nil && index < 1<<32-1 && strconv.FormatUint(index, 10) == key {
+				indices = append(indices, indexKey{key, index})
+				continue
+			}
 		}
+		names = append(names, key)
 	}
 	slices.SortFunc(indices, func(a, b indexKey) int { return cmp.Compare(a.index, b.index) })
 	result := make([]string, 0, len(keys))
@@ -135,8 +199,7 @@ func marshalSchemaWithOrder(value any, order schemaObjectOrder, path string) ([]
 			if i > 0 {
 				out.WriteByte(',')
 			}
-			name, _ := json.Marshal(key)
-			out.Write(name)
+			out.WriteString(jsonStringJS(key))
 			out.WriteByte(':')
 			encoded, err := marshalSchemaWithOrder(value[key], order, schemaPath(path, key))
 			if err != nil {
@@ -165,7 +228,7 @@ func marshalSchemaWithOrder(value any, order schemaObjectOrder, path string) ([]
 		out.WriteByte(']')
 		return out.Bytes(), nil
 	default:
-		return json.Marshal(value)
+		return marshalJSONUnescaped(value)
 	}
 }
 

@@ -1,0 +1,83 @@
+# red run: Go SDK pi.events bridge (15904a765 + working tree, go1.27.1, linux/amd64)
+
+## go test ./extensions/sdk -run TestEventBus
+--- FAIL: TestEventBusFactoryListenerIsRegisteredBeforeRegister (0.00s)
+    event_bus_test.go:79: not implemented
+--- FAIL: TestEventBusDispatchRunsHandlerThenAnswers (0.00s)
+    event_bus_test.go:95: not implemented
+--- FAIL: TestEventBusHandlerErrorAndPanicFailOnlyTheirDispatch (5.01s)
+    event_bus_test.go:130: read header: read unix /tmp/pt/pig-sdk-test/test.sock->@: i/o timeout
+--- FAIL: TestEventBusEmitCarriesPayloadAndParent (5.00s)
+    event_bus_test.go:172: read header: read unix /tmp/pt/pig-sdk-test/test.sock->@: i/o timeout
+--- FAIL: TestEventBusUnsubscribeSendsOneOff (5.00s)
+    event_bus_test.go:203: read header: read unix /tmp/pt/pig-sdk-test/test.sock->@: i/o timeout
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/extensions/sdk	15.028s
+FAIL
+
+## go test ./test/extension-conformance -run TestNativeEventBus (node control subtests pass; go subtests fail on the not-implemented stub)
+--- FAIL: TestNativeEventBusNodeEmitterReachesListenerAndItsEcho
+    --- PASS: TestNativeEventBusNodeEmitterReachesListenerAndItsEcho/node/isolated
+    --- PASS: TestNativeEventBusNodeEmitterReachesListenerAndItsEcho/node/shared-ok
+    --- FAIL: TestNativeEventBusNodeEmitterReachesListenerAndItsEcho/go/isolated
+    --- FAIL: TestNativeEventBusNodeEmitterReachesListenerAndItsEcho/go/shared-ok
+--- FAIL: TestNativeEventBusNodePayloadIsTheEmittersJSONView
+    --- PASS: TestNativeEventBusNodePayloadIsTheEmittersJSONView/node/isolated
+    --- PASS: TestNativeEventBusNodePayloadIsTheEmittersJSONView/node/shared-ok
+    --- FAIL: TestNativeEventBusNodePayloadIsTheEmittersJSONView/go/isolated
+    --- FAIL: TestNativeEventBusNodePayloadIsTheEmittersJSONView/go/shared-ok
+--- FAIL: TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener
+    --- FAIL: TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener/go/isolated
+        --- FAIL: TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener/go/isolated/bigint
+        --- FAIL: TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener/go/isolated/cycle
+    --- FAIL: TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener/go/shared-ok
+        --- FAIL: TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener/go/shared-ok/bigint
+        --- FAIL: TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener/go/shared-ok/cycle
+--- FAIL: TestNativeEventBusNativeEmitterReachesNodeAndOtherCellListeners
+    --- FAIL: TestNativeEventBusNativeEmitterReachesNodeAndOtherCellListeners/go/isolated
+    --- FAIL: TestNativeEventBusNativeEmitterReachesNodeAndOtherCellListeners/go/shared-ok
+--- FAIL: TestNativeEventBusRegistrationOrderAcrossRealms
+    --- PASS: TestNativeEventBusRegistrationOrderAcrossRealms/node/isolated
+    --- PASS: TestNativeEventBusRegistrationOrderAcrossRealms/node/shared-ok
+    --- FAIL: TestNativeEventBusRegistrationOrderAcrossRealms/go/isolated
+    --- FAIL: TestNativeEventBusRegistrationOrderAcrossRealms/go/shared-ok
+--- FAIL: TestNativeEventBusReentrantEmitFromHandler
+    --- PASS: TestNativeEventBusReentrantEmitFromHandler/node/isolated
+    --- PASS: TestNativeEventBusReentrantEmitFromHandler/node/shared-ok
+    --- FAIL: TestNativeEventBusReentrantEmitFromHandler/go/isolated
+    --- FAIL: TestNativeEventBusReentrantEmitFromHandler/go/shared-ok
+--- FAIL: TestNativeEventBusCrossingEmittersDoNotDeadlock
+    --- FAIL: TestNativeEventBusCrossingEmittersDoNotDeadlock/go/isolated
+    --- FAIL: TestNativeEventBusCrossingEmittersDoNotDeadlock/go/shared-ok
+--- FAIL: TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners
+    --- PASS: TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners/node/isolated
+        --- PASS: TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners/node/isolated/emitter-node
+    --- PASS: TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners/node/shared-ok
+        --- PASS: TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners/node/shared-ok/emitter-node
+    --- FAIL: TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners/go/isolated
+        --- FAIL: TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners/go/isolated/emitter-node
+        --- FAIL: TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners/go/isolated/emitter-go
+    --- FAIL: TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners/go/shared-ok
+        --- FAIL: TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners/go/shared-ok/emitter-node
+        --- FAIL: TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners/go/shared-ok/emitter-go
+--- FAIL: TestNativeEventBusUnsubscribeDuringDispatchKeepsTheSnapshot
+    --- PASS: TestNativeEventBusUnsubscribeDuringDispatchKeepsTheSnapshot/node/isolated
+    --- PASS: TestNativeEventBusUnsubscribeDuringDispatchKeepsTheSnapshot/node/shared-ok
+    --- FAIL: TestNativeEventBusUnsubscribeDuringDispatchKeepsTheSnapshot/go/isolated
+    --- FAIL: TestNativeEventBusUnsubscribeDuringDispatchKeepsTheSnapshot/go/shared-ok
+--- FAIL: TestNativeEventBusRuntimeCrashMidDispatchReleasesTheEmitter
+    --- PASS: TestNativeEventBusRuntimeCrashMidDispatchReleasesTheEmitter/node
+    --- FAIL: TestNativeEventBusRuntimeCrashMidDispatchReleasesTheEmitter/go
+--- FAIL: TestNativeEventBusFailedFactorySubscriptionsAreDropped
+    --- PASS: TestNativeEventBusFailedFactorySubscriptionsAreDropped/node/isolated
+    --- PASS: TestNativeEventBusFailedFactorySubscriptionsAreDropped/node/shared-ok
+    --- FAIL: TestNativeEventBusFailedFactorySubscriptionsAreDropped/go/isolated
+    --- FAIL: TestNativeEventBusFailedFactorySubscriptionsAreDropped/go/shared-ok
+--- FAIL: TestNativeEventBusUnhandledErrorChannel
+    --- PASS: TestNativeEventBusUnhandledErrorChannel/node/isolated
+    --- PASS: TestNativeEventBusUnhandledErrorChannel/node/shared-ok
+    --- FAIL: TestNativeEventBusUnhandledErrorChannel/go/isolated
+    --- FAIL: TestNativeEventBusUnhandledErrorChannel/go/shared-ok
+--- FAIL: TestNativeEventBusFactoryTimeListenerIsLiveAtReady
+    --- FAIL: TestNativeEventBusFactoryTimeListenerIsLiveAtReady/go/isolated
+    --- FAIL: TestNativeEventBusFactoryTimeListenerIsLiveAtReady/go/shared-ok

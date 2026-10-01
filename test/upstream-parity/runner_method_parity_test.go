@@ -71,6 +71,8 @@ var upstreamRunnerMethods = []string{
 	"shutdown",           // runner.ts:558
 	// Added upstream since the list was last reconciled at 0.69.0.
 	"onError",                   // runner.ts:558
+	"reportUnhandledMcpServers", // runner.ts:751 (0.99.2)
+	"createToolContext",         // runner.ts:952 (0.99.2)
 	"getMarkdownTransformers",   // runner.ts:725
 	"getModelRegistry",          // runner.ts:639
 	"getActiveTools",            // runner.ts:664
@@ -138,6 +140,8 @@ var pigOnlyRunnerMethods = map[string]string{
 	"BindSystemPromptOptions": "Go binding mechanic for agent-session.ts:_bindExtensionCore; Session.bindExtensionCommandActions installs the live options getter without replacing a mode-owned source; TestSessionModelExtensionHooksUpstream guards source identity and command reachability",
 	"BindTools":               "SDK-surface: Session tool and prompt callbacks from upstream _bindExtensionCore, bound without replacing mode-owned actions",
 	"BindAbort":               "private host injection: Session.bindExtensionCommandActions installs its cancellation owner without replacing mode context actions; upstream agent-session.ts:3095-3107 binds this closure through _bindExtensionCore. Cross-package Go visibility, not an author-facing extension API. Production reachability and replacement/clone ownership are guarded by TestSessionParallelPreflightAbortPreventsPreparedEffects and TestBindAbortPreservesOtherContextActions",
+	"BindSessionManager":      "private host injection (D61): upstream's runner takes its sessionManager once, at construction (runner.ts:394-408), and a replaced AgentSession builds a new runner (agent-session-runtime.ts). Go's Session.ReplaceInner keeps the runner and rebinds the log contexts expose; coding.Session.ReplaceInner is the one production caller. Cross-package Go visibility, not an author-facing extension API",
+	"Runtime":                 "SDK-surface: read-only accessor for the ExtensionRuntime the runner was constructed with (upstream's runner keeps it in the private runtime field, runner.ts:358). /reload hands the subprocess host's registrations (MCP servers, providers, virtual models) to the replacement runner (internal/codingagent/reload_resources.go replaceExtensionRunner), because the host process outlives the runner",
 	"IsStale":                 "SDK-surface: read-only staleness accessor (test/lifecycle seam)",
 	"StaleMessage":            "SDK-surface: read-only staleness accessor (test/lifecycle seam)",
 	"ActiveCommands":          "private host lifecycle (D70): read-only count of running command handlers; cmd/pig cliRetirement.retire consults it to stop a replaced Session's extension host at once when no handler runs. Pi keeps every extension in its one Node process across a replacement (agent-session-runtime.ts teardownCurrent), so it has no retirement to gate. Guarded by TestInteractiveExtensionNewSessionKeepsTheCallerAliveUntilItReturns",

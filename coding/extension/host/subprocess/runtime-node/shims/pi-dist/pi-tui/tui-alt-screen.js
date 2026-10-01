@@ -8,6 +8,7 @@ import { getLayoutNode } from "./layout-node.js";
 import { deleteAllKittyImages, deleteAllKittyPlacements, deleteKittyImage, getCapabilities, getKittyImagePlacement, isImageLine, setCapabilities, } from "./terminal-image.js";
 import { Container, CURSOR_MARKER, compositeTuiLine, dispatchMouseEvent, retargetMouseEvent, TuiBase, VIEWPORT_TUI, } from "./tui.js";
 import { extractAnsiCode, getGraphemeCellRange, getOsc8LinkAtColumn, getWordSegmenter, sliceByColumn, stripTerminalSequences, truncateToWidth, visibleWidth, } from "./utils.js";
+import { WheelScrollAccelerator } from "./wheel-scroll.js";
 const ENTER_ALT_SCREEN = "\x1b[?1049h";
 const EXIT_ALT_SCREEN = "\x1b[?1049l";
 const DISABLE_AUTOWRAP = "\x1b[?7l";
@@ -69,7 +70,7 @@ export class TuiAltScreen extends TuiBase {
     mousePressPoint;
     mousePressMoved = false;
     lastComponentClick;
-    wheelScrollLines;
+    wheelScroll;
     mouseEnabled;
     searchMatchStyle;
     searchCurrentMatchStyle;
@@ -91,7 +92,7 @@ export class TuiAltScreen extends TuiBase {
         };
         this.implicitScrollView = new ScrollView(this.implicitDocument, { follow: "end", primary: true });
         this.flashes = new AltScreenFlashContainer(() => this.requestRender());
-        this.wheelScrollLines = Math.max(1, Math.floor(options.wheelScrollLines ?? 1));
+        this.wheelScroll = new WheelScrollAccelerator(options.wheelScrollLines ?? 1);
         this.mouseEnabled = options.mouse ?? true;
         this.searchMatchStyle = options.searchMatchStyle ?? ((text) => `\x1b[4m${text}\x1b[24m`);
         this.searchCurrentMatchStyle = options.searchCurrentMatchStyle ?? ((text) => `\x1b[1;7m${text}\x1b[22;27m`);
@@ -108,6 +109,9 @@ export class TuiAltScreen extends TuiBase {
     }
     get isFollowingOutput() {
         return this.getPrimaryScrollView().isFollowingEnd;
+    }
+    setWheelScrollLines(lines) {
+        this.wheelScroll.setLines(lines);
     }
     getCopyOnSelect() {
         return this.copyOnSelect;
@@ -488,9 +492,10 @@ export class TuiAltScreen extends TuiBase {
             return { consume: true };
         const wheelEvent = this.parseWheelEvent(data);
         if (wheelEvent) {
-            const event = this.createMouseEvent("wheel", wheelEvent.button, wheelEvent.x, wheelEvent.y, {
-                wheelDelta: wheelEvent.direction * this.getWheelScrollLines(wheelEvent.button),
-            });
+            const lines = this.wheelScroll.next(wheelEvent.direction, performance.now());
+            // SGR mouse button codes use bit 3 (value 8) for the Alt modifier.
+            const wheelDelta = wheelEvent.direction * ((wheelEvent.button & 8) !== 0 ? lines * ALT_WHEEL_SCROLL_MULTIPLIER : lines);
+            const event = this.createMouseEvent("wheel", wheelEvent.button, wheelEvent.x, wheelEvent.y, { wheelDelta });
             const overlay = this.dispatchMouseToOverlay(event);
             const result = overlay.result ?? (overlay.hit ? undefined : this.dispatchMouseToLayout(event));
             if (result) {
@@ -500,7 +505,7 @@ export class TuiAltScreen extends TuiBase {
             }
             if (this.shouldDeferViewportInputToOverlay())
                 return undefined;
-            this.routeWheel(wheelEvent);
+            this.routeWheel(wheelEvent, wheelDelta);
             return { consume: true };
         }
         const mouseEvent = this.parseSgrMouseEvent(data);
@@ -781,12 +786,8 @@ export class TuiAltScreen extends TuiBase {
         }
         return undefined;
     }
-    getWheelScrollLines(button) {
-        // SGR mouse button codes use bit 3 (value 8) for the Alt modifier.
-        return (button & 8) !== 0 ? this.wheelScrollLines * ALT_WHEEL_SCROLL_MULTIPLIER : this.wheelScrollLines;
-    }
-    routeWheel(event) {
-        let remaining = event.direction * this.getWheelScrollLines(event.button);
+    routeWheel(event, delta) {
+        let remaining = delta;
         const seen = new Set();
         for (const scrollView of this.currentLayout ? getScrollViewsAt(this.currentLayout, event.x, event.y) : []) {
             seen.add(scrollView);

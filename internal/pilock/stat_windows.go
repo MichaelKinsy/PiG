@@ -11,9 +11,13 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// lstatLock reads the lock path as Node's fs.stat does on Windows. A lock directory that another process is removing stays delete-pending until its RemoveDirectory handle closes; opening it then fails with ERROR_ACCESS_DENIED, so os.Lstat fails. libuv (src/win/fs.c fs__stat_impl_from_path, in the libuv 1.51.0 that Node 22.19.0, Pi's minimum engine, bundles) answers ERROR_ACCESS_DENIED and ERROR_SHARING_VIOLATION from the entry in the parent directory instead (fs__stat_directory), so proper-lockfile sees the holder's fresh directory and reports ELOCKED, which Pi retries.
-func lstatLock(path string) (fs.FileInfo, error) {
-	info, err := os.Lstat(path)
+// lstatLock reads the lock path itself and statLock follows a link, each with the fallback Node's fs.stat has on Windows. A lock directory that another process is removing stays delete-pending until its RemoveDirectory handle closes; opening it then fails with ERROR_ACCESS_DENIED, so os.Lstat and os.Stat fail. libuv (src/win/fs.c fs__stat_impl_from_path, in the libuv 1.51.0 that Node 22.19.0, Pi's minimum engine, bundles) answers ERROR_ACCESS_DENIED and ERROR_SHARING_VIOLATION from the entry in the parent directory instead (fs__stat_directory), so proper-lockfile sees the holder's fresh directory and reports ELOCKED, which Pi retries.
+func lstatLock(path string) (fs.FileInfo, error) { return statWithEntryFallback(path, os.Lstat) }
+
+func statLock(path string) (fs.FileInfo, error) { return statWithEntryFallback(path, os.Stat) }
+
+func statWithEntryFallback(path string, stat func(string) (fs.FileInfo, error)) (fs.FileInfo, error) {
+	info, err := stat(path)
 	if err == nil || (!errors.Is(err, windows.ERROR_ACCESS_DENIED) && !errors.Is(err, windows.ERROR_SHARING_VIOLATION)) {
 		return info, err
 	}
@@ -32,7 +36,7 @@ func lstatLock(path string) (fs.FileInfo, error) {
 		return nil, &fs.PathError{Op: "FindFirstFile", Path: path, Err: findErr}
 	}
 	_ = windows.FindClose(handle)
-	// fs.stat follows links, and fs__stat_directory cannot, so a reparse point keeps the original error.
+	// The entry is the path's own, not a link target's. fs.stat follows links and fs__stat_directory cannot, so a reparse point keeps the original error, including a link whose target is being removed.
 	if data.FileAttributes&windows.FILE_ATTRIBUTE_REPARSE_POINT != 0 {
 		return nil, err
 	}

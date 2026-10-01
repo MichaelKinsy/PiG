@@ -186,12 +186,12 @@ func (b *Builder) BuildContext(ctx context.Context, name, srcDir string) (*Build
 			out := filepath.Join(scratch, artifactName)
 			switch buildType {
 			case "go":
-				if err := buildGo(ctx, srcDir, out, stagedSDK); err != nil {
-					return "", fmt.Errorf("go build: %w", err)
+				if err := buildGo(ctx, filepath.Dir(b.cacheDir), srcDir, out, stagedSDK); err != nil {
+					return "", err
 				}
 			case "rust":
-				if err := buildRust(ctx, srcDir, out, stagedSDK); err != nil {
-					return "", fmt.Errorf("cargo build: %w", err)
+				if err := buildRust(ctx, filepath.Dir(b.cacheDir), srcDir, out, stagedSDK); err != nil {
+					return "", err
 				}
 			case "node":
 				if err := buildNode(ctx, b.cacheDir, srcDir, out); err != nil {
@@ -642,7 +642,7 @@ func ensureBuildToolchain(ctx context.Context, buildType string) error {
 // buildGo compiles a Go module to the given output path.
 // VCS stamping is disabled so an extension build depends only on its source and toolchain, not on the availability or health of repository metadata around the source.
 // Uses a temp file + rename to avoid partial binaries on failure.
-func buildGo(ctx context.Context, srcDir, outPath, stagedSDK string) error {
+func buildGo(ctx context.Context, cacheRoot, srcDir, outPath, stagedSDK string) error {
 	tmpPath := outPath + ".tmp"
 	args := []string{"build", "-buildvcs=false", "-trimpath", "-ldflags", "-s -w", "-o", tmpPath}
 	cleanup := func() {}
@@ -656,18 +656,25 @@ func buildGo(ctx context.Context, srcDir, outPath, stagedSDK string) error {
 	}
 	defer cleanup()
 	args = append(args, ".")
-	goCommand, err := toolchain.Go()
+	goToolchain, err := toolchain.ResolveGo()
 	if err != nil {
 		return err
 	}
+	if known, ok := runtimecell.KnownGoToolchainFailure(goToolchain); ok {
+		return known
+	}
 	buildprogress.Phase(ctx, "Compiling Go member", srcDir+" (module resolution, compile, link)")
-	cmd := exec.CommandContext(ctx, goCommand, buildprogress.ToolArgs(ctx, "go", args)...)
+	cmd := exec.CommandContext(ctx, goToolchain.Command, buildprogress.ToolArgs(ctx, "go", args)...)
 	cmd.Dir = srcDir
-	cmd.Env = append(goBuildEnvironment(srcDir, os.Environ()), "CGO_ENABLED=0", "GOWORK=off")
+	cmd.Env = append(goToolchain.Environ(goBuildEnvironment(srcDir, os.Environ())), "CGO_ENABLED=0", "GOWORK=off")
 	out, err := buildprogress.CombinedOutput(ctx, cmd)
 	if err != nil {
 		_ = os.Remove(tmpPath) // Clean up partial.
-		return fmt.Errorf("%w\n%s", err, out)
+		if ctx.Err() != nil {
+			return fmt.Errorf("go build: %w", err)
+		}
+		failure, _ := runtimecell.GoBuildFailure(cacheRoot, srcDir, srcDir, goToolchain, err, out, nil)
+		return failure
 	}
 	if err := rejectNonExecutableArtifact(tmpPath, srcDir); err != nil {
 		_ = os.Remove(tmpPath)
@@ -732,7 +739,7 @@ func rejectNonExecutableArtifact(path, srcDir string) error {
 
 // buildRust compiles a Rust crate and copies the binary to outPath.
 // Uses a temp file + rename to avoid partial binaries on failure.
-func buildRust(ctx context.Context, srcDir, outPath, stagedSDK string) error {
+func buildRust(ctx context.Context, cacheRoot, srcDir, outPath, stagedSDK string) error {
 	buildDir := srcDir
 	args := []string{}
 	if stagedSDK != "" {
@@ -762,7 +769,11 @@ func buildRust(ctx context.Context, srcDir, outPath, stagedSDK string) error {
 	cmd.Env = withoutGitEnvironmentOverrides(os.Environ())
 	out, err := buildprogress.CombinedOutput(ctx, cmd)
 	if err != nil {
-		return fmt.Errorf("%w\n%s", err, out)
+		if ctx.Err() != nil {
+			return fmt.Errorf("cargo build: %w", err)
+		}
+		failure, _ := runtimecell.RustBuildFailure(cacheRoot, srcDir, buildDir, err, out)
+		return failure
 	}
 
 	var manifest struct {

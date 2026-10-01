@@ -86,7 +86,7 @@ func (p *nativeProviderProxy) carrier() *extension.NativeProvider {
 	if p.declaration.BaseURL != nil {
 		baseURL = *p.declaration.BaseURL
 	}
-	return &extension.NativeProvider{
+	carrier := &extension.NativeProvider{
 		IsCurrent: func() bool {
 			p.host.mu.Lock()
 			defer p.host.mu.Unlock()
@@ -100,6 +100,8 @@ func (p *nativeProviderProxy) carrier() *extension.NativeProvider {
 		RefreshModels:            p.refreshModels,
 		Stream:                   p.stream,
 	}
+	p.operations(carrier)
+	return carrier
 }
 
 func (p *nativeProviderProxy) stream(ctx context.Context, model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions, simple bool) (*ai.AssistantMessageEventStream, error) {

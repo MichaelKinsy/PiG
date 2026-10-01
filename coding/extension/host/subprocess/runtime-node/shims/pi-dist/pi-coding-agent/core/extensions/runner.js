@@ -182,6 +182,10 @@ export class ExtensionRunner {
     compactFn = () => { };
     getSystemPromptFn = () => "";
     getSystemPromptOptionsFn = () => normalizeBuildSystemPromptOptions({ cwd: this.cwd });
+    executeToolFn;
+    getCallableToolsFn = () => [];
+    /** Registered MCP servers already reported as unhandled. */
+    reportedMcpServers = new Set();
     newSessionHandler = async () => ({ cancelled: false });
     forkHandler = async () => ({ cancelled: false });
     navigateTreeHandler = async () => ({ cancelled: false });
@@ -211,12 +215,14 @@ export class ExtensionRunner {
         this.runtime.setLabel = actions.setLabel;
         this.runtime.getActiveTools = actions.getActiveTools;
         this.runtime.getAllTools = actions.getAllTools;
+        this.runtime.getSettings = actions.getSettings;
         this.runtime.setActiveTools = actions.setActiveTools;
         this.runtime.refreshTools = actions.refreshTools;
         this.runtime.getCommands = actions.getCommands;
         this.runtime.setModel = actions.setModel;
         this.runtime.getThinkingLevel = actions.getThinkingLevel;
         this.runtime.setThinkingLevel = actions.setThinkingLevel;
+        this.runtime.createContext = () => this.createContext();
         // Context actions (required)
         this.getModel = contextActions.getModel;
         this.getScopedModels = contextActions.getScopedModels;
@@ -231,6 +237,14 @@ export class ExtensionRunner {
         this.getSystemPromptFn = contextActions.getSystemPrompt;
         this.getSystemPromptOptionsFn =
             contextActions.getSystemPromptOptions ?? (() => normalizeBuildSystemPromptOptions({ cwd: this.cwd }));
+        this.executeToolFn = contextActions.executeTool;
+        this.getCallableToolsFn = contextActions.getCallableTools ?? (() => []);
+        // Servers registered from now on reach the extension that connects them right away. Servers
+        // registered during loading are read on session_start.
+        this.runtime.mcpServers.setChangeListener(() => {
+            void this.emit({ type: "mcp_servers_change", servers: this.runtime.mcpServers.list() });
+            this.reportUnhandledMcpServers();
+        });
         // Flush provider registrations queued during extension loading
         for (const { name, config, extensionPath } of this.runtime.pendingProviderRegistrations) {
             try {
@@ -270,6 +284,26 @@ export class ExtensionRunner {
             }
         }
         this.runtime.pendingNativeProviderRegistrations = [];
+        const registerVirtualModel = (definition) => {
+            if (providerActions?.registerVirtualModel)
+                providerActions.registerVirtualModel(definition);
+            else
+                this.modelRegistry.registerVirtualModel(definition);
+        };
+        for (const { definition, extensionPath } of this.runtime.pendingVirtualModelRegistrations) {
+            try {
+                registerVirtualModel(definition);
+            }
+            catch (err) {
+                this.emitError({
+                    extensionPath,
+                    event: "register_virtual_model",
+                    error: err instanceof Error ? err.message : String(err),
+                    stack: err instanceof Error ? err.stack : undefined,
+                });
+            }
+        }
+        this.runtime.pendingVirtualModelRegistrations = [];
         // From this point on, provider registration/unregistration takes effect immediately
         // without requiring a /reload.
         this.runtime.registerProvider = (name, config) => {
@@ -292,6 +326,13 @@ export class ExtensionRunner {
                 return;
             }
             this.modelRegistry.unregisterProvider(name);
+        };
+        this.runtime.registerVirtualModel = registerVirtualModel;
+        this.runtime.unregisterVirtualModel = (provider, id) => {
+            if (providerActions?.unregisterVirtualModel)
+                providerActions.unregisterVirtualModel(provider, id);
+            else
+                this.modelRegistry.unregisterVirtualModel(provider, id);
         };
     }
     bindCommandContext(actions) {
@@ -456,6 +497,24 @@ export class ExtensionRunner {
     emitError(error) {
         for (const listener of this.errorListeners) {
             listener(error);
+        }
+    }
+    /**
+     * Report registered MCP servers when no extension handles `mcp_servers_change`, which means
+     * nothing connects them (for example when another MCP extension replaced the built-in one).
+     */
+    reportUnhandledMcpServers() {
+        if (this.hasHandlers("mcp_servers_change"))
+            return;
+        for (const server of this.runtime.mcpServers.list()) {
+            if (this.reportedMcpServers.has(server.name))
+                continue;
+            this.reportedMcpServers.add(server.name);
+            this.emitError({
+                extensionPath: server.extensionPath,
+                event: "register_mcp_server",
+                error: `MCP server "${server.name}" is registered, but no loaded extension connects MCP servers; another extension may have replaced the built-in MCP support`,
+            });
         }
     }
     hasHandlers(eventType) {
@@ -623,6 +682,38 @@ export class ExtensionRunner {
                 return runner.getSystemPromptFn();
             },
         };
+    }
+    /**
+     * Create the context for executing the tool call `toolCallId`: the extension context plus
+     * `tools` and `executeTool()`. `signal` is the default signal of nested calls.
+     */
+    createToolContext(toolCallId, signal) {
+        const runner = this;
+        // createContext() returns a fresh object, so adding properties does not affect other contexts.
+        return Object.defineProperties(this.createContext(), {
+            tools: {
+                get() {
+                    runner.assertActive();
+                    return runner.getCallableToolsFn();
+                },
+            },
+            executeTool: {
+                value: async (name, args, options = {}) => {
+                    runner.assertActive();
+                    if (!runner.executeToolFn) {
+                        return {
+                            toolCall: { type: "toolCall", id: `${toolCallId}/0`, name, arguments: {} },
+                            result: {
+                                content: [{ type: "text", text: "Nested tool calls are not available in this context" }],
+                                details: {},
+                            },
+                            isError: true,
+                        };
+                    }
+                    return runner.executeToolFn(toolCallId, name, args, { ...options, signal: options.signal ?? signal });
+                },
+            },
+        });
     }
     createCommandContext() {
         // Use property descriptors instead of object spread so the guarded getters from
@@ -812,10 +903,17 @@ export class ExtensionRunner {
                         continue;
                     if (handlerResult.content !== undefined) {
                         currentEvent.content = handlerResult.content;
+                        // Structured content that is not replaced along with the content may no longer match it.
+                        if (handlerResult.structuredContent === undefined)
+                            delete currentEvent.structuredContent;
                         modified = true;
                     }
                     if (handlerResult.details !== undefined) {
                         currentEvent.details = handlerResult.details;
+                        modified = true;
+                    }
+                    if (handlerResult.structuredContent !== undefined) {
+                        currentEvent.structuredContent = handlerResult.structuredContent;
                         modified = true;
                     }
                     if (handlerResult.isError !== undefined) {
@@ -845,6 +943,7 @@ export class ExtensionRunner {
         return {
             content: currentEvent.content,
             details: currentEvent.details,
+            structuredContent: currentEvent.structuredContent,
             isError: currentEvent.isError,
             usage: currentEvent.usage,
         };

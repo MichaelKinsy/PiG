@@ -98,7 +98,7 @@ func TestAssistantHeldSinkObservesShallowMessage(t *testing.T) {
 					OnMessagePersist: func(message AgentMessage) error { persisted = message.Assistant; return nil },
 				})
 				// Cancellation drains the provider terminal response just as Agent.abort does.
-				message, _, consumeErr := a.consumeStream(context.WithoutCancel(ctx), stream, nil)
+				message, _, consumeErr := a.consumeStream(context.WithoutCancel(ctx), stream, nil, "")
 				if consumeErr != nil {
 					t.Fatal(consumeErr)
 				}
@@ -246,7 +246,7 @@ func TestAssistantHeldToolUpdateObservesFinalization(t *testing.T) {
 					t.Errorf("held final arguments=%v", call.Arguments)
 				}
 			}})
-			if _, _, err := a.consumeStream(context.WithoutCancel(ctx), stream, nil); err != nil {
+			if _, _, err := a.consumeStream(context.WithoutCancel(ctx), stream, nil, ""); err != nil {
 				t.Fatal(err)
 			}
 			if !observed {

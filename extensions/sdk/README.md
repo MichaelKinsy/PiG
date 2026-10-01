@@ -4,7 +4,7 @@ The Go SDK bridges Pi's extension API through PiG's subprocess host (D19). Each 
 
 ## Breaking changes / migration to 0.3.0
 
-Pi 0.87.1 distinguishes unknown context usage from zero and an omitted boolean option from false. Go uses pointers for these values. Rust uses `Option`; Python uses `None`. The Go helpers below select an explicit caller fallback without changing the nullable fields or wire values.
+Pi 0.99.1 distinguishes unknown context usage from zero and an omitted boolean option from false. Go uses pointers for these values. Rust uses `Option`; Python uses `None`. The Go helpers below select an explicit caller fallback without changing the nullable fields or wire values.
 
 ### Context usage
 
@@ -61,3 +61,22 @@ Do not replace omitted options with `sdk.Bool(false)`. While a turn streams, an 
 ### Legacy Go module path
 
 Source imports of `github.com/mainstai/pig/extensions/sdk` remain supported for factories and exact standalones. PiG builds a private copy of its current SDK under that module path, including all subpackages and self-imports. It does not modify the extension's `go.mod` or source. Use `github.com/MichaelKinsy/PiG/extensions/sdk` for new extensions and for Go factories intended to fuse into a Piglet Binary.
+
+## Upstream 0.99.1 extension API
+
+The SDK carries the extension API additions of upstream 0.99.1. Every one is additive; no existing call changes.
+
+| upstream | Go |
+|---|---|
+| `registerMcpServer`, `unregisterMcpServer` | `Extension.RegisterMcpServer(name, McpServerConfig) error`, `UnregisterMcpServer`; the same on `Context` |
+| `getMcpServers` | `Context.GetMcpServers()`, read from state the host replicates |
+| `registerVirtualModel`, `unregisterVirtualModel` | `Extension.RegisterVirtualModel(VirtualModel) error`, `UnregisterVirtualModel`; the same on `Context`. `VirtualModel.Route` receives the extension `Context` |
+| `getSettings` | `Context.GetSettings()` |
+| tool `outputSchema`, `exposure`, `namespace`, `annotations`, `defaultActive`, `prepareLoadout` | the same fields on `ToolDefinition` |
+| result `structuredContent` | `ToolResult.StructuredContent` |
+| `ctx.tools`, `ctx.executeTool(name, args, options)` | `Context.Tools()`, `Context.ExecuteTool(name, args, *ExecuteToolOptions)`, valid inside a tool handler |
+| events `provider_stream_event`, `mcp_servers_change` | `Extension.OnProviderStreamEvent`, `Extension.OnMcpServersChange` |
+
+A registration made before `Run` is applied when the extension loads, and the host validates it: a rejected MCP server or virtual model fails the load with the host's message, as an upstream factory that throws does. A registration made after load returns the host's refusal as its error. `ExecuteTool` never fails for a tool failure: it returns an outcome with `IsError` set. `ExecuteToolOptions.OnUpdate` runs on its own goroutine, in order, and finishes before `ExecuteTool` returns.
+
+An extension cannot set upstream's `Extension.replaceable`: the CLI sets it on its built-in extensions.

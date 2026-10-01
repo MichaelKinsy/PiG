@@ -267,11 +267,11 @@ func CanonicalizePath(path string) string {
 	return canonical
 }
 
-// IsLocalPath reports whether value is a local path rather than a package source or remote URL. Bare names, relative paths, and file URLs are local.
-// Ports packages/coding-agent/src/utils/paths.ts:50-64.
+// IsLocalPath reports whether value is a local path rather than a package source, a built-in extension or a remote URL. Bare names, relative paths, and file URLs are local.
+// Ports .upstream/v0.99.1/packages/coding-agent/src/utils/paths.ts:45-64 (a `builtin:` value names a built-in extension).
 func IsLocalPath(value string) bool {
 	trimmed := jsTrim(value)
-	for _, prefix := range []string{"npm:", "git:", "github:", "http:", "https:", "ssh:"} {
+	for _, prefix := range []string{"npm:", "git:", "github:", "http:", "https:", "ssh:", BuiltinPathPrefix} {
 		if strings.HasPrefix(trimmed, prefix) {
 			return false
 		}

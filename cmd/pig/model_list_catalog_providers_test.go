@@ -24,6 +24,8 @@ func filterAllProviderEnv(t *testing.T) {
 		"AWS_BEARER_TOKEN_BEDROCK", "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI",
 		"AWS_CONTAINER_CREDENTIALS_FULL_URI", "AWS_WEB_IDENTITY_TOKEN_FILE",
 		"GOOGLE_APPLICATION_CREDENTIALS", "GOOGLE_CLOUD_PROJECT", "GCLOUD_PROJECT", "GOOGLE_CLOUD_LOCATION",
+		ai.AnthropicFederationRuleIDEnv, ai.AnthropicOrganizationIDEnv, ai.AnthropicIdentityTokenFileEnv,
+		ai.AnthropicServiceAccountIDEnv, ai.AnthropicWorkspaceIDEnv,
 	} {
 		t.Setenv(key, "")
 	}

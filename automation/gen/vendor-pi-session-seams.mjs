@@ -25,6 +25,9 @@ import { CONFIG_DIR_NAME, getAgentDir } from "../../pig-config.mjs";
 export { getAgentDir };`);
 // The private copy mirrors dist directly under its package root.
 replace('const srcOrDist = existsSync(join(packageDir, "src")) ? "src" : "dist";', 'const srcOrDist = ".";');
+// Codemode assets: the private quickjs-wasi copy is not under a node_modules directory, so the wasm resolves beside it; isBundledNode names the worker entry that the closure copies from dist/extensions/codemode/worker.js (Pi's Bun layout, config.ts getCodemodeWorkerUrl).
+replace('return embeddedQuickJSWasmPath ?? createRequire(import.meta.url).resolve("quickjs-wasi/quickjs.wasm");', 'return embeddedQuickJSWasmPath ?? fileURLToPath(new URL("../../quickjs-wasi/quickjs.wasm", import.meta.url));');
+replace('return new URL("./codemode-worker.js", moduleUrl);', 'return new URL("./extensions/codemode/worker.js", moduleUrl);');
 writeFileSync(configPath, config);
 mkdirSync(join(output, "dist"), { recursive: true });
 writeFileSync(join(output, "dist/index.js"), 'export * from "../../../pi-coding-agent.mjs";\n');

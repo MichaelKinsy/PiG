@@ -15,7 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding"
 )
 
-// TestEmptyMessagesUpstream ports the four helpers at .upstream/v0.87.1/packages/ai/test/empty.test.ts:19-144 for every case site in that file.
+// TestEmptyMessagesUpstream ports the four helpers at .upstream/v0.99.1/packages/ai/test/empty.test.ts:19-144 for every case site in that file.
 // The compiler-derived inventory supplies each exact case name and source line. Real provider conversion/error handling and faux success both run; remote model acceptance remains live-only because the upstream assertions allow either success or a provider error.
 func TestEmptyMessagesUpstream(t *testing.T) {
 	services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
@@ -33,7 +33,7 @@ func TestEmptyMessagesUpstream(t *testing.T) {
 		{"google", "gemini-2.5-flash"}, {"openai", "gpt-4o-mini"}, {"openai", "gpt-5-mini"}, {"azure-openai-responses", "gpt-4o-mini"},
 		{"anthropic", "claude-haiku-4-5"}, {"xai", "grok-4.3"}, {"groq", "openai/gpt-oss-20b"}, {"cerebras", "gpt-oss-120b"},
 		{"cloudflare-workers-ai", "@cf/moonshotai/kimi-k2.6"}, {"cloudflare-ai-gateway", "workers-ai/@cf/moonshotai/kimi-k2.6"},
-		{"huggingface", "moonshotai/Kimi-K2.5"}, {"together", "moonshotai/Kimi-K2.6"}, {"baseten", "zai-org/GLM-5.2"}, {"zai", "glm-5.2"},
+		{"huggingface", "moonshotai/Kimi-K2.5"}, {"together", "moonshotai/Kimi-K3"}, {"baseten", "zai-org/GLM-5.2"}, {"zai", "glm-5.2"},
 		{"mistral", "devstral-medium-latest"}, {"minimax", "MiniMax-M2.7"}, {"xiaomi", "mimo-v2.5-pro"}, {"xiaomi-token-plan-cn", "mimo-v2.5-pro"},
 		{"xiaomi-token-plan-ams", "mimo-v2.5-pro"}, {"xiaomi-token-plan-sgp", "mimo-v2.5-pro"}, {"qwen-token-plan", "qwen3.7-max"},
 		{"qwen-token-plan-individual", "qwen3.8-max"}, {"qwen-token-plan-cn", "qwen3.7-max"}, {"kimi-coding", "kimi-for-coding"},
@@ -46,7 +46,7 @@ func TestEmptyMessagesUpstream(t *testing.T) {
 	}
 	for index, tc := range cases {
 		t.Run(tc.ID, func(t *testing.T) {
-			t.Logf(".upstream/v0.87.1/packages/ai/test/empty.test.ts:%d", tc.Line)
+			t.Logf(".upstream/current/packages/ai/test/empty.test.ts:%d", tc.Line)
 			spec := models[index/4]
 			metadata, ok := ai.LookupModelExact(spec.provider + "/" + spec.model)
 			if !ok {
@@ -82,7 +82,7 @@ type upstreamCaseSite struct {
 
 func upstreamCaseSites(t *testing.T, path string) []upstreamCaseSite {
 	t.Helper()
-	raw, err := os.ReadFile("../test/parity/interfaces/upstream-tests-v0.87.1.json")
+	raw, err := os.ReadFile("../test/parity/interfaces/upstream-tests-v" + coding.UpstreamVersion + ".json")
 	if err != nil {
 		t.Fatal(err)
 	}

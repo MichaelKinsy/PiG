@@ -914,6 +914,7 @@ func (m *InteractiveMode) syncExtensionSlashCommands() {
 	for _, rc := range commands {
 		nr := m.newRunner
 		cmdName := strings.TrimPrefix(rc.InvocationName, "/")
+		runsLlama := m.opts.Llama != nil && IsLlamaCommand(rc)
 		dynamic = append(dynamic, SlashCommand{
 			Name:        cmdName,
 			Description: rc.Description,
@@ -921,6 +922,10 @@ func (m *InteractiveMode) syncExtensionSlashCommands() {
 				baseCtx := m.runCtx
 				if baseCtx == nil {
 					baseCtx = context.Background()
+				}
+				// The built-in llama.cpp extension's /llama runs the llama host with this mode's command context.
+				if runsLlama {
+					return m.runLlamaCommand(baseCtx)
 				}
 				// Use the runner's command context and error channel, as Session command dispatch does. IPC stays off the input loop.
 				go nr.ExecuteCommand(baseCtx, cmdName, args)

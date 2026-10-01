@@ -80,6 +80,7 @@ func TestCLIVersionPrecedesSessionValidationUpstream(t *testing.T) {
 
 // Pi main.ts:680-700 selects and checks the Session before validating --name. Fork creation and custom-ID warnings are observable even when the name is invalid.
 func TestCLISelectsSessionBeforeNameValidation(t *testing.T) {
+	t.Parallel()
 	binary := buildPigBinaryForSignalTest(t)
 	piRoot, err := filepath.Abs("../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent")
 	if err != nil {
@@ -90,7 +91,7 @@ func TestCLISelectsSessionBeforeNameValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 	var pkg struct{ Version string }
-	if err := json.Unmarshal(metadata, &pkg); err != nil || pkg.Version != "0.87.1" {
+	if err := json.Unmarshal(metadata, &pkg); err != nil || pkg.Version != "0.99.2" {
 		t.Fatalf("pinned Pi version=%q, err=%v", pkg.Version, err)
 	}
 	node, err := exec.LookPath("node")
@@ -109,57 +110,61 @@ func TestCLISelectsSessionBeforeNameValidation(t *testing.T) {
 	startupNameSessionFixture(t, missingCWD, missingSource)
 	// Both CLIs report process.cwd(), which getcwd returns without symlinks (macOS /var is /private/var).
 	processCWD := canonicalTestPath(t, cwd)
-	for _, tc := range []struct {
-		name, stderr string
-		args         []string
-		fork         bool
-	}{
-		{"missing session", "No session found matching 'nosuch-id'\n", []string{"--session", "nosuch-id"}, false},
-		{"missing fork", "No session found matching 'nosuch-id'\n", []string{"--fork", "nosuch-id"}, false},
-		{"missing stored cwd", fmt.Sprintf("Stored session working directory does not exist: %s\nSession file: %s\nCurrent working directory: %s\n", missingCWD, missingSource, processCWD), []string{"--session", missingSource}, false},
-		{"fork before validation", "Error: --name requires a non-empty value\n", []string{"--fork", source}, true},
-		{"new id warning before validation", "Warning: No project session found with id 'new-session-id'; creating a new session with that id.\nError: --name requires a non-empty value\n", []string{"--session-id", "new-session-id"}, false},
-		{"help still validates name", "Error: --name requires a non-empty value\n", []string{"--help", "--resume"}, false},
-		{"no session ignores resume", "Error: --name requires a non-empty value\n", []string{"--no-session", "--resume"}, false},
-		{"model listing ignores resume", "Error: --name requires a non-empty value\n", []string{"--list-models", "--resume"}, false},
-	} {
-		for _, mode := range []string{"text", "json", "rpc"} {
-			for _, name := range []string{"", " \t "} {
-				t.Run(tc.name+"/"+mode+"/name="+name, func(t *testing.T) {
-					for _, system := range []struct {
-						name, executable string
-						prefix           []string
-					}{{"pi", node, []string{filepath.Join(piRoot, "dist", "cli.js")}}, {"pig", binary, nil}} {
-						home, dir := t.TempDir(), t.TempDir()
-						args := append([]string{}, system.prefix...)
-						args = append(args, "--offline", "--no-extensions", "--mode", mode, "--name", name, "--session-dir", dir)
-						if mode != "rpc" {
-							args = append(args, "-p")
-						}
-						args = append(args, tc.args...)
-						cmd := exec.CommandContext(t.Context(), system.executable, args...)
-						cmd.Dir = cwd
-						cmd.Env = append(os.Environ(), "HOME="+home, "USERPROFILE="+home, "PIG_HOME="+home, "PIG_CODING_AGENT_DIR="+filepath.Join(home, "pig"), "PI_CODING_AGENT_DIR="+filepath.Join(home, "pi"), "FORCE_COLOR=0", "NO_COLOR=1")
-						var stdout, stderr bytes.Buffer
-						cmd.Stdout, cmd.Stderr = &stdout, &stderr
-						err := cmd.Run()
-						var exit *exec.ExitError
-						if !errors.As(err, &exit) || exit.ExitCode() != 1 || stdout.String() != "" || stderr.String() != tc.stderr {
-							t.Errorf("%s: err=%v stdout=%q stderr=%q; want exit=1 stdout=empty stderr=%q", system.name, err, stdout.String(), stderr.String(), tc.stderr)
-						}
-						if tc.fork {
-							files, err := filepath.Glob(filepath.Join(dir, "*.jsonl"))
-							if err != nil || len(files) != 1 {
-								t.Errorf("%s: fork selection produced %v, err=%v; want one requested fork before name validation", system.name, files, err)
-							} else if names := startupSessionInfoNames(t, files[0]); len(names) != 0 {
-								t.Errorf("%s: invalid name persisted: %q", system.name, names)
+	// The rows own their homes and session directories and only read source, so they run together; the group ends when every row has, before the source Session is compared.
+	t.Run("rows", func(t *testing.T) {
+		for _, tc := range []struct {
+			name, stderr string
+			args         []string
+			fork         bool
+		}{
+			{"missing session", "No session found matching 'nosuch-id'\n", []string{"--session", "nosuch-id"}, false},
+			{"missing fork", "No session found matching 'nosuch-id'\n", []string{"--fork", "nosuch-id"}, false},
+			{"missing stored cwd", fmt.Sprintf("Stored session working directory does not exist: %s\nSession file: %s\nCurrent working directory: %s\n", missingCWD, missingSource, processCWD), []string{"--session", missingSource}, false},
+			{"fork before validation", "Error: --name requires a non-empty value\n", []string{"--fork", source}, true},
+			{"new id warning before validation", "Warning: No project session found with id 'new-session-id'; creating a new session with that id.\nError: --name requires a non-empty value\n", []string{"--session-id", "new-session-id"}, false},
+			{"help still validates name", "Error: --name requires a non-empty value\n", []string{"--help", "--resume"}, false},
+			{"no session ignores resume", "Error: --name requires a non-empty value\n", []string{"--no-session", "--resume"}, false},
+			{"model listing ignores resume", "Error: --name requires a non-empty value\n", []string{"--list-models", "--resume"}, false},
+		} {
+			for _, mode := range []string{"text", "json", "rpc"} {
+				for _, name := range []string{"", " \t "} {
+					t.Run(tc.name+"/"+mode+"/name="+name, func(t *testing.T) {
+						t.Parallel()
+						for _, system := range []struct {
+							name, executable string
+							prefix           []string
+						}{{"pi", node, []string{filepath.Join(piRoot, "dist", "cli.js")}}, {"pig", binary, nil}} {
+							home, dir := t.TempDir(), t.TempDir()
+							args := append([]string{}, system.prefix...)
+							args = append(args, "--offline", "--no-extensions", "--mode", mode, "--name", name, "--session-dir", dir)
+							if mode != "rpc" {
+								args = append(args, "-p")
+							}
+							args = append(args, tc.args...)
+							cmd := exec.CommandContext(t.Context(), system.executable, args...)
+							cmd.Dir = cwd
+							cmd.Env = append(os.Environ(), "HOME="+home, "USERPROFILE="+home, "PIG_HOME="+home, "PIG_CODING_AGENT_DIR="+filepath.Join(home, "pig"), "PI_CODING_AGENT_DIR="+filepath.Join(home, "pi"), "FORCE_COLOR=0", "NO_COLOR=1")
+							var stdout, stderr bytes.Buffer
+							cmd.Stdout, cmd.Stderr = &stdout, &stderr
+							err := cmd.Run()
+							var exit *exec.ExitError
+							if !errors.As(err, &exit) || exit.ExitCode() != 1 || stdout.String() != "" || stderr.String() != tc.stderr {
+								t.Errorf("%s: err=%v stdout=%q stderr=%q; want exit=1 stdout=empty stderr=%q", system.name, err, stdout.String(), stderr.String(), tc.stderr)
+							}
+							if tc.fork {
+								files, err := filepath.Glob(filepath.Join(dir, "*.jsonl"))
+								if err != nil || len(files) != 1 {
+									t.Errorf("%s: fork selection produced %v, err=%v; want one requested fork before name validation", system.name, files, err)
+								} else if names := startupSessionInfoNames(t, files[0]); len(names) != 0 {
+									t.Errorf("%s: invalid name persisted: %q", system.name, names)
+								}
 							}
 						}
-					}
-				})
+					})
+				}
 			}
 		}
-	}
+	})
 	if after, err := os.ReadFile(source); err != nil || !bytes.Equal(after, sourceBefore) {
 		t.Fatalf("fork selection modified source Session: %v", err)
 	}

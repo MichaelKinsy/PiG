@@ -123,7 +123,7 @@ func TestAgentSessionCompactionSuiteActiveRunUpstream(t *testing.T) {
 		case err := <-done:
 			t.Fatalf("run ended before compaction: %v", err)
 		}
-		if err := h.session.Steer(t.Context(), "change direction", nil, nil); err != nil {
+		if _, err := h.session.Steer(t.Context(), "change direction", nil, nil); err != nil {
 			t.Fatal(err)
 		}
 		close(released)

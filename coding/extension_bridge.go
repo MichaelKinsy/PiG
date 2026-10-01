@@ -33,8 +33,9 @@ import (
 // slice. Parameters is unmarshalled once from `json.RawMessage` to
 // `map[string]any` so `Schema()` is cheap (called per agent turn).
 type bridgeTool struct {
-	def                 extension.ToolDefinition
-	schema              map[string]any
+	def extension.ToolDefinition
+	// declaration holds the parameters the extension wrote, decoded by ai.ToolSchema so their member order survives.
+	declaration         ai.ToolSchema
 	constrainedSampling *ai.ConstrainedSamplingConfig
 	// constrainedSamplingDisabled is an explicit `constrainedSampling: false`, kept for transcript declarations.
 	constrainedSamplingDisabled bool
@@ -43,9 +44,15 @@ type bridgeTool struct {
 // newBridgeTool constructs a bridgeTool, returning an error if the
 // embedded JSON Schema is malformed.
 func newBridgeTool(rt extension.RegisteredTool) (*bridgeTool, error) {
-	var schema map[string]any
+	var declaration ai.ToolSchema
 	if len(rt.Definition.Parameters) > 0 {
-		if err := json.Unmarshal(rt.Definition.Parameters, &schema); err != nil {
+		envelope, err := json.Marshal(struct {
+			Parameters json.RawMessage `json:"parameters"`
+		}{rt.Definition.Parameters})
+		if err == nil {
+			err = json.Unmarshal(envelope, &declaration)
+		}
+		if err != nil {
 			return nil, fmt.Errorf("bridge tool %q: parse parameters: %w", rt.Definition.Name, err)
 		}
 	}
@@ -57,7 +64,7 @@ func newBridgeTool(rt extension.RegisteredTool) (*bridgeTool, error) {
 		return nil, fmt.Errorf("bridge tool %q: parse constrained_sampling: %w", rt.Definition.Name, err)
 	}
 	disabled := sampling == nil && strings.TrimSpace(string(rt.Definition.ConstrainedSampling)) == "false"
-	return &bridgeTool{def: rt.Definition, schema: schema, constrainedSampling: sampling, constrainedSamplingDisabled: disabled}, nil
+	return &bridgeTool{def: rt.Definition, declaration: declaration, constrainedSampling: sampling, constrainedSamplingDisabled: disabled}, nil
 }
 
 // parseConstrainedSampling decodes a tool's constrained sampling request. An
@@ -84,15 +91,19 @@ func (b *bridgeTool) Label() string { return b.def.Label }
 // Schema returns the JSON Schema for the tool's parameters in the
 // shape expected by `ai.ToolSchema`.
 func (b *bridgeTool) Schema() ai.ToolSchema {
-	return ai.ToolSchema{
-		Name:                        b.def.Name,
-		Description:                 b.def.Description,
-		Parameters:                  b.schema,
-		PromptGuidelines:            b.def.PromptGuidelines,
-		ConstrainedSampling:         b.constrainedSampling,
-		ConstrainedSamplingDisabled: b.constrainedSamplingDisabled,
-	}
+	schema := b.declaration
+	schema.Name = b.def.Name
+	schema.Description = b.def.Description
+	schema.PromptGuidelines = b.def.PromptGuidelines
+	schema.ConstrainedSampling = b.constrainedSampling
+	schema.ConstrainedSamplingDisabled = b.constrainedSamplingDisabled
+	return schema
 }
+
+// OutputSchema returns the JSON Schema of the structured content in the tool's successful results.
+//
+// upstream: tool-definition-wrapper.ts:17,52 (outputSchema)
+func (b *bridgeTool) OutputSchema() json.RawMessage { return b.def.OutputSchema }
 
 // ArgumentSchema keeps TypeBox's non-enumerable conversion metadata off provider requests.
 func (b *bridgeTool) ArgumentSchema() json.RawMessage {
@@ -132,6 +143,11 @@ func (b *bridgeTool) Execute(
 		return agent.AgentToolResult{}, fmt.Errorf("bridge tool %q: Execute is nil", b.def.Name)
 	}
 
+	if ticket, ok := agent.MutationTicketFromContext(ctx); ok && b.def.ReserveCallOrder != nil {
+		order := &extension.CallOrder{Wait: ticket.Wait, Release: ticket.Release}
+		ctx = extension.WithCallOrder(ctx, order)
+		defer order.Release()
+	}
 	raw, err := b.def.Execute(ctx, toolCallID, params, onUpdate)
 	if err != nil {
 		return agent.AgentToolResult{}, err
@@ -149,6 +165,18 @@ func (b *bridgeTool) Execute(
 		return agent.AgentToolResult{}, fmt.Errorf("bridge tool %q: Execute returned %T, want agent.AgentToolResult", b.def.Name, raw)
 	}
 	return res, nil
+}
+
+// ReserveMutationOrder reserves the call's place in the order the definition keeps (ToolDefinition.ReserveCallOrder).
+func (b *bridgeTool) ReserveMutationOrder(params json.RawMessage) (*agent.MutationTicket, bool) {
+	if b.def.ReserveCallOrder == nil {
+		return nil, false
+	}
+	order := b.def.ReserveCallOrder(params)
+	if order == nil {
+		return nil, false
+	}
+	return &agent.MutationTicket{Wait: order.Wait, Release: order.Release}, true
 }
 
 // ExecutionMode returns the tool's parallelism preference. Only an explicit sequential definition serializes execution.

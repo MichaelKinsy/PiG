@@ -4,6 +4,8 @@ import (
 	"os"
 	"sync/atomic"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/agent"
 )
 
 // Counted work for the single-emitter scheduler: while the consumer is
@@ -26,7 +28,7 @@ func TestShellUpdateSchedulerCountsWork(t *testing.T) {
 	var updates atomic.Int64
 	firstStarted := make(chan struct{})
 	releaseFirst := make(chan struct{})
-	u := newShellUpdateScheduler(acc, func(string, any) {
+	u := newShellUpdateScheduler(acc, func(agent.AgentToolResult) {
 		if updates.Add(1) == 1 {
 			close(firstStarted)
 			<-releaseFirst

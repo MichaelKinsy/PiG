@@ -156,6 +156,9 @@ type InteractiveMode struct {
 	runEnded atomic.Bool
 	extCtx   *ExtensionContext // shared state for slash commands
 	agent    *agent.Agent
+	// extensionAgent is the agent the extension host reads from its own goroutines; setAgent publishes it with agent. stopRunSignalReports ends the report of its runs to the host and belongs to the main loop.
+	extensionAgent       atomic.Pointer[agent.Agent]
+	stopRunSignalReports func()
 	// The live session is owned by the SessionHandle (coding.Session.inner) and
 	// is the single source of truth. Read it via m.currentSession() so display
 	// (/session, /tree, /compact) and persistence (the agent's OnMessagePersist
@@ -325,7 +328,9 @@ type InteractiveMode struct {
 	// Last assistant message text (for /copy).
 	lastAssistantText string
 	lastStatusSpacer  *tui.Spacer
-	lastStatusText    *tui.Text
+	lastStatusText    *tui.ThemedText
+	// lastStatusMessage is the text lastStatusText renders (interactive-mode.ts lastStatusMessage).
+	lastStatusMessage string
 
 	// Countdown goroutine cancel function for auto-retry.
 	// Called on AutoRetryEndEvent or when a new retry starts.
@@ -447,6 +452,8 @@ type InteractiveMode struct {
 	// runPrompt holds the active run's before_agent_start inputs, as Pi's _runSystemPromptOptions; nil outside a run. runPromptMu serializes installing, re-rendering and clearing it with the prompt forced on the agent.
 	runPromptMu sync.Mutex
 	runPrompt   *interactiveRunPrompt
+	// runPromptTurnAgent is the agent whose next-turn hook refreshes runPrompt.
+	runPromptTurnAgent *agent.Agent
 
 	// rawDrain consumes late protocol input before renderer teardown; temporary handoffs restore without draining.
 	rawDrain             func()
@@ -863,6 +870,8 @@ type InteractiveOptions struct {
 	// ModelLookup resolves a provider/model identity through the Session-owned runtime.
 	ModelLookup  func(providerID, modelID string) *ai.Model
 	ModelCatalog func() []*ai.Model
+	// ModelClassify is the Session-owned runtime classify an extension's ctx.modelRegistry.classify reaches.
+	ModelClassify func(context.Context, *ai.ClassifierModel, ai.ClassifierContext, ...ai.ModelsClassifierOptions) ai.ClassifierResult
 
 	// RequestAuthRuntime is the composed checkAuth/getAuth surface used by
 	// warning-only auth checks. Wired by main.go from the same credential and
@@ -1057,7 +1066,7 @@ func (m *InteractiveMode) rebuildToolSystemPrompt() {
 	}
 	if m.newRunner != nil {
 		options := prompts.WithToolDefinitions(prompts.FromExtensionOptions(*opts), m.newRunner.Tools())
-		opts.ToolSnippets, opts.ToolGuidelines = options.ToolHints, options.ToolGuidelines
+		opts.ToolSnippets, opts.ToolGuidelines = WithoutHiddenSnippets(options.ToolHints, m.hiddenDeclarations()), options.ToolGuidelines
 	}
 	m.baseSystemPromptOptions.Store(opts)
 	if m.structuredSystemPrompt() {
@@ -1256,13 +1265,7 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 	if mark == nil {
 		mark = func(string) {} // no-op
 	}
-	// Resolve the environment fallback before the terminal can answer OSC 11.
-	tui.SetThemeSettingPresence(m.getThemeSelection())
-	m.loadThemes()
-	// Re-apply theme in case it was a custom theme name.
-	if setting := m.getThemeSelection(); setting != nil {
-		tui.SetThemeSettingPresence(setting)
-	}
+	m.initStartupTheme()
 	mark("theme-detected")
 
 	// Set up TUI. Fullscreen mode uses the alternate-screen renderer; both
@@ -1337,7 +1340,8 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 		}
 	}()
 	m.beginStartupSubmitWindow()
-	if err := m.initializeTerminalTheme(ctx, os.Stdout); err != nil {
+	m.applyThemeFromSettings(ctx)
+	if err := m.waitForTerminalColors(ctx); err != nil {
 		return err
 	}
 	// Run the @-file fd search off the input thread so a deep tree walk
@@ -1448,7 +1452,8 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 	if m.opts.SessionHandle == nil {
 		return fmt.Errorf("interactive: SessionHandle is required: construct via coding.NewSession")
 	}
-	m.agent = m.opts.SessionHandle.Agent()
+	m.setAgent(m.opts.SessionHandle.Agent())
+	m.installRunPromptTurnRefresh()
 	m.rebuildToolSystemPrompt()
 	m.eventCh = m.opts.SessionHandle.Events()
 	extCtx.Session = m.currentSession()
@@ -1666,7 +1671,7 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 
 // LoadThemePaths adds theme files and directories in upstream precedence order, the first theme of a name winning. Report receives each unreadable or invalid path.
 func LoadThemePaths(registry *tui.ThemeRegistry, paths []string, report func(error)) {
-	_, diagnostics := loadThemeResources(registry, paths)
+	_, diagnostics := loadThemeResources(registry, paths, tui.GetTerminalColorMode())
 	if report == nil {
 		return
 	}

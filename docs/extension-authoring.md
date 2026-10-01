@@ -145,6 +145,8 @@ returns through the approved run-on-main mechanism. Map `AbortSignal` to
 `context.Context`, `sdk.Context.Done()`, or the owning lifetime's cancellation
 channel and test cancellation before and during the operation.
 
+Pi's `ctx.signal` is the signal of the run in progress, not of the handler's request: it is `undefined` while no run is active (a command or `session_start` while idle), one object for the whole run, and aborted with the run even while a handler is still in flight. Node exposes it as `ctx.signal`, the Go SDK as `ctx.Signal()` (a `context.Context`, nil while no run is active), Python as `ctx.signal` and Rust as `ctx.signal()` (a `ProviderSignal`, `None` while no run is active). `sdk.Context.Done()`, `Err()` and Rust and Python `is_cancelled()` report the handler's own request, which the host cancels when it abandons that request.
+
 ### Subprocess request liveness
 
 The SDK answers host heartbeat on its socket dispatcher. Extension handlers do

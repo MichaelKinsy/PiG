@@ -1,5 +1,5 @@
 import { Box, Container, getCapabilities, Image, MouseRegion, Spacer, Text, } from "../../../../../pi-tui.mjs";
-import { getTextOutput as getRenderedTextOutput } from "../../../core/tools/render-utils.js";
+import { formatToolCallWithArgs, getTextOutput as getRenderedTextOutput } from "../../../core/tools/render-utils.js";
 import { convertToPng } from "../../../utils/image-convert.js";
 import { theme } from "../theme/theme.js";
 import { keyHint } from "./keybinding-hints.js";
@@ -88,7 +88,7 @@ export class ToolExecutionComponent extends Container {
         };
     }
     createCallFallback() {
-        return new Text(theme.fg("toolTitle", theme.bold(this.toolName)), 0, 0);
+        return new Text(formatToolCallWithArgs(this.toolName, this.args, theme, this.expanded), 0, 0);
     }
     createResultFallback() {
         const output = this.getTextOutput();

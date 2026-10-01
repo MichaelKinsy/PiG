@@ -19,6 +19,10 @@ import (
 // both pass cmd.Args to execve unchanged.
 func SetCommandLine(*exec.Cmd) {}
 
+// start is cmd.Start: SetProgram arranges the trampoline for an environment
+// that os/exec would change.
+func start(cmd *exec.Cmd) error { return cmd.Start() }
+
 // HideWindow does nothing outside Windows, where libuv ignores windowsHide.
 func HideWindow(*exec.Cmd, ...Stdio) {}
 

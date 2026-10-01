@@ -1,6 +1,6 @@
 # Azure OpenAI Responses observation oracle
 
-Pi 0.87.1 drives `packages/ai/src/api/azure-openai-responses.ts` through the OpenAI SDK 6.40.0 `AzureOpenAI` client and the shared `processResponsesStream`. Nothing here is Go output. Do not regenerate a file from PiG.
+Pi 0.99.1 drives `packages/ai/src/api/azure-openai-responses.ts` through the OpenAI SDK 7.19.0 `AzureOpenAI` client and the shared `processResponsesStream`. Nothing here is Go output. Do not regenerate a file from PiG.
 
 | File | Producer | Contents |
 |---|---|---|

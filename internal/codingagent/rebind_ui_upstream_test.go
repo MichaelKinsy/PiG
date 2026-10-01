@@ -90,9 +90,9 @@ func rebindOriginalRecord(t *testing.T, family string, site int, title string) {
 	fmt.Println("RUNTIME_ORIGINAL " + string(data))
 }
 
-// Original #5943 sites276/313/368, with actual Runtime replacement rather than a leaf move or a successful Session facade.
+// Original #5943 sites238/275/330, with actual Runtime replacement rather than a leaf move or a successful Session facade.
 func TestSessionStartNotifyOriginalReplacement(t *testing.T) {
-	for _, site := range []int{276, 313, 368} {
+	for _, site := range []int{238, 275, 330} {
 		t.Run(fmt.Sprint(site), func(t *testing.T) {
 			icodingagent.ObserveRebindTitles(t, func(string) {})
 			var f *rebindFixture
@@ -114,15 +114,15 @@ func TestSessionStartNotifyOriginalReplacement(t *testing.T) {
 					return nil, fmt.Errorf("replacement pre-bind invariant failed")
 				}
 				switch site {
-				case 276:
+				case 238:
 					ui, err := extension.FromContext(args[1].(context.Context)).UI()
 					if err != nil {
 						return nil, err
 					}
 					ui.Notify("Hello Error", "error")
-				case 313:
+				case 275:
 					return nil, session.SendMessage(extension.CustomMessageRef{CustomType: "session-start", Content: "custom from start", Display: true}, nil)
-				case 368:
+				case 330:
 					return nil, extension.FromContext(args[1].(context.Context)).SendUserMessage("user from start", nil)
 				}
 				return nil, nil
@@ -152,7 +152,7 @@ func TestSessionStartNotifyOriginalReplacement(t *testing.T) {
 			if t.Failed() {
 				t.FailNow()
 			}
-			if site == 368 {
+			if site == 330 {
 				select {
 				case <-assistantDone:
 				case <-time.After(testbudget.Wait(t)):
@@ -168,16 +168,16 @@ func TestSessionStartNotifyOriginalReplacement(t *testing.T) {
 			chat := f.h.Chat()
 			title := "renders replacement session state before session_start handlers can notify"
 			switch site {
-			case 276:
+			case 238:
 				if !strings.Contains(chat, "Hello Error") {
 					t.Fatalf("replacement lost session_start notification: %q", chat)
 				}
-			case 313:
+			case 275:
 				title = "subscribes before replacement session_start handlers send messages"
 				if len(received) != 2 || !strings.HasPrefix(received[0], "message_start:custom:") || !strings.HasPrefix(received[1], "message_end:custom:") || !strings.Contains(received[0], "custom from start") || !strings.Contains(received[1], "custom from start") {
 					t.Fatalf("custom event order = %v", received)
 				}
-			case 368:
+			case 330:
 				title = "subscribes before replacement session_start handlers send user messages"
 				for _, want := range []struct{ kind, text string }{{"message_start:user:", "user from start"}, {"message_end:user:", "user from start"}, {"message_end:assistant:", "assistant from start"}} {
 					if !slices.ContainsFunc(received, func(got string) bool { return strings.HasPrefix(got, want.kind) && strings.Contains(got, want.text) }) {

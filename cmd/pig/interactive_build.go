@@ -82,7 +82,7 @@ func (b *cliRuntimeBuilder) interactiveInputs(build *cliBuild, startup coding.Se
 	start.NoSession = startup.NoSession
 	start.CWDOverride = startup.CWDOverride
 	return cliSessionInputs{
-		Services: build.Services, Extensions: build.Extensions, Start: start,
+		Services: build.Services, Extensions: build.Extensions, Start: start, Host: build.Host,
 		Invalidate: func(message string) {
 			if build.Host != nil {
 				build.Host.Invalidate(message)
@@ -133,6 +133,7 @@ func (b *cliRuntimeBuilder) interactiveReplacement(build *cliBuild, session *cod
 		Llama:                   build.Llama,
 		ModelLookup:             session.ModelRuntime().GetModel,
 		ModelCatalog:            session.ModelRuntime().GetModels,
+		ModelClassify:           session.ModelRuntime().Classify,
 		RequestAuthRuntime:      requestAuth,
 	}
 	// A typed nil pointer would make these interfaces non-nil.

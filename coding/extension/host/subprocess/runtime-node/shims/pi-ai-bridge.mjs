@@ -29,6 +29,22 @@ function hasHeader(headers, name) {
   return false;
 }
 
+// providerEnvValue is upstream getProviderEnvValue: a scoped override, then the process env.
+// upstream: packages/ai/src/utils/provider-env.ts:getProviderEnvValue
+function providerEnvValue(name, env) {
+  return env?.[name] || process.env[name] || undefined;
+}
+
+// hasAnthropicFederation reports whether anthropic-messages authenticates with workload identity federation, which
+// replaces the request-auth assertion: provider anthropic with the rule, organization and identity token file set.
+// upstream: packages/ai/src/api/anthropic-messages.ts:343-372 (getAnthropicFederation), 614-615, 935-937
+function hasAnthropicFederation(model, env) {
+  return (
+    model.provider === "anthropic" &&
+    ["ANTHROPIC_FEDERATION_RULE_ID", "ANTHROPIC_ORGANIZATION_ID", "ANTHROPIC_IDENTITY_TOKEN_FILE"].every((name) => !!providerEnvValue(name, env))
+  );
+}
+
 function missingKeyMessage(api, provider) {
   return api === "pi-messages" ? `No API key provided for provider "${provider}"` : `No API key for provider: ${provider}`;
 }
@@ -56,7 +72,12 @@ function failedStream(model, message, options) {
 
 function bridged(api, simple) {
   return (model, context, options) => {
-    if (!ambientCredentials.has(api) && !options?.apiKey && !(headerCredentials[api] ?? []).some((name) => hasHeader(options?.headers, name))) {
+    if (
+      !ambientCredentials.has(api) &&
+      !options?.apiKey &&
+      !(headerCredentials[api] ?? []).some((name) => hasHeader(options?.headers, name)) &&
+      !(api === "anthropic-messages" && hasAnthropicFederation(model, options?.env))
+    ) {
       return failedStream(model, missingKeyMessage(api, model.provider), options);
     }
     // A signal that fired before the request ends it without sending, as

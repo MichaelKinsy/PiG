@@ -24,6 +24,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // npmReleaseTargets are the release archives pack_npm.py reads: GOOS/GOARCH
@@ -292,6 +294,32 @@ func zipArchive(t *testing.T, prefix string, members map[string][]byte) []byte {
 	return buf.Bytes()
 }
 
+// isolatedNpmBin returns a directory that holds node and an npm which runs the installed npm's own CLI script, so a version
+// manager's wrapper around npm (mise's npm wrapper runs `mise reshim` after every global install) never runs in the test.
+func isolatedNpmBin(t *testing.T, nodeExec, work string) string {
+	t.Helper()
+	prefix := filepath.Dir(filepath.Dir(nodeExec))
+	cli := filepath.Join(prefix, "lib", "node_modules", "npm", "bin", "npm-cli.js")
+	if resolved, err := filepath.EvalSymlinks(filepath.Join(filepath.Dir(nodeExec), "npm")); err == nil && filepath.Base(resolved) == "npm-cli.js" {
+		cli = resolved
+	}
+	if _, err := os.Stat(cli); err != nil {
+		t.Fatalf("npm's CLI script is not beside node: %v", err)
+	}
+	bin := filepath.Join(work, "toolchain-bin")
+	if err := os.MkdirAll(bin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	testenv.Symlink(t, nodeExec, filepath.Join(bin, "node"))
+	script := "#!/bin/sh\nexec " + shellQuote(filepath.Join(bin, "node")) + " " + shellQuote(cli) + " \"$@\"\n"
+	if err := os.WriteFile(filepath.Join(bin, "npm"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return bin
+}
+
+func shellQuote(value string) string { return "'" + strings.ReplaceAll(value, "'", `'\''`) + "'" }
+
 // The complete npm channel with real npm and no network: the release packer's
 // seven packages are served by a local registry, real npm installs
 // @pi-in-go/pig into a temporary global prefix (npm nests the platform package
@@ -304,7 +332,7 @@ func zipArchive(t *testing.T, prefix string, members map[string][]byte) []byte {
 // names the installed package).
 func TestNpmInstalledPigUpdatesThroughRealNpm(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("the npm launcher shim is a .cmd on Windows; TestWindowsNpmSelfUpdateReplacesTheRunningInstallation covers that path")
+		t.Skip("the npm global layout and launcher shim differ on Windows; TestWindowsNpmInstalledPigUpdatesThroughRealNpm covers that path")
 	}
 	python, err := exec.LookPath("python3")
 	if err != nil {
@@ -313,16 +341,14 @@ func TestNpmInstalledPigUpdatesThroughRealNpm(t *testing.T) {
 	if _, err := exec.LookPath("node"); err != nil {
 		t.Skip("node is unavailable")
 	}
-	// Version managers resolve node through HOME; the isolated HOME below
-	// must still find the same node and npm.
+	// Version managers resolve node through HOME and wrap npm with hooks of their own; the isolated HOME and PATH below
+	// hold the same node and npm CLI script and none of those hooks.
 	execPath, err := exec.Command("node", "-p", "process.execPath").Output()
 	if err != nil {
 		t.Fatalf("node -p process.execPath: %v", err)
 	}
-	nodeBin := filepath.Dir(strings.TrimSpace(string(execPath)))
-	if _, err := os.Stat(filepath.Join(nodeBin, "npm")); err != nil {
-		t.Fatalf("npm is not beside node: %v", err)
-	}
+	work := t.TempDir()
+	nodeBin := isolatedNpmBin(t, strings.TrimSpace(string(execPath)), work)
 	pig := buildPigBinaryForSignalTest(t)
 	pigBytes, err := os.ReadFile(pig)
 	if err != nil {
@@ -344,7 +370,6 @@ func TestNpmInstalledPigUpdatesThroughRealNpm(t *testing.T) {
 	}
 	registry.publish(t, decoy)
 
-	work := t.TempDir()
 	prefix := filepath.Join(work, "prefix")
 	env := []string{
 		"HOME=" + filepath.Join(work, "home"),
@@ -427,5 +452,46 @@ func TestNpmInstalledPigUpdatesThroughRealNpm(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(prefix, "lib", "node_modules", "pig")); !os.IsNotExist(err) {
 		t.Fatalf("the update installed the unscoped package pig: %v\n%s", err, output)
+	}
+}
+
+// A version manager wraps npm in bin/npm and puts its own hook on PATH; the test toolchain must run npm's CLI script
+// directly and keep the wrapper off PATH (the reshim of mise's wrapper failed with "mise: command not found").
+func TestIsolatedNpmBinBypassesVersionManagerWrapper(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the npm toolchain of the real-npm test is POSIX only")
+	}
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Skip("node is unavailable")
+	}
+	root := t.TempDir()
+	bin := filepath.Join(root, "bin")
+	cli := filepath.Join(root, "lib", "node_modules", "npm", "bin")
+	for _, dir := range []string{bin, cli} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	testenv.Symlink(t, node, filepath.Join(bin, "node"))
+	if err := os.WriteFile(filepath.Join(bin, "npm"), []byte("#!/bin/sh\necho 'mise: command not found' >&2\nexit 127\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cli, "npm-cli.js"), []byte("process.stdout.write('npm-cli ' + process.argv.slice(2).join(' '))\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	isolated := isolatedNpmBin(t, filepath.Join(bin, "node"), t.TempDir())
+	if isolated == bin {
+		t.Fatalf("the isolated toolchain is the version manager's bin directory %s", bin)
+	}
+	command := exec.Command(filepath.Join(isolated, "npm"), "install", "-g", "package")
+	command.Env = []string{"PATH=" + isolated + string(os.PathListSeparator) + "/usr/bin" + string(os.PathListSeparator) + "/bin"}
+	output, err := command.CombinedOutput()
+	if err != nil || string(output) != "npm-cli install -g package" {
+		t.Fatalf("isolated npm = %q, %v", output, err)
+	}
+	node2, err := exec.Command(filepath.Join(isolated, "node"), "-p", "1+1").Output()
+	if err != nil || strings.TrimSpace(string(node2)) != "2" {
+		t.Fatalf("isolated node = %q, %v", node2, err)
 	}
 }

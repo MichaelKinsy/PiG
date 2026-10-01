@@ -34,6 +34,7 @@ for (const kind of ["duplicates", "mixed", "null", "repair", "reassign", "getter
   Object.assign(session, {
     agent: { state: { model: { provider: "probe" }, messages: [], tools: [registry.get("read")] } },
     _toolRegistry: registry,
+    _toolDefinitions: new Map(),
     _baseSystemPromptOptions: normalizeBuildSystemPromptOptions({ cwd: "/probe", customPrompt: "base", selectedTools: ["read"] }),
     _extensionRunner: runner,
     _modelRuntime: { hasConfiguredAuth: () => true },

@@ -28,6 +28,8 @@ type GoogleVertexConfig struct {
 	Location         string
 	Headers          map[string]string
 	ThinkingLevelMap ThinkingLevelMap
+	// ModelMetadata is the selected model, which an OnProviderStreamEvent observer receives. Nil hands the observer the configured identity only.
+	ModelMetadata *Model
 }
 
 type googleVertexProvider struct {
@@ -63,7 +65,7 @@ func (p *googleVertexProvider) Stream(ctx context.Context, transcript Transcript
 			return nil, errors.New("Vertex AI requires a location. Set GOOGLE_CLOUD_LOCATION or pass location in options.")
 		}
 	}
-	provider := &googleProvider{cfg: GoogleConfig{api: APIGoogleVertex, APIKey: key, Model: p.cfg.Model, ProviderID: p.cfg.ProviderID, BaseURL: resolveVertexBaseURL(p.cfg.BaseURL, project, location), ExtraHeaders: p.cfg.Headers, ThinkingLevelMap: p.cfg.ThinkingLevelMap}, client: p.client}
+	provider := &googleProvider{cfg: GoogleConfig{api: APIGoogleVertex, APIKey: key, Model: p.cfg.Model, ProviderID: p.cfg.ProviderID, BaseURL: resolveVertexBaseURL(p.cfg.BaseURL, project, location), ExtraHeaders: p.cfg.Headers, ThinkingLevelMap: p.cfg.ThinkingLevelMap, ModelMetadata: p.cfg.ModelMetadata}, client: p.client}
 	if key == "" {
 		provider.cfg.accessToken = p.accessToken
 	}

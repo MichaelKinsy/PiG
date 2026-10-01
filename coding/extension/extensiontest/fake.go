@@ -29,6 +29,8 @@ type Fake struct {
 	OnResourcesDiscoverHandlers     []func(ctx context.Context, evt extension.ResourcesDiscoverEvent) (extension.ResourcesDiscoverResult, error)
 	OnSessionStartHandlers          []func(ctx context.Context, evt extension.SessionStartEvent) error
 	OnSessionInfoChangedHandlers    []func(ctx context.Context, evt extension.SessionInfoChangedEvent) error
+	OnMcpServersChangeHandlers      []func(ctx context.Context, evt extension.McpServersChangeEvent) error
+	OnProviderStreamEventHandlers   []func(ctx context.Context, evt extension.ProviderStreamEvent) error
 	OnSessionBeforeSwitchHandlers   []func(ctx context.Context, evt extension.SessionBeforeSwitchEvent) (extension.SessionBeforeSwitchResult, error)
 	OnSessionBeforeForkHandlers     []func(ctx context.Context, evt extension.SessionBeforeForkEvent) (extension.SessionBeforeForkResult, error)
 	OnSessionBeforeCompactHandlers  []func(ctx context.Context, evt extension.SessionBeforeCompactEvent) (extension.SessionBeforeCompactResult, error)
@@ -74,6 +76,11 @@ type Fake struct {
 	RegisterMarkdownTransformers []extension.MarkdownTransformer
 	RegisterProviderCalls        []RegisterProviderCall
 	UnregisterProviderCalls      []string
+	RegisterMcpServerCalls       []RegisterMcpServerCall
+	UnregisterMcpServerCalls     []string
+	McpServers                   []extension.RegisteredMcpServer
+	RegisterVirtualModelCalls    []extension.ExtensionVirtualModel
+	UnregisterVirtualModelCalls  []UnregisterVirtualModelCall
 
 	// ── Actions ──
 	SendMessageCalls     []SendMessageCall
@@ -88,6 +95,7 @@ type Fake struct {
 	AllTools            []extension.ToolInfo
 	Commands            []extension.SlashCommandInfo
 	SetActiveToolsCalls [][]string
+	Settings            extension.Settings
 
 	// ── Model + thinking ──
 	CurrentModel          extension.Model
@@ -112,6 +120,18 @@ func NewFake() *Fake {
 }
 
 // ─── Recording call structs ─────────────────────────────────────────────
+
+// RegisterMcpServerCall records one RegisterMcpServer call.
+type RegisterMcpServerCall struct {
+	Name   string
+	Config extension.McpServerConfig
+}
+
+// UnregisterVirtualModelCall records one UnregisterVirtualModel call.
+type UnregisterVirtualModelCall struct {
+	Provider string
+	ID       string
+}
 
 type RegisterCommandCall struct {
 	Name    string
@@ -215,6 +235,12 @@ func (f *Fake) OnContextWithSystem(h func(ctx context.Context, evt extension.Con
 }
 func (f *Fake) OnBeforeProviderRequest(h func(ctx context.Context, evt extension.BeforeProviderRequestEvent) (extension.BeforeProviderRequestEventResult, error)) {
 	f.OnBeforeProviderRequestHandlers = append(f.OnBeforeProviderRequestHandlers, h)
+}
+func (f *Fake) OnMcpServersChange(h func(ctx context.Context, evt extension.McpServersChangeEvent) error) {
+	f.OnMcpServersChangeHandlers = append(f.OnMcpServersChangeHandlers, h)
+}
+func (f *Fake) OnProviderStreamEvent(h func(ctx context.Context, evt extension.ProviderStreamEvent) error) {
+	f.OnProviderStreamEventHandlers = append(f.OnProviderStreamEventHandlers, h)
 }
 func (f *Fake) OnAfterProviderResponse(h func(ctx context.Context, evt extension.AfterProviderResponseEvent) error) {
 	f.OnAfterProviderResponseHandlers = append(f.OnAfterProviderResponseHandlers, h)
@@ -321,6 +347,23 @@ func (f *Fake) UnregisterProvider(name string) {
 	f.UnregisterProviderCalls = append(f.UnregisterProviderCalls, name)
 }
 
+func (f *Fake) RegisterMcpServer(name string, config extension.McpServerConfig) error {
+	f.RegisterMcpServerCalls = append(f.RegisterMcpServerCalls, RegisterMcpServerCall{Name: name, Config: config})
+	return nil
+}
+func (f *Fake) UnregisterMcpServer(name string) {
+	f.UnregisterMcpServerCalls = append(f.UnregisterMcpServerCalls, name)
+}
+func (f *Fake) GetMcpServers() []extension.RegisteredMcpServer {
+	return f.McpServers
+}
+func (f *Fake) RegisterVirtualModel(model extension.ExtensionVirtualModel) {
+	f.RegisterVirtualModelCalls = append(f.RegisterVirtualModelCalls, model)
+}
+func (f *Fake) UnregisterVirtualModel(provider, id string) {
+	f.UnregisterVirtualModelCalls = append(f.UnregisterVirtualModelCalls, UnregisterVirtualModelCall{Provider: provider, ID: id})
+}
+
 // ─── Actions ───────────────────────────────────────────────────────────
 
 func (f *Fake) SendMessage(message extension.SendMessagePayload, options *extension.SendMessageOptions) {
@@ -353,6 +396,9 @@ func (f *Fake) GetActiveTools() []string {
 }
 func (f *Fake) GetAllTools() []extension.ToolInfo {
 	return f.AllTools
+}
+func (f *Fake) GetSettings() extension.Settings {
+	return f.Settings
 }
 func (f *Fake) SetActiveTools(toolNames []string) {
 	f.SetActiveToolsCalls = append(f.SetActiveToolsCalls, toolNames)

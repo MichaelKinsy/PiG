@@ -36,6 +36,7 @@ import { SettingsManager } from "./core/settings-manager.js";
 import { printTimings, resetTimings, time } from "./core/timings.js";
 import { hasTrustRequiringProjectResources, ProjectTrustStore } from "./core/trust-manager.js";
 import { builtInExtensions } from "./extensions/index.js";
+import { loadMcpCommand } from "./extensions/mcp/cli.lazy.js";
 import { runMigrations, showDeprecationWarnings } from "./migrations.js";
 import { InteractiveMode, runPrintMode, runRpcMode } from "./modes/index.js";
 import { initTheme, setThemeJsonValidator, stopThemeWatcher } from "./modes/interactive/theme/theme.js";
@@ -474,6 +475,11 @@ export async function main(args, options) {
     if (await handleConfigCommand(args, { extensionFactories })) {
         return;
     }
+    if (args[0] === "mcp") {
+        const { runMcpCommand } = await loadMcpCommand();
+        process.exitCode = await runMcpCommand(args.slice(1), { cwd, agentDir });
+        return;
+    }
     const parsed = parseArgs(args);
     if (parsed.diagnostics.length > 0) {
         for (const d of parsed.diagnostics) {
@@ -636,6 +642,10 @@ export async function main(args, options) {
             ...resourceLoader.getExtensions().errors.map(({ path, error }) => ({
                 type: "error",
                 message: `Failed to load extension "${path}": ${error}`,
+            })),
+            ...(resourceLoader.getExtensions().warnings ?? []).map(({ path, warning }) => ({
+                type: "warning",
+                message: `Extension package "${path}": ${warning}`,
             })),
         ];
         const modelPatterns = parsed.models ?? settingsManager.getEnabledModels();

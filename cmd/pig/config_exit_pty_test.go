@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"golang.org/x/sys/unix"
+
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 // Pi's ConfigSelectorComponent maps tui.select.cancel (Escape) to onCancel and
@@ -22,6 +24,7 @@ import (
 // keyboard protocol reports Ctrl+C as CSI-u, never as byte 0x03.
 // Regression for issue #89: Ctrl+C left `pig config` running.
 func TestConfigSelectorExitKeysRestoreTerminal(t *testing.T) {
+	t.Parallel()
 	binary := buildPigBinaryForSignalTest(t)
 	for _, tc := range []struct {
 		name  string
@@ -84,7 +87,7 @@ func runConfigExitKey(t *testing.T, binary string, kitty bool, key string) {
 		_ = master.Close()
 		<-copied
 	})
-	output.waitQuiet(0, []byte("alpha.md"), 100*time.Millisecond, 10*time.Second)
+	output.waitQuiet(0, []byte("alpha.md"), 100*time.Millisecond, testbudget.Wait(t))
 	if !bytes.Contains(output.since(0), []byte("alpha.md")) {
 		t.Fatalf("config selector did not render: %q", output.since(0))
 	}
@@ -101,8 +104,8 @@ func runConfigExitKey(t *testing.T, binary string, kitty bool, key string) {
 	}
 	select {
 	case <-exited:
-	case <-time.After(2 * time.Second):
-		t.Fatalf("%q did not exit pig config within 2s", key)
+	case <-time.After(testbudget.Wait(t)):
+		t.Fatalf("%q did not exit pig config", key)
 	}
 	<-copied
 	if waitErr != nil {

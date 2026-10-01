@@ -14,6 +14,7 @@ import (
 
 // Pi 0.87.1 rpc-mode.ts:366-378,728-744 disposes the runtime and exits 143/129 without needing stdin EOF.
 func TestRPCSignalWithOpenStdin(t *testing.T) {
+	t.Parallel()
 	for _, sig := range []syscall.Signal{syscall.SIGTERM, syscall.SIGHUP} {
 		t.Run(sig.String(), func(t *testing.T) {
 			home := t.TempDir()

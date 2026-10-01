@@ -5,12 +5,19 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 func TestMain(m *testing.M) {
-	testRoot, err := os.MkdirTemp("", "pig-cellpack-tests-")
+	testRoot, err := os.MkdirTemp("", "pig-cellpack-")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "create isolated test home:", err)
+		os.Exit(2)
+	}
+	if err := testenv.ScopeTempDir(testRoot); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		_ = os.RemoveAll(testRoot)
 		os.Exit(2)
 	}
 	sourceRoot, err := filepath.Abs(filepath.Join("..", "..", "..", ".."))

@@ -9,14 +9,22 @@ import (
 
 // ModelsProvider is the provider-owned runtime unit from models.ts; Provider remains the existing bound-backend streaming contract.
 type ModelsProvider struct {
-	ID             string
-	Name           string
-	BaseURL        string
-	Headers        ProviderHeaders
-	Auth           ProviderAuth
-	GetModels      func() ([]*Model, error)
-	RefreshModels  func(RefreshModelsContext) error
-	FilterModels   func([]*Model, *Credential) []*Model
+	ID            string
+	Name          string
+	BaseURL       string
+	Headers       ProviderHeaders
+	Auth          ProviderAuth
+	GetModels     func() ([]*Model, error)
+	RefreshModels func(RefreshModelsContext) error
+	FilterModels  func([]*Model, *Credential) []*Model
+	// GetAllModels lists models of every type. Providers with only chat models may leave it nil.
+	GetAllModels func() ([]AnyModel, error)
+	// FilterAllModels is the credential-specific availability policy across every model type.
+	FilterAllModels func([]AnyModel, *Credential) []AnyModel
+	// GenerateImages is present when the provider supports image models.
+	GenerateImages func(context.Context, *ImageModel, ImagesContext, ImagesOptions) (AssistantImages, error)
+	// Classify is present when the provider supports classifier models.
+	Classify       func(context.Context, *ClassifierModel, ClassifierContext, ClassifierOptions) (ClassifierResult, error)
 	Stream         ModelsStreamFunction
 	StreamSimple   ModelsStreamFunction
 	FetchDeferred  func(context.Context, *Model, DeferredHandle, DeferredFetchOptions) (*AssistantMessageEventStream, error)

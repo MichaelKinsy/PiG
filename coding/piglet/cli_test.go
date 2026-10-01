@@ -44,7 +44,7 @@ func TestPigletHelpListsCurrentSurface(t *testing.T) {
 		}
 	}
 	got := slices.Sorted(maps.Keys(commands))
-	want := []string{"add", "build", "keygen", "list", "publish", "pull", "remove", "schema", "show", "trust", "update", "validate", "verify"}
+	want := []string{"add", "build", "keygen", "list", "prune", "publish", "pull", "remove", "schema", "show", "trust", "update", "validate", "verify"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("Piglet help commands = %v, want %v\n%s", got, want, stdout.String())
 	}

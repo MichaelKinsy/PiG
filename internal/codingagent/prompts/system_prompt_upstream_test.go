@@ -75,8 +75,8 @@ func TestUpstreamSystemPrompt(t *testing.T) {
 		{"uses shell-specific guidance for powershell", Options{Cwd: cwd, Tools: []string{"powershell"}}, []string{"Use PowerShell for file operations"}, nil, ""},
 		// .upstream/v0.87.1/packages/coding-agent/test/system-prompt.test.ts:97 — bash and powershell row.
 		{"uses shell-specific guidance for bash and powershell", Options{Cwd: cwd, Tools: []string{"bash", "powershell"}}, []string{"Use bash or PowerShell for file operations"}, nil, ""},
-		// .upstream/v0.87.1/packages/coding-agent/test/system-prompt.test.ts:111 — D22 owns only the product/docs literals.
-		{"instructs models to resolve pi docs and examples under absolute base paths", Options{Cwd: cwd}, []string{"- When reading pig docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory", "environment variables (docs/environment-variables.md)"}, nil, ""},
+		// .upstream/v0.99.1/packages/coding-agent/test/system-prompt.test.ts:111-121 — D22 owns only the product/docs literals; 0.99.1 adds the MCP servers (docs/mcp.md) destination.
+		{"instructs models to resolve pi docs and examples under absolute base paths", Options{Cwd: cwd}, []string{"- When reading pig docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory", "environment variables (docs/environment-variables.md), MCP servers (docs/mcp.md)"}, nil, ""},
 		// .upstream/v0.87.1/packages/coding-agent/test/system-prompt.test.ts:126
 		{"includes custom tools in available tools section when promptSnippet is provided", Options{Cwd: cwd, Tools: []string{"read", "dynamic_tool"}, ToolHints: map[string]string{"dynamic_tool": "Run dynamic test behavior"}}, []string{"- dynamic_tool: Run dynamic test behavior"}, nil, ""},
 		// .upstream/v0.87.1/packages/coding-agent/test/system-prompt.test.ts:140

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -16,26 +15,46 @@ import (
 type themeSelectionCase struct {
 	name, global, project string
 	initial               *string
-	queried               bool
-	theme, err, saved     string
+	notify                bool
+	theme, err            string
 }
 
-// Pi 0.87.1 theme-controller.ts:57-81 applies any defined selection as a fixed theme without querying the terminal. theme.ts:790-811 rejects the empty name, and theme-controller.ts:132-140 reports it and falls back to dark. Only an undefined selection, including one a project null leaves, detects and persists the terminal background.
+// upstream 0.99.1 theme-controller.ts applyFromSettings and theme.ts setTheme: every selection applies without persisting the terminal's appearance, an empty or unknown name is reported and falls back to the system theme, and the system theme and theme pairs follow the terminal's appearance.
 var themeSelectionCases = []themeSelectionCase{
-	{name: "saved empty", global: `{"theme":""}`, theme: "dark", err: "Failed to load theme \"\": Theme not found: \nFell back to dark theme.", saved: `""`},
-	{name: "initial empty over saved light", global: `{"theme":"light"}`, initial: new(""), theme: "dark", err: "Failed to load theme \"\": Theme not found: \nFell back to dark theme.", saved: `"light"`},
-	{name: "project null over saved dark", global: `{"theme":"dark"}`, project: `{"theme":null}`, queried: true, theme: "light", saved: `"light"`},
-	// theme-controller.ts:137 interpolates the name into a template string, so quotes, backslashes, and control characters appear verbatim.
-	{name: "initial name with quotes and a backslash", global: `{"theme":"light"}`, initial: new(`say "hi" \ ok`), theme: "dark", err: `Failed to load theme "say "hi" \ ok": Theme not found: say "hi" \ ok` + "\nFell back to dark theme.", saved: `"light"`},
-	{name: "saved name with a control character", global: `{"theme":"odd\u0001name"}`, theme: "dark", err: "Failed to load theme \"odd\x01name\": Theme not found: odd\x01name\nFell back to dark theme.", saved: `"odd\u0001name"`},
+	{name: "saved empty", global: `{"theme":""}`, theme: "system", err: "Failed to load theme \"\": Theme not found: \nFell back to the system theme."},
+	{name: "initial empty over saved light", global: `{"theme":"light"}`, initial: new(""), theme: "system", err: "Failed to load theme \"\": Theme not found: \nFell back to the system theme."},
+	{name: "project null over saved dark", global: `{"theme":"dark"}`, project: `{"theme":null}`, notify: true, theme: "system"},
+	{name: "saved fixed dark", global: `{"theme":"dark"}`, theme: "dark"},
+	{name: "saved pair", global: `{"theme":"light/dark"}`, notify: true, theme: "dark"},
+	{name: "saved malformed slash setting", global: `{"theme":"light/dark/extra"}`, notify: true, theme: "system"},
+	{name: "initial name with quotes and a backslash", global: `{"theme":"light"}`, initial: new(`say "hi" \ ok`), theme: "system", err: `Failed to load theme "say "hi" \ ok": Theme not found: say "hi" \ ok` + "\nFell back to the system theme."},
+	{name: "saved name with a control character", global: `{"theme":"odd\u0001name"}`, theme: "system", err: "Failed to load theme \"odd\x01name\": Theme not found: odd\x01name\nFell back to the system theme."},
 }
 
 // chatErrors returns the text of each error block showError appended, without its "Error: " prefix and color.
+// chatTextContent is the string a chat text child shows. A ThemedText builds its string when it renders (themed-text.ts).
+func chatTextContent(child tui.Component) (string, bool) {
+	switch text := child.(type) {
+	case *tui.Text:
+		return text.Content, true
+	case *tui.ThemedText:
+		text.Render(1000)
+		return text.Content, true
+	}
+	return "", false
+}
+
+// lastStatusContent is the string of the mode's coalescing status line.
+func lastStatusContent(m *InteractiveMode) string {
+	content, _ := chatTextContent(m.lastStatusText)
+	return content
+}
+
 func chatErrors(m *InteractiveMode) []string {
 	var errs []string
 	for _, child := range m.chatContainer.Children() {
-		if text, ok := child.(*tui.Text); ok {
-			if content, isError := strings.CutPrefix(stripANSITest(text.Content), "Error: "); isError {
+		if content, ok := chatTextContent(child); ok {
+			if content, isError := strings.CutPrefix(stripANSITest(content), "Error: "); isError {
 				errs = append(errs, content)
 			}
 		}
@@ -47,7 +66,7 @@ func TestInteractiveThemeSelectionPresence(t *testing.T) {
 	for _, tc := range themeSelectionCases {
 		t.Run(tc.name, func(t *testing.T) {
 			restoreStartupTheme(t)
-			t.Setenv("COLORFGBG", "0;15")
+			t.Setenv("COLORFGBG", "15;0")
 			cwd, agentDir := writeThemeLayers(t, tc.global, tc.project)
 			manager := NewSettingsManager(cwd, agentDir)
 			m := NewInteractiveMode(InteractiveOptions{
@@ -61,18 +80,13 @@ func TestInteractiveThemeSelectionPresence(t *testing.T) {
 			m.keybindings = DefaultKeybindingsManager()
 			m.installRenderDispatcher()
 			m.backgroundCtx = ctx
-			m.inputReadCh = make(chan inputChunk, 1)
-			m.inputErrCh = make(chan error, 1)
-			m.inputReadCh <- inputChunk{data: []byte("\x1b]11;#ffffff\x07")}
 			var output bytes.Buffer
-			setThemeQueryTestOutput(m, &output)
+			m.themeState.output = &output
 			t.Cleanup(func() { m.disposeTheme(); m.backgroundTasks.Wait() })
-			tui.SetThemeSettingPresence(m.getThemeSelection())
-			if err := m.initializeTerminalTheme(ctx, &output); err != nil {
-				t.Fatal(err)
-			}
-			if queried := strings.Contains(output.String(), terminalBackgroundQuery); queried != tc.queried {
-				t.Errorf("terminal queried=%v (output %q), want %v", queried, output.String(), tc.queried)
+			m.initTheme()
+			m.applyThemeFromSettings(ctx)
+			if notified := strings.Contains(output.String(), "\x1b[?2031h"); notified != tc.notify {
+				t.Errorf("color-scheme notifications enabled=%v (output %q), want %v", notified, output.String(), tc.notify)
 			}
 			if got := tui.ActiveTheme().Name; got != tc.theme {
 				t.Errorf("theme = %q, want %q", got, tc.theme)
@@ -84,16 +98,13 @@ func TestInteractiveThemeSelectionPresence(t *testing.T) {
 			if got := chatErrors(m); !slices.Equal(got, want) {
 				t.Errorf("errors = %q, want %q", got, want)
 			}
-			if got := storedTheme(t, filepath.Join(agentDir, "settings.json")); got != tc.saved {
-				t.Errorf("saved theme = %s, want %s", got, tc.saved)
-			}
 		})
 	}
 }
 
-// Real Pi 0.87.1 InteractiveThemeController produces the expected table for the same settings files, environment, and terminal reply.
+// Real upstream 0.99.1 InteractiveThemeController produces the expected table for the same settings files, environment, and terminal answer.
 func TestInteractiveThemeSelectionPresenceMatchesPi(t *testing.T) {
-	t.Setenv("COLORFGBG", "0;15")
+	t.Setenv("COLORFGBG", "15;0")
 	var args []string
 	for _, tc := range themeSelectionCases {
 		cwd, agentDir := writeThemeLayers(t, tc.global, tc.project)
@@ -119,16 +130,14 @@ for (let i = 0; i < cases.length; i += 3) {
     invalidate() {}, requestRender() {},
     setTerminalColorSchemeNotifications(enabled) { log.push('notify:' + enabled); },
     onTerminalColorSchemeChange() { return () => {}; },
-    async queryTerminalBackgroundColor() { log.push('osc11'); return {r: 255, g: 255, b: 255}; },
-    async queryTerminalColorScheme() { log.push('scheme'); return undefined; },
+    async queryTerminalColors() { return {}; },
   };
   const sm = SettingsManager.create(cwd, agent);
   const controller = new InteractiveThemeController(ui, {getSettingsManager: () => sm, showError: m => errors.push(m), onChanged() {}, initialThemeSetting: initial});
-  await controller.applyFromSettings();
-  await sm.flush();
+  controller.applyFromSettings();
+  await controller.waitForTerminalColors();
   controller.dispose();
-  const saved = JSON.stringify(JSON.parse(readFileSync(join(agent, 'settings.json'), 'utf8')).theme);
-  results.push({queried: log.includes('osc11'), theme: T.theme.name, err: errors.join('|'), saved});
+  results.push({notify: log.includes('notify:true'), theme: T.theme.name, err: errors.join('|')});
 }
 T.stopThemeWatcher();
 console.log(JSON.stringify(results));
@@ -138,72 +147,60 @@ console.log(JSON.stringify(results));
 		t.Fatalf("Pi: %v\n%s", err, output)
 	}
 	var results []struct {
-		Queried bool   `json:"queried"`
-		Theme   string `json:"theme"`
-		Err     string `json:"err"`
-		Saved   string `json:"saved"`
+		Notify bool   `json:"notify"`
+		Theme  string `json:"theme"`
+		Err    string `json:"err"`
 	}
 	if err := json.Unmarshal(output, &results); err != nil || len(results) != len(themeSelectionCases) {
 		t.Fatalf("Pi: %s: %v", output, err)
 	}
 	for i, tc := range themeSelectionCases {
-		if pi := results[i]; pi.Queried != tc.queried || pi.Theme != tc.theme || pi.Err != tc.err || pi.Saved != tc.saved {
-			t.Errorf("%s: Pi = %+v, want queried=%v theme=%q err=%q saved=%s", tc.name, pi, tc.queried, tc.theme, tc.err, tc.saved)
+		if pi := results[i]; pi.Notify != tc.notify || pi.Theme != tc.theme || pi.Err != tc.err {
+			t.Errorf("%s: Pi = %+v, want notify=%v theme=%q err=%q", tc.name, pi, tc.notify, tc.theme, tc.err)
 		}
 	}
 }
 
-// Pi 0.87.1 startup-ui.ts:83-107: an explicitly empty theme resolves to itself (theme.ts:597-608), so createStartupTui's initTheme("") and the detected setTheme("") both fall back to dark. The empty string is falsy, so the prompt still queries the terminal.
-func TestStartupPromptExplicitEmptyThemeFallsBackToDark(t *testing.T) {
+// upstream 0.99.1 startup-ui.ts createStartupTui and theme.ts resolveThemeSetting: an explicitly empty theme resolves to itself, which setTheme rejects, so the prompt starts on the system theme and stays there once the terminal's colors arrive.
+func TestStartupPromptExplicitEmptyThemeFallsBackToSystem(t *testing.T) {
 	restoreStartupTheme(t)
-	t.Setenv("COLORFGBG", "0;15")
 	var settings Settings
 	if err := json.Unmarshal([]byte(`{"theme":""}`), &settings); err != nil {
 		t.Fatal(err)
 	}
 	configureStartupTheme(settings, nil)
-	if got := tui.ActiveTheme().Name; got != "dark" {
-		t.Fatalf("initial theme = %q, want the dark fallback for the empty name", got)
+	if got := tui.ActiveTheme().Name; got != tui.SystemThemeName {
+		t.Fatalf("initial theme = %q, want the system fallback for the empty name", got)
 	}
-	terminal := &fakeStartupTerminal{replies: [][]byte{
-		[]byte("\x1b]11;rgb:ffff/ffff/ffff\x07"),
-		[]byte("\x1b[?997;2n"),
-		[]byte("h"),
-		[]byte("\r"),
-	}}
+	terminal := &fakeStartupTerminal{replies: append(whiteTerminalReplies(), []byte("h"), []byte("\r"))}
 	input := tui.NewExtensionInputComponent("Name", "")
-	completed, err := runStartupComponentWith(input, StartupUIOptions{Settings: settings}, false, tui.NewWithOutput(startupBackgroundWriter{terminal}, 80, 24), terminal, map[string]string{"COLORFGBG": "0;15"})
+	completed, err := runStartupComponentWith(input, StartupUIOptions{Settings: settings}, false, tui.NewWithOutput(startupQueryWriter{terminal}, 80, 24), terminal)
 	if err != nil || !completed {
 		t.Fatalf("completed=%v err=%v", completed, err)
 	}
 	if got := input.Text(); got != "h" {
 		t.Fatalf("input = %q", got)
 	}
-	if got := tui.ActiveTheme().Name; got != "dark" {
-		t.Fatalf("theme = %q, want dark although the terminal reported light", got)
-	}
-	if writes := terminal.written(); len(writes) != 2 || writes[0] != terminalColorSchemeQuery || writes[1] != terminalBackgroundQuery {
-		t.Fatalf("writes = %q, want both appearance queries", writes)
+	if got := tui.ActiveTheme().Name; got != tui.SystemThemeName {
+		t.Fatalf("theme = %q, want system", got)
 	}
 }
 
-// Pi 0.87.1 startup-ui.ts:86-87 resolves a malformed slash setting to undefined (theme.ts:597-608) and initializes the environment theme. startup-ui.ts:100-101 then skips detection because the setting is a nonempty non-automatic string.
-func TestStartupPromptMalformedThemeKeepsEnvironmentTheme(t *testing.T) {
+// upstream 0.99.1 theme.ts resolveThemeSetting returns undefined for a malformed slash setting, so startup uses the system theme.
+func TestStartupPromptMalformedThemeUsesSystemTheme(t *testing.T) {
 	restoreStartupTheme(t)
-	t.Setenv("COLORFGBG", "0;15")
 	settings := Settings{Theme: "light/dark/extra"}
 	configureStartupTheme(settings, nil)
-	if got := tui.ActiveTheme().Name; got != "light" {
-		t.Fatalf("initial theme = %q, want the light environment theme", got)
+	if got := tui.ActiveTheme().Name; got != tui.SystemThemeName {
+		t.Fatalf("initial theme = %q, want the system theme", got)
 	}
-	terminal := &fakeStartupTerminal{}
+	terminal := &fakeStartupTerminal{replies: append(whiteTerminalReplies(), []byte("\r"))}
 	selector := tui.NewExtensionSelector("Pick", []string{"a"})
 	done := make(chan error, 1)
 	go func() {
-		_, err := runStartupComponentWith(selector, StartupUIOptions{Settings: settings}, false, tui.NewWithOutput(io.Discard, 80, 24), terminal, map[string]string{"COLORFGBG": "0;15"})
+		_, err := runStartupComponentWith(selector, StartupUIOptions{Settings: settings}, false, tui.NewWithOutput(startupQueryWriter{terminal}, 80, 24), terminal)
 		done <- err
 	}()
-	terminal.send(t, "\r")
 	select {
 	case err := <-done:
 		if err != nil {
@@ -212,10 +209,7 @@ func TestStartupPromptMalformedThemeKeepsEnvironmentTheme(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("the prompt did not complete")
 	}
-	if writes := terminal.written(); len(writes) != 0 {
-		t.Fatalf("writes = %q; a nonempty non-automatic setting must not query the terminal", writes)
-	}
-	if got := tui.ActiveTheme().Name; got != "light" {
-		t.Fatalf("theme = %q, want the light environment theme", got)
+	if got := tui.ActiveTheme().Name; got != tui.SystemThemeName {
+		t.Fatalf("theme = %q, want the system theme", got)
 	}
 }

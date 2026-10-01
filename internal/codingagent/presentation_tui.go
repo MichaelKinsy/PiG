@@ -16,8 +16,10 @@ type InteractiveTuiOptions struct {
 	Output                 io.Writer
 	OnRightClickPaste      func()
 	FullscreenCopyOnSelect *bool
-	OpenURL                func(string) error
-	CopySelection          func(string) error
+	// FullscreenWheelScrollLines is the fullscreen renderer's wheel line count; nil is auto (tui-renderer.ts:38).
+	FullscreenWheelScrollLines *tui.WheelScrollLines
+	OpenURL                    func(string) error
+	CopySelection              func(string) error
 }
 
 // CreateInteractiveTui creates a regular or fullscreen renderer with the shared theme, clipboard and hyperlink behavior. It does not start terminal input or activate a Session.
@@ -27,6 +29,10 @@ func CreateInteractiveTui(options InteractiveTuiOptions) tui.Renderer {
 		opts := fullscreenTuiOptions()
 		opts.CopyOnSelect = options.FullscreenCopyOnSelect
 		opts.CopySelection = options.CopySelection
+		opts.WheelScrollLines = tui.WheelScrollLines{Auto: true}
+		if options.FullscreenWheelScrollLines != nil {
+			opts.WheelScrollLines = *options.FullscreenWheelScrollLines
+		}
 		if opts.CopySelection == nil {
 			opts.CopySelection = copyToClipboard
 		}

@@ -49,6 +49,7 @@ func killTestProcess(pid int) error {
 // crashes once (this test) is given back its one-process default on the very
 // next reload, and only a cell that keeps crashing stays split.
 func TestNodeCellCrashThenReloadRestoresOneProcess(t *testing.T) {
+	t.Parallel()
 	nodeCellRequireNode(t)
 	root := t.TempDir()
 	var configs []ExtConfig

@@ -496,3 +496,37 @@ Source: <https://github.com/libuv/libuv/blob/v1.51.0/src/win/process.c>
 ## Unicode 17.0.0 character data
 
 The generated `tui/widthx/unicode_tables.go` derives character properties and emoji sequences from the Unicode Character Database and Unicode emoji data, pinned in `tui/widthx/gen/inputs.sha256`. Copyright © 1991-2026 Unicode, Inc. Used under Unicode License V3, reproduced in `LICENSES/Unicode-3.0.txt` (source: https://www.unicode.org/license.txt). This data license supplements the MIT license for the Go implementation.
+
+## quickjs-wasi 3.6.2 and the codemode prelude
+
+`codemode/assets/quickjs.wasm` is the unmodified `quickjs.wasm` of the npm package `quickjs-wasi@3.6.2` (SHA-256 `d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9`), the engine that upstream's codemode package runs. The module contains QuickJS-NG (MIT, copyright Ben Noordhuis, Saúl Ibarra Corretgé, Fabrice Bellard and Charlie Gordon) and wasi-libc from wasi-sdk 30. PiG hosts it with wazero (Apache-2.0, `LICENSES/Apache-2.0.txt`). `codemode/assets/prelude.js` is upstream's `PRELUDE_SOURCE` (MIT, copyright (c) 2025 Mario Zechner). `codemode/assets/PROVENANCE.md` records the source and the refresh procedure.
+
+```text
+MIT License
+
+Copyright (c) 2026 Vercel, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```
+
+## Model Context Protocol TypeScript SDK v1.29.0 (OAuth client)
+
+Source: <https://github.com/modelcontextprotocol/typescript-sdk/blob/v1.29.0/src/client/auth.ts>
+
+`mcp/oauth` translates, through upstream's `packages/mcp/src/oauth`, the SDK's OAuth client subset (discovery, PKCE authorization code flow, dynamic client registration, token refresh) into Go. It retains the notice Copyright (c) 2024 Anthropic, PBC, under the MIT license reproduced in `LICENSES/MIT.txt`.

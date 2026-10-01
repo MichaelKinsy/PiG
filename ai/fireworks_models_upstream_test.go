@@ -30,25 +30,24 @@ func fireworksCatalogPayload(t *testing.T, id string, opts StreamOptions) map[st
 }
 
 func TestFireworksModels(t *testing.T) {
-	// .upstream/v0.87.1/packages/ai/test/fireworks-models.test.ts:22
-	t.Run("registers the default Kimi K2.6 model via Anthropic-compatible Messages API", func(t *testing.T) {
-		m := mustGeneratedModel(t, "fireworks", "accounts/fireworks/models/kimi-k2p6")
-		if m.API != APIAnthropicMessages || m.Provider != "fireworks" || m.BaseURL != "https://api.fireworks.ai/inference" || !m.Reasoning || m.ContextWindow != 262000 || m.MaxOutputTokens != 262000 {
+	// .upstream/v0.99.1/packages/ai/test/fireworks-models.test.ts:22
+	t.Run("registers non-GLM, non-Kimi-K3 models via Anthropic-compatible Messages API", func(t *testing.T) {
+		m := mustGeneratedModel(t, "fireworks", "accounts/fireworks/models/deepseek-v4p1-flash")
+		if m.API != APIAnthropicMessages || m.Provider != "fireworks" || m.BaseURL != "https://api.fireworks.ai/inference" || !m.Reasoning {
 			t.Fatalf("model = %+v", m)
 		}
 		assertCatalogJSON(t, m.Capabilities, `["text","image"]`)
-		assertCatalogJSON(t, (&Model{Capabilities: m.ToCapabilities()}).CostRates(), `{"input":0.95,"output":4,"cacheRead":0.16,"cacheWrite":0}`)
 	})
-	// .upstream/v0.87.1/packages/ai/test/fireworks-models.test.ts:41
-	t.Run("aligns GLM 5.2 Fast with GLM 5.2's OpenAI-compatible config", func(t *testing.T) {
-		base := mustGeneratedModel(t, "fireworks", "accounts/fireworks/models/glm-5p2")
-		fast := mustGeneratedModel(t, "fireworks", "accounts/fireworks/routers/glm-5p2-fast")
+	// .upstream/v0.99.1/packages/ai/test/fireworks-models.test.ts:33
+	t.Run("aligns GLM 5.3 Fast with GLM 5.3's OpenAI-compatible config", func(t *testing.T) {
+		base := mustGeneratedModel(t, "fireworks", "accounts/fireworks/models/glm-5p3")
+		fast := mustGeneratedModel(t, "fireworks", "accounts/fireworks/routers/glm-5p3-fast")
 		if base.API != fast.API || base.BaseURL != fast.BaseURL || !reflect.DeepEqual(base.Compat, fast.Compat) || !reflect.DeepEqual(base.ThinkingLevelMap, fast.ThinkingLevelMap) {
 			t.Fatalf("base=%+v fast=%+v", base, fast)
 		}
 	})
-	// .upstream/v0.87.1/packages/ai/test/fireworks-models.test.ts:51
-	for _, id := range []string{"accounts/fireworks/models/glm-5p2", "accounts/fireworks/routers/glm-5p2-fast"} {
+	// .upstream/v0.99.1/packages/ai/test/fireworks-models.test.ts:43
+	for _, id := range []string{"accounts/fireworks/models/glm-5p3", "accounts/fireworks/routers/glm-5p3-fast"} {
 		t.Run("omits unsupported long cache retention for "+id, func(t *testing.T) {
 			p := fireworksCatalogPayload(t, id, StreamOptions{CacheRetention: CacheRetentionLong, SessionID: "test-fireworks-session"})
 			if _, ok := p["prompt_cache_retention"]; ok {
@@ -56,7 +55,7 @@ func TestFireworksModels(t *testing.T) {
 			}
 		})
 	}
-	// .upstream/v0.87.1/packages/ai/test/fireworks-models.test.ts:76
+	// .upstream/v0.99.1/packages/ai/test/fireworks-models.test.ts:68
 	t.Run("routes Kimi K3 through the OpenAI-compatible API with native effort controls", func(t *testing.T) {
 		for _, id := range []string{"accounts/fireworks/models/kimi-k3", "accounts/fireworks/routers/kimi-k3-fast"} {
 			m := mustGeneratedModel(t, "fireworks", id)
@@ -71,14 +70,12 @@ func TestFireworksModels(t *testing.T) {
 			t.Fatalf("payload = %v", p)
 		}
 	})
-	// .upstream/v0.87.1/packages/ai/test/fireworks-models.test.ts:129
+	// .upstream/v0.99.1/packages/ai/test/fireworks-models.test.ts:120
 	for _, tc := range []struct {
 		id     string
 		levels []ThinkingLevel
 	}{
-		{"accounts/fireworks/models/deepseek-v4-flash-0731", []ThinkingLevel{ThinkingOff, ThinkingLow, ThinkingHigh, ThinkingMax}},
-		{"accounts/fireworks/models/deepseek-v4-flash-vision-exp", []ThinkingLevel{ThinkingOff, ThinkingLow, ThinkingHigh, ThinkingMax}},
-		{"accounts/fireworks/models/deepseek-v4-pro-0813", []ThinkingLevel{ThinkingOff, ThinkingLow, ThinkingHigh, ThinkingMax}},
+		{"accounts/fireworks/models/deepseek-v4p1-flash", []ThinkingLevel{ThinkingOff, ThinkingLow, ThinkingHigh, ThinkingMax}},
 		{"accounts/fireworks/models/qwen3p8-max", []ThinkingLevel{ThinkingOff, ThinkingLow, ThinkingMedium, ThinkingXHigh}},
 		{"accounts/fireworks/models/qwen3p8-2p4t-a95b", []ThinkingLevel{ThinkingOff, ThinkingLow, ThinkingMedium, ThinkingXHigh}},
 	} {
@@ -110,10 +107,10 @@ func TestFireworksModels(t *testing.T) {
 			}
 		})
 	}
-	// .upstream/v0.87.1/packages/ai/test/fireworks-models.test.ts:161
+	// .upstream/v0.99.1/packages/ai/test/fireworks-models.test.ts:153
 	for _, tc := range []struct{ id, want string }{
-		{"accounts/fireworks/models/glm-5p2", `["off","high","max"]`},
-		{"accounts/fireworks/routers/glm-5p2-fast", `["off","high","max"]`},
+		{"accounts/fireworks/models/glm-5p3", `["low","high","max"]`},
+		{"accounts/fireworks/routers/glm-5p3-fast", `["low","high","max"]`},
 		{"accounts/fireworks/models/kimi-k3", `["low","high","max"]`},
 		{"accounts/fireworks/routers/kimi-k3-fast", `["low","high","max"]`},
 	} {
@@ -121,9 +118,9 @@ func TestFireworksModels(t *testing.T) {
 			assertCatalogJSON(t, GetSupportedThinkingLevels(mustGeneratedModel(t, "fireworks", tc.id).ToModel()), tc.want)
 		})
 	}
-	// .upstream/v0.87.1/packages/ai/test/fireworks-models.test.ts:172
+	// .upstream/v0.99.1/packages/ai/test/fireworks-models.test.ts:162
 	t.Run("keeps toggle-only Messages models without a verified fallback on budget-based thinking", func(t *testing.T) {
-		m := mustGeneratedModel(t, "fireworks", "accounts/fireworks/models/kimi-k2p6")
+		m := mustGeneratedModel(t, "fireworks", "accounts/fireworks/models/nemotron-3-ultra-nvfp4")
 		if m.Compat.ForceAdaptiveThinking != nil {
 			t.Fatal("unexpected forceAdaptiveThinking")
 		}
@@ -133,7 +130,7 @@ func TestFireworksModels(t *testing.T) {
 			t.Fatalf("payload = %v", p)
 		}
 	})
-	// .upstream/v0.87.1/packages/ai/test/fireworks-models.test.ts:192
+	// .upstream/v0.99.1/packages/ai/test/fireworks-models.test.ts:182
 	t.Run("resolves FIREWORKS_API_KEY from the environment", func(t *testing.T) {
 		t.Setenv("FIREWORKS_API_KEY", "test-fireworks-key")
 		assertCatalogJSON(t, FindEnvKeys("fireworks", nil), `["FIREWORKS_API_KEY"]`)
@@ -141,9 +138,9 @@ func TestFireworksModels(t *testing.T) {
 			t.Fatal(got)
 		}
 	})
-	// .upstream/v0.87.1/packages/ai/test/fireworks-models.test.ts:199
+	// .upstream/v0.99.1/packages/ai/test/fireworks-models.test.ts:189
 	t.Run("sets Fireworks-specific compat for session affinity and unsupported tool fields", func(t *testing.T) {
-		c := mustGeneratedModel(t, "fireworks", "accounts/fireworks/models/kimi-k2p6").Compat
+		c := mustGeneratedModel(t, "fireworks", "accounts/fireworks/models/nemotron-3-ultra-nvfp4").Compat
 		if c == nil || c.SendSessionAffinityHeaders == nil || !*c.SendSessionAffinityHeaders || c.SupportsEagerToolInputStreaming == nil || *c.SupportsEagerToolInputStreaming || c.SupportsCacheControlOnTools == nil || *c.SupportsCacheControlOnTools || c.SupportsLongCacheRetention == nil || *c.SupportsLongCacheRetention || c.AllowEmptySignature == nil || !*c.AllowEmptySignature {
 			t.Fatalf("compat = %+v", c)
 		}
@@ -159,25 +156,25 @@ func TestFireworksAnthropicSessionAffinityAndToolCompat(t *testing.T) {
 		toolField               string
 		toolValue               any
 	}{
-		// .upstream/v0.87.1/packages/ai/test/fireworks-models.test.ts:346
+		// .upstream/v0.99.1/packages/ai/test/fireworks-models.test.ts:336
 		{name: "sends x-session-affinity header for Fireworks models", provider: "fireworks", session: "fireworks-session-1", header: "x-session-affinity", want: "fireworks-session-1"},
-		// .upstream/v0.87.1/packages/ai/test/fireworks-models.test.ts:356
+		// .upstream/v0.99.1/packages/ai/test/fireworks-models.test.ts:346
 		{name: "omits x-session-affinity header for native Anthropic models", provider: "anthropic", session: "anthropic-session-1", header: "x-session-affinity"},
-		// .upstream/v0.87.1/packages/ai/test/fireworks-models.test.ts:365
+		// .upstream/v0.99.1/packages/ai/test/fireworks-models.test.ts:355
 		{name: "omits x-session-affinity header when cacheRetention is none", provider: "fireworks", session: "fireworks-session-2", retention: CacheRetentionNone, header: "x-session-affinity"},
-		// .upstream/v0.87.1/packages/ai/test/fireworks-models.test.ts:376
+		// .upstream/v0.99.1/packages/ai/test/fireworks-models.test.ts:366
 		{name: "sends only x-session-id for OpenRouter models", provider: "openrouter", session: "openrouter-session-1", header: "x-session-id", want: "openrouter-session-1"},
-		// .upstream/v0.87.1/packages/ai/test/fireworks-models.test.ts:385
+		// .upstream/v0.99.1/packages/ai/test/fireworks-models.test.ts:375
 		{name: "omits OpenRouter session headers when cacheRetention is none", provider: "openrouter", session: "openrouter-session-2", retention: CacheRetentionNone, header: "x-session-id"},
-		// .upstream/v0.87.1/packages/ai/test/fireworks-models.test.ts:395
+		// .upstream/v0.99.1/packages/ai/test/fireworks-models.test.ts:385
 		{name: "allows OpenRouter session headers to be disabled", provider: "openrouter", session: "openrouter-session-3", disableHeaders: true, header: "x-session-id"},
-		// .upstream/v0.87.1/packages/ai/test/fireworks-models.test.ts:404
+		// .upstream/v0.99.1/packages/ai/test/fireworks-models.test.ts:394
 		{name: "omits cache_control on tools for Fireworks models", provider: "fireworks", toolField: "cache_control"},
-		// .upstream/v0.87.1/packages/ai/test/fireworks-models.test.ts:413
+		// .upstream/v0.99.1/packages/ai/test/fireworks-models.test.ts:403
 		{name: "omits eager_input_streaming on tools for Fireworks models", provider: "fireworks", toolField: "eager_input_streaming"},
-		// .upstream/v0.87.1/packages/ai/test/fireworks-models.test.ts:423
+		// .upstream/v0.99.1/packages/ai/test/fireworks-models.test.ts:413
 		{name: "sends cache_control on tools for native Anthropic models", provider: "anthropic", toolField: "cache_control", toolValue: map[string]any{"type": "ephemeral"}},
-		// .upstream/v0.87.1/packages/ai/test/fireworks-models.test.ts:433
+		// .upstream/v0.99.1/packages/ai/test/fireworks-models.test.ts:423
 		{name: "sends eager_input_streaming on tools for native Anthropic models", provider: "anthropic", toolField: "eager_input_streaming", toolValue: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

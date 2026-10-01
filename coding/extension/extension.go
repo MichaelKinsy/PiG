@@ -34,6 +34,12 @@ type Extension struct {
 	// telemetry, and "Using <path>" UI strings.
 	ResolvedPath string
 
+	// Replaceable leaves the extension out when another extension registers a
+	// tool, command, or flag with a name it registers during loading, instead of
+	// reporting a conflict. The CLI's built-in MCP, codemode, and tool search
+	// extensions use it. upstream: types.ts:2209 (Extension.replaceable)
+	Replaceable bool
+
 	// SourceInfo describes the extension's origin and ownership metadata. The
 	// current public contract carries this value opaquely.
 	SourceInfo SourceInfo
@@ -82,6 +88,10 @@ type Extension struct {
 
 	// Shortcuts is keyed by the canonical KeyID (e.g. "ctrl+shift+r").
 	Shortcuts map[KeyID]ExtensionShortcut
+
+	// Hidden omits the extension from the startup Extensions list.
+	// upstream: .upstream/v0.99.1/packages/coding-agent/src/core/extensions/types.ts:2208 (Extension.hidden)
+	Hidden bool
 }
 
 // HandlerFn is the type-erased storage shape for event handlers.

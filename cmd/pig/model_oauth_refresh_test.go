@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 // failingRefreshOAuthProvider rejects refresh by default and allows tests to control refresh completion and count auth derivations.
@@ -212,11 +213,14 @@ func TestBuildModelContextCancelsOAuthRefresh(t *testing.T) {
 	}()
 	select {
 	case refreshCtx := <-started:
-		// Provider options use context.WithValue, which preserves the request's cancellation channel and values. Pi forwards the request AbortSignal, not Go's metadata-wrapper identity.
-		if refreshCtx.Done() != ctx.Done() || refreshCtx.Value(requestContextKey{}) != requestMarker {
-			t.Error("refresh did not receive the request cancellation signal and values")
+		// Pi hands the refresh AbortSignal.any([signal, AbortSignal.timeout(15_000)]) (resolve.ts:149-153): the request's values, a 15 s deadline, and the request's cancellation, which the cancel below proves.
+		if refreshCtx.Value(requestContextKey{}) != requestMarker {
+			t.Error("refresh did not receive the request's values")
 		}
-	case <-time.After(5 * time.Second):
+		if deadline, ok := refreshCtx.Deadline(); !ok || time.Until(deadline) > 15*time.Second || time.Until(deadline) < 10*time.Second {
+			t.Errorf("refresh deadline = %v, %v; want about 15 s", deadline, ok)
+		}
+	case <-time.After(testbudget.Wait(t)):
 		t.Fatal("request did not start OAuth refresh")
 	}
 	cancel()

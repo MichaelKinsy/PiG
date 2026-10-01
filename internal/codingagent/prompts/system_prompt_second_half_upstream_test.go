@@ -21,7 +21,7 @@ func TestUpstreamSystemPromptSecondHalfExactSections(t *testing.T) {
 		"- Additional docs: " + docsRoot + "\n" +
 		"- Examples: https://github.com/MichaelKinsy/PiG/tree/main/examples (extensions, custom tools, SDK)\n" +
 		"- When reading pig docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n" +
-		"- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pig packages (docs/packages.md), environment variables (docs/environment-variables.md)\n" +
+		"- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pig packages (docs/packages.md), environment variables (docs/environment-variables.md), MCP servers (docs/mcp.md)\n" +
 		"- When working on pig topics, read the docs and examples, and follow .md cross-references before implementing\n" +
 		"- Always read pig .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\n</docs>"
 	const toolsTail = "\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n</tools>"

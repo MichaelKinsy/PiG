@@ -16,12 +16,18 @@ import (
 //   - If OAuth is provided: registers OAuth provider for /login support.
 //   - If StreamSimple is provided: registers a custom API stream handler.
 type ProviderConfig struct {
-	Name          string               `json:"name,omitempty"`
-	BaseURL       string               `json:"baseUrl,omitempty"`
-	APIKey        string               `json:"apiKey,omitempty"`
-	API           ai.API               `json:"api,omitempty"`
-	StreamSimple  ProviderStreamSimple `json:"-"`
-	Headers       map[string]string    `json:"headers,omitempty"`
+	Name         string               `json:"name,omitempty"`
+	BaseURL      string               `json:"baseUrl,omitempty"`
+	APIKey       string               `json:"apiKey,omitempty"`
+	API          ai.API               `json:"api,omitempty"`
+	StreamSimple ProviderStreamSimple `json:"-"`
+	// Images are the image-generation implementations keyed by image API.
+	// upstream: types.ts:1896 (ProviderConfig.images)
+	Images map[ai.ImageAPI]*ai.ProviderImages `json:"-"`
+	// Classifiers are the classifier implementations keyed by classifier API.
+	// upstream: types.ts:1898 (ProviderConfig.classifiers)
+	Classifiers   map[ai.ClassifierAPI]*ai.ProviderClassifier `json:"-"`
+	Headers       map[string]string                           `json:"headers,omitempty"`
 	headerEntries []providerHeaderEntry
 	AuthHeader    bool                  `json:"authHeader,omitempty"`
 	Models        []ProviderModelConfig `json:"models,omitempty"`
@@ -37,11 +43,30 @@ type ProviderConfig struct {
 // this dynamic extension boundary.
 type ProviderStreamSimple = func(model Model, ctx AIContext, opts SimpleStreamOptions) AssistantMessageEventStream
 
-// ProviderModelConfig mirrors upstream ProviderModelConfig 1:1.
+// ProviderModelConfig mirrors upstream ProviderModelConfig, the union of
+// ProviderChatModelConfig, ProviderImageModelConfig and
+// ProviderClassifierModelConfig (types.ts:1929-1991).
+//
+// Go mechanic (not a divergence): one struct carries the discriminator and the
+// fields of all three variants, so an entry round-trips through the extension
+// wire and the registries unchanged. Type omitted is normalized to "chat".
+// A chat entry uses ID, Name, API, BaseURL, Reasoning, ThinkingLevelMap, Input,
+// InputLimits, Cost, PromptCache, SamplingParams, ContextWindow, MaxTokens,
+// Headers and Compat. An image entry uses ID, Name, API (an image API), BaseURL,
+// Input, InputLimits, Cost, Headers and Output. A classifier entry uses ID,
+// Name, API (a classifier API), BaseURL, Input, InputLimits, Cost, Headers and
+// ContextWindow. A field outside its variant is not marshalled.
 type ProviderModelConfig struct {
-	ID               string              `json:"id"`
-	Name             string              `json:"name"`
-	API              ai.API              `json:"api,omitempty"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// Type is "chat", "image" or "classifier". Empty is "chat".
+	// upstream: types.ts:1953-1976 (type)
+	Type ai.ModelType `json:"type,omitempty"`
+	// API is a chat API, or for an image or classifier entry the image or classifier API id.
+	API ai.API `json:"api,omitempty"`
+	// Output is the output types of an image entry: it always includes "image"; "text" means the model can also return text blocks.
+	// upstream: types.ts:1969 (ProviderImageModelConfig.output)
+	Output           []string            `json:"output,omitempty"`
 	BaseURL          string              `json:"baseUrl,omitempty"`
 	Reasoning        bool                `json:"reasoning"`
 	ThinkingLevelMap ai.ThinkingLevelMap `json:"thinkingLevelMap,omitempty"`
@@ -108,10 +133,40 @@ func (config *ProviderModelConfig) UnmarshalJSON(data []byte) error {
 
 func (config ProviderModelConfig) MarshalJSON() ([]byte, error) {
 	data, err := json.Marshal(providerModelConfigJSON(config))
-	if err != nil || config.headerEntries == nil {
+	if err != nil {
 		return data, err
 	}
+	if dropped := nonChatOmittedFields(config.Type); dropped != nil {
+		if data, err = omitJSONFields(data, dropped); err != nil {
+			return nil, err
+		}
+	}
+	if config.headerEntries == nil {
+		return data, nil
+	}
 	return replaceProviderHeaders(data, config.headerEntries)
+}
+
+// nonChatOmittedFields lists the chat-only fields an image or classifier entry does not carry. upstream: types.ts:1929-1991 (ProviderImageModelConfig, ProviderClassifierModelConfig extend only the base config)
+func nonChatOmittedFields(modelType ai.ModelType) []string {
+	switch modelType {
+	case ai.ModelTypeImage:
+		return []string{"reasoning", "thinkingLevelMap", "promptCache", "samplingParams", "contextWindow", "maxTokens", "compat"}
+	case ai.ModelTypeClassifier:
+		return []string{"reasoning", "thinkingLevelMap", "promptCache", "samplingParams", "maxTokens", "compat"}
+	}
+	return nil
+}
+
+func omitJSONFields(data []byte, fields []string) ([]byte, error) {
+	var object map[string]json.RawMessage
+	if err := json.Unmarshal(data, &object); err != nil {
+		return nil, err
+	}
+	for _, field := range fields {
+		delete(object, field)
+	}
+	return json.Marshal(object)
 }
 
 func decodeProviderHeaderEntries(data []byte) ([]providerHeaderEntry, error) {

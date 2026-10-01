@@ -43,15 +43,15 @@ func TestNodeRetainedRequestContextNormalAndCancelled(t *testing.T) {
 			encoded, _ := json.Marshal(resultPath)
 			releasePath := filepath.Join(dir, "release")
 			releaseJSON, _ := json.Marshal(releasePath)
+			// A cancelled command never settles: Pi's ctx.signal is the run's, so the handler has no cancellation of its own to wait on (runner.ts:917-920).
 			wait := ""
 			if cancelled {
-				wait = `await new Promise(resolve => ctx.signal.addEventListener("abort", resolve, {once:true}));`
+				wait = `await new Promise(() => {});`
 			}
 			write(t, path, `import {writeFileSync,existsSync} from "node:fs";
 export default function(pi) {
  pi.registerCommand("capture", {handler: async (_, ctx) => {
    ctx.ui.notify("entered");
-   `+wait+`
    setTimeout(async () => {
      while (!existsSync(`+string(releaseJSON)+`)) await new Promise(resolve => setTimeout(resolve, 1));
      try {
@@ -60,6 +60,7 @@ export default function(pi) {
        writeFileSync(`+string(encoded)+`, JSON.stringify({values}));
      } catch (error) { writeFileSync(`+string(encoded)+`, JSON.stringify({error:String(error)})); }
    }, 0);
+   `+wait+`
  }});
 }`)
 			h := NewHost(dir)

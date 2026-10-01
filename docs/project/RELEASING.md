@@ -154,7 +154,7 @@ off-workflow action by a maintainer with release authority.
 ## npm distribution
 
 PiG also ships on npm as `@pi-in-go/pig`. The npm version is the PiG release
-version (`0.2.0`); npm semver cannot carry the `+0.87.1` build metadata usefully,
+version (`0.3.0`); npm semver cannot carry the `+0.99.1` build metadata usefully,
 so the Pi base version appears in each package's description and README
 instead. The layout follows the esbuild/biome pattern and runs no install
 script and no download at install time:

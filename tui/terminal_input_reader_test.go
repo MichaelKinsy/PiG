@@ -17,6 +17,7 @@ func TestForwardTerminalNormalizesNativeShiftEnterAfterFraming(t *testing.T) {
 			return NormalizeNativeShiftEnterInput(sequence, true, true)
 		}
 		terminal := NewProcessTerminalWithOutput(in.file, nil, ioDiscard{})
+		in.ownQueryReply(terminal)
 		ctx, cancel := context.WithCancel(t.Context())
 		done := make(chan struct{})
 		inputs := make(chan string, 3)
@@ -48,6 +49,7 @@ func TestForwardTerminalFramesAndHoldsNegotiationPrefix(t *testing.T) {
 	withTerminalInput(t, "TestForwardTerminalFramesAndHoldsNegotiationPrefix", 0, func(t *testing.T, in interactiveTestInput) {
 		preserveKeyboardProtocolState(t)
 		terminal := NewProcessTerminalWithOutput(in.file, nil, ioDiscard{})
+		in.ownQueryReply(terminal)
 		ctx, cancel := context.WithCancel(t.Context())
 		done := make(chan struct{})
 		type event struct {

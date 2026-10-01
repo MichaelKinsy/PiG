@@ -18,6 +18,7 @@ import (
 )
 
 func TestExperimentalDurableServerCompositionRemoteB(t *testing.T) {
+	requirePOSIXServerDirectory(t)
 	// upstream: packages/coding-agent/test/experimental-remote-runtime.test.ts:459
 	t.Run("composes management attachment with Session service hydration", func(t *testing.T) {
 		setupExperimentalRemoteTest(t)

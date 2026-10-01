@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/MichaelKinsy/PiG/ai"
+
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
@@ -15,22 +16,11 @@ func (r *ModelRegistry) validateExtensionRegistration(id string, config extensio
 	if config.StreamSimple != nil && config.API == "" {
 		return fmt.Errorf(`Provider %s: "api" is required when registering streamSimple.`, id)
 	}
-	input := ProviderConfigInput{Name: config.Name, BaseURL: config.BaseURL, API: config.API}
-	if config.Models != nil {
-		input.Models = make([]*ai.Model, 0, len(decoded.Models))
-		for _, definition := range decoded.Models {
-			input.Models = append(input.Models, nativeModelFromEntry(modelDefinitionEntry(id, decoded, definition)))
-		}
+	input := providerModelInput(id, decoded)
+	base := builtinTypedBase(id, nil)
+	if base == nil {
+		base = &ai.ModelsProvider{ID: id, Name: id, GetModels: func() ([]*ai.Model, error) { return nil, nil }}
 	}
-	base := &ai.ModelsProvider{ID: id, Name: id, GetModels: func() ([]*ai.Model, error) {
-		models := make([]*ai.Model, 0)
-		for _, generated := range ai.ListModels(id) {
-			model := generated.ToModel()
-			model.Capabilities = generated.ToCapabilities()
-			models = append(models, model)
-		}
-		return models, nil
-	}}
 	_, err := r.composeNativeProvider(base, &input)
 	return err
 }

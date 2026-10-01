@@ -99,7 +99,7 @@ func TestUpstreamSessionQueue(t *testing.T) {
 			return fauxReply("follow-up response", ai.StopReasonStop, 0)(messages)
 		})
 		<-waiting.waitForToolStart
-		if err := h.session.FollowUp(t.Context(), "after current run", nil, nil); err != nil {
+		if _, err := h.session.FollowUp(t.Context(), "after current run", nil, nil); err != nil {
 			t.Fatal(err)
 		}
 		waiting.releaseToolExecution()
@@ -136,12 +136,12 @@ func TestUpstreamSessionQueue(t *testing.T) {
 		inputEvents = nil
 		options := &QueueInputOptions{Source: extension.InputSourceRPC}
 		for _, text := range []string{"steer me", "handle steer"} {
-			if err := h.session.Steer(t.Context(), text, nil, options); err != nil {
+			if _, err := h.session.Steer(t.Context(), text, nil, options); err != nil {
 				t.Fatal(err)
 			}
 		}
 		for _, text := range []string{"follow me", "handle follow"} {
-			if err := h.session.FollowUp(t.Context(), text, nil, options); err != nil {
+			if _, err := h.session.FollowUp(t.Context(), text, nil, options); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -206,9 +206,9 @@ func TestUpstreamSessionQueue(t *testing.T) {
 			for _, text := range test.queued {
 				var err error
 				if test.follow {
-					err = h.session.FollowUp(t.Context(), text, nil, nil)
+					_, err = h.session.FollowUp(t.Context(), text, nil, nil)
 				} else {
-					err = h.session.Steer(t.Context(), text, nil, nil)
+					_, err = h.session.Steer(t.Context(), text, nil, nil)
 				}
 				if err != nil {
 					t.Fatal(err)
@@ -304,7 +304,7 @@ func TestUpstreamSessionQueue(t *testing.T) {
 			}
 		})
 		<-waiting.waitForToolStart
-		if err := h.session.Steer(t.Context(), "queued", nil, nil); err != nil {
+		if _, err := h.session.Steer(t.Context(), "queued", nil, nil); err != nil {
 			t.Fatal(err)
 		}
 		if h.session.PendingMessageCount() != 1 {
@@ -325,9 +325,9 @@ func TestUpstreamSessionQueue(t *testing.T) {
 			h := newHarness(t, queueCommandExtension(func(context.Context, string) error { return nil }), nil)
 			var err error
 			if mode == "steer" {
-				err = h.session.Steer(t.Context(), "/testcmd queued", nil, nil)
+				_, err = h.session.Steer(t.Context(), "/testcmd queued", nil, nil)
 			} else {
-				err = h.session.FollowUp(t.Context(), "/testcmd queued", nil, nil)
+				_, err = h.session.FollowUp(t.Context(), "/testcmd queued", nil, nil)
 			}
 			want := `Extension command "/testcmd" cannot be queued. Use prompt() or execute the command when not streaming.`
 			if err == nil || err.Error() != want {

@@ -1,0 +1,142 @@
+{
+	"upstream": "0.99.2",
+	"cases": {
+		"fail": {
+			"command": "echo out; exit 3",
+			"isError": true,
+			"detailsKeys": null,
+			"textBytes": 32,
+			"textSha256": "24ba97069bd5a841095464c1d7637dfc89694a7005acaf4af078ac52ccf7ca7b",
+			"structuredKeys": [
+				"output",
+				"truncated",
+				"exit_code",
+				"wall_time_seconds"
+			],
+			"truncated": false,
+			"exitCode": 3,
+			"hasFullOutputPath": false,
+			"fullOutputPathIsDetailsPath": true,
+			"outputBytes": 4,
+			"outputSha256": "54034ac5c6e9ea95734ec2b729fd6d62abf64af34a9f9ce5d466cb788191a73d",
+			"outputHead": "out\n",
+			"outputTail": "out\n"
+		},
+		"empty": {
+			"command": "true",
+			"isError": false,
+			"detailsKeys": null,
+			"textBytes": 11,
+			"textSha256": "efefc15c24ee8645a3f5f6958389db729c1577eb6b32aeac4caab2a86d90daa3",
+			"structuredKeys": [
+				"output",
+				"truncated",
+				"exit_code",
+				"wall_time_seconds"
+			],
+			"truncated": false,
+			"exitCode": 0,
+			"hasFullOutputPath": false,
+			"fullOutputPathIsDetailsPath": true,
+			"outputBytes": 0,
+			"outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"outputHead": "",
+			"outputTail": ""
+		},
+		"seq3000": {
+			"command": "seq 1 3000",
+			"isError": false,
+			"detailsKeys": [
+				"truncation",
+				"fullOutputPath"
+			],
+			"textBytes": 10082,
+			"textSha256": "be6d632e0a71d8b5f0ed915e03c2539db5c883e1bc2eeb11613e1a8817fde8d9",
+			"structuredKeys": [
+				"output",
+				"truncated",
+				"exit_code",
+				"wall_time_seconds"
+			],
+			"truncated": false,
+			"exitCode": 0,
+			"hasFullOutputPath": false,
+			"fullOutputPathIsDetailsPath": false,
+			"outputBytes": 13893,
+			"outputSha256": "2e57c67a8bbe706a08d6638ec67da02b67b3743ae7d35948cbcf8d1f45cae0a5",
+			"outputHead": "1\n2\n3\n4\n5\n6\n7\n8\n",
+			"outputTail": "\n2998\n2999\n3000\n"
+		},
+		"seq300000": {
+			"command": "seq 1 300000",
+			"isError": false,
+			"detailsKeys": [
+				"truncation",
+				"fullOutputPath"
+			],
+			"textBytes": 14088,
+			"textSha256": "f04e23b9387cba9336554e638fa7c28dbe6a0940db5b5f749ed81de1a597a0d8",
+			"structuredKeys": [
+				"output",
+				"truncated",
+				"full_output_path",
+				"exit_code",
+				"wall_time_seconds"
+			],
+			"truncated": true,
+			"exitCode": 0,
+			"hasFullOutputPath": true,
+			"fullOutputPathIsDetailsPath": true,
+			"outputBytes": 1048610,
+			"outputSha256": "ae9e4693040d4c799ef4ec09c65386e6d251049fd2067b5dcc1626d71b2051c0",
+			"outputHead": "1\n2\n3\n4\n5\n6\n7\n8\n",
+			"outputTail": "8\n299999\n300000\n"
+		},
+		"signal": {
+			"command": "printf 'before-kill\\n'; kill -KILL $$",
+			"isError": true,
+			"detailsKeys": null,
+			"textBytes": 42,
+			"textSha256": "939b7b359c029401c62a960341b45618f8779249bf75b3ba5922c4a885741c4f",
+			"structuredKeys": [
+				"output",
+				"truncated",
+				"exit_code",
+				"wall_time_seconds"
+			],
+			"truncated": false,
+			"exitCode": 137,
+			"hasFullOutputPath": false,
+			"fullOutputPathIsDetailsPath": true,
+			"outputBytes": 12,
+			"outputSha256": "8d2aa9a771bc25a625c5692fec190b1ee51f4fbc8dce71038f2572178753c83b",
+			"outputHead": "before-kill\n",
+			"outputTail": "before-kill\n"
+		},
+		"euro2m": {
+			"command": "yes '€' | tr -d '\\n' | head -c 2000001",
+			"isError": false,
+			"detailsKeys": [
+				"truncation",
+				"fullOutputPath"
+			],
+			"textBytes": 51295,
+			"textSha256": "5d99ad94a14dc73604927076871810d79bd32ba99ceb0681905af32b996705aa",
+			"structuredKeys": [
+				"output",
+				"truncated",
+				"full_output_path",
+				"exit_code",
+				"wall_time_seconds"
+			],
+			"truncated": true,
+			"exitCode": 0,
+			"hasFullOutputPath": true,
+			"fullOutputPathIsDetailsPath": true,
+			"outputBytes": 1048606,
+			"outputSha256": "c11903ea1e8ac05c870f7053ecabf201abd086e8d3f3bb3fd737a032ce1ed157",
+			"outputHead": "€€€€€€€€€€€€€€€€",
+			"outputTail": "€€€€€€€€€€€€€€€€"
+		}
+	}
+}

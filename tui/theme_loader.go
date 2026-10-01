@@ -25,18 +25,23 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
 //go:embed theme_dark.json theme_light.json
 var builtinThemes embed.FS
 
-// LoadBuiltinTheme returns a built-in theme by name ("dark" or "light").
+// LoadBuiltinTheme returns a built-in theme by name ("dark" or "light") in the terminal's color mode.
 func LoadBuiltinTheme(name string) (*Theme, error) {
+	return loadBuiltinThemeWithMode(name, GetTerminalColorMode())
+}
+
+// loadBuiltinThemeWithMode resolves a built-in theme in mode. The package-level built-ins use truecolor so that package initialization does not detect terminal capabilities, which can run a tmux probe; activation converts them to the terminal's mode (storeActiveTheme), as upstream creates a theme when it is set.
+func loadBuiltinThemeWithMode(name string, mode TerminalColorMode) (*Theme, error) {
 	filename := "theme_" + name + ".json"
 	data, err := builtinThemes.ReadFile(filename)
 	if err != nil {
@@ -47,23 +52,30 @@ func LoadBuiltinTheme(name string) (*Theme, error) {
 		return nil, fmt.Errorf("parse builtin theme %q: %w", name, err)
 	}
 	tj.colorKeys = extractColorKeyOrder(data)
-	return resolveTheme(&tj)
+	return resolveThemeWithMode(&tj, mode)
 }
 
 // ThemeJSON is the upstream-compatible theme file schema.
 // Mirrors upstream theme-schema.json.
 type ThemeJSON struct {
-	Name   string                     `json:"name"`
-	Vars   map[string]ThemeColorValue `json:"vars"`
-	Colors map[string]ThemeColorValue `json:"colors"`
-	Export map[string]ThemeColorValue `json:"export,omitempty"`
+	Name string `json:"name"`
+	// Appearance is the background the theme is designed for, "dark" or "light"; empty means it is detected from the theme's colors.
+	Appearance TerminalTheme              `json:"appearance,omitempty"`
+	Vars       map[string]ThemeColorValue `json:"vars"`
+	Colors     map[string]ThemeColorValue `json:"colors"`
+	Export     map[string]ThemeColorValue `json:"export,omitempty"`
 	// colorKeys preserves the insertion order of keys in the "colors"
 	// JSON object. Populated by extractColorKeyOrder after decoding.
 	colorKeys []string
 }
 
-// LoadThemeFile reads a theme JSON file and returns the resolved Theme, reporting invalid JSON with ECMAScript SyntaxError text.
+// LoadThemeFile reads a theme JSON file and returns the resolved Theme in the terminal's color mode, reporting invalid JSON with ECMAScript SyntaxError text.
 func LoadThemeFile(path string) (*Theme, error) {
+	return LoadThemeFromPath(path, GetTerminalColorMode())
+}
+
+// LoadThemeFromPath reads a theme JSON file and returns the resolved Theme in mode (theme.ts loadThemeFromPath).
+func LoadThemeFromPath(path string, mode TerminalColorMode) (*Theme, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read theme %s: %w", path, err)
@@ -81,7 +93,7 @@ func LoadThemeFile(path string) (*Theme, error) {
 		return nil, fmt.Errorf("parse theme %s: %w", path, err)
 	}
 	tj.colorKeys = extractColorKeyOrder(data)
-	return resolveTheme(&tj)
+	return resolveThemeWithMode(&tj, mode)
 }
 
 // ThemeColorValue mirrors theme-json.ts ColorValue: a hex color, variable
@@ -113,27 +125,35 @@ func (v *ThemeColorValue) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// cssColor mirrors getResolvedThemeColors' per-value conversion. Indexed
-// colors become approximate hex values and explicit empty colors use the
-// caller's light/dark terminal-default fallback.
-func (v ThemeColorValue) cssColor(defaultText string) string {
+// exportColor mirrors getThemeExportColors' per-value conversion: an index becomes hex and an empty value stays unset. Export colors end up in CSS, which understands hex and oklch() directly but not okhsl(), so okhsl() becomes hex (theme.ts:928-940).
+func (v ThemeColorValue) exportColor() string {
 	if !v.isSet {
 		return ""
 	}
 	if v.IsIndex {
-		return ansi256ToHex(v.Index)
+		return ColorToHex(IndexedColor{Index: v.Index})
 	}
 	if v.Text == "" {
-		return defaultText
+		return ""
+	}
+	if themeOkhslPrefix.MatchString(v.Text) {
+		if color, err := ParseColor(v.Text); err == nil {
+			return ColorToHex(color)
+		}
 	}
 	return v.Text
 }
 
-// resolveVarRefs mirrors theme.ts resolveVarRefs: indexes, "" and "#..."
-// literals are final; any other string names a variable, resolved
-// recursively.
+var (
+	themeOkhslPrefix      = lazyregexp.New(`(?i)^okhsl\(`)
+	themeOklchOkhslPrefix = lazyregexp.New(`(?i)^ok(?:lch|hsl)\(`)
+)
+
+// resolveVarRefs mirrors theme.ts resolveVarRefs: indexes, "", "#..." and
+// oklch()/okhsl() literals are final; any other string names a variable,
+// resolved recursively.
 func resolveVarRefs(value ThemeColorValue, vars map[string]ThemeColorValue, visited map[string]bool) (ThemeColorValue, error) {
-	if value.IsIndex || value.Text == "" || strings.HasPrefix(value.Text, "#") {
+	if value.IsIndex || value.Text == "" || strings.HasPrefix(value.Text, "#") || themeOklchOkhslPrefix.MatchString(value.Text) {
 		return value, nil
 	}
 	if visited[value.Text] {
@@ -243,117 +263,57 @@ var themeColorFallbacks = []struct{ token, from string }{
 	{"searchMatchText", "text"},
 }
 
-// resolveTheme converts a ThemeJSON to a Theme by resolving color references
-// (theme.ts resolveThemeColors); an unresolvable reference fails the load.
-func resolveTheme(tj *ThemeJSON) (*Theme, error) {
-	return resolveThemeWithMode(tj, ColorModeTrueColor)
+// themeBackgroundTokens are the tokens drawn as backgrounds (theme.ts BACKGROUND_TOKENS).
+var themeBackgroundTokens = map[string]bool{
+	"selectedBg": true, "searchMatchBg": true, "userMessageBg": true, "customMessageBg": true,
+	"toolPendingBg": true, "toolSuccessBg": true, "toolErrorBg": true,
 }
 
-// resolveThemeWithMode mirrors theme.ts createTheme with an explicit color
-// mode. The unmodified JSON is retained so the theme can be rebuilt in the
-// other mode when truecolor support changes.
-func resolveThemeWithMode(tj *ThemeJSON, mode ColorMode) (*Theme, error) {
+// resolveThemeWithMode mirrors theme.ts createTheme with an explicit color mode. The unmodified JSON is retained so the theme can be rebuilt in the other mode when truecolor support changes.
+func resolveThemeWithMode(tj *ThemeJSON, mode TerminalColorMode) (*Theme, error) {
 	source := cloneThemeJSON(tj)
-	// Build full colors map for Fg()/Bg() dynamic lookup, resolving in JSON
-	// order so the first failing reference is the one upstream reports.
-	colorMap := make(map[string]ThemeColorValue, len(tj.Colors))
+	// Resolve in JSON order so the first failing reference is the one upstream reports.
+	resolved := make(map[string]ThemeColorValue, len(tj.Colors))
+	keys := slices.Clone(tj.colorKeys)
 	for _, k := range tj.colorKeys {
 		value, ok := tj.Colors[k]
 		if !ok {
 			continue
 		}
-		resolved, err := resolveVarRefs(value, tj.Vars, nil)
+		next, err := resolveVarRefs(value, tj.Vars, nil)
 		if err != nil {
 			return nil, err
 		}
-		colorMap[k] = resolved
+		resolved[k] = next
 	}
-	fg := func(name string) string { return themeFgANSI(colorMap[name], mode) }
-	bg := func(name string) string { return themeBgANSI(colorMap[name], mode) }
-	// Optional tokens use nullish fallbacks: only an omitted token falls back,
-	// while an explicitly configured value, including "", is retained.
+	// Optional tokens use nullish fallbacks: only an omitted token falls back, while an explicitly configured value, including "", is retained.
 	for _, fallback := range themeColorFallbacks {
 		if _, present := tj.Colors[fallback.token]; present {
 			continue
 		}
-		colorMap[fallback.token] = colorMap[fallback.from]
-		tj.colorKeys = append(tj.colorKeys, fallback.token)
+		resolved[fallback.token] = resolved[fallback.from]
+		keys = append(keys, fallback.token)
 	}
+	tj.colorKeys = keys
 
+	foregrounds := make([]themeTokenValue, 0, len(keys))
+	backgrounds := make([]themeTokenValue, 0, len(keys))
+	for _, token := range keys {
+		entry := themeTokenValue{token: token, value: resolved[token]}
+		if themeBackgroundTokens[token] {
+			backgrounds = append(backgrounds, entry)
+		} else {
+			foregrounds = append(foregrounds, entry)
+		}
+	}
+	theme, err := newTheme(foregrounds, backgrounds, mode, themeOptions{name: tj.Name, appearance: tj.Appearance})
+	if err != nil {
+		return nil, err
+	}
+	theme.source = source
 	exportColors := resolveThemeExportColors(tj)
-
-	return &Theme{
-		Name:    tj.Name,
-		Accent:  fg("accent"),
-		Success: fg("success"),
-		Error:   fg("error"),
-		Warning: fg("warning"),
-		Muted:   fg("muted"),
-		Dim:     fg("dim"),
-		Text:    fg("text"),
-
-		Border:       fg("border"),
-		BorderAccent: fg("borderAccent"),
-		BorderMuted:  fg("borderMuted"),
-
-		UserMessageBg:      bg("userMessageBg"),
-		UserMessageText:    fg("userMessageText"),
-		ToolPendingBg:      bg("toolPendingBg"),
-		ToolSuccessBg:      bg("toolSuccessBg"),
-		ToolErrorBg:        bg("toolErrorBg"),
-		ToolTitle:          fg("toolTitle"),
-		ToolOutput:         fg("toolOutput"),
-		SelectedBg:         bg("selectedBg"),
-		CustomMessageBg:    bg("customMessageBg"),
-		CustomMessageText:  fg("customMessageText"),
-		CustomMessageLabel: fg("customMessageLabel"),
-
-		MDHeading:         fg("mdHeading"),
-		MDLink:            fg("mdLink"),
-		MDLinkUrl:         fg("mdLinkUrl"),
-		MDCode:            fg("mdCode"),
-		MDCodeBlock:       fg("mdCodeBlock"),
-		MDCodeBlockBorder: fg("mdCodeBlockBorder"),
-		MDQuote:           fg("mdQuote"),
-		MDQuoteBorder:     fg("mdQuoteBorder"),
-		MDHr:              fg("mdHr"),
-		MDListBullet:      fg("mdListBullet"),
-
-		ToolDiffAdded:   fg("toolDiffAdded"),
-		ToolDiffRemoved: fg("toolDiffRemoved"),
-		ToolDiffContext: fg("toolDiffContext"),
-
-		SyntaxComment:     fg("syntaxComment"),
-		SyntaxKeyword:     fg("syntaxKeyword"),
-		SyntaxFunction:    fg("syntaxFunction"),
-		SyntaxVariable:    fg("syntaxVariable"),
-		SyntaxString:      fg("syntaxString"),
-		SyntaxNumber:      fg("syntaxNumber"),
-		SyntaxType:        fg("syntaxType"),
-		SyntaxOperator:    fg("syntaxOperator"),
-		SyntaxPunctuation: fg("syntaxPunctuation"),
-
-		ThinkingText:    fg("thinkingText"),
-		ThinkingOff:     fg("thinkingOff"),
-		ThinkingMinimal: fg("thinkingMinimal"),
-		ThinkingLow:     fg("thinkingLow"),
-		ThinkingMedium:  fg("thinkingMedium"),
-		ThinkingHigh:    fg("thinkingHigh"),
-		ThinkingXhigh:   fg("thinkingXhigh"),
-
-		BashMode: fg("bashMode"),
-
-		ExportPageBg: exportColors["pageBg"],
-		ExportCardBg: exportColors["cardBg"],
-		ExportInfoBg: exportColors["infoBg"],
-
-		BgClose:   SGRBgReset,
-		Reset:     SGRResetAll,
-		colors:    colorMap,
-		colorKeys: tj.colorKeys,
-		mode:      mode,
-		source:    source,
-	}, nil
+	theme.ExportPageBg, theme.ExportCardBg, theme.ExportInfoBg = exportColors["pageBg"], exportColors["cardBg"], exportColors["infoBg"]
+	return theme, nil
 }
 
 func cloneThemeJSON(tj *ThemeJSON) *ThemeJSON {
@@ -376,161 +336,7 @@ func resolveThemeExportColors(tj *ThemeJSON) map[string]string {
 		if err != nil {
 			return nil
 		}
-		out[name] = resolved.cssColor("")
+		out[name] = resolved.exportColor()
 	}
 	return out
-}
-
-// ColorMode mirrors theme.ts ColorMode.
-type ColorMode string
-
-const (
-	ColorModeTrueColor ColorMode = "truecolor"
-	ColorMode256       ColorMode = "256color"
-)
-
-// themeFgANSI mirrors theme.ts fgAnsi: an index emits the 256-color escape,
-// a hex emits 24-bit color in truecolor mode and its nearest palette index
-// otherwise, and an explicit empty value emits the terminal-default
-// foreground reset. An absent token emits nothing.
-func themeFgANSI(value ThemeColorValue, mode ColorMode) string {
-	if !value.isSet {
-		return ""
-	}
-	if value.IsIndex {
-		return "\x1b[38;5;" + strconv.Itoa(value.Index) + "m"
-	}
-	if value.Text == "" {
-		return SGRFgReset
-	}
-	return hexFgANSI(value.Text, mode)
-}
-
-// themeBgANSI mirrors theme.ts bgAnsi; see themeFgANSI.
-func themeBgANSI(value ThemeColorValue, mode ColorMode) string {
-	if !value.isSet {
-		return ""
-	}
-	if value.IsIndex {
-		return "\x1b[48;5;" + strconv.Itoa(value.Index) + "m"
-	}
-	if value.Text == "" {
-		return SGRBgReset
-	}
-	return hexBgANSI(value.Text, mode)
-}
-
-func hexFgANSI(hex string, mode ColorMode) string {
-	if mode == ColorMode256 {
-		r, g, b, ok := parseHex(hex)
-		if !ok {
-			return ""
-		}
-		return "\x1b[38;5;" + strconv.Itoa(themeRGBTo256(r, g, b)) + "m"
-	}
-	return hexToFgANSI(hex)
-}
-
-func hexBgANSI(hex string, mode ColorMode) string {
-	if mode == ColorMode256 {
-		r, g, b, ok := parseHex(hex)
-		if !ok {
-			return ""
-		}
-		return "\x1b[48;5;" + strconv.Itoa(themeRGBTo256(r, g, b)) + "m"
-	}
-	return hexToBgANSI(hex)
-}
-
-// themeCubeValues and themeGrayValues mirror theme.ts CUBE_VALUES and
-// GRAY_VALUES.
-var (
-	themeCubeValues = [6]int{0, 95, 135, 175, 215, 255}
-	themeGrayValues = func() (values [24]int) {
-		for i := range values {
-			values[i] = 8 + i*10
-		}
-		return values
-	}()
-)
-
-// themeClosestIndex mirrors findClosestCubeIndex/findClosestGrayIndex: the
-// first value with the smallest absolute distance wins.
-func themeClosestIndex(value int, values []int) int {
-	minDist, minIdx := -1, 0
-	for i, candidate := range values {
-		dist := value - candidate
-		if dist < 0 {
-			dist = -dist
-		}
-		if minDist < 0 || dist < minDist {
-			minDist, minIdx = dist, i
-		}
-	}
-	return minIdx
-}
-
-// themeColorDistance mirrors theme.ts colorDistance. Each product is rounded
-// separately, as JavaScript evaluates it, so no fused multiply-add changes
-// a comparison.
-func themeColorDistance(r1, g1, b1, r2, g2, b2 int) float64 {
-	dr, dg, db := r1-r2, g1-g2, b1-b2
-	return float64(float64(dr*dr)*0.299) + float64(float64(dg*dg)*0.587) + float64(float64(db*db)*0.114)
-}
-
-// themeRGBTo256 mirrors theme.ts rgbTo256: the nearest 6x6x6 cube color,
-// unless the color is nearly neutral (channel spread under 10) and the
-// grayscale ramp is strictly closer.
-func themeRGBTo256(r, g, b int) int {
-	rIdx := themeClosestIndex(r, themeCubeValues[:])
-	gIdx := themeClosestIndex(g, themeCubeValues[:])
-	bIdx := themeClosestIndex(b, themeCubeValues[:])
-	cubeIndex := 16 + 36*rIdx + 6*gIdx + bIdx
-	cubeDist := themeColorDistance(r, g, b, themeCubeValues[rIdx], themeCubeValues[gIdx], themeCubeValues[bIdx])
-
-	luma := float64(float64(0.299*float64(r))+float64(0.587*float64(g))) + float64(0.114*float64(b))
-	gray := int(math.Floor(luma + 0.5)) // Math.round for non-negative values
-	grayIdx := themeClosestIndex(gray, themeGrayValues[:])
-	grayValue := themeGrayValues[grayIdx]
-	grayDist := themeColorDistance(r, g, b, grayValue, grayValue, grayValue)
-
-	spread := max(r, g, b) - min(r, g, b)
-	if spread < 10 && grayDist < cubeDist {
-		return 232 + grayIdx
-	}
-	return cubeIndex
-}
-
-// hexToFgANSI converts "#rrggbb" to "\x1b[38;2;r;g;bm".
-// Returns empty string for empty input (= terminal default).
-func hexToFgANSI(hex string) string {
-	r, g, b, ok := parseHex(hex)
-	if !ok {
-		return ""
-	}
-	return "\x1b[38;2;" + strconv.Itoa(r) + ";" + strconv.Itoa(g) + ";" + strconv.Itoa(b) + "m"
-}
-
-// hexToBgANSI converts "#rrggbb" to "\x1b[48;2;r;g;bm".
-func hexToBgANSI(hex string) string {
-	r, g, b, ok := parseHex(hex)
-	if !ok {
-		return ""
-	}
-	return "\x1b[48;2;" + strconv.Itoa(r) + ";" + strconv.Itoa(g) + ";" + strconv.Itoa(b) + "m"
-}
-
-// parseHex parses "#rrggbb" to (r, g, b, true).
-func parseHex(hex string) (int, int, int, bool) {
-	hex = strings.TrimPrefix(hex, "#")
-	if len(hex) != 6 {
-		return 0, 0, 0, false
-	}
-	r, err1 := strconv.ParseInt(hex[0:2], 16, 32)
-	g, err2 := strconv.ParseInt(hex[2:4], 16, 32)
-	b, err3 := strconv.ParseInt(hex[4:6], 16, 32)
-	if err1 != nil || err2 != nil || err3 != nil {
-		return 0, 0, 0, false
-	}
-	return int(r), int(g), int(b), true
 }

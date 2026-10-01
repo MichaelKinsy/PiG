@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createModelDataManifest, validateGeneratedModelData } from "../../../.upstream/v0.87.1/packages/ai/scripts/model-data.ts";
+import { createModelDataManifest, validateGeneratedModelData } from "../../../.upstream/current/packages/ai/scripts/model-data.ts";
 
 const repository = process.cwd();
 const temp = mkdtempSync(join(tmpdir(), "model-data-parity-"));

@@ -46,6 +46,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/test/extension-conformance/testfixture"
 )
 
@@ -142,6 +143,7 @@ func TestConformance_TransportsMatch(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixture)")
 	}
+	t.Parallel()
 
 	cases := allHarnessCases()
 
@@ -317,7 +319,7 @@ func (productionTool) Schema() ai.ToolSchema {
 	return ai.ToolSchema{Name: "production_tool", Description: "Production tool", Parameters: map[string]any{"type": "object"}}
 }
 func (productionTool) Execute(_ context.Context, _ string, _ json.RawMessage, update agent.ToolUpdateCallback) (agent.AgentToolResult, error) {
-	update("working", map[string]any{"progress": float64(1)})
+	update(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "working"}}, Details: map[string]any{"progress": float64(1)}})
 	return agent.AgentToolResult{
 		Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "done"}, ai.ImageContent{Data: "aW1n", MimeType: "image/png"}},
 		Details: map[string]any{"nested": map[string]any{"value": "kept"}},
@@ -357,6 +359,7 @@ func TestProductionToolExecutionPayloadsMatchAcrossSDKs(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping production extension event conformance in short mode")
 	}
+	t.Parallel()
 	cases := allHarnessCases()
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
@@ -376,7 +379,8 @@ func TestProductionToolExecutionPayloadsMatchAcrossSDKs(t *testing.T) {
 			}
 			text, textOK := persisted.Content[0].(ai.TextContent)
 			image, imageOK := persisted.Content[1].(ai.ImageContent)
-			details, detailsOK := persisted.Details.(map[string]any)
+			// The persisted message holds the details object as the raw JSON the session stored, so its members keep their order.
+			details, detailsOK := orderedjson.Map(persisted.Details)
 			nested, nestedOK := details["nested"].(map[string]any)
 			if !textOK || !imageOK || !detailsOK || !nestedOK {
 				t.Fatalf("persisted ToolResultMessage lost typed payload: %#v", persisted)
@@ -429,7 +433,7 @@ func TestModelEventPayloadsMatchAcrossSDKs(t *testing.T) {
 			h.ui.ClearRecorded()
 			events := []any{
 				extension.MessageUpdateEvent{Type: "message_update", Message: map[string]any{"role": "assistant"}, AssistantMessageEvent: ai.TextDeltaEvent{ContentIndex: 2, Delta: "delta"}},
-				extension.ToolExecutionUpdateEvent{Type: "tool_execution_update", ToolCallID: "call", ToolName: "read", Args: map[string]any{"path": "x"}, PartialResult: map[string]any{"content": "working", "details": map[string]any{"progress": 1}}},
+				extension.ToolExecutionUpdateEvent{Type: "tool_execution_update", ToolCallID: "call", ToolName: "read", Args: map[string]any{"path": "x"}, PartialResult: map[string]any{"content": []any{map[string]any{"type": "text", "text": "working"}}, "details": map[string]any{"progress": 1}}},
 				extension.ToolExecutionEndEvent{Type: "tool_execution_end", ToolCallID: "call", ToolName: "read", Result: map[string]any{"content": []any{map[string]any{"type": "text", "text": "done"}, map[string]any{"type": "image", "data": "aW1n", "mimeType": "image/png"}}, "details": map[string]any{"nested": map[string]any{"value": "kept"}}}, IsError: true},
 			}
 			for _, event := range events {
@@ -499,6 +503,7 @@ func TestRemoteComponentInvalidationSDKsMatch(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
+	t.Parallel()
 
 	cases := sdkHarnessCases()
 	for _, tc := range cases {
@@ -577,24 +582,11 @@ func captureRecording(t *testing.T, h *harness) recording {
 	}
 	assertOrderedRichToolResult(t, rich)
 
-	preparedTool, ok := findTool(h.runner, "prepared_tool")
-	if !ok {
-		t.Fatal("prepared_tool not registered")
-	}
-	preparedArgs := json.RawMessage(`{"legacy":"hello"}`)
-	if preparedTool.Definition.PrepareArguments != nil {
-		preparedArgs, err = preparedTool.Definition.PrepareArguments(preparedArgs)
-		if err != nil {
-			t.Fatalf("prepare arguments: %v", err)
-		}
-	}
-	preparedResult, err := preparedTool.Definition.Execute(ctx, "tc-conformance-prepare", preparedArgs, nil)
-	if err != nil {
-		t.Fatalf("prepared_tool execute: %v", err)
-	}
-	preparedTR, ok := preparedResult.(agent.AgentToolResult)
-	if !ok {
-		t.Fatalf("prepared_tool result type = %T, want agent.AgentToolResult", preparedResult)
+	// agent-loop.ts:707-716: prepareArguments runs before the host validates, so the row goes through the agent's dispatch
+	// (a legacy shape the schema rejects) instead of calling Definition.PrepareArguments and Definition.Execute by hand.
+	prepared := dispatchToolCalls(t, h, []ai.FauxContentBlock{ai.FauxToolCall("prepared_tool", map[string]any{"legacy": "hello"}, "tc-conformance-prepare")})
+	if len(prepared) != 1 || prepared[0].IsError {
+		t.Fatalf("prepared_tool results = %s", describeToolResults(prepared))
 	}
 
 	toolErrDef, ok := findTool(h.runner, "tool_error")
@@ -914,7 +906,7 @@ func captureRecording(t *testing.T, h *harness) recording {
 		ToolRenderer:            toolRenderer,
 		ArgumentCompletions:     argumentCompletions,
 		EchoContent:             tr.Text(),
-		PreparedContent:         preparedTR.Text(),
+		PreparedContent:         prepared[0].Text(),
 		EchoIsError:             tr.IsError,
 		ToolError:               toolErr.Error(),
 		ToolIsErrorContent:      softTR.Text(),
@@ -1050,9 +1042,10 @@ func conformanceLoginDefinition() extension.LoginDefinition {
 func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Extension {
 	var termUnsub func()
 	var abortObserved atomic.Bool
+	var inprocStartedCalls atomic.Int64
 	update := func(onUpdate extension.AgentToolUpdateCallback, text string) {
 		if cb, ok := onUpdate.(agent.ToolUpdateCallback); ok {
-			cb(text, nil)
+			cb(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: text}}})
 		}
 	}
 	flags := conformanceFlagDeclarations()
@@ -1120,6 +1113,35 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 						update(onUpdate, "step 1")
 						update(onUpdate, "step 2")
 						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "done"}}}, nil
+					},
+				},
+				SourceInfo: inprocFixtureName,
+			},
+			"ordered_details": {
+				Definition: extension.ToolDefinition{
+					Name:        "ordered_details",
+					Description: "Return details whose members are not in alphabetical order",
+					Parameters:  json.RawMessage(`{"type":"object","properties":{}}`),
+					Execute: func(_ context.Context, _ string, _ json.RawMessage, onUpdate extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						details := json.RawMessage(`{"zeta":1,"alpha":{"yy":2,"bb":3},"mid":[{"qq":1,"aa":2}]}`)
+						if cb, ok := onUpdate.(agent.ToolUpdateCallback); ok {
+							cb(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "partial"}}, Details: details})
+						}
+						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "done"}}, Details: details}, nil
+					},
+				},
+				SourceInfo: inprocFixtureName,
+			},
+			"ordered_result": {
+				Definition: extension.ToolDefinition{
+					Name:        "ordered_result",
+					Description: "Return a result whose members are not in the declared order",
+					Parameters:  json.RawMessage(`{"type":"object","properties":{}}`),
+					Execute: func(_ context.Context, _ string, _ json.RawMessage, onUpdate extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						if cb, ok := onUpdate.(agent.ToolUpdateCallback); ok {
+							cb(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "partial"}}, Details: map[string]any{"k": 1}})
+						}
+						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "done"}}, Details: map[string]any{"k": 1}, IsError: true}, nil
 					},
 				},
 				SourceInfo: inprocFixtureName,
@@ -1197,6 +1219,23 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 							return nil, err
 						}
 						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "prepared:" + input.Text}}}, nil
+					},
+				},
+				SourceInfo: inprocFixtureName,
+			},
+			"start_order": {
+				Definition: extension.ToolDefinition{
+					Name:        "start_order",
+					Description: "Report the order in which calls start",
+					Parameters:  json.RawMessage(`{"type":"object","properties":{"n":{"type":"number"}}}`),
+					Execute: func(_ context.Context, _ string, raw json.RawMessage, _ extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						var input struct {
+							N json.Number `json:"n"`
+						}
+						if err := json.Unmarshal(raw, &input); err != nil {
+							return nil, err
+						}
+						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: fmt.Sprintf("start#%d n=%s", inprocStartedCalls.Add(1), input.N)}}}, nil
 					},
 				},
 				SourceInfo: inprocFixtureName,
@@ -1602,6 +1641,68 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 				},
 			},
 			"autocomplete-register": {Name: "autocomplete-register", Handler: autocompleteReferenceCommand},
+			"signal-probe": {
+				Name:        "signal-probe",
+				Description: "Report ctx.signal",
+				Handler: func(ctx context.Context, _ string) error {
+					signal, err := extension.FromContext(ctx).Signal()
+					if err != nil {
+						return err
+					}
+					state := "none"
+					if signal != nil {
+						state = "live"
+						if signal.Err() != nil {
+							state = "aborted"
+						}
+					}
+					ui.Notify("signal:"+state, "info")
+					return nil
+				},
+			},
+			"signal-wait": {
+				Name:        "signal-wait",
+				Description: "Wait for ctx.signal to abort",
+				Handler: func(ctx context.Context, _ string) error {
+					signal, err := extension.FromContext(ctx).Signal()
+					if err != nil {
+						return err
+					}
+					if signal == nil {
+						ui.Notify("wait:none", "info")
+						return nil
+					}
+					ui.Notify("wait:start", "info")
+					select {
+					case <-signal.Done():
+						ui.Notify("wait:aborted", "info")
+					case <-time.After(10 * time.Second):
+						ui.Notify("wait:timeout", "info")
+					}
+					return nil
+				},
+			},
+			"signal-poll": {
+				Name:        "signal-poll",
+				Description: "Poll ctx.signal until it is live or none, as a timer that reads it between requests does",
+				Handler: func(ctx context.Context, args string) error {
+					ui.Notify("poll:start", "info")
+					deadline := time.Now().Add(10 * time.Second)
+					for time.Now().Before(deadline) {
+						signal, err := extension.FromContext(ctx).Signal()
+						if err != nil {
+							return err
+						}
+						if (signal != nil) == (args == "live") {
+							ui.Notify("poll:"+args, "info")
+							return nil
+						}
+						time.Sleep(5 * time.Millisecond)
+					}
+					ui.Notify("poll:timeout", "info")
+					return nil
+				},
+			},
 			"usage-probe": {
 				Name: "usage-probe",
 				Handler: func(ctx context.Context, _ string) error {
@@ -1697,7 +1798,12 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 					nested, _ := structured["nested"].(map[string]any)
 					partial, _ := event.PartialResult.(map[string]any)
 					details, _ := partial["details"].(map[string]any)
-					ui.Notify(fmt.Sprintf("tool-update=%s:%v:%v:%v:%v", event.ToolName, structured["path"], nested["depth"], partial["content"], details["progress"]), "info")
+					var text any
+					if blocks, _ := partial["content"].([]any); len(blocks) > 0 {
+						block, _ := blocks[0].(map[string]any)
+						text = block["text"]
+					}
+					ui.Notify(fmt.Sprintf("tool-update=%s:%v:%v:%v:%v", event.ToolName, structured["path"], nested["depth"], text, details["progress"]), "info")
 					return nil, nil
 				},
 			},
@@ -2791,6 +2897,7 @@ func TestConformance_TerminalInput(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
+	t.Parallel()
 
 	cases := allHarnessCases()
 	for _, language := range []string{"go", "rust", "python"} {
@@ -2951,6 +3058,32 @@ func TestConformance_Geometry(t *testing.T) {
 	}
 }
 
+// TestConformance_WidthHandlerHostCall pins that a width handler completes a host call in every SDK. Pi runs handlers in one process and a handler can always await a host call; the Python and Rust SDKs ran width handlers on the thread that reads the host's replies, so a handler's call waited for a reply nothing could read. The handler notifies twice and the second notify exists only once the first call returned; its text carries the width the host sent, which no SDK fallback produces.
+func TestConformance_WidthHandlerHostCall(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
+	}
+	t.Parallel()
+	for _, tc := range sdkHarnessCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			h := tc.make(t)
+			t.Cleanup(func() {
+				if h.cleanup != nil {
+					h.cleanup()
+				}
+				if h.host != nil {
+					h.host.Shutdown("test done")
+				}
+			})
+			runConformanceCommand(t, h, "arm_width_probe")
+			h.host.NotifyWidth(91)
+			pollUntilConformance(t, 10*time.Second, "the width handler's host call never returned", func() bool {
+				return slices.Contains(h.ui.Recorded(), "width-probe-returned:91:info")
+			})
+		})
+	}
+}
+
 // pollUntilConformance retries fn until it returns true or the budget expires.
 func pollUntilConformance(t *testing.T, budget time.Duration, msg string, fn func() bool) {
 	t.Helper()
@@ -2962,6 +3095,49 @@ func pollUntilConformance(t *testing.T, budget time.Duration, msg string, fn fun
 		time.Sleep(50 * time.Millisecond)
 	}
 	t.Fatalf("timed out after %s: %s", budget, msg)
+}
+
+// A tool's `details` and each partial result are the objects the tool wrote (agent-loop.ts:778-786, 912-919): whichever language wrote them, the agent and everything downstream sees their members in the order written, never a map's sorted order. Every realization runs the same tool; the value is not alphabetical, so a realization that decodes it into a map fails. The Python and Rust tools write `zeta` as the float 1.0, which their encoders send as `1.0`; the host holds what JSON.stringify writes for it, `1`, as it does for the Node, Go and in-process tools.
+func TestToolDetailsKeepMemberOrderAcrossSDKs(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
+	}
+	const details = `{"zeta":1,"alpha":{"yy":2,"bb":3},"mid":[{"qq":1,"aa":2}]}`
+	for _, tc := range allHarnessCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			h := tc.make(t)
+			t.Cleanup(func() {
+				if h.cleanup != nil {
+					h.cleanup()
+				}
+				if h.host != nil {
+					h.host.Shutdown("test done")
+				}
+			})
+			ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+			defer cancel()
+			tool, ok := findTool(h.runner, "ordered_details")
+			if !ok {
+				t.Fatal("ordered_details not registered")
+			}
+			var partials []agent.AgentToolResult
+			var onUpdate agent.ToolUpdateCallback = func(partial agent.AgentToolResult) { partials = append(partials, partial) }
+			result, err := tool.Definition.Execute(ctx, "tc-ordered", json.RawMessage(`{}`), onUpdate)
+			if err != nil {
+				t.Fatalf("ordered_details: %v", err)
+			}
+			final, _ := result.(agent.AgentToolResult)
+			if encoded, err := json.Marshal(final.Details); err != nil || string(encoded) != details {
+				t.Errorf("result details = %s, %v, want %s", encoded, err, details)
+			}
+			if len(partials) != 1 {
+				t.Fatalf("partials = %#v, want one", partials)
+			}
+			if encoded, err := json.Marshal(partials[0].Details); err != nil || string(encoded) != details {
+				t.Errorf("partial details = %s, %v, want %s", encoded, err, details)
+			}
+		})
+	}
 }
 
 // Upstream passes every tool a live AbortSignal and an onUpdate that streams
@@ -3000,7 +3176,7 @@ func TestToolSignalAndUpdatesSDKsMatch(t *testing.T) {
 				t.Fatal("update_tool not registered")
 			}
 			var updates []string
-			var onUpdate agent.ToolUpdateCallback = func(content string, _ any) { updates = append(updates, content) }
+			var onUpdate agent.ToolUpdateCallback = func(partial agent.AgentToolResult) { updates = append(updates, partial.Text()) }
 			result, err := tool.Definition.Execute(ctx, "tc-update", json.RawMessage(`{}`), onUpdate)
 			if err != nil {
 				t.Fatalf("update_tool: %v", err)
@@ -3016,7 +3192,7 @@ func TestToolSignalAndUpdatesSDKsMatch(t *testing.T) {
 			toolCtx, cancelTool := context.WithCancel(ctx)
 			waiting := make(chan struct{})
 			var once sync.Once
-			var onWaiting agent.ToolUpdateCallback = func(string, any) { once.Do(func() { close(waiting) }) }
+			var onWaiting agent.ToolUpdateCallback = func(agent.AgentToolResult) { once.Do(func() { close(waiting) }) }
 			done := make(chan struct{})
 			go func() {
 				defer close(done)

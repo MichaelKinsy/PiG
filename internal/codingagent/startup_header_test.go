@@ -114,7 +114,7 @@ func BenchmarkBuiltInHeaderRender(b *testing.B) {
 }
 
 // Pi's built-in header is expandable startup help, not a cwd/config/bin report.
-// D2 and D63 change only the product identity and composite version.
+// Upstream 0.99.1 shows the pi logo before the version (interactive-mode.ts:977-980); D2 changes the onboarding text and D63 the composite version.
 func TestBuiltInHeaderMatchesPiStartupHelp(t *testing.T) {
 	km := &KeybindingsManager{definitions: appKeybindingDefinitions, ordered: appKeybindingOrder, platform: tui.HostKeybindingPlatform()}
 	km.rebuild()
@@ -127,7 +127,7 @@ func TestBuiltInHeaderMatchesPiStartupHelp(t *testing.T) {
 	m.restoreBuiltInHeader()
 	compact := stripANSITest(strings.Join(m.extHeader.Render(100), "\n"))
 	for _, want := range []string{
-		"pig v" + pigversion.Version,
+		" ▀▀█  v" + pigversion.Version,
 		"escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more",
 		"Press ctrl+o to show full startup help and loaded resources.",
 		"PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.",

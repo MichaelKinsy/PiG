@@ -101,7 +101,11 @@ type harnessOptions struct {
 	maxTokens           int
 	tools               []agent.AgentTool
 	extension           extension.Extension
-	resources           *SystemPromptResources
+	// extensions are loaded after extension, in order.
+	extensions []extension.Extension
+	resources  *SystemPromptResources
+	// runtime is the extension runtime the extension loader shares with the runner (loader.ts createExtensionRuntime); nil creates the runner's own.
+	runtime *extension.ExtensionRuntime
 }
 
 type recoveryHarness struct {
@@ -143,8 +147,12 @@ func newRecoveryHarness(t *testing.T, opts harnessOptions, responses ...scripted
 	}
 	model := &ai.Model{ID: "faux-1", DisplayName: "faux-1", Provider: provider, Capabilities: ai.ModelCapabilities{ContextWindow: contextWindow, MaxOutputTokens: opts.maxTokens}}
 	var runner *inproc.Runner
-	if opts.extension.Handlers != nil {
-		runner = inproc.NewRunner([]extension.Extension{opts.extension}, t.TempDir())
+	if opts.extension.Handlers != nil || len(opts.extensions) > 0 {
+		loaded := opts.extensions
+		if opts.extension.Handlers != nil {
+			loaded = append([]extension.Extension{opts.extension}, loaded...)
+		}
+		runner = inproc.NewRunner(loaded, t.TempDir(), opts.runtime)
 	}
 	options := SessionOptions{Model: model, SkipBuiltinTools: !opts.defaultTools, Tools: opts.tools, Runner: runner, SystemPromptResources: opts.resources}
 	if opts.emptySessionManager {

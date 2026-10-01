@@ -274,6 +274,14 @@ impl ProviderObjects {
                 .as_array()
                 .is_some_and(|methods| methods.contains(&json!(method)))
         };
+        let operation = |method: &'static str| -> Option<ProviderOperationFn> {
+            has(method).then(|| {
+                let proxy = proxy.clone();
+                Arc::new(move |model: ProviderModel, context: Value, options: ProviderOperationOptions| {
+                    proxy.invoke(method, json!({"model":model.as_ref(),"context":context,"options":options.values}), HashMap::new(), options.signal)
+                }) as ProviderOperationFn
+            })
+        };
         let stream = |method: &str| -> ProviderStreamFn {
             let proxy = proxy.clone();
             let method = method.to_owned();
@@ -460,6 +468,8 @@ impl ProviderObjects {
             } else {
                 None
             },
+            generate_images: operation("generateImages"),
+            classify: operation("classify"),
         });
         proxies.insert(id, (handle, Arc::downgrade(&provider)));
         Ok(provider)

@@ -1065,7 +1065,7 @@ func TestBuildGoIgnoresBrokenVCSMetadata(t *testing.T) {
 	mustWriteForHash(t, filepath.Join(root, ".git", "index"), "broken index")
 
 	output := filepath.Join(t.TempDir(), "unstamped")
-	if err := buildGo(t.Context(), root, output, ""); err != nil {
+	if err := buildGo(t.Context(), t.TempDir(), root, output, ""); err != nil {
 		t.Fatal(err)
 	}
 	info, err := buildinfo.ReadFile(output)

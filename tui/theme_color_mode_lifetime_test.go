@@ -9,14 +9,17 @@ import (
 
 // Pi's theme.ts createTheme creates a new theme for the requested mode without retaining the previous instance.
 func TestThemeWithColorModeReleasesSourceTheme(t *testing.T) {
+	// The source theme is a truecolor theme; a terminal without COLORTERM loads the built-in in 256 colors and the conversion would return the same instance.
+	preserveCapabilityState(t)
+	SetCapabilities(TerminalCapabilities{TrueColor: true})
 	source, converted := func() (weak.Pointer[Theme], *Theme) {
 		theme, err := LoadBuiltinTheme("dark")
 		if err != nil {
 			t.Fatal(err)
 		}
-		return weak.Make(theme), theme.WithColorMode(ColorMode256)
+		return weak.Make(theme), theme.WithColorMode(TerminalColorMode256)
 	}()
-	if converted.ColorMode() != ColorMode256 || converted.Accent != "\x1b[38;5;109m" {
+	if converted.ColorMode() != TerminalColorMode256 || converted.Accent != "\x1b[38;5;140m" {
 		t.Fatalf("converted theme = %q (%s)", converted.Accent, converted.ColorMode())
 	}
 	runtime.GC()
@@ -83,9 +86,9 @@ func refreshThemeRoundTrips(t *testing.T, rounds int) []weak.Pointer[Theme] {
 			obsolete = append(obsolete, weak.Make(ActiveTheme()))
 			SetCapabilities(TerminalCapabilities{TrueColor: trueColor})
 			RefreshActiveThemeColorMode()
-			wantMode, wantAccent := ColorMode256, "\x1b[38;5;109m"
+			wantMode, wantAccent := TerminalColorMode256, "\x1b[38;5;140m"
 			if trueColor {
-				wantMode, wantAccent = ColorModeTrueColor, "\x1b[38;2;138;190;183m"
+				wantMode, wantAccent = TerminalColorModeTrueColor, "\x1b[38;2;167;152;215m"
 			}
 			if got := ActiveTheme(); got.ColorMode() != wantMode || got.Accent != wantAccent || got.Fg("accent") != wantAccent {
 				t.Fatalf("refreshed theme = %q (%s), want %q (%s)", got.Accent, got.ColorMode(), wantAccent, wantMode)

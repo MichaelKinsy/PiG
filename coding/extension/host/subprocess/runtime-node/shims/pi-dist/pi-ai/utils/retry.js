@@ -16,6 +16,9 @@ const NON_RETRYABLE_PROVIDER_LIMIT_ERROR_PATTERN = buildProviderErrorPattern([
     "out of budget",
     "quota exceeded",
     "billing",
+    // Sign in with ChatGPT: the subscription's shared usage limit, which resets
+    // after hours rather than seconds.
+    "subscription_sharing_usage_limit_exceeded",
 ]);
 const RETRYABLE_PROVIDER_ERROR_PATTERN = buildProviderErrorPattern([
     // Generic provider load, HTTP status, and server-side transient failures.
@@ -76,6 +79,10 @@ const RETRYABLE_PROVIDER_ERROR_PATTERN = buildProviderErrorPattern([
     "please retry your request",
     // gRPC based providers (e.g. NVIDIA NIM)
     "ResourceExhausted",
+    // Sign in with ChatGPT: usage or user data temporarily unavailable. Usage
+    // failures can arrive mid-stream without an HTTP 503 in the message.
+    "subscription_sharing_usage_unavailable",
+    "subscription_sharing_user_unavailable",
 ]);
 export const DEFAULT_MAX_AGENT_RETRY_DELAY_MS = 60_000;
 export function retryDelayMs(policy, attempt) {

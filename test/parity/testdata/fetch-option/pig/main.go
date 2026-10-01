@@ -64,7 +64,7 @@ func run() error {
 		})}
 		var message string
 		if api == "openrouter-images" {
-			out := ai.GenerateImagesOpenRouter(context.Background(), ai.ImagesModel{ID: "test-model", API: ai.APIImagesOpenRouter, Provider: ai.ProviderImagesOpenRouter, BaseURL: server.URL, Output: []string{"image"}}, ai.ImagesContext{Input: []ai.ContentBlock{ai.TextContent{Text: "draw"}}}, ai.ProviderImagesOptions{APIKey: "test", Fetch: fetch})
+			out := ai.GenerateImagesOpenRouter(context.Background(), ai.ImageModel{ID: "test-model", API: ai.APIImagesOpenRouter, Provider: ai.ProviderImagesOpenRouter, BaseURL: server.URL, Output: []string{"image"}}, ai.ImagesContext{Input: []ai.ContentBlock{ai.TextContent{Text: "draw"}}}, ai.ProviderImagesOptions{APIKey: "test", Fetch: fetch})
 			message = out.ErrorMessage
 		} else {
 			stream, err := provider(api, server.URL).Stream(context.Background(), ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hello"), Timestamp: 1}}}), ai.StreamOptions{Fetch: fetch, Transport: ai.TransportSSE})
@@ -89,7 +89,7 @@ func run() error {
 		sameSignal = request.Context() == ctx
 		return nil, cause
 	})}
-	aborted := ai.GenerateImagesOpenRouter(ctx, ai.ImagesModel{ID: "black-forest-labs/flux.2-pro", API: ai.APIImagesOpenRouter, Provider: ai.ProviderImagesOpenRouter, BaseURL: "https://openrouter.ai/api/v1", Output: []string{"image"}}, ai.ImagesContext{Input: []ai.ContentBlock{ai.TextContent{Text: "Generate a dog"}}}, ai.ProviderImagesOptions{APIKey: "test", Fetch: fetch})
+	aborted := ai.GenerateImagesOpenRouter(ctx, ai.ImageModel{ID: "black-forest-labs/flux.2-pro", API: ai.APIImagesOpenRouter, Provider: ai.ProviderImagesOpenRouter, BaseURL: "https://openrouter.ai/api/v1", Output: []string{"image"}}, ai.ImagesContext{Input: []ai.ContentBlock{ai.TextContent{Text: "Generate a dog"}}}, ai.ProviderImagesOptions{APIKey: "test", Fetch: fetch})
 	result["openrouter-images-aborted"] = map[string]any{"error": aborted.ErrorMessage, "reason": aborted.StopReason, "signal": sameSignal}
 	var redirectCalls atomic.Int32
 	manual := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }, Transport: fetchTransport(func(request *http.Request) (*http.Response, error) {

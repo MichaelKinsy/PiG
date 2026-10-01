@@ -11,6 +11,7 @@ import (
 	"weak"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -28,10 +29,12 @@ import (
 // pig-specific: no upstream equivalent.
 type UIBridge struct {
 	modelCatalogEncoder func() (json.RawMessage, error)
-	mu                  sync.RWMutex
-	headerMu            sync.Mutex
-	footerMu            sync.Mutex            // footer admission, pending state and application are one step, as for headerMu; lock headerMu first
-	widgets             map[string]*PushProxy // key → proxy
+	// mcpServers reads the servers extensions registered; the Host installs its runtime's registry.
+	mcpServers func() []extension.RegisteredMcpServer
+	mu         sync.RWMutex
+	headerMu   sync.Mutex
+	footerMu   sync.Mutex            // footer admission, pending state and application are one step, as for headerMu; lock headerMu first
+	widgets    map[string]*PushProxy // key → proxy
 
 	// customOverlays tracks the active ui.custom overlays keyed by
 	// "<extName>:<key>" so render/close notifications from the TS
@@ -112,6 +115,9 @@ type UIBridge struct {
 	// runs in a separate subprocess and only re-renders on a pushed
 	// state_update, so the host must proactively push one.
 	OnStateChanged func()
+
+	// OnRunSignalChanged is called when a run begins or ends. Set by the Host, which brings every runtime up to date with the active run's signal (see [UIBridge.RunSignalChanged]).
+	OnRunSignalChanged func()
 
 	// invalidateTUI triggers a TUI render cycle.
 	invalidateTUI func()
@@ -204,6 +210,18 @@ type HostCallbacks struct {
 	// upstream: types.ts:1455
 	GetAllTools func() []ToolInfo
 
+	// GetSettings returns the effective settings object: global and project settings merged, with overrides. Backs pi.getSettings().
+	// upstream: types.ts:2135 (GetSettingsHandler)
+	GetSettings func() extension.Settings
+
+	// GetCallableTools returns the tools a nested call can run. Backs ctx.tools.
+	// upstream: types.ts:2169 (getCallableTools)
+	GetCallableTools func() []extension.AgentTool
+
+	// ExecuteTool runs a nested tool call for the tool call callerID. ctx carries the calling request's cancellation. Backs ctx.executeTool().
+	// upstream: types.ts:2162 (executeTool)
+	ExecuteTool func(ctx context.Context, callerID, name string, args json.RawMessage, options extension.ExecuteToolOptions) (extension.AgentToolCallOutcome, error)
+
 	// SetActiveTools sets the active tool list.
 	// upstream: types.ts:1456
 	SetActiveTools func(names []string)
@@ -252,14 +270,14 @@ type HostCallbacks struct {
 	GetModel  func(providerID, modelID string) map[string]any
 	GetModels func() []map[string]any
 
-	// GetBranch returns the conversation history as raw session entries. The
-	// entries are already JSON on disk, so they are passed through rather than
-	// decoded into maps and re-encoded on every push.
-	// upstream: sessionManager.getBranch(): returns SessionEntry[]
+	// GetBranch was the conversation history as raw session entries.
+	//
+	// Deprecated: no extension call reads it, and the host never calls it. Extensions read the branch through sessionRead (SessionManager.getBranch) or the state_update session mirror.
 	GetBranch func() []json.RawMessage
 
-	// GetEntries returns all session entries in append order.
-	// upstream: sessionManager.getEntries()
+	// GetEntries was every session entry in append order.
+	//
+	// Deprecated: no extension call reads it, and the host never calls it. Extensions read the entries through sessionRead (SessionManager.getEntries) or the state_update session mirror.
 	GetEntries func() []json.RawMessage
 
 	// GetEntriesPage returns a bounded page at or after cursor, the cursor after
@@ -289,6 +307,14 @@ type HostCallbacks struct {
 	// none. upstream: model-registry.ts getProviderAuth(provider)
 	GetProviderAuth func(ctx context.Context, provider string) (map[string]any, error)
 
+	// GetAvailableOfType lists the models of one type whose provider has working credentials; provider "" means every provider.
+	// upstream: model-registry.ts getAvailableOfType(type, provider?)
+	GetAvailableOfType func(ctx context.Context, modelType, provider string) ([]map[string]any, error)
+
+	// Classify classifies through the Session runtime with request-time auth. The request is the classifier context object and the result is a ClassifierResult object, both as JSON so the order of questions and answers survives; failures are results, never errors.
+	// upstream: model-registry.ts classify(model, context, options?)
+	Classify func(ctx context.Context, model map[string]any, request json.RawMessage, options map[string]any) (json.RawMessage, error)
+
 	// RefreshModelRegistry reloads models.json and refreshes the provider
 	// catalogs. allowNetwork nil means the runtime default; providers nil
 	// means every provider. upstream: model-registry.ts refresh(options)
@@ -305,6 +331,10 @@ type HostCallbacks struct {
 	// IsIdle returns whether the agent is currently idle (not streaming).
 	// upstream: types.ts:307
 	IsIdle func() bool
+
+	// GetSignal returns the active run's cancellation, or nil while no run is active.
+	// upstream: types.ts:2158
+	GetSignal func() context.Context
 
 	// IsProjectTrusted returns whether the current project is trusted.
 	// upstream: types.ts:332
@@ -382,6 +412,14 @@ type ToolInfo struct {
 	// PromptGuidelines is omitted when the definition has none, as upstream
 	// copies an undefined definition.promptGuidelines.
 	PromptGuidelines []string `json:"promptGuidelines,omitempty"`
+	// Exposure, Namespace and Annotations are the tool definition's fields;
+	// upstream's Exposure is never absent (a definition without one is "direct").
+	// They precede sourceInfo, the member order of upstream's object literal,
+	// which a Node extension observes through Object.keys and JSON.stringify.
+	// upstream: types.ts:2063 (ToolInfo), agent-session.ts:1452-1461 (getAllTools)
+	Exposure    extension.ToolExposure     `json:"exposure,omitempty"`
+	Namespace   *extension.ToolNamespace   `json:"namespace,omitempty"`
+	Annotations *extension.ToolAnnotations `json:"annotations,omitempty"`
 	// SourceInfo is upstream's SourceInfo object: path, source, scope, origin
 	// and an optional baseDir.
 	SourceInfo extension.SourceInfo `json:"sourceInfo"`
@@ -422,10 +460,15 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 	terminalCapabilities := b.terminalCapabilities
 	theme := b.theme
 	keybindings := b.keybindings
+	mcpServers := b.mcpServers
 	b.mu.RUnlock()
 
 	// Upstream runner.ts:578-580 reports UI availability from the bound context.
-	state := &StatePayload{IsIdle: true, HasUI: uiCtx != nil && uiCtx != extension.NoopUIContext, ProjectTrusted: true, ScopedModels: []scopedModelSnapshot{}}
+	state := &StatePayload{IsIdle: true, HasUI: uiCtx != nil && uiCtx != extension.NoopUIContext, ProjectTrusted: true, ScopedModels: []scopedModelSnapshot{}, McpServers: []extension.RegisteredMcpServer{}}
+	// pi.getMcpServers() is synchronous upstream (types.ts:1839), so the SDKs answer it from state.
+	if mcpServers != nil {
+		state.McpServers = mcpServers()
+	}
 	// The Node runtime answers getEditorText, getToolsExpanded, and
 	// getAllThemes synchronously, matching the in-process API, so it cannot
 	// make a host call for them. The host pushes state immediately before
@@ -470,6 +513,12 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 	}
 	if actions.GetAllTools != nil {
 		state.AllTools = actions.GetAllTools()
+	}
+	// pi.getSettings() is synchronous upstream (types.ts:1708).
+	if actions.GetSettings != nil {
+		if encoded, err := json.Marshal(actions.GetSettings()); err == nil {
+			state.Settings = encoded
+		}
 	}
 	if actions.GetCommands != nil {
 		state.Commands = actions.GetCommands()
@@ -709,6 +758,13 @@ func (b *UIBridge) SetWidgetRequestFunc(fn func(extName, key string, lines []str
 	b.widgetRequestFunc = fn
 }
 
+// hostCallbacks returns the bound host callbacks, or nil.
+func (b *UIBridge) hostCallbacks() *HostCallbacks {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return b.actions
+}
+
 // SetActions sets the agent-loop callbacks. Thread-safe.
 // Called after the agent session is fully initialized.
 func (b *UIBridge) SetActions(actions *HostCallbacks) {
@@ -782,6 +838,31 @@ func (b *UIBridge) BindCommandActions(actions extension.CommandActions) {
 	}
 }
 
+// RunSignal returns the active run's cancellation, or nil while no run is active or the host bound none.
+func (b *UIBridge) RunSignal() context.Context {
+	b.mu.Lock()
+	var get func() context.Context
+	if b.actions != nil {
+		get = b.actions.GetSignal
+	}
+	b.mu.Unlock()
+	if get == nil {
+		return nil
+	}
+	return get()
+}
+
+// RunSignalChanged tells the Host that a run began or ended, so every runtime learns the new ctx.signal without waiting for its next request.
+// Upstream's `ctx.signal` is a getter over `agent.signal` (runner.ts:917-920, agent.ts:336-338), live at every read; the Session or interactive owner reports each change here, after its agent's run state has changed.
+func (b *UIBridge) RunSignalChanged() {
+	b.mu.Lock()
+	changed := b.OnRunSignalChanged
+	b.mu.Unlock()
+	if changed != nil {
+		changed()
+	}
+}
+
 // SetHostAction sets a single host callback by name. Thread-safe.
 // This allows the interactive mode to wire callbacks one-by-one without
 // importing the HostCallbacks type (avoiding circular deps).
@@ -790,6 +871,9 @@ func (b *UIBridge) BindCommandActions(actions extension.CommandActions) {
 //   - "getFlag":          func(string, string) any
 //   - "getActiveTools":   func() []string
 //   - "getAllTools":      func() []ToolInfo
+//   - "getSettings":      func() extension.Settings
+//   - "getCallableTools": func() []extension.AgentTool
+//   - "executeTool":      func(context.Context, string, string, json.RawMessage, extension.ExecuteToolOptions) (extension.AgentToolCallOutcome, error)
 //   - "getCommands":      func() []CommandInfo
 //   - "getThinkingLevel": func() string
 //   - "setThinkingLevel": func(string)
@@ -799,7 +883,6 @@ func (b *UIBridge) BindCommandActions(actions extension.CommandActions) {
 //   - "getSessionID":     func() string
 //   - "getSessionFile":   func() string
 //   - "getLeafID":       func() string
-//   - "getEntries":      func() []map[string]any
 //   - "exec":            func(context.Context, string, []string, *extension.ExecOptions) (extension.ExecResult, error)
 //     OR func(string, []string, *extension.ExecOptions) (extension.ExecResult, error)
 //   - "sendMessage":     func(extension.CustomMessageRef, SendMessageOptions) error
@@ -810,6 +893,7 @@ func (b *UIBridge) BindCommandActions(actions extension.CommandActions) {
 //   - "refreshTools":    func() error
 //   - "setModel":        func(context.Context, string) (bool, error)
 //   - "isIdle":          func() bool
+//   - "getSignal":       func() context.Context
 //   - "abort":           func()
 //   - "hasPendingMessages": func() bool
 //   - "shutdown":        func()
@@ -831,6 +915,12 @@ func (b *UIBridge) SetHostAction(key string, fn any) {
 		b.actions.GetActiveTools = fn.(func() []string)
 	case "getAllTools":
 		b.actions.GetAllTools = fn.(func() []ToolInfo)
+	case "getSettings":
+		b.actions.GetSettings = fn.(func() extension.Settings)
+	case "getCallableTools":
+		b.actions.GetCallableTools = fn.(func() []extension.AgentTool)
+	case "executeTool":
+		b.actions.ExecuteTool = fn.(func(context.Context, string, string, json.RawMessage, extension.ExecuteToolOptions) (extension.AgentToolCallOutcome, error))
 	case "getCommands":
 		b.actions.GetCommands = fn.(func() []CommandInfo)
 	case "getThinkingLevel":
@@ -869,6 +959,8 @@ func (b *UIBridge) SetHostAction(key string, fn any) {
 		b.actions.SetModel = fn.(func(context.Context, string) (bool, error))
 	case "isIdle":
 		b.actions.IsIdle = fn.(func() bool)
+	case "getSignal":
+		b.actions.GetSignal = fn.(func() context.Context)
 	case "isProjectTrusted":
 		b.actions.IsProjectTrusted = fn.(func() bool)
 	case "getGitBranch":
@@ -907,8 +999,10 @@ func (b *UIBridge) SetHostAction(key string, fn any) {
 		b.actions.GetModels = fn.(func() []map[string]any)
 		b.modelCatalogEncoder = nil
 	case "getBranch":
+		// Deprecated key: kept so a caller that sets it does not panic; nothing reads it.
 		b.actions.GetBranch = fn.(func() []json.RawMessage)
 	case "getEntries":
+		// Deprecated key: kept so a caller that sets it does not panic; nothing reads it.
 		b.actions.GetEntries = fn.(func() []json.RawMessage)
 	case "getEntriesPage":
 		b.actions.GetEntriesPage = fn.(func(int, int) ([]json.RawMessage, int, bool, string))
@@ -930,6 +1024,10 @@ func (b *UIBridge) SetHostAction(key string, fn any) {
 		b.actions.GetModelRegistryState = fn.(func() map[string]any)
 	case "getProviderAuth":
 		b.actions.GetProviderAuth = fn.(func(context.Context, string) (map[string]any, error))
+	case "getAvailableOfType":
+		b.actions.GetAvailableOfType = fn.(func(context.Context, string, string) ([]map[string]any, error))
+	case "classify":
+		b.actions.Classify = fn.(func(context.Context, map[string]any, json.RawMessage, map[string]any) (json.RawMessage, error))
 	case "refreshModelRegistry":
 		b.actions.RefreshModelRegistry = fn.(func(context.Context, *bool, []string, *bool) (map[string]any, error))
 	case "sessionRead":
@@ -1159,6 +1257,8 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 		return b.handleGetActiveTools(actions)
 	case "getAllTools":
 		return b.handleGetAllTools(actions)
+	case CallGetCallableTools:
+		return b.handleGetCallableTools(actions)
 	case "setActiveTools":
 		return b.handleSetActiveTools(actions, call.Args)
 	case "refreshTools":
@@ -1188,16 +1288,16 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 		return b.handleGetModelInfo(actions)
 	case "getModel":
 		return b.handleGetModel(actions, call.Args)
-	case "getBranch":
-		return b.handleGetBranch(actions)
-	case "getEntries":
-		return b.handleGetEntries(actions)
 	case "getModelAuth":
 		return b.handleGetModelAuth(ctx, actions, call.Args)
 	case "getModelRegistryState":
 		return b.handleGetModelRegistryState()
 	case "getProviderAuth":
 		return b.handleGetProviderAuth(ctx, actions, call.Args)
+	case "getAvailableOfType":
+		return b.handleGetAvailableOfType(ctx, actions, call.Args)
+	case "classify":
+		return b.handleClassify(ctx, actions, call.Args)
 	case "refreshModelRegistry":
 		return b.handleRefreshModelRegistry(ctx, actions, call.Args)
 	case "sessionRead":
@@ -1927,7 +2027,8 @@ func (b *UIBridge) handleReload(ctx context.Context, actions *HostCallbacks) (*C
 		return &CallResultPayload{Error: &ErrorInfo{Code: "unsupported", Message: "reload not available"}}, nil
 	}
 	if err := actions.Reload(ctx); err != nil {
-		return &CallResultPayload{Error: &ErrorInfo{Code: "reload_error", Message: err.Error()}}, nil
+		// session.reload() rejects with the Error it threw (agent-session.ts:3575-3625), so the extension sees its own message.
+		return &CallResultPayload{Error: &ErrorInfo{Message: err.Error()}}, nil
 	}
 	return &CallResultPayload{}, nil
 }
@@ -2712,7 +2813,8 @@ func (b *UIBridge) handleAppendEntry(actions *HostCallbacks, args json.RawMessag
 		Data       any                `json:"data"`
 		Direct     *DirectEntryAppend `json:"direct"`
 	}
-	if err := json.Unmarshal(args, &p); err != nil {
+	// `data` is the object the extension wrote; it keeps the member order JSON.stringify gave it.
+	if err := orderedjson.UnmarshalFields(args, &p, "data"); err != nil {
 		return nil, fmt.Errorf("parse appendEntry args: %w", err)
 	}
 	if actions == nil || actions.AppendEntry == nil {
@@ -2879,6 +2981,21 @@ func (b *UIBridge) handleGetAllTools(actions *HostCallbacks) (*CallResultPayload
 	return &CallResultPayload{Result: result}, nil
 }
 
+// handleGetCallableTools answers ctx.tools with the tools the session lists when the call runs, never a copy taken earlier: Pi's getter calls getCallableToolsFn each time it is read (runner.ts:958-961). Without the action the list is empty (runner.ts:379).
+func (b *UIBridge) handleGetCallableTools(actions *HostCallbacks) (*CallResultPayload, error) {
+	tools := []extension.AgentTool{}
+	if actions != nil && actions.GetCallableTools != nil {
+		if listed := actions.GetCallableTools(); listed != nil {
+			tools = listed
+		}
+	}
+	result, err := json.Marshal(CallableToolsResult{Tools: tools})
+	if err != nil {
+		return nil, err
+	}
+	return &CallResultPayload{Result: result}, nil
+}
+
 func (b *UIBridge) handleSetActiveTools(actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
 	var p struct {
 		Tools []string `json:"tools"`
@@ -3019,26 +3136,6 @@ func (b *UIBridge) handleGetModel(actions *HostCallbacks, args json.RawMessage) 
 	return &CallResultPayload{Result: result}, nil
 }
 
-func (b *UIBridge) handleGetBranch(actions *HostCallbacks) (*CallResultPayload, error) {
-	if actions == nil || actions.GetBranch == nil {
-		result, _ := json.Marshal(map[string]any{"entries": []any{}})
-		return &CallResultPayload{Result: result}, nil
-	}
-	entries := actions.GetBranch()
-	result, _ := json.Marshal(map[string]any{"entries": entries})
-	return &CallResultPayload{Result: result}, nil
-}
-
-func (b *UIBridge) handleGetEntries(actions *HostCallbacks) (*CallResultPayload, error) {
-	if actions == nil || actions.GetEntries == nil {
-		result, _ := json.Marshal(map[string]any{"entries": []any{}})
-		return &CallResultPayload{Result: result}, nil
-	}
-	entries := actions.GetEntries()
-	result, _ := json.Marshal(map[string]any{"entries": entries})
-	return &CallResultPayload{Result: result}, nil
-}
-
 func (b *UIBridge) handleGetModelAuth(ctx context.Context, actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
 	var p struct {
 		Provider string `json:"provider"`
@@ -3080,6 +3177,55 @@ func (b *UIBridge) handleGetProviderAuth(ctx context.Context, actions *HostCallb
 		return nil, err
 	}
 	result, err := json.Marshal(auth)
+	if err != nil {
+		return nil, err
+	}
+	return &CallResultPayload{Result: result}, nil
+}
+
+// handleGetAvailableOfType answers ctx.modelRegistry.getAvailableOfType (model-registry.ts:135-143). A host without a Session has no available model of any type.
+func (b *UIBridge) handleGetAvailableOfType(ctx context.Context, actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
+	var p struct {
+		Type     string `json:"type"`
+		Provider string `json:"provider"`
+	}
+	if err := json.Unmarshal(args, &p); err != nil {
+		return nil, fmt.Errorf("parse getAvailableOfType args: %w", err)
+	}
+	extension.CallInitiated(ctx)
+	models := []map[string]any{}
+	if actions != nil && actions.GetAvailableOfType != nil {
+		var err error
+		if models, err = actions.GetAvailableOfType(ctx, p.Type, p.Provider); err != nil {
+			return nil, err
+		}
+	}
+	result, err := json.Marshal(models)
+	if err != nil {
+		return nil, err
+	}
+	return &CallResultPayload{Result: result}, nil
+}
+
+// handleClassify answers ctx.modelRegistry.classify (model-registry.ts:170-177). The context and the result cross as raw JSON so the order of questions and answers is the caller's and the service's. A classification never fails the call: a host that cannot classify answers with an error result naming the model, as classifierErrorResult does.
+func (b *UIBridge) handleClassify(ctx context.Context, actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
+	var p struct {
+		Model   map[string]any  `json:"model"`
+		Context json.RawMessage `json:"context"`
+		Options map[string]any  `json:"options"`
+	}
+	if err := json.Unmarshal(args, &p); err != nil {
+		return nil, fmt.Errorf("parse classify args: %w", err)
+	}
+	extension.CallInitiated(ctx)
+	if actions == nil || actions.Classify == nil {
+		api, _ := p.Model["api"].(string)
+		provider, _ := p.Model["provider"].(string)
+		id, _ := p.Model["id"].(string)
+		result, err := json.Marshal(ai.ClassifierErrorResult(&ai.ClassifierModel{ID: id, API: ai.ClassifierAPI(api), Provider: provider}, errors.New("classification is not available"), false))
+		return &CallResultPayload{Result: result}, err
+	}
+	result, err := actions.Classify(ctx, p.Model, p.Context, p.Options)
 	if err != nil {
 		return nil, err
 	}

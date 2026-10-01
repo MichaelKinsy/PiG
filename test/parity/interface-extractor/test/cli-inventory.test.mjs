@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { extractCLIInventory } from "../src/cli-inventory.mjs";
+import { scratchDir } from "./scratch.mjs";
 
 function write(file, content) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -11,7 +11,7 @@ function write(file, content) {
 }
 
 function fixture() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pig-cli-inventory-"));
+  const root = scratchDir("pig-cli-inventory-");
   const args = path.join(root, "packages/coding-agent/src/cli/args.ts");
   const packages = path.join(root, "packages/coding-agent/src/package-manager-cli.ts");
   write(args, `

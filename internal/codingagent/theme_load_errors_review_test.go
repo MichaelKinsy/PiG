@@ -17,7 +17,7 @@ func TestLoadThemeResourcesUnstatablePathDoesNotExist(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(file, "theme.json")
-	_, diagnostics := loadThemeResources(tui.NewThemeRegistry(), []string{path})
+	_, diagnostics := loadThemeResources(tui.NewThemeRegistry(), []string{path}, tui.GetTerminalColorMode())
 	want := extension.ResourceDiagnostic{Type: extension.DiagnosticWarning, Message: "theme path does not exist", Path: path}
 	if len(diagnostics) != 1 || diagnostics[0] != want {
 		t.Fatalf("diagnostics = %#v, want %#v", diagnostics, want)
@@ -41,7 +41,7 @@ func TestLoadThemeResourcesNodeFSErrorText(t *testing.T) {
 		}
 		t.Cleanup(func() { _ = os.Chmod(path, 0o700) })
 	}
-	_, diagnostics := loadThemeResources(tui.NewThemeRegistry(), []string{dir, file})
+	_, diagnostics := loadThemeResources(tui.NewThemeRegistry(), []string{dir, file}, tui.GetTerminalColorMode())
 	want := []extension.ResourceDiagnostic{
 		{Type: extension.DiagnosticWarning, Message: "EACCES: permission denied, scandir '" + dir + "'", Path: dir},
 		{Type: extension.DiagnosticWarning, Message: "EACCES: permission denied, open '" + file + "'", Path: file},

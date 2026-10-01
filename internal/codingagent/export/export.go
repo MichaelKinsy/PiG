@@ -4,17 +4,21 @@
 package export
 
 import (
+	"cmp"
 	"embed"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
-	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/rpcclient"
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -52,63 +56,31 @@ type AgentState struct {
 	Tools        []ToolSchema
 }
 
-// defaultTextColor is the fallback for empty-string color tokens in the
-// dark theme. Matches upstream getResolvedThemeColors() which substitutes
-// "" → defaultText ("#e5e5e7" for dark, "#000000" for light).
-const defaultTextColorDark = "#e5e5e7"
-const defaultTextColorLight = "#000000"
-
+// generateThemeVars is index.ts generateThemeVars: the resolved theme colors, then the export backgrounds.
 func generateThemeVars() string {
-	th := tui.ActiveTheme()
-	if th == nil {
-		return ""
-	}
+	th := tui.ExportTheme()
 	colors := th.Colors()
-	if colors == nil {
-		return ""
-	}
-	// Use ColorKeys() to preserve upstream JSON insertion order.
-	// Fall back to sorted keys if colorKeys is not available.
-	keys := th.ColorKeys()
-	if len(keys) == 0 {
-		keys = make([]string, 0, len(colors))
-		for k := range colors {
-			keys = append(keys, k)
-		}
-		slices.Sort(keys)
-	}
-	// Upstream getResolvedThemeColors fills empty strings with the default
-	// text color for the theme variant (dark=#e5e5e7, light=#000000).
-	defaultText := defaultTextColorDark
-	if th.Name == "light" {
-		defaultText = defaultTextColorLight
-	}
 	var lines []string
-	for _, k := range keys {
-		v := colors[k]
-		if v == "" {
-			v = defaultText
-		}
-		lines = append(lines, fmt.Sprintf("--%s: %s;", k, v))
+	for _, k := range th.ColorKeys() {
+		lines = append(lines, fmt.Sprintf("--%s: %s;", k, colors[k]))
 	}
-	pageBg := th.ExportPageBg
-	if pageBg == "" {
-		pageBg = "#18181e"
-	}
-	cardBg := th.ExportCardBg
-	if cardBg == "" {
-		cardBg = "#1e1e24"
-	}
-	infoBg := th.ExportInfoBg
-	if infoBg == "" {
-		infoBg = "#3c3728"
-	}
+	pageBg, cardBg, infoBg := exportBackgrounds(th, colors)
 	lines = append(lines,
 		fmt.Sprintf("--exportPageBg: %s;", pageBg),
 		fmt.Sprintf("--exportCardBg: %s;", cardBg),
 		fmt.Sprintf("--exportInfoBg: %s;", infoBg),
 	)
 	return strings.Join(lines, "\n      ")
+}
+
+// exportBackgrounds are the theme's explicit export colors, or the ones derived from its userMessageBg (index.ts:119-125).
+func exportBackgrounds(th *tui.Theme, colors map[string]string) (pageBg, cardBg, infoBg string) {
+	userMessageBg := colors["userMessageBg"]
+	if userMessageBg == "" {
+		userMessageBg = "#343541"
+	}
+	derived := deriveExportColors(userMessageBg)
+	return cmp.Or(th.ExportPageBg, derived.pageBg), cmp.Or(th.ExportCardBg, derived.cardBg), cmp.Or(th.ExportInfoBg, derived.infoBg)
 }
 
 // ToHTML converts session data to Pi's self-contained HTML, with a base64 JSON.stringify payload and first-match template substitution.
@@ -119,19 +91,8 @@ func ToHTML(data SessionData) string {
 	marked := mustReadAsset("assets/vendor/marked.min.js")
 	highlight := mustReadAsset("assets/vendor/highlight.min.js")
 
-	th := tui.ActiveTheme()
-	bodyBg, containerBg, infoBg := "#18181e", "#1e1e24", "#3c3728"
-	if th != nil {
-		if th.ExportPageBg != "" {
-			bodyBg = th.ExportPageBg
-		}
-		if th.ExportCardBg != "" {
-			containerBg = th.ExportCardBg
-		}
-		if th.ExportInfoBg != "" {
-			infoBg = th.ExportInfoBg
-		}
-	}
+	th := tui.ExportTheme()
+	bodyBg, containerBg, infoBg := exportBackgrounds(th, th.Colors())
 	css = jsReplace(css, "{{THEME_VARS}}", generateThemeVars())
 	css = jsReplace(css, "{{BODY_BG}}", bodyBg)
 	css = jsReplace(css, "{{CONTAINER_BG}}", containerBg)
@@ -292,4 +253,95 @@ func ExportFromFileWithTools(inputPath, outputPath string, tools []extension.Reg
 		return "", fmt.Errorf("write html: %w", err)
 	}
 	return outputPath, nil
+}
+
+// exportColors are the page, card and info backgrounds of an export (index.ts deriveExportColors).
+type exportColors struct{ pageBg, cardBg, infoBg string }
+
+// jsSpace is JavaScript's \s, which RE2's ASCII-only \s is narrower than.
+const jsSpace = `[\t\n\v\f\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]`
+
+var (
+	hexColorPattern = lazyregexp.New(`^#([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})$`)
+	rgbColorPattern = lazyregexp.New(`^rgb` + jsSpace + `*\(` + jsSpace + `*(\d+)` + jsSpace + `*,` + jsSpace + `*(\d+)` + jsSpace + `*,` + jsSpace + `*(\d+)` + jsSpace + `*\)$`)
+)
+
+type rgbChannels struct{ r, g, b float64 }
+
+// parseExportColor is index.ts parseColor: #RRGGBB and rgb(r,g,b) only. Channels are float64 because JavaScript numbers do not overflow.
+func parseExportColor(color string) (rgbChannels, bool) {
+	if m := hexColorPattern.FindStringSubmatch(color); m != nil {
+		var c [3]float64
+		for i := range c {
+			v, _ := strconv.ParseUint(m[i+1], 16, 8)
+			c[i] = float64(v)
+		}
+		return rgbChannels{c[0], c[1], c[2]}, true
+	}
+	if m := rgbColorPattern.FindStringSubmatch(color); m != nil {
+		var c [3]float64
+		for i := range c {
+			c[i], _ = strconv.ParseFloat(m[i+1], 64)
+		}
+		return rgbChannels{c[0], c[1], c[2]}, true
+	}
+	return rgbChannels{}, false
+}
+
+// exportLuminance is index.ts getLuminance.
+func exportLuminance(c rgbChannels) float64 {
+	toLinear := func(v float64) float64 {
+		s := v / 255
+		if s <= 0.03928 {
+			return s / 12.92
+		}
+		return math.Pow((s+0.055)/1.055, 2.4)
+	}
+	// The explicit conversions keep each product rounded before the sum, as JavaScript computes it; arm64 would otherwise fuse them into one multiply-add.
+	return float64(0.2126*toLinear(c.r)) + float64(0.7152*toLinear(c.g)) + float64(0.0722*toLinear(c.b))
+}
+
+// jsRound is Math.round: halves round toward positive infinity.
+func jsRound(v float64) float64 {
+	f := math.Floor(v)
+	if v-f >= 0.5 {
+		return f + 1
+	}
+	return f
+}
+
+// rgbCSS is index.ts's `rgb(${r}, ${g}, ${b})` template: each channel is JavaScript's Number to string, which writes an unclamped channel of 1e21 or more in exponent form.
+func rgbCSS(r, g, b float64) string {
+	return "rgb(" + jsnumber.String(r) + ", " + jsnumber.String(g) + ", " + jsnumber.String(b) + ")"
+}
+
+// adjustBrightness is index.ts adjustBrightness: a color it cannot parse is returned unchanged.
+func adjustBrightness(color string, factor float64) string {
+	parsed, ok := parseExportColor(color)
+	if !ok {
+		return color
+	}
+	// float64() keeps the product rounded before jsRound subtracts the floor, as JavaScript does; arm64 would otherwise fuse the product into that subtraction.
+	adjust := func(c float64) float64 { return math.Min(255, math.Max(0, jsRound(float64(c*factor)))) }
+	return rgbCSS(adjust(parsed.r), adjust(parsed.g), adjust(parsed.b))
+}
+
+// deriveExportColors is index.ts deriveExportColors: export backgrounds derived from a base color such as userMessageBg.
+func deriveExportColors(baseColor string) exportColors {
+	parsed, ok := parseExportColor(baseColor)
+	if !ok {
+		return exportColors{"rgb(24, 24, 30)", "rgb(30, 30, 36)", "rgb(60, 55, 40)"}
+	}
+	if exportLuminance(parsed) > 0.5 {
+		return exportColors{
+			pageBg: adjustBrightness(baseColor, 0.96),
+			cardBg: baseColor,
+			infoBg: rgbCSS(math.Min(255, parsed.r+10), math.Min(255, parsed.g+5), math.Max(0, parsed.b-20)),
+		}
+	}
+	return exportColors{
+		pageBg: adjustBrightness(baseColor, 0.7),
+		cardBg: adjustBrightness(baseColor, 0.85),
+		infoBg: rgbCSS(math.Min(255, parsed.r+20), math.Min(255, parsed.g+15), parsed.b),
+	}
 }

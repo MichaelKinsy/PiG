@@ -14,8 +14,11 @@ import (
 func TestLoginProviderOwnedAuthOptionsProjection(t *testing.T) {
 	m := NewInteractiveMode(InteractiveOptions{AgentDir: t.TempDir(), ModelRegistry: NewModelRegistry(t.TempDir())})
 	login := func(context.Context, ai.AuthInteraction) (ai.Credential, error) { return ai.Credential{}, nil }
+	oauthLogin := func(context.Context, ai.AuthInteraction, ai.LoginOptions) (ai.Credential, error) {
+		return ai.Credential{}, nil
+	}
 	providers := []*ai.ModelsProvider{
-		{ID: "anthropic", Name: "Anthropic", Auth: ai.ProviderAuth{OAuth: &ai.OAuthAuth{Name: "Anthropic (Claude Pro/Max)", Login: login}, APIKey: &ai.APIKeyAuth{Name: "Anthropic API key", Login: login}}, GetModels: func() ([]*ai.Model, error) { return nil, nil }},
+		{ID: "anthropic", Name: "Anthropic", Auth: ai.ProviderAuth{OAuth: &ai.OAuthAuth{Name: "Anthropic (Claude Pro/Max)", Login: oauthLogin}, APIKey: &ai.APIKeyAuth{Name: "Anthropic API key", Login: login}}, GetModels: func() ([]*ai.Model, error) { return nil, nil }},
 		{ID: "google-vertex", Name: "Google Vertex AI", Auth: ai.ProviderAuth{APIKey: &ai.APIKeyAuth{Name: "Google Cloud credentials"}}, GetModels: func() ([]*ai.Model, error) { return nil, nil }},
 	}
 	for _, provider := range providers {

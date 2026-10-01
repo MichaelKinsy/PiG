@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 const root = new URL("../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/", import.meta.url);
-if (JSON.parse(readFileSync(new URL("package.json", root), "utf8")).version !== "0.87.1") throw new Error("Expected Pi 0.87.1");
+if (JSON.parse(readFileSync(new URL("package.json", root), "utf8")).version !== "0.99.2") throw new Error("Expected Pi 0.99.2");
 const { stream } = await import(new URL("dist/api/openai-responses.js", root));
 const { normalizeContext } = await import(new URL("dist/utils/transcript.js", root));
 for (const [label, id, provider] of [["same", "gpt-5.4", "openai"], ["model-switch", "gpt-5.2", "openai"], ["provider-switch", "gpt-5.4", "azure-openai-responses"]]) {

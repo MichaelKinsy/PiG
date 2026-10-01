@@ -144,6 +144,22 @@ func (c *Context) IsIdle() (bool, error) {
 	return c.actions.IsIdle(), nil
 }
 
+// Signal returns the active run's cancellation, or nil while no run is active. Every read during one run returns the same context, and aborting the run cancels it, so a handler that holds it sees the abort while the handler is still in flight.
+// Returns an error if the runner has been invalidated.
+//
+// Default semantics when no actions injector is bound: returns nil (matches upstream's `() => undefined` default at runner.ts:369).
+//
+// upstream: runner.ts:917-920 (`get signal()`)
+func (c *Context) Signal() (context.Context, error) {
+	if err := c.assertActive(); err != nil {
+		return nil, err
+	}
+	if c.actions.GetSignal == nil {
+		return nil, nil
+	}
+	return c.actions.GetSignal(), nil
+}
+
 // IsProjectTrusted reports whether the current project is trusted, so an
 // extension can refuse to read project-scoped configuration or run project
 // code before the user has trusted it.
@@ -312,6 +328,35 @@ func (c *Context) SetActiveTools(names []string) {
 	if c.actions.SetActiveTools != nil {
 		c.actions.SetActiveTools(names)
 	}
+}
+
+// RefreshTools rebuilds the session's tool registry from the tools extensions hold, so a tool an extension registered after
+// load is admitted and, when it activates on registration, declared. An in-process extension calls it after
+// [Extension.SetRegisteredTool]; it does nothing before the host binds the action.
+//
+// upstream: loader.ts:273-284 (registerTool), types.ts:1598 (RefreshToolsHandler)
+func (c *Context) RefreshTools() error {
+	if err := c.assertActive(); err != nil {
+		return err
+	}
+	if c.actions.RefreshTools == nil {
+		return nil
+	}
+	return c.actions.RefreshTools()
+}
+
+// GetMcpServers returns the MCP servers extensions registered, in registration order. It returns nil if the runner's
+// runtime is not bound.
+//
+// upstream: loader.ts:475-478 (getMcpServers)
+func (c *Context) GetMcpServers() []RegisteredMcpServer {
+	if err := c.assertActive(); err != nil {
+		return nil
+	}
+	if c.actions.GetMcpServers == nil {
+		return nil
+	}
+	return c.actions.GetMcpServers()
 }
 
 // GetFlagValue returns the value of an extension-registered flag.

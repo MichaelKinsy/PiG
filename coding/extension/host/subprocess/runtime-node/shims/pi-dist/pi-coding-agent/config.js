@@ -1,4 +1,5 @@
 import { accessSync, constants, existsSync, readFileSync, realpathSync } from "fs";
+import { createRequire } from "module";
 import { homedir } from "os";
 import { basename, dirname, join, resolve, sep, win32 } from "path";
 import { fileURLToPath } from "url";
@@ -289,7 +290,7 @@ export function getUpdateInstruction(packageName) {
 /**
  * Get the base directory for resolving package assets (themes, package.json, README.md, CHANGELOG.md).
  * - For Bun binary: returns the directory containing the executable
- * - For Node.js and tsx: returns the package root containing package.json
+ * - For Node.js: returns the package root containing package.json
  * - Ignores Bun binary metadata copied into dist/ when the package root is available
  */
 export function findNodePackageDir(startDir) {
@@ -324,7 +325,7 @@ export function getPackageDir() {
  * Get path to built-in themes directory (shipped with package)
  * - For Bun binary: theme/ next to executable
  * - For Node.js (dist/): dist/modes/interactive/theme/
- * - For tsx (src/): src/modes/interactive/theme/
+ * - For source (src/): src/modes/interactive/theme/
  */
 export function getThemesDir() {
     if (isBunBinary) {
@@ -339,7 +340,7 @@ export function getThemesDir() {
  * Get path to HTML export template directory (shipped with package)
  * - For Bun binary: export-html/ next to executable
  * - For Node.js (dist/): dist/core/export-html/
- * - For tsx (src/): src/core/export-html/
+ * - For source (src/): src/core/export-html/
  */
 export function getExportTemplateDir() {
     if (isBunBinary) {
@@ -373,7 +374,7 @@ export function getChangelogPath() {
  * Get path to built-in interactive assets directory.
  * - For Bun binary: assets/ next to executable
  * - For Node.js (dist/): dist/modes/interactive/assets/
- * - For tsx (src/): src/modes/interactive/assets/
+ * - For source (src/): src/modes/interactive/assets/
  */
 export function getInteractiveAssetsDir() {
     if (isBunBinary) {
@@ -386,6 +387,34 @@ export function getInteractiveAssetsDir() {
 /** Get path to a bundled interactive asset */
 export function getBundledInteractiveAssetPath(name) {
     return join(getInteractiveAssetsDir(), name);
+}
+let embeddedQuickJSWasmPath;
+/** Called by the Bun entry with the path of the QuickJS wasm file embedded in the compiled executable. */
+export function setEmbeddedQuickJSWasmPath(path) {
+    embeddedQuickJSWasmPath = path;
+}
+/** Get path to `quickjs-wasi/quickjs.wasm`, the VM that runs codemode scripts. */
+export function getQuickJSWasmPath() {
+    return embeddedQuickJSWasmPath ?? fileURLToPath(new URL("../../quickjs-wasi/quickjs.wasm", import.meta.url));
+}
+/** Resolve the codemode worker entry for a release runtime. */
+export function resolveCodemodeWorkerSpecifier(runtime, moduleUrl) {
+    // Bun embeds explicit source entrypoints, but on Windows Bun 1.3 cannot map an absolute
+    // B:\~BUN URL back to one. A relative string with the original source extension works on
+    // every Bun platform.
+    if (runtime === "bun-binary")
+        return "./src/extensions/codemode/worker.ts";
+    if (runtime === "bundled-node")
+        return new URL("./extensions/codemode/worker.js", moduleUrl);
+    return undefined;
+}
+/**
+ * Get the codemode worker entry, or undefined to use the worker that ships next to pi-codemode.
+ * The Bun and Node release builds both pass the worker as an extra entrypoint.
+ */
+export function getCodemodeWorkerSpecifier() {
+    const runtime = isBunBinary ? "bun-binary" : isBundledNode ? "bundled-node" : "unbundled";
+    return resolveCodemodeWorkerSpecifier(runtime, import.meta.url);
 }
 let pkg = {};
 try {

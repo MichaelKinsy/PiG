@@ -16,14 +16,14 @@ func TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream(t *testing.T) {
 	firstDone := make(chan ModelsRefreshResult, 1)
 	workerReturned := make(chan struct{})
 	var release sync.Once
-	provider := CreateProvider(CreateProviderOptions{ID: "dynamic", Auth: configuredTestAuth(), Models: []*Model{}, API: recordingProviderStreams("a", nil), FetchModels: func(RefreshModelsContext) ([]*Model, error) {
+	provider := CreateProvider(CreateProviderOptions{ID: "dynamic", Auth: configuredTestAuth(), Models: []AnyModel{}, API: recordingProviderStreams("a", nil), FetchModels: func(RefreshModelsContext) ([]AnyModel, error) {
 		current := fetches.Add(1)
 		if current == 1 {
 			close(firstStarted)
 			<-finishFirst
 			defer close(workerReturned)
 		}
-		return []*Model{dispatchTestModel("api-a", fmt.Sprintf("listed-%d", current))}, nil
+		return []AnyModel{dispatchTestModel("api-a", fmt.Sprintf("listed-%d", current))}, nil
 	}})
 	store := NewInMemoryModelsStore()
 	models := CreateModels(CreateModelsOptions{ModelsStore: store})
@@ -62,7 +62,7 @@ func TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream(t *testing.T) {
 			t.Fatalf("store=%#v error=%v", entry, err)
 		}
 		stored, err := decodeModelsCatalog(entry.Models, "mixed")
-		if err != nil || len(stored) != 1 || stored[0].ID != "listed-2" {
+		if err != nil || len(stored) != 1 || stored[0].ModelID() != "listed-2" {
 			t.Fatalf("stored=%#v error=%v", stored, err)
 		}
 	}

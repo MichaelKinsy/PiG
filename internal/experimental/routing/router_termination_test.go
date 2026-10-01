@@ -150,6 +150,38 @@ func TestRouterAttachAfterSignalledTerminationOpensAFreshHarness(t *testing.T) {
 	}
 }
 
+// upstream: packages/server/src/session-router.ts:#open registers `handle.terminated?.then(invalidate)`; invalidate (:302-312) releases every attachment of the retired Harness, and the release's awaits settle in the same microtask drain, before any later I/O event delivers another attach. A client that attaches the Session it was attached to when its Harness terminated therefore sees no current attachment (:162-163) and gets a fresh Harness. The Go watcher and its release run on other goroutines, so the router must retire the signalled attachment itself before it compares the client's current Session.
+func TestRouterReattachAfterSignalledTerminationReplacesTheRetiredAttachment(t *testing.T) {
+	retired, fresh := newRetiredHandle(nil), newRetiredHandle(nil)
+	resumeRetired, resumeFresh := sync.OnceFunc(func() { close(retired.resume) }), sync.OnceFunc(func() { close(fresh.resume) })
+	t.Cleanup(resumeRetired)
+	t.Cleanup(resumeFresh)
+	probe := newRouterProbe(t, nil, func(index int) routing.RoutedSessionHandle {
+		return []*retiredHandle{retired, fresh}[index]
+	})
+	ctx := context.Background()
+	if err := probe.router.AttachClient(ctx, "client-1", "session-1"); err != nil {
+		t.Fatal(err)
+	}
+	retired.terminate()
+	err := probe.router.AttachClient(ctx, "client-1", "session-1")
+	resumeRetired()
+	resumeFresh()
+	if err != nil {
+		t.Fatalf("reattach after termination = %v, want a fresh Harness", err)
+	}
+	if got := probe.opens.Load(); got != 2 {
+		t.Fatalf("OpenSession calls = %d, want 2: the reattach reused the retired attachment", got)
+	}
+	probe.closing.Store(true)
+	if err := probe.router.Close(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if reported := probe.reported(); len(reported) != 1 || !errors.Is(reported[0], errStopping) {
+		t.Fatalf("reported %v, want only the retired lease's release failure", reported)
+	}
+}
+
 // upstream: packages/server/src/session-router.ts:removeSession returns when hostedSessions no longer holds the Session. The termination microtask has already removed a terminated Harness, so removal neither releases through nor closes the retired handle.
 func TestRouterRemoveSessionAfterSignalledTerminationIsANoOp(t *testing.T) {
 	retired := newRetiredHandle(nil)

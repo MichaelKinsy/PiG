@@ -19,6 +19,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 var bedrockRPCRuns = flag.Int("rpc33-bedrock-runs", 200, "runs per Bedrock ConverseStream RPC observation case")
@@ -52,6 +54,7 @@ func TestRPCBedrockConverseStreamObservation(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds and runs the pig binary")
 	}
+	t.Parallel()
 	var oracle bedrockRPCOracleFile
 	var inputs bedrockRPCInputs
 	for name, target := range map[string]any{"pi.json": &oracle, "inputs.json": &inputs} {
@@ -290,7 +293,7 @@ func runBedrockRPCOnce(t *testing.T, bin string, inputs *bedrockRPCInputs, shape
 			return nil
 		}
 		return canonicalBedrockRPC(t, r.records[:min(keep, len(r.records))])
-	case <-time.After(30 * time.Second):
+	case <-time.After(testbudget.Wait(t)):
 		t.Errorf("timeout; stderr: %s", stderr.String())
 		return nil
 	}

@@ -21,6 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 	codingcompaction "github.com/MichaelKinsy/PiG/internal/codingagent/compaction"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 // fakeProvider is a minimal ai.Provider for tests that don't actually
@@ -1113,7 +1114,7 @@ func TestCompact_ExtensionOverrideAndLifecycle(t *testing.T) {
 	if result.Summary != "extension summary" {
 		t.Fatalf("summary = %q", result.Summary)
 	}
-	details, ok := result.Details.(map[string]any)
+	details, ok := orderedjson.Map(result.Details)
 	if !ok || details["source"] != "extension" {
 		t.Fatalf("details = %#v", result.Details)
 	}

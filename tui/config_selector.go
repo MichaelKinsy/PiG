@@ -520,16 +520,19 @@ func BuildResourceGroups(resources []ResourceItem) []*ResourceGroup {
 			g.Subgroups = append(g.Subgroups, sg)
 		}
 
-		// Display name.
+		// Display name. A built-in extension is named without the `builtin:` prefix
+		// (config-selector.ts:138-139).
 		if res.DisplayName == "" {
 			name := filepath.Base(res.Path)
 			parent := filepath.Base(filepath.Dir(res.Path))
-			switch res.ResourceType {
-			case ResourceExtensions:
+			switch {
+			case res.Source == "builtin":
+				name = strings.TrimPrefix(res.Path, "builtin:")
+			case res.ResourceType == ResourceExtensions:
 				if parent != "extensions" {
 					name = parent + "/" + name
 				}
-			case ResourceSkills:
+			case res.ResourceType == ResourceSkills:
 				if name == "SKILL.md" {
 					name = parent
 				}
@@ -553,6 +556,12 @@ func BuildResourceGroups(resources []ResourceItem) []*ResourceGroup {
 func groupLabel(res *ResourceItem) string {
 	if res.Origin == "package" {
 		return res.Source + " (" + res.Scope + ")"
+	}
+	if res.Source == "builtin" {
+		if res.Scope == "user" {
+			return "Built-in"
+		}
+		return "Built-in (project override)"
 	}
 	if res.Source == "auto" {
 		if res.BaseDir != "" {

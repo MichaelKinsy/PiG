@@ -71,32 +71,42 @@ func SetEnv(cmd *exec.Cmd, env []string) {
 	SetEnvProperties(cmd, EnvProperties(env))
 }
 
-// SetEnvProperties gives cmd the environment of a child that Node's spawn
-// starts with the env option whose properties env holds, in the object's key
-// order: a later property of the same name replaces the value in place, as an
-// object property assignment does. Call it before SetProgram, which validates
-// and searches that environment.
+// SetEnvProperties gives cmd the environment block of a child that Node's
+// spawn starts with the env option whose properties env holds, in the object's
+// key order: a later property of the same name replaces the value in place, as
+// an object property assignment does. Call it before SetProgram, which
+// validates and searches that environment, and start cmd with Start.
 //
 // libuv writes each property into the block as "name=value", so two names that
-// share their text up to the first "=" both reach the child. Outside Windows,
-// SetProgram starts such a child as os/exec cannot, as useTrampoline
-// describes. On Windows, os/exec keeps only the last of the entries whose text
-// up to the first "=" is equal regardless of case.
+// share their text up to the first "=" both reach the child. os/exec keeps only
+// the last of such entries, comparing the text regardless of case on Windows
+// (sharesEnvKey). Outside Windows, SetProgram starts such a child as os/exec
+// cannot, as useTrampoline describes. On Windows, Start does.
 //
 // On Windows, Node's normalizeSpawnArguments (lib/child_process.js) sorts the
 // names by UTF-16 code unit and keeps the first of the names whose
 // toUpperCase values are equal, so "PATH" wins over "Path" and "Path" over
 // "path". toUpperCase applies Unicode's full, locale-independent case
 // mapping, so "SS" also wins over "ß". libuv's make_program_env
-// (src/win/process.c) then adds each of HOMEDRIVE, HOMEPATH, LOGONSERVER,
-// PATH, SYSTEMDRIVE, SYSTEMROOT, TEMP, USERDOMAIN, USERNAME, USERPROFILE, and
-// WINDIR that the environment lacks, with PiG's value, when PiG has one.
-// Elsewhere the child gets the entries in order.
+// (src/win/process.c) then orders the entries and adds libuv's required
+// variables, as programEnv describes. cmd.Env holds that block. Elsewhere the
+// child gets the entries in order.
 //
-// libuv sorts the block with CompareStringOrdinal ignoring case. os/exec sorts
-// it by name with ASCII letters uppercased and keeps no other order
-// (syscall.createEnvBlock), which is libuv's order for ASCII names; the
-// variables of names with other letters can appear in a different order.
+// On Windows the child still gets the block in os/exec's order, which Start
+// gives cmd.Env (createEnvBlockOrder). os/exec compares the text before each
+// entry's first "=" byte by byte in UTF-8, with ASCII letters uppercased;
+// libuv compares it by UTF-16 code unit after CompareStringOrdinal uppercases
+// every letter. The two orders agree on names made of ASCII, and Start keeps
+// libuv's order among the entries that os/exec compares equal, such as
+// "A=one" and "A=B=two", so the child's getenv reads the value it reads under
+// Node for every ASCII name. They disagree on some names with other letters:
+// libuv puts PIG_é (U+00E9, which it uppercases to U+00C9) before PIG_Ê
+// (U+00CA), and PIG_😀 (UTF-16 D83D DE00) before PIG_Ａ (U+FF21), while
+// os/exec puts both pairs the other way round. Such variables reach the child
+// in os/exec's order. A child sees that difference only when it lists its
+// environment, or when two entries share a name only through the case of a
+// letter outside ASCII, such as the names "PIG_é=1" and "PIG_É=2", and getenv
+// reads the first of them.
 func SetEnvProperties(cmd *exec.Cmd, env []EnvProperty) {
 	properties := appendCoverageEnv(objectProperties(env))
 	if caseInsensitiveEnv {
@@ -113,13 +123,40 @@ func SetEnvProperties(cmd *exec.Cmd, env []EnvProperty) {
 			seen[upper] = true
 			return false
 		})
-		properties = appendRequiredEnv(properties)
 	}
 	pairs := make([]string, len(properties))
 	for i, property := range properties {
 		pairs[i] = property.Name + "=" + property.Value
 	}
-	cmd.Env = pairs
+	cmd.Env = programEnv(pairs)
+}
+
+// sharesEnvKey reports that os/exec would drop an entry of env: its
+// dedupEnvCase (os/exec/exec.go) keeps only the last of the entries whose text
+// up to the first "=" is equal, where that "=" is searched for after a leading
+// one, and on Windows it lowercases that text (strings.ToLower) first. libuv
+// writes the block as it is, and the child's getenv sees the first of such
+// entries.
+func sharesEnvKey(env []string) bool {
+	seen := make(map[string]bool, len(env))
+	for _, entry := range env {
+		i := strings.IndexByte(entry, '=')
+		if i == 0 {
+			i = strings.IndexByte(entry[1:], '=') + 1
+		}
+		if i < 0 {
+			continue
+		}
+		key := entry[:i]
+		if caseInsensitiveEnv {
+			key = strings.ToLower(key)
+		}
+		if seen[key] {
+			return true
+		}
+		seen[key] = true
+	}
+	return false
 }
 
 // objectProperties is the properties of the object env describes: one per
@@ -152,25 +189,6 @@ func appendCoverageEnv(properties []EnvProperty) []EnvProperty {
 		return properties
 	}
 	return append(properties, EnvProperty{name, value})
-}
-
-// requiredEnv is libuv's required_vars.
-var requiredEnv = [...]string{"HOMEDRIVE", "HOMEPATH", "LOGONSERVER", "PATH", "SYSTEMDRIVE", "SYSTEMROOT", "TEMP", "USERDOMAIN", "USERNAME", "USERPROFILE", "WINDIR"}
-
-// appendRequiredEnv appends each required variable that properties lack and
-// PiG has, named as libuv names it.
-func appendRequiredEnv(properties []EnvProperty) []EnvProperty {
-	for _, required := range requiredEnv {
-		if slices.ContainsFunc(properties, func(property EnvProperty) bool {
-			return strings.EqualFold(property.Name, required)
-		}) {
-			continue
-		}
-		if value, ok := os.LookupEnv(required); ok {
-			properties = append(properties, EnvProperty{required, value})
-		}
-	}
-	return properties
 }
 
 // compareUTF16 orders strings by UTF-16 code unit, as JavaScript's default

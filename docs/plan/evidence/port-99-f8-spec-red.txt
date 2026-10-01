@@ -1,0 +1,45 @@
+--- FAIL: TestAllListsTheCodemodeAndToolSearchBuiltinsAsReplaceable (0.00s)
+--- FAIL: TestResolveReportsUnknownBuiltinsLikePi (0.00s)
+--- FAIL: TestBuiltinAssetsAreClosed (0.00s)
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/coding/extension/builtin	0.005s
+FAIL
+--- FAIL: TestBuiltinToolSearchRegistersAndAnswersThroughTheNodeCell (0.00s)
+--- FAIL: TestBuiltinCodemodeRegistersItsToolThroughTheNodeCell (0.00s)
+--- FAIL: TestBuiltinExtensionsShareOneNodeCell (0.00s)
+--- FAIL: TestUnknownBuiltinExtensionIsReportedLikePi (0.00s)
+--- FAIL: TestBuiltinCodemodeRunsAScriptThroughTheNodeCell (0.00s)
+--- FAIL: TestCodemodeWorkerIsGoneWhenTheExecutionResolves (0.04s)
+--- FAIL: TestCodemodeConcurrentExecutionsLeaveNoWorker (0.04s)
+--- FAIL: TestUpstreamCodemodeDeclarations (0.17s)
+--- FAIL: TestUpstreamCodemodeSandbox (0.19s)
+--- FAIL: TestUpstreamCodemodeSource (0.16s)
+--- FAIL: TestUpstreamToolSearch (0.17s)
+--- FAIL: TestUpstreamCodemodeRenderer (0.17s)
+--- FAIL: TestUpstreamAgentSessionCodemodeWithoutASession (0.16s)
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/coding/extension/host/subprocess	1.160s
+FAIL
+--- FAIL: TestUpstreamAgentSessionCodemodeTool
+    --- FAIL: TestUpstreamAgentSessionCodemodeTool/presents_callable_tools_per_codemode.mode
+    --- FAIL: TestUpstreamAgentSessionCodemodeTool/runs_nested_calls_in_parallel_and_returns_only_the_script_result
+    --- FAIL: TestUpstreamAgentSessionCodemodeTool/routes_nested_calls_through_extension_hooks
+    --- FAIL: TestUpstreamAgentSessionCodemodeTool/adds_the_usage_of_nested_results_to_the_codemode_result
+    --- FAIL: TestUpstreamAgentSessionCodemodeTool/keeps_structured_content_that_tool_result_handlers_replace_along_with_the_content
+    --- FAIL: TestUpstreamAgentSessionCodemodeTool/attaches_only_the_images_the_script_passes_to_image(),_in_output_order
+    --- FAIL: TestUpstreamAgentSessionCodemodeTool/reports_script_failures_as_results_that_keep_partial_output_and_the_calls_that_ran
+--- FAIL: TestUpstreamCodemodeOptionsAndStore
+    --- FAIL: TestUpstreamCodemodeOptionsAndStore/applies_the_timeout_ms_option_and_rejects_invalid_options
+    --- FAIL: TestUpstreamCodemodeOptionsAndStore/limits_script_memory_so_runaway_allocations_fail_inside_the_script
+    --- FAIL: TestUpstreamCodemodeOptionsAndStore/truncates_output_to_the_token_budget_and_spills_the_full_text
+    --- FAIL: TestUpstreamCodemodeOptionsAndStore/resolves_bash_calls_to_structured_results,_also_for_non-zero_exit_codes
+    --- FAIL: TestUpstreamCodemodeOptionsAndStore/persists_store()_writes_as_custom_entries_for_later_calls
+    --- FAIL: TestUpstreamCodemodeOptionsAndStore/appends_nothing_for_failed_scripts_or_scripts_without_writes
+    --- FAIL: TestUpstreamCodemodeOptionsAndStore/loads_the_values_written_on_the_current_branch
+--- FAIL: TestUpstreamCodemodeModels
+    --- FAIL: TestUpstreamCodemodeModels/declares_models_only_for_the_session's_own_codemode_tool
+    --- FAIL: TestUpstreamCodemodeModels/lists_models_and_classifies_with_catalog_auth,_ignoring_script-supplied_fields
+    --- FAIL: TestUpstreamCodemodeModels/reports_provider_errors_as_results_and_invalid_arguments_as_exceptions
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/coding	2.982s
+FAIL

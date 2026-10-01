@@ -130,7 +130,11 @@ func installNpmBatch(sm *codingagent.SettingsManager, batch npmUpdateBatch) erro
 	command := packagemanager.DefaultNpmCommand(sm)
 	args := append([]string{}, command[1:]...)
 	// The single-source argument builder owns npm/pnpm/Bun options for both paths.
-	installArgs := packagemanager.NpmInstallArgs(packagemanager.NpmCommandName(command), specs[0], batch.root, batch.registry)
+	manager, err := packagemanager.PackageManagerName(command)
+	if err != nil {
+		return err
+	}
+	installArgs := packagemanager.NpmInstallArgs(manager, specs[0], batch.root, batch.registry)
 	args = append(args, installArgs[0])
 	args = append(args, specs...)
 	args = append(args, installArgs[2:]...)

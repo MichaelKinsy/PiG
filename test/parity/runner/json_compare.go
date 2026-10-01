@@ -19,7 +19,7 @@ import (
 // JSONAliasRule identifies scalar identities at explicit JSON pointer patterns. * matches one segment; ** matches zero or more. No field is removed.
 type JSONAliasRule struct {
 	Paths   []string `toml:"paths"`
-	Kind    string   `toml:"kind"`    // id, timestamp, path, literal, or session_file
+	Kind    string   `toml:"kind"`    // id, timestamp, duration, path, literal, or session_file
 	Pig     string   `toml:"pig"`     // exact Pig spelling for a literal alias
 	Pi      string   `toml:"pi"`      // exact Pi spelling for a literal alias
 	Roots   []string `toml:"roots"`   // selected runtime roots; empty retains the standard directory roots
@@ -50,7 +50,7 @@ func compareJSONResults(g, p Result, rules []JSONAliasRule) error {
 		if rule.Reason == "" || len(rule.Paths) == 0 {
 			return fmt.Errorf("JSON alias requires paths and reason")
 		}
-		if rule.Kind != "id" && rule.Kind != "timestamp" && rule.Kind != "path" && rule.Kind != "literal" && rule.Kind != "session_file" {
+		if rule.Kind != "id" && rule.Kind != "timestamp" && rule.Kind != "duration" && rule.Kind != "path" && rule.Kind != "literal" && rule.Kind != "session_file" {
 			return fmt.Errorf("unknown JSON alias kind %q", rule.Kind)
 		}
 		if rule.Kind == "literal" && (rule.Pig == "" || rule.Pi == "") {
@@ -76,6 +76,10 @@ func compareJSONResults(g, p Result, rules []JSONAliasRule) error {
 			switch rule.Kind {
 			case "timestamp":
 				if validTimestamp(a) && validTimestamp(b) && fmt.Sprintf("%T", a) == fmt.Sprintf("%T", b) {
+					return nil
+				}
+			case "duration":
+				if validDuration(a) && validDuration(b) {
 					return nil
 				}
 			case "path":
@@ -185,6 +189,15 @@ func validTimestamp(value any) bool {
 	default:
 		return false
 	}
+}
+
+// decisecondSpelling is the JSON spelling of Math.round(ms / 100) / 10 (bash.ts:392): a non-negative decimal with at most one fractional digit.
+var decisecondSpelling = regexp.MustCompile(`^(0|[1-9][0-9]*)(\.[0-9])?$`)
+
+// validDuration accepts a measured elapsed time in Pi's 0.1 s steps. Other types, negative values and unrounded or exponent spellings stay distinct.
+func validDuration(value any) bool {
+	number, ok := value.(json.Number)
+	return ok && decisecondSpelling.MatchString(string(number))
 }
 
 func aliasMatches(rule JSONAliasRule, path string, a, b any) bool {

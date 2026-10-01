@@ -14,6 +14,7 @@ import (
 
 // Pi agent-session.ts:1371-1394,2965,3125 rebuilds from the registry and loaded resources after resources_discover; all modes bind the same base options to command contexts.
 func TestSystemPromptOptionsThroughHeadlessStartup(t *testing.T) {
+	t.Parallel()
 	binary := buildPigBinaryForSignalTest(t)
 	for _, tc := range []struct{ mode, custom string }{{"print", "CUSTOM"}, {"json", "CUSTOM"}, {"rpc", "CUSTOM"}, {"print", ""}, {"json", ""}, {"rpc", ""}} {
 		t.Run(tc.mode+"/custom="+tc.custom, func(t *testing.T) {

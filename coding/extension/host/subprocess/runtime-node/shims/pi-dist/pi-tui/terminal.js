@@ -77,6 +77,8 @@ export class ProcessTerminal {
     _kittyProtocolActive = false;
     _modifyOtherKeysActive = false;
     keyboardProtocolPushed = false;
+    /** DA1 replies owed to keyboard protocol queries. Later DA1 replies answer other queries and are forwarded. */
+    pendingKeyboardProtocolDeviceAttributes = 0;
     keyboardProtocolNegotiationBuffer = "";
     keyboardProtocolBufferFlushTimer;
     stdinBuffer;
@@ -142,15 +144,15 @@ export class ProcessTerminal {
         this.stdinBuffer = new StdinBuffer({ escapeTimeout: resolveEscapeTimeoutMs() });
         // Forward individual sequences to the input handler
         this.stdinBuffer.on("data", (sequence) => {
-            const negotiationSequence = this.readKeyboardProtocolNegotiationSequence(sequence);
-            if (negotiationSequence === "pending") {
+            const negotiation = this.readKeyboardProtocolNegotiationSequence(sequence);
+            if (negotiation === "pending") {
                 this.scheduleKeyboardProtocolNegotiationBufferFlush();
                 return; // Wait briefly for the rest of a split Kitty response.
             }
-            if (this.handleKeyboardProtocolNegotiationSequence(negotiationSequence)) {
+            if (negotiation && this.handleKeyboardProtocolNegotiationSequence(negotiation.parsed)) {
                 return;
             }
-            this.forwardInputSequence(sequence);
+            this.forwardInputSequence(negotiation?.sequence ?? sequence);
         });
         // Re-wrap paste content with bracketed paste markers for existing editor handling
         this.stdinBuffer.on("paste", (content) => {
@@ -180,13 +182,17 @@ export class ProcessTerminal {
         this.setupStdinBuffer();
         process.stdin.on("data", this.stdinDataHandler);
         this.keyboardProtocolPushed = true;
+        this.pendingKeyboardProtocolDeviceAttributes += 1;
         this.clearKeyboardProtocolNegotiationBuffer();
         process.stdout.write(KITTY_KEYBOARD_PROTOCOL_QUERY);
     }
     handleKeyboardProtocolNegotiationSequence(negotiationSequence) {
-        if (!negotiationSequence)
-            return false;
         this.clearKeyboardProtocolNegotiationBuffer();
+        if (negotiationSequence.type === "device-attributes") {
+            if (this.pendingKeyboardProtocolDeviceAttributes === 0)
+                return false;
+            this.pendingKeyboardProtocolDeviceAttributes -= 1;
+        }
         if (negotiationSequence.type === "kitty-flags") {
             if (negotiationSequence.flags !== 0) {
                 this.disableModifyOtherKeys();
@@ -205,13 +211,14 @@ export class ProcessTerminal {
         }
         return true;
     }
+    /** Returns the parsed negotiation reply with its full (possibly reassembled) sequence. */
     readKeyboardProtocolNegotiationSequence(sequence) {
         if (this.keyboardProtocolNegotiationBuffer) {
             const bufferedSequence = this.keyboardProtocolNegotiationBuffer + sequence;
             const negotiationSequence = parseKeyboardProtocolNegotiationSequence(bufferedSequence);
             if (negotiationSequence) {
                 this.clearKeyboardProtocolNegotiationBuffer();
-                return negotiationSequence;
+                return { parsed: negotiationSequence, sequence: bufferedSequence };
             }
             if (isKeyboardProtocolNegotiationSequencePrefix(bufferedSequence)) {
                 this.setKeyboardProtocolNegotiationBuffer(bufferedSequence);
@@ -221,7 +228,7 @@ export class ProcessTerminal {
         }
         const negotiationSequence = parseKeyboardProtocolNegotiationSequence(sequence);
         if (negotiationSequence)
-            return negotiationSequence;
+            return { parsed: negotiationSequence, sequence };
         if (isKeyboardProtocolNegotiationSequencePrefix(sequence)) {
             this.setKeyboardProtocolNegotiationBuffer(sequence);
             return "pending";

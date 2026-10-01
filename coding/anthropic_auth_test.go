@@ -57,8 +57,9 @@ func TestStoredAPIKeyRefreshFollowsRequestContext(t *testing.T) {
 	if key != "" || !errors.Is(err, context.Canceled) {
 		t.Fatalf("storedAPIKey = %q, %v; want cancellation", key, err)
 	}
-	if contextCalls != 1 || legacyCalls != 0 {
-		t.Fatalf("refresh calls: contextual=%d legacy=%d, want 1 and 0", contextCalls, legacyCalls)
+	// Pi refreshes under credentials.modify, whose withLockAsync throws an already aborted signal before it takes the lock, so the refresh never runs; ai's TestRegistryOAuthRefreshCancelledDuringTheRefreshKeepsTheCredentialUpstream covers a cancellation that reaches a running refresh.
+	if contextCalls != 0 || legacyCalls != 0 {
+		t.Fatalf("refresh calls: contextual=%d legacy=%d, want none", contextCalls, legacyCalls)
 	}
 	stored, ok, err := auth.GetRaw("anthropic")
 	if err != nil || !ok || stored.Access != original.Access || stored.Refresh != original.Refresh {
@@ -157,14 +158,10 @@ func TestBuildModelAnthropicEnvAuthRequestShapes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			transcript := ai.NormalizeContext(ai.Context{SystemPrompt: "System prompt.", Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Hello")}}})
-			stream, err := model.Provider.Stream(context.Background(), transcript, ai.StreamOptions{})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if result := collectRuntimeEvents(context.Background(), stream); len(result) == 0 {
-				t.Fatal("no events")
-			}
+			// ANTHROPIC_AUTH_TOKEN reaches the request only through the auth resolver, which the model runtime consults at
+			// the request boundary (anthropic-messages.ts:331-341: a provider stream owns no credential of its own).
+			transcript := ai.Context{SystemPrompt: "System prompt.", Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Hello")}}}
+			services.ModelRuntime().Complete(context.Background(), model, transcript, ai.StreamOptions{})
 			if got := header.Get("X-Api-Key"); got != tc.apiKey {
 				t.Errorf("X-Api-Key = %q, want %q", got, tc.apiKey)
 			}

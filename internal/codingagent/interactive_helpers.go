@@ -64,7 +64,7 @@ func debugLog(format string, args ...any) {
 
 // showWarning appends a padded, theme-colored warning with Pi's textual prefix.
 func (m *InteractiveMode) showWarning(msg string) {
-	m.appendChatBlock(tui.NewPaddedText(tui.ActiveTheme().FgText("warning", "Warning: "+msg), 1, 0, nil))
+	m.appendChatBlock(themedNotice("warning", "Warning: "+msg, 1))
 	m.tuiInst.Render()
 }
 

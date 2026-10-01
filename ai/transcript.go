@@ -515,6 +515,16 @@ func preserveJSONValueTypes(value, normalized any) any {
 			}
 		}
 		return normalized
+	case json.RawMessage:
+		// Raw JSON is a value whose members keep the order it was written in, as JSON.parse keeps them; decoding it into a map would sort them. normalizeJSONValue has already proved it valid.
+		if len(value) == 0 {
+			return nil
+		}
+		var compact bytes.Buffer
+		if err := json.Compact(&compact, value); err != nil {
+			return normalized
+		}
+		return json.RawMessage(compact.Bytes())
 	case JsonObject:
 		return preserveJSONValueTypes(map[string]any(value), normalized)
 	case map[string]any:

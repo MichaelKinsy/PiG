@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { extractBehaviorInputInventory } from "../src/behavior-input-inventory.mjs";
+import { scratchDir } from "./scratch.mjs";
 
 function fixture() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pig-behavior-inputs-"));
+  const root = scratchDir("pig-behavior-inputs-");
   const file = path.join(root, "packages/coding-agent/src/components/picker.ts");
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, `
@@ -68,7 +68,7 @@ test("extracts stable input-handler branches, effects, and source identity", () 
 });
 
 test("extracts WSL keybinding defaults separately from ordinary Linux", () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pig-wsl-keybindings-"));
+  const root = scratchDir("pig-wsl-keybindings-");
   const file = path.join(root, "packages/coding-agent/src/core/keybindings.ts");
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, `
@@ -89,7 +89,7 @@ class Handler { handleInput(data: string) { if (kb.matches(data, "app.model.prev
 });
 
 test("inherits keybinding descriptions through TUI definition spreads", () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pig-spread-keybindings-"));
+  const root = scratchDir("pig-spread-keybindings-");
   const file = path.join(root, "packages/coding-agent/src/core/keybindings.ts");
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, `
@@ -112,7 +112,7 @@ class Handler { handleInput(data: string) { if (kb.matches(data, "tui.altScreen.
 });
 
 test("fills spread descriptions when the TUI base file is visited after the coding override", () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pig-cross-package-keybindings-"));
+  const root = scratchDir("pig-cross-package-keybindings-");
   const codingFile = path.join(root, "packages/coding-agent/src/core/keybindings.ts");
   const tuiFile = path.join(root, "packages/tui/src/keybindings.ts");
   fs.mkdirSync(path.dirname(codingFile), { recursive: true });
@@ -148,7 +148,7 @@ test("source and event changes alter the generated contract denominator", () => 
 });
 
 test("distinguishes object render delegates from their enclosing class renderer", () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pig-nested-renderers-"));
+  const root = scratchDir("pig-nested-renderers-");
   const file = path.join(root, "packages/tui/src/tui-alt-screen.ts");
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, `
@@ -168,7 +168,7 @@ class TuiAltScreen {
 });
 
 test("distinguishes module object renderers passed through factories", () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pig-factory-renderers-"));
+  const root = scratchDir("pig-factory-renderers-");
   const file = path.join(root, "packages/agent/src/system.ts");
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, `
@@ -185,7 +185,7 @@ const sections = {
 });
 
 test("ac47_production_reachable_private_dialog_logic", () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pig-private-dialog-inputs-"));
+  const root = scratchDir("pig-private-dialog-inputs-");
   const file = path.join(root, "packages/coding-agent/src/modes/interactive/interactive-mode.ts");
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, `
@@ -209,7 +209,7 @@ class InteractiveMode {
 });
 
 test("tracks production-reachable private queue control flow", () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pig-private-queue-inputs-"));
+  const root = scratchDir("pig-private-queue-inputs-");
   const file = path.join(root, "packages/coding-agent/src/modes/interactive/interactive-mode.ts");
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, `
@@ -241,4 +241,32 @@ test("renderer dependencies catch positioning changes outside the render method"
   assert.equal(after.sourceHash, before.sourceHash);
   assert.notDeepEqual(after.dependencies, before.dependencies);
   assert.equal(after.dependencies[0].value, "40");
+});
+
+test("a local render function that shares a class method's name is qualified by its enclosing method", () => {
+  const root = scratchDir("pig-behavior-inputs-");
+  const file = path.join(root, "packages/coding-agent/src/extensions/mcp/ui.ts");
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  // Mirrors upstream 0.99.1 McpManagerView.menu: a `const render` inside a Promise executor beside the class's render method.
+  fs.writeFileSync(file, `
+class McpManagerView {
+  menu(build: () => string): Promise<string | undefined> {
+    return new Promise((resolve) => {
+      const render = () => {
+        resolve(build());
+      };
+      render();
+    });
+  }
+  render(width: number): string[] {
+    return [theme.fg("muted", "x".repeat(width))];
+  }
+}
+`);
+  const inventory = extractBehaviorInputInventory({ sourceRoot: root, upstreamVersion: "0.99.2" });
+  assert.deepEqual(inventory.renderers.map((renderer) => renderer.id), [
+    "render:packages/coding-agent/src/extensions/mcp/ui.ts#McpManagerView.menu.render",
+    "render:packages/coding-agent/src/extensions/mcp/ui.ts#McpManagerView.render",
+  ]);
+  assert.equal(inventory.renderers.some((renderer) => "enclosing" in renderer), false);
 });

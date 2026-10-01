@@ -1,8 +1,8 @@
 // Regenerate: node agent/testdata/tool-validation-oracle.mjs > agent/testdata/tool-validation.json
-// Pi 0.87.1 / TypeBox 1.3.27 is the oracle, not a reimplementation of its rules.
+// Pi 0.99.1 / TypeBox 1.3.27 is the oracle, not a reimplementation of its rules.
 import { readFileSync } from 'node:fs';
 const pi = new URL('../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/', import.meta.url);
-for (const [path, expected] of [['package.json', '0.87.1'], ['node_modules/typebox/package.json', '1.3.27']]) {
+for (const [path, expected] of [['package.json', '0.99.2'], ['node_modules/typebox/package.json', '1.3.27']]) {
   const actual = JSON.parse(readFileSync(new URL(path, pi))).version;
   if (actual !== expected) throw new Error(`${path}: expected ${expected}, got ${actual}`);
 }

@@ -26,7 +26,7 @@ function record(output, source, pkg, rewrite) {
 }
 const piPackages = [
   ["pi-coding-agent", agent],
-  ...["pi-ai", "pi-agent-core", "pi-tui", "chord", "pi-telemetry"].map(name => [name, join(agent, "node_modules/@earendil-works", name)]),
+  ...["pi-ai", "pi-agent-core", "pi-tui", "chord", "pi-telemetry", "pi-codemode", "pi-mcp"].map(name => [name, join(agent, "node_modules/@earendil-works", name)]),
 ];
 for (const [name, pkg] of piPackages) {
   for (const output of files(join(shims, "pi-dist", name))) {
@@ -71,7 +71,7 @@ function dependency(pkg, output) {
     dependency(dirname(path), join(output, "node_modules", name));
   }
 }
-for (const name of ["chalk", "undici", "semver", "minimatch", "hosted-git-info", "grok-mermaid", "proper-lockfile", "cross-spawn", "get-east-asian-width", "partial-json", "marked", "highlight.js", "ignore", "diff", "jiti"]) dependency(join(agent, "node_modules", name), join(shims, name));
+for (const name of ["chalk", "undici", "semver", "minimatch", "hosted-git-info", "grok-mermaid", "proper-lockfile", "quickjs-wasi", "cross-spawn", "get-east-asian-width", "partial-json", "marked", "highlight.js", "ignore", "diff", "jiti"]) dependency(join(agent, "node_modules", name), join(shims, name));
 const yaml = join(agent, "node_modules/yaml");
 for (const output of files(join(shims, "yaml"))) {
   const rel = relative(join(shims, "yaml"), output);

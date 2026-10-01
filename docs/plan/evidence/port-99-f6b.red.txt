@@ -1,0 +1,36 @@
+# port-99-f6b red run (before any implementation)
+
+$ go test ./coding -run TestModelRuntimeImagesUpstream -count=1
+--- FAIL: TestModelRuntimeImagesUpstream (0.02s)
+    --- FAIL: TestModelRuntimeImagesUpstream/lists_built-in_OpenRouter_image_models_separately_from_chat_models (0.00s)
+        model_runtime_images_upstream_test.go:47: no built-in openrouter image models
+    --- FAIL: TestModelRuntimeImagesUpstream/extension_model_lists_replace_undeclared_models_of_every_operation (0.00s)
+        model_runtime_images_upstream_test.go:98: GetAllModels = [], want [[chat extension-chat]]
+    --- FAIL: TestModelRuntimeImagesUpstream/generates_images_through_a_native_provider_with_runtime-resolved_auth (0.00s)
+        model_runtime_images_upstream_test.go:128: missing image model
+    --- FAIL: TestModelRuntimeImagesUpstream/keeps_image_generation_on_a_built-in_provider_composed_with_models.json_overrides (0.00s)
+        model_runtime_images_upstream_test.go:200: provider = <nil>
+    --- FAIL: TestModelRuntimeImagesUpstream/does_not_add_image_generation_to_composed_chat-only_providers (0.00s)
+        model_runtime_images_upstream_test.go:241: anthropic = <nil>
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/coding	0.056s
+FAIL
+
+$ go test ./internal/codingagent/llama -count=1
+--- FAIL: TestRefreshModelsPersistsAndRestoresSelectableModelsForCacheOnlyStartup (0.00s)
+    provider_test.go:139: cached entry = [[loaded openai-completions] [sleeping openai-completions]] (checkedAt 0x10693b6e4f60), want [[loaded openai-completions] [sleeping openai-completions] [loaded llama-cpp-classify] [sleeping llama-cpp-classify]]
+--- FAIL: TestRefreshModelsPreservesCachedLlamaContextForUnloadedAutoloadPresets (0.00s)
+    provider_test.go:250: first stored context windows = [65536]
+--- FAIL: TestRefreshModelsExposesUnloadedPresetsOnlyWhenRouterAutoloadIsEnabled (0.00s)
+    provider_test.go:307: cached = [[preset openai-completions]], want [[preset openai-completions] [preset llama-cpp-classify]]
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/internal/codingagent/llama	2.517s
+FAIL
+
+$ go test ./cmd/pig -run TestModelResolverDefaultsUpstream -count=1
+--- FAIL: TestModelResolverDefaultsUpstream (0.00s)
+    --- FAIL: TestModelResolverDefaultsUpstream/openai_defaults_track_current_models (0.00s)
+        model_resolver_defaults_upstream_test.go:29: openai-codex default="gpt-5.5", want "gpt-6.1-sol"
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/cmd/pig	0.043s
+FAIL

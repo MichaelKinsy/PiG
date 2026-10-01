@@ -10,6 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding"
+	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 )
 
 // subscribeRPCEvents observes each mode event after awaited extension handling and before Session persistence, as rpc-mode.ts:354-363 subscribes to AgentSession. The separate Events consumer only drains and acknowledges delivery barriers.
@@ -142,25 +143,60 @@ func rpcAgentEvent(event agent.AgentEvent) ([]any, error) {
 	case agent.ToolExecutionStartEvent:
 		return []any{rpcObject{{"type", "tool_execution_start"}, {"toolCallId", event.ToolCallID}, {"toolName", event.ToolName}, {"args", json.RawMessage(event.Args)}}}, nil
 	case agent.ToolExecutionUpdateEvent:
-		// Shell startup has neither text nor details (bash.ts:301-302). Output snapshots carry details even when a chunk decodes to empty text (bash.ts:270-276).
-		var text *string
-		if event.Content != "" || event.Details != nil {
-			text = &event.Content
+		// The partial result is the object the tool passed to onUpdate (agent-loop.ts:778-786): shell startup has no content blocks and no details (bash.ts:321-323), output snapshots a text block and details (bash.ts:270-276), codemode no blocks and details (codemode/execute.ts:235).
+		partial, err := rpcToolResult(event.PartialResult)
+		if err != nil {
+			return nil, fmt.Errorf("tool_execution_update partialResult: %w", err)
 		}
-		return []any{rpcObject{{"type", "tool_execution_update"}, {"toolCallId", event.ToolCallID}, {"toolName", event.ToolName}, {"args", json.RawMessage(event.Args)}, {"partialResult", rpcToolResultPayload(text, nil, event.Details)}}}, nil
+		return []any{rpcObject{{"type", "tool_execution_update"}, {"toolCallId", event.ToolCallID}, {"toolName", event.ToolName}, {"args", json.RawMessage(event.Args)}, {"partialResult", partial}}}, nil
 	case agent.ToolExecutionEndEvent:
-		content := event.Result.Content
-		if content == nil {
-			content = []ai.ToolResultMessageContent{}
+		result, err := rpcToolResult(event.Result)
+		if err != nil {
+			return nil, err
 		}
-		result := rpcObject{{"content", content}}
-		if event.Result.Details != nil {
-			result = append(result, rpcField{"details", event.Result.Details})
-		}
-		return []any{rpcObject{{"type", "tool_execution_end"}, {"toolCallId", event.ToolCallID}, {"toolName", event.ToolName}, {"result", result}, {"isError", event.Result.IsError}}}, nil
+		return []any{rpcObject{{"type", "tool_execution_end"}, {"toolCallId", event.ToolCallID}, {"toolName", event.ToolName}, {"result", result}, {"isError", event.IsError}}}, nil
 	default:
 		return nil, fmt.Errorf("unsupported agent event %T", event)
 	}
+}
+
+// rpcToolResult writes the AgentToolResult of tool_execution_update and tool_execution_end as Pi does, key by key in the order the object holds them.
+// upstream: packages/agent/src/agent-loop.ts:778-786, 912-919 emit the object the tool built, whose keys are the ones the tool or a hook set (agent/src/types.ts:435-455): a built-in tool builds content, details, structuredContent, isError (coding-agent/src/core/tools/bash.ts:403-409), then usage and terminate, and a tool's own object keeps its own order (AgentToolResult.MemberNames).
+// afterToolCall's result is spread over the tool's (agent-loop.ts:877-889): keys keep their positions, and a structuredContent the hook added to a result that had none comes last.
+// Only the errors a tool returns are written as isError: a thrown error, an unknown tool, invalid arguments and a blocked call give createErrorToolResult, which has none (agent-loop.ts:906-910).
+func rpcToolResult(result agent.AgentToolResult) (rpcObject, error) {
+	var out rpcObject
+	for _, name := range result.MemberNames() {
+		switch name {
+		case "content":
+			content := result.Content
+			if content == nil {
+				content = []ai.ToolResultMessageContent{}
+			}
+			out = append(out, rpcField{"content", content})
+		case "details":
+			out = append(out, rpcField{"details", result.Details})
+		case "structuredContent":
+			// Pi serializes the value with JSON.stringify, so the raw text a tool or SDK produced is written as JSON.stringify(JSON.parse(raw)).
+			canonical, err := jsonstringify.Canonicalize(result.StructuredContent)
+			if err != nil {
+				return nil, fmt.Errorf("tool_execution_end structuredContent: %w", err)
+			}
+			out = append(out, rpcField{"structuredContent", json.RawMessage(canonical)})
+		case "isError":
+			out = append(out, rpcField{"isError", result.IsError})
+		case "usage":
+			if result.Usage == nil {
+				// The tool wrote usage: null.
+				out = append(out, rpcField{"usage", nil})
+				continue
+			}
+			out = append(out, rpcField{"usage", rpcUsage(result.Usage)})
+		case "terminate":
+			out = append(out, rpcField{"terminate", result.Terminate})
+		}
+	}
+	return out, nil
 }
 
 // rpcSessionEntryAppendedEvent carries a Session entry appended outside the agent loop exactly as it was persisted.
@@ -284,11 +320,16 @@ func rpcAgentMessage(message agent.AgentMessage) (any, error) {
 		if assistant.EndTurn != nil {
 			out = append(out, rpcField{"endTurn", *assistant.EndTurn})
 		}
+		// upstream: agent-loop.ts:409 assigns thinkingLevel to the finished response, after the provider's own keys.
+		if assistant.ThinkingLevel != "" {
+			out = append(out, rpcField{"thinkingLevel", assistant.ThinkingLevel})
+		}
 		return out, nil
 	case message.ToolResult != nil:
 		return rpcToolResultMessage(*message.ToolResult)
 	case message.Custom != nil:
-		return message.Custom, nil
+		// The message writes its own members in Pi's order (messages.ts:123-137) and keeps an extension's `details` as written.
+		return message, nil
 	default:
 		return nil, fmt.Errorf("agent message has no variant")
 	}

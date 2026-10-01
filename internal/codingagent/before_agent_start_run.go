@@ -1,6 +1,7 @@
 package codingagent
 
 import (
+	"maps"
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -40,6 +41,13 @@ func ResolveBeforeAgentStartRun(base extension.BuildSystemPromptOptions, result 
 			}
 		}
 		run.SystemPrompt = result.SystemPrompt
+		// agent-session.ts:1724 forces the run options' forceSystemPrompt, which a handler may set or clear directly as well as through a returned systemPrompt (runner.ts:1445-1447).
+		if options := result.SystemPromptOptions; options != nil {
+			run.SystemPrompt = nil
+			if options.ForceSystemPrompt != nil {
+				run.SystemPrompt = new(*options.ForceSystemPrompt)
+			}
+		}
 		run.Messages = result.Messages
 	}
 	if len(sections) > 0 {
@@ -54,4 +62,46 @@ func ResolveBeforeAgentStartRun(base extension.BuildSystemPromptOptions, result 
 		}
 	}
 	return run, nil
+}
+
+// BaseSections builds the run's structured prompt sections from the run's options, as _preparePromptAndToolLoadout does for every mode (agent-session.ts:1669-1683), before its custom sections apply. selectedTools are the live active tools. Snippets of hidden declarations are not listed, so the tool list matches the declarations the request carries (agent-session.ts:1674-1677).
+func (r BeforeAgentStartRun) BaseSections(selectedTools []string, hidden map[string]struct{}) ai.OrderedSections {
+	options := r.Options
+	options.SelectedTools = selectedTools
+	options.ToolSnippets = WithoutHiddenSnippets(options.ToolSnippets, hidden)
+	return prompts.BuildSystemPromptSections(prompts.FromExtensionOptions(options))
+}
+
+// PromptSections is BaseSections with the run's validated custom sections applied.
+func (r BeforeAgentStartRun) PromptSections(selectedTools []string, hidden map[string]struct{}) (ai.OrderedSections, error) {
+	return prompts.ApplyCustomSystemPromptSections(r.BaseSections(selectedTools, hidden), r.Sections)
+}
+
+// WithoutHiddenSnippets returns snippets without the tools whose declarations the loadout hides (agent-session.ts:1674-1677). It returns the map itself when nothing is hidden.
+func WithoutHiddenSnippets(snippets map[string]string, hidden map[string]struct{}) map[string]string {
+	if len(hidden) == 0 {
+		return snippets
+	}
+	visible := maps.Clone(snippets)
+	for name := range hidden {
+		delete(visible, name)
+	}
+	return visible
+}
+
+// NextTurnOptions refreshes a run's options before a later turn: the live tools, and the base snippets and guidelines under the run's (agent-session.ts:697-706), so a tool registered during the run is listed and an edited entry wins.
+func (r BeforeAgentStartRun) NextTurnOptions(base extension.BuildSystemPromptOptions) extension.BuildSystemPromptOptions {
+	options := r.Options
+	options.ToolSnippets = mergeMaps(base.ToolSnippets, options.ToolSnippets)
+	options.ToolGuidelines = mergeMaps(base.ToolGuidelines, options.ToolGuidelines)
+	return options
+}
+
+func mergeMaps[V any](base, over map[string]V) map[string]V {
+	merged := maps.Clone(base)
+	if merged == nil {
+		merged = map[string]V{}
+	}
+	maps.Copy(merged, over)
+	return merged
 }

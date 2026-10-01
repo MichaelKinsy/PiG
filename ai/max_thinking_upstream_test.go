@@ -41,7 +41,7 @@ func captureCatalogPayload(t *testing.T, provider Provider, opts StreamOptions) 
 }
 
 func TestMaxThinkingUpstream(t *testing.T) {
-	// .upstream/v0.87.1/packages/ai/test/max-thinking.test.ts:15
+	// .upstream/v0.99.1/packages/ai/test/max-thinking.test.ts:15
 	t.Run("is opt-in for ordinary reasoning models", func(t *testing.T) {
 		model := &Model{ID: "ordinary-reasoning", DisplayName: "Ordinary Reasoning", Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh, ContextWindow: 128000, MaxOutputTokens: 4096}, Input: []string{"text"}, ProviderMeta: ProviderMetadata{ProviderID: "test", API: APIOpenAICompletions, BaseURL: "https://example.com/v1", Reasoning: true}}
 		assertCatalogJSON(t, GetSupportedThinkingLevels(model), `["off","minimal","low","medium","high"]`)
@@ -49,7 +49,7 @@ func TestMaxThinkingUpstream(t *testing.T) {
 			t.Fatal(got)
 		}
 	})
-	// .upstream/v0.87.1/packages/ai/test/max-thinking.test.ts:33
+	// .upstream/v0.99.1/packages/ai/test/max-thinking.test.ts:33
 	for _, id := range []string{"gpt-5.6-luna", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-6-luna", "gpt-6-sol"} {
 		t.Run("exposes xhigh and max for openai-codex/"+id, func(t *testing.T) {
 			m := mustGeneratedModel(t, "openai-codex", id)
@@ -57,7 +57,7 @@ func TestMaxThinkingUpstream(t *testing.T) {
 			assertCatalogJSON(t, GetSupportedThinkingLevels(m.ToModel()), `["off","minimal","low","medium","high","xhigh","max"]`)
 		})
 	}
-	// .upstream/v0.87.1/packages/ai/test/max-thinking.test.ts:51
+	// .upstream/v0.99.1/packages/ai/test/max-thinking.test.ts:51
 	t.Run("supports a hole between high and max", func(t *testing.T) {
 		model := &Model{ID: "high-and-max", DisplayName: "High and Max", Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh, ContextWindow: 128000, MaxOutputTokens: 4096}, Input: []string{"text"}, ProviderMeta: ProviderMetadata{ProviderID: "test", API: APIOpenAICompletions, BaseURL: "https://example.com/v1", Reasoning: true}, ThinkingLevelMap: ThinkingLevelMap{ThinkingXHigh: nil, ThinkingMax: new("max")}}
 		assertCatalogJSON(t, GetSupportedThinkingLevels(model), `["off","minimal","low","medium","high","max"]`)
@@ -65,8 +65,8 @@ func TestMaxThinkingUpstream(t *testing.T) {
 			t.Fatal(got)
 		}
 	})
-	// .upstream/v0.87.1/packages/ai/test/max-thinking.test.ts:70
-	for _, id := range []string{"gpt-5.6-sol", "gpt-6-astra", "gpt-6-sol", "gpt-6-luna"} {
+	// .upstream/v0.99.1/packages/ai/test/max-thinking.test.ts:70
+	for _, id := range []string{"gpt-5.6-sol", "gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-6.1-sol"} {
 		t.Run("sends max to the Codex Responses API for "+id, func(t *testing.T) {
 			m := mustGeneratedModel(t, "openai-codex", id)
 			p := NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{APIKey: codexTestToken(t, "acc_test"), Model: m.ID, ProviderID: m.Provider, BaseURL: m.BaseURL, Compat: m.Compat})

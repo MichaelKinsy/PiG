@@ -24,6 +24,7 @@ func TestModeWireReadiness(t *testing.T) {
 // Pi 0.87.1 print-mode.ts:49-64 leaves SIGINT unhandled. Interactive-mode.ts:
 // 4145-4157,4179-4185 exits 0 on live SIGHUP and 129 on a dead terminal.
 func TestModeWireLifecycle(t *testing.T) {
+	t.Parallel()
 	binary := buildPigBinaryForSignalTest(t)
 	script, err := filepath.Abs("../../test/parity/testdata/session-wire.py")
 	if err != nil {

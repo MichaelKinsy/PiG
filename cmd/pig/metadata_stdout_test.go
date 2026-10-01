@@ -57,6 +57,7 @@ func TestListModelsStdoutRouting(t *testing.T) {
 
 // Pi main.ts:857-871 answers --help and --list-models from the extension-populated runtime before main.ts:895-906 reports runtime diagnostics. Every mode lists -e providers, and a failed extension neither reports its error nor changes exit status 0.
 func TestRuntimeMetadataUsesLoadedExtensionsInEveryMode(t *testing.T) {
+	t.Parallel()
 	binary := buildPigBinaryForSignalTest(t)
 	provider, err := filepath.Abs(filepath.Join("testdata", "startup-provider.mjs"))
 	if err != nil {

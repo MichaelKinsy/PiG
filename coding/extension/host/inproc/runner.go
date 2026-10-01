@@ -201,6 +201,9 @@ type Runner struct {
 	// getSystemPromptFn fields default to stubs).
 	contextActions extension.ContextActions
 
+	// sessionManager is the log ctx.sessionManager exposes. It is bound apart from contextActions so a Session that swaps its log in place (coding.Session.ReplaceInner) can rebind it while handlers run; see [Runner.BindSessionManager] and [Runner.actions].
+	sessionManager atomic.Pointer[extension.SessionManager]
+
 	// extActions retains the bound host actions; runtime shares provider registration state with the loader.
 	extActions extension.ExtensionActions
 	runtime    *extension.ExtensionRuntime
@@ -214,7 +217,16 @@ type Runner struct {
 	commandActions extension.CommandActions
 	flagMu         sync.RWMutex
 	flagValues     map[string]any
+
+	// mcp delivers mcp_servers_change events and remembers which servers were reported as unhandled. See mcp_servers.go.
+	mcp mcpServersState
+	// background is cancelled when the runner is invalidated, so events queued for delivery end with it.
+	background       context.Context
+	cancelBackground context.CancelFunc
 }
+
+// Runtime returns the registration state the runner shares with its loader: MCP servers, providers and virtual models.
+func (r *Runner) Runtime() *extension.ExtensionRuntime { return r.runtime }
 
 // NewRunner constructs a Runner over the given pre-populated extensions. Supply the loader's shared runtime to bind its pending provider registrations; otherwise the runner owns a fresh runtime.
 //
@@ -261,6 +273,7 @@ func NewRunner(extensions []extension.Extension, cwd string, sharedRuntime ...*e
 		uiContext:  extension.NoopUIContext,
 		flagValues: flagValues,
 	}
+	r.background, r.cancelBackground = context.WithCancel(context.Background())
 	r.activeCommandsIdle.L = &r.activeCommandsMu
 	r.contextActions.GetFlagValue = r.flagValue
 	r.contextActions.GetUIContext = r.GetUIContext
@@ -306,10 +319,12 @@ func (r *Runner) ExtensionPaths() []string {
 	return paths
 }
 
-// ExtensionSource is one loaded extension's resolved path and SourceInfo.
+// ExtensionSource is one loaded extension's resolved path and SourceInfo. Hidden extensions are omitted from the
+// startup Extensions list (upstream extension.hidden, types.ts:2213).
 type ExtensionSource struct {
 	ResolvedPath string
 	SourceInfo   extension.SourceInfo
+	Hidden       bool
 }
 
 // ExtensionSources returns the resolved path and SourceInfo of every loaded
@@ -318,7 +333,7 @@ type ExtensionSource struct {
 func (r *Runner) ExtensionSources() []ExtensionSource {
 	sources := make([]ExtensionSource, 0, len(r.extensions))
 	for _, ext := range r.extensions {
-		sources = append(sources, ExtensionSource{ResolvedPath: ext.ResolvedPath, SourceInfo: ext.SourceInfo})
+		sources = append(sources, ExtensionSource{ResolvedPath: ext.ResolvedPath, SourceInfo: ext.SourceInfo, Hidden: ext.Hidden})
 	}
 	return sources
 }
@@ -367,6 +382,7 @@ func (r *Runner) Invalidate(message string) {
 			message = defaultStaleMessage
 		}
 		r.staleMessage.Store(&message)
+		r.cancelBackground()
 		r.uiPrompts.mu.Lock()
 		if r.uiPrompts.cancel != nil {
 			r.uiPrompts.cancel()
@@ -406,7 +422,25 @@ func (r *Runner) BindCore(
 	if contextActions.GetScopedModels == nil {
 		contextActions.GetScopedModels = r.contextActions.GetScopedModels
 	}
+	// upstream: runner.ts:362, 398-405, 889-891 (ctx.sessionManager is a constructor field no binding replaces); agent-session.ts:3173-3194, 3301 (a mode's bindExtensions reaches bindCore only through _bindExtensionCore, which binds executeTool, getCallableTools and appendEntry). A mode binding that omits them keeps the Session's.
+	if contextActions.ExecuteTool == nil {
+		contextActions.ExecuteTool = r.contextActions.ExecuteTool
+	}
+	if contextActions.GetCallableTools == nil {
+		contextActions.GetCallableTools = r.contextActions.GetCallableTools
+	}
+	if contextActions.AppendEntry == nil {
+		contextActions.AppendEntry = r.contextActions.AppendEntry
+	}
+	// upstream: agent-session.ts:3353 (_bindExtensionCore binds refreshTools); a mode binding that omits it keeps the Session's.
+	if contextActions.RefreshTools == nil {
+		contextActions.RefreshTools = r.contextActions.RefreshTools
+	}
 	r.contextActions = contextActions
+	r.contextActions.SessionManager = nil
+	if contextActions.SessionManager != nil {
+		r.BindSessionManager(contextActions.SessionManager)
+	}
 	r.contextActions.GetUIContext = r.GetUIContext
 	r.contextActions.GetMode = r.getMode
 	lookup := contextActions.GetFlagValue
@@ -427,6 +461,11 @@ func (r *Runner) BindCore(
 		providers.RegisterProvider = registry.RegisterProvider
 		providers.UnregisterProvider = registry.UnregisterProvider
 	}
+	// upstream: runner.ts:497-500, 538-541: a provider action wins over the model registry's own virtual-model methods.
+	if registry, ok := contextActions.ModelRegistry.(virtualModelRegistry); ok {
+		providers.RegisterVirtualModel = registry.RegisterVirtualModel
+		providers.UnregisterVirtualModel = registry.UnregisterVirtualModel
+	}
 	if providerActions != nil {
 		if providerActions.RegisterProvider != nil {
 			providers.RegisterProvider = providerActions.RegisterProvider
@@ -434,13 +473,47 @@ func (r *Runner) BindCore(
 		if providerActions.UnregisterProvider != nil {
 			providers.UnregisterProvider = providerActions.UnregisterProvider
 		}
+		if providerActions.RegisterVirtualModel != nil {
+			providers.RegisterVirtualModel = providerActions.RegisterVirtualModel
+		}
+		if providerActions.UnregisterVirtualModel != nil {
+			providers.UnregisterVirtualModel = providerActions.UnregisterVirtualModel
+		}
 	}
+	// upstream: runner.ts:436 (runtime.createContext = () => this.createContext()); runner.ts:457-462 (change listener).
+	r.runtime.SetContextFactory(func() (*extension.Context, error) {
+		return extension.NewContext(r.cwd, nil, r.assertActive, r.actions()), nil
+	})
+	r.runtime.SetMcpServersChangeListener(r.onMcpServersChange)
 	r.runtime.BindProviderActions(providers, r.emitError)
 }
 
 type providerRegistry interface {
 	RegisterProvider(string, extension.ProviderConfig) error
 	UnregisterProvider(string)
+}
+
+type virtualModelRegistry interface {
+	RegisterVirtualModel(extension.VirtualModelDefinition) error
+	UnregisterVirtualModel(provider, id string)
+}
+
+// BindSessionManager rebinds the log ctx.sessionManager exposes to contexts made afterwards. It is safe to call while handlers run.
+//
+// upstream: runner.ts:889-891 (`get sessionManager()` reads the runner's session manager); a replacement binds a new AgentSession's manager to a new runner (agent-session-runtime.ts), which Go's in-place Session.ReplaceInner has no counterpart for.
+func (r *Runner) BindSessionManager(manager extension.SessionManager) {
+	r.sessionManager.Store(&manager)
+}
+
+// actions is the context actions a new context captures: the bound set with the live session manager.
+func (r *Runner) actions() extension.ContextActions {
+	actions := r.contextActions
+	// upstream: loader.ts:475-478 (getMcpServers reads the runtime the loader shares with the runner).
+	actions.GetMcpServers = r.runtime.McpServers
+	if manager := r.sessionManager.Load(); manager != nil {
+		actions.SessionManager = *manager
+	}
+	return actions
 }
 
 // BindAbort installs the active Session's non-blocking abort action without replacing the mode's other context actions. Call it before dispatching handlers.
@@ -462,12 +535,15 @@ func (r *Runner) BindTools(actions extension.ContextActions) {
 	r.contextActions.GetAllTools = actions.GetAllTools
 	r.contextActions.GetActiveTools = actions.GetActiveTools
 	r.contextActions.SetActiveTools = actions.SetActiveTools
+	if actions.RefreshTools != nil {
+		r.contextActions.RefreshTools = actions.RefreshTools
+	}
 	r.contextActions.GetSystemPrompt = actions.GetSystemPrompt
 	if actions.GetModel != nil {
 		r.contextActions.GetModel = actions.GetModel
 	}
 	if actions.SessionManager != nil {
-		r.contextActions.SessionManager = actions.SessionManager
+		r.BindSessionManager(actions.SessionManager)
 	}
 	if actions.ModelRegistry != nil {
 		r.contextActions.ModelRegistry = actions.ModelRegistry
@@ -475,11 +551,24 @@ func (r *Runner) BindTools(actions extension.ContextActions) {
 	if actions.IsIdle != nil {
 		r.contextActions.IsIdle = actions.IsIdle
 	}
+	if actions.GetSignal != nil {
+		r.contextActions.GetSignal = actions.GetSignal
+	}
 	if actions.HasPendingMessages != nil {
 		r.contextActions.HasPendingMessages = actions.HasPendingMessages
 	}
 	if actions.SendUserMessage != nil {
 		r.contextActions.SendUserMessage = actions.SendUserMessage
+	}
+	// upstream: agent-session.ts:_bindExtensionCore passes executeTool and getCallableTools with the other context actions.
+	if actions.ExecuteTool != nil {
+		r.contextActions.ExecuteTool = actions.ExecuteTool
+	}
+	if actions.GetCallableTools != nil {
+		r.contextActions.GetCallableTools = actions.GetCallableTools
+	}
+	if actions.AppendEntry != nil {
+		r.contextActions.AppendEntry = actions.AppendEntry
 	}
 }
 
@@ -519,7 +608,7 @@ func (r *Runner) BindCommandActions(actions extension.CommandActions) {
 //
 // upstream: runner.ts:628-660 (createCommandContext)
 func (r *Runner) CreateCommandContext() *extension.CommandContext {
-	base := extension.NewContext(r.cwd, nil, r.assertActive, r.contextActions)
+	base := extension.NewContext(r.cwd, nil, r.assertActive, r.actions())
 	return extension.NewCommandContext(base, r.commandActions)
 }
 
@@ -1062,7 +1151,7 @@ func (r *Runner) DispatchContext(ctx context.Context) context.Context {
 // The attached Context exposes the actions bound to this Runner. Unbound
 // optional actions retain their documented zero-value behavior.
 func (r *Runner) dispatchContext(ctx context.Context) context.Context {
-	extCtx := extension.NewContext(r.cwd, nil, r.assertActive, r.contextActions)
+	extCtx := extension.NewContext(r.cwd, nil, r.assertActive, r.actions())
 	return extension.WithContext(ctx, extCtx)
 }
 
@@ -1343,7 +1432,7 @@ func (r *Runner) EmitToolResult(ctx context.Context, event extension.ToolResultE
 	// content/details/isError/usage into it, so every handler sees its
 	// predecessors' values. The chained values are rebuilt into the event's
 	// own variant before each handler.
-	curContent, curDetails, curIsError, curUsage := extractToolResultFields(event)
+	curContent, curDetails, curIsError, curUsage, curStructured := extractToolResultFields(event)
 	modified := false
 
 	for _, snapshot := range snapshotEventHandlers(r.extensions, "tool_result") {
@@ -1352,7 +1441,7 @@ func (r *Runner) EmitToolResult(ctx context.Context, event extension.ToolResultE
 			continue
 		}
 		for _, handler := range handlers {
-			event = withToolResultFields(event, curContent, curDetails, curIsError, curUsage)
+			event = withToolResultFields(event, curContent, curDetails, curIsError, curUsage, curStructured)
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
 			if err != nil {
 				r.recordHandlerError(ctx, ext.Path, "tool_result", err)
@@ -1370,6 +1459,10 @@ func (r *Runner) EmitToolResult(ctx context.Context, event extension.ToolResultE
 
 			if typed.Content != nil {
 				curContent = typed.Content
+				// upstream: structured content that is not replaced along with the content may no longer match it (runner.ts:1187).
+				if typed.StructuredContent == nil {
+					curStructured = nil
+				}
 				modified = true
 			}
 			if typed.Details != nil {
@@ -1380,6 +1473,10 @@ func (r *Runner) EmitToolResult(ctx context.Context, event extension.ToolResultE
 			// isError keeps the chained flag.
 			if typed.IsError != nil {
 				curIsError = *typed.IsError
+				modified = true
+			}
+			if typed.StructuredContent != nil {
+				curStructured = typed.StructuredContent
 				modified = true
 			}
 			if typed.Usage != nil {
@@ -1393,10 +1490,11 @@ func (r *Runner) EmitToolResult(ctx context.Context, event extension.ToolResultE
 		return nil, nil
 	}
 	return &extension.ToolResultEventResult{
-		Content: curContent,
-		Details: curDetails,
-		IsError: &curIsError,
-		Usage:   curUsage,
+		Content:           curContent,
+		Details:           curDetails,
+		StructuredContent: curStructured,
+		IsError:           &curIsError,
+		Usage:             curUsage,
 	}, nil
 }
 
@@ -2149,6 +2247,7 @@ func (r *Runner) EmitBeforeAgentStart(
 	// runner.ts:1317 normalizeBuildSystemPromptOptions: handlers share one copy of the caller's options, so no edit reaches the caller's base object.
 	currentOptions := clonePromptOptions(systemPromptOptions)
 	hadSections := len(*currentOptions.Sections) > 0
+	original := clonePromptOptions(*currentOptions)
 	selectedBefore := slices.Clone(currentOptions.SelectedTools)
 	promptCtx := extension.WithBeforeAgentStartOptions(ctx, currentOptions)
 	var messages []extension.CustomMessageRef
@@ -2160,7 +2259,7 @@ func (r *Runner) EmitBeforeAgentStart(
 			continue
 		}
 		for _, handler := range handlers {
-			actions := r.contextActions
+			actions := r.actions()
 			actions.GetSystemPrompt = func() string { return currentSystemPrompt }
 			extCtx := extension.NewContext(r.cwd, nil, r.assertActive, actions)
 			dispatchCtx := extension.WithContext(promptCtx, extCtx)
@@ -2210,11 +2309,14 @@ func (r *Runner) EmitBeforeAgentStart(
 		currentOptions.Sections = &ai.OrderedSections{}
 	}
 	hasSections := hadSections || len(*currentOptions.Sections) > 0
-	if len(messages) == 0 && !systemPromptModified && !hasSections && !selectedEdited {
+	// runner.ts:1462 returns the shared options object after every handler ran, and the run's prompt is built from it: an edit to any field, not only sections and selectedTools, reaches the request.
+	optionsEdited := !reflect.DeepEqual(original, currentOptions)
+	if len(messages) == 0 && !systemPromptModified && !hasSections && !selectedEdited && !optionsEdited {
 		return nil, nil
 	}
 	combined := &extension.BeforeAgentStartCombinedResult{SelectedToolsEdited: selectedEdited}
-	if hasSections || selectedEdited {
+	// A returned systemPrompt that a later handler cleared from the options leaves them unedited; they still decide the forced prompt (agent-session.ts:1724).
+	if hasSections || selectedEdited || optionsEdited || systemPromptModified {
 		combined.SystemPromptOptions = currentOptions
 	}
 	if len(messages) > 0 {
@@ -2307,28 +2409,28 @@ func (r *Runner) EmitResourcesDiscover(
 // extractToolResultFields pulls the chainable fields (content, details,
 // isError) out of any ToolResultEvent variant. Used by EmitToolResult
 // to seed the mutation chain.
-func extractToolResultFields(event extension.ToolResultEvent) (content []any, details any, isError bool, usage any) {
+func extractToolResultFields(event extension.ToolResultEvent) (content []any, details any, isError bool, usage any, structured json.RawMessage) {
 	switch e := event.(type) {
 	case extension.BashToolResultEvent:
-		return e.Content, e.Details, e.IsError, e.Usage
+		return e.Content, e.Details, e.IsError, e.Usage, e.StructuredContent
 	case extension.PowerShellToolResultEvent:
-		return e.Content, e.Details, e.IsError, e.Usage
+		return e.Content, e.Details, e.IsError, e.Usage, e.StructuredContent
 	case extension.ReadToolResultEvent:
-		return e.Content, e.Details, e.IsError, e.Usage
+		return e.Content, e.Details, e.IsError, e.Usage, e.StructuredContent
 	case extension.EditToolResultEvent:
-		return e.Content, e.Details, e.IsError, e.Usage
+		return e.Content, e.Details, e.IsError, e.Usage, e.StructuredContent
 	case extension.WriteToolResultEvent:
-		return e.Content, e.Details, e.IsError, e.Usage
+		return e.Content, e.Details, e.IsError, e.Usage, e.StructuredContent
 	case extension.GrepToolResultEvent:
-		return e.Content, e.Details, e.IsError, e.Usage
+		return e.Content, e.Details, e.IsError, e.Usage, e.StructuredContent
 	case extension.FindToolResultEvent:
-		return e.Content, e.Details, e.IsError, e.Usage
+		return e.Content, e.Details, e.IsError, e.Usage, e.StructuredContent
 	case extension.LsToolResultEvent:
-		return e.Content, e.Details, e.IsError, e.Usage
+		return e.Content, e.Details, e.IsError, e.Usage, e.StructuredContent
 	case extension.CustomToolResultEvent:
-		return e.Content, e.Details, e.IsError, e.Usage
+		return e.Content, e.Details, e.IsError, e.Usage, e.StructuredContent
 	}
-	return nil, nil, false, nil
+	return nil, nil, false, nil, nil
 }
 
 // withToolResultFields returns event with the chained content, details,
@@ -2336,9 +2438,9 @@ func extractToolResultFields(event extension.ToolResultEvent) (content []any, de
 // handler's replacement converts to them without loss; otherwise the event
 // continues as a CustomToolResultEvent with the same toolName carrying the
 // replacement exactly, as upstream assigns handlerResult.details as returned.
-func withToolResultFields(event extension.ToolResultEvent, content []any, details any, isError bool, usage any) extension.ToolResultEvent {
+func withToolResultFields(event extension.ToolResultEvent, content []any, details any, isError bool, usage any, structured json.RawMessage) extension.ToolResultEvent {
 	base := func(b extension.ToolResultEventBase) extension.ToolResultEventBase {
-		b.Content, b.IsError, b.Usage = content, isError, usage
+		b.Content, b.IsError, b.Usage, b.StructuredContent = content, isError, usage, structured
 		return b
 	}
 	generic := func(b extension.ToolResultEventBase, toolName string) extension.ToolResultEvent {

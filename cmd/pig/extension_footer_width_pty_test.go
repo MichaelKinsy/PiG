@@ -276,7 +276,7 @@ func runFooterProbe(t *testing.T, binary string, tc footerProbeCase) {
 				t.Fatalf("the TUI stopped %s; last output: %q", stage, tail())
 			}
 			if bytes.Contains(output.since(mark), []byte(marker)) {
-				output.waitQuiet(mark, []byte(marker), 300*time.Millisecond, 10*time.Second)
+				output.waitQuiet(mark, []byte(marker), 300*time.Millisecond, budget)
 				return
 			}
 			time.Sleep(20 * time.Millisecond)

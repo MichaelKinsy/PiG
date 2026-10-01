@@ -39,6 +39,8 @@ func clearAllAuthEnv(t *testing.T) {
 		"COPILOT_GITHUB_TOKEN", "GH_TOKEN", "GITHUB_TOKEN",
 		"AWS_BEARER_TOKEN_BEDROCK", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY",
 		"AWS_PROFILE", "AWS_SESSION_TOKEN", "AWS_WEB_IDENTITY_TOKEN_FILE",
+		ai.AnthropicFederationRuleIDEnv, ai.AnthropicOrganizationIDEnv, ai.AnthropicIdentityTokenFileEnv,
+		ai.AnthropicServiceAccountIDEnv, ai.AnthropicWorkspaceIDEnv,
 	} {
 		t.Setenv(v, "")
 	}

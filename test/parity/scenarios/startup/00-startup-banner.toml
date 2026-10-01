@@ -23,8 +23,12 @@ driver = "interactive-tmux"
 [tmux]
 width = 100
 height = 35
-ready_pattern_pig = "(auto)"
-ready_pattern_pi = "pi v"
+# Upstream 0.99.2 mounts the footer ("(auto)") before it awaits the terminal
+# colors and builds the header (interactive-mode.ts:951-1015), so the footer can
+# match while the header is still absent. The ready patterns wait for the
+# header's last line, which both binaries print only once the header exists.
+ready_pattern_pig = "PiG can explain"
+ready_pattern_pi = "Pi can explain"
 ready_timeout_seconds = 15
 
 [assert]
@@ -35,7 +39,9 @@ both_reach_ready = true
 runtime_ratio_max = 1.50
 
 [diverge]
-# Intentional naming divergence; banner text differs.
-pig_contains = ["pig"]
-pi_contains = ["pi v"]
-reason = "Intentional project naming. Locked here so any future banner drift trips this assertion."
+# Upstream 0.99.2 prints the pi logo and "v<version>" without a product name
+# ("▀▀█  v0.99.2"), so the naming divergence is the version (D63) and the
+# product name in the introduction line below the hint.
+pig_contains = ["v{{VERSION}}", "PiG can explain"]
+pi_contains = ["v{{UPSTREAM_VERSION}}", "Pi can explain"]
+reason = "Intentional project naming and the composite version (D63). Locked here so any future banner drift trips this assertion."

@@ -24,7 +24,7 @@ func TestStartupResumeReusesOpenedSessionManager(t *testing.T) {
 	if _, err := history.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "saved"}}}}); err != nil {
 		t.Fatal(err)
 	}
-	// Session files materialize on the first assistant turn, as in Pi.
+	// The user message above already created the file (Pi 0.99.1 _hasConversation); the assistant turn completes the saved history.
 	if _, err := history.AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant, Provider: "openai", ModelID: "gpt-4o", API: ai.APIOpenAIResponses, Content: []ai.AssistantContentBlock{ai.TextContent{Text: "saved answer"}}, StopReason: ai.StopReasonStop}}); err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestStartupResumeModelPrecedence(t *testing.T) {
 		{"metadata-only log falls back", "", "claude-opus-4-8", true, false, "openai", "gpt-4o", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			for _, key := range []string{"ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_OAUTH_TOKEN", "ANTHROPIC_API_KEY", "OPENAI_API_KEY"} {
+			for _, key := range []string{"ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_OAUTH_TOKEN", "ANTHROPIC_API_KEY", "OPENAI_API_KEY", ai.AnthropicFederationRuleIDEnv} {
 				t.Setenv(key, "")
 			}
 			services := testServices(t, t.TempDir())

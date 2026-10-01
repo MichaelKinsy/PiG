@@ -18,4 +18,10 @@ export function cloudflareStreams(streams) {
         streamSimple: (model, context, options) => streams.streamSimple(resolveCloudflareModel(model, options?.env), context, options),
     };
 }
+/** Classifier counterpart of {@link cloudflareStreams}. */
+export function cloudflareClassifier(classifier) {
+    return {
+        classify: (model, context, options) => classifier.classify(resolveCloudflareModel(model, options?.env), context, options),
+    };
+}
 //# sourceMappingURL=cloudflare-stream.js.map

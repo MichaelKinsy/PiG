@@ -284,11 +284,11 @@ func (views *viewManager) envelopeFor(record *viewRecord, changes *CommitChanges
 		return nil, nil
 	}
 	state := record.tracker.State()
-	ops := appendViewEntries(record.tracker, scoped.appended)
+	appendViewEntries(state, scoped.appended)
 	if err := views.syncState(record.conversationId, state, scoped); err != nil {
 		return nil, err
 	}
-	ops = append(ops, record.tracker.Flush()...)
+	ops := record.tracker.Flush()
 	if len(ops) == 0 && len(scoped.events) == 0 {
 		return nil, nil
 	}
@@ -300,12 +300,11 @@ func (views *viewManager) envelopeFor(record *viewRecord, changes *CommitChanges
 	return &Envelope{Revision: record.revision, Ops: ops, Events: events}, nil
 }
 
-// appendViewEntries preserves the explicit head splice from upstream view.ts
-// applyEntries. A structural diff alone can replace equal-length entries in
-// place, losing the transcript truncation operation observed by consumers.
-func appendViewEntries(tracker *Tracker, appended []Entry) []Op {
-	var ops []Op
-	state := tracker.State()
+// appendViewEntries edits the tracked entries in place: a head commit drops
+// the entries before its head and every appended entry is added. The tracker
+// publishes the resulting change, as upstream 0.99.1 does; it no longer
+// emits an explicit head splice (.upstream/v0.99.1/packages/agent/src/harness/pico3/view.ts:337-347).
+func appendViewEntries(state JsonObject, appended []Entry) {
 	for _, entry := range appended {
 		entries := arr(state, "entries")
 		if entry.Head != nil {
@@ -317,16 +316,11 @@ func appendViewEntries(tracker *Tracker, appended []Entry) []Op {
 				}
 			}
 			if remove > 0 {
-				ops = append(ops, tracker.Flush()...)
 				entries = slices.Clone(entries[remove:])
-				state["entries"] = entries
-				tracker.Flush()
-				ops = append(ops, Op{"p", []any{"entries"}, 0, remove, []any{}})
 			}
 		}
 		state["entries"] = append(entries, storedObject(entry))
 	}
-	return ops
 }
 
 func (views *viewManager) syncState(conversationId Id, state JsonObject, scoped recordChanges) error {

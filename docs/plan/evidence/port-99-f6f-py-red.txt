@@ -1,0 +1,152 @@
+# red run: Python SDK, upstream 0.99.1 extension API additions and pi.events bridge
+# base: 88d5d92ea (merge of staging port-99-f6d host side) + working tree; go1.27.1, python 3.12.3, linux/amd64
+
+## cd extensions/sdk-py && PYTHONPATH=. uv run --no-project --with pytest pytest -q tests/test_extension_api_099.py tests/test_event_bus.py
+..FFFFF.FFFFFFFFFFFFFFFFFFFF.FFFFFFFFFFFF                                [100%]
+=================================== FAILURES ===================================
+E   KeyError: 'output_schema'
+extensions/sdk-py/tests/test_extension_api_099.py:104: KeyError: 'output_schema'
+E   KeyError: 'default_active'
+extensions/sdk-py/tests/test_extension_api_099.py:124: KeyError: 'default_active'
+E   Failed: DID NOT RAISE ValueError
+extensions/sdk-py/tests/test_extension_api_099.py:131: Failed: DID NOT RAISE ValueError
+E   KeyError: 'exposure'
+extensions/sdk-py/tests/test_extension_api_099.py:156: KeyError: 'exposure'
+E   AssertionError: assert {'result': No...are_loadout'}} == {'result': {'...'error': None}
+extensions/sdk-py/tests/test_extension_api_099.py:186: AssertionError: assert {'result': No...are_loadout'}} == {'result': {'...'error': None}
+E   NotImplementedError: not implemented: Extension.register_mcp_server
+extensions/sdk-py/pig_sdk/__init__.py:1986: NotImplementedError: not implemented: Extension.register_mcp_server
+E   NotImplementedError: not implemented: Extension.register_mcp_server
+extensions/sdk-py/pig_sdk/__init__.py:1986: NotImplementedError: not implemented: Extension.register_mcp_server
+E   AssertionError: assert {'message': 'not implemented: Context.get_mcp_servers'} is None
+extensions/sdk-py/tests/test_extension_api_099.py:274: AssertionError: assert {'message': 'not implemented: Context.get_mcp_servers'} is None
+E   assert [] == ['Invalid MCP...Path': '/e'}]]
+extensions/sdk-py/tests/test_extension_api_099.py:302: assert [] == ['Invalid MCP...Path': '/e'}]]
+E   AssertionError: assert [] == [[{'name': 'a...Path': '/b'}]]
+extensions/sdk-py/tests/test_extension_api_099.py:320: AssertionError: assert [] == [[{'name': 'a...Path': '/b'}]]
+E   NotImplementedError: not implemented: Extension.register_virtual_model
+extensions/sdk-py/pig_sdk/__init__.py:1992: NotImplementedError: not implemented: Extension.register_virtual_model
+E   NotImplementedError: not implemented: Extension.register_virtual_model
+extensions/sdk-py/pig_sdk/__init__.py:1992: NotImplementedError: not implemented: Extension.register_virtual_model
+E   AssertionError: assert {'message': 'not implemented: Extension.register_virtual_model'} is None
+extensions/sdk-py/tests/test_extension_api_099.py:368: AssertionError: assert {'message': 'not implemented: Extension.register_virtual_model'} is None
+E   NotImplementedError: not implemented: Extension.register_virtual_model
+extensions/sdk-py/pig_sdk/__init__.py:1992: NotImplementedError: not implemented: Extension.register_virtual_model
+E   NotImplementedError: not implemented: Extension.register_virtual_model
+extensions/sdk-py/pig_sdk/__init__.py:1992: NotImplementedError: not implemented: Extension.register_virtual_model
+E   AssertionError: assert [] == [{'theme': 'd...me': 'light'}]
+extensions/sdk-py/tests/test_extension_api_099.py:444: AssertionError: assert [] == [{'theme': 'd...me': 'light'}]
+E   AssertionError: assert ['not impleme...get_settings'] == ['settings ar...ot sent them']
+extensions/sdk-py/tests/test_extension_api_099.py:463: AssertionError: assert ['not impleme...get_settings'] == ['settings ar...ot sent them']
+E   AssertionError: assert ([] == []
+extensions/sdk-py/tests/test_extension_api_099.py:501: AssertionError: assert ([] == []
+E   AssertionError: assert None == {'content': 'done'}
+extensions/sdk-py/tests/test_extension_api_099.py:533: AssertionError: assert None == {'content': 'done'}
+E   AssertionError: assert [] == [{'toolCall':...Error': True}]
+extensions/sdk-py/tests/test_extension_api_099.py:554: AssertionError: assert [] == [{'toolCall':...Error': True}]
+E   AssertionError: assert ([] == []
+extensions/sdk-py/tests/test_extension_api_099.py:574: AssertionError: assert ([] == []
+E   KeyError: 'call'
+extensions/sdk-py/tests/test_extension_api_099.py:596: KeyError: 'call'
+E   KeyError: 'call'
+extensions/sdk-py/tests/test_extension_api_099.py:635: KeyError: 'call'
+E   TimeoutError: timed out
+extensions/sdk-py/tests/test_sdk.py:30: TimeoutError: timed out
+E   KeyError: 'call'
+extensions/sdk-py/tests/test_extension_api_099.py:681: KeyError: 'call'
+E   NotImplementedError: not implemented: Extension.events
+extensions/sdk-py/pig_sdk/__init__.py:1999: NotImplementedError: not implemented: Extension.events
+E   NotImplementedError: not implemented: Extension.events
+extensions/sdk-py/pig_sdk/__init__.py:1999: NotImplementedError: not implemented: Extension.events
+E   NotImplementedError: not implemented: Extension.events
+extensions/sdk-py/pig_sdk/__init__.py:1999: NotImplementedError: not implemented: Extension.events
+E   NotImplementedError: not implemented: Extension.events
+extensions/sdk-py/pig_sdk/__init__.py:1999: NotImplementedError: not implemented: Extension.events
+E   AssertionError: assert 'handler' in 'unknown method: events.dispatch'
+extensions/sdk-py/tests/test_event_bus.py:135: AssertionError: assert 'handler' in 'unknown method: events.dispatch'
+E   KeyError: 'call'
+extensions/sdk-py/tests/test_event_bus.py:157: KeyError: 'call'
+E   TimeoutError: timed out
+extensions/sdk-py/tests/test_sdk.py:30: TimeoutError: timed out
+E   KeyError: 'call'
+extensions/sdk-py/tests/test_event_bus.py:210: KeyError: 'call'
+E   NotImplementedError: not implemented: Extension.events
+extensions/sdk-py/pig_sdk/__init__.py:1999: NotImplementedError: not implemented: Extension.events
+E   NotImplementedError: not implemented: Extension.events
+extensions/sdk-py/pig_sdk/__init__.py:1999: NotImplementedError: not implemented: Extension.events
+E   NotImplementedError: not implemented: Extension.events
+extensions/sdk-py/pig_sdk/__init__.py:1999: NotImplementedError: not implemented: Extension.events
+E   NotImplementedError: not implemented: Extension.events
+extensions/sdk-py/pig_sdk/__init__.py:1999: NotImplementedError: not implemented: Extension.events
+=============================== warnings summary ===============================
+tests/test_event_bus.py::test_emit_from_the_extension_has_no_parent_and_rejects_a_payload_without_a_json_form
+=========================== short test summary info ============================
+FAILED tests/test_extension_api_099.py::test_register_tool_declares_exposure_fields
+FAILED tests/test_extension_api_099.py::test_register_tool_default_active_true_is_declared
+FAILED tests/test_extension_api_099.py::test_register_tool_rejects_an_unknown_exposure_before_changing_state
+FAILED tests/test_extension_api_099.py::test_live_register_tool_sends_the_exposure_fields_to_the_host
+FAILED tests/test_extension_api_099.py::test_prepare_loadout_request_runs_the_hook_with_the_loadout
+FAILED tests/test_extension_api_099.py::test_mcp_servers_registered_by_the_factory_travel_in_the_register_frame
+FAILED tests/test_extension_api_099.py::test_register_mcp_server_config_must_be_json
+FAILED tests/test_extension_api_099.py::test_live_mcp_registration_calls_the_host_and_replicates_the_list
+FAILED tests/test_extension_api_099.py::test_rejected_mcp_registration_raises_and_keeps_the_list
+FAILED tests/test_extension_api_099.py::test_get_mcp_servers_reads_the_replicated_state_without_a_host_call
+FAILED tests/test_extension_api_099.py::test_virtual_models_registered_by_the_factory_travel_in_the_register_frame
+FAILED tests/test_extension_api_099.py::test_register_virtual_model_requires_a_callable_route
+FAILED tests/test_extension_api_099.py::test_live_virtual_model_registration_calls_the_host
+FAILED tests/test_extension_api_099.py::test_virtual_model_route_request_runs_the_router_in_the_extension
+FAILED tests/test_extension_api_099.py::test_virtual_model_route_errors_are_the_requests_error
+FAILED tests/test_extension_api_099.py::test_get_settings_reads_the_replicated_state
+FAILED tests/test_extension_api_099.py::test_get_settings_before_the_host_sent_any_raises
+FAILED tests/test_extension_api_099.py::test_ctx_tools_lists_the_callable_tools_from_state_and_only_in_a_tool
+FAILED tests/test_extension_api_099.py::test_execute_tool_runs_the_named_tool_and_returns_the_outcome
+FAILED tests/test_extension_api_099.py::test_execute_tool_failures_come_back_as_error_outcomes_not_exceptions
+FAILED tests/test_extension_api_099.py::test_execute_tool_outside_a_tool_call_raises
+FAILED tests/test_extension_api_099.py::test_execute_tool_delivers_updates_in_order_before_the_outcome
+FAILED tests/test_extension_api_099.py::test_execute_tool_signal_cancels_the_nested_call
+FAILED tests/test_extension_api_099.py::test_execute_tool_with_an_aborted_signal_cancels_after_the_call_starts
+FAILED tests/test_extension_api_099.py::test_cancelling_the_calling_request_releases_a_blocked_execute_tool
+FAILED tests/test_event_bus.py::test_factory_listener_is_registered_before_the_register_frame_by_value
+FAILED tests/test_event_bus.py::test_a_listener_unsubscribed_while_the_factory_runs_is_never_sent
+FAILED tests/test_event_bus.py::test_dispatch_runs_the_handler_then_answers
+FAILED tests/test_event_bus.py::test_a_handler_error_fails_only_its_dispatch
+FAILED tests/test_event_bus.py::test_an_unknown_handler_id_is_an_error_not_a_hang
+FAILED tests/test_event_bus.py::test_emit_sends_json_by_value_with_the_calling_request_as_parent
+FAILED tests/test_event_bus.py::test_emit_from_the_extension_has_no_parent_and_rejects_a_payload_without_a_json_form
+FAILED tests/test_event_bus.py::test_unsubscribe_sends_one_off_and_is_idempotent
+FAILED tests/test_event_bus.py::test_a_listener_removed_during_a_dispatch_still_runs_for_that_dispatch
+FAILED tests/test_event_bus.py::test_a_handler_can_emit_while_the_host_waits_for_its_answer
+FAILED tests/test_event_bus.py::test_registration_order_and_distinct_handler_ids
+FAILED tests/test_event_bus.py::test_on_rejects_a_handler_that_is_not_callable
+
+## cd extensions/sdk-py && PYTHONPATH=. uv run --no-project --with pytest pytest -q tests (existing suites, unchanged)
+............................................................... [100%]
+
+## go test ./test/extension-conformance -run TestPythonSDK -count=1
+--- FAIL: TestPythonSDKMcpServerRegistration (1.40s)
+    --- FAIL: TestPythonSDKMcpServerRegistration/strict (0.91s)
+    --- FAIL: TestPythonSDKMcpServerRegistration/shared-ok (0.49s)
+--- FAIL: TestPythonSDKVirtualModelRegistrationAndRouting (0.92s)
+    --- FAIL: TestPythonSDKVirtualModelRegistrationAndRouting/strict (0.46s)
+    --- FAIL: TestPythonSDKVirtualModelRegistrationAndRouting/shared-ok (0.45s)
+--- FAIL: TestPythonSDKToolExposureFieldsAndPrepareLoadout (0.89s)
+    --- FAIL: TestPythonSDKToolExposureFieldsAndPrepareLoadout/strict (0.44s)
+    --- FAIL: TestPythonSDKToolExposureFieldsAndPrepareLoadout/shared-ok (0.45s)
+--- PASS: TestPythonSDKToolResultCarriesStructuredContentAndIsError (0.95s)
+    --- PASS: TestPythonSDKToolResultCarriesStructuredContentAndIsError/strict (0.47s)
+    --- PASS: TestPythonSDKToolResultCarriesStructuredContentAndIsError/shared-ok (0.48s)
+--- FAIL: TestPythonSDKGetSettings (0.95s)
+    --- FAIL: TestPythonSDKGetSettings/strict (0.47s)
+    --- FAIL: TestPythonSDKGetSettings/shared-ok (0.48s)
+--- PASS: TestPythonSDKProviderConfigWithImageAndClassifierModels (0.90s)
+    --- PASS: TestPythonSDKProviderConfigWithImageAndClassifierModels/strict (0.46s)
+    --- PASS: TestPythonSDKProviderConfigWithImageAndClassifierModels/shared-ok (0.45s)
+--- FAIL: TestPythonSDKExecuteToolAndCallableTools (0.96s)
+    --- FAIL: TestPythonSDKExecuteToolAndCallableTools/strict (0.49s)
+    --- FAIL: TestPythonSDKExecuteToolAndCallableTools/shared-ok (0.48s)
+--- FAIL: TestPythonSDKToolEventsAndNewEvents (13.25s)
+    --- FAIL: TestPythonSDKToolEventsAndNewEvents/strict (6.60s)
+    --- FAIL: TestPythonSDKToolEventsAndNewEvents/shared-ok (6.65s)
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/test/extension-conformance	20.280s
+FAIL

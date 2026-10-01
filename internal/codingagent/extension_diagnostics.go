@@ -87,15 +87,21 @@ func sourceInfoPath(info extension.SourceInfo) string {
 // Valid named themes in the custom themes directory stay selectable, as Pi getAvailableThemesWithPaths and loadThemeJson find them without registration.
 func (m *InteractiveMode) loadThemes() {
 	registry := tui.NewThemeRegistry()
-	m.loadedThemes, m.themeDiagnostics = loadThemeResources(registry, m.opts.ThemePaths)
+	// Theme construction only needs trueColor, so the unrelated tmux hyperlink probe is skipped (resource-loader.ts:884-888).
+	overrides := m.opts.Settings.GetTerminalCapabilityOverrides()
+	if m.opts.SettingsManager != nil {
+		overrides = m.opts.SettingsManager.GetTerminalCapabilityOverrides()
+	}
+	mode := tui.GetTerminalColorMode(tui.ApplyCapabilityOverrides(tui.DetectCapabilities(func() bool { return false }), overrides))
+	m.loadedThemes, m.themeDiagnostics = loadThemeResources(registry, m.opts.ThemePaths, mode)
 	if m.opts.AgentDir != "" {
-		addCustomDirectoryThemes(registry, filepath.Join(m.opts.AgentDir, "themes"))
+		addCustomDirectoryThemes(registry, filepath.Join(m.opts.AgentDir, "themes"), mode)
 	}
 	tui.SetThemeRegistry(registry)
 }
 
 // addCustomDirectoryThemes mirrors Pi getCustomThemeInfos: unreadable and invalid files are ignored, and built-in or registered names keep precedence.
-func addCustomDirectoryThemes(registry *tui.ThemeRegistry, dir string) {
+func addCustomDirectoryThemes(registry *tui.ThemeRegistry, dir string, mode tui.TerminalColorMode) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return
@@ -105,7 +111,7 @@ func addCustomDirectoryThemes(registry *tui.ThemeRegistry, dir string) {
 			continue
 		}
 		path := filepath.Join(dir, entry.Name())
-		theme, err := tui.LoadThemeFile(path)
+		theme, err := tui.LoadThemeFromPath(path, mode)
 		if err != nil || theme.Name == "" || registry.Get(theme.Name) != nil {
 			continue
 		}
@@ -131,14 +137,14 @@ type loadedTheme struct {
 
 // loadThemeResources registers and returns the first theme of each name with ordered load warnings and name collisions.
 // Loaded empty-name themes remain resources even though the registry has no key for them.
-func loadThemeResources(registry *tui.ThemeRegistry, paths []string) ([]loadedTheme, []extension.ResourceDiagnostic) {
+func loadThemeResources(registry *tui.ThemeRegistry, paths []string, mode tui.TerminalColorMode) ([]loadedTheme, []extension.ResourceDiagnostic) {
 	var themes []loadedTheme
 	var diagnostics []extension.ResourceDiagnostic
 	warn := func(message, path string) {
 		diagnostics = append(diagnostics, extension.ResourceDiagnostic{Type: extension.DiagnosticWarning, Message: message, Path: path})
 	}
 	loadFile := func(path string) {
-		theme, err := tui.LoadThemeFile(path)
+		theme, err := tui.LoadThemeFromPath(path, mode)
 		if err != nil {
 			warn(nodeThemeFSError(err, "open", path), path)
 			return

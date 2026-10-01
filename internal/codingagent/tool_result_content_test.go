@@ -85,3 +85,18 @@ func TestToolResultEventOverrideCarriesUsage(t *testing.T) {
 		t.Fatal("an absent usage must keep the tool's own usage")
 	}
 }
+
+// Pi 0.99.1 agent-session.ts:672-678 hands the agent loop the chained structuredContent with the content, and the runner keeps the event's
+// structuredContent unless a handler replaced the content alone (runner.ts:1187, 1228-1234). agent-loop.ts:877-889 then keeps a returned
+// structuredContent, so a handler that only changes details must not drop it.
+func TestToolResultEventOverrideCarriesStructuredContent(t *testing.T) {
+	override := ToolResultEventOverride(&extension.ToolResultEventResult{
+		Content: []any{ai.TextContent{Text: "same"}}, StructuredContent: json.RawMessage(`{"exit_code":3}`), Details: map[string]any{"note": "kept"},
+	})
+	if string(override.StructuredContent) != `{"exit_code":3}` {
+		t.Fatalf("override = %#v, want structuredContent kept", override)
+	}
+	if none := ToolResultEventOverride(&extension.ToolResultEventResult{Content: []any{ai.TextContent{Text: "same"}}}); none.StructuredContent != nil {
+		t.Fatalf("override = %#v, want no structuredContent", none)
+	}
+}

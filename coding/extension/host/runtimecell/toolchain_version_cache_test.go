@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 func TestMain(m *testing.M) {
@@ -37,7 +39,7 @@ func TestMain(m *testing.M) {
 		fmt.Fprintln(os.Stderr, "intentional build failure")
 		os.Exit(2)
 	}
-	os.Exit(m.Run())
+	os.Exit(testenv.RunScoped(m, "pig-cell-"))
 }
 
 // Each tool manager resolves its own nearest selector. A child selector for

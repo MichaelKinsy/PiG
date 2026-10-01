@@ -87,6 +87,7 @@ func retainedNativeReplacementTest(t *testing.T, config func() ExtConfig) {
 }
 
 func TestGoFactoryReloadReinvokesFactoryInTheRetainedProcess(t *testing.T) {
+	t.Parallel()
 	goFactoryRetainedCases(t, "retained-go")
 }
 
@@ -95,7 +96,6 @@ func goFactoryRetainedCases(t *testing.T, name string) {
 	for _, isolation := range []string{"shared-ok", "isolated"} {
 		t.Run(isolation, func(t *testing.T) {
 			retainedNativeCases(t, func() ExtConfig {
-				t.Setenv("PIG_SDK_GO_ROOT", filepath.Join(findModuleRoot(t), "extensions", "sdk"))
 				dir := t.TempDir()
 				modulePath := "example.com/retained" + isolation
 				if err := os.WriteFile(filepath.Join(dir, "go.mod"), fmt.Appendf(nil, "module %s\n\ngo 1.26\n\nrequire github.com/MichaelKinsy/PiG/extensions/sdk v0.0.0\n", modulePath), 0o644); err != nil {
@@ -178,6 +178,7 @@ def new_extension():
 }
 
 func TestRustFactoryReloadReinvokesFactoryInTheRetainedProcess(t *testing.T) {
+	t.Parallel()
 	rustFactoryRetainedCases(t, "retained-rs")
 }
 

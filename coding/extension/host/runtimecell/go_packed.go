@@ -201,27 +201,30 @@ func buildGoPackedCell(ctx context.Context, cacheRoot, key string, extensions []
 					return "", fmt.Errorf("write generated runner: %w", err)
 				}
 				out := filepath.Join(scratch, artifactName)
-				goCommand, err := toolchain.Go()
+				goToolchain, err := toolchain.ResolveGo()
 				if err != nil {
 					explained, _ := explainMissingToolchain("go", err)
 					return "", explained
 				}
+				if known, ok := brokenToolchain(goToolchain); ok {
+					return "", cacheBuildFailure(known)
+				}
 				buildprogress.Phase(ctx, "Compiling Go members", strings.Join(names, ", ")+" (module resolution, compile, link)")
 				args := append(append([]string{"build"}, goPackedBuildFlags...), "-o", out, ".")
-				cmd := exec.CommandContext(ctx, goCommand, buildprogress.ToolArgs(ctx, "go", args)...)
+				cmd := exec.CommandContext(ctx, goToolchain.Command, buildprogress.ToolArgs(ctx, "go", args)...)
 				cmd.Dir = buildDir
-				cmd.Env = append(cacheBuildEnvironment(buildDir), "CGO_ENABLED=0", "GOWORK=off")
+				cmd.Env = append(goToolchain.Environ(cacheBuildEnvironment(buildDir)), "CGO_ENABLED=0", "GOWORK=off")
 				if combined, err := buildprogress.CombinedOutput(ctx, cmd); err != nil {
-					invalidateCommandVersion(cacheRoot, goCommand, "version")
+					invalidateCommandVersion(cacheRoot, goToolchain.Command, "version")
 					if explained, ok := explainMissingToolchain("go", err); ok {
 						return "", explained
 					}
 					generatedMod, _ := os.ReadFile(filepath.Join(buildDir, "go.mod"))
-					buildErr := fmt.Errorf("build generated packed runner: %w\n%s\ngo.mod:\n%s", err, combined, generatedMod)
-					if ctx.Err() != nil || cmd.ProcessState == nil || cmd.ProcessState.ExitCode() < 0 || !hasGoCompilerDiagnostic(combined) {
-						return "", buildErr
+					failure, recordable := GoBuildFailure(cacheRoot, hash, buildDir, goToolchain, err, combined, generatedMod)
+					if ctx.Err() != nil || cmd.ProcessState == nil || cmd.ProcessState.ExitCode() < 0 || !recordable {
+						return "", failure
 					}
-					return "", cacheBuildFailure(buildErr)
+					return "", cacheBuildFailure(failure)
 				}
 				return out, nil
 			})
@@ -316,11 +319,13 @@ func goPackedCellHash(cacheRoot, key string, extensions []GoExtension, sdkRoot s
 	h.Write([]byte(key))
 	h.Write([]byte("\x00"))
 	hashBuildInput(h, "sdk", sdkHash)
-	goCommand, err := toolchain.Go()
+	goToolchain, err := toolchain.ResolveGo()
 	if err != nil {
 		return "error:" + err.Error()
 	}
-	hashBuildInput(h, "runtime", commandVersion(cacheRoot, goCommand, "version"))
+	hashBuildInput(h, "runtime", commandVersion(cacheRoot, goToolchain.Command, "version"))
+	hashBuildInput(h, "goroot", goToolchain.Root)
+	hashBuildInput(h, "compiler", goCompilerRevision(goToolchain))
 	hashBuildInput(h, "buildflags", strings.Join(goPackedBuildFlags, " "))
 	hashBuildInput(h, "template", renderGoRunner(extensions))
 	if requiresLegacyGoSDK(extensions) {
@@ -332,7 +337,7 @@ func goPackedCellHash(cacheRoot, key string, extensions []GoExtension, sdkRoot s
 			h.Write([]byte("\x00"))
 		}
 		for _, moduleRoot := range ext.WorkspaceModules {
-			workspaceHash := hashTree(moduleRoot)
+			workspaceHash := hashGoModule(moduleRoot)
 			if after, ok := strings.CutPrefix(workspaceHash, "error:"); ok {
 				return "error:hash Go workspace module " + moduleRoot + ": " + after
 			}

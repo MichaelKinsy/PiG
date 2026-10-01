@@ -22,6 +22,14 @@ func (r *ModelRegistry) GetProviderModelData(id string) []*ai.Model {
 	for _, generated := range generatedModels {
 		baseline = append(baseline, generated.ToModel())
 	}
+	// The remote catalog overlay adds models to, and replaces same-id models of, the bundled catalog (remote-catalog-provider.ts:getModels).
+	if overlay := r.remoteOverlayModels(id); len(overlay) > 0 {
+		merged := mergeRemoteCatalogModels(ai.AnyModels(baseline), slices.DeleteFunc(overlay, func(model ai.AnyModel) bool { return !ai.IsModelType(model, ai.ModelTypeChat) }))
+		baseline = baseline[:0:0]
+		for _, model := range merged {
+			baseline = append(baseline, model.(*ai.Model))
+		}
+	}
 	r.mu.RLock()
 	radius := r.radiusProviderLocked(id)
 	r.mu.RUnlock()
@@ -36,13 +44,7 @@ func (r *ModelRegistry) GetProviderModelData(id string) []*ai.Model {
 	r.mu.RUnlock()
 	var input *ProviderConfigInput
 	if registered {
-		input = &ProviderConfigInput{Name: dynamic.Name, BaseURL: dynamic.BaseURL, API: ai.API(dynamic.API)}
-		if dynamic.Models != nil {
-			input.Models = make([]*ai.Model, 0, len(dynamic.Models))
-			for _, definition := range dynamic.Models {
-				input.Models = append(input.Models, nativeModelFromEntry(modelDefinitionEntry(id, dynamic, definition)))
-			}
-		}
+		input = new(providerModelInput(id, dynamic))
 	}
 	provider, err := r.composeNativeProvider(&ai.ModelsProvider{ID: id, Name: id, GetModels: func() ([]*ai.Model, error) { return baseline, nil }}, input)
 	if err != nil {

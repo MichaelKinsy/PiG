@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"testing/synctest"
+
+	"github.com/MichaelKinsy/PiG/agent"
 )
 
 // .upstream/v0.87.1/packages/coding-agent/test/suite/regressions/5208-late-bash-output.test.ts:14. A saved callback gives the same post-resolution ordering without a wall-clock timer.
@@ -18,8 +20,8 @@ func TestShellToolIgnoresOutputAfterOperationsResolve(t *testing.T) {
 			name: "bash", shellName: "bash", tempFilePrefix: "pi-bash",
 			operations: lateOutputOperations{save: func(onData func([]byte)) { late = onData }},
 		}
-		result, err := executeShellTool(t.Context(), t.TempDir(), cfg, json.RawMessage(`{"command":"late-output"}`), func(content string, _ any) {
-			updates = append(updates, content)
+		result, err := executeShellTool(t.Context(), t.TempDir(), cfg, json.RawMessage(`{"command":"late-output"}`), func(partial agent.AgentToolResult) {
+			updates = append(updates, partial.Text())
 		})
 		if err != nil || result.IsError {
 			t.Fatalf("execute = %+v, %v", result, err)

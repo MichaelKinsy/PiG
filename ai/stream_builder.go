@@ -29,6 +29,10 @@ type assistantStreamBuilder struct {
 	// modelCost is the requested model's price (StreamOptions.ModelCost).
 	modelCost          ModelCost
 	requestServiceTier string
+	// errorMessage rewrites the message of a failed stream, or is nil.
+	errorMessage func(string) string
+	// providerEvent is the bound OnProviderStreamEvent observer, or nil.
+	providerEvent func(data any) error
 }
 
 type streamToolCall struct {
@@ -243,7 +247,7 @@ func (builder *assistantStreamBuilder) toolCallDelta(delta streamToolCallDelta) 
 	}
 	state.arguments.WriteString(delta.argumentsDelta)
 	if !block.scratch.customInput {
-		block.Arguments = parseStreamingJsonObject(state.arguments.String())
+		block.SetStreamingArguments(state.arguments.String())
 	}
 	if block.scratch.hasPartialArgs {
 		block.scratch.partialArgs = state.arguments.String()
@@ -267,7 +271,7 @@ func (builder *assistantStreamBuilder) setToolCallFinal(index int, namespace, ar
 	}
 	state.arguments.Reset()
 	state.arguments.WriteString(arguments)
-	block.Arguments = parseStreamingJsonObject(arguments)
+	block.SetStreamingArguments(arguments)
 	if block.scratch.hasPartialJson {
 		block.scratch.partialJson = arguments
 	}
@@ -312,9 +316,17 @@ func (builder *assistantStreamBuilder) fail(reason StopReason, err error) {
 	builder.finishBlocks()
 	builder.partial.StopReason = reason
 	if err != nil {
-		builder.partial.ErrorMessage = err.Error()
+		builder.partial.ErrorMessage = builder.failureMessage(err)
 	}
 	builder.push(ErrorEvent{Reason: reason, Error: builder.partial})
+}
+
+// failureMessage is the ErrorMessage recorded for err.
+func (builder *assistantStreamBuilder) failureMessage(err error) string {
+	if builder.errorMessage != nil {
+		return builder.errorMessage(err.Error())
+	}
+	return err.Error()
 }
 
 func (builder *assistantStreamBuilder) finishBlocks() {
@@ -374,7 +386,7 @@ func (builder *assistantStreamBuilder) endToolCall(index int) {
 			builder.push(ToolCallDeltaEvent{ContentIndex: state.contentIndex, Delta: delta, Partial: builder.partial})
 		}
 	} else {
-		block.Arguments = parseStreamingJsonObject(state.arguments.String())
+		block.SetStreamingArguments(state.arguments.String())
 	}
 	block.scratch = toolCallScratch{}
 	builder.partial.Content[state.contentIndex] = block

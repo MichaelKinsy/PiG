@@ -20,7 +20,7 @@ settle_seconds = 3
 [[rpc.steps]]
 line = '{"id":"prompt","type":"prompt","message":"TUI_LIVE_STREAM_PAUSE"}'
 wait_contains = [
-  '"id":"prompt","type":"response","command":"prompt","success":true',
+  '"id":"prompt","type":"response","command":"prompt","success":true,"data":{"disposition":"started"}',
   '"type":"agent_start"',
   '"delta":"LIVE-STREAM-08\n"',
 ]
@@ -30,7 +30,7 @@ wait_timeout_seconds = 10
 line = '{"id":"steer","type":"steer","message":"What is 20+22?"}'
 wait_contains = [
   '"type":"queue_update","steering":["What is 20+22?"],"followUp":[]',
-  '"id":"steer","type":"response","command":"steer","success":true',
+  '"id":"steer","type":"response","command":"steer","success":true,"data":{"disposition":"queued"}',
 ]
 wait_timeout_seconds = 10
 
@@ -38,7 +38,7 @@ wait_timeout_seconds = 10
 line = '{"id":"follow","type":"follow_up","message":"Remember this exact code: letters A L P H A and digits 7 7 4 9"}'
 wait_contains = [
   '"type":"queue_update","steering":["What is 20+22?"],"followUp":["Remember this exact code: letters A L P H A and digits 7 7 4 9"]',
-  '"id":"follow","type":"response","command":"follow_up","success":true',
+  '"id":"follow","type":"response","command":"follow_up","success":true,"data":{"disposition":"queued"}',
 ]
 wait_timeout_seconds = 10
 

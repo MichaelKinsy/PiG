@@ -17,7 +17,7 @@ func TestLoadThemeResourcesEmptyNameIsNotUnnamed(t *testing.T) {
 	named := writeNamedTheme(t, dir, "named.json", "unnamed")
 	last := writeNamedTheme(t, dir, "last.json", "")
 	registry := tui.NewThemeRegistry()
-	_, diagnostics := loadThemeResources(registry, []string{first, named, last})
+	_, diagnostics := loadThemeResources(registry, []string{first, named, last}, tui.GetTerminalColorMode())
 	want := collisionDiagnostic("theme", "", first, last)
 	if len(diagnostics) != 1 || diagnostics[0].Message != want.Message || diagnostics[0].Collision == nil || *diagnostics[0].Collision != *want.Collision {
 		t.Fatalf("diagnostics = %+v, want %+v", diagnostics, want)
@@ -30,6 +30,7 @@ func TestLoadThemeResourcesEmptyNameIsNotUnnamed(t *testing.T) {
 // Pi replaces registered themes from the resolved resource set on reload (interactive-mode.ts:6230).
 // An excluded custom-directory file stays selectable (theme.ts:426-478) but is not a loaded resource; a deleted theme is not retained.
 func TestReloadThemeDiagnosticsReplaceResolvedSet(t *testing.T) {
+	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
 	old := tui.ActiveThemeRegistry()
 	t.Cleanup(func() { tui.SetThemeRegistry(old) })
 	tui.SetThemeRegistry(tui.NewThemeRegistry())
@@ -115,7 +116,8 @@ func TestLoadedExplicitThemeDiagnosticsRetainSourceWithNoThemes(t *testing.T) {
 	}
 	m.opts.Settings.QuietStartup = false
 	m.showLoadedResources(false, false)
-	if got := renderListing(m); !strings.Contains(got, "[Themes]\n  dusk") {
-		t.Fatalf("explicit theme missing from non-quiet listing: %s", got)
+	// upstream 0.99.1 interactive-mode.ts showLoadedResources has no Themes section.
+	if got := renderListing(m); strings.Contains(got, "[Themes]") {
+		t.Fatalf("non-quiet listing shows a theme section: %s", got)
 	}
 }

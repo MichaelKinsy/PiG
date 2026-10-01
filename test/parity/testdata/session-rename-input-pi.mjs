@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import ts from "../interface-extractor/node_modules/typescript/lib/typescript.js";
 const root = process.env.PI_PACKAGE_ROOT ?? resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, "0.87.1");
+assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, "0.99.2");
 const tuiEntry = import.meta.resolve("@earendil-works/pi-tui", pathToFileURL(join(root, "package.json")).href);
 const tuiRoot = fileURLToPath(new URL("./", tuiEntry));
 const { Input } = await import(tuiEntry);

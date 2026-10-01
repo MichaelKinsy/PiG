@@ -152,3 +152,43 @@ func TestRPCDefaultToolsSettingSelectsInitialTools(t *testing.T) {
 		return true
 	})
 }
+
+// Pi 0.99.1 (dist/cli.js, --mode rpc, test-faux twin, probed 2026-09-30) declares only the built-in loadout in a fresh prompt, with or without
+// --no-extensions: the codemode and tool_search built-ins register `defaultActive: false` (extensions/codemode/index.ts:41,
+// extensions/tool-search/index.ts:14), so agent-session.ts:3503-3506 does not activate them. Naming one in `--tools` activates it while it
+// is declarable (agent-session.ts:3487-3491). Pi declares `--tools` in the order given; PiG orders them by registry, which the cases avoid.
+func TestRPCStartupDeclaresOnlyTheToolsPiActivates(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		args []string
+		want []string
+	}{
+		{"default loadout", nil, []string{"read", "bash", "edit", "write"}},
+		{"no extensions", []string{"--no-extensions"}, []string{"read", "bash", "edit", "write"}},
+		{"named codemode", []string{"--tools", "read,codemode"}, []string{"read", "codemode"}},
+		{"named tool_search without built-ins", []string{"--no-builtin-tools", "--tools", "tool_search"}, []string{"tool_search"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			home := t.TempDir()
+			args := append([]string{"--no-session", "--provider", "test-faux", "--model", "faux-1"}, tc.args...)
+			p := startRPCProcessAt(t, t.TempDir(), []string{"HOME=" + home, "PIG_HOME=" + home, "PIG_CODING_AGENT_DIR=" + filepath.Join(home, "agent"), "PIG_TEST_FAUX=1"}, args...)
+			p.send(`{"id":"prompt","type":"prompt","message":"hello"}`)
+			p.await("settled prompt", func(record rpcRecord) bool { return record["type"] == "agent_settled" })
+			p.send(`{"id":"sent","type":"get_messages"}`)
+			p.await("declared tools", func(record rpcRecord) bool {
+				if record["id"] != "sent" {
+					return false
+				}
+				system := record["data"].(map[string]any)["messages"].([]any)[0].(map[string]any)
+				var names []string
+				for _, tool := range system["toolsAdded"].([]any) {
+					names = append(names, tool.(map[string]any)["name"].(string))
+				}
+				if !slices.Equal(names, tc.want) {
+					t.Fatalf("declared tools %v, want %v", names, tc.want)
+				}
+				return true
+			})
+		})
+	}
+}

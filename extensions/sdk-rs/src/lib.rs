@@ -20,11 +20,22 @@
 mod autocomplete;
 pub use autocomplete::{AutocompleteProvider, AutocompleteProviderFactory, AutocompleteSuggestions, AutocompleteCompletion, AutocompleteSuggestionsFn, AutocompleteApplyFn, AutocompleteFileTriggerFn};
 mod provider;
-pub use provider::{Provider, ProviderAuth, APIKeyAuth, OAuthAuth, APIKeyAuthInput, AuthContext, AuthResult, AuthCheck, AuthInteraction, ProviderStreamOptions, ProviderStreamFn, ProviderFilterFn, ProviderModel, ProviderResult, ProviderSignal, ProviderSignalSubscription, ModelsPublication, RefreshModelsContext};
+pub use provider::{Provider, ProviderAuth, APIKeyAuth, OAuthAuth, APIKeyAuthInput, AuthContext, AuthResult, AuthCheck, AuthInteraction, ProviderStreamOptions, ProviderStreamFn, ProviderOperationFn, ProviderOperationOptions, ProviderOperations, ProviderStreamSimpleFn, ProviderFilterFn, ProviderModel, ProviderResult, ProviderSignal, ProviderSignalSubscription, ModelsPublication, RefreshModelsContext};
 mod constrained_sampling;
 pub use constrained_sampling::ToolConstrainedSampling;
 mod context;
+mod event_bus;
+#[cfg(test)]
+mod event_bus_tests;
+pub use event_bus::{EventBus, EventBusHandler, Subscription};
 mod events;
+mod extension_api;
+pub use extension_api::{
+    AgentTool, AgentToolCall, AgentToolCallOutcome, AgentToolResult, ExecuteToolOptions,
+    ExecuteToolUpdate, ModelRoute, ModelRouteFn, ModelRouteRequest, RegisteredMcpServer,
+    ToolAnnotations, ToolExposure, ToolLoadout, ToolLoadoutChanges, ToolNamespace,
+    ToolPrepareLoadout, VirtualModel,
+};
 mod session_manager;
 pub use session_manager::SessionManager;
 mod extension;
@@ -32,7 +43,9 @@ mod login;
 mod oauth;
 mod protocol;
 mod theme;
+mod theme_color;
 mod tool_render;
+mod tool_start_order;
 mod transport;
 mod user_bash;
 
@@ -60,7 +73,7 @@ pub use oauth::{
     OAuthProvider, OAuthRefreshFn, OAuthSelectOption, OAuthSelectPrompt,
 };
 pub use protocol::{AutocompleteItem, ConstrainedSampling, Schema, empty_schema};
-pub use theme::{Theme, ThemeColorFn};
+pub use theme::{Color, TextAttributes, Theme, ThemeAppearance, ThemeColorFn, ThemeSlot, ThemeStyle};
 pub use tool_render::{
     ToolRenderCallHandler, ToolRenderContext, ToolRenderResult, ToolRenderResultHandler,
     ToolRenderResultOptions, ToolRenderShell,

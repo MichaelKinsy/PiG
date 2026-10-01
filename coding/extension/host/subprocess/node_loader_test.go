@@ -233,6 +233,7 @@ func TestNodeRuntimeLoaderServesPiAiCompatAndOAuth(t *testing.T) {
 // time (pi-rtk-optimizer's isToolCallEventType, for example), so the check is
 // the full upstream index, not the names today's extensions happen to use.
 func TestNodeRuntimeShimsExportEveryPinnedPiValue(t *testing.T) {
+	t.Parallel()
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Fatalf("node is required for the loader fixture: %v", err)

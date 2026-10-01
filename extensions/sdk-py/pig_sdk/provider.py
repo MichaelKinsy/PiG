@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, asdict
+import json
 import threading
 from typing import Any, Callable
 import uuid
@@ -116,6 +117,13 @@ class ProviderStreamOptions:
     transform_headers: Callable[[dict], dict] | None = None
 
 
+@dataclass
+class ProviderOperationOptions:
+    """What an image or classifier implementation receives besides the model and the request: the resolved request options, and the request's cancellation."""
+    values: dict = field(default_factory=dict)
+    signal: ProviderSignal | None = None
+
+
 OMITTED = object()
 
 
@@ -149,10 +157,13 @@ class Provider:
     refresh_models: Callable[[RefreshModelsContext], None] | None = None
     fetch_deferred: Callable[[dict, dict, ProviderStreamOptions], Any] | None = None
     cancel_deferred: Callable[[dict, dict, ProviderStreamOptions], None] | None = None
+    # ``(model, request, options: ProviderOperationOptions) -> dict``: the provider's image generation, and its classification (``request`` is ``{"state", "questions"}``).
+    generate_images: Callable[[dict, dict, ProviderOperationOptions], dict] | None = None
+    classify: Callable[[dict, dict, ProviderOperationOptions], dict] | None = None
 
 
 def _method(provider, method):
-    aliases = {"getModels": "get_models", "filterModels": "filter_models", "refreshModels": "refresh_models", "streamSimple": "stream_simple", "fetchDeferred": "fetch_deferred", "cancelDeferred": "cancel_deferred", "apiKey": "api_key", "toAuth": "to_auth"}
+    aliases = {"getModels": "get_models", "filterModels": "filter_models", "refreshModels": "refresh_models", "streamSimple": "stream_simple", "fetchDeferred": "fetch_deferred", "cancelDeferred": "cancel_deferred", "generateImages": "generate_images", "apiKey": "api_key", "toAuth": "to_auth"}
     obj = provider
     for part in method.split("."):
         obj = getattr(obj, aliases.get(part, part), None)
@@ -161,7 +172,7 @@ def _method(provider, method):
     return obj
 
 
-METHODS = ("getModels", "filterModels", "refreshModels", "stream", "streamSimple", "fetchDeferred", "cancelDeferred", "auth.apiKey.check", "auth.apiKey.resolve", "auth.apiKey.login", "auth.oauth.login", "auth.oauth.refresh", "auth.oauth.toAuth")
+METHODS = ("getModels", "filterModels", "refreshModels", "stream", "streamSimple", "fetchDeferred", "cancelDeferred", "generateImages", "classify", "auth.apiKey.check", "auth.apiKey.resolve", "auth.apiKey.login", "auth.oauth.login", "auth.oauth.refresh", "auth.oauth.toAuth")
 
 
 def declaration(provider, key):
@@ -255,6 +266,8 @@ def dispatch_provider(extension, ctx, request):
                 with extension._provider_lock:
                     extension._provider_updates.pop(token, None)
         return fn(RefreshModelsContext(publish, args.get("credential"), args.get("stored"), args.get("allowNetwork", False), args.get("force"), signal))
+    if method in ("generateImages", "classify"):
+        return fn(args["model"], args["context"], ProviderOperationOptions(args.get("options") or {}, signal))
     options = ProviderStreamOptions(args.get("options") or {}, signal)
     if args.get("aborted"):
         options.signal = ProviderSignal()
@@ -272,6 +285,21 @@ def dispatch_provider(extension, ctx, request):
         extension._shutdown,
         lambda event: extension._notify("tool_update", {"request_id": ctx.request_id, "result": event}),
     )
+
+
+def dispatch_operation(extension, ctx, request):
+    """Run the image or classifier implementation of a provider config that a provider_operation request names (types.ts:1896-1898). An error is the request's error."""
+    args = request.get("args") or {}
+    provider = request.get("tool", "")
+    kind = args.get("kind")
+    if kind not in ("images", "classifiers"):
+        raise RuntimeError(f"Unknown provider operation {kind!r}")
+    implementation = (extension._provider_operations.get(provider) or {}).get(kind, {}).get(args.get("api"))
+    if implementation is None:
+        label = "image" if kind == "images" else "classifier"
+        # upstream: provider-composer.ts composeModelProvider quotes the API with double quotes.
+        raise RuntimeError(f"Provider {provider} has no {label} implementation for {json.dumps(args.get('api'))}")
+    return implementation(args.get("model") or {}, args.get("context") or {}, ProviderOperationOptions(args.get("options") or {}, ctx._cancelled))
 
 
 def remote_provider(context, decl):
@@ -357,6 +385,9 @@ def remote_provider(context, decl):
             return stream
         return start
     provider = Provider(decl["id"], decl["name"], auth, lambda: invoke("getModels"), streaming("stream"), streaming("streamSimple"), decl.get("baseUrl"), decl.get("headers"))
+    for wire, field_name in (("generateImages", "generate_images"), ("classify", "classify")):
+        if wire in methods:
+            setattr(provider, field_name, lambda model, request, options=None, wire=wire: invoke(wire, {"model": model, "context": request, "options": options.values if options else {}}, signal=options.signal if options else None))
     if "filterModels" in methods:
         def filter_models(models, credential):
             result = invoke("filterModels", {"models": models, "credential": credential})

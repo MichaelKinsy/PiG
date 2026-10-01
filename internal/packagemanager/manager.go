@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"weak"
@@ -30,12 +31,23 @@ type ConfiguredPackage struct {
 	ResolvedSource string
 }
 
-func GetGitDependencyInstallArgs(sm *codingagent.SettingsManager) []string {
-	configuredCommand := sm.GetNpmCommand()
-	if len(configuredCommand) > 0 {
-		return []string{"install"}
+// GetGitDependencyInstallArgs selects the install arguments of a Git package's dependencies from the package manager the npmCommand names, without auto-installing peer dependencies.
+// Ports .upstream/v0.99.1/packages/coding-agent/src/core/package-manager.ts:1821-1838 (getGitDependencyInstallArgs).
+func GetGitDependencyInstallArgs(sm *codingagent.SettingsManager) ([]string, error) {
+	manager, err := PackageManagerName(DefaultNpmCommand(sm))
+	if err != nil {
+		return nil, err
 	}
-	return []string{"install", "--omit=dev"}
+	switch manager {
+	case "bun":
+		return []string{"install", "--omit=dev", "--omit=peer"}, nil
+	case "pnpm":
+		return []string{"install", "--prod", "--config.auto-install-peers=false", "--config.strict-peer-dependencies=false", "--config.strict-dep-builds=false"}, nil
+	case "npm":
+		return []string{"install", "--omit=dev", "--legacy-peer-deps"}, nil
+	default:
+		return []string{"install"}, nil
+	}
 }
 
 // SettingsBaseDir is the directory a scope's package sources resolve against: the project config directory below cwd, or the agent directory (package-manager.ts getBaseDirForScope).
@@ -183,7 +195,11 @@ func GetGlobalNpmRoot(sm *codingagent.SettingsManager) (string, error) {
 		return entry.root, nil
 	}
 	var root string
-	if NpmCommandName(command) == "bun" {
+	manager, err := PackageManagerName(command)
+	if err != nil {
+		return "", err
+	}
+	if manager == "bun" {
 		binDir, err := RunCmd(command[0], append(command[1:], "pm", "bin", "-g")...)
 		if err != nil || binDir == "" {
 			return "", err
@@ -201,7 +217,11 @@ func GetGlobalNpmRoot(sm *codingagent.SettingsManager) (string, error) {
 
 func GetPnpmGlobalPackagePath(sm *codingagent.SettingsManager, packageName string) (string, error) {
 	npmCommand := DefaultNpmCommand(sm)
-	if NpmCommandName(npmCommand) != "pnpm" {
+	manager, err := PackageManagerName(npmCommand)
+	if err != nil {
+		return "", err
+	}
+	if manager != "pnpm" {
 		return "", nil
 	}
 	output, err := RunCmd(npmCommand[0], append(npmCommand[1:], "list", "-g", "--depth", "0", "--json")...)
@@ -235,33 +255,50 @@ func DefaultNpmCommand(sm *codingagent.SettingsManager) []string {
 	return []string{"npm"}
 }
 
-// NpmCommandName uses the executable after the last --, preserves case, and removes only .cmd/.exe suffixes without spawning the command (Pi package-manager.ts:1760-1764).
-func NpmCommandName(cmd []string) string {
-	if len(cmd) == 0 {
-		return ""
+// PackageManagerName names the package manager an npmCommand argv runs: the command after the last `--`, else the command itself when it is npm, pnpm or bun, else the single supported package manager among its arguments (for example `corepack pnpm`). It only reads the argv and never runs it. An absent or empty argv is npm.
+// Ports .upstream/v0.99.1/packages/coding-agent/src/core/package-manager.ts:1780-1815 (getNpmCommand, getPackageManagerName).
+func PackageManagerName(command []string) (string, error) {
+	if len(command) == 0 {
+		command = []string{"npm"}
 	}
-	idx := -1
-	for i, part := range cmd {
-		if part == "--" {
-			idx = i
+	if command[0] == "" {
+		return "", errors.New("Invalid npmCommand: first array entry must be a non-empty command")
+	}
+	args := command[1:]
+	normalize := func(command string) string {
+		base := filepath.Base(command)
+		if ext := filepath.Ext(base); strings.EqualFold(ext, ".cmd") || strings.EqualFold(ext, ".exe") {
+			return strings.TrimSuffix(base, ext)
+		}
+		return base
+	}
+	direct := normalize(command[0])
+	for i, arg := range slices.Backward(args) {
+		if arg != "--" {
+			continue
+		}
+		if i+1 < len(args) && args[i+1] != "" {
+			return normalize(args[i+1]), nil
+		}
+		return direct, nil
+	}
+	supported := func(name string) bool { return name == "npm" || name == "pnpm" || name == "bun" }
+	if supported(direct) {
+		return direct, nil
+	}
+	var wrapped []string
+	for _, arg := range args {
+		if name := normalize(arg); supported(name) && !slices.Contains(wrapped, name) {
+			wrapped = append(wrapped, name)
 		}
 	}
-	target := cmd[0]
-	if idx >= 0 {
-		if idx+1 == len(cmd) {
-			return ""
-		}
-		target = cmd[idx+1]
+	if len(wrapped) > 1 {
+		return "", fmt.Errorf("Ambiguous npmCommand package managers: %s", strings.Join(wrapped, ", "))
 	}
-	if target == "" {
-		return ""
+	if len(wrapped) == 1 {
+		return wrapped[0], nil
 	}
-	base := filepath.Base(target)
-	ext := filepath.Ext(base)
-	if strings.EqualFold(ext, ".cmd") || strings.EqualFold(ext, ".exe") {
-		return strings.TrimSuffix(base, ext)
-	}
-	return base
+	return direct, nil
 }
 
 func InstalledPathForSource(cwd, agentDir string, sm *codingagent.SettingsManager, source string, local bool) string {
@@ -338,7 +375,11 @@ func InstallManagedNPM(cwd, agentDir string, sm *codingagent.SettingsManager, so
 	}
 	command := DefaultNpmCommand(sm)
 	args := append([]string{}, command[1:]...)
-	args = append(args, NpmInstallArgs(NpmCommandName(command), ref.Locator, installRoot, ref.NPMRegistry)...)
+	manager, err := PackageManagerName(command)
+	if err != nil {
+		return err
+	}
+	args = append(args, NpmInstallArgs(manager, ref.Locator, installRoot, ref.NPMRegistry)...)
 	return RunPackageProcess("", command[0], args...)
 }
 

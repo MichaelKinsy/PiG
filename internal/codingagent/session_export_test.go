@@ -211,7 +211,15 @@ func TestExportHandlerHTMLFailuresMatchUpstream(t *testing.T) {
 		want    string
 	}{
 		{"in-memory", func(t *testing.T) *Session { return NewSession("in-memory", t.TempDir()) }, "Failed to export session: Cannot export in-memory session to HTML"},
-		{"not written yet", func(t *testing.T) *Session { return shareTestSession(t, "unwritten") }, "Failed to export session: Nothing to export yet - start a conversation first"},
+		{"not written yet", func(t *testing.T) *Session {
+			// Setup entries alone do not create the file (session-manager.ts:1172-1185).
+			session := NewSession("unwritten", t.TempDir())
+			session.SetPath(filepath.Join(t.TempDir(), "session.jsonl"))
+			if err := session.AppendThinkingLevelChange("off"); err != nil {
+				t.Fatal(err)
+			}
+			return session
+		}, "Failed to export session: Nothing to export yet - start a conversation first"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			session := tc.session(t)

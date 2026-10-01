@@ -30,10 +30,18 @@ func wireSubprocessModelRegistry(bridge *subprocess.UIBridge, session *coding.Se
 	}
 	runtime := session.ModelRuntime()
 	return codingagent.WireModelOperations(bridge, codingagent.ModelOperationBindings{
-		CurrentModel: session.Model, ModelLookup: runtime.GetModel, ModelCatalog: runtime.GetModels,
+		CurrentModel: session.Model, ModelLookup: runtime.GetModel, ModelCatalog: runtime.GetModels, Classify: runtime.Classify,
 		Registry: services.Registry().ModelRegistry, ModelBuilder: func(spec string) (*ai.Model, error) { return coding.BuildModel(spec, services) },
 		SessionHandle: session,
 	})
+}
+
+// watchSessionRunSignal reports each run the Session's agent begins or ends to the extension host, and returns the function that stops. Pi's ctx.signal is `() => this.agent.signal` (agent-session.ts:3368), read live by the extension that holds ctx, so every runtime must learn of a run change when it happens, not at its next request.
+func watchSessionRunSignal(bridge *subprocess.UIBridge, session *coding.Session) func() {
+	if bridge == nil || session == nil {
+		return func() {}
+	}
+	return session.Agent().ObserveRunSignal(bridge.RunSignalChanged)
 }
 
 // loadSubprocessExtensions starts the already-resolved canonical extension set.
@@ -260,3 +268,18 @@ func (s *startupExtensionSet) close() {
 }
 
 var stopStartupExtensions = func() {}
+
+// flushExtensionHostVirtualModels binds the virtual models host's extensions register to registry, as Pi's createAgentSessionServices does after it loads extensions (agent-session-services.ts:182-193): the registrations queued while the extensions loaded apply now, after the provider registrations and before the awaited local refresh and model resolution, so --model and a restored selection can name them. Each failed registration becomes the error diagnostic `Extension "<path>" error: <message>`. Later registrations apply at once and return their error to the extension (runner.ts:497-541). A nil host has nothing to bind.
+func flushExtensionHostVirtualModels(host *subprocess.Host, registry *coding.ModelRegistry) []codingagent.AgentSessionRuntimeDiagnostic {
+	if host == nil || registry == nil {
+		return nil
+	}
+	var diagnostics []codingagent.AgentSessionRuntimeDiagnostic
+	host.Runtime().BindProviderActions(extension.ProviderActions{
+		RegisterVirtualModel:   registry.RegisterVirtualModel,
+		UnregisterVirtualModel: registry.UnregisterVirtualModel,
+	}, func(err *extension.ExtensionError) {
+		diagnostics = append(diagnostics, codingagent.AgentSessionRuntimeDiagnostic{Type: "error", Message: fmt.Sprintf(`Extension "%s" error: %s`, err.ExtensionPath, err.Error)})
+	})
+	return diagnostics
+}

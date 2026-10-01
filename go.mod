@@ -28,6 +28,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.23
 	github.com/rivo/uniseg v0.4.7
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
+	github.com/tetratelabs/wazero v1.12.0
 	github.com/yuin/goldmark v1.8.5
 	golang.org/x/net v0.58.0
 	golang.org/x/oauth2 v0.37.0

@@ -236,7 +236,7 @@ pub(crate) type WidthChangeSubs = Arc<Mutex<Vec<(u64, Arc<WidthChangeHandler>)>>
 
 /// The message of a failed host call as the Node runtime rejects with it: the
 /// host's message, prefixed by "code: " only when the host names a code.
-fn host_error_message(error: crate::protocol::ErrorInfo) -> String {
+pub(crate) fn host_error_message(error: crate::protocol::ErrorInfo) -> String {
     match error.code.as_deref() {
         Some(code) if !code.is_empty() => format!("{code}: {}", error.message),
         _ => error.message,
@@ -250,6 +250,17 @@ fn call_result_to_io(result: CallResultMsg) -> io::Result<()> {
     Ok(())
 }
 
+/// The message a panic carries, as upstream's `error.message` of a throw.
+fn panic_message(payload: &(dyn std::any::Any + Send)) -> String {
+    if let Some(message) = payload.downcast_ref::<&str>() {
+        (*message).to_string()
+    } else if let Some(message) = payload.downcast_ref::<String>() {
+        message.clone()
+    } else {
+        "extension callback panicked".to_string()
+    }
+}
+
 fn invalid_reply(method: &str, field: &str) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, format!("host reply to {method} has no {field:?}"))
 }
@@ -259,6 +270,21 @@ fn call_result_value(result: CallResultMsg) -> io::Result<serde_json::Value> {
         return Err(io::Error::new(io::ErrorKind::Other, host_error_message(err)));
     }
     Ok(result.result.unwrap_or_default())
+}
+
+/// Installs the route of a virtual model, then registers it with the host, and restores the previous route when the host refuses. The route is installed first: the host may route a request as soon as it has registered the model.
+fn install_virtual_model(conn: &Connection, model: crate::VirtualModel, register: impl FnOnce() -> io::Result<()>) -> io::Result<()> {
+    let key = (model.provider.clone(), model.id.clone());
+    let previous = conn.virtual_models.lock().unwrap().insert(key.clone(), Arc::new(model));
+    if let Err(error) = register() {
+        let mut models = conn.virtual_models.lock().unwrap();
+        match previous {
+            Some(previous) => models.insert(key, previous),
+            None => models.remove(&key),
+        };
+        return Err(error);
+    }
+    Ok(())
 }
 
 pub(crate) type ModelStreams = Arc<Mutex<HashMap<String, Arc<ModelEventStream>>>>;
@@ -443,6 +469,65 @@ impl ModelRegistry {
         self.call("getModelRegistryState", serde_json::Value::Null)
     }
     pub fn get_all(&self) -> io::Result<serde_json::Value> { Ok(self.state()?["models"].clone()) }
+    /// Every known model of a type (`chat`, `image` or `classifier`), optionally for one provider. Chat models come from the registry state's `models` and the others from its `typedModels`, in the host's order (`model-registry.ts` `getModelsOfType`).
+    pub fn get_models_of_type(&self, model_type: &str, provider: Option<&str>) -> io::Result<serde_json::Value> {
+        let state = self.state()?;
+        let mut models = Vec::new();
+        for list in [&state["models"], &state["typedModels"]] {
+            for model in list.as_array().into_iter().flatten() {
+                let kind = model["type"].as_str().filter(|kind| !kind.is_empty()).unwrap_or("chat");
+                if kind == model_type && provider.is_none_or(|provider| model["provider"] == provider) {
+                    models.push(model.clone());
+                }
+            }
+        }
+        Ok(serde_json::Value::Array(models))
+    }
+    /// One model of a type by provider and id, or `None` (`getModelOfType`).
+    pub fn get_model_of_type(&self, model_type: &str, provider: &str, model_id: &str) -> io::Result<Option<serde_json::Value>> {
+        Ok(self.get_models_of_type(model_type, Some(provider))?.as_array().and_then(|models| models.iter().find(|model| model["id"] == model_id)).cloned())
+    }
+    /// One model of a type by provider and id, or `None` (`findOfType`).
+    pub fn find_of_type(&self, model_type: &str, provider: &str, model_id: &str) -> io::Result<Option<serde_json::Value>> {
+        self.get_model_of_type(model_type, provider, model_id)
+    }
+    /// The models of a type whose provider has working credentials. It awaits the host (`getAvailableOfType`).
+    pub fn get_available_of_type(&self, model_type: &str, provider: Option<&str>) -> io::Result<serde_json::Value> {
+        let mut args = serde_json::json!({"type": model_type});
+        if let Some(provider) = provider {
+            args["provider"] = serde_json::json!(provider);
+        }
+        self.call("getAvailableOfType", args)
+    }
+    /// Classifies structured state with request-time authentication. It never fails: a failure, and a cancelled request, are a result with `stopReason` `error` or `aborted` that names the model (`classify`).
+    pub fn classify(&self, model: &serde_json::Value, context: serde_json::Value, options: Option<serde_json::Value>) -> serde_json::Value {
+        let mut args = serde_json::json!({"model": model, "context": context});
+        if let Some(options) = options {
+            args["options"] = options;
+        }
+        match self.call("classify", args) {
+            Ok(result) => result,
+            Err(error) => {
+                let aborted = self.request_parent.as_ref().is_some_and(|parent| parent.cancelled());
+                let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis() as u64;
+                serde_json::json!({
+                    "api": model["api"], "provider": model["provider"], "model": model["id"], "answers": {},
+                    "stopReason": if aborted { "aborted" } else { "error" }, "errorMessage": error.to_string(), "timestamp": timestamp
+                })
+            }
+        }
+    }
+    /// Registers a virtual model, as [`Context::register_virtual_model`] does (`registerVirtualModel`).
+    pub fn register_virtual_model(&self, model: crate::VirtualModel) -> io::Result<()> {
+        let declaration = serde_json::to_value(model.declaration()).map_err(io::Error::other)?;
+        install_virtual_model(&self.conn, model, || self.call("registerVirtualModel", declaration).map(|_| ()))
+    }
+    /// Removes a virtual model (`unregisterVirtualModel`).
+    pub fn unregister_virtual_model(&self, provider: &str, id: &str) -> io::Result<()> {
+        self.call("unregisterVirtualModel", serde_json::json!({"provider": provider, "id": id}))?;
+        self.conn.virtual_models.lock().unwrap().remove(&(provider.to_string(), id.to_string()));
+        Ok(())
+    }
     pub fn get_available(&self) -> io::Result<serde_json::Value> {
         let state = self.state()?;
         let models = state["models"].as_array().ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "registry models must be an array"))?;
@@ -482,11 +567,25 @@ impl ModelRegistry {
         Ok(registered.iter().find(|r| r["name"] == provider).map(|r| r["config"].clone()).unwrap_or_default())
     }
     pub fn register_provider(&self, name: &str, config: serde_json::Value) -> io::Result<()> {
-        self.call("registerProvider", serde_json::json!({"name":name,"config":config}))?;
-        Ok(())
+        self.register_provider_operations(name, config, crate::ProviderOperations::new())
     }
+    /// Applies a provider config at once, as Pi's `pi.registerProvider` does after the factory finished (types.ts:1766-1803, runner.ts:517-523). The config's `images`, `classifiers` and `streamSimple` run in this extension as a factory registration's do: they stay here and the call names them. A registration the host refuses leaves the implementations the provider had.
+    pub fn register_provider_operations(&self, name: &str, config: serde_json::Value, operations: crate::ProviderOperations) -> io::Result<()> {
+        let callbacks = self.conn.provider_callbacks.get().ok_or_else(|| io::Error::other("Provider runtime unavailable"))?;
+        let kept = callbacks.held(name);
+        let declaration = callbacks.declare(name.to_string(), config, operations);
+        let outcome = serde_json::to_value(declaration).map_err(io::Error::other).and_then(|args| self.call("registerProvider", args));
+        if outcome.is_err() {
+            callbacks.restore(name, kept);
+        }
+        outcome.map(|_| ())
+    }
+    /// Removes a provider and, once the host removed it, drops the implementations the extension held for it.
     pub fn unregister_provider(&self, name: &str) -> io::Result<()> {
         self.call("unregisterProvider", serde_json::json!({"name":name}))?;
+        if let Some(callbacks) = self.conn.provider_callbacks.get() {
+            callbacks.restore(name, None);
+        }
         Ok(())
     }
     pub fn refresh(&self, options: serde_json::Value) -> io::Result<serde_json::Value> {
@@ -636,6 +735,7 @@ pub struct Context {
     pub(crate) model_stream_seq: Arc<AtomicU64>,
     /// Replicated `hasUI` and theme palette.
     pub(crate) shared_ui: Arc<Mutex<UiState>>,
+    pub(crate) bus: Arc<crate::event_bus::BusRegistry>,
     /// Footer and header renderers, keyed by the host method that installs them.
     pub(crate) surfaces: Surfaces,
 }
@@ -905,6 +1005,11 @@ impl Context {
         )
     }
 
+    /// Upstream's `ctx.signal`: the cancellation of the run in progress, or `None` while no run is active. Every read during one run returns the same signal, and aborting the run cancels it, including for a handler still in flight. It is the run's, not the request's: [`Context::is_cancelled`] reports the request.
+    pub fn signal(&self) -> Option<crate::provider::ProviderSignal> {
+        self.conn.run_signal.lock().unwrap().as_ref().map(|(_, signal)| signal.clone())
+    }
+
     /// Returns true when the host has cancelled this request.
     pub fn is_cancelled(&self) -> bool {
         if let Some(parent) = self.request_parent.as_ref() {
@@ -934,7 +1039,7 @@ impl Context {
             })
     }
 
-    fn call_wire(
+    pub(crate) fn call_wire(
         &self,
         method: &str,
         args: Option<serde_json::Value>,
@@ -973,7 +1078,7 @@ impl Context {
         if !definition.parameters.is_object() {
             return Err(io::Error::new(io::ErrorKind::InvalidInput, "tool parameters must be an object"));
         }
-        let declaration = serde_json::json!({
+        let mut declaration = serde_json::json!({
             "name": definition.name, "label": definition.label, "description": definition.description,
             "parameters": definition.parameters, "prompt_snippet": definition.prompt_snippet,
             "prompt_guidelines": definition.prompt_guidelines, "constrained_sampling": definition.constrained_sampling,
@@ -981,6 +1086,20 @@ impl Context {
             "render_shell": if definition.render_shell == crate::ToolRenderShell::SelfShell { "self" } else { "default" },
             "renders_call": definition.render_call.is_some(), "renders_result": definition.render_result.is_some(),
         });
+        let optional = [
+            ("output_schema", definition.output_schema.clone()),
+            ("exposure", definition.exposure.map(|exposure| serde_json::Value::from(exposure.as_str()))),
+            ("namespace", definition.namespace.as_ref().and_then(|namespace| serde_json::to_value(namespace).ok())),
+            ("annotations", definition.annotations.as_ref().and_then(|annotations| serde_json::to_value(annotations).ok())),
+            ("default_active", definition.default_active.map(serde_json::Value::from)),
+            ("prepares_loadout", definition.prepare_loadout.is_some().then_some(serde_json::Value::Bool(true))),
+            ("prepares_arguments", definition.prepare_arguments.is_some().then_some(serde_json::Value::Bool(true))),
+        ];
+        for (key, value) in optional {
+            if let Some(value) = value {
+                declaration[key] = value;
+            }
+        }
         let _registration = self.conn.tool_registration_lock.lock().unwrap();
         self.conn.registered_tools.lock().unwrap().insert(definition.name.clone(), Arc::new(definition));
         self.call_host("registerTool", Some(declaration))?;
@@ -1012,6 +1131,11 @@ impl Context {
     /// Pi's `string | undefined` getters carry an empty string for absent state on the wire.
     fn optional_string_field(&self, method: &str, field: &str) -> io::Result<Option<String>> {
         Ok(self.reply_field::<String>(method, None, field)?.filter(|value| !value.is_empty()))
+    }
+
+    /// Upstream's `pi.events` for calls made from this request.
+    pub fn events(&self) -> crate::EventBus {
+        crate::EventBus::new(self.bus.clone(), Some(self.clone()))
     }
 
     /// Low-level host call escape hatch. Prefer typed methods when available.
@@ -1609,6 +1733,138 @@ impl Context {
     /// tools, then extension tools. Mirrors upstream `pi.getAllTools()`.
     pub fn get_all_tools(&self) -> io::Result<Vec<ToolInfo>> {
         self.required_field("getAllTools", None, "tools")
+    }
+
+    /// Upstream `pi.getSettings()` (`types.ts:1711`): a copy of the effective settings, global and project settings merged with overrides. Answered from the state the host replicates, as upstream's call is synchronous.
+    ///
+    /// Fails until the host has sent settings, as upstream's getter throws before the runtime is bound (`loader.ts:157-177`).
+    pub fn get_settings(&self) -> io::Result<serde_json::Value> {
+        self.conn
+            .api_state
+            .lock()
+            .unwrap()
+            .settings
+            .clone()
+            .ok_or_else(|| io::Error::other("the host sent no settings"))
+    }
+
+    /// Upstream `pi.getMcpServers()` (`types.ts:1839`): every MCP server registered by extensions, in registration order, from the replicated state.
+    pub fn get_mcp_servers(&self) -> Vec<crate::RegisteredMcpServer> {
+        self.conn.api_state.lock().unwrap().mcp_servers.clone()
+    }
+
+    /// Upstream `pi.registerMcpServer(name, config)` after load (`types.ts:1833`). The server connects right away. Registering a name again replaces this extension's earlier registration.
+    ///
+    /// Fails, as upstream throws, for an invalid config and for a name another extension registered; the error carries the host's message. The registration is not saved; register again on every load. During load, use [`crate::Extension::register_mcp_server`].
+    pub fn register_mcp_server(&self, name: &str, config: serde_json::Value) -> io::Result<()> {
+        let servers = self.mcp_servers_call("registerMcpServer", serde_json::json!({"name": name, "config": config}))?;
+        self.conn.api_state.lock().unwrap().mcp_servers = servers;
+        Ok(())
+    }
+
+    /// Upstream `pi.unregisterMcpServer(name)` (`types.ts:1836`): removes an MCP server this extension registered and closes its connection.
+    pub fn unregister_mcp_server(&self, name: &str) -> io::Result<()> {
+        let servers = self.mcp_servers_call("unregisterMcpServer", serde_json::json!({"name": name}))?;
+        self.conn.api_state.lock().unwrap().mcp_servers = servers;
+        Ok(())
+    }
+
+    /// The reply of an MCP registration call: every registered server after it.
+    fn mcp_servers_call(&self, method: &str, args: serde_json::Value) -> io::Result<Vec<crate::RegisteredMcpServer>> {
+        let reply = self.host_reply(method, Some(args))?;
+        serde_json::from_value::<crate::extension_api::McpServersResult>(reply)
+            .map(|result| result.servers)
+            .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, format!("host reply to {method}: {error}")))
+    }
+
+    /// Upstream `pi.registerVirtualModel(model)` after load (`types.ts:1852`). Registering the same provider and id again replaces the virtual model. During load, use [`crate::Extension::register_virtual_model`].
+    pub fn register_virtual_model(&self, model: crate::VirtualModel) -> io::Result<()> {
+        let declaration = serde_json::to_value(model.declaration()).map_err(io::Error::other)?;
+        install_virtual_model(&self.conn, model, || self.call_host("registerVirtualModel", Some(declaration)).map(|_| ()))
+    }
+
+    /// Upstream `pi.unregisterVirtualModel(provider, id)` (`types.ts:1855`).
+    pub fn unregister_virtual_model(&self, provider: &str, id: &str) -> io::Result<()> {
+        self.call_host("unregisterVirtualModel", Some(serde_json::json!({"provider": provider, "id": id})))?;
+        self.conn.virtual_models.lock().unwrap().remove(&(provider.to_string(), id.to_string()));
+        Ok(())
+    }
+
+    /// Upstream `ExtensionToolContext.tools` (`types.ts:385`): the tools [`Context::execute_tool`] can call, as the host lists them when this is called (`runner.ts:958-961`): a read after [`Context::set_active_tools`] in the same handler sees the change.
+    ///
+    /// Fails outside a tool call: upstream defines `tools` only on the context of a tool's `execute` (`runner.ts:952-965`).
+    pub fn tools(&self) -> io::Result<Vec<crate::AgentTool>> {
+        if self.tool_call_id.is_none() || self.request_id.is_empty() {
+            return Err(io::Error::other("tools is only available while a tool runs"));
+        }
+        self.required_field("getCallableTools", None, "tools")
+    }
+
+    /// Upstream `ExtensionToolContext.executeTool(name, args, options)` (`types.ts:394`): runs another tool through the same validation, hooks and permission checks as a model-issued call. The call gets the id `<calling id>/<n>` and its events carry `parentToolCallId`.
+    ///
+    /// Tool failures (unknown tools, validation errors, blocked calls, thrown errors) come back as an outcome with `is_error` set, as upstream never rejects for them; an `Err` is a lost connection, a cancelled request or a call made outside a tool. The call is cancelled with `options.signal`, which defaults to this tool call's own cancellation (the host cancels the nested call with the calling request). Partial results reach `options.on_update` in order, before this returns.
+    pub fn execute_tool(
+        &self,
+        name: &str,
+        args: serde_json::Value,
+        options: crate::ExecuteToolOptions,
+    ) -> io::Result<crate::AgentToolCallOutcome> {
+        let Some(caller_id) = self.tool_call_id.clone().filter(|_| !self.request_id.is_empty()) else {
+            return Err(io::Error::other("execute_tool is only available while a tool runs"));
+        };
+        let execute_id = format!("x{}", self.conn.execute_seq.fetch_add(1, Ordering::Relaxed));
+        // Updates and the outcome are read from one ordered socket; the dispatcher runs the callback off the reader and is joined
+        // after the outcome, so every update precedes the return.
+        // The host sends each update as a request and waits for the answer, so the callback's panic is that answer: upstream's callback throws and the call rejects with the first error once the tool returned (`nested-tool-calls.ts:219-248`).
+        let dispatcher = options.on_update.as_ref().map(|callback| {
+            let (sender, receiver) = std::sync::mpsc::channel::<crate::protocol::ExecuteUpdate>();
+            self.conn.execute_updates.lock().unwrap().insert(execute_id.clone(), sender);
+            let callback = callback.clone();
+            std::thread::spawn(move || {
+                for (update, answer) in receiver {
+                    let failure = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| callback(update))).err().map(|payload| panic_message(payload.as_ref()));
+                    let _ = answer.send(failure);
+                }
+            })
+        });
+        let outcome = self.run_execute_tool(&execute_id, crate::extension_api::ExecuteToolArgs {
+            caller_id,
+            name: name.to_string(),
+            args,
+            execute_id: execute_id.clone(),
+            wants_updates: dispatcher.is_some(),
+            own_signal: options.signal.is_some(),
+        }, options.signal.as_ref());
+        self.conn.execute_updates.lock().unwrap().remove(&execute_id);
+        if let Some(dispatcher) = dispatcher {
+            let _ = dispatcher.join();
+        }
+        outcome
+    }
+
+    fn run_execute_tool(
+        &self,
+        execute_id: &str,
+        args: crate::extension_api::ExecuteToolArgs,
+        signal: Option<&crate::provider::ProviderSignal>,
+    ) -> io::Result<crate::AgentToolCallOutcome> {
+        let _ = self.conn.request_state_for(self.request_parent.as_deref(), &self.request_id, "blocked", Some("host_call"));
+        let pending = self.conn.begin_call_with_scope(self.request_parent.as_deref(), Some(&self.request_id), "executeTool", Some(args))?;
+        // Subscribed after the call frame is written: the host applies the cancel after it started the call (runner.ts:979).
+        let _cancel = signal.map(|signal| {
+            let conn = self.conn.clone();
+            let execute_id = execute_id.to_string();
+            signal.subscribe(Arc::new(move || {
+                let _ = conn.begin_call_for(None, "executeTool.cancel", Some(serde_json::json!({"executeId": execute_id})));
+            }))
+        });
+        let reply = self.conn.wait_call_typed::<crate::AgentToolCallOutcome>(pending);
+        let _ = self.conn.request_state_for(self.request_parent.as_deref(), &self.request_id, "progress", None);
+        let reply = reply?;
+        if let Some(error) = reply.error {
+            return Err(io::Error::other(host_error_message(error)));
+        }
+        reply.result.ok_or_else(|| invalid_reply("executeTool", "result"))
     }
 
     /// Get the session's extension commands, prompt templates and skills.
@@ -2391,6 +2647,13 @@ pub struct ToolInfo {
     pub prompt_guidelines: Option<Vec<String>>,
     #[serde(default, rename = "sourceInfo")]
     pub source_info: SourceInfo,
+    /// How the model reaches the tool (`types.ts:2063`); `direct` when the host omits it.
+    #[serde(default)]
+    pub exposure: crate::ToolExposure,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub namespace: Option<crate::ToolNamespace>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub annotations: Option<crate::ToolAnnotations>,
 }
 
 /// Upstream `SlashCommandInfo`, one entry of `get_commands()`.
@@ -2550,14 +2813,6 @@ fn surface_args(lines: Vec<String>, width: u32) -> serde_json::Value {
     }
 }
 
-fn panic_message(payload: &(dyn std::any::Any + Send)) -> String {
-    payload
-        .downcast_ref::<&str>()
-        .map(|message| (*message).to_string())
-        .or_else(|| payload.downcast_ref::<String>().cloned())
-        .unwrap_or_else(|| "panic".to_string())
-}
-
 impl SurfaceRenderer {
     fn kind(&self) -> &'static str {
         if self.method == "ui.setHeader" { "header" } else { "footer" }
@@ -2698,7 +2953,8 @@ impl Drop for WidthChangeSubscription {
 
 impl Context {
     /// Subscribe to terminal resizes, receiving the new width after
-    /// [`Context::width`] has been updated.
+    /// [`Context::width`] has been updated (a handler that reads it sees that
+    /// width or a newer one).
     ///
     /// Upstream Pi installs headers and footers as component factories whose
     /// `render(width)` runs every frame, so they follow a resize with no work
@@ -2708,10 +2964,13 @@ impl Context {
     /// width; this is that trigger. [`Self::set_footer_renderer`] and
     /// [`Self::set_header_renderer`] follow a resize with no handler.
     ///
-    /// Handlers run on the loop that reads host replies, so a handler must not
-    /// wait for a host call: [`Self::set_widget`] returns without waiting, but
-    /// footer or header rows must be sent from another thread. The returned
-    /// guard unsubscribes when dropped.
+    /// Handlers run on a worker thread, one at a time in the order the host
+    /// sent the widths, never on the thread that reads the host's replies, so
+    /// a handler can make a blocking host call such as [`Context::set_footer`].
+    /// A slow handler delays the later deliveries, not the extension's other
+    /// handlers. A handler that panics does not stop the others. The returned
+    /// guard unsubscribes when dropped; a delivery already queued still
+    /// reaches the handlers that were subscribed when the width arrived.
     pub fn on_width_change<F>(&self, handler: F) -> WidthChangeSubscription
     where
         F: Fn(u32) + Send + Sync + 'static,
@@ -2773,6 +3032,7 @@ mod width_change_tests {
             model_streams: Arc::new(Mutex::new(HashMap::new())),
             model_stream_seq: Arc::new(AtomicU64::new(0)),
             shared_ui: Arc::new(Mutex::new(UiState::default())),
+            bus: Arc::new(crate::event_bus::BusRegistry::default()),
             surfaces: Arc::new(Mutex::new(HashMap::new())),
         }
     }
@@ -2881,6 +3141,7 @@ mod login_call_tests {
             model_streams: Arc::new(Mutex::new(HashMap::new())),
             model_stream_seq: Arc::new(AtomicU64::new(0)),
             shared_ui: Arc::new(Mutex::new(UiState::default())),
+            bus: Arc::new(crate::event_bus::BusRegistry::default()),
             surfaces: Arc::new(Mutex::new(HashMap::new())),
         })
     }
@@ -3079,6 +3340,7 @@ mod sdk_surface_call_tests {
             model_streams: Arc::new(Mutex::new(HashMap::new())),
             model_stream_seq: Arc::new(AtomicU64::new(0)),
             shared_ui: Arc::new(Mutex::new(UiState::default())),
+            bus: Arc::new(crate::event_bus::BusRegistry::default()),
             surfaces: Arc::new(Mutex::new(HashMap::new())),
         })
     }

@@ -63,15 +63,20 @@ type OAuthSelectPrompt struct {
 
 // OAuthLoginCallbacks groups the callbacks used during an OAuth login flow.
 type OAuthLoginCallbacks struct {
-	OnAuth                   func(info OAuthAuthInfo)
-	OnDeviceCode             func(info OAuthDeviceCodeInfo)
-	OnPrompt                 func(prompt OAuthPrompt) (string, error)
-	OnPromptContext          func(context.Context, OAuthPrompt) (string, error)
-	OnProgress               func(message string)
+	OnAuth          func(info OAuthAuthInfo)
+	OnDeviceCode    func(info OAuthDeviceCodeInfo)
+	OnPrompt        func(prompt OAuthPrompt) (string, error)
+	OnPromptContext func(context.Context, OAuthPrompt) (string, error)
+	OnProgress      func(message string)
+	// OnInfo reports an informational notice that is neither progress nor an authorization URL.
+	OnInfo                   func(message string)
 	OnManualCodeInput        func() (string, error)
 	OnManualCodeInputContext func(context.Context) (string, error)
 	OnSelect                 func(prompt OAuthSelectPrompt) (string, error)
 	OnSelectContext          func(context.Context, OAuthSelectPrompt) (string, error)
+	// GetDeviceID returns the stable ID of this app installation. It comes from LoginOptions.GetDeviceID; nil means the
+	// app supplies none.
+	GetDeviceID func() string
 }
 
 // OAuthCredentialStatus describes a stored credential owned by a registered

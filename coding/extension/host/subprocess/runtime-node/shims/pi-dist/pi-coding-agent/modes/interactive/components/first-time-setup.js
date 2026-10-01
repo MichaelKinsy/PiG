@@ -1,9 +1,11 @@
 import { Container, getKeybindings, Spacer, Text } from "../../../../../pi-tui.mjs";
 import { APP_NAME } from "../../../config.js";
+import { SYSTEM_THEME_NAME } from "../theme/system-theme.js";
 import { theme } from "../theme/theme.js";
 import { DynamicBorder } from "./dynamic-border.js";
 import { keyHint, rawKeyHint } from "./keybinding-hints.js";
 const THEME_OPTIONS = [
+    { value: SYSTEM_THEME_NAME, label: "System (matches your terminal colors)" },
     { value: "dark", label: "Dark" },
     { value: "light", label: "Light" },
 ];
@@ -21,8 +23,13 @@ export class FirstTimeSetupComponent extends Container {
     constructor(options) {
         super();
         this.options = options;
-        this.themeIndex = Math.max(0, THEME_OPTIONS.findIndex((option) => option.value === options.detectedTheme));
+        this.themeIndex = 0;
         this.update();
+    }
+    /** Rebuild on theme changes, e.g. when the system theme receives the terminal's colors. */
+    invalidate() {
+        this.update();
+        super.invalidate();
     }
     // Rebuild the whole dialog on every change so theme previews recolor all text.
     update() {
@@ -35,7 +42,6 @@ export class FirstTimeSetupComponent extends Container {
         this.addChild(new Spacer(1));
         if (this.step === "theme") {
             this.addChild(new Text(theme.fg("text", "Pick a theme."), 1, 0));
-            this.addChild(new Text(theme.fg("muted", `Detected system appearance: ${this.options.detectedTheme}`), 1, 0));
             this.addChild(new Spacer(1));
             this.addOptionList(THEME_OPTIONS.map((option) => option.label), this.themeIndex);
         }

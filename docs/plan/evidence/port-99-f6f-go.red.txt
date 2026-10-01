@@ -1,0 +1,71 @@
+# port-99-f6f-go red evidence
+# base: merge of contract 906c8fe28, family 4 (staging porter/pi-0.99.1) and 6D green (staging port-99-f6d b72ac6624)
+# host: Linux 6.8.0-137-generic x86_64, go version go1.27.1 linux/amd64
+
+## cd extensions/sdk && go test -count=1 -v . (failing tests only; every other test of the package passes)
+--- FAIL: TestExecuteToolRunsNestedCallsForTheCallingTool (0.00s)
+--- FAIL: TestExecuteToolDeliversUpdatesInOrderOffTheMessageLoop (10.01s)
+--- FAIL: TestExecuteToolSignalCancelsTheNestedCall (10.01s)
+--- FAIL: TestExecuteToolEndsWithTheCallingRequest (10.00s)
+--- FAIL: TestToolsReadsTheReplicatedCallableTools (0.00s)
+--- FAIL: TestExecuteToolReturnsHostFailureAndEncodingErrors (0.00s)
+--- FAIL: TestOrderedMcpMapsKeepInsertionOrderThroughTheWire (0.00s)
+--- FAIL: TestRegisterMcpServerBeforeRunQueuesInRegisterPayload (0.00s)
+--- FAIL: TestRegisterMcpServerAtRuntimeCallsTheHostAndRefreshesTheReplicatedList (0.00s)
+--- FAIL: TestGetMcpServersReadsReplicatedState (0.00s)
+--- FAIL: TestRegisterMcpServerReturnsTransportFailure (0.00s)
+--- FAIL: TestGetSettingsReturnsACopyOfTheReplicatedSettings (0.00s)
+--- FAIL: TestRegisterToolSendsUpstreamExposureFields (0.00s)
+--- FAIL: TestToolPrepareLoadoutRunsInTheExtension (0.00s)
+--- FAIL: TestToolResultAndToolInfoCarryUpstreamFields (0.00s)
+--- FAIL: TestOnProviderStreamEventAndMcpServersChangeRegisterUpstreamEventNames (0.00s)
+--- FAIL: TestRegisterVirtualModelBeforeRunQueuesTheDeclarationWithoutTheRoute (0.00s)
+--- FAIL: TestRegisterVirtualModelAtRuntimeCallsTheHost (0.00s)
+--- FAIL: TestVirtualModelRouteRunsInTheExtension (0.00s)
+--- FAIL: TestVirtualModelRouteFollowsReplacementAndUnregistration (0.00s)
+--- FAIL: TestVirtualModelRouteObservesCancellation (5.00s)
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/extensions/sdk	36.632s
+FAIL
+
+## Guards that pass on the stub (they fail under the mutation recorded in the green evidence)
+--- PASS: TestGetSettingsFailsWhenTheHostSentNone (the stub returns an error too)
+--- PASS: TestToolOrchestrationIsOnlyAvailableInsideATool (the stub returns an error too)
+
+## go test ./test/extension-conformance -run ExtensionAPI -count=1 -v
+## Every row fails to load the fixture: the factory's first RegisterMcpServer returns the stub's not-implemented error, so the fused factory panics and the isolated and packed processes exit before they connect.
+--- FAIL: TestExtensionAPIRegistrationsAtLoadGo (1.76s)
+    --- FAIL: TestExtensionAPIRegistrationsAtLoadGo/fused (0.00s)
+    --- FAIL: TestExtensionAPIRegistrationsAtLoadGo/strict (1.12s)
+    --- FAIL: TestExtensionAPIRegistrationsAtLoadGo/packed (0.64s)
+--- FAIL: TestExtensionAPIReplicatedStateAndLateRegistrationGo (1.03s)
+    --- FAIL: TestExtensionAPIReplicatedStateAndLateRegistrationGo/fused (0.00s)
+    --- FAIL: TestExtensionAPIReplicatedStateAndLateRegistrationGo/strict (0.51s)
+    --- FAIL: TestExtensionAPIReplicatedStateAndLateRegistrationGo/packed (0.52s)
+--- FAIL: TestExtensionAPIVirtualModelRouteRunsInTheExtensionGo (1.09s)
+    --- FAIL: TestExtensionAPIVirtualModelRouteRunsInTheExtensionGo/fused (0.00s)
+    --- FAIL: TestExtensionAPIVirtualModelRouteRunsInTheExtensionGo/strict (0.51s)
+    --- FAIL: TestExtensionAPIVirtualModelRouteRunsInTheExtensionGo/packed (0.58s)
+--- FAIL: TestExtensionAPIExecuteToolOrchestrationGo (1.05s)
+    --- FAIL: TestExtensionAPIExecuteToolOrchestrationGo/fused (0.00s)
+    --- FAIL: TestExtensionAPIExecuteToolOrchestrationGo/strict (0.53s)
+    --- FAIL: TestExtensionAPIExecuteToolOrchestrationGo/packed (0.52s)
+--- FAIL: TestExtensionAPIExecuteToolUpdatesAndCancellationGo (1.07s)
+    --- FAIL: TestExtensionAPIExecuteToolUpdatesAndCancellationGo/fused (0.00s)
+    --- FAIL: TestExtensionAPIExecuteToolUpdatesAndCancellationGo/strict (0.49s)
+    --- FAIL: TestExtensionAPIExecuteToolUpdatesAndCancellationGo/packed (0.57s)
+--- FAIL: TestExtensionAPIStructuredResultsGo (1.05s)
+    --- FAIL: TestExtensionAPIStructuredResultsGo/fused (0.00s)
+    --- FAIL: TestExtensionAPIStructuredResultsGo/strict (0.53s)
+    --- FAIL: TestExtensionAPIStructuredResultsGo/packed (0.52s)
+--- FAIL: TestExtensionAPIEventsGo (1.10s)
+    --- FAIL: TestExtensionAPIEventsGo/fused (0.00s)
+    --- FAIL: TestExtensionAPIEventsGo/strict (0.54s)
+    --- FAIL: TestExtensionAPIEventsGo/packed (0.56s)
+--- FAIL: TestExtensionAPIProviderModelTypesGo (1.09s)
+    --- FAIL: TestExtensionAPIProviderModelTypesGo/fused (0.00s)
+    --- FAIL: TestExtensionAPIProviderModelTypesGo/strict (0.55s)
+    --- FAIL: TestExtensionAPIProviderModelTypesGo/packed (0.54s)
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/test/extension-conformance	9.276s
+FAIL

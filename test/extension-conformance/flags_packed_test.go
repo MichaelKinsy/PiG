@@ -13,9 +13,6 @@ import (
 
 func TestPackedFlagValuesAcrossSDKs(t *testing.T) {
 	root := findModuleRoot(t)
-	t.Setenv("PIG_SDK_GO_ROOT", filepath.Join(root, "extensions", "sdk"))
-	t.Setenv("PIG_SDK_PY_ROOT", filepath.Join(root, "extensions", "sdk-py"))
-	t.Setenv("PIG_SDK_RS_ROOT", filepath.Join(root, "extensions", "sdk-rs"))
 	for _, language := range []string{"go", "python", "rust"} {
 		t.Run(language, func(t *testing.T) {
 			// These factories register only local flags and commands; each language owns its Host and config root.
@@ -74,7 +71,12 @@ func TestPackedFlagValuesAcrossSDKs(t *testing.T) {
 
 func packedFlagFactory(t *testing.T, root, language, name string, value bool) subprocess.ExtConfig {
 	t.Helper()
-	dir := t.TempDir()
+	return packedFlagFactoryIn(t, t.TempDir(), root, language, name, value)
+}
+
+// packedFlagFactoryIn writes the factory's source into dir.
+func packedFlagFactoryIn(t *testing.T, dir, root, language, name string, value bool) subprocess.ExtConfig {
+	t.Helper()
 	write := func(path, content string) {
 		t.Helper()
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

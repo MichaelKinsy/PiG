@@ -30,7 +30,7 @@ const piAIRoot = (() => {
 })();
 
 const loadPKCE = () => import(pathToFileURL(join(piAIRoot, "dist/auth/oauth/pkce.js")).href);
-const loadOAuthPage = () => import(pathToFileURL(join(piAIRoot, "dist/auth/oauth/oauth-page.js")).href);
+const loadOAuthPage = () => import(pathToFileURL(join(piAIRoot, "dist/utils/oauth-page.js")).href);
 const loadCopilotOAuth = () => import(pathToFileURL(join(piAIRoot, "dist/auth/oauth/github-copilot.js")).href);
 const loadAnthropicOAuth = () => import(pathToFileURL(join(piAIRoot, "dist/auth/oauth/anthropic.js")).href);
 const loadCodexOAuth = () => import(pathToFileURL(join(piAIRoot, "dist/auth/oauth/openai-codex.js")).href);

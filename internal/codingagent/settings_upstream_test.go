@@ -42,11 +42,11 @@ func TestSettingsManagerOriginalExternalChanges(t *testing.T) {
 		name, initial, external, want string
 		change                        func(*SettingsManager) error
 	}{
-		// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:29
+		// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:29
 		{"should preserve enabledModels when changing thinking level", `{"theme":"dark","defaultModel":"claude-sonnet"}`, `{"theme":"dark","defaultModel":"claude-sonnet","enabledModels":["claude-opus-4-5","gpt-5.2-codex"]}`, `{"theme":"dark","defaultModel":"claude-sonnet","enabledModels":["claude-opus-4-5","gpt-5.2-codex"],"defaultThinkingLevel":"high"}`, func(sm *SettingsManager) error { return sm.SetDefaultThinkingLevel("high") }},
-		// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:60
+		// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:60
 		{"should preserve custom settings when changing theme", `{"defaultModel":"claude-sonnet"}`, `{"defaultModel":"claude-sonnet","shellPath":"/bin/zsh","extensions":["/path/to/extension.ts"]}`, `{"defaultModel":"claude-sonnet","shellPath":"/bin/zsh","extensions":["/path/to/extension.ts"],"theme":"light"}`, func(sm *SettingsManager) error { return sm.SetTheme("light") }},
-		// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:88
+		// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:88
 		{"should let in-memory changes override file changes for same key", `{"theme":"dark"}`, `{"theme":"dark","defaultThinkingLevel":"low"}`, `{"theme":"dark","defaultThinkingLevel":"high"}`, func(sm *SettingsManager) error { return sm.SetDefaultThinkingLevel("high") }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -60,18 +60,18 @@ func TestSettingsManagerOriginalExternalChanges(t *testing.T) {
 }
 
 func TestSettingsManagerOriginalStorage(t *testing.T) {
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:115
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:132
 	t.Run("should keep local-only extensions in extensions array", func(t *testing.T) {
 		sm := writeSettingsLayers(t, `{"extensions":["/local/ext.ts","./relative/ext.ts"]}`, `{}`)
 		settingsEqual(t, sm.GetPackages(), []PackageSource{})
 		settingsEqual(t, sm.GetExtensionPaths(), []string{"/local/ext.ts", "./relative/ext.ts"})
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:130
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:147
 	t.Run("should handle packages with filtering objects", func(t *testing.T) {
 		sm := writeSettingsLayers(t, `{"packages":["npm:simple-pkg",{"source":"npm:shitty-extensions","extensions":["extensions/oracle.ts"],"skills":[]}]}`, `{}`)
 		settingsEqual(t, sm.GetPackages(), []PackageSource{{Source: "npm:simple-pkg"}, {Source: "npm:shitty-extensions", Extensions: []string{"extensions/oracle.ts"}, Skills: []string{}, WasObject: true}})
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:160
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:177
 	t.Run("should reload global settings from disk", func(t *testing.T) {
 		sm := writeSettingsLayers(t, `{"theme":"dark","extensions":["/before.ts"]}`, `{}`)
 		writeSettingsFixture(t, sm.GlobalPath(), `{"theme":"light","extensions":["/after.ts"],"defaultModel":"claude-sonnet"}`)
@@ -80,7 +80,7 @@ func TestSettingsManagerOriginalStorage(t *testing.T) {
 		settingsEqual(t, sm.GetExtensionPaths(), []string{"/after.ts"})
 		settingsEqual(t, sm.GetDefaultModel(), "claude-sonnet")
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:188
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:205
 	t.Run("should keep previous settings and report the file path when the file is invalid", func(t *testing.T) {
 		sm := writeSettingsLayers(t, `{"theme":"dark"}`, `{}`)
 		writeSettingsFixture(t, sm.GlobalPath(), `{ invalid json`)
@@ -91,7 +91,7 @@ func TestSettingsManagerOriginalStorage(t *testing.T) {
 			t.Fatalf("errors=%v", errs)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:221
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:238
 	t.Run("should collect and clear load errors via drainErrors", func(t *testing.T) {
 		sm := writeSettingsLayers(t, `{ invalid global json`, `{ invalid project json`)
 		errs := sm.DrainErrors()
@@ -104,7 +104,7 @@ func TestSettingsManagerOriginalStorage(t *testing.T) {
 		settingsEqual(t, errs[1].Path, filepath.Join(ProjectConfigDir(sm.CWD()), "settings.json"))
 		settingsEqual(t, sm.DrainErrors(), []SettingsError{})
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:240
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:257
 	t.Run("should skip project settings when project is not trusted", func(t *testing.T) {
 		sm := writeSettingsLayers(t, `{"theme":"global"}`, `{"theme":"project"}`)
 		sm = NewSettingsManagerWithProjectTrust(sm.CWD(), sm.AgentDir(), false)
@@ -112,7 +112,7 @@ func TestSettingsManagerOriginalStorage(t *testing.T) {
 		settingsEqual(t, sm.GetTheme(), "global")
 		settingsEqual(t, sm.GetProjectSettings(), Settings{})
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:251
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:268
 	t.Run("should reload project settings after trust changes to true", func(t *testing.T) {
 		sm := writeSettingsLayers(t, `{"theme":"global"}`, `{"theme":"project"}`)
 		sm = NewSettingsManagerWithProjectTrust(sm.CWD(), sm.AgentDir(), false)
@@ -120,7 +120,7 @@ func TestSettingsManagerOriginalStorage(t *testing.T) {
 		settingsEqual(t, sm.IsProjectTrusted(), true)
 		settingsEqual(t, sm.GetTheme(), "project")
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:262
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:279
 	t.Run("should fail project settings writes when project is not trusted", func(t *testing.T) {
 		sm := writeSettingsLayers(t, `{}`, `{"packages":["npm:existing"]}`)
 		sm = NewSettingsManagerWithProjectTrust(sm.CWD(), sm.AgentDir(), false)
@@ -132,12 +132,12 @@ func TestSettingsManagerOriginalStorage(t *testing.T) {
 		settingsEqual(t, sm.GetProjectSettings(), Settings{})
 		assertSettingsFileJSON(t, filepath.Join(ProjectConfigDir(sm.CWD()), "settings.json"), `{"packages":["npm:existing"]}`)
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:276
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:293
 	t.Run("should read default project trust from global settings only", func(t *testing.T) {
 		sm := writeSettingsLayers(t, `{"defaultProjectTrust":"always"}`, `{"defaultProjectTrust":"never"}`)
 		settingsEqual(t, sm.GetDefaultProjectTrust(), "always")
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:285
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:302
 	t.Run("should default invalid project trust settings to ask", func(t *testing.T) {
 		sm := writeSettingsLayers(t, `{"defaultProjectTrust":"sometimes"}`, `{}`)
 		settingsEqual(t, sm.GetDefaultProjectTrust(), "ask")
@@ -146,9 +146,9 @@ func TestSettingsManagerOriginalStorage(t *testing.T) {
 		name  string
 		write bool
 	}{
-		// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:295
+		// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:312
 		{"should not create .pi folder when only reading project settings", false},
-		// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:313
+		// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:330
 		{"should create .pi folder when writing project settings", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -170,7 +170,7 @@ func TestSettingsManagerOriginalStorage(t *testing.T) {
 }
 
 func TestSettingsManagerOriginalValues(t *testing.T) {
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:339
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:356
 	t.Run("maps explicit values and omits auto values", func(t *testing.T) {
 		no, yes := false, true
 		disabled, kitty := tui.ImageProtocol(""), tui.ImageProtocol("kitty")
@@ -185,7 +185,7 @@ func TestSettingsManagerOriginalValues(t *testing.T) {
 			settingsEqual(t, memorySettingsJSON(t, tc.input).GetTerminalCapabilityOverrides(), tc.want)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:358
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:375
 	t.Run("defaults and overrides agent retry delay cap", func(t *testing.T) {
 		settingsEqual(t, memorySettingsJSON(t, `{}`).GetRetrySettings(), RetryConfig{Enabled: true, MaxRetries: 3, BaseDelayMs: 2000, MaxDelayMs: 60000})
 		settingsEqual(t, memorySettingsJSON(t, `{"retry":{"enabled":true,"maxRetries":10,"baseDelayMs":500,"maxAgentDelayMs":5000}}`).GetRetrySettings(), RetryConfig{Enabled: true, MaxRetries: 10, BaseDelayMs: 500, MaxDelayMs: 5000})
@@ -195,11 +195,11 @@ func TestSettingsManagerOriginalValues(t *testing.T) {
 		want       int
 		invalid    bool
 	}{
-		// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:374
+		// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:391
 		{"should default to 5 minutes", `{}`, `{}`, 300000, false},
-		// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:379
+		// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:396
 		{"should use merged global and project settings", `{"httpIdleTimeoutMs":300000}`, `{"httpIdleTimeoutMs":0}`, 0, false},
-		// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:388
+		// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:405
 		{"should reject invalid timeout values", `{"httpIdleTimeoutMs":-1}`, `{}`, 0, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -215,13 +215,13 @@ func TestSettingsManagerOriginalValues(t *testing.T) {
 			}
 		})
 	}
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:397
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:414
 	t.Run("defaults to streaming and ignores project settings", func(t *testing.T) {
 		for _, tc := range []struct{ g, p, want string }{{`{}`, `{}`, "streaming"}, {`{}`, `{"cacheWarming":"idle"}`, "streaming"}, {`{"cacheWarming":"idle"}`, `{"cacheWarming":"idle"}`, "idle"}, {`{"cacheWarming":"bogus"}`, `{"cacheWarming":"idle"}`, "streaming"}} {
 			settingsEqual(t, string(writeSettingsLayers(t, tc.g, tc.p).GetCacheWarmingMode()), tc.want)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:410
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:427
 	t.Run("persists the mode globally", func(t *testing.T) {
 		sm := writeSettingsLayers(t, `{}`, `{}`)
 		settingsOK(t, sm.SetCacheWarmingMode("off"))
@@ -229,7 +229,7 @@ func TestSettingsManagerOriginalValues(t *testing.T) {
 		settingsEqual(t, string(NewSettingsManager(sm.CWD(), sm.AgentDir()).GetCacheWarmingMode()), "off")
 		assertSettingsFileJSON(t, sm.GlobalPath(), `{"cacheWarming":"off"}`)
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:464
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:481
 	t.Run("defaults to regular and persists fullscreen mode", func(t *testing.T) {
 		sm := writeSettingsLayers(t, `{}`, `{}`)
 		settingsEqual(t, sm.GetTuiMode(), "regular")
@@ -239,14 +239,14 @@ func TestSettingsManagerOriginalValues(t *testing.T) {
 		assertSettingsFileJSON(t, sm.GlobalPath(), `{"tuiMode":"fullscreen"}`)
 	})
 	for _, tc := range []struct{ name, initial string }{
-		// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:477
+		// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:494
 		{"falls back to regular for unsupported values", `{"tuiMode":"other"}`},
-		// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:485
+		// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:502
 		{"does not recognize the old uiMode setting", `{"uiMode":"fullscreen"}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) { settingsEqual(t, writeSettingsLayers(t, tc.initial, `{}`).GetTuiMode(), "regular") })
 	}
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:494
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:511
 	t.Run("validates and persists fullscreen settings", func(t *testing.T) {
 		sm := writeSettingsLayers(t, `{}`, `{}`)
 		settingsEqual(t, sm.GetFullscreenExitOutput(), "transcript")
@@ -263,7 +263,7 @@ func TestSettingsManagerOriginalValues(t *testing.T) {
 		settingsEqual(t, sm.GetFullscreenScrollbar(), "auto")
 		settingsEqual(t, sm.GetFullscreenCopyOnSelect(), true)
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:520
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:558
 	t.Run("should default to 1 and persist binary values", func(t *testing.T) {
 		sm := writeSettingsLayers(t, `{}`, `{}`)
 		settingsEqual(t, sm.GetOutputPad(), 1)
@@ -272,11 +272,11 @@ func TestSettingsManagerOriginalValues(t *testing.T) {
 		settingsEqual(t, sm.GetOutputPad(), 0)
 		assertSettingsFileJSON(t, sm.GlobalPath(), `{"outputPad":0}`)
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:533
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:571
 	t.Run("should treat unsupported outputPad values as default padding", func(t *testing.T) {
 		settingsEqual(t, writeSettingsLayers(t, `{"outputPad":2}`, `{}`).GetOutputPad(), 1)
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:543
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:581
 	t.Run("defaults to streaming and persists rendering modes", func(t *testing.T) {
 		sm := writeSettingsLayers(t, `{}`, `{}`)
 		settingsEqual(t, sm.GetMermaidRenderingMode(), "streaming")
@@ -285,33 +285,33 @@ func TestSettingsManagerOriginalValues(t *testing.T) {
 		settingsEqual(t, sm.GetMermaidRenderingMode(), "final")
 		assertSettingsFileJSON(t, sm.GlobalPath(), `{"markdown":{"mermaid":"final"}}`)
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:556
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:594
 	t.Run("falls back to streaming for unsupported values", func(t *testing.T) {
 		settingsEqual(t, writeSettingsLayers(t, `{"markdown":{"mermaid":"sometimes"}}`, `{}`).GetMermaidRenderingMode(), "streaming")
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:564
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:602
 	t.Run("should load shellCommandPrefix from settings", func(t *testing.T) {
 		settingsEqual(t, writeSettingsLayers(t, `{"shellCommandPrefix":"shopt -s expand_aliases"}`, `{}`).GetShellCommandPrefix(), "shopt -s expand_aliases")
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:573
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:611
 	t.Run("should return undefined when shellCommandPrefix is not set", func(t *testing.T) {
 		settingsEqual(t, writeSettingsLayers(t, `{"theme":"dark"}`, `{}`).GetShellCommandPrefix(), "")
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:582
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:620
 	t.Run("should preserve shellCommandPrefix when saving unrelated settings", func(t *testing.T) {
 		sm := writeSettingsLayers(t, `{"shellCommandPrefix":"shopt -s expand_aliases"}`, `{}`)
 		settingsOK(t, sm.SetTheme("light"))
 		settingsOK(t, sm.Flush())
 		assertSettingsFileJSON(t, sm.GlobalPath(), `{"shellCommandPrefix":"shopt -s expand_aliases","theme":"light"}`)
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:597
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:635
 	t.Run("loads global defaults and lets project settings replace them", func(t *testing.T) {
 		sm := writeSettingsLayers(t, `{"defaultTools":["read","bash"]}`, `{}`)
 		settingsEqual(t, sm.GetDefaultTools(), []string{"read", "bash"})
 		writeSettingsFixture(t, filepath.Join(ProjectConfigDir(sm.CWD()), "settings.json"), `{"defaultTools":["grep"]}`)
 		settingsEqual(t, NewSettingsManager(sm.CWD(), sm.AgentDir()).GetDefaultTools(), []string{"grep"})
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:607
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:645
 	t.Run("preserves an empty tool list", func(t *testing.T) {
 		settingsEqual(t, memorySettingsJSON(t, `{"defaultTools":[]}`).GetDefaultTools(), []string{})
 		settingsEqual(t, memorySettingsJSON(t, `{}`).GetDefaultTools(), []string(nil))
@@ -344,6 +344,7 @@ func TestSettingsOutputPadStrictZero(t *testing.T) {
 
 // Pi interactive-mode.ts:handleReloadCommand reads getOutputPad before rebuilding the transcript.
 func TestSettingsOutputPadReloadRejectsNegative(t *testing.T) {
+	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
 	dir := t.TempDir()
 	sm := writeSettingsLayers(t, `{"outputPad":0}`, `{}`)
 	session := NewSession("padding", dir)
@@ -373,21 +374,21 @@ func TestSettingsManagerOriginalPaths(t *testing.T) {
 		name, g, p, want string
 		shell            bool
 	}{
-		// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:614
+		// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:694
 		{"getSessionDir/should return undefined when not set", `{"theme":"dark"}`, `{}`, "", false},
-		// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:620
+		// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:700
 		{"should return global sessionDir", `{"sessionDir":"/tmp/sessions"}`, `{}`, "/tmp/sessions", false},
-		// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:626
+		// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:706
 		{"should return project sessionDir overriding global", `{"sessionDir":"/global/sessions"}`, `{"sessionDir":"./sessions"}`, "./sessions", false},
-		// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:633
+		// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:713
 		{"should expand ~ in sessionDir", `{"sessionDir":"~/sessions"}`, `{}`, filepath.Join(home, "sessions"), false},
-		// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:641
+		// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:694
 		{"getShellPath/should return undefined when not set", `{"theme":"dark"}`, `{}`, "", true},
-		// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:647
+		// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:727
 		{"should return an absolute shellPath unchanged", `{"shellPath":"/bin/zsh"}`, `{}`, "/bin/zsh", true},
-		// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:653
+		// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:733
 		{"should expand ~ in shellPath", `{"shellPath":"~/.local/bin/agent-shell-sandbox"}`, `{}`, filepath.Join(home, ".local/bin/agent-shell-sandbox"), true},
-		// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:662
+		// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:742
 		{"should expand a bare ~ in shellPath", `{"shellPath":"~"}`, `{}`, home, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

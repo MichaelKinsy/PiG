@@ -276,7 +276,7 @@ func TestFauxDeferredObservationOracle(t *testing.T) {
 // The oracle is coding/testdata/rpc33-observation/providers/faux/probe.mjs; each record carries the push count at delivery, so it fixes the tick order.
 func TestFauxObservationOracle(t *testing.T) {
 	oracle := readFauxOracle(t)
-	if oracle.Pi != "0.87.1" {
+	if oracle.Pi != "0.99.2" {
 		t.Fatalf("oracle pins Pi %s", oracle.Pi)
 	}
 	for _, result := range oracle.Results {

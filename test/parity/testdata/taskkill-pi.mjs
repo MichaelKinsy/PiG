@@ -5,7 +5,7 @@ import {createRequire,syncBuiltinESMExports} from "node:module";
 import {join,resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 const root=process.env.PI_PACKAGE_ROOT??resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-assert.equal(JSON.parse(readFileSync(join(root,"package.json"),"utf8")).version,"0.87.1");
+assert.equal(JSON.parse(readFileSync(join(root,"package.json"),"utf8")).version,"0.99.2");
 const require=createRequire(import.meta.url),childProcess=require("node:child_process"),spawn=childProcess.spawn;
 const child=new EventEmitter();let captured,calls=0;
 childProcess.spawn=(command,args,options)=>{captured={command,args,options};calls++;return child;};syncBuiltinESMExports();

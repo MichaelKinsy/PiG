@@ -12,7 +12,7 @@ func markdownForeground(open, text string) string {
 	if open == "" {
 		return text
 	}
-	return open + text + SGRFgReset
+	return open + text + FgClose(open)
 }
 func markdownDecoration(open, close, text string) string {
 	if text == "" {

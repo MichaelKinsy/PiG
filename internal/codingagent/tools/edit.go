@@ -202,7 +202,7 @@ func (t *EditTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 }
 
 func editError(message string) agent.AgentToolResult {
-	return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: message}}, Details: map[string]any{}, IsError: true}
+	return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: message}}, Details: map[string]any{}, IsError: true, Thrown: true}
 }
 
 func (t *EditTool) editLocked(ctx context.Context, absPath string, p editParams) agent.AgentToolResult {

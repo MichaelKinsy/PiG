@@ -42,7 +42,9 @@ type bashToolOutcome struct {
 // piBashToolOutcomes runs each command through Pi's own bash tool definition
 // (core/tools/bash.ts), which starts Git Bash with Node's
 // child_process.spawn(shell, ["-c", command]), and reads bash's stderr from
-// the probe's file after each command.
+// the probe's file after each command. A nonzero exit returns a result with
+// isError true (bash.ts:403-409); an abort, a timeout, or a spawn failure
+// throws.
 func piBashToolOutcomes(t *testing.T, cwd, stderr string, commands []string) []bashToolOutcome {
 	t.Helper()
 	root, err := filepath.EvalSymlinks("../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent")
@@ -63,7 +65,7 @@ const outcomes = [];
 for (const command of commands) {
 	try {
 		const result = await tool.execute("call", { command });
-		outcomes.push({ isError: false, text: result.content.map((part) => part.text).join(""), stderr: readFileSync(stderr, "utf8") });
+		outcomes.push({ isError: result.isError === true, text: result.content.map((part) => part.text).join(""), stderr: readFileSync(stderr, "utf8") });
 	} catch (error) {
 		outcomes.push({ isError: true, text: error.message, stderr: readFileSync(stderr, "utf8") });
 	}

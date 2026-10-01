@@ -1,0 +1,48 @@
+# fix-992-parity-misc: P6 of the Pi 0.99.2 parity aggregate
+
+Base: `staging/porter/pi-0.99.1` at 6d3a0f17a. Oracle: Pi 0.99.2 (`.upstream/v0.99.2`, comparator `extensions/sdk-ts/node_modules/.bin/pi` 0.99.2). Every parity scenario below was run serially against the Pi comparator (`-pig-parity.serial=true -pig-parity.runs=1`).
+
+## Findings (root causes, measured against Pi 0.99.2)
+
+| Scenario | Pi 0.99.2 behaviour | Pig root cause | Fix |
+|---|---|---|---|
+| `project-trust/10-startup-trust-prompt-wording` | The trust prompt heading and selected row carry no foreground colour (bold only). `cli/startup-ui.ts:84-92` `await createStartupTui()` (registers themes, `markTerminalColorsPending()`, `initTheme`) before it constructs `ExtensionSelectorComponent`, whose themed title and rows (`extension-selector.ts:48-84`) are built under the grayscale system theme. | `ShowStartupSelector`/`ShowStartupInput` built the component first and `runStartupComponent` configured the theme afterwards, so the title and rows were themed with the previous (coloured) system theme. | Configure the startup theme before constructing the component (`newStartupSelector`, `newStartupInput`, `SelectStartupSession`). |
+| `startup/05`, `07`, `09` (resource listings) | `interactive-mode.ts:1759-1766` lists `extensions.filter((e) => !e.hidden)`; every `builtin:<name>` extension is hidden (`resource-loader.ts:729`, `types.ts:2015`). | `loadedExtensionResources` read `Runner.ExtensionSources()`, which dropped `Extension.Hidden`, so `builtin:codemode, builtin:mcp, builtin:tool-search` appeared in `[Extensions]`. | `ExtensionSource.Hidden`; the listing skips hidden extensions. |
+| `extensions-runtime/24`, `25` (tool renderers) | `Theme.fg` closes a faint token with SGR `22;39` (`theme.ts:363`); the faint run ends at the text. | `ctx.ui.theme` in every extension SDK (Node `ThemeShim`, Go `UITheme`, Python `Theme`, Rust `Theme`) closed every foreground with SGR `39`, so a faint token's attribute leaked over the cells a `Text` pads after the text (tmux prints `\x1b[2mdone alpha\n\x1b[0m`). | Faint-aware `fg` in all four SDKs. |
+| `selectors/10-login-subscription-providers` | `getLoginProviderOptions` (`interactive-mode.ts:5668-5694`) names every entry `provider.name`: `OpenAI` (`openai.ts:11`), `OpenAI Codex (legacy)` (`openai-codex.ts:10`). | `authSelectorProviderNames` hard-coded two overrides (`meta`, `openai-codex: "OpenAI Codex"`) and otherwise showed the OAuth flow's own name (`OpenAI (ChatGPT subscription)`); `ai.builtinProviderNames["openai-codex"]` was `OpenAI Codex`. | Names come from the provider catalog for every catalog provider; the override table is deleted; the catalog table entry is corrected and a drift test compares every catalog provider with the pinned `providers/<id>.ts`. The scenario's crop end moves with Pi's sort order (see below). |
+| `providers-faux-streaming/19-http-proxy-connect` | Pi opens a second, empty CONNECT to the same origin (target is the origin, not pi.dev; offline Pi makes no catalog request) when the fixture origin (HTTP/1.0, closes) closes tunnel 1: undici's Client `_resume` in the socket `close` handler reconnects; `undici:request:create` shows one POST per API and the origin sees one POST. With an HTTP/1.1 keep-alive origin Pi makes 1 CONNECT per API. | A fixture artifact, not D65 and not a Pi request. | Lead approved option 1 (ANSWER in the questions file): the fixture origin is HTTP/1.1 keep-alive with Content-Length; the CONNECT count stays in the equality. Pi and Pig both make 1+1; scenario passes. |
+
+## Red run
+Ported tests with signature-only stubs (`newStartupSelector`, `newStartupInput` construct the component without configuring the theme). Each fails for the stated reason:
+
+| Test | Failure |
+|---|---|
+| `ai: TestProviderDisplayNamesMatchTheUpstreamProviderSources` | `ProviderDisplayName("openai-codex") = "OpenAI Codex", want "OpenAI Codex (legacy)" (providers/openai-codex.ts)` |
+| `internal/codingagent: TestOAuthProviderListMatchesUpstreamAccountProviderNames` | `openai picker name = "OpenAI (ChatGPT subscription)", want "OpenAI"`; `openai-codex ... "OpenAI Codex", want "OpenAI Codex (legacy)"` |
+| `internal/codingagent: TestStartupPromptComponentsAreBuiltUnderThePendingSystemTheme` | a prompt built before the terminal reports its colors draws `\x1b[38;5;4m` |
+| `internal/codingagent: TestShowLoadedResourcesOmitsHiddenExtensions` | `listing = "[Extensions]\n  auto-one.ts, builtin:codemode, builtin:mcp\n"` |
+| `coding/extension/host/subprocess: TestNodeUIThemeFgClosesFaintTokensLikePi` | `ctx.ui.theme.fg("dim","x")` ends `\x1b[39m`, Pi's Theme ends `\x1b[22;39m` |
+| `extensions/sdk: TestUIThemeFgClosesFaintTokensLikePi` | `Fg faint token = "\x1b[39m\x1b[2mx\x1b[39m"` |
+| `extensions/sdk-py: tests/test_theme_faint.py` | same, Python |
+| `extensions/sdk-rs: theme::tests::fg_closes_a_faint_token_with_sgr_22_39` | same, Rust |
+
+`TestOAuthProviderListKeepsTheFlowNameOfAProviderOutsideTheCatalog` passes before and after: it pins the one case the fix must not change.
+
+## Additional root cause found while fixing the trust prompt
+Ordering alone did not change the output: `tui.ExtensionSelectorComponent` and `ExtensionInputComponent` themed their title, description, hint and rows at every `Render`, whereas Pi builds each `Text` with `theme.fg(...)` at construction (`extension-selector.ts:48-85`, `extension-input.ts:46-76`) and rebuilds only the rows when the selection moves (`updateList`). The tmux terminal answers the color query, so Pig's live title took the reported colors, while Pi's kept its grayscale text. Both components now bake the themed text as Pi does; the borders stay live (`DynamicBorder`). Tests: `tui/extension_dialog_baked_theme_test.go` (observed failing before the change: `a row built under the grayscale theme took the later colors`).
+
+Sibling found with the login names: `internal/codingagent/model_registry.go` carried a second hard-coded name table (`builtInProviderDisplayNames`, 0.80.x-era labels such as `Google Gemini`, `Together AI`, and missing `nvidia`, `typesafe`, `xiaomi`, ...). Pi 0.99.2 `getProviderDisplayName` returns the runtime provider's `name` (`model-registry.ts:176`). The table is deleted; the catalog's names (`ai.ProviderDisplayName`, checked against every `providers/<id>.ts` by `TestProviderDisplayNamesMatchTheUpstreamProviderSources`) are the single source. Observed failing before the change: `GetProviderDisplayName("nvidia") = "nvidia"`, `("together") = "Together AI"`.
+A first version returned the id for a provider outside the catalog, which broke `coding.TestModelRegistryDynamicProvidersUpstream` (an OAuth-only registration must keep its OAuth name); `catalogProviderName` returns empty for non-catalog ids (fix commit after the main green).
+
+## Green results
+Parity (declared runs, serial, against Pi 0.99.2): `project-trust/10-startup-trust-prompt-wording`, `startup/05`, `07`, `09`, `extensions-runtime/24`, `25`, `selectors/10-login-subscription-providers`, `providers-faux-streaming/19-http-proxy-connect` pass. 38 scenarios mentioning /login, /logout, OpenAI Codex, the trust prompt or the extension selector/input were run serially at one run each: 37 pass; `model-resolver-selector/21-post-login-default-model` fails identically on both sides (Pi 0.99.2's OpenCode Go default is `kimi-k3`, the scenario expects `kimi-k2.6`): stale fixture, not this lane (belongs with fix-992-parity-fixtures).
+Unit: `go test -count=1` of `./tui ./internal/codingagent ./coding ./cmd/pig ./ai ./coding/extension/host/inproc ./extensions/sdk*` pass; `./coding/extension/host/subprocess` passes except `TestNodeVendoredTuiUpstreamTests/native-clipboard-linux` (Xvfb missing on this host, aggregate item H) and one load-only flake of `TestNodeRetainedRequestContextNormalAndCancelled` (passes `-count=5` alone). `-race` runs of `./tui ./internal/codingagent ./coding/extension/host/inproc ./extensions/sdk ./ai` pass; the `-race` runs of `./cmd/pig` (RPC stdin-EOF tests, aggregate item B, `fix-992-stdin-eof`) and `./coding/extension/host/subprocess` (10 minute default timeout) hit load-only problems that are not in this lane's paths.
+Load: `-race -count=24`, `GOMAXPROCS=4`, `taskset -c 0-3` with six CPU burners: `TestStartupPrompt*`, `TestShowLoadedResources*`, `TestOAuthProviderList*`, `TestModelRegistry_GetProviderDisplayName*` and the `tui` `TestExtension*` tests pass.
+Lint: `golangci-lint` on the touched packages reports only two pre-existing findings in files this lane does not touch (`ai/openai.go:1084` goimports, `ai/anthropic_token_cache_test.go:85` unused `seconds`).
+Generated: `make generate` regenerates `test/parity/interfaces/pig-go.json` (the new `inproc.ExtensionSource.Hidden`); its `known-gaps` step stops on the bedrock/images-models policy rows (aggregate item C, owner decision), so `custom-factory-ledger` and `coverage` were run directly and change nothing.
+
+## Deferred / notes for other families
+- Cross-SDK conformance row for the faint close: each SDK has a byte-exact unit test bound to Pi's `\x1b[22;39m` (Node compares against Pi's own `Theme`); the shared conformance harness has no row that seeds a host theme palette and reads `ctx.ui.theme.fg`, and adding one needs a host UI `Theme()` hook in all four fixture programs. Not done here.
+- Pi's `ExtensionEditorComponent` also bakes its themed description at construction; Pig's editor still themes at render (`tui/extension_editor.go`). Out of this lane's scenarios; not changed.
+- Stubs left for other families: none (`newStartupSelector`/`newStartupInput` are implemented).
+- `21-post-login-default-model` expectation is stale on both sides (fixtures lane).

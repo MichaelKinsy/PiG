@@ -125,7 +125,8 @@ func main() {
 	recommendationsPath := flag.String("recommendations", "", "non-authoritative porting recommendations")
 	goInventoryPath := flag.String("go-inventory", "test/parity/interfaces/pig-go.json", "generated Pig Go candidate inventory")
 	behaviorContractsPath := flag.String("behavior-contracts", "test/parity/behavior-contracts.toml", "reviewed behavioral contract ledger")
-	generatePending := flag.Bool("generate-pending", false, "write an all-pending mapping ledger to stdout")
+	generatePending := flag.Bool("generate-pending", false, "write a pending mapping ledger to stdout")
+	previousMappingPath := flag.String("previous-mapping", "", "with -generate-pending, keep each deferred or designed-out row of this earlier ledger whose interface shape is unchanged")
 	repoRoot := flag.String("repo-root", ".", "repository root for mapping reference validation")
 	strict := flag.Bool("strict", false, "reject pending/partial mappings and incomplete closure")
 	flag.Parse()
@@ -148,7 +149,14 @@ func main() {
 		if len(problems) > 0 {
 			exitProblems(problems)
 		}
-		if err := writePendingMapping(upstream); err != nil {
+		var carried map[string]carriedMapping
+		if *previousMappingPath != "" {
+			var err error
+			if carried, err = readCarriedMappings(*previousMappingPath); err != nil {
+				exitf("interface-inventory: %v", err)
+			}
+		}
+		if err := writePendingMapping(upstream, carried); err != nil {
 			exitf("interface-inventory: generate pending mapping: %v", err)
 		}
 		return
@@ -219,9 +227,14 @@ func validateInventory(upstream inventory) []string {
 	expectedPackages := map[string]string{
 		"agent":        "@earendil-works/pi-agent-core",
 		"ai":           "@earendil-works/pi-ai",
+		"codemode":     "@earendil-works/pi-codemode",
 		"coding-agent": "@earendil-works/pi-coding-agent",
+		"mcp":          "@earendil-works/pi-mcp",
 		"tui":          "@earendil-works/pi-tui",
 	}
+	// Upstream added these packages after 0.87.1; an inventory of an earlier release has neither. The extractor
+	// (test/parity/interface-extractor/src/inventory.mjs OPTIONAL_PACKAGES) skips a package the release does not ship.
+	optionalPackages := map[string]bool{"codemode": true, "mcp": true}
 	entrypoints := make(map[string]struct{})
 	seenPackages := make(map[string]struct{}, len(upstream.Packages))
 	for _, pkg := range upstream.Packages {
@@ -241,7 +254,7 @@ func validateInventory(upstream inventory) []string {
 		}
 	}
 	for key := range expectedPackages {
-		if _, exists := seenPackages[key]; !exists {
+		if _, exists := seenPackages[key]; !exists && !optionalPackages[key] {
 			problems = append(problems, fmt.Sprintf("missing tracked package %s", key))
 		}
 	}
@@ -803,23 +816,74 @@ func typeMemberExists(expression ast.Expr, name string) bool {
 	return false
 }
 
-func writePendingMapping(upstream inventory) error {
+func writePendingMapping(upstream inventory, carried map[string]carriedMapping) error {
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(pendingMappingLedger(upstream, carried))
+}
+
+// carriedMapping is one reviewed row of the previous ledger, kept verbatim.
+type carriedMapping struct {
+	shapeHash   string
+	disposition string
+	row         json.RawMessage
+}
+
+// carriedDispositions are the scope decisions a declaration shape can carry across a version leap. A ported,
+// partial or divergence row claims behavior, and the shape hash does not see behavior: a method body can change
+// under an unchanged signature, and an alias hashes only its name (Pi 0.99.1 added data.disposition to the
+// prompt, steer and follow_up members of RpcResponse without changing its hash). Those rows are regenerated as
+// pending, and the reviewer re-promotes each one after checking the upstream implementation.
+var carriedDispositions = map[string]bool{"deferred": true, "designed-out": true}
+
+type pendingLedger struct {
+	UpstreamVersion string            `json:"upstreamVersion"`
+	Mappings        []json.RawMessage `json:"mappings"`
+}
+
+// readCarriedMappings reads the reviewed rows of a previous version's ledger by interface ID.
+func readCarriedMappings(path string) (map[string]carriedMapping, error) {
+	var previous pendingLedger
+	if err := decodeJSONFile(path, &previous); err != nil {
+		return nil, err
+	}
+	carried := make(map[string]carriedMapping, len(previous.Mappings))
+	for _, row := range previous.Mappings {
+		var key struct {
+			ID                string `json:"id"`
+			Disposition       string `json:"disposition"`
+			UpstreamShapeHash string `json:"upstreamShapeHash"`
+		}
+		if err := json.Unmarshal(row, &key); err != nil {
+			return nil, fmt.Errorf("decode %s: %w", path, err)
+		}
+		carried[key.ID] = carriedMapping{shapeHash: key.UpstreamShapeHash, disposition: key.Disposition, row: row}
+	}
+	return carried, nil
+}
+
+// pendingMappingLedger has one row per current interface. A deferred or designed-out row whose ID and upstream shape
+// hash match a carried row keeps that reviewed row. Every other interface is pending: a new or changed shape, and every
+// behavior claim (see carriedDispositions), is reviewed again.
+func pendingMappingLedger(upstream inventory, carried map[string]carriedMapping) pendingLedger {
 	type pendingEntry struct {
 		ID                string `json:"id"`
 		Disposition       string `json:"disposition"`
 		UpstreamShapeHash string `json:"upstreamShapeHash"`
 	}
-	type pendingLedger struct {
-		UpstreamVersion string         `json:"upstreamVersion"`
-		Mappings        []pendingEntry `json:"mappings"`
-	}
-	ledger := pendingLedger{UpstreamVersion: upstream.UpstreamVersion, Mappings: make([]pendingEntry, 0, len(upstream.Interfaces))}
+	ledger := pendingLedger{UpstreamVersion: upstream.UpstreamVersion, Mappings: make([]json.RawMessage, 0, len(upstream.Interfaces))}
 	for _, entry := range upstream.Interfaces {
-		ledger.Mappings = append(ledger.Mappings, pendingEntry{ID: entry.ID, Disposition: "pending", UpstreamShapeHash: entry.ShapeHash})
+		if previous, ok := carried[entry.ID]; ok && previous.shapeHash == entry.ShapeHash && carriedDispositions[previous.disposition] {
+			ledger.Mappings = append(ledger.Mappings, previous.row)
+			continue
+		}
+		row, err := json.Marshal(pendingEntry{ID: entry.ID, Disposition: "pending", UpstreamShapeHash: entry.ShapeHash})
+		if err != nil {
+			panic(err) // a struct of three strings always marshals
+		}
+		ledger.Mappings = append(ledger.Mappings, row)
 	}
-	encoder := json.NewEncoder(os.Stdout)
-	encoder.SetIndent("", "  ")
-	return encoder.Encode(ledger)
+	return ledger
 }
 
 func exitProblems(problems []string) {

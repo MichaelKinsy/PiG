@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/cellpack"
@@ -784,5 +785,56 @@ func TestAuthInspectionSkipsUntrustedProjectExtensions(t *testing.T) {
 		if len(configs) != want {
 			t.Errorf("trusted=%v: configs = %#v, want %d", trusted, configs, want)
 		}
+	}
+}
+
+// lockHoldingLoginProvider's login takes the auth store's lock as another process would, as it returns its credential, and releases it after hold.
+type lockHoldingLoginProvider struct {
+	lockDir  string
+	hold     time.Duration
+	released chan error
+}
+
+func (lockHoldingLoginProvider) ID() string               { return "lock-holding-login" }
+func (lockHoldingLoginProvider) Name() string             { return "Lock Holding Login" }
+func (lockHoldingLoginProvider) UsesCallbackServer() bool { return false }
+func (p lockHoldingLoginProvider) Login(ai.OAuthLoginCallbacks) (ai.OAuthCredentials, error) {
+	if err := os.Mkdir(p.lockDir, 0o777); err != nil {
+		return ai.OAuthCredentials{}, err
+	}
+	go func() {
+		time.Sleep(p.hold)
+		p.released <- os.Remove(p.lockDir)
+	}()
+	return ai.OAuthCredentials{Access: "access", Refresh: "held-refresh", Expires: time.Now().Add(time.Hour).UnixMilli()}, nil
+}
+func (lockHoldingLoginProvider) RefreshToken(creds ai.OAuthCredentials) (ai.OAuthCredentials, error) {
+	return creds, nil
+}
+func (lockHoldingLoginProvider) GetAPIKey(creds ai.OAuthCredentials) string { return creds.Access }
+
+// The CLI login stores its credential the way interactive login does, through the auth store's cancellable lock, which waits for another process's lock as Pi's credentials.modify does (withLockAsync, 30 s). The synchronous lock gives up after ten 20 ms attempts, so a 500 ms hold failed the save with "Lock file is already being held".
+func TestRunAuthCommand_LoginWaitsForAnotherProcessLock(t *testing.T) {
+	dir := t.TempDir()
+	oldWD, _ := os.Getwd()
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(oldWD) }()
+	t.Setenv("PIG_CODING_AGENT_DIR", ".")
+	provider := lockHoldingLoginProvider{lockDir: filepath.Join(dir, "auth.json.lock"), hold: 500 * time.Millisecond, released: make(chan error, 1)}
+	ai.RegisterOAuthProvider(provider.ID(), provider)
+	t.Cleanup(func() { ai.UnregisterOAuthProvider(provider.ID()) })
+	stdout, stderr, code := captureWithStdin(t, "", func() int {
+		return runLoginCommand([]string{"login", provider.ID()})
+	})
+	if err := <-provider.released; err != nil {
+		t.Fatalf("release the held lock: %v", err)
+	}
+	if code != 0 || !strings.Contains(stdout, "Credentials saved to auth.json") {
+		t.Fatalf("code = %d\nstdout:\n%s\nstderr:\n%s", code, stdout, stderr)
+	}
+	if data, err := os.ReadFile(filepath.Join(dir, "auth.json")); err != nil || !strings.Contains(string(data), `"refresh": "held-refresh"`) {
+		t.Fatalf("auth.json = %s, %v", data, err)
 	}
 }

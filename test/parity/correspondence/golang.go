@@ -75,7 +75,8 @@ type goFunctionCallerSpec struct {
 
 func addGoFunctionCallers(ctx context.Context, root, repositoryPrefix, targetCommit string, functions []Function) error {
 	specs := []goFunctionCallerSpec{
-		{function: "compact", path: "coding/session.go", caller: "compact", callee: "compaction.Compact"},
+		// upstream: agent-session.ts:2633-2661 (_runDefaultCompaction is the one caller of the lower-level compact(), for manual and automatic compaction).
+		{function: "compact", path: "coding/session_summarization_auth.go", caller: "runDefaultCompaction", callee: "compaction.Compact"},
 		{function: "generateTurnPrefixSummary", path: "internal/codingagent/compaction/compaction.go", caller: "Compact", callee: "generateTurnPrefixSummary"},
 		{function: "mergeSettings", path: "internal/codingagent/settings.go", caller: "Load", callee: "mergeSettings"},
 		{function: "setProjectTrusted", path: "cmd/pig/cli_runtime_build.go", caller: "buildResources", callee: "services.SettingsManager().SetProjectTrusted"},

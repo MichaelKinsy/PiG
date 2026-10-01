@@ -5,19 +5,12 @@
  * gateway; only the interactive browser authorization endpoint is discovered.
  * Model catalog loading is owned by the Radius provider.
  *
- * NOTE: This module uses node:http for the OAuth callback server.
+ * NOTE: This module uses node:http (via callback-server.ts) for the OAuth callback server.
  * It is only intended for CLI use, not browser environments.
  */
-// NEVER convert to top-level imports - breaks browser/Vite builds
-let _http = null;
-if (typeof process !== "undefined" && (process.versions?.node || process.versions?.bun)) {
-    import("node:http").then((m) => {
-        _http = m;
-    });
-}
 import { normalizeRadiusGatewayUrl } from "../../providers/radius-config.js";
+import { startOAuthCallbackServer } from "./callback-server.js";
 import { pollOAuthDeviceCodeFlow } from "./device-code.js";
-import { oauthErrorHtml, oauthSuccessHtml } from "./oauth-page.js";
 import { generatePKCE } from "./pkce.js";
 const CALLBACK_HOST = "127.0.0.1";
 const CALLBACK_PORT = 1456;
@@ -101,71 +94,6 @@ async function requestOAuthToken(gateway, body, signal) {
         scope: data.scope,
     };
 }
-function startOAuthCallbackServer(expectedState, signal) {
-    if (!_http) {
-        throw new Error("Radius OAuth is only available in Node.js environments");
-    }
-    let settle = () => { };
-    let settled = false;
-    const wait = new Promise((resolve) => {
-        settle = resolve;
-    });
-    const finish = (code) => {
-        if (settled) {
-            return;
-        }
-        settled = true;
-        signal.removeEventListener("abort", onAbort);
-        settle(code);
-    };
-    const onAbort = () => finish(null);
-    signal.addEventListener("abort", onAbort, { once: true });
-    const sendPage = (response, status, html) => {
-        response.statusCode = status;
-        response.setHeader("content-type", "text/html; charset=utf-8");
-        response.end(html);
-    };
-    const server = _http.createServer((request, response) => {
-        const url = new URL(request.url ?? "/", REDIRECT_URI);
-        if (url.pathname !== CALLBACK_PATH) {
-            sendPage(response, 404, oauthErrorHtml("Callback route not found."));
-            return;
-        }
-        if (url.searchParams.get("state") !== expectedState) {
-            sendPage(response, 400, oauthErrorHtml("OAuth state mismatch."));
-            return;
-        }
-        const error = url.searchParams.get("error");
-        if (error) {
-            sendPage(response, 400, oauthErrorHtml(url.searchParams.get("error_description") ?? error));
-            finish(null);
-            return;
-        }
-        const code = url.searchParams.get("code");
-        if (!code) {
-            sendPage(response, 400, oauthErrorHtml("Missing authorization code."));
-            return;
-        }
-        sendPage(response, 200, oauthSuccessHtml("Signed in to Radius. You may now close this page."));
-        finish(code);
-    });
-    return new Promise((resolve) => {
-        server
-            .listen(CALLBACK_PORT, CALLBACK_HOST, () => {
-            resolve({
-                waitForCode: () => wait,
-                close: () => {
-                    finish(null);
-                    server.close();
-                },
-            });
-        })
-            .once("error", () => {
-            finish(null);
-            resolve({ waitForCode: async () => null, close: () => { } });
-        });
-    });
-}
 async function loginWithBrowser(gateway, authorizationEndpoint, interaction) {
     const { verifier, challenge } = await generatePKCE();
     const state = crypto.randomUUID();
@@ -180,7 +108,21 @@ async function loginWithBrowser(gateway, authorizationEndpoint, interaction) {
         handoff: "url",
         state,
     }).toString();
-    const callbackServer = await startOAuthCallbackServer(state, interaction.signal);
+    const callback = await startOAuthCallbackServer({
+        providerName: "Radius",
+        host: CALLBACK_HOST,
+        port: CALLBACK_PORT,
+        path: CALLBACK_PATH,
+        state,
+        complete: (code) => requestOAuthToken(gateway, new URLSearchParams({
+            grant_type: "authorization_code",
+            client_id: OAUTH_CLIENT_ID,
+            redirect_uri: REDIRECT_URI,
+            code,
+            code_verifier: verifier,
+        }), interaction.signal),
+        signal: interaction.signal,
+    });
     interaction.notify({ type: "progress", message: `Listening for OAuth callback on ${REDIRECT_URI}` });
     interaction.notify({
         type: "auth_url",
@@ -188,23 +130,13 @@ async function loginWithBrowser(gateway, authorizationEndpoint, interaction) {
         instructions: "Continue in your browser.",
     });
     try {
-        const code = await callbackServer.waitForCode();
-        if (!code) {
-            if (interaction.signal.aborted) {
-                throw new Error("Login cancelled");
-            }
+        const credential = await callback.wait();
+        if (!credential)
             throw new Error("OAuth callback did not complete.");
-        }
-        return await requestOAuthToken(gateway, new URLSearchParams({
-            grant_type: "authorization_code",
-            client_id: OAUTH_CLIENT_ID,
-            redirect_uri: REDIRECT_URI,
-            code,
-            code_verifier: verifier,
-        }), interaction.signal);
+        return credential;
     }
     finally {
-        callbackServer.close();
+        callback.close();
     }
 }
 async function requestDeviceAuthorization(gateway, signal) {

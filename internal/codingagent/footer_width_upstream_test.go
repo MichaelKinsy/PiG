@@ -41,6 +41,16 @@ func TestFooterWidthUpstream(t *testing.T) {
 		footer.SetProviderCount(2)
 		assertUpstreamFooterWidth(t, footer, 60)
 	})
+	// .upstream/v0.99.1/packages/coding-agent/test/footer-width.test.ts:160
+	t.Run("shows the physical model a virtual model routed to", func(t *testing.T) {
+		footer := upstreamFooter(t, nil, "test", "auto")
+		footer.model.Capabilities.MaxThinking = ai.ThinkingLevel("high")
+		footer.SetThinkingLevel("high")
+		footer.SetRoutedModelSource(func() *RoutedModelSelection {
+			return &RoutedModelSelection{Model: footerTestModel("test", "gpt-5.6-luna", 0, 0), ThinkingLevel: ai.ThinkingLevel("medium")}
+		})
+		assertUpstreamFooterStats(t, footer, "auto \u2022 high \u2192 gpt-5.6-luna \u2022 medium")
+	})
 	// .upstream/v0.87.1/packages/coding-agent/test/footer-width.test.ts:155
 	t.Run("includes summary and tool result usage in the total cost", func(t *testing.T) {
 		session := NewSession("footer", "/tmp/project")
@@ -59,6 +69,25 @@ func TestFooterWidthUpstream(t *testing.T) {
 		footer := upstreamFooter(t, nil, "test", "test-model")
 		footer.SetUsageTotalsSource(session.FooterUsageTotals)
 		assertUpstreamFooterStats(t, footer, "$1.250")
+	})
+	// .upstream/v0.99.1/packages/coding-agent/test/footer-width.test.ts:213
+	t.Run("updates cached usage totals after an entry is appended", func(t *testing.T) {
+		usage := &ai.Usage{Input: 10, Output: 1, Cost: ai.UsageCost{Total: 0.5}}
+		session := NewSession("footer", "/tmp/project")
+		if _, err := session.AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant, Usage: usage}}); err != nil {
+			t.Fatal(err)
+		}
+		m := &InteractiveMode{opts: InteractiveOptions{SessionHandle: &recordingCompactHandle{inner: session}, Model: footerTestModel("test", "test-model", 0, 0), AgentDir: t.TempDir()}}
+		footer := m.newFooter()
+		footer.SetModel(m.opts.Model)
+		footer.cwd, footer.gitBranch = "/tmp/project", "main"
+		footer.SetProviderCount(1)
+		assertUpstreamFooterStats(t, footer, "$0.500")
+
+		if _, err := session.AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant, Usage: usage}}); err != nil {
+			t.Fatal(err)
+		}
+		assertUpstreamFooterStats(t, footer, "$1.000")
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/footer-width.test.ts:193
 	t.Run("shows the latest cache hit rate when cache usage is present", func(t *testing.T) {

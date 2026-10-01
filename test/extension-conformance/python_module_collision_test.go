@@ -12,7 +12,6 @@ import (
 // Sharing sys.modules would run the first imported factory for both roots.
 func TestPythonFactoryModuleCollisionKeepsBothIdentities(t *testing.T) {
 	root := findModuleRoot(t)
-	t.Setenv("PIG_SDK_PY_ROOT", filepath.Join(root, "extensions", "sdk-py"))
 	configs := []subprocess.ExtConfig{
 		packedFlagFactory(t, root, "python", "z-first", true),
 		packedFlagFactory(t, root, "python", "a-second", false),

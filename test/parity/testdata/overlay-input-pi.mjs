@@ -4,7 +4,7 @@ import { readFileSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 const root = process.env.PI_PACKAGE_ROOT ?? realpathSync('extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent');
-assert.equal(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version, '0.87.1');
+assert.equal(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version, '0.99.2');
 const dist = join(root, 'node_modules/@earendil-works/pi-tui/dist');
 const { TuiMainScreen } = await import(pathToFileURL(join(dist, 'tui-main-screen.js')).href);
 const { TuiAltScreen } = await import(pathToFileURL(join(dist, 'tui-alt-screen.js')).href);

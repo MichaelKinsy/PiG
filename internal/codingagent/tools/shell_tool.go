@@ -3,10 +3,13 @@ package tools
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
+	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -58,6 +61,38 @@ func shellToolSchema(name, shellName string, exposeSessionEnvironment bool) ai.T
 	}}`)
 }
 
+// shellOutputSchema mirrors upstream bashOutputSchema (bash.ts): the result
+// for programmatic callers such as codemode scripts. A non-zero exit code is
+// an error result for the model, but scripts still resolve to this value.
+// The key order is TypeBox's Type.Object serialization: type, required, properties.
+const shellOutputSchema = `{"type":"object","required":["output","truncated","exit_code","wall_time_seconds"],"properties":{
+	"output":{"type":"string","description":"Combined stdout and stderr, up to 1 MiB. Longer output keeps its first and last 512 KiB around an omission marker."},
+	"truncated":{"type":"boolean","description":"Whether ` + "`output`" + ` omits part of the command output"},
+	"full_output_path":{"type":"string","description":"Temp file with the full output, when truncated"},
+	"exit_code":{"type":"number"},
+	"wall_time_seconds":{"type":"number"}
+}}`
+
+// structuredOutputMaxBytes mirrors upstream STRUCTURED_OUTPUT_MAX_BYTES: the
+// limit of structuredContent.output, which programmatic callers receive.
+const structuredOutputMaxBytes = 1024 * 1024 // upstream: packages/coding-agent/src/core/tools/bash.ts:STRUCTURED_OUTPUT_MAX_BYTES
+
+// roundedWallTimeSeconds mirrors upstream Math.round((performance.now() - startedAt) / 100) / 10:
+// seconds to one decimal, halves rounding up.
+func roundedWallTimeSeconds(elapsed time.Duration) float64 {
+	return math.Floor(float64(elapsed)/float64(time.Millisecond)/100+0.5) / 10
+}
+
+// shellStructuredContent mirrors upstream BashToolOutput; the field order is
+// the order upstream builds the object in.
+type shellStructuredContent struct {
+	Output          string  `json:"output"`
+	Truncated       bool    `json:"truncated"`
+	FullOutputPath  string  `json:"full_output_path,omitempty"`
+	ExitCode        int     `json:"exit_code"`
+	WallTimeSeconds float64 `json:"wall_time_seconds"`
+}
+
 // strictToolSampling mirrors the constrainedSampling upstream's read, bash,
 // powershell, edit and write definitions request: { type: "json_schema",
 // strict: "prefer" }.
@@ -78,10 +113,10 @@ func jsNumber(v float64) string {
 	return strconv.FormatFloat(v, 'f', -1, 64)
 }
 
-// shellToolError is a failed shell tool call. Upstream throws, and the agent
+// shellToolError is a failed shell tool call. Upstream throws (Thrown marks the result as that thrown error), and the agent
 // loop turns the message into an error result with an empty details object.
 func shellToolError(message string) agent.AgentToolResult {
-	return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: message}}, Details: map[string]any{}, IsError: true}
+	return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: message}}, Details: map[string]any{}, IsError: true, Thrown: true}
 }
 
 // appendShellStatus mirrors upstream appendStatus.
@@ -115,8 +150,8 @@ func executeShellTool(ctx context.Context, cwd string, cfg shellToolConfig, rawP
 	if onUpdate != nil {
 		updates = newShellUpdateScheduler(output, onUpdate)
 		// The initial empty update creates the streaming card before any
-		// output arrives.
-		onUpdate("", nil)
+		// output arrives. upstream: bash.ts:321-323
+		onUpdate(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{}})
 	}
 	finishOutput := func() OutputSnapshot {
 		output.Finish()
@@ -128,6 +163,7 @@ func executeShellTool(ctx context.Context, cwd string, cfg shellToolConfig, rawP
 		return snapshot
 	}
 
+	startedAt := time.Now()
 	result, err := cfg.operations.Exec(ctx, command, cwd, BashOperationsExecOptions{
 		OnData: func(data []byte) {
 			output.Append(data)
@@ -155,14 +191,40 @@ func executeShellTool(ctx context.Context, cwd string, cfg shellToolConfig, rawP
 	if result.ExitCode == nil {
 		return shellToolError(appendShellStatus(text, "Command terminated without an exit code")), nil
 	}
-	if *result.ExitCode != 0 {
-		return shellToolError(appendShellStatus(text, fmt.Sprintf("Command exited with code %d", *result.ExitCode))), nil
+	wallTimeSeconds := roundedWallTimeSeconds(time.Since(startedAt))
+	fullOutput, err := output.ReadFullOutput(structuredOutputMaxBytes)
+	if err != nil {
+		if pathError, ok := errors.AsType[*os.PathError](err); ok {
+			return shellToolError(NodeFSError(pathError.Err, pathError.Op, pathError.Path)), nil
+		}
+		return shellToolError(err.Error()), nil
+	}
+	structured := shellStructuredContent{
+		Output:          fullOutput.Content,
+		Truncated:       fullOutput.Truncated,
+		ExitCode:        *result.ExitCode,
+		WallTimeSeconds: wallTimeSeconds,
+	}
+	if fullOutput.Truncated {
+		structured.FullOutputPath = snapshot.FullOutputPath
+	}
+	structuredContent, err := json.Marshal(structured)
+	if err != nil {
+		return agent.AgentToolResult{}, err
 	}
 	var resultDetails any
 	if details != nil {
 		resultDetails = details
 	}
-	return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: text}}, Details: resultDetails}, nil
+	if *result.ExitCode != 0 {
+		return agent.AgentToolResult{
+			Content:           []ai.ToolResultMessageContent{ai.TextContent{Text: appendShellStatus(text, fmt.Sprintf("Command exited with code %d", *result.ExitCode))}},
+			Details:           resultDetails,
+			StructuredContent: structuredContent,
+			IsError:           true,
+		}, nil
+	}
+	return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: text}}, Details: resultDetails, StructuredContent: structuredContent}, nil
 }
 
 // formatShellOutput mirrors upstream formatOutput: the output (or emptyText),

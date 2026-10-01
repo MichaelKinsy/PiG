@@ -566,6 +566,60 @@ classification = "external"
 rationale = "Go release index (go.dev/dl) release field owned by the external download service."
 
 [[fields]]
+id = "mcp/client.go#ClientOptions.ProtocolVersion:go:-"
+path = "mcp/client.go"
+owner = "ClientOptions"
+field = "ProtocolVersion"
+wire_name = "-"
+classification = "external"
+rationale = "Model Context Protocol revision negotiated in initialize and sent as the MCP-Protocol-Version header; owned by the external MCP specification and mirrored from packages/mcp/src/protocol/types.ts (LATEST_PROTOCOL_VERSION, SUPPORTED_PROTOCOL_VERSIONS), not a Pig-owned format."
+
+[[fields]]
+id = "mcp/oauth/discovery.go#DiscoveryOptions.ProtocolVersion:go:-"
+path = "mcp/oauth/discovery.go"
+owner = "DiscoveryOptions"
+field = "ProtocolVersion"
+wire_name = "-"
+classification = "external"
+rationale = "Model Context Protocol revision negotiated in initialize and sent as the MCP-Protocol-Version header; owned by the external MCP specification and mirrored from packages/mcp/src/protocol/types.ts (LATEST_PROTOCOL_VERSION, SUPPORTED_PROTOCOL_VERSIONS), not a Pig-owned format."
+
+[[fields]]
+id = "mcp/types.go#Implementation.Version:json:version"
+path = "mcp/types.go"
+owner = "Implementation"
+field = "Version"
+wire_name = "version"
+classification = "external"
+rationale = "MCP clientInfo/serverInfo implementation version string reported by the peer (Implementation.version in packages/mcp/src/protocol/types.ts); a release label, not a format discriminator."
+
+[[fields]]
+id = "mcp/types.go#InitializeParams.ProtocolVersion:json:protocolVersion"
+path = "mcp/types.go"
+owner = "InitializeParams"
+field = "ProtocolVersion"
+wire_name = "protocolVersion"
+classification = "external"
+rationale = "Model Context Protocol revision negotiated in initialize and sent as the MCP-Protocol-Version header; owned by the external MCP specification and mirrored from packages/mcp/src/protocol/types.ts (LATEST_PROTOCOL_VERSION, SUPPORTED_PROTOCOL_VERSIONS), not a Pig-owned format."
+
+[[fields]]
+id = "mcp/types.go#InitializeResult.ProtocolVersion:json:protocolVersion"
+path = "mcp/types.go"
+owner = "InitializeResult"
+field = "ProtocolVersion"
+wire_name = "protocolVersion"
+classification = "external"
+rationale = "Model Context Protocol revision negotiated in initialize and sent as the MCP-Protocol-Version header; owned by the external MCP specification and mirrored from packages/mcp/src/protocol/types.ts (LATEST_PROTOCOL_VERSION, SUPPORTED_PROTOCOL_VERSIONS), not a Pig-owned format."
+
+[[fields]]
+id = "mcp/types.go#const.LatestProtocolVersion:go:-"
+path = "mcp/types.go"
+owner = "<package>"
+field = "LatestProtocolVersion"
+wire_name = "-"
+classification = "external"
+rationale = "Model Context Protocol revision negotiated in initialize and sent as the MCP-Protocol-Version header; owned by the external MCP specification and mirrored from packages/mcp/src/protocol/types.ts (LATEST_PROTOCOL_VERSION, SUPPORTED_PROTOCOL_VERSIONS), not a Pig-owned format."
+
+[[fields]]
 id = "test/parity/cmd/asynccheck/main.go#asyncManifest.Version:go:-"
 path = "test/parity/cmd/asynccheck/main.go"
 owner = "asyncManifest"

@@ -475,6 +475,7 @@ export async function processResponsesStream(openaiStream, output, stream, model
         }
     };
     for await (const event of openaiStream) {
+        await options?.onProviderStreamEvent?.(event, model);
         if (event.type === "response.created") {
             output.responseId = event.response.id;
         }
@@ -655,6 +656,19 @@ export async function processResponsesStream(openaiStream, output, stream, model
     }
     if (!sawTerminalResponseEvent) {
         throw new Error("OpenAI Responses stream ended before a terminal response event");
+    }
+    // The agent runs every tool call in the final message. Refuse to hand over calls whose
+    // output_item.done never arrived: their arguments may be cut off or mixed up, e.g. when a
+    // non-compliant server omits output_index. Finished calls have their scratch buffers removed.
+    if (output.stopReason === "toolUse") {
+        for (const block of output.content) {
+            if (block.type !== "toolCall")
+                continue;
+            const toolCall = block;
+            if (toolCall.partialJson !== undefined || toolCall.customInput !== undefined) {
+                throw new Error(`OpenAI Responses stream completed with an unfinished tool call: ${toolCall.name} (${toolCall.id})`);
+            }
+        }
     }
 }
 function mapStopReason(status, incompleteReason) {

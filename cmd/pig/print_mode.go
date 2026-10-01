@@ -63,9 +63,11 @@ var receivedTerminationSignal atomic.Int32
 // printModeRuntime is what main resolved for the print-mode session: the
 // runtime services and extensions, and the options the session starts with.
 type printModeRuntime struct {
-	Services    *coding.Services
-	Extensions  []extension.Extension
-	Bridge      *subprocess.UIBridge
+	Services   *coding.Services
+	Extensions []extension.Extension
+	Bridge     *subprocess.UIBridge
+	// Host is the extension host Bridge belongs to, if any.
+	Host        *subprocess.Host
 	Session     coding.SessionStartOptions
 	ResumePath  string
 	SessionName string
@@ -90,6 +92,10 @@ type printModeRuntime struct {
 	Invalidate func(message string)
 	// Release retires the extension host and services of a replaced Session.
 	Release func(reason string)
+	// Resources builds the command catalog from the build's resources, which a reload replaces.
+	Resources func() headlessCommandCatalog
+	// Reload is AgentSession.reload for this build's Session; rebind binds the replacement runner to the mode. Without it ctx.reload() fails.
+	Reload headlessReload
 }
 
 // startOptions returns the options the first Session starts with.
@@ -102,7 +108,7 @@ func (h printModeRuntime) startOptions() coding.SessionStartOptions {
 }
 
 func (h printModeRuntime) inputs() cliSessionInputs {
-	return cliSessionInputs{Services: h.Services, Extensions: h.Extensions, Start: h.Session, Invalidate: h.Invalidate, Release: h.Release}
+	return cliSessionInputs{Services: h.Services, Extensions: h.Extensions, Start: h.Session, Host: h.Host, Invalidate: h.Invalidate, Release: h.Release}
 }
 
 // printSessionState is the mode state of one print-mode Session.
@@ -116,6 +122,8 @@ type printSessionState struct {
 	ToolRegistryExcluded  map[string]struct{}
 	SystemPromptSections  func(skills []*codingagent.SkillDef) ai.OrderedSections
 	SystemPromptResources func(skills []*codingagent.SkillDef) *coding.SystemPromptResources
+	Resources             func() headlessCommandCatalog
+	Reload                headlessReload
 }
 
 func (h printModeRuntime) state() printSessionState {
@@ -123,6 +131,7 @@ func (h printModeRuntime) state() printSessionState {
 		Services: h.Services, Bridge: h.Bridge, Session: h.Session, UnknownFlags: h.UnknownFlags, Commands: h.Commands,
 		ToolRegistryAllowed: h.ToolRegistryAllowed, ToolRegistryExcluded: h.ToolRegistryExcluded,
 		SystemPromptSections: h.SystemPromptSections, SystemPromptResources: h.SystemPromptResources,
+		Resources: h.Resources, Reload: h.Reload,
 	}
 }
 
@@ -304,10 +313,11 @@ func runPrintMode(ctx context.Context, host printModeRuntime, opts printModeOpti
 
 	// state is the mode state of the current Session. Prompts read it at the moment they are sent.
 	var state atomic.Pointer[printSessionState]
-	var detachModelRegistry func()
+	var detachModelRegistry, stopRunSignal func()
 	var publishedCommands atomic.Pointer[headlessCommandCatalog]
 	// bind wires the Session to this mode as upstream rebindSession does: extension bindings, command actions, then the event subscription. It emits session_start for the Session's own reason, which is startup for the first Session.
-	bind := func(ctx context.Context, session *coding.Session, event extension.SessionStartEvent) error {
+	// A reload binds the same Session to a replacement runner: the resources are the reloaded ones, the event subscription stays, and the system prompt is rebuilt before session_start (agent-session.ts:3575-3625).
+	bind := func(ctx context.Context, session *coding.Session, event extension.SessionStartEvent, reloading bool) error {
 		st, ok := factory.StateFor(session)
 		if !ok {
 			return errors.New("print mode: replacement Session has no mode state")
@@ -315,7 +325,11 @@ func runPrintMode(ctx context.Context, host printModeRuntime, opts printModeOpti
 		if detachModelRegistry != nil {
 			detachModelRegistry()
 		}
+		if stopRunSignal != nil {
+			stopRunSignal()
+		}
 		detachModelRegistry = wireSubprocessModelRegistry(st.Bridge, session, st.Services)
+		stopRunSignal = watchSessionRunSignal(st.Bridge, session)
 		bindSessionReadActions(st.Bridge, current, st.Services.CWD(), session.Inner().GetSessionDir())
 		bindSessionAppendEntry(st.Bridge, current)
 		runner := session.ExtensionRunner()
@@ -333,6 +347,9 @@ func runPrintMode(ctx context.Context, host printModeRuntime, opts printModeOpti
 			GetFlagValue:     func(name string) any { return st.UnknownFlags[name] },
 		}, rt.ExtensionCommandActions)
 		commands := st.Commands
+		if reloading {
+			commands = st.Resources()
+		}
 		commands.runner = runner
 		commands.mode = string(extensionMode)
 		if commands.notify == nil {
@@ -350,7 +367,14 @@ func runPrintMode(ctx context.Context, host printModeRuntime, opts printModeOpti
 				return publishedCommands.Load().slashCatalog().SubprocessCommands()
 			})
 		}
-		subscribe(session)
+		if !reloading {
+			subscribe(session)
+		} else if st.SystemPromptSections != nil {
+			session.SetSystemPromptSections(st.SystemPromptSections(commands.skills))
+			if st.SystemPromptResources != nil {
+				session.SetSystemPromptResources(*st.SystemPromptResources(commands.skills))
+			}
+		}
 		// Drive the extension session lifecycle so extensions that initialize on
 		// session_start (and clean up on session_shutdown) run in print mode too,
 		// not only interactive.
@@ -371,11 +395,24 @@ func runPrintMode(ctx context.Context, host printModeRuntime, opts printModeOpti
 		return nil
 	}
 	rt.SetRebindSession(func(ctx context.Context, session *coding.Session) error {
-		return bind(ctx, session, session.StartEvent())
+		return bind(ctx, session, session.StartEvent(), false)
+	})
+	// print-mode.ts:97-99: ctx.reload() runs session.reload() and then rebinds the Session's extensions.
+	rt.SetReload(func(ctx context.Context, session *coding.Session) error {
+		st, ok := factory.StateFor(session)
+		if !ok || st.Reload == nil {
+			return errors.New("print mode: this Session cannot reload")
+		}
+		return st.Reload(ctx, processCtx, session, func(ctx context.Context, event extension.SessionStartEvent) error {
+			return bind(ctx, session, event, true)
+		})
 	})
 	defer func() {
 		if detachModelRegistry != nil {
 			detachModelRegistry()
+		}
+		if stopRunSignal != nil {
+			stopRunSignal()
 		}
 	}()
 
@@ -425,7 +462,7 @@ func runPrintMode(ctx context.Context, host printModeRuntime, opts printModeOpti
 		}
 	}()
 
-	if err := bind(ctx, sess, sess.StartEvent()); err != nil {
+	if err := bind(ctx, sess, sess.StartEvent(), false); err != nil {
 		runErr = err
 		return nil // reported by the teardown above
 	}

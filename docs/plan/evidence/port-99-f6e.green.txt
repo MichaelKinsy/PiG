@@ -1,0 +1,13 @@
+port-99-f6e green evidence
+Commits: 6dcf40a81, d383ba7fe, 3ba556924, + gate fixes (see git log).
+go test ./coding -count=1: all ported tests pass (TestNested*, TestVirtual*, TestSessionToolOrchestration*, TestPrompt*, TestQueuedInput*, TestManualCompactionResolves*). Failing: 6 oracle version-guard tests (TestRPC33AzureTickOrder, TestFauxAgentObservationOracle, TestTestFauxAgentObservationOracle, TestRPC33GoogleObservationMatrix, TestRPC33ObservationMatrix, TestRPC33ObservationMatrixAzure; fail identically on the base) and 6D's TestSessionToolCallsGetAToolContextForTheirCallID (<id>/0 vs <id>/1, flagged to the lead).
+Load: GOMAXPROCS=4 taskset -c 0-3 with 4 CPU burners, go test -race -count=24 over TestNested|TestVirtual|TestPrompt|TestQueuedInput|TestUpstreamConcurrentPrompt|TestSessionToolOrchestration|TestToolsWithDefault|TestManualCompactionResolves: PASS (port-99-f6e.load.txt). It found one data race in a ported test's event read (fixed in the test).
+Mutation checks (revert -> red -> restore):
+  nested nestedCalls applied at message_end removed -> TestSessionToolOrchestrationSupportsToolsThatCallOtherTools... FAIL
+  failedResponse set on retry removed -> TestVirtualSuiteRoutesEachRequest..., TestVirtualSuiteRetriesTheFirstRequest... FAIL
+  limitsModel -> s.Model() -> TestVirtualSuiteEndsTheRunWithAnErrorResponse... FAIL
+  summarization routing removed -> TestVirtualSuiteRoutesCompactionSummaries..., TestVirtualSuiteStoresRouterState... FAIL
+  restore of virtual selection removed -> TestVirtualSessionRestoresTheVirtualSelection... FAIL
+  prepareNextTurn virtual skip removed -> survived the ported suite; killed by new guard TestVirtualSelectionIsNotCheckedAgainstItsDeclaredWindowBetweenTurns
+Gates: go build ./..., go vet ./..., GOOS=windows go vet (coding, agent, ai, internal/codingagent/...), gofmt, golangci-lint on touched packages (0 issues), go fix -diff empty, go test -race ./coding ./agent/... ./ai/... ./internal/codingagent/... (only the failures above).
+Not run: make parity-family (needs the upstream pi oracle at the 0.99.1 pin; the oracle guards fail on the version pin), coding/extension/host/subprocess Xvfb-dependent tests (Xvfb missing on this host).

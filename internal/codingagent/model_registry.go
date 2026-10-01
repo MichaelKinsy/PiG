@@ -62,12 +62,15 @@ type modelsConfig struct {
 // providerConfig is a provider entry in models.json.
 // Matches upstream ProviderConfigSchema.
 type providerConfig struct {
-	Name           string                         `json:"name,omitempty"`
-	BaseURL        string                         `json:"baseUrl,omitempty"`
-	APIKey         string                         `json:"apiKey,omitempty"`
-	StreamSimple   extension.ProviderStreamSimple `json:"-"`
-	API            string                         `json:"api,omitempty"`
-	Headers        map[string]*string             `json:"headers,omitempty"`
+	Name         string                         `json:"name,omitempty"`
+	BaseURL      string                         `json:"baseUrl,omitempty"`
+	APIKey       string                         `json:"apiKey,omitempty"`
+	StreamSimple extension.ProviderStreamSimple `json:"-"`
+	// Images and Classifiers are the implementations of the image and classifier models Models declares (types.ts:1896-1898).
+	Images         ai.ProviderImageAPIMap   `json:"-"`
+	Classifiers    ai.ProviderClassifierMap `json:"-"`
+	API            string                   `json:"api,omitempty"`
+	Headers        map[string]*string       `json:"headers,omitempty"`
 	headerEntries  []orderedHeaderEntry
 	Compat         *providerCompat              `json:"compat,omitempty"`
 	AuthHeader     *bool                        `json:"authHeader,omitempty"`
@@ -102,6 +105,10 @@ func (config *oauthProviderConfig) UnmarshalJSON(data []byte) error {
 // modelDefinition is a custom model entry within a provider.
 // Matches upstream ModelDefinitionSchema.
 type modelDefinition struct {
+	// Type is "chat", "image" or "classifier"; empty is chat (types.ts:1953-1976). Only extension registrations carry a non-chat type.
+	Type ai.ModelType `json:"type,omitempty"`
+	// Output is the output types of an image model (types.ts:1969).
+	Output           []string             `json:"output,omitempty"`
 	ID               string               `json:"id"`
 	Name             string               `json:"name,omitempty"`
 	API              string               `json:"api,omitempty"`
@@ -308,6 +315,12 @@ type ModelRegistry struct {
 	modelTasks       modelTaskOwner
 	// registrationRefresh queues Pi's unawaited local refresh after a registration.
 	registrationRefresh registrationRefresh
+
+	// remoteMu guards the remote catalog overlay state (remote_catalog_registry.go).
+	remoteMu         sync.Mutex
+	catalogBaseURL   string
+	remoteCollection *ai.Models
+	remoteOverlays   map[string]*remoteCatalogOverlay
 
 	nativeMu             sync.Mutex
 	nativeModels         *ai.Models
@@ -834,6 +847,8 @@ func providerConfigFromRegistration(configMap extension.ProviderConfig) (provide
 		provider.OAuth.HasLogin = true
 	}
 	provider.StreamSimple = configMap.StreamSimple
+	provider.Images = configMap.Images
+	provider.Classifiers = configMap.Classifiers
 	provider.oauthCallbacks = configMap.OAuth
 	return provider, true
 }
@@ -882,6 +897,12 @@ func (r *ModelRegistry) upsertRegisteredProviderLocked(name string, incoming pro
 	}
 	if incoming.StreamSimple != nil {
 		existing.StreamSimple = incoming.StreamSimple
+	}
+	if incoming.Images != nil {
+		existing.Images = incoming.Images
+	}
+	if incoming.Classifiers != nil {
+		existing.Classifiers = incoming.Classifiers
 	}
 	if incoming.API != "" {
 		existing.API = incoming.API
@@ -1330,42 +1351,11 @@ func (r *ModelRegistry) GetProviderAuthStatus(providerID string) ai.AuthStatus {
 	if fallback.Source == ai.AuthSourceEnvironment {
 		fallback.Configured = r.HasAnyKey(providerID)
 	}
+	if fallback.Source == "" && providerID == "anthropic" {
+		// The store's env discovery lists API-key variables only; federation is the resolver's last source.
+		return envAuthStatus(providerID)
+	}
 	return fallback
-}
-
-var builtInProviderDisplayNames = map[string]string{
-	"anthropic":              "Anthropic",
-	"amazon-bedrock":         "Amazon Bedrock",
-	"ant-ling":               "Ant Ling",
-	"azure-openai-responses": "Azure OpenAI Responses",
-	"cerebras":               "Cerebras",
-	"cloudflare-ai-gateway":  "Cloudflare AI Gateway",
-	"cloudflare-workers-ai":  "Cloudflare Workers AI",
-	"deepseek":               "DeepSeek",
-	"fireworks":              "Fireworks",
-	"google":                 "Google Gemini",
-	"google-vertex":          "Google Vertex AI",
-	"groq":                   "Groq",
-	"huggingface":            "Hugging Face",
-	"kimi-coding":            "Kimi For Coding",
-	"mistral":                "Mistral",
-	"minimax":                "MiniMax",
-	"minimax-cn":             "MiniMax (China)",
-	"moonshotai":             "Moonshot AI",
-	"moonshotai-cn":          "Moonshot AI (China)",
-	"opencode":               "OpenCode Zen",
-	"opencode-go":            "OpenCode Go",
-	"openai":                 "OpenAI",
-	"github-copilot":         "GitHub Copilot",
-	"openrouter":             "OpenRouter",
-	"together":               "Together AI",
-	"vercel-ai-gateway":      "Vercel AI Gateway",
-	"xai":                    "xAI",
-	"xiaomi-token-plan-ams":  "Xiaomi MiMo Token Plan (Amsterdam)",
-	"xiaomi-token-plan-cn":   "Xiaomi MiMo Token Plan (China)",
-	"xiaomi-token-plan-sgp":  "Xiaomi MiMo Token Plan (Singapore)",
-	"zai":                    "Z.AI",
-	"zai-coding-cn":          "ZAI Coding Plan (China)",
 }
 
 func (r *ModelRegistry) GetProviderDisplayName(providerID string) string {
@@ -1385,10 +1375,7 @@ func (r *ModelRegistry) GetProviderDisplayName(providerID string) string {
 			return prov.OAuth.Name
 		}
 	}
-	if name, ok := builtInProviderDisplayNames[providerID]; ok {
-		return name
-	}
-	return providerID
+	return ai.ProviderDisplayName(providerID)
 }
 
 func (r *ModelRegistry) hasConfiguredAuthLocked(providerID string, prov *providerConfig) bool {
@@ -1754,12 +1741,27 @@ func (r *ModelRegistry) HasAnyKey(providerID string) bool {
 }
 
 // hasEnvAuth reports whether the environment configures request auth for
-// providerID. ANTHROPIC_AUTH_TOKEN counts although it resolves no API key.
+// providerID. ANTHROPIC_AUTH_TOKEN and anthropic workload identity federation count although they resolve no API key.
+// upstream: packages/ai/src/providers/anthropic.ts:47-69 (the resolver the model runtime's configured-provider snapshot reads)
 func hasEnvAuth(providerID string) bool {
-	if providerID == "anthropic" && os.Getenv(ai.AnthropicAuthTokenEnv) != "" {
-		return true
+	return resolveAPIKeyFromEnv(providerID) != "" || hasAnthropicAmbientAuth(providerID)
+}
+
+// hasAnthropicAmbientAuth reports the anthropic credentials that are not an API key: ANTHROPIC_AUTH_TOKEN, sent as a bearer header, and workload identity federation.
+func hasAnthropicAmbientAuth(providerID string) bool {
+	return providerID == "anthropic" && (os.Getenv(ai.AnthropicAuthTokenEnv) != "" || ai.AnthropicFederationEnv(nil) != nil)
+}
+
+// envAuthStatus is the registry's ambient-credential status for providerID, with the label the provider's auth resolver reports as its source: the first environment variable that holds a credential, or the federation source.
+// upstream: packages/ai/src/providers/anthropic.ts:47-69, packages/coding-agent/src/core/model-runtime.ts:638-648 (getProviderAuthStatus)
+func envAuthStatus(providerID string) ai.AuthStatus {
+	if keys := ai.FindEnvKeys(providerID, nil); len(keys) > 0 {
+		return ai.AuthStatus{Configured: true, Source: ai.AuthSourceEnvironment, Label: keys[0]}
 	}
-	return resolveAPIKeyFromEnv(providerID) != ""
+	if providerID == "anthropic" && ai.AnthropicFederationEnv(nil) != nil {
+		return ai.AuthStatus{Configured: true, Source: ai.AuthSourceEnvironment, Label: ai.AnthropicFederationAuthSource}
+	}
+	return ai.AuthStatus{}
 }
 
 // resolveAPIKeyFromEnv resolves an API key from the provider's environment

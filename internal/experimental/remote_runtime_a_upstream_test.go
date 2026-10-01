@@ -20,6 +20,7 @@ import (
 )
 
 func TestExperimentalDurableServerCompositionA(t *testing.T) {
+	requirePOSIXServerDirectory(t)
 	cases := []struct {
 		name string
 		run  func(*testing.T, string)

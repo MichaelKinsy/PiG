@@ -30,6 +30,9 @@ Read the one row that matches the task, then follow only its direct links.
 | change or look up a key | [Keybindings](keybindings.md) | [Terminal setup](terminal-setup.md) |
 | understand hooks/events | [Events](events.md) | [Extensions](extensions.md) |
 | write reusable prompts | [Prompt templates](prompt-templates.md) | [Skills](skills.md) |
+| connect an MCP server | [MCP servers](mcp.md) | [Codemode](codemode.md) |
+| run scripts that call tools | [Codemode](codemode.md) | [MCP servers](mcp.md) |
+| route requests to different models | [Virtual models](virtual-models.md) | [Extensions](extensions.md) |
 | change colors | [Themes](themes.md) | [Settings](settings.md) |
 | build terminal UI for an extension | [TUI components](tui.md) | [Extension API](extension-api.md) |
 | embed Pig in a program | [SDK](sdk.md) | [Extensions](extensions.md) |

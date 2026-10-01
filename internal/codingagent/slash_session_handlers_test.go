@@ -418,6 +418,7 @@ func TestSettingsItems_UpstreamCoreRosterPresentAndOrdered(t *testing.T) {
 		"fullscreen-exit-output",
 		"fullscreen-scrollbar",
 		"fullscreen-copy-on-select",
+		"fullscreen-wheel-scroll-lines",
 		"theme",
 	} {
 		if !slices.Contains(ids, id) {
@@ -425,7 +426,7 @@ func TestSettingsItems_UpstreamCoreRosterPresentAndOrdered(t *testing.T) {
 		}
 	}
 
-	wantSuffix := []string{"warnings", "model-thinking", "tui-mode", "fullscreen-exit-output", "fullscreen-scrollbar", "fullscreen-copy-on-select", "theme"}
+	wantSuffix := []string{"warnings", "model-thinking", "tui-mode", "fullscreen-exit-output", "fullscreen-scrollbar", "fullscreen-copy-on-select", "fullscreen-wheel-scroll-lines", "theme"}
 	if len(ids) < len(wantSuffix) || !slices.Equal(ids[len(ids)-len(wantSuffix):], wantSuffix) {
 		t.Fatalf("settingsItems suffix = %v, want %v", ids, wantSuffix)
 	}

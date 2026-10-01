@@ -5,10 +5,11 @@ import (
 	"testing"
 )
 
-// Pi 0.87.1 oracle: initTheme(name); theme.fg(token, "X") under
+// Upstream 0.99.2 oracle: initTheme(name); theme.fg(token, "X") under
 // setCapabilities({trueColor}) for bashMode, dim, muted, customMessageLabel,
 // thinkingText, thinkingLow/Medium/High (theme.ts getThinkingBorderColor) and
-// accent (getSettingsListTheme().cursor, theme.ts:1231). Each site below must
+// accent (getSettingsListTheme().cursor, theme.ts:1231), recorded from the
+// published @earendil-works/pi-coding-agent 0.99.2 package. Each site below must
 // emit the active theme's token, not a fixed dark.json hex.
 func TestThemeTokenSitesMatchPiOracle(t *testing.T) {
 	type pinned struct {
@@ -24,28 +25,28 @@ func TestThemeTokenSitesMatchPiOracle(t *testing.T) {
 		want      pinned
 	}{
 		{"dark truecolor", "dark", true, pinned{
-			bashMode: tc("181;189;104"), dim: tc("102;102;102"), muted: tc("128;128;128"),
-			customLabel: tc("149;117;205"), thinkingText: tc("128;128;128"),
-			low: tc("95;135;175"), medium: tc("129;162;190"), high: tc("178;148;187"),
-			accent: tc("138;190;183"),
+			bashMode: tc("94;178;134"), dim: tc("126;136;142"), muted: tc("157;165;169"),
+			customLabel: tc("167;152;215"), thinkingText: tc("150;160;164"),
+			low: tc("84;137;164"), medium: tc("97;133;204"), high: tc("151;118;229"),
+			accent: tc("167;152;215"),
 		}},
 		{"light truecolor", "light", true, pinned{
-			bashMode: tc("88;132;88"), dim: tc("118;118;118"), muted: tc("108;108;108"),
-			customLabel: tc("126;87;194"), thinkingText: tc("108;108;108"),
-			low: tc("84;125;167"), medium: tc("90;128;128"), high: tc("135;95;135"),
-			accent: tc("90;128;128"),
+			bashMode: tc("64;151;108"), dim: tc("135;144;149"), muted: tc("103;113;118"),
+			customLabel: tc("116;89;180"), thinkingText: tc("124;134;140"),
+			low: tc("159;194;213"), medium: tc("162;183;224"), high: tc("181;165;232"),
+			accent: tc("116;89;180"),
 		}},
 		{"dark 256color", "dark", false, pinned{
-			bashMode: c256("143"), dim: c256("241"), muted: c256("244"),
-			customLabel: c256("104"), thinkingText: c256("244"),
-			low: c256("67"), medium: c256("109"), high: c256("139"),
-			accent: c256("109"),
+			bashMode: c256("72"), dim: c256("102"), muted: c256("145"),
+			customLabel: c256("140"), thinkingText: c256("109"),
+			low: c256("67"), medium: c256("68"), high: c256("104"),
+			accent: c256("140"),
 		}},
 		{"light 256color", "light", false, pinned{
-			bashMode: c256("65"), dim: c256("243"), muted: c256("242"),
-			customLabel: c256("97"), thinkingText: c256("242"),
-			low: c256("67"), medium: c256("66"), high: c256("96"),
-			accent: c256("66"),
+			bashMode: c256("65"), dim: c256("102"), muted: c256("60"),
+			customLabel: c256("97"), thinkingText: c256("102"),
+			low: c256("146"), medium: c256("146"), high: c256("146"),
+			accent: c256("97"),
 		}},
 	}
 	for _, tc := range cases {
@@ -90,7 +91,7 @@ func TestThemeTokenSitesMatchPiOracle(t *testing.T) {
 }
 
 // The production renderers that consume those sites emit Pi's light-theme
-// tokens (Pi 0.87.1 oracle, light truecolor): the bash-execution.ts top border
+// tokens (upstream 0.99.2 oracle, light truecolor): the bash-execution.ts top border
 // theme.fg(colorKey) with colorKey "bashMode", or "dim" for "!!"; the
 // compaction/branch summary labels theme.fg("customMessageLabel", ...); and
 // the editor top border theme.getThinkingBorderColor(level)
@@ -99,10 +100,10 @@ func TestThemeTokenSitesRenderLightTheme(t *testing.T) {
 	withTrueColor(t, true)
 	SetTheme("light")
 	const (
-		bashMode    = "\x1b[38;2;88;132;88m"
-		dim         = "\x1b[38;2;118;118;118m"
-		customLabel = "\x1b[38;2;126;87;194m"
-		high        = "\x1b[38;2;135;95;135m"
+		bashMode    = "\x1b[38;2;64;151;108m"
+		dim         = "\x1b[38;2;135;144;149m"
+		customLabel = "\x1b[38;2;116;89;180m"
+		high        = "\x1b[38;2;181;165;232m"
 	)
 
 	for _, tc := range []struct {

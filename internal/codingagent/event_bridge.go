@@ -8,6 +8,7 @@
 package codingagent
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"slices"
@@ -17,6 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
 
 // emitSessionStart dispatches a session_start event.
@@ -206,6 +208,14 @@ func emitMessageUpdateContext(ctx context.Context, runner *inproc.Runner, messag
 	}
 }
 
+// toolExecutionWireArgs is the model's argument JSON as written. The event carries it for the extension wire so a Node handler sees the keys in the order the model wrote them, as the parsed `toolCall.arguments` of agent-loop.ts:541-547 keeps its insertion order; the decoded map toolExecutionArgs returns sorts them.
+func toolExecutionWireArgs(args json.RawMessage) json.RawMessage {
+	if len(args) == 0 || !json.Valid(args) {
+		return nil
+	}
+	return args
+}
+
 func toolExecutionArgs(args json.RawMessage) any {
 	if len(args) == 0 {
 		return nil
@@ -217,23 +227,120 @@ func toolExecutionArgs(args json.RawMessage) any {
 	return value
 }
 
+// toolResultWire is the AgentToolResult as an extension process receives it, with its members in the order the object holds them (AgentToolResult.MemberNames) and each content block in the order Pi's tools write it. JSON.stringify of Pi's object keeps that order; the map extensionToolResult returns for in-process handlers sorts it.
+//
+// upstream: agent-loop.ts:778-786, 912-919 (the events carry the tool's own object), packages/agent/src/types.ts AgentToolResult
+type toolResultWire struct {
+	result  agent.AgentToolResult
+	content []any
+}
+
+// MarshalJSON writes the members with the extension codec, which keeps an unmatched UTF-16 unit as JSON.stringify writes it.
+func (w toolResultWire) MarshalJSON() ([]byte, error) {
+	var out bytes.Buffer
+	out.WriteByte('{')
+	first := true
+	for _, name := range w.result.MemberNames() {
+		var value any
+		switch name {
+		case "content":
+			value = w.content
+		case "details":
+			value = w.result.Details
+		case "structuredContent":
+			if !json.Valid(w.result.StructuredContent) {
+				continue
+			}
+			value = w.result.StructuredContent
+		case "isError":
+			value = w.result.IsError
+		case "usage":
+			value = w.result.Usage
+		case "terminate":
+			value = w.result.Terminate
+		}
+		key, err := sdkjson.Marshal(name)
+		if err != nil {
+			return nil, err
+		}
+		encoded, err := sdkjson.Marshal(value)
+		if err != nil {
+			return nil, err
+		}
+		if !first {
+			out.WriteByte(',')
+		}
+		first = false
+		out.Write(key)
+		out.WriteByte(':')
+		out.Write(encoded)
+	}
+	out.WriteByte('}')
+	return out.Bytes(), nil
+}
+
+// toolResultTextBlock and toolResultImageBlock are the blocks of toolResultWire. upstream: packages/ai/src/types.ts TextContent, ImageContent
+type toolResultTextBlock struct {
+	Type          string `json:"type"`
+	Text          string `json:"text"`
+	TextSignature string `json:"textSignature,omitempty"`
+}
+
+type toolResultImageBlock struct {
+	Type     string `json:"type"`
+	Data     string `json:"data"`
+	MimeType string `json:"mimeType"`
+}
+
+func extensionToolResultWire(result agent.AgentToolResult) toolResultWire {
+	content := make([]any, 0, len(result.Content))
+	for _, block := range result.Content {
+		switch value := block.(type) {
+		case ai.TextContent:
+			content = append(content, toolResultTextBlock{Type: "text", Text: value.Text, TextSignature: value.TextSignature})
+		case ai.ImageContent:
+			content = append(content, toolResultImageBlock{Type: "image", Data: value.Data, MimeType: value.MimeType})
+		}
+	}
+	return toolResultWire{result: result, content: content}
+}
+
+// extensionToolResult is the finalized AgentToolResult a tool_execution_end handler sees: the keys the tool or a hook set (agent/src/types.ts:435-455).
 func extensionToolResult(result agent.AgentToolResult) map[string]any {
 	payload := map[string]any{"content": ToolResultEventContent(result)}
 	if result.Details != nil {
 		payload["details"] = result.Details
+	}
+	if len(result.StructuredContent) > 0 {
+		var structured any
+		if err := json.Unmarshal(result.StructuredContent, &structured); err == nil {
+			payload["structuredContent"] = structured
+		}
+	}
+	if result.IsError {
+		payload["isError"] = true
+	}
+	if result.Usage != nil {
+		payload["usage"] = result.Usage
+	}
+	if result.Terminate {
+		payload["terminate"] = true
 	}
 	return payload
 }
 
 // emitToolExecutionStart dispatches a tool_execution_start event.
 // upstream: agent-session.ts:654-661
-func emitToolExecutionStart(runner *inproc.Runner, toolCallID, toolName string, args json.RawMessage) {
+func emitToolExecutionStart(runner *inproc.Runner, toolCallID, toolName string, args json.RawMessage, parentToolCallID string) {
 	if runner != nil && runner.HasHandlers(EventToolExecutionStart) {
 		_, _ = runner.Emit(context.Background(), extension.ToolExecutionStartEvent{
 			Type:       EventToolExecutionStart,
 			ToolCallID: toolCallID,
 			ToolName:   toolName,
 			Args:       toolExecutionArgs(args),
+			WireArgs:   toolExecutionWireArgs(args),
+
+			ParentToolCallID: parentToolCallID,
 		})
 	}
 }
@@ -241,33 +348,36 @@ func emitToolExecutionStart(runner *inproc.Runner, toolCallID, toolName string, 
 // emitToolExecutionUpdate dispatches a tool_execution_update event.
 // upstream: agent-session.ts:663-670
 // Args is decoded to the same structured value as tool_execution_start so
-// in-process and subprocess handlers observe one payload shape.
-func emitToolExecutionUpdate(runner *inproc.Runner, toolCallID, toolName, content string, details any, args json.RawMessage) {
+// in-process and subprocess handlers observe one payload shape. The partial result is the AgentToolResult the tool passed to onUpdate, sent as the same object shape tool_execution_end carries (agent-loop.ts:778-786).
+func emitToolExecutionUpdate(runner *inproc.Runner, toolCallID, toolName string, partial agent.AgentToolResult, args json.RawMessage, parentToolCallID string) {
 	if runner != nil && runner.HasHandlers(EventToolExecutionUpdate) {
-		partialResult := map[string]any{"content": content}
-		if details != nil {
-			partialResult["details"] = details
-		}
 		_, _ = runner.Emit(context.Background(), extension.ToolExecutionUpdateEvent{
-			Type:          EventToolExecutionUpdate,
-			ToolCallID:    toolCallID,
-			ToolName:      toolName,
-			PartialResult: partialResult,
-			Args:          toolExecutionArgs(args),
+			Type:              EventToolExecutionUpdate,
+			ToolCallID:        toolCallID,
+			ToolName:          toolName,
+			PartialResult:     extensionToolResult(partial),
+			WirePartialResult: extensionToolResultWire(partial),
+			Args:              toolExecutionArgs(args),
+			WireArgs:          toolExecutionWireArgs(args),
+
+			ParentToolCallID: parentToolCallID,
 		})
 	}
 }
 
 // emitToolExecutionEnd dispatches a tool_execution_end event.
 // upstream: agent-session.ts:671-678
-func emitToolExecutionEnd(runner *inproc.Runner, toolCallID, toolName string, result agent.AgentToolResult) {
+func emitToolExecutionEnd(runner *inproc.Runner, event agent.ToolExecutionEndEvent) {
 	if runner != nil && runner.HasHandlers(EventToolExecutionEnd) {
 		_, _ = runner.Emit(context.Background(), extension.ToolExecutionEndEvent{
 			Type:       EventToolExecutionEnd,
-			ToolCallID: toolCallID,
-			ToolName:   toolName,
-			Result:     extensionToolResult(result),
-			IsError:    result.IsError,
+			ToolCallID: event.ToolCallID,
+			ToolName:   event.ToolName,
+			Result:     extensionToolResult(event.Result),
+			WireResult: extensionToolResultWire(event.Result),
+			IsError:    event.IsError,
+
+			ParentToolCallID: event.ParentToolCallID,
 		})
 	}
 }
@@ -303,11 +413,11 @@ func DispatchAgentLoopEvent(runner *inproc.Runner, ev agent.AgentEvent, currentM
 	case agent.MessageEndEvent:
 		emitMessageEndContext(AgentEventContext(ev), runner, e.Message)
 	case agent.ToolExecutionStartEvent:
-		emitToolExecutionStart(runner, e.ToolCallID, e.ToolName, e.Args)
+		emitToolExecutionStart(runner, e.ToolCallID, e.ToolName, e.Args, e.ParentToolCallID)
 	case agent.ToolExecutionUpdateEvent:
-		emitToolExecutionUpdate(runner, e.ToolCallID, e.ToolName, e.Content, e.Details, e.Args)
+		emitToolExecutionUpdate(runner, e.ToolCallID, e.ToolName, e.PartialResult, e.Args, e.ParentToolCallID)
 	case agent.ToolExecutionEndEvent:
-		emitToolExecutionEnd(runner, e.ToolCallID, e.ToolName, e.Result)
+		emitToolExecutionEnd(runner, e)
 	}
 }
 
@@ -382,19 +492,6 @@ func RunInputHandlers(ctx context.Context, runner *inproc.Runner, text string, i
 		return result.Text, images, false, nil
 	default:
 		return text, images, false, nil
-	}
-}
-
-// emitModelSelect dispatches a model_select event when the user switches models.
-// Mirrors upstream interactive-mode.ts model selection emit.
-func emitModelSelect(runner *inproc.Runner, newModel, prevModel extension.Model, source extension.ModelSelectSource) {
-	if runner != nil && runner.HasHandlers(EventModelSelect) {
-		_, _ = runner.Emit(context.Background(), extension.ModelSelectEvent{
-			Type:          EventModelSelect,
-			Model:         newModel,
-			PreviousModel: prevModel,
-			Source:        source,
-		})
 	}
 }
 

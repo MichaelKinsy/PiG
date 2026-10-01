@@ -9,7 +9,7 @@ import (
 // .upstream/v0.87.1/packages/ai/test/providers.test.ts:542
 func TestModelsMixedAPIDispatchUpstream(t *testing.T) {
 	calls := []string{}
-	provider := CreateProvider(CreateProviderOptions{ID: "mixed", Auth: configuredTestAuth(), Models: []*Model{dispatchTestModel("api-a", "model-a"), dispatchTestModel("api-b", "model-b")}, API: ProviderAPIMap{"api-a": recordingProviderStreams("a", &calls), "api-b": recordingProviderStreams("b", &calls)}})
+	provider := CreateProvider(CreateProviderOptions{ID: "mixed", Auth: configuredTestAuth(), Models: []AnyModel{dispatchTestModel("api-a", "model-a"), dispatchTestModel("api-b", "model-b")}, API: ProviderAPIMap{"api-a": recordingProviderStreams("a", &calls), "api-b": recordingProviderStreams("b", &calls)}})
 	models := CreateModels(CreateModelsOptions{})
 	models.SetProvider(provider)
 	for _, pair := range [][2]string{{"api-a", "model-a"}, {"api-b", "model-b"}} {
@@ -35,7 +35,7 @@ func TestModelsResolvedEnvironmentAndRequestKeyUpstream(t *testing.T) {
 	}
 	provider := CreateProvider(CreateProviderOptions{ID: "env-provider", Auth: ProviderAuth{APIKey: &APIKeyAuth{Name: "Test", Resolve: func(context.Context, APIKeyAuthInput) (*AuthResult, error) {
 		return &AuthResult{Auth: ModelAuth{APIKey: "provider-key"}, Env: map[string]string{"PROVIDER_ONLY": "provider", "SHARED": "provider"}}, nil
-	}}}, Models: []*Model{model}, API: &ProviderStreams{Stream: capture, StreamSimple: capture}})
+	}}}, Models: []AnyModel{model}, API: &ProviderStreams{Stream: capture, StreamSimple: capture}})
 	models := CreateModels(CreateModelsOptions{})
 	models.SetProvider(provider)
 	result := models.CompleteSimple(t.Context(), model, Context{Messages: []Message{UserMessage{Content: UserText("hi")}}}, StreamOptions{APIKey: "request-key", Env: ProviderEnv{"REQUEST_ONLY": "request", "SHARED": "request"}})
@@ -66,7 +66,7 @@ func TestModelsDeferredResolvedRequestOptionsUpstream(t *testing.T) {
 	}
 	provider := CreateProvider(CreateProviderOptions{ID: "deferred-provider", Auth: ProviderAuth{APIKey: &APIKeyAuth{Name: "Test", Resolve: func(context.Context, APIKeyAuthInput) (*AuthResult, error) {
 		return &AuthResult{Auth: ModelAuth{APIKey: "provider-key", BaseURL: "https://resolved.test/v1", Headers: ProviderHeaders{"Authorization": new("Bearer provider"), "X-Shared": new("provider")}}, Env: map[string]string{"PROVIDER_ONLY": "provider", "SHARED": "provider"}}, nil
-	}}}, Models: []*Model{model}, API: streams})
+	}}}, Models: []AnyModel{model}, API: streams})
 	models := CreateModels(CreateModelsOptions{})
 	models.SetProvider(provider)
 	handle := DeferredHandle{Provider: "deferred-provider", ModelID: "model-a", API: "api-a", ID: "response-1"}

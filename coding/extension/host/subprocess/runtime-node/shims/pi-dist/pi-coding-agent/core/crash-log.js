@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { getAgentDir, VERSION } from "../config.js";
+import { isSyntheticPath } from "./source-info.js";
 const MAX_CRASH_RECORDS = 5;
 const MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 function crashLogPath(agentDir = getAgentDir()) {
@@ -29,7 +30,7 @@ function normalizeStackPath(value) {
 }
 function stackContainsPath(stack, targetPath, includeDescendants) {
     const target = normalizeStackPath(targetPath);
-    if (!target || target.startsWith("<"))
+    if (!target || isSyntheticPath(target))
         return false;
     const caseInsensitive = /^[a-z]:\//iu.test(target);
     const haystack = caseInsensitive ? stack.toLowerCase() : stack;

@@ -30,6 +30,11 @@ const (
 	EventBeforeProviderRequest = "before_provider_request"
 	EventBeforeProviderHeaders = "before_provider_headers"
 	EventAfterProviderResponse = "after_provider_response"
+	// EventProviderStreamEvent fires for a parsed provider stream event before it is normalized. The data is adapter-owned and read-only.
+	EventProviderStreamEvent = "provider_stream_event"
+
+	// EventMcpServersChange fires when an extension registers or unregisters an MCP server after the extensions are bound; the data carries every registered server. Handling it marks an extension as the one that connects registered servers.
+	EventMcpServersChange = "mcp_servers_change"
 
 	// Agent loop and interactive prompts.
 	EventBeforeAgentStart  = "before_agent_start"
@@ -58,3 +63,17 @@ const (
 	EventUserBash            = "user_bash"
 	EventInput               = "input"
 )
+
+// OnProviderStreamEvent registers a handler for the provider_stream_event event and returns an idempotent unsubscribe function.
+//
+// upstream: types.ts:1580 (on("provider_stream_event", ...))
+func (e *Extension) OnProviderStreamEvent(handler EventFunc) func() {
+	return e.OnEvent(EventProviderStreamEvent, handler)
+}
+
+// OnMcpServersChange registers a handler for the mcp_servers_change event and returns an idempotent unsubscribe function. Handling the event marks the extension as the one that connects registered MCP servers.
+//
+// upstream: types.ts:1562 (on("mcp_servers_change", ...))
+func (e *Extension) OnMcpServersChange(handler EventFunc) func() {
+	return e.OnEvent(EventMcpServersChange, handler)
+}

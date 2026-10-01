@@ -11,10 +11,12 @@ import (
 	"strings"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
+
+	"github.com/MichaelKinsy/PiG/ai"
 )
 
 // validateToolArgs clones, normalizes optional nulls, converts, and validates arguments.
-// The returned JSON, rather than the model's original input, is passed to hooks and execution.
+// The returned JSON, rather than the model's original input, is passed to hooks and execution. It keeps the member order of args, as Pi validates structuredClone of the arguments and returns it (validation.ts:317-339).
 func validateToolArgs(toolName string, schema map[string]any, args json.RawMessage) (json.RawMessage, error) {
 	if schema == nil {
 		schema = map[string]any{}
@@ -51,9 +53,9 @@ func validateToolArgsSchema(toolName string, rawSchema, args json.RawMessage) (j
 		_, toObject := coerced.(map[string]any)
 		if !fromObject || !toObject {
 			if compiled.Validate(coerced) == nil {
-				return json.Marshal(coerced)
+				return ai.MarshalJSONInSourceOrder(coerced, args)
 			}
-			return json.Marshal(instance)
+			return ai.MarshalJSONInSourceOrder(instance, args)
 		}
 		instance = coerced
 	}
@@ -65,7 +67,7 @@ func validateToolArgsSchema(toolName string, rawSchema, args json.RawMessage) (j
 		}
 		return nil, fmt.Errorf("Validation failed for tool \"%s\":\n%s\n\nReceived arguments:\n%s", toolName, message, prettyArguments(args))
 	}
-	return json.Marshal(instance)
+	return ai.MarshalJSONInSourceOrder(instance, args)
 }
 
 type argumentSchema struct {

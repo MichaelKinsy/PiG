@@ -2,12 +2,14 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {join} from 'node:path';
 const root=fileURLToPath(new URL('../../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent',import.meta.url));
-if(JSON.parse(readFileSync(join(root,'package.json'),'utf8')).version!=='0.87.1')throw new Error('Expected Pi 0.87.1');
+if(JSON.parse(readFileSync(join(root,'package.json'),'utf8')).version!=='0.99.2')throw new Error('Expected Pi 0.99.2');
 const {Editor}=await import(pathToFileURL(join(root,'node_modules/@earendil-works/pi-tui/dist/components/editor.js')));
 const {CombinedAutocompleteProvider}=await import(pathToFileURL(join(root,'node_modules/@earendil-works/pi-tui/dist/autocomplete.js')));
-const color=s=>'\x1b[38;2;138;190;183m'+s+'\x1b[39m';
-const muted=s=>'\x1b[38;2;128;128;128m'+s+'\x1b[39m';
-const theme={borderColor:s=>s,selectList:{selectedPrefix:s=>s,selectedText:color,description:muted,scrollInfo:muted,noMatch:muted}};
+// Pi 0.99.1's own editor theme (theme.ts:1135-1149, dark.json): selectedText is the dark theme's violet accent, not the
+// teal of 0.87.1. The runner pins COLORTERM=truecolor for both binaries.
+const {initTheme,getEditorTheme}=await import(pathToFileURL(join(root,'dist/modes/interactive/theme/theme.js')));
+initTheme('dark',false);
+const theme=getEditorTheme();
 const tui={terminal:{columns:80,rows:24},requestRender(){}};
 const hex=s=>Buffer.from(s).toString('hex');
 const results=[];

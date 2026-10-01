@@ -3,7 +3,7 @@
 # loaded-resources section to formatScopeGroups: scope groups (project, user,
 # path) in accent, plain paths in dim under each, and each Package source in
 # mdLink with its resources relative to the Package root. Extension paths drop
-# a trailing /index.ts. Probed on Pi 0.87.1 at 220x60 with the fixture of
+# a trailing /index.ts. Probed on upstream 0.99.1 at 220x60 with the fixture of
 # 05-startup-loaded-resources:
 #   [Extensions]
 #     user
@@ -35,14 +35,14 @@ ready_pattern_pig = "(auto)"
 ready_pattern_pi = "(auto)"
 ready_timeout_seconds = 30
 capture_start = "[Skills]"
-capture_end = "fixture-theme.json"
+capture_end = "extensions/beta"
 
 [[tmux.steps]]
-wait_visible_contains = ["fixture-theme"]
+wait_visible_contains = ["listing-fixture:beta"]
 
 [[tmux.steps]]
 keys = ["C-o"]
-wait_contains = ["drop files to attach"]
+wait_contains = ["paste files on macOS"]
 
 [assert]
 both_reach_ready = true

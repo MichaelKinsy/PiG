@@ -1,11 +1,9 @@
 package ai
 
-import (
-	"encoding/json"
-	"testing"
-)
+import "testing"
 
-// packages/ai/test/anthropic-eager-tool-input-compat.test.ts:131-171.
+// packages/ai/test/anthropic-eager-tool-input-compat.test.ts. The strict-schema case moved to
+// anthropic_strict_tool_schema_upstream_test.go with Pi 0.99.2.
 func TestAnthropicUpstreamEagerToolInputCompat(t *testing.T) {
 	tool := ToolSchema{Name: "lookup", Description: "Look up a value", Parameters: map[string]any{"type": "object", "properties": map[string]any{"value": map[string]any{"type": "string"}}, "required": []string{"value"}}}
 	capture := func(t *testing.T, compat *AnthropicMessagesCompat, tools []ToolSchema) anthropicWireCapture {
@@ -53,32 +51,4 @@ func TestAnthropicUpstreamEagerToolInputCompat(t *testing.T) {
 			}
 		})
 	}
-	t.Run("only sends the full input schema for strict JSON-schema tools", func(t *testing.T) {
-		legacy := tool
-		legacy.Parameters = map[string]any{"type": "object", "properties": map[string]any{"value": map[string]any{"type": "string"}}, "required": []string{"value"}, "additionalProperties": false, "title": "LookupInput"}
-		var strict ToolSchema
-		// JSON preserves TypeBox's value-before-optional property enumeration through the public tool boundary.
-		if err := json.Unmarshal([]byte(`{"name":"lookup","description":"Look up a value","parameters":{"type":"object","properties":{"value":{"type":"string"},"optional":{"type":"number"}},"required":["value"],"title":"StrictLookupInput"},"constrainedSampling":{"type":"json_schema","strict":"prefer"}}`), &strict); err != nil {
-			t.Fatal(err)
-		}
-		for _, tc := range []struct {
-			tool   ToolSchema
-			want   string
-			strict bool
-		}{
-			{legacy, `{"type":"object","properties":{"value":{"type":"string"}},"required":["value"]}`, false},
-			{strict, `{"type":"object","properties":{"value":{"type":"string"},"optional":{"anyOf":[{"type":"number"},{"type":"null"}]}},"required":["value","optional"],"title":"StrictLookupInput","additionalProperties":false}`, true},
-		} {
-			got := capture(t, &AnthropicMessagesCompat{ForceAdaptiveThinking: new(true), SupportsStrictTools: new(true)}, []ToolSchema{tc.tool})
-			first := got.body["tools"].([]any)[0].(map[string]any)
-			if tc.strict && first["strict"] != true {
-				t.Fatalf("strict tool=%v", first)
-			}
-			encoded, err := json.Marshal(first["input_schema"])
-			if err != nil {
-				t.Fatal(err)
-			}
-			assertShapeJSON(t, encoded, tc.want)
-		}
-	})
 }

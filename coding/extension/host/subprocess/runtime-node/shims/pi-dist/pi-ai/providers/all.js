@@ -1,5 +1,4 @@
-import { createImagesModels } from "../images-models.js";
-import { MODELS } from "../models.generated.js";
+import { CLASSIFIER_MODELS, IMAGE_MODELS, MODELS } from "../models.generated.js";
 import { createModels } from "../models.js";
 import { amazonBedrockProvider } from "./amazon-bedrock.js";
 import { antLingProvider } from "./ant-ling.js";
@@ -30,12 +29,12 @@ import { openaiCodexProvider } from "./openai-codex.js";
 import { opencodeProvider } from "./opencode.js";
 import { opencodeGoProvider } from "./opencode-go.js";
 import { openrouterProvider } from "./openrouter.js";
-import { openrouterImagesProvider } from "./openrouter-images.js";
 import { qwenTokenPlanProvider } from "./qwen-token-plan.js";
 import { qwenTokenPlanCnProvider } from "./qwen-token-plan-cn.js";
 import { qwenTokenPlanIndividualProvider } from "./qwen-token-plan-individual.js";
 import { radiusProvider } from "./radius.js";
 import { togetherProvider } from "./together.js";
+import { typesafeProvider } from "./typesafe.js";
 import { vercelAIGatewayProvider } from "./vercel-ai-gateway.js";
 import { xaiProvider } from "./xai.js";
 import { xiaomiProvider } from "./xiaomi.js";
@@ -45,10 +44,17 @@ import { xiaomiTokenPlanSgpProvider } from "./xiaomi-token-plan-sgp.js";
 import { zaiProvider } from "./zai.js";
 import { zaiCodingCnProvider } from "./zai-coding-cn.js";
 export { radiusProvider };
-/** Typed read of the generated built-in catalog. */
+/** Typed read of one generated built-in chat model. */
 export function getBuiltinModel(provider, modelId) {
-    const models = MODELS[provider];
-    return models?.[modelId];
+    return MODELS[provider]?.[modelId];
+}
+/** Typed read of one generated built-in image model. */
+export function getBuiltinImageModel(provider, modelId) {
+    return IMAGE_MODELS[provider]?.[modelId];
+}
+/** Typed read of one generated built-in classifier model. */
+export function getBuiltinClassifierModel(provider, modelId) {
+    return CLASSIFIER_MODELS[provider]?.[modelId];
 }
 export function getBuiltinProviders() {
     return Object.keys(MODELS);
@@ -60,9 +66,18 @@ export function getBuiltinModelDataGeneratedAt() {
 }
 export function getBuiltinModels(provider) {
     const models = MODELS[provider];
-    return models
-        ? Object.values(models)
-        : [];
+    return Object.values(models ?? {});
+}
+export function getBuiltinImageModels(provider) {
+    const models = IMAGE_MODELS[provider];
+    return Object.values(models ?? {});
+}
+export function getBuiltinClassifierModels(provider) {
+    const models = CLASSIFIER_MODELS[provider];
+    return Object.values(models ?? {});
+}
+export function getAllBuiltinModels(provider) {
+    return [...getBuiltinModels(provider), ...getBuiltinImageModels(provider), ...getBuiltinClassifierModels(provider)];
 }
 /** All built-in providers, freshly constructed. */
 export function builtinProviders() {
@@ -100,6 +115,7 @@ export function builtinProviders() {
         qwenTokenPlanIndividualProvider(),
         radiusProvider(),
         togetherProvider(),
+        typesafeProvider(),
         vercelAIGatewayProvider(),
         xaiProvider(),
         xiaomiProvider(),
@@ -114,18 +130,6 @@ export function builtinProviders() {
 export function builtinModels(options) {
     const models = createModels(options);
     for (const provider of builtinProviders()) {
-        models.setProvider(provider);
-    }
-    return models;
-}
-/** All built-in image-generation providers, freshly constructed. */
-export function builtinImagesProviders() {
-    return [openrouterImagesProvider()];
-}
-/** An `ImagesModels` collection with every built-in image-generation provider registered. */
-export function builtinImagesModels(options) {
-    const models = createImagesModels(options);
-    for (const provider of builtinImagesProviders()) {
         models.setProvider(provider);
     }
     return models;

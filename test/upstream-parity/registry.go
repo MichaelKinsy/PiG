@@ -30,6 +30,8 @@ import (
 var eventTypeRegistry = map[string]reflect.Type{
 	// ─── *Event types (42) ──────────────────────────────────────────────
 	"ProjectTrustEvent":          reflect.TypeFor[extension.ProjectTrustEvent](),
+	"McpServersChangeEvent":      reflect.TypeFor[extension.McpServersChangeEvent](),
+	"ProviderStreamEvent":        reflect.TypeFor[extension.ProviderStreamEvent](),
 	"ResourcesDiscoverEvent":     reflect.TypeFor[extension.ResourcesDiscoverEvent](),
 	"SessionStartEvent":          reflect.TypeFor[extension.SessionStartEvent](),
 	"SessionInfoChangedEvent":    reflect.TypeFor[extension.SessionInfoChangedEvent](),

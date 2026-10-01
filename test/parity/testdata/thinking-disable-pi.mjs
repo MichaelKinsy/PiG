@@ -1,6 +1,6 @@
 import {readFileSync} from "node:fs";
 const root=new URL("../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/",import.meta.url);
-if(JSON.parse(readFileSync(new URL("package.json",root),"utf8")).version!=="0.87.1")throw new Error("Expected Pi 0.87.1");
+if(JSON.parse(readFileSync(new URL("package.json",root),"utf8")).version!=="0.99.2")throw new Error("Expected Pi 0.99.2");
 const {getModel,streamSimple}=await import(new URL("dist/compat.js",root));
 const cases=JSON.parse(readFileSync(new URL("thinking-disable.json",import.meta.url),"utf8"));
 for(const test of cases){

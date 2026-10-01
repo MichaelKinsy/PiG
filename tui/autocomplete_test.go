@@ -5,7 +5,6 @@ package tui
 import (
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 
@@ -520,38 +519,6 @@ func TestEditor_PopupVeryNarrowTerminalDoesNotPanic(t *testing.T) {
 				t.Errorf("width=%d: row exceeds width (visible=%d): %q", w, rw, vis)
 			}
 		}
-	}
-}
-
-// Ports autocomplete-skill-slash.test.ts: skill commands match by bare name.
-func TestSlashOnlyProvider_SkillCommandFilter(t *testing.T) {
-	p := NewSlashOnlyProvider([]SlashCommand{
-		{Name: "skill:deep-research", Description: "Multi-agent deep research"},
-		{Name: "skill:research-idea", Description: "Refine a raw idea into a falsifiable seed"},
-		{Name: "skill:to-sidecar", Description: "Route work to a sidecar"},
-		{Name: "model", Description: "Select the active model"},
-	})
-	values := func(prefix string) []string {
-		line := "/" + prefix
-		res := p.GetSuggestions([]string{line}, 0, len(line))
-		if res == nil {
-			t.Fatalf("expected suggestions for %q", line)
-		}
-		out := make([]string, len(res.Items))
-		for i, item := range res.Items {
-			out[i] = item.Value
-		}
-		return out
-	}
-	items := values("idea")
-	if items[0] != "skill:research-idea" || slices.Contains(items, "skill:deep-research") {
-		t.Fatalf("/idea = %v, want skill:research-idea first and no skill:deep-research", items)
-	}
-	if !slices.Contains(values("mod"), "model") {
-		t.Fatal("/mod lost the ordinary model command")
-	}
-	if !slices.Contains(values("skill:side"), "skill:to-sidecar") {
-		t.Fatal("/skill:side lost skill:to-sidecar")
 	}
 }
 

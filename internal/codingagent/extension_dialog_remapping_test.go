@@ -14,6 +14,7 @@ import (
 // Pi 0.87.1 extension-input.ts:94-104 intercepts tui.select.confirm. The
 // embedded Input's separate tui.input.submit action has no submit callback.
 func TestExtensionDialogRemappingThroughOwnerLoop(t *testing.T) {
+	restoreTUIKeybindings(t)
 	previous := tui.GetKeybindings()
 	t.Cleanup(func() { tui.SetKeybindings(previous) })
 	m, output := newExtensionDialogProbe(t)

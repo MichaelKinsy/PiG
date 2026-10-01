@@ -169,10 +169,11 @@ func TestAgentSessionCompactionSuiteUpstream(t *testing.T) {
 		}
 		fmt.Printf("COMPACTION_BOUNDARY no-model %q\n", err.Error())
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/suite/agent-session-compaction.test.ts:282
+	// .upstream/v0.99.1/packages/coding-agent/test/suite/agent-session-compaction.test.ts:282 (changed: the session is seeded first, because auth is resolved only when Pi summarizes itself, after checking there is something to compact)
 	t.Run("throws when compacting without configured auth", func(t *testing.T) {
 		t.Setenv("FAUX_API_KEY", "")
 		h := newRecoveryHarness(t, harnessOptions{withConfiguredAuth: new(false)})
+		suiteCompactionSeed(t, h.session)
 		model, err := BuildModel("faux/faux-1", h.session.services)
 		if err != nil {
 			t.Fatal(err)
@@ -314,5 +315,39 @@ func TestAgentSessionCompactionSuiteUpstream(t *testing.T) {
 			t.Fatalf("end=%+v failed=%+v", end, failed)
 		}
 		fmt.Printf("COMPACTION_BOUNDARY exception %q\n", end.ErrorMessage)
+	})
+}
+
+// agent-session.ts:2633-2645 (_runDefaultCompaction: "Resolve the request only when Pi summarizes itself: routing may call models or fail") and :2690-2700 (compact() prepares before it resolves auth). Go regression guards for the source change that the upstream suite covers only through the seeded auth case above.
+func TestManualCompactionResolvesAuthOnlyWhenPiSummarizesItself(t *testing.T) {
+	t.Run("an empty session reports there is nothing to compact instead of missing auth", func(t *testing.T) {
+		t.Setenv("FAUX_API_KEY", "")
+		h := newRecoveryHarness(t, harnessOptions{withConfiguredAuth: new(false)})
+		model, err := BuildModel("faux/faux-1", h.session.services)
+		if err != nil {
+			t.Fatal(err)
+		}
+		model.ProviderMeta.ProviderID = "faux"
+		model.ID = "faux-1"
+		h.session.agent.SetModel(model)
+		if _, err := h.session.CompactResult(t.Context(), ""); err == nil || !strings.Contains(err.Error(), "Nothing to compact (session too small)") {
+			t.Fatalf("error=%v", err)
+		}
+	})
+	t.Run("an extension-supplied summary needs no auth", func(t *testing.T) {
+		t.Setenv("FAUX_API_KEY", "")
+		h := newRecoveryHarness(t, harnessOptions{withConfiguredAuth: new(false), extension: summaryFromPreparation("extension summary")})
+		model, err := BuildModel("faux/faux-1", h.session.services)
+		if err != nil {
+			t.Fatal(err)
+		}
+		model.ProviderMeta.ProviderID = "faux"
+		model.ID = "faux-1"
+		h.session.agent.SetModel(model)
+		suiteCompactionSeed(t, h.session)
+		result, err := h.session.CompactResult(t.Context(), "")
+		if err != nil || result.Summary != "extension summary" {
+			t.Fatalf("result=%+v error=%v", result, err)
+		}
 	})
 }

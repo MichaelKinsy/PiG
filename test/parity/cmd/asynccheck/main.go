@@ -24,7 +24,9 @@ var (
 	}{
 		{root: "packages/agent", name: "@earendil-works/pi-agent-core"},
 		{root: "packages/ai", name: "@earendil-works/pi-ai"},
+		{root: "packages/codemode", name: "@earendil-works/pi-codemode"},
 		{root: "packages/coding-agent", name: "@earendil-works/pi-coding-agent"},
+		{root: "packages/mcp", name: "@earendil-works/pi-mcp"},
 		{root: "packages/tui", name: "@earendil-works/pi-tui"},
 	}
 	asyncPattern = regexp.MustCompile(`\basync\b|\bPromise\s*[<.(]|\.then\s*\(|\.catch\s*\(|\.finally\s*\(`)

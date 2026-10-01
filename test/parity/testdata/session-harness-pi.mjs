@@ -6,7 +6,7 @@ import { pathToFileURL } from "node:url";
 import ts from "../interface-extractor/node_modules/typescript/lib/typescript.js";
 
 export const root = process.env.PI_PACKAGE_ROOT ?? resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, "0.87.1");
+assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, "0.99.2");
 export const resolvePackage = specifier => import.meta.resolve(specifier, pathToFileURL(join(root, "package.json")).href);
 export const production = path => import(pathToFileURL(join(root, "dist", path)));
 const upstream = resolve(".upstream/current/packages/coding-agent");
@@ -34,6 +34,6 @@ function helper(path) {
   cache.set(path, url);
   return url;
 }
-export const { createHarness, getMessageText, getUserTexts, getAssistantTexts } = await import(helper("test/suite/harness.ts"));
+export const { createHarness, createTestUiContext, getMessageText, getUserTexts, getAssistantTexts } = await import(helper("test/suite/harness.ts"));
 export const utilities = await import(helper("test/utilities.ts"));
 export const modelTestUtils = await import(helper("test/model-runtime-test-utils.ts"));

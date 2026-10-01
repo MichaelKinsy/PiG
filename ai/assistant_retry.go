@@ -25,6 +25,8 @@ var nonRetryableProviderLimitErrorPattern = buildProviderErrorPattern([]string{
 	"out of budget",
 	"quota exceeded",
 	"billing",
+	// Sign in with ChatGPT: the subscription's shared usage limit, which resets after hours rather than seconds (utils/retry.ts).
+	"subscription_sharing_usage_limit_exceeded",
 })
 
 var retryableProviderErrorPattern = buildProviderErrorPattern([]string{
@@ -79,6 +81,9 @@ var retryableProviderErrorPattern = buildProviderErrorPattern([]string{
 	"please retry your request",
 	// gRPC based providers.
 	"ResourceExhausted",
+	// Sign in with ChatGPT: usage or user data temporarily unavailable. Usage failures can arrive mid-stream without an HTTP 503 in the message (utils/retry.ts).
+	"subscription_sharing_usage_unavailable",
+	"subscription_sharing_user_unavailable",
 })
 
 // RetryPolicy bounds attempts with exponential backoff

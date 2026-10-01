@@ -127,7 +127,7 @@ func captureTool(name string, captured chan<- ToolUpdateCallback, update bool) *
 		execute: func(_ context.Context, _ string, _ json.RawMessage, onUpdate ToolUpdateCallback) (AgentToolResult, error) {
 			captured <- onUpdate
 			if update {
-				onUpdate("running", map[string]any{"status": "running"})
+				onUpdate(AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "running"}}, Details: map[string]any{"status": "running"}})
 			}
 			return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "ok"}}, Details: map[string]any{"status": "done"}, Terminate: true}, nil
 		}}
@@ -147,7 +147,7 @@ func TestAgent_IgnoresToolUpdatesAfterToolExecutionSettles(t *testing.T) {
 	mustSend(t, a, "run tool")
 	rec.waitFor(t, func(ev AgentEvent) bool { _, ok := ev.(AgentEndEvent); return ok })
 	countAfterPrompt := len(rec.snapshot())
-	(<-captured)("late", map[string]any{"status": "late"})
+	(<-captured)(AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "late"}}, Details: map[string]any{"status": "late"}})
 	time.Sleep(10 * time.Millisecond)
 	events := rec.stop()
 
@@ -189,7 +189,7 @@ func TestAgent_IgnoresSettledParallelToolUpdateWhileAnotherToolRuns(t *testing.T
 		return ok && end.ToolName == "settled_tool"
 	})
 	countBefore := len(rec.snapshot())
-	(<-captured)("late", map[string]any{"status": "late"})
+	(<-captured)(AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "late"}}, Details: map[string]any{"status": "late"}})
 	time.Sleep(10 * time.Millisecond)
 	if got := len(rec.snapshot()); got != countBefore {
 		t.Fatalf("events %d after the late update, want %d", got, countBefore)
@@ -639,5 +639,31 @@ func TestAgent_ForwardsSessionIDToStreamOptions(t *testing.T) {
 
 	if provider.request(1).opts.SessionID != "session-abc" || provider.request(2).opts.SessionID != "session-def" {
 		t.Fatalf("session IDs = %q, %q", provider.request(1).opts.SessionID, provider.request(2).opts.SessionID)
+	}
+}
+
+// .upstream/v0.99.1/packages/agent/test/agent.test.ts:1169
+// upstream: "forwards provider stream event observers through AgentOptions"
+func TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions(t *testing.T) {
+	var providerEvents []any
+	a := NewAgent(AgentOptions{
+		OnProviderStreamEvent: func(_ context.Context, data any, _ *ai.Model) error {
+			providerEvents = append(providerEvents, data)
+			return nil
+		},
+		StreamFn: func(ctx context.Context, model *ai.Model, _ ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+			if options.OnProviderStreamEvent == nil {
+				t.Error("the provider request carries no OnProviderStreamEvent")
+			} else if err := options.OnProviderStreamEvent(ctx, map[string]any{"request_cost": 0.01}, model); err != nil {
+				t.Errorf("OnProviderStreamEvent = %v", err)
+			}
+			return doneStream(textMessage("ok")), nil
+		},
+	})
+
+	mustSend(t, a, "hello")
+
+	if want := []any{map[string]any{"request_cost": 0.01}}; !reflect.DeepEqual(providerEvents, want) {
+		t.Fatalf("provider events = %v, want %v", providerEvents, want)
 	}
 }

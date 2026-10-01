@@ -83,7 +83,7 @@ func TestConstrainedSamplingUnsupportedSchemasUpstream(t *testing.T) {
 			if _, err := makeStrictJSONSchema(parameters); err == nil || !strings.Contains(err.Error(), tc.message) {
 				t.Fatalf("strict schema=%v", err)
 			}
-			strict, err := resolveJSONSchemaStrictSampling(tool, true)
+			strict, err := resolveJSONSchemaStrictSampling(tool, true, nil)
 			if err != nil || strict != nil {
 				t.Fatalf("prefer=%v/%v", strict, err)
 			}
@@ -93,7 +93,7 @@ func TestConstrainedSamplingUnsupportedSchemasUpstream(t *testing.T) {
 				t.Fatalf("fallback=%#v error=%v", converted, err)
 			}
 			tool.ConstrainedSampling.Strict = "require"
-			if _, err := resolveJSONSchemaStrictSampling(tool, true); err == nil || !strings.Contains(err.Error(), tc.message) {
+			if _, err := resolveJSONSchemaStrictSampling(tool, true, nil); err == nil || !strings.Contains(err.Error(), tc.message) {
 				t.Fatalf("require=%v", err)
 			}
 		})

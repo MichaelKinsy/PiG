@@ -92,7 +92,7 @@ func highlightCodeUncached(code, lang string, t *Theme) []string {
 			if seg != "" {
 				buf.WriteString(fg)
 				buf.WriteString(seg)
-				buf.WriteString(SGRFgReset)
+				buf.WriteString(FgClose(fg))
 			}
 			if i < len(segs)-1 {
 				buf.WriteByte('\n')

@@ -8,29 +8,38 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// Pi theme-controller.ts:159-173 applies each changed scheme synchronously,
-// without persisting the selected half of an automatic pair.
-func TestInteractiveAutomaticThemeNotifications(t *testing.T) {
+// newThemeDispatchMode is a dispatch-test mode whose owner-loop tasks queue for the test to service.
+func newThemeDispatchMode(t *testing.T) (*InteractiveMode, context.Context) {
+	t.Helper()
 	restoreStartupTheme(t)
-	t.Setenv("COLORFGBG", "15;0")
 	m, ctx := newCustomEditorDispatchMode(t)
 	m.installRenderDispatcher()
+	m.uiTaskCh = make(chan func(), 64)
+	m.backgroundCtx, m.runCtx = ctx, ctx
+	m.themeState.output = io.Discard
+	t.Cleanup(func() { m.disposeTheme(); m.backgroundTasks.Wait() })
+	return m, ctx
+}
+
+// upstream 0.99.1 theme-controller.ts applyTerminalColorSchemeChange applies each changed scheme synchronously, without persisting the selected half of an automatic pair.
+func TestInteractiveAutomaticThemeNotifications(t *testing.T) {
+	t.Setenv("COLORFGBG", "15;0")
+	m, ctx := newThemeDispatchMode(t)
 	m.opts.Settings.Theme = "light/dark"
 	dir := t.TempDir()
 	m.opts.SettingsManager = NewSettingsManager(t.TempDir(), dir)
 	if err := m.opts.SettingsManager.SetTheme("light/dark"); err != nil {
 		t.Fatal(err)
 	}
-	m.inputReadCh = make(chan inputChunk, 1)
-	m.inputReadCh <- inputChunk{data: []byte("\x1b[?997;1n")}
 	var output bytes.Buffer
-	if err := m.initializeTerminalTheme(ctx, &output); err != nil {
-		t.Fatal(err)
-	}
+	m.themeState.output = &output
+	m.initTheme()
+	m.applyThemeFromSettings(ctx)
 	if !strings.HasSuffix(output.String(), "\x1b[?2031h") {
 		t.Errorf("automatic notifications not enabled: %q", output.String())
 	}
@@ -65,12 +74,12 @@ func TestInteractiveAutomaticThemeNotifications(t *testing.T) {
 	}
 }
 
-// Pi tui.ts:1006-1012 consumes scheme reports even with a fixed theme and no query.
+// upstream 0.99.1 tui.ts consumes scheme reports even with a fixed theme and no notifications.
 func TestInteractiveFixedThemeConsumesSchemeReports(t *testing.T) {
-	restoreStartupTheme(t)
-	m, ctx := newCustomEditorDispatchMode(t)
+	m, ctx := newThemeDispatchMode(t)
 	m.opts.Settings.Theme = "dark"
-	tui.SetTheme("dark")
+	m.initTheme()
+	m.applyThemeFromSettings(ctx)
 	m.extensionShortcutListener = func(string) bool { t.Fatal("scheme report reached listener"); return false }
 	if err := m.dispatchKey(ctx, "\x1b[?997;2n"); err != nil {
 		t.Fatal(err)
@@ -81,23 +90,17 @@ func TestInteractiveFixedThemeConsumesSchemeReports(t *testing.T) {
 }
 
 func TestInteractiveThemeStateTransitions(t *testing.T) {
-	restoreStartupTheme(t)
 	t.Setenv("COLORFGBG", "15;0")
-	m, ctx := newCustomEditorDispatchMode(t)
-	m.installRenderDispatcher()
+	m, ctx := newThemeDispatchMode(t)
 	var output bytes.Buffer
 	m.themeState.output = &output
 	m.opts.Settings.Theme = "light/dark"
-	q := m.beginThemeDetection(&output)
-	m.consumeTerminalThemeInput("\x1b]11;#000000\a")
-	if q.detection.settled {
-		t.Fatal("background settled before the scheme query")
-	}
+	m.initTheme()
+	m.applyThemeFromSettings(ctx)
 	m.consumeTerminalThemeInput("\x1b[?997;2n")
 	spy := &themeInvalidationSpy{Renderer: m.tuiInst}
 	m.tuiInst = spy
-	// theme-controller.ts:159-173 suppresses duplicate reports; preview does not
-	// replace the active selection or switch the mode off (114-122).
+	// theme-controller.ts applyTerminalColorSchemeChange re-applies only when the appearance changed; preview does not replace the active selection or switch the mode off.
 	m.consumeTerminalThemeInput("\x1b[?997;2n")
 	if spy.invalidates != 0 {
 		t.Fatal("duplicate report invalidated the UI")
@@ -115,9 +118,6 @@ func TestInteractiveThemeStateTransitions(t *testing.T) {
 	if tui.ActiveTheme().Name != "dark" {
 		t.Fatal("preview disabled auto sync")
 	}
-	if len(m.themeState.queries) != 0 {
-		t.Fatal("settled queries retained after OSC reply")
-	}
 
 	ui := &ExtUIContext{m: m}
 	if result := ui.SetTheme("light"); !result.Success {
@@ -133,7 +133,7 @@ func TestInteractiveThemeStateTransitions(t *testing.T) {
 		t.Fatal("report overrode explicit extension theme")
 	}
 	m.opts.Settings.Theme = "dark"
-	m.beginThemeDetection(&output)
+	m.applyThemeFromSettings(ctx)
 	if tui.ActiveTheme().Name != "light" {
 		t.Fatal("reload discarded explicit selection")
 	}
@@ -149,84 +149,89 @@ type themeInvalidationSpy struct {
 
 func (s *themeInvalidationSpy) Invalidate() { s.invalidates++; s.Renderer.Invalidate() }
 
+// upstream 0.99.1 theme-controller.ts applyFromSettings does not wait for the terminal: the modal owner loop applies the colors when they arrive, without a keystroke.
 func TestInteractiveThemeSettingQueriesWithoutBlockingModal(t *testing.T) {
-	restoreStartupTheme(t)
 	t.Setenv("COLORFGBG", "15;0")
-	m, ctx := newCustomEditorDispatchMode(t)
-	m.installRenderDispatcher()
-	m.runCtx, m.backgroundCtx = ctx, ctx
-	m.uiTaskCh = make(chan func())
-	m.themeState.output = io.Discard
-	defer func() { m.disposeTheme(); m.backgroundTasks.Wait() }()
-	m.buildSlashContext(ctx).OnSettingApplied("theme", "light/dark")
-	if len(m.themeState.queries) != 1 {
-		t.Fatal("setting did not start terminal detection")
-	}
-	m.consumeTerminalThemeInput("\x1b]11;#ffffff\a")
-	// The modal owner loop must service the query deadline without a keystroke.
-	input := make(chan []byte, 1)
-	queryDone := m.themeState.queries[0].done
-	m.backgroundTasks.Go(func() {
-		select {
-		case <-queryDone:
-			input <- []byte("x")
-		case <-ctx.Done():
+	m, ctx := newThemeDispatchMode(t)
+	pending := make(chan tui.TerminalColorsResult, 1)
+	answers := []<-chan tui.TerminalColorsResult{pending}
+	renderer := &colorQueryRenderer{Renderer: m.tuiInst, answer: func() <-chan tui.TerminalColorsResult {
+		if len(answers) == 0 {
+			return settledColors(tui.TerminalColors{})()
 		}
+		answer := answers[0]
+		answers = answers[1:]
+		return answer
+	}}
+	m.tuiInst = renderer
+	m.initTheme()
+	m.buildSlashContext(ctx).OnSettingApplied("theme", "light/dark")
+	if len(renderer.options) != 1 {
+		t.Fatalf("queries = %d, want the setting to start one terminal query", len(renderer.options))
+	}
+	white := tui.RgbColor{R: 255, G: 255, B: 255}
+	pending <- tui.TerminalColorsResult{Colors: tui.TerminalColors{Background: &white}}
+	input := make(chan []byte, 1)
+	m.backgroundTasks.Go(func() {
+		// The colors apply, and render once, before the keystroke arrives.
+		for renderer.renders.Load() == 0 {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(time.Millisecond):
+			}
+		}
+		input <- []byte("x")
 	})
 	if got, ok := m.readModalInput(input); !ok || string(got) != "x" {
 		t.Fatalf("input = %q", got)
 	}
 	if tui.ActiveTheme().Name != "light" || !m.themeState.autoSyncEnabled.Load() {
-		t.Fatal("modal did not finish background fallback")
+		t.Fatal("modal did not apply the reported colors")
 	}
-	m.backgroundTasks.Wait()
 	m.buildSlashContext(ctx).OnSettingApplied("theme", "dark")
 	if m.themeState.autoSyncEnabled.Load() {
 		t.Fatal("fixed setting kept automatic sync")
 	}
 }
 
-func TestInteractiveThemePendingQueriesAndShutdown(t *testing.T) {
-	restoreStartupTheme(t)
-	m, ctx := newCustomEditorDispatchMode(t)
-	m.installRenderDispatcher()
-	m.backgroundCtx, m.runCtx = ctx, ctx
-	m.themeState.output = io.Discard
+// upstream 0.99.1 theme-controller.ts requestTerminalColors passes onLateReply, and dispose disables notifications and ignores later reports.
+func TestInteractiveThemeLateRepliesAndShutdown(t *testing.T) {
+	m, ctx := newThemeDispatchMode(t)
+	renderer := &colorQueryRenderer{Renderer: m.tuiInst}
+	m.tuiInst = renderer
 	m.opts.Settings.Theme = "light/dark"
-	first := m.beginThemeDetection(io.Discard)
-	first.detection.timeout()
-	m.finishThemeDetection(first)
-	second := m.beginThemeDetection(io.Discard)
-	m.consumeTerminalThemeInput("\x1b]11;#ffffff\a")
-	if second.detection.backgroundAnswered {
-		t.Fatal("late OSC reply answered the newer query")
-	}
-	m.consumeTerminalThemeInput("\x1b]11;#000000\a")
-	m.consumeTerminalThemeInput("\x1b[?997;2n")
-	if tui.ActiveTheme().Name != "light" || len(m.themeState.queries) != 0 {
-		t.Fatal("scheme did not settle newer query")
-	}
+	m.initTheme()
 	m.applyThemeFromSettings(ctx)
+	m.applyThemeFromSettings(ctx)
+	if len(renderer.options) != 2 || renderer.options[1].OnLateReply == nil {
+		t.Fatalf("queries = %+v", renderer.options)
+	}
+	white := tui.RgbColor{R: 255, G: 255, B: 255}
+	renderer.options[1].OnLateReply(tui.TerminalColors{Background: &white})
+	if tui.ActiveTheme().Name != "light" {
+		t.Fatalf("theme = %q, want light after a late white background", tui.ActiveTheme().Name)
+	}
 	m.disposeTheme()
 	m.backgroundTasks.Wait()
-	if m.themeState.autoSyncEnabled.Load() || len(m.themeState.queries) != 0 {
-		t.Fatal("shutdown retained query or subscription")
+	if m.themeState.autoSyncEnabled.Load() {
+		t.Fatal("shutdown retained the subscription")
 	}
-	m.consumeTerminalThemeInput("\x1b[?997;1n")
-	if tui.ActiveTheme().Name != "light" {
-		t.Fatal("report after shutdown changed theme")
+	if !m.consumeTerminalThemeInput("\x1b[?997;1n") || tui.ActiveTheme().Name != "light" {
+		t.Fatal("report after shutdown changed the theme or reached input")
 	}
 }
 
 func TestInteractiveThemeRebindsRenderer(t *testing.T) {
 	restoreStartupTheme(t)
+	t.Setenv("COLORFGBG", "15;0")
 	m := newSwitchTuiProbe(t)
 	m.installRenderDispatcher()
 	t.Cleanup(func() { m.stopInteractiveTui(); m.teardownCurrentTui() })
 	m.opts.Settings.Theme = "light/dark"
 	output := m.rendererOut.(*bytes.Buffer)
-	m.beginThemeDetection(output)
-	m.consumeTerminalThemeInput("\x1b]11;#000000\a")
+	m.initTheme()
+	m.applyThemeFromSettings(t.Context())
 	m.consumeTerminalThemeInput("\x1b[?997;1n")
 	for _, mode := range []string{"fullscreen", "regular"} {
 		output.Reset()
@@ -249,24 +254,6 @@ func TestInteractiveThemeRebindsRenderer(t *testing.T) {
 	}
 }
 
-func BenchmarkInteractiveAutomaticThemeNotifications(b *testing.B) {
-	previous := tui.ActiveTheme().Name
-	b.Cleanup(func() { tui.SetTheme(previous) })
-	m := &InteractiveMode{tuiInst: tui.NewWithOutput(io.Discard, 100, 35)}
-	m.installRenderDispatcher()
-	m.opts.Settings.Theme = "light/dark"
-	q := m.beginThemeDetection(io.Discard)
-	q.detection.timeout()
-	m.finishThemeDetection(q)
-	m.consumeTerminalThemeInput("\x1b]11;#000000\a")
-	b.Cleanup(m.disposeTheme)
-	b.ReportAllocs()
-	for b.Loop() {
-		m.consumeTerminalThemeInput("\x1b[?997;2n")
-		m.consumeTerminalThemeInput("\x1b[?997;1n")
-	}
-}
-
 func TestTerminalColorSchemeReportParser(t *testing.T) {
 	for _, tc := range []struct {
 		input string
@@ -280,6 +267,21 @@ func TestTerminalColorSchemeReportParser(t *testing.T) {
 	} {
 		if got := tui.ParseTerminalColorSchemeReport(tc.input); got != tc.want {
 			t.Errorf("parse(%q) = %q, want %q", tc.input, got, tc.want)
+		}
+	}
+}
+
+// upstream 0.99.1 theme-controller.ts TERMINAL_QUERY_TIMEOUT_MS: every startup and reload color query waits 100 ms for the terminal and accepts late replies.
+func TestThemeControllerQueriesWithTheUpstreamTimeout(t *testing.T) {
+	f := themeControllerNew(t, "", nil)
+	f.m.applyThemeFromSettings(f.ctx)
+	f.flush(t)
+	if len(f.renderer.options) == 0 {
+		t.Fatal("applyThemeFromSettings did not query the terminal colors")
+	}
+	for _, options := range f.renderer.options {
+		if options.TimeoutMs != 100 || options.OnLateReply == nil {
+			t.Errorf("query options = timeout %v, late reply set %v; want 100 ms with a late reply hook", options.TimeoutMs, options.OnLateReply != nil)
 		}
 	}
 }

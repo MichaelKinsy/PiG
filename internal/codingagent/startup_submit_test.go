@@ -28,14 +28,20 @@ func TestStartupSubmitKeepsTextAndReportsProgress(t *testing.T) {
 	m.inputReadCh <- inputChunk{data: []byte("\r")}
 	m.inputReadCh <- inputChunk{data: []byte("\x1b]11;#000000\x07")}
 	m.beginStartupSubmitWindow()
-	if err := m.initializeTerminalTheme(ctx, io.Discard); err != nil {
+	m.uiTaskCh = make(chan func(), 8)
+	m.backgroundCtx = ctx
+	t.Cleanup(func() { m.disposeTheme(); m.backgroundTasks.Wait() })
+	m.themeState.output = io.Discard
+	m.initTheme()
+	m.applyThemeFromSettings(ctx)
+	if err := m.waitForTerminalColors(ctx); err != nil {
 		t.Fatal(err)
 	}
 	m.endStartupSubmitWindow()
 	if got := m.editor.Text(); got != "What is 20+22?" {
 		t.Fatalf("editor = %q, want the early text kept", got)
 	}
-	if m.lastStatusText == nil || !strings.Contains(m.lastStatusText.Content, "Startup is still in progress") {
+	if m.lastStatusText == nil || !strings.Contains(lastStatusContent(m), "Startup is still in progress") {
 		t.Fatalf("status = %v, want Startup is still in progress", m.lastStatusText)
 	}
 	if m.editor.OnSubmit == nil {
@@ -75,7 +81,7 @@ func TestStartupSubmitWindowCoversManagedToolSetup(t *testing.T) {
 		if got := m.editor.Text(); got != "What is 20+22?" {
 			t.Errorf("editor during managed-tool setup = %q, want the typed text kept", got)
 		}
-		if m.lastStatusText == nil || !strings.Contains(m.lastStatusText.Content, "Startup is still in progress") {
+		if m.lastStatusText == nil || !strings.Contains(lastStatusContent(m), "Startup is still in progress") {
 			t.Errorf("status = %v, want Startup is still in progress", m.lastStatusText)
 		}
 		close(release)
@@ -94,13 +100,16 @@ func TestStartupSubmitWindowCoversManagedToolSetup(t *testing.T) {
 // /reload re-detects the theme without Pi's startup submit handler.
 func TestReloadThemeDetectionHasNoStartupSubmitHandler(t *testing.T) {
 	restoreStartupTheme(t)
-	m, _ := newCustomEditorDispatchMode(t)
+	m, ctx := newCustomEditorDispatchMode(t)
 	m.inputReadCh = make(chan inputChunk, 1)
 	m.inputErrCh = make(chan error, 1)
 	m.inputReadCh <- inputChunk{data: []byte("\x1b]11;#000000\x07")}
-	if err := m.initializeTerminalTheme(context.Background(), io.Discard); err != nil {
-		t.Fatal(err)
-	}
+	m.uiTaskCh = make(chan func(), 8)
+	m.backgroundCtx = ctx
+	t.Cleanup(func() { m.disposeTheme(); m.backgroundTasks.Wait() })
+	m.themeState.output = io.Discard
+	m.initTheme()
+	m.applyThemeFromSettings(context.Background())
 	if m.editor.OnSubmit != nil {
 		t.Fatal("theme re-detection installed a submit handler")
 	}

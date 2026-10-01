@@ -13,6 +13,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 )
 
 // Upstream extensions call the host in process, so every synchronous host API
@@ -38,8 +39,8 @@ func startsAsync(method string) bool {
 		// The public call remains synchronous in its SDK. A reverse factory/provider callback can reenter the host, so release its call lane at callback initiation.
 		return true
 	case "ui.select", "ui.confirm", "ui.input", "ui.editor", CallUICustom,
-		"setModel", "registerProvider", "exec", "complete", "modelStream", CallProviderObject, "getModelAuth", "getProviderAuth", "refreshModelRegistry", "compact",
-		"waitForIdle", "newSession", "fork", "navigateTree", "switchSession", "reload",
+		"setModel", "registerProvider", "exec", "complete", "modelStream", CallProviderObject, "getModelAuth", "getProviderAuth", "getAvailableOfType", "classify", "refreshModelRegistry", "compact",
+		"waitForIdle", "newSession", "fork", "navigateTree", "switchSession", "reload", CallExecuteTool,
 		CallOAuthOnPrompt, CallOAuthOnSelect, CallOAuthOnManualCodeInput:
 		return true
 	default:
@@ -155,8 +156,11 @@ func (h *Host) queueCall(me *managedExt, conn *Conn, lanes *callLanes, callID st
 	if gatesOtherLanes(call.Method) {
 		ordering = initiated
 	}
+	// The read loop reserves a nested call before it reads the frame that may cancel it.
+	release := h.reserveNestedCall(conn, call)
 	lanes.pushCall(call.ParentRequestID, ordering, func() {
 		if initiated == nil {
+			defer release()
 			h.runCall(me, conn, callID, call, nil)
 			return
 		}
@@ -166,6 +170,7 @@ func (h *Host) queueCall(me *managedExt, conn *Conn, lanes *callLanes, callID st
 		go func() {
 			defer close(finished)
 			defer mark()
+			defer release()
 			h.runCall(me, conn, callID, call, mark)
 		}()
 		select {
@@ -249,13 +254,34 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		defer h.uiBridge.releaseAutocompleteCall(conn, call)
 	}
 	defer releaseCall()
-	if callCtx.Err() != nil || !h.acceptsNodeGeneration(me) {
-		// A dropped call delivers none of the cross-process references it carried.
+	// A dropped or refused call delivers none of the cross-process references it carried.
+	refuseReferences := func() {
 		if call.Method == "registerProvider" || call.Method == callProviderConfigRef {
 			h.xref.hold(conn, callID, providerConfigRefArg(call.Args))
 		}
 		h.xref.unhold(conn, callID)
+	}
+	if callCtx.Err() != nil {
+		refuseReferences()
 		return
+	}
+	// A reload invalidates the replaced runner, so its captured pi and ctx throw Pi's stale message (runner.ts:721-734, agent-session.ts:3580). The generation still runs while its command returns from `await ctx.reload()` (retireGeneration), so answer each call with that error: a dropped call would block the command, and the stop that waits for it, forever.
+	if me.replaced.Load() {
+		refuseReferences()
+		if callID != "" {
+			_ = conn.Send(&Envelope{Type: MsgCallResult, ID: callID, CallResult: &CallResultPayload{Error: &ErrorInfo{Message: (&inproc.StaleError{}).Error()}}})
+		}
+		return
+	}
+	if !h.acceptsNodeGeneration(me) {
+		refuseReferences()
+		return
+	}
+	// Pi's loop stays alive for a call that starts I/O, a child process or a session change, and does not for a dialog that stdin can no longer answer. The count runs from the call's frame, and the drain notification that follows it waits for the call's lane (queueCall), so the drain sees it.
+	if takesInteractiveFocus(call.Method) {
+		defer conn.countHostCall(call.ParentRequestID, true)()
+	} else if startsAsync(call.Method) {
+		defer conn.countHostCall(call.ParentRequestID, false)()
 	}
 	if mark != nil {
 		callCtx = extension.WithCallInitiation(callCtx, mark)
@@ -298,9 +324,19 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 	case call.Method == callXrefHello || call.Method == callXrefOp:
 		result, err = h.handleXrefCall(callCtx, me, conn, callID, call)
 	case call.Method == callEventsOn || call.Method == callEventsOff || call.Method == callEventsEmit || call.Method == callEventsSettle:
-		result, err = h.handleEventBusCall(callCtx, conn, callID, call)
+		result, err = h.handleEventBusCall(callCtx, me, conn, callID, call)
 	case call.Method == "event.subscribe" || call.Method == "event.unsubscribe":
 		result, err = h.handleEventSubscription(me, call)
+	case call.Method == CallGetMcpServers:
+		result, err = h.handleMcpServersRead()
+	case call.Method == CallCheckMcpServer:
+		result, err = h.handleMcpServerCheck(me, call)
+	case call.Method == CallRegisterMcpServer || call.Method == CallUnregisterMcpServer:
+		result, err = h.handleMcpServerCall(callCtx, me, call)
+	case call.Method == CallRegisterVirtualModel || call.Method == CallUnregisterVirtualModel:
+		result, err = h.handleVirtualModelCall(callCtx, me, call)
+	case call.Method == CallExecuteTool || call.Method == CallExecuteToolCancel:
+		result, err = h.handleExecuteToolCall(callCtx, conn, call)
 	case call.Method == "provider.retain" || call.Method == "provider.release":
 		result, err = h.handleProviderReference(conn, call)
 	case call.Method == CallProviderObject:
@@ -360,11 +396,8 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 // Upstream's bindCore makes both take effect immediately (runner.ts), in the
 // one registry every extension shares.
 func (h *Host) handleProviderRegistrationCall(ctx context.Context, me *managedExt, conn *Conn, callID string, call *CallPayload) (*CallResultPayload, error) {
-	var request struct {
-		Name   string                     `json:"name"`
-		Config json.RawMessage            `json:"config"`
-		Native *NativeProviderDeclaration `json:"native"`
-	}
+	// The call carries the declaration the register payload does: the operations (streamSimple, images, classifiers) run in the extension and are named, never sent.
+	var request ProviderDecl
 	// The call's configRef transmission is accounted however the call ends, so the author can release its export.
 	configRef := providerConfigRefArg(call.Args)
 	h.xref.hold(conn, callID, configRef)
@@ -421,6 +454,7 @@ func (h *Host) handleProviderRegistrationCall(ctx context.Context, me *managedEx
 		h.xref.unhold(conn, callID)
 		return nil, fmt.Errorf("provider %s: decode config: %w", request.Name, err)
 	}
+	h.attachProviderOperations(me, request, &config)
 	if err := h.providerRuntime.RegisterProvider(request.Name, config, extConfigOrigin(me.config)); err != nil {
 		h.xref.unhold(conn, callID)
 		return nil, err

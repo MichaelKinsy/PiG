@@ -190,6 +190,7 @@ func TestStartupReportsFailedPreTrustExtensionOnce(t *testing.T) {
 // `Failed to load extension "<second path>": Tool "ask_user" conflicts with
 // <first path>` and the -ne hint.
 func TestStartupDuplicateExtensionCopiesMatchUpstream(t *testing.T) {
+	t.Parallel()
 	if _, err := exec.LookPath("node"); err != nil {
 		t.Fatalf("node is required for the extension fixture: %v", err)
 	}

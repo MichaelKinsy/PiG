@@ -16,7 +16,7 @@ func configuredTestAuth() ProviderAuth {
 
 // .upstream/v0.87.1/packages/ai/test/providers.test.ts:674
 func TestProviderMissingAPIImplementationUpstream(t *testing.T) {
-	provider := CreateProvider(CreateProviderOptions{ID: "mixed", Auth: configuredTestAuth(), Models: []*Model{dispatchTestModel("api-a", "model-a")}, API: ProviderAPIMap{"api-a": recordingProviderStreams("a", nil)}})
+	provider := CreateProvider(CreateProviderOptions{ID: "mixed", Auth: configuredTestAuth(), Models: []AnyModel{dispatchTestModel("api-a", "model-a")}, API: ProviderAPIMap{"api-a": recordingProviderStreams("a", nil)}})
 	stream, err := provider.StreamSimple(t.Context(), dispatchTestModel("api-ghost", "model-x"), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("hi")}}}), StreamOptions{})
 	if err != nil {
 		t.Fatal(err)
@@ -32,7 +32,7 @@ func TestDefinedProviderCatalogSnapshotRoundTrip(t *testing.T) {
 	model.ProviderMeta.Headers = map[string]string{"X-Model": "value"}
 	model.ThinkingLevelMap = ThinkingLevelMap{ThinkingOff: nil, ThinkingHigh: new("verified")}
 	model.InputLimits = &ModelInputLimits{MaxRequestBytes: 1024}
-	raw, err := encodeModelsCatalog([]*Model{model})
+	raw, err := encodeModelsCatalog([]AnyModel{model})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestDefinedProviderCatalogSnapshotRoundTrip(t *testing.T) {
 	if !reflect.DeepEqual(raw, encoded) {
 		t.Fatalf("snapshot differs: %s != %s", raw, encoded)
 	}
-	if len(decoded) != 1 || !reflect.DeepEqual(decoded[0].ThinkingLevelMap, model.ThinkingLevelMap) || !reflect.DeepEqual(decoded[0].ProviderMeta.Headers, model.ProviderMeta.Headers) {
+	if len(decoded) != 1 || !reflect.DeepEqual(decoded[0].(*Model).ThinkingLevelMap, model.ThinkingLevelMap) || !reflect.DeepEqual(decoded[0].(*Model).ProviderMeta.Headers, model.ProviderMeta.Headers) {
 		t.Fatal("metadata lost")
 	}
 }

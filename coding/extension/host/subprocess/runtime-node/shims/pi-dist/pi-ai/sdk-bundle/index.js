@@ -29,7 +29,11 @@ import {
   uuidv7,
   validateToolArguments,
   validateToolCall
-} from "./chunk-LTKXQ3LS.js";
+} from "./chunk-E4HYV5TO.js";
+import {
+  envApiKeyAuth,
+  lazyOAuth
+} from "./chunk-VLLDVPPZ.js";
 import {
   InMemoryCredentialStore,
   InMemoryModelsStore,
@@ -40,14 +44,11 @@ import {
   collapseSystemMessages,
   contentText,
   createAssistantMessageDiagnostic,
-  createImagesModels,
-  createImagesProvider,
   createInitialSystemMessage,
   createModels,
   createProvider,
   declarationsEqual,
   defaultProviderAuthContext,
-  envApiKeyAuth,
   extractDiagnosticError,
   formatThrownValue,
   getCurrentSystemMessage,
@@ -55,13 +56,14 @@ import {
   getCurrentTools,
   getDeclaredTools,
   getInitialSystemMessage,
+  getModelType,
   getSupportedThinkingLevels,
   getSystemMessageText,
   getToolStateChanges,
   hasApi,
   hasNonAdditiveToolChanges,
   hasToolRedefinitions,
-  lazyOAuth,
+  isModelType,
   modelsAreEqual,
   normalizeContext,
   renderSystemMessageUpdate,
@@ -69,7 +71,7 @@ import {
   resolveTranscriptTools,
   toToolDeclaration,
   withoutInitialSystemMessage
-} from "./chunk-VLBMMG2Q.js";
+} from "./chunk-JUG7GWVD.js";
 import "./chunk-SHUYVCID.js";
 export {
   AssistantMessageEventStream,
@@ -90,8 +92,6 @@ export {
   createAssistantMessageDiagnostic,
   createAssistantMessageEventStream,
   createFauxCore,
-  createImagesModels,
-  createImagesProvider,
   createInitialSystemMessage,
   createModels,
   createProvider,
@@ -110,6 +110,7 @@ export {
   getCurrentTools,
   getDeclaredTools,
   getInitialSystemMessage,
+  getModelType,
   getOverflowPatterns,
   getSupportedThinkingLevels,
   getSystemMessageText,
@@ -118,6 +119,7 @@ export {
   hasNonAdditiveToolChanges,
   hasToolRedefinitions,
   isContextOverflow,
+  isModelType,
   isRecoverableLength,
   isRetryableAssistantError,
   lazyApi,

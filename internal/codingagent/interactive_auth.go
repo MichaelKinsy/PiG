@@ -16,12 +16,23 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// authSelectorProviderNames holds the provider names (ai/src/providers/*.ts
-// `name`) that upstream's auth selector shows where they differ from the OAuth
-// flow's own name (for example meta.ts: "Meta", not "Meta (Muse subscription)").
-var authSelectorProviderNames = map[string]string{
-	"meta":         "Meta",
-	"openai-codex": "OpenAI Codex",
+// catalogProviderName is the name of a catalog provider (providers/<id>.ts), or "" for a provider outside the catalog, whose name its registration or OAuth flow declares.
+func catalogProviderName(id string) string {
+	if slices.Contains(ai.GeneratedProviders, id) {
+		return ai.ProviderDisplayName(id)
+	}
+	return ""
+}
+
+// authSelectorProviderName is the name the login selector shows for an OAuth provider: upstream's provider.name
+// (interactive-mode.ts getLoginProviderOptions), which for a catalog provider is the catalog's name
+// (providers/<id>.ts) rather than the OAuth flow's own name ("Meta (Muse subscription)"). A provider outside the
+// catalog, such as an extension's OAuth provider, keeps the name its flow declares.
+func authSelectorProviderName(provider ai.OAuthProviderInterface) string {
+	if name := catalogProviderName(provider.ID()); name != "" {
+		return name
+	}
+	return provider.Name()
 }
 
 // oauthProviderList returns the auth providers available to /login and /logout.
@@ -32,9 +43,19 @@ func (m *InteractiveMode) oauthProviderList(mode string, includeStatus ...bool) 
 	}
 	var all []tui.OAuthProvider
 	for _, provider := range m.oauthProviders() {
-		name := provider.Name()
-		if providerName, ok := authSelectorProviderNames[provider.ID()]; ok {
-			name = providerName
+		name := authSelectorProviderName(provider)
+		// The runtime is the authority for a provider it composes: without an OAuth method there is no account login, and its composed name (a models.json `name` over the catalog name, provider-composer.ts:588) is the provider.name upstream lists.
+		if runtime := m.opts.RequestAuthRuntime; runtime != nil {
+			providers := runtime.GetProviders()
+			if index := slices.IndexFunc(providers, func(composed *RuntimeProvider) bool { return composed.ID == provider.ID() }); index >= 0 {
+				composed := providers[index]
+				if composed.Auth.OAuth == nil {
+					continue
+				}
+				if composed.Name != "" {
+					name = composed.Name
+				}
+			}
 		}
 		all = append(all, tui.OAuthProvider{ID: provider.ID(), Name: name, AuthType: "oauth"})
 	}
@@ -323,7 +344,7 @@ func (m *InteractiveMode) runLoginRegisteredOAuth(loginCtx context.Context, prov
 		} else {
 			var credential ai.Credential
 			if credential, err = ai.CredentialFromOAuth(cred); err == nil {
-				err = auth.Set(provider.ID(), credential)
+				err = saveLoginCredential(loginCtx, auth, provider.ID(), credential)
 			}
 		}
 		if err != nil {
@@ -430,7 +451,7 @@ func (m *InteractiveMode) runLoginOpenAICodex(loginCtx context.Context) error {
 
 		codexCred, err := ai.CredentialFromOAuth(cred)
 		if err == nil {
-			err = auth.Set("openai-codex", codexCred)
+			err = saveLoginCredential(loginCtx, auth, "openai-codex", codexCred)
 		}
 		if err != nil {
 			dlg.ShowProgress(fmt.Sprintf("Failed to store credentials: %v", err))
@@ -513,7 +534,7 @@ func (m *InteractiveMode) runLoginGitHubCopilotDialog(loginCtx context.Context) 
 			return
 		}
 
-		if err := auth.Set("github-copilot", cred); err != nil {
+		if err := saveLoginCredential(loginCtx, auth, "github-copilot", cred); err != nil {
 			dlg.ShowProgress(fmt.Sprintf("Failed to store credentials: %v", err))
 			notify()
 			return
@@ -639,8 +660,22 @@ func (m *InteractiveMode) footerUsingSubscription(model *ai.Model) bool {
 func (m *InteractiveMode) newFooter() *StatusLine {
 	footer := NewStatusLine(m.opts.Model, "", nil)
 	footer.SetUsageTotalsSource(m.footerUsageTotals)
+	footer.SetRoutedModelSource(m.footerRoutedModel)
 	footer.SetSubscriptionResolver(m.footerUsingSubscription)
 	return footer
+}
+
+// routedModelHandle is implemented by a session handle whose session can route a virtual model selection.
+type routedModelHandle interface {
+	RoutedModelSelection() *RoutedModelSelection
+}
+
+// footerRoutedModel reads the physical model the current session's latest response was routed to (AgentSession.routedModel).
+func (m *InteractiveMode) footerRoutedModel() *RoutedModelSelection {
+	if handle, ok := m.opts.SessionHandle.(routedModelHandle); ok {
+		return handle.RoutedModelSelection()
+	}
+	return nil
 }
 
 // footerUsageTotals reads the current session's all-entry usage totals.
@@ -657,6 +692,10 @@ func showDeviceCode(dlg *tui.LoginDialog, verificationURI, userCode string) {
 	dlg.ShowDeviceCode(verificationURI, userCode)
 	dlg.ShowWaiting("Waiting for authentication...")
 }
+
+// OpenBrowser opens target in the platform browser. The launch is best-effort, as upstream's: callers still present the target to the user, so a launcher failure is not reported.
+// Ports packages/coding-agent/src/utils/open-browser.ts
+func OpenBrowser(target string) { _ = openBrowser(target) }
 
 // openBrowser opens a URL in the default browser without a shell.
 // Ports packages/coding-agent/src/utils/open-browser.ts
@@ -690,3 +729,9 @@ var openBrowser = func(url string) error {
 // and from agent_end; idempotent because FinalizeAborted no-ops once a tool is
 // terminal, and a genuine ToolExecutionEnd arriving later still overwrites the
 // frozen placeholder with the real result via SetResult.
+
+// saveLoginCredential stores the credential a login produced as Pi's Models.login does, through credentials.modify (pi-ai models.ts:593-610): the cancellable auth lock waits up to 30 seconds for another process's lock and ignores a failed release.
+func saveLoginCredential(ctx context.Context, auth *ai.AuthStorage, providerID string, credential ai.Credential) error {
+	_, err := auth.Modify(ctx, providerID, func(*ai.Credential) (*ai.Credential, error) { return &credential, nil })
+	return err
+}

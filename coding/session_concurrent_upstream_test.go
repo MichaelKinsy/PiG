@@ -232,12 +232,14 @@ func TestUpstreamConcurrentPrompt(t *testing.T) {
 				observed = append(observed, []any{mode, true})
 			} else {
 				if mode == "steer" {
-					if err := s.Steer(t.Context(), "Steering message", nil, nil); err != nil {
-						t.Fatal(err)
+					// upstream v0.99.1 agent-session-concurrent.test.ts:164: `steer` resolves "queued".
+					if disposition, err := s.Steer(t.Context(), "Steering message", nil, nil); err != nil || disposition != DispositionQueued {
+						t.Fatalf("steer = %q, %v; want %q", disposition, err, DispositionQueued)
 					}
 				} else {
-					if err := s.FollowUp(t.Context(), "Follow-up message", nil, nil); err != nil {
-						t.Fatal(err)
+					// upstream v0.99.1 agent-session-concurrent.test.ts:180: `followUp` resolves "queued".
+					if disposition, err := s.FollowUp(t.Context(), "Follow-up message", nil, nil); err != nil || disposition != DispositionQueued {
+						t.Fatalf("followUp = %q, %v; want %q", disposition, err, DispositionQueued)
 					}
 				}
 				if count := s.PendingMessageCount(); count != 1 {

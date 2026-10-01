@@ -7,13 +7,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
-	"os"
-	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
@@ -55,61 +51,6 @@ func parseAuthorizationInput(input string) (code, state string) {
 	}
 
 	return v, ""
-}
-
-type callbackResult struct {
-	Code  string
-	State string
-}
-
-// startCallbackServer starts a local HTTP server for the OAuth callback.
-func startCallbackServer(expectedState string) (srv *http.Server, listener net.Listener, resultCh chan *callbackResult, serveDone chan struct{}, err error) {
-	resultCh = make(chan *callbackResult, 1)
-
-	mux := http.NewServeMux()
-	mux.HandleFunc(anthropicCallbackPath, func(w http.ResponseWriter, r *http.Request) {
-		q := r.URL.Query()
-		if errParam := q.Get("error"); errParam != "" {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = io.WriteString(w, OAuthErrorHTML("Anthropic authentication did not complete.", "Error: "+errParam))
-			return
-		}
-		code := q.Get("code")
-		state := q.Get("state")
-		if code == "" || state == "" {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = io.WriteString(w, OAuthErrorHTML("Missing code or state parameter.", ""))
-			return
-		}
-		if state != expectedState {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = io.WriteString(w, OAuthErrorHTML("State mismatch.", ""))
-			return
-		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = io.WriteString(w, OAuthSuccessHTML("Anthropic authentication completed. You can close this window."))
-		select {
-		case resultCh <- &callbackResult{Code: code, State: state}: // upstream: ai/src/auth/oauth/anthropic.ts:settled
-		default:
-		}
-	})
-
-	srv = &http.Server{Handler: mux}
-	listener, err = net.Listen("tcp", net.JoinHostPort(firstNonEmptyString(os.Getenv("PI_OAUTH_CALLBACK_HOST"), "127.0.0.1"), strconv.Itoa(anthropicCallbackPort)))
-	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("listen on port %d: %w", anthropicCallbackPort, err)
-	}
-
-	serveDone = make(chan struct{})
-	go func() {
-		defer close(serveDone)
-		_ = srv.Serve(listener) // returns on Shutdown
-	}()
-
-	return srv, listener, resultCh, serveDone, nil
 }
 
 type anthropicTokenResponse struct {
@@ -159,35 +100,28 @@ func exchangeAnthropicCode(ctx context.Context, code, state, verifier, redirectU
 	return creds, nil
 }
 
-// LoginAnthropic runs the Anthropic OAuth authorization code + PKCE flow.
-// Authorization cleanup cancels and joins contextual manual prompts and closes the callback listener while the token exchange is pending.
+// LoginAnthropic runs the Anthropic OAuth authorization code + PKCE flow. The browser callback and the manual prompt
+// race; the callback server closes, and the manual prompt is joined, before the token exchange result returns.
+// Ports loginAnthropic (.upstream/v0.99.1/packages/ai/src/auth/oauth/anthropic.ts:135).
 func LoginAnthropic(ctx context.Context, callbacks OAuthLoginCallbacks) (OAuthCredentials, error) {
 	pkce, err := GeneratePKCE()
 	if err != nil {
 		return OAuthCredentials{}, fmt.Errorf("generate PKCE: %w", err)
 	}
-
-	srv, listener, resultCh, serveDone, err := startCallbackServer(pkce.Verifier)
-	if err != nil {
-		return OAuthCredentials{}, err
-	}
-	var cancelManual context.CancelFunc
-	var manualDone chan struct{}
-	finishAuthorization := sync.OnceFunc(func() {
-		if cancelManual != nil {
-			cancelManual()
-			if callbacks.OnManualCodeInputContext != nil {
-				<-manualDone
-			}
-		}
-		shutCtx, shutCancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer shutCancel()
-		// Shutdown can precede Serve registering its listener; close the owned listener explicitly.
-		_ = listener.Close()
-		_ = srv.Shutdown(shutCtx)
-		<-serveDone
+	// A busy callback port leaves the manual prompt as the only way to finish.
+	callback, err := StartOAuthCallbackServer(ctx, OAuthCallbackServerOptions[string]{
+		ProviderName: "Anthropic",
+		Host:         oauthCallbackHost(),
+		Port:         anthropicCallbackPort,
+		Path:         anthropicCallbackPath,
+		State:        &pkce.Verifier,
+		Complete:     func(_ context.Context, code string) (string, error) { return code, nil },
 	})
-	defer finishAuthorization()
+	if err != nil {
+		callback = nil
+	} else {
+		defer callback.Close()
+	}
 
 	params := url.Values{
 		"code":                  {"true"},
@@ -199,104 +133,37 @@ func LoginAnthropic(ctx context.Context, callbacks OAuthLoginCallbacks) (OAuthCr
 		"code_challenge_method": {"S256"},
 		"state":                 {pkce.Verifier},
 	}
-	authURL := anthropicAuthorizeURL + "?" + params.Encode()
-
 	callbacks.OnAuth(OAuthAuthInfo{
-		URL:          authURL,
+		URL:          anthropicAuthorizeURL + "?" + params.Encode(),
 		Instructions: "Complete login in your browser. If the browser is on another machine, paste the final redirect URL here.",
 	})
 
-	var code, state string
-	redirectURI := anthropicRedirectURI
-
-	// Wait for callback or manual input
-	if callbacks.OnManualCodeInput != nil || callbacks.OnManualCodeInputContext != nil {
-		var manualCtx context.Context
-		manualCtx, cancelManual = context.WithCancel(ctx)
-		defer cancelManual()
-		manualDone = make(chan struct{})
-		manualCh := make(chan struct {
-			val string
-			err error
-		}, 1)
-		go func() {
-			defer close(manualDone)
-			var v string
-			var e error
-			if callbacks.OnManualCodeInputContext != nil {
-				v, e = callbacks.OnManualCodeInputContext(manualCtx)
-			} else {
-				v, e = callbacks.OnManualCodeInput()
-			}
-			manualCh <- struct {
-				val string
-				err error
-			}{v, e}
-		}()
-
-		select {
-		case r := <-resultCh:
-			if r != nil {
-				code, state = r.Code, r.State
-			}
-		case m := <-manualCh:
-			if m.err != nil {
-				return OAuthCredentials{}, m.err
-			}
-			code, state = parseAuthorizationInput(m.val)
-			if state == "" {
-				state = pkce.Verifier
-			}
-		case <-ctx.Done():
-			return OAuthCredentials{}, ctx.Err()
-		}
-	} else {
-		select {
-		case r := <-resultCh:
-			if r != nil {
-				code, state = r.Code, r.State
-			}
-		case <-ctx.Done():
-			return OAuthCredentials{}, ctx.Err()
-		}
+	result, err := WaitForCallbackOrManualInput(ctx, manualCodeInteraction(callbacks), callback, AuthManualCodePrompt{
+		Message:     "Complete login in your browser, or paste the authorization code / redirect URL here:",
+		Placeholder: anthropicRedirectURI,
+	})
+	if err != nil {
+		return OAuthCredentials{}, err
 	}
-
-	// Fallback: prompt for code
-	if code == "" && callbacks.OnPrompt != nil {
-		input, promptErr := callbacks.OnPrompt(OAuthPrompt{
-			Message:     "Paste the authorization code or full redirect URL:",
-			Placeholder: anthropicRedirectURI,
-		})
-		if promptErr != nil {
-			return OAuthCredentials{}, promptErr
+	var code, state string
+	if result.Callback {
+		code, state = result.Value, pkce.Verifier
+	} else {
+		code, state = parseAuthorizationInput(result.Input)
+		if state != "" && state != pkce.Verifier {
+			return OAuthCredentials{}, fmt.Errorf("OAuth state mismatch")
 		}
-		code, state = parseAuthorizationInput(input)
 		if state == "" {
 			state = pkce.Verifier
 		}
 	}
-
 	if code == "" {
-		return OAuthCredentials{}, fmt.Errorf("missing authorization code")
+		return OAuthCredentials{}, fmt.Errorf("Missing authorization code")
 	}
-	if state != pkce.Verifier {
-		return OAuthCredentials{}, fmt.Errorf("OAuth state mismatch")
-	}
-
 	if callbacks.OnProgress != nil {
 		callbacks.OnProgress("Exchanging authorization code for tokens...")
 	}
-	// upstream: packages/ai/src/auth/oauth/anthropic.ts:loginAnthropic returns the exchange Promise without awaiting it, so finally runs before the exchange settles.
-	var credential OAuthCredentials
-	var exchangeErr error
-	exchangeDone := make(chan struct{})
-	go func() {
-		defer close(exchangeDone)
-		credential, exchangeErr = exchangeAnthropicCode(ctx, code, state, pkce.Verifier, redirectURI)
-	}()
-	finishAuthorization()
-	<-exchangeDone
-	return credential, exchangeErr
+	return exchangeAnthropicCode(ctx, code, state, pkce.Verifier, anthropicRedirectURI)
 }
 
 // RefreshAnthropicToken refreshes an Anthropic OAuth token.

@@ -283,4 +283,42 @@ func TestOpenAICodexOAuthUpstream(t *testing.T) {
 			t.Fatalf("stderr=%q", output)
 		}
 	})
+	// .upstream/v0.99.1/packages/ai/test/openai-codex-oauth.test.ts:488
+	t.Run("falls back to the pasted redirect URL when the fixed callback port is taken", func(t *testing.T) {
+		// Port 1455 is registered with OpenAI; the Codex CLI may hold it. Occupy it unless it already is.
+		holdCodexCallbackPort(t)
+		var exchange url.Values
+		previous := http.DefaultClient.Transport
+		http.DefaultClient.Transport = codexRoundTrip(func(r *http.Request) (*http.Response, error) {
+			if r.URL.String() != "https://auth.openai.com/oauth/token" {
+				return nil, fmt.Errorf("unexpected request %s", r.URL)
+			}
+			body, _ := io.ReadAll(r.Body)
+			exchange, _ = url.ParseQuery(string(body))
+			header, _ := json.Marshal(map[string]string{"alg": "none"})
+			payload, _ := json.Marshal(map[string]any{"https://api.openai.com/auth": map[string]string{"chatgpt_account_id": "acct"}})
+			access := base64.StdEncoding.EncodeToString(header) + "." + base64.StdEncoding.EncodeToString(payload) + ".signature"
+			return codexJSONResp(200, fmt.Sprintf(`{"access_token":%q,"refresh_token":"refresh","expires_in":3600}`, access)), nil
+		})
+		t.Cleanup(func() { http.DefaultClient.Transport = previous })
+
+		authURL := ""
+		credentials, err := (CodexOAuthProvider{}).LoginContext(t.Context(), OAuthLoginCallbacks{
+			OnSelect: func(OAuthSelectPrompt) (string, error) { return "browser", nil },
+			OnAuth:   func(info OAuthAuthInfo) { authURL = info.URL },
+			OnManualCodeInput: func() (string, error) {
+				parsed, err := url.Parse(authURL)
+				if err != nil {
+					return "", err
+				}
+				return "http://localhost:1455/auth/callback?code=pasted-code&state=" + url.QueryEscape(parsed.Query().Get("state")), nil
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if credentials.AccountID != "acct" || exchange.Get("code") != "pasted-code" || exchange.Get("redirect_uri") != "http://localhost:1455/auth/callback" {
+			t.Fatalf("credentials=%+v exchange=%v", credentials, exchange)
+		}
+	})
 }

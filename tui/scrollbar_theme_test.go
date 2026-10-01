@@ -110,13 +110,16 @@ func TestFullscreenThemeFallbacksReachANSIPaletteAndColorKeys(t *testing.T) {
 }
 
 // TestScrollbarThumbExplicitKeepsColorKeyPosition guards that an explicitly
-// configured scrollbarThumb retains its original JSON key position (the fallback
-// only appends when the token is absent), mirroring upstream's spread semantics.
+// configured scrollbarThumb retains its JSON key position among the foreground
+// tokens (the fallback only appends when the token is absent), mirroring
+// upstream's spread semantics. Upstream 0.99.1 splits the colors into foregrounds
+// and backgrounds, so selectedBg, which precedes it in the file, is listed after
+// every foreground.
 func TestScrollbarThumbExplicitKeepsColorKeyPosition(t *testing.T) {
 	theme := loadThemeBody(t, `{"name":"explicit-scrollbar-theme","colors":{"selectedBg":"#3a3a4a","scrollbarThumb":"#123456","text":"#ffffff"}}`)
 	keys := theme.ColorKeys()
-	if got := slices.Index(keys, "scrollbarThumb"); got != 1 {
-		t.Fatalf("explicit scrollbarThumb at ColorKeys index %d, want 1 (original position): %v", got, keys)
+	if got := slices.Index(keys, "scrollbarThumb"); got != 0 {
+		t.Fatalf("explicit scrollbarThumb at ColorKeys index %d, want 0 (original position among foregrounds): %v", got, keys)
 	}
 }
 

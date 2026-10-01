@@ -53,6 +53,8 @@ func withTerminalInput(t *testing.T, test string, index int, body func(*testing.
 				}
 			},
 			release: func() {},
+			// EnterRawMode above wrote the keyboard protocol query; the console replies to it on stdin.
+			queryReplyOwed: true,
 		})
 		return
 	}

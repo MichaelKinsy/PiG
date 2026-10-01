@@ -43,6 +43,8 @@ type PiMessagesConfig struct {
 	// ToolChoice is "auto", "none", "required", or {type:"function",...}.
 	ToolChoice any
 	OnResponse func(PiMessagesResponse) error
+	// ModelMetadata is the selected model, which an OnProviderStreamEvent observer receives. Nil hands the observer the configured identity only.
+	ModelMetadata *Model
 }
 
 type piMessagesProvider struct {
@@ -76,7 +78,12 @@ func (p *piMessagesProvider) Stream(ctx context.Context, transcript TranscriptCo
 	}
 	stream := NewAssistantMessageEventStream()
 	ctx = stream.ObservationContext(ctx)
-	go p.run(ctx, transcript, opts, stream, newPiMessagesEventConverter(p.cfg.ProviderID, p.cfg.Model))
+	convert := newPiMessagesEventConverter(p.cfg.ProviderID, p.cfg.Model)
+	if opts.OnProviderStreamEvent != nil {
+		model := providerEventModel(p.cfg.ModelMetadata, APIPiMessages, p.cfg.ProviderID, p.cfg.Model)
+		convert.observe = func(data any) error { return opts.OnProviderStreamEvent(ctx, data, model) }
+	}
+	go p.run(ctx, transcript, opts, stream, convert)
 	return stream, nil
 }
 
@@ -112,9 +119,14 @@ func (p *piMessagesProvider) consumeBody(ctx context.Context, stream *AssistantM
 // consume is the `for await` over readPiMessagesEvents with the try/catch around it (pi-messages.ts:432-448).
 func (p *piMessagesProvider) consume(ctx context.Context, stream *AssistantMessageEventStream, convert *piMessagesEventConverter, loop *piMessagesEventLoop) {
 	err := loop.run(func(raw json.RawMessage) (bool, error) {
+		if err := convert.observeEvent(loop.turn, raw); err != nil { // pi-messages.ts:415
+			return false, err
+		}
 		events, err := convert.convert(raw)
+		replaced := convert.replaced
+		convert.replaced = assistantMessageReplacements{}
 		for _, event := range events {
-			if pushErr := stream.Push(event); pushErr != nil {
+			if pushErr := stream.push(event, replaced); pushErr != nil {
 				return false, pushErr
 			}
 			if isTerminalEvent(event) {
@@ -354,4 +366,19 @@ func abortSignalReason(cause error) error {
 		return errors.New("The operation was aborted due to timeout")
 	}
 	return cause
+}
+
+// observeEvent is `await options?.onProviderStreamEvent?.(piEvent, model)`: the callback sees the parsed wire event, and the await of an absent callback still costs one microtask.
+func (convert *piMessagesEventConverter) observeEvent(turn *continuationTurn, raw json.RawMessage) error {
+	if convert.observe != nil {
+		var data any
+		if err := json.Unmarshal(raw, &data); err != nil {
+			return err
+		}
+		if err := convert.observe(data); err != nil {
+			return err
+		}
+	}
+	_, _ = jsAwait(turn, jsValue(struct{}{}))
+	return nil
 }

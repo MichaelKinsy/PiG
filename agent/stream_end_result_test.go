@@ -17,7 +17,7 @@ func TestConsumeEndedStreamStillOwnsResultCancellation(t *testing.T) {
 		stream.End()
 		ctx, cancel := context.WithCancel(t.Context())
 		done := make(chan error, 1)
-		go func() { _, _, err := a.consumeStream(ctx, stream, nil); done <- err }()
+		go func() { _, _, err := a.consumeStream(ctx, stream, nil, ""); done <- err }()
 		synctest.Wait()
 		cancel()
 		if err := <-done; !errors.Is(err, context.Canceled) {

@@ -9,25 +9,32 @@ import (
 	"github.com/MichaelKinsy/PiG/coding"
 )
 
-// .upstream/v0.87.1/packages/ai/test/providers.test.ts:50
+// .upstream/v0.99.1/packages/ai/test/providers.test.ts:56: builtinModels() registers builtinProviders(), each with
+// models of every type (getAllModels), so the classifier-only typesafe provider is registered too.
 func TestBuiltinModelsRuntimeRegistersCatalog(t *testing.T) {
+	builtin := ai.BuiltinModels()
+	providers := builtin.GetProviders()
+	catalog := ai.ListProviders()
+	if len(providers) != len(ai.BuiltinProviders()) || len(providers) != len(catalog) {
+		t.Fatalf("runtime providers=%d builtin providers=%d catalog providers=%d", len(providers), len(ai.BuiltinProviders()), len(catalog))
+	}
+	if !slices.ContainsFunc(providers, func(p *ai.ModelsProvider) bool { return p.ID == "anthropic" }) || len(builtin.GetModels()) <= 500 {
+		t.Fatalf("incomplete builtin runtime: %d models", len(builtin.GetModels()))
+	}
+	for _, provider := range providers {
+		list := builtin.GetAllModels(provider.ID)
+		if len(list) == 0 {
+			t.Fatal("provider has no runtime models", provider.ID)
+		}
+		for _, model := range list {
+			if model.ProviderID() != provider.ID {
+				t.Fatal("model of another provider", provider.ID, model.ProviderID())
+			}
+		}
+	}
 	services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
-	}
-	models := services.ModelRuntime().GetModels()
-	providers := map[string]int{}
-	for _, model := range models {
-		providers[model.ProviderMeta.ProviderID]++
-	}
-	catalog := ai.ListProviders()
-	if len(providers) != len(catalog) || providers["anthropic"] == 0 || len(models) <= 500 {
-		t.Fatalf("runtime providers=%d catalog providers=%d models=%d", len(providers), len(catalog), len(models))
-	}
-	for _, provider := range catalog {
-		if providers[provider] == 0 {
-			t.Fatal("provider has no runtime models", provider)
-		}
 	}
 	anthropic := services.ModelRuntime().GetModel("anthropic", "claude-haiku-4-5")
 	if anthropic == nil || anthropic.ProviderMeta.API != ai.APIAnthropicMessages {
@@ -36,9 +43,6 @@ func TestBuiltinModelsRuntimeRegistersCatalog(t *testing.T) {
 	radius := services.ModelRuntime().GetModel("radius", "balanced")
 	if radius == nil || radius.ProviderMeta.API != ai.APIPiMessages || radius.ProviderMeta.ProviderID != "radius" {
 		t.Fatal("missing Radius model")
-	}
-	if !slices.Contains(catalog, "anthropic") {
-		t.Fatal("missing catalog provider")
 	}
 }
 

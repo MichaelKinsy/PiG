@@ -57,3 +57,7 @@ reason = "D2: alias only the exact isolated cwd embedded in the system section; 
 paths = ["/**/timestamp"]
 kind = "timestamp"
 reason = "Independent message wall clocks vary; retain field presence, timestamp type and valid syntax."
+[[assert.json_aliases]]
+paths = ["/**/wall_time_seconds"]
+kind = "duration"
+reason = "bash.ts:392 measures the command's wall clock and rounds it to 0.1 s, so a loaded host reports 0 or 0.1 for the same command; retain the field's presence, its position and Pi's one-decimal number spelling."

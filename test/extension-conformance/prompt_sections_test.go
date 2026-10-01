@@ -17,10 +17,8 @@ import (
 
 // Pi runner.ts:1312-1362 awaits before_agent_start and retains section mutations even without a result or after a handler error. This row binds a value that no SDK can satisfy by returning its empty fallback.
 func TestPromptSectionMutationsAcrossSDKs(t *testing.T) {
+	t.Parallel()
 	root := findModuleRoot(t)
-	t.Setenv("PIG_SDK_GO_ROOT", filepath.Join(root, "extensions", "sdk"))
-	t.Setenv("PIG_SDK_PY_ROOT", filepath.Join(root, "extensions", "sdk-py"))
-	t.Setenv("PIG_SDK_RS_ROOT", filepath.Join(root, "extensions", "sdk-rs"))
 	t.Run("inproc", func(t *testing.T) {
 		ext := extension.Extension{Handlers: map[string][]extension.HandlerFn{"before_agent_start": {func(args ...any) (any, error) {
 			event := args[0].(extension.BeforeAgentStartEvent)

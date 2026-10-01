@@ -43,20 +43,31 @@ const assistant = text => ({ role: "assistant", content: [{ type: "text", text }
   assert.throws(() => s.appendLabelChange("non-existent", "label"), { message: "Entry non-existent not found" });
   assert.throws(() => s.branch("nonexistent"), { message: "Entry nonexistent not found" });
 }
+// tree-traversal.test.ts:483-585: a fork is written once its path holds a user or assistant message (session-manager.ts:1166-1170, 1717-1724), not only an assistant.
+const roles = path => readFileSync(path, "utf8").trim().split("\n").map(line => JSON.parse(line)).map(e => e.type === "message" ? e.message.role : e.type === "custom" ? "custom" : e.type);
 const dir = mkdtempSync(join(tmpdir(), "pi-session-fork-"));
 try {
-  const s = SessionManager.create(dir, dir);
-  const root = s.appendMessage(user("first question"));
-  s.appendMessage(assistant("first answer"));
-  s.appendMessage(user("second question"));
-  s.appendMessage(assistant("second answer"));
-  const path = s.createBranchedSession(root);
-  assert.equal(existsSync(path), false);
-  s.appendCustomEntry("preset-state", { name: "plan" });
-  s.appendMessage(assistant("new answer"));
-  const records = readFileSync(path, "utf8").trim().split("\n").map(line => JSON.parse(line));
-  assert.equal(records.filter(e => e.type === "session").length, 1);
-  const ids = records.filter(e => e.type !== "session").map(e => e.id);
-  assert.equal(ids.length, 3);
-  assert.equal(new Set(ids).size, ids.length);
+  {
+    const s = SessionManager.create(dir, dir);
+    const setup = s.appendModelChange("anthropic", "claude-sonnet-4-5");
+    s.appendMessage(user("first question"));
+    s.appendMessage(assistant("first answer"));
+    const path = s.createBranchedSession(setup);
+    assert.notEqual(path, undefined);
+    assert.equal(existsSync(path), false);
+    s.appendMessage(user("new question"));
+    assert.equal(existsSync(path), true);
+    s.appendCustomEntry("preset-state", { name: "plan" });
+    s.appendMessage(assistant("new answer"));
+    assert.deepEqual(roles(path), ["session", "model_change", "user", "custom", "assistant"]);
+  }
+  {
+    const s = SessionManager.create(dir, dir);
+    const root = s.appendMessage(user("first question"));
+    s.appendMessage(assistant("first answer"));
+    const path = s.createBranchedSession(root);
+    assert.equal(existsSync(path), true);
+    s.appendMessage(assistant("new answer"));
+    assert.deepEqual(roles(path), ["session", "user", "assistant"]);
+  }
 } finally { rmSync(dir, { recursive: true, force: true }); }

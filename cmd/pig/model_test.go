@@ -16,13 +16,14 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
 // TestDefaultModelPerProviderMatchesPinnedUpstream derives its expectation from
 // the pinned Pi model-resolver.ts defaultModelPerProvider table.
 func TestDefaultModelPerProviderMatchesPinnedUpstream(t *testing.T) {
-	source, err := os.ReadFile(filepath.Join("..", "..", ".upstream", "current", "packages", "coding-agent", "src", "core", "model-resolver.ts"))
+	source, err := os.ReadFile(filepath.Join("..", "..", ".upstream", "v"+pigversion.UpstreamVersion, "packages", "coding-agent", "src", "core", "model-resolver.ts"))
 	if err != nil {
 		t.Fatalf("read pinned Pi model-resolver.ts (run make upstream-mirror): %v", err)
 	}
@@ -94,7 +95,7 @@ func TestResolveModelProviderFlagWithoutModelIsIgnored(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolveModel: %v", err)
 	}
-	if model == nil || model.ProviderMeta.ProviderID != "together" || model.ID != "moonshotai/Kimi-K2.6" {
+	if model == nil || model.ProviderMeta.ProviderID != "together" || model.ID != "moonshotai/Kimi-K3" {
 		t.Fatalf("model = %+v, want the together default", model)
 	}
 	if got := model.ProviderMeta.BaseURL; got != "https://api.together.ai/v1" {

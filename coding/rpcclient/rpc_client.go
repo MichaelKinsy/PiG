@@ -433,18 +433,18 @@ func (c *RpcClient) handleLine(line []byte) {
 	c.emitEvent(JsonAgentSessionEvent{Type: eventType, Raw: append(json.RawMessage(nil), line...)})
 }
 
-// emitEvent walks the live listener list by index, as upstream's for...of over
-// the array does, so a listener that unsubscribes itself shifts the next one
-// into its slot.
+// emitEvent calls a snapshot of the listeners, so a listener that subscribes
+// or unsubscribes during dispatch changes only later events.
+//
+// upstream: .upstream/v0.99.1/packages/coding-agent/src/modes/rpc/rpc-client.ts:535-537
 func (c *RpcClient) emitEvent(event JsonAgentSessionEvent) {
-	for i := 0; ; i++ {
-		c.mu.Lock()
-		if i >= len(c.eventListeners) {
-			c.mu.Unlock()
-			return
-		}
-		listener := c.eventListeners[i].listener
-		c.mu.Unlock()
+	c.mu.Lock()
+	listeners := make([]RpcEventListener, len(c.eventListeners))
+	for i, entry := range c.eventListeners {
+		listeners[i] = entry.listener
+	}
+	c.mu.Unlock()
+	for _, listener := range listeners {
 		listener(event)
 	}
 }

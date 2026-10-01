@@ -13,6 +13,7 @@ import (
 // Pi's unmodified dynamic-tools.ts registers echo_session in session_start and shout in a command.
 // loader.ts:273-284 refreshes after each registration; no reload is required.
 func TestUpstreamDynamicToolsExample(t *testing.T) {
+	t.Parallel()
 	nodeCellRequireNode(t)
 	for _, isolation := range []string{"strict", "shared-ok"} {
 		t.Run(isolation, func(t *testing.T) {

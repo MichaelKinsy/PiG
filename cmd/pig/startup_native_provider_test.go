@@ -98,6 +98,7 @@ func TestPostStartupNativeProviderRegistrationBecomesAvailableWithoutAnotherCall
 
 // Pi loads every extension factory before it flushes their provider registrations and awaits refresh({ allowNetwork: false }) (agent-session-services.ts:158-182), so a native Provider's auth check never runs while a later extension is still loading. Pi 0.87.1 writes "sibling factory done" and then only "check" lines with these fixtures; the sibling factory waits up to 3 seconds for a check, so any check during loading comes first.
 func TestStartupNativeProviderCallbacksWaitForEveryExtensionFactory(t *testing.T) {
+	t.Parallel()
 	binary := buildPigBinaryForSignalTest(t)
 	var fixtures []string
 	for _, name := range []string{"startup-order-native-provider.mjs", "startup-order-sibling.mjs"} {
@@ -138,7 +139,7 @@ func TestRPCGetAvailableModelsIsTheSnapshotAloneWhenNothingIsAvailable(t *testin
 	env := []string{"HOME=" + home, "PIG_HOME=" + filepath.Join(home, "pig"), "PIG_CODING_AGENT_DIR=" + filepath.Join(home, "agent"), "PIG_OFFLINE=1", "FORCE_COLOR=0"}
 	for _, entry := range os.Environ() {
 		name, _, _ := strings.Cut(entry, "=")
-		if strings.HasSuffix(name, "_API_KEY") || strings.HasSuffix(name, "_TOKEN") || strings.HasSuffix(name, "_KEY") {
+		if strings.HasSuffix(name, "_API_KEY") || strings.HasSuffix(name, "_TOKEN") || strings.HasSuffix(name, "_KEY") || name == "ANTHROPIC_FEDERATION_RULE_ID" {
 			env = append(env, name+"=")
 		}
 	}

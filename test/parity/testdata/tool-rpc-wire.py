@@ -1,6 +1,6 @@
 """Compare complete tool-result and direct-bash records through the real RPC processes.
 
-Pi 0.87.1: agent-loop.ts:863-894, agent-session.ts:3498-3508.
+Pi 0.99.2: agent-loop.ts:905-910, agent-session.ts:3805-3814.
 The shared typed JSON comparator owns fixture identities. This probe validates
 clock ranges and repeated message timestamps without rewriting any record.
 Other event families are outside this scenario and remain in the raw artifact.
@@ -171,6 +171,14 @@ def run(binary, directory):
             emit("disk", entry)
 
 
+def upstream_version(repo):
+    """The Pi release PiG pins, read from the one place that pins it."""
+    source = (repo / "internal/coding/pigversion/pigversion.go").read_text()
+    match = re.search(r'^const UpstreamVersion = "([^"]+)"$', source, re.MULTILINE)
+    assert match, "cannot read UpstreamVersion"
+    return match.group(1)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("host", choices=("pig", "pi"))
@@ -183,7 +191,7 @@ if __name__ == "__main__":
         # Resolve Node before the private HOME so a manager shim cannot select or install another runtime.
         node = subprocess.check_output(["node", "-p", "process.execPath"], text=True).strip()
         command.insert(0, node)
-        assert subprocess.check_output([*command, "--version"], text=True).strip() == "0.87.1"
+        assert subprocess.check_output([*command, "--version"], text=True).strip() == upstream_version(repo)
     if options.evidence:
         options.evidence.mkdir(parents=True)
         run(command, options.evidence.resolve())

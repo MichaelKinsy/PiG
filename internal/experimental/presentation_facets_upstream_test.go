@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	goruntime "runtime"
 	"sync"
 	"testing"
 
@@ -124,6 +125,13 @@ func TestServerSelectedPresentationFacetsUpstream(t *testing.T) {
 			}
 		}
 		running, err := StartServer(t.Context(), StartServerOptions{Directory: new(filepath.Join(directory, "server")), SessionDir: new(filepath.Join(directory, "sessions"))})
+		if goruntime.GOOS == "windows" {
+			// Pi's ensurePrivateServerDirectory throws before a server starts (packages/coding-agent/src/experimental/server.ts:59).
+			if err == nil || err.Error() != "Unix socket directory requires a POSIX user ID" || running != nil {
+				t.Fatalf("startup = (%v, %v), want unsupported POSIX directory error", running, err)
+			}
+			return
+		}
 		if err != nil {
 			t.Fatal(err)
 		}

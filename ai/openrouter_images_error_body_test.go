@@ -23,7 +23,7 @@ func TestGenerateImagesOpenRouter_SurfacesErrorBodyReason(t *testing.T) {
 	}))
 	defer server.Close()
 
-	model := ImagesModel{
+	model := ImageModel{
 		ID:       "test-image-model",
 		API:      APIImagesOpenRouter,
 		Provider: ProviderImagesOpenRouter,

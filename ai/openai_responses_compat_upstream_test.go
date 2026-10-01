@@ -10,13 +10,14 @@ import (
 	"testing"
 )
 
+// .upstream/v0.99.1/packages/ai/test/openai-responses-compat.test.ts:60 keeps the key an OpenAI API key ("sk-" prefix): any other credential sent to api.openai.com is a Sign in with ChatGPT token.
 func responsesCompatConfig(t *testing.T, provider, id string) OpenAIResponsesConfig {
 	t.Helper()
 	model, ok := LookupModelExact(provider + "/" + id)
 	if !ok {
 		t.Fatalf("missing model %s/%s", provider, id)
 	}
-	return OpenAIResponsesConfig{Model: id, ProviderID: provider, BaseURL: model.BaseURL, APIKey: "test-key", IsReasoning: model.Reasoning, Compat: model.Compat}
+	return OpenAIResponsesConfig{Model: id, ProviderID: provider, BaseURL: model.BaseURL, APIKey: "sk-test-key", IsReasoning: model.Reasoning, Compat: model.Compat}
 }
 
 func captureResponsesCompat(t *testing.T, cfg OpenAIResponsesConfig, request Context, options StreamOptions, reply string) (map[string]json.RawMessage, http.Header, *AssistantMessage) {
@@ -178,22 +179,31 @@ func TestOpenAIResponsesCompatDefaultsUpstream(t *testing.T) {
 			}
 		})
 	}
-	// .upstream/v0.87.1/packages/ai/test/openai-responses-compat.test.ts:480
+	// .upstream/v0.99.1/packages/ai/test/openai-responses-compat.test.ts:481 (GPT-6 models report Fast mode as "fast" even when "priority" is requested, #10034)
 	for _, tc := range []struct {
-		id, tier   string
-		multiplier float64
-	}{{"gpt-5.4", "priority", 2}, {"gpt-5.5", "priority", 2.5}, {"gpt-5.5", "flex", 0.5}} {
-		t.Run("applies "+tc.id+" "+tc.tier+" service-tier cost multiplier", func(t *testing.T) {
+		id, tier, returned string
+		multiplier         float64
+	}{
+		{"gpt-5.4", "priority", "priority", 2},
+		{"gpt-5.5", "priority", "priority", 2.5},
+		{"gpt-5.5", "flex", "flex", 0.5},
+		{"gpt-6-luna", "priority", "fast", 2},
+		{"gpt-6-luna", "fast", "fast", 2},
+	} {
+		t.Run("applies "+tc.id+" cost multiplier for requested "+tc.tier+" and returned "+tc.returned+" service tier", func(t *testing.T) {
 			model, _ := LookupModelExact("openai/" + tc.id)
 			options := StreamOptions{ModelCost: (&Model{Capabilities: model.ToCapabilities()}).CostRates(), SamplingParams: map[string]any{"service_tier": tc.tier}}
-			reply := fmt.Sprintf("data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"service_tier\":%q,\"usage\":{\"input_tokens\":100000,\"output_tokens\":100000,\"total_tokens\":200000,\"input_tokens_details\":{\"cached_tokens\":0}}}}\n\n", tc.tier)
+			reply := fmt.Sprintf("data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"service_tier\":%q,\"usage\":{\"input_tokens\":100000,\"output_tokens\":100000,\"total_tokens\":200000,\"input_tokens_details\":{\"cached_tokens\":0}}}}\n\n", tc.returned)
 			_, _, result := captureResponsesCompat(t, responsesCompatConfig(t, "openai", tc.id), request, options, reply)
 			// Input and output have equal token scales in the upstream fixture.
 			scale := float64(100000) / 1000000
 			wantInput, wantOutput := model.InputCostPerMTokens*tc.multiplier*scale, model.OutputCostPerMTokens*tc.multiplier*scale
 			wantTotal := (model.InputCostPerMTokens + model.OutputCostPerMTokens) * tc.multiplier * scale
-			if math.Float64bits(result.Usage.Cost.Input) != math.Float64bits(wantInput) || result.Usage.Cost.Output != wantOutput || result.Usage.Cost.Total != wantTotal {
-				t.Fatalf("result=%#v rates=%#v want=%v/%v/%v", result, options.ModelCost, wantInput, wantOutput, wantTotal)
+			// toBeCloseTo(x, 12): |diff| < 5e-13
+			for name, pair := range map[string][2]float64{"input": {result.Usage.Cost.Input, wantInput}, "output": {result.Usage.Cost.Output, wantOutput}, "total": {result.Usage.Cost.Total, wantTotal}} {
+				if math.Abs(pair[0]-pair[1]) >= 5e-13 {
+					t.Errorf("cost %s = %v, want %v (result=%#v rates=%#v)", name, pair[0], pair[1], result, options.ModelCost)
+				}
 			}
 		})
 	}

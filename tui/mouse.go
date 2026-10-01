@@ -116,6 +116,14 @@ func DispatchMouseEvent(component Component, event TuiMouseEvent) *TuiMouseDispa
 		return nil
 	}
 	if result.Target.Component != nil {
+		// The component forwarded the event to a child it hosts. Like a delegating container, it routes
+		// keys to that child itself, so it keeps keyboard focus. Focusing the child directly would leave
+		// focus on a detached component once the host removes it, e.g. a closed settings submenu.
+		if _, handlesInput := component.(InputHandler); result.Focus && handlesInput {
+			forwarded := *result
+			forwarded.FocusTarget = component
+			return &forwarded
+		}
 		return result
 	}
 	if !result.Handled && !result.Capture && !result.Focus {

@@ -21,6 +21,7 @@ import (
 	"golang.org/x/mod/modfile"
 
 	"github.com/MichaelKinsy/PiG/coding"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	piglet "github.com/MichaelKinsy/PiG/coding/piglet"
 	pigletartifact "github.com/MichaelKinsy/PiG/coding/piglet/artifact"
@@ -28,6 +29,7 @@ import (
 	sourceref "github.com/MichaelKinsy/PiG/coding/source"
 	"github.com/MichaelKinsy/PiG/internal/buildprogress"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
 var artifactNamePattern = lazyregexp.New(`^[A-Za-z0-9][A-Za-z0-9._+\-]*$`)
@@ -318,7 +320,7 @@ func buildInputs(p *piglet.Piglet, cells []subprocess.CellSpec) ([]buildInput, e
 				return nil, fmt.Errorf("lock extension %q local Go replacements: %w", config.Name, err)
 			}
 			for i, replacement := range replacements {
-				replacementDigest, err := hashTree(replacement)
+				replacementDigest, err := goModuleDigest(replacement)
 				if err != nil {
 					return nil, fmt.Errorf("lock extension %q local Go replacement %s: %w", config.Name, replacement, err)
 				}
@@ -461,6 +463,15 @@ func localGoReplacementDirs(root string) ([]string, error) {
 	}
 	slices.Sort(paths)
 	return paths, nil
+}
+
+// goModuleDigest is the lock digest of a local Go replacement: the module's Go source set, which excludes build output and documentation another process may create or delete under a checkout.
+func goModuleDigest(root string) (string, error) {
+	digest, err := runtimecell.GoModuleSourceDigest(root)
+	if err != nil {
+		return "", err
+	}
+	return "sha256:" + digest, nil
 }
 
 func hashTree(root string) (string, error) {
@@ -618,7 +629,11 @@ func pigSourceIdentity() (string, string, error) {
 }
 
 func toolchainVersions(cells []subprocess.CellSpec) (map[string]string, error) {
-	commands := map[string][]string{"go": {"go", "version"}}
+	goCommand, err := toolchain.Go()
+	if err != nil {
+		return nil, fmt.Errorf("resolve go toolchain identity: %w", err)
+	}
+	commands := map[string][]string{"go": {goCommand, "version"}}
 	for _, cell := range cells {
 		switch cell.Language {
 		case "rust":

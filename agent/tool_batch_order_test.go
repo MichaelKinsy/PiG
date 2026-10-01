@@ -32,7 +32,7 @@ func TestParallelToolBatchEventOrder(t *testing.T) {
 	tool := &scriptTool{name: "p", mode: ToolModeParallel, params: map[string]any{"type": "object"},
 		execute: func(_ context.Context, id string, _ json.RawMessage, onUpdate ToolUpdateCallback) (AgentToolResult, error) {
 			log.add("exec:" + id)
-			onUpdate("running", nil)
+			onUpdate(AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "running"}}})
 			mu.Lock()
 			executing++
 			if executing == len(ids) {

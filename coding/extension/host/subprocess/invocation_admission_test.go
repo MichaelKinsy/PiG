@@ -74,12 +74,14 @@ func TestNodeRuntimeRPCCommandReportsBlockedOnlyWhileSuspended(t *testing.T) {
 			}
 		}
 	}
+	writeRunSignal(t, peer, false)
 	writeLivenessEnvelope(t, peer, Envelope{Type: MsgRequest, ID: "wait", Request: &RequestPayload{Method: "command", Tool: "wait"}})
 	for _, want := range []string{"started", "blocked:external_io"} {
 		if got := state("wait"); got != want {
 			t.Fatalf("wait: frame %q, want %q", got, want)
 		}
 	}
+	writeRunSignal(t, peer, true)
 	writeLivenessEnvelope(t, peer, Envelope{Type: MsgCancel, ID: "wait", Cancel: &CancelPayload{RequestID: "wait", Reason: "test done"}})
 	for _, want := range []string{"completed", "response"} {
 		got := state("wait")

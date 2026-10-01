@@ -47,12 +47,12 @@ func forkAndRebuild(sess *Session, agent *agent.Agent, entryID string) error {
 	return nil
 }
 
-// CheckSavedForFork rejects a file-backed Session whose first assistant response has not reached disk. In-memory Sessions do not require a file.
+// CheckSavedForFork rejects a file-backed Session that has not been saved yet: no user or assistant message has created its file. In-memory Sessions do not require a file.
 // Ports packages/coding-agent/src/core/agent-session-runtime.ts (fork).
 func (s *Session) CheckSavedForFork() error {
 	if path := s.Path(); path != "" {
 		if _, err := os.Stat(path); err != nil {
-			return fmt.Errorf("This session has not been saved yet. Wait for the first assistant response before cloning or forking it.")
+			return fmt.Errorf("This session has not been saved yet. Send a message before cloning or forking it.")
 		}
 	}
 	return nil
@@ -337,20 +337,27 @@ func themeSelectItems(names []string, currentTheme string) []tui.SelectItem {
 			marker = "✓ "
 		}
 		items[i] = tui.SelectItem{Value: name, Label: marker + name}
+		if name == tui.SystemThemeName {
+			items[i].Description = "Theme created from your terminal's colors"
+		}
 	}
 	return items
 }
 
-// themeSelectItemsWithAutomatic mirrors upstream singleModeThemeItems.
+// themeSelectItemsWithAutomatic mirrors upstream singleModeThemeItems: the system theme comes first, then automatic mode, then the remaining themes.
 func themeSelectItemsWithAutomatic(names []string, currentTheme string) []tui.SelectItem {
-	items := make([]tui.SelectItem, 0, len(names)+1)
+	themes := themeSelectItems(names, currentTheme)
+	items := make([]tui.SelectItem, 0, len(themes)+1)
+	if systemIndex := slices.IndexFunc(themes, func(item tui.SelectItem) bool { return item.Value == tui.SystemThemeName }); systemIndex != -1 {
+		items = append(items, themes[systemIndex])
+		themes = slices.Delete(themes, systemIndex, systemIndex+1)
+	}
 	items = append(items, tui.SelectItem{
 		Value:       automaticThemeValue,
-		Label:       "  Automatic",
+		Label:       "  automatic",
 		Description: "Use separate themes for light and dark terminal appearance",
 	})
-	items = append(items, themeSelectItems(names, currentTheme)...)
-	return items
+	return append(items, themes...)
 }
 
 func preferredThemeName(names []string, preferred, fallback string) string {
@@ -372,13 +379,13 @@ func preferredThemeName(names []string, preferred, fallback string) string {
 
 func defaultAutomaticThemeNames(themeSetting string, names []string) (lightTheme, darkTheme string) {
 	if light, dark, ok := tui.ParseAutoThemeSetting(themeSetting); ok {
-		return preferredThemeName(names, light, "light"), preferredThemeName(names, dark, "dark")
+		return light, dark
 	}
 	fixedTheme := themeSetting
 	if strings.Contains(themeSetting, "/") {
 		fixedTheme = ""
 	}
-	themeName := preferredThemeName(names, fixedTheme, "dark")
+	themeName := preferredThemeName(names, fixedTheme, tui.SystemThemeName)
 	return themeName, themeName
 }
 
@@ -471,9 +478,9 @@ func (m *InteractiveMode) runEditorSlotThemeSubmenu(currentTheme string) (string
 		return m.runEditorSlotAutomaticThemeSubmenu(currentTheme, names, light)
 	}
 
-	currentValue := preferredThemeName(names, currentTheme, "dark")
+	currentValue := preferredThemeName(names, currentTheme, tui.SystemThemeName)
 	items := themeSelectItemsWithAutomatic(names, currentValue)
-	sel := tui.NewSelectSubmenu("Theme", "Select a theme, or choose Automatic to follow terminal appearance.", items, currentValue)
+	sel := tui.NewSelectSubmenu("Theme", "Select a theme, or choose automatic to follow terminal appearance.", items, currentValue)
 	m.editorContainer.SetChildren(settingsFrame(sel))
 	m.tuiInst.Render()
 	original := currentTheme

@@ -3,7 +3,7 @@ import { strict as assert } from "node:assert";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 const root = resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/dist/core");
-assert.equal(JSON.parse(readFileSync(resolve(root, "../../package.json"), "utf8")).version, "0.87.1");
+assert.equal(JSON.parse(readFileSync(resolve(root, "../../package.json"), "utf8")).version, "0.99.2");
 const { ExtensionRunner } = await import(pathToFileURL(resolve(root, "extensions/runner.js")));
 const { createExtensionRuntime } = await import(pathToFileURL(resolve(root, "extensions/loader.js")));
 const { SessionManager } = await import(pathToFileURL(resolve(root, "session-manager.js")));

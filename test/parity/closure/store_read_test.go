@@ -13,6 +13,7 @@ import (
 )
 
 func TestReadRecordsBeyondImportLimit(t *testing.T) {
+	parallelHeavy(t)
 	records := provedFixture(t)
 	payload, err := json.Marshal(strings.Repeat("x", maxRecordBytes/4))
 	if err != nil {

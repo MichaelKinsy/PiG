@@ -2,12 +2,12 @@ package ai
 
 import "slices"
 
-var imageModelRegistry = func() map[ImagesProviderId]map[string]ImagesModel {
-	out := make(map[ImagesProviderId]map[string]ImagesModel)
+var imageModelRegistry = func() map[string]map[string]ImageModel {
+	out := make(map[string]map[string]ImageModel)
 	for _, model := range GeneratedImageModels {
 		providerModels := out[model.Provider]
 		if providerModels == nil {
-			providerModels = make(map[string]ImagesModel)
+			providerModels = make(map[string]ImageModel)
 			out[model.Provider] = providerModels
 		}
 		providerModels[model.ID] = model
@@ -16,18 +16,18 @@ var imageModelRegistry = func() map[ImagesProviderId]map[string]ImagesModel {
 }()
 
 // GetImageModel returns a generated image model by provider and id.
-func GetImageModel(provider ImagesProviderId, modelID string) (ImagesModel, bool) {
+func GetImageModel(provider string, modelID string) (ImageModel, bool) {
 	providerModels := imageModelRegistry[provider]
 	if providerModels == nil {
-		return ImagesModel{}, false
+		return ImageModel{}, false
 	}
 	model, ok := providerModels[modelID]
 	return model, ok
 }
 
 // GetImageProviders returns the generated image providers in stable order.
-func GetImageProviders() []ImagesProviderId {
-	providers := make([]ImagesProviderId, 0, len(imageModelRegistry))
+func GetImageProviders() []string {
+	providers := make([]string, 0, len(imageModelRegistry))
 	for provider := range imageModelRegistry {
 		providers = append(providers, provider)
 	}
@@ -36,7 +36,7 @@ func GetImageProviders() []ImagesProviderId {
 }
 
 // GetImageModels returns generated image models for provider in stable ID order.
-func GetImageModels(provider ImagesProviderId) []ImagesModel {
+func GetImageModels(provider string) []ImageModel {
 	providerModels := imageModelRegistry[provider]
 	if providerModels == nil {
 		return nil
@@ -46,7 +46,7 @@ func GetImageModels(provider ImagesProviderId) []ImagesModel {
 		ids = append(ids, id)
 	}
 	slices.Sort(ids)
-	models := make([]ImagesModel, 0, len(ids))
+	models := make([]ImageModel, 0, len(ids))
 	for _, id := range ids {
 		models = append(models, providerModels[id])
 	}

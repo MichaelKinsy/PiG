@@ -103,6 +103,7 @@ func TestRPCSessionCommandsReplaceThroughTheRuntimeFactory(t *testing.T) {
 	if testing.Short() {
 		t.Skip("starts the pig binary and extension processes")
 	}
+	t.Parallel()
 	log := filepath.Join(t.TempDir(), "replace.log")
 	home := t.TempDir()
 	p := startRPCProcessAt(t, t.TempDir(), []string{
@@ -172,6 +173,7 @@ func TestRPCSwitchSessionRebuildsServicesForTheDestinationCWD(t *testing.T) {
 	if testing.Short() {
 		t.Skip("starts the pig binary and an extension process")
 	}
+	t.Parallel()
 	home := t.TempDir()
 	startup, destination := filepath.Join(home, "startup"), filepath.Join(home, "destination")
 	for dir, rules := range map[string]string{startup: "STARTUP-RULES\n", destination: "DESTINATION-RULES\n"} {

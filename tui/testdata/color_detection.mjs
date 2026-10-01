@@ -5,10 +5,9 @@ const root = realpathSync(new URL("../../extensions/sdk-ts/node_modules/@earendi
 const version = JSON.parse(readFileSync(root + "package.json", "utf8")).version;
 if (version !== process.argv[2]) throw new Error(`Pi oracle ${version}, expected ${process.argv[2]}`);
 const { detectCapabilities, resetCapabilitiesCache } = await import(pathToFileURL(root + "node_modules/@earendil-works/pi-tui/dist/terminal-image.js"));
-const { parseOsc11BackgroundColor } = await import(pathToFileURL(root + "node_modules/@earendil-works/pi-tui/dist/terminal-colors.js"));
-const { getThemeByName, detectTerminalBackgroundFromEnv } = await import(pathToFileURL(root + "dist/modes/interactive/theme/theme.js"));
+const { getThemeByName, detectColorFgBgTheme } = await import(pathToFileURL(root + "dist/modes/interactive/theme/theme.js"));
 const cases = JSON.parse(readFileSync(0, "utf8"));
-const results = cases.map(({ env, platform, osc }) => {
+const results = cases.map(({ env, platform }) => {
   process.env = { ...env, PI_PACKAGE_DIR: root };
   Object.defineProperty(process, "platform", { value: platform });
   resetCapabilitiesCache();
@@ -23,6 +22,6 @@ const results = cases.map(({ env, platform, osc }) => {
     }
     themes[name] = { mode: theme.getColorMode(), colors };
   }
-  return { capabilities, themes, background: detectTerminalBackgroundFromEnv(), rgb: parseOsc11BackgroundColor(osc ?? "") ?? null };
+  return { capabilities, themes, colorFgBg: detectColorFgBgTheme(process.env) ?? "" };
 });
 process.stdout.write(JSON.stringify(results));

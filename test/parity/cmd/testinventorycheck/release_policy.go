@@ -1,14 +1,18 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os/exec"
+	"path"
 	"path/filepath"
+	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -46,13 +50,13 @@ func checkReleasePolicy(inventoryPath, mappingPath, policyPath, repoRoot string)
 	if err := decodeJSON(policyPath, &policy); err != nil {
 		return err
 	}
-	if err := verifyCommittedBaseline(repoRoot, mappingPath, policy); err != nil {
+	if err := verifyCommittedBaseline(repoRoot, mappingPath, policy, m); err != nil {
 		return err
 	}
 	return validateReleasePolicy(inv, m, policy)
 }
 
-func verifyCommittedBaseline(repoRoot, mappingPath string, policy releasePolicy) error {
+func verifyCommittedBaseline(repoRoot, mappingPath string, policy releasePolicy, current mapping) error {
 	if _, err := hex.DecodeString(policy.BaselineCommit); err != nil || len(policy.BaselineCommit) != 40 {
 		return fmt.Errorf("release policy baselineCommit must be a full Git commit hash")
 	}
@@ -72,16 +76,11 @@ func verifyCommittedBaseline(repoRoot, mappingPath string, policy releasePolicy)
 	if err != nil {
 		return fmt.Errorf("read committed test baseline %s (fetch this commit; do not lower the baseline): %w", policy.BaselineCommit, err)
 	}
-	var candidates []string
-	for name := range strings.SplitSeq(strings.TrimSpace(string(tree)), "\n") {
-		if filepath.Base(name) == filepath.Base(rel) {
-			candidates = append(candidates, name)
-		}
+	anchor, carried, err := baselineMappingPath(strings.Fields(string(tree)), filepath.Base(rel), policy.UpstreamVersion)
+	if err != nil {
+		return fmt.Errorf("committed test baseline %s: %w", policy.BaselineCommit, err)
 	}
-	if len(candidates) != 1 {
-		return fmt.Errorf("committed test baseline %s must contain one unambiguous %s mapping; found %d", policy.BaselineCommit, filepath.Base(rel), len(candidates))
-	}
-	data, err := exec.CommandContext(context.Background(), "git", "-C", root, "show", policy.BaselineCommit+":"+candidates[0]).Output()
+	data, err := exec.CommandContext(context.Background(), "git", "-C", root, "show", policy.BaselineCommit+":"+anchor).Output()
 	if err != nil {
 		return fmt.Errorf("read committed test baseline %s (fetch this commit; do not lower the baseline): %w", policy.BaselineCommit, err)
 	}
@@ -89,13 +88,22 @@ func verifyCommittedBaseline(repoRoot, mappingPath string, policy releasePolicy)
 	if err := json.Unmarshal(data, &committed); err != nil {
 		return fmt.Errorf("decode committed test baseline: %w", err)
 	}
-	if committed.UpstreamVersion != policy.UpstreamVersion {
-		return fmt.Errorf("committed test baseline %s maps upstream %s, not %s", policy.BaselineCommit, committed.UpstreamVersion, policy.UpstreamVersion)
+	wantVersion := policy.UpstreamVersion
+	if carried {
+		wantVersion = strings.TrimSuffix(strings.TrimPrefix(filepath.Base(anchor), "test-mapping-v"), ".json")
+	}
+	if committed.UpstreamVersion != wantVersion {
+		return fmt.Errorf("committed test baseline %s maps upstream %s, not %s", policy.BaselineCommit, committed.UpstreamVersion, wantVersion)
 	}
 	// The committed mapping is a floor: the stored baseline must keep every path it ported. The stored baseline may extend past the anchor with known paths ported since, which only raises the count validateReleasePolicy enforces; a release squashed onto a public commit that predates its own ports therefore keeps its full baseline.
+	// An anchor that predates the policy's upstream version (the first release of a leap) carries the previous version's floor: each path it ported that the current denominator still has must stay ported. Paths upstream removed are not part of the floor.
+	inCurrent := make(map[string]bool, len(current.Entries))
+	for _, entry := range current.Entries {
+		inCurrent[entry.Path] = true
+	}
 	var dropped []string
 	for _, entry := range committed.Entries {
-		if entry.Disposition == "ported" && !slices.Contains(policy.BaselinePorted, entry.Path) {
+		if entry.Disposition == "ported" && (!carried || inCurrent[entry.Path]) && !slices.Contains(policy.BaselinePorted, entry.Path) {
 			dropped = append(dropped, entry.Path)
 		}
 	}
@@ -104,6 +112,72 @@ func verifyCommittedBaseline(repoRoot, mappingPath string, policy releasePolicy)
 		return fmt.Errorf("release policy baseline drops %d ported paths recorded by committed mapping %s, first %q", len(dropped), policy.BaselineCommit, dropped[0])
 	}
 	return nil
+}
+
+// baselineMappingPath picks the mapping inside the anchor commit's tree that is the committed floor. It is the policy version's own mapping; when the anchor predates that version, it is the newest mapping of an older upstream version, and carried is true. A mapping of a newer version is never a floor.
+func baselineMappingPath(tree []string, mappingName, version string) (anchor string, carried bool, err error) {
+	var exact []string
+	best := ""
+	bestCount := 0
+	var bestVersion []int
+	for _, name := range tree {
+		base := path.Base(name)
+		if base == mappingName {
+			exact = append(exact, name)
+			continue
+		}
+		found := versionedMappingName.FindStringSubmatch(base)
+		if found == nil {
+			continue
+		}
+		if compareVersions(parseVersion(found[1]), parseVersion(version)) >= 0 {
+			continue
+		}
+		switch order := compareVersions(parseVersion(found[1]), bestVersion); {
+		case best == "" || order > 0:
+			best, bestVersion, bestCount = name, parseVersion(found[1]), 1
+		case order == 0:
+			bestCount++
+		}
+	}
+	switch {
+	case len(exact) == 1:
+		return exact[0], false, nil
+	case len(exact) > 1:
+		return "", false, fmt.Errorf("must contain one unambiguous %s mapping; found %d", mappingName, len(exact))
+	case bestCount > 1:
+		return "", false, fmt.Errorf("must contain one unambiguous mapping for the newest older upstream version; found %d of %s", bestCount, path.Base(best))
+	case best != "":
+		return best, true, nil
+	}
+	return "", false, fmt.Errorf("must contain one unambiguous %s mapping, or one for an older upstream version; found none", mappingName)
+}
+
+var versionedMappingName = regexp.MustCompile(`^test-mapping-v(\d+(?:\.\d+)*)\.json$`)
+
+func parseVersion(v string) []int {
+	var parts []int
+	for part := range strings.SplitSeq(v, ".") {
+		n, _ := strconv.Atoi(part)
+		parts = append(parts, n)
+	}
+	return parts
+}
+
+func compareVersions(a, b []int) int {
+	for i := range max(len(a), len(b)) {
+		var x, y int
+		if i < len(a) {
+			x = a[i]
+		}
+		if i < len(b) {
+			y = b[i]
+		}
+		if x != y {
+			return cmp.Compare(x, y)
+		}
+	}
+	return 0
 }
 
 func validateReleasePolicy(inv inventory, m mapping, policy releasePolicy) error {

@@ -25,7 +25,7 @@ func TestCrossProviderHandoffUpstream(t *testing.T) {
 		{"amazon-bedrock", "global.anthropic.claude-sonnet-4-5-20250929-v1:0", "bedrock-claude-sonnet-4-5", ""}, {"xai", "grok-4.3", "xai-grok-4.3", ""}, {"cerebras", "zai-glm-4.7", "cerebras-zai-glm-4.7", ""},
 		{"cloudflare-workers-ai", "@cf/moonshotai/kimi-k2.6", "cloudflare-kimi-k2.6", ""}, {"cloudflare-ai-gateway", "workers-ai/@cf/moonshotai/kimi-k2.6", "cloudflare-gateway-kimi-k2.6", ""},
 		{"cloudflare-ai-gateway", "claude-sonnet-4-5", "cloudflare-gateway-claude-sonnet-4-5", ""}, {"cloudflare-ai-gateway", "gpt-5.1", "cloudflare-gateway-gpt-5.1", ""},
-		{"groq", "openai/gpt-oss-120b", "groq-gpt-oss-120b", ""}, {"huggingface", "moonshotai/Kimi-K2.5", "huggingface-kimi-k2.5", ""}, {"together", "moonshotai/Kimi-K2.6", "together-kimi-k2.6", ""},
+		{"groq", "openai/gpt-oss-120b", "groq-gpt-oss-120b", ""}, {"huggingface", "moonshotai/Kimi-K2.5", "huggingface-kimi-k2.5", ""}, {"together", "moonshotai/Kimi-K3", "together-kimi-k3", ""},
 		{"baseten", "zai-org/GLM-5.2", "baseten-glm-5.2", ""}, {"kimi-coding", "kimi-for-coding", "kimi-for-coding", ""}, {"meta", "muse-spark-1.3", "meta-muse-spark-1.3", ""}, {"mistral", "devstral-medium-latest", "mistral-devstral-medium", ""},
 		{"minimax", "MiniMax-M2.7", "minimax-m2.7", ""}, {"minimax-cn", "MiniMax-M2.7", "minimax-m2.7", ""},
 		{"opencode", "big-pickle", "zen-big-pickle", ""}, {"opencode", "claude-sonnet-4-5", "zen-claude-sonnet-4-5", ""}, {"opencode", "gemini-3-flash", "zen-gemini-3-flash", ""}, {"opencode", "glm-4.7-free", "zen-glm-4.7-free", ""},
@@ -83,13 +83,13 @@ func TestCrossProviderHandoffUpstream(t *testing.T) {
 		}
 		contexts[pair.label] = messages
 	}
-	// .upstream/v0.87.1/packages/ai/test/cross-provider-handoff.test.ts:392
+	// .upstream/v0.99.1/packages/ai/test/cross-provider-handoff.test.ts:392
 	t.Run("should have at least 2 fixtures to test handoffs", func(t *testing.T) {
 		if len(contexts) < 2 {
 			t.Fatalf("fixtures=%d", len(contexts))
 		}
 	})
-	// .upstream/v0.87.1/packages/ai/test/cross-provider-handoff.test.ts:396
+	// .upstream/v0.99.1/packages/ai/test/cross-provider-handoff.test.ts:396
 	t.Run("should handle cross-provider handoffs for each target", func(t *testing.T) {
 		failures := []string{}
 		for index, pair := range pairs {

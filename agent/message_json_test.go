@@ -119,7 +119,8 @@ func TestAgentMessageJSONCustomPreservesShape(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
 	}
-	want := `{"fromId":"entry-1","role":"branchSummary","summary":"summary","timestamp":789}`
+	// Pi builds a branch summary as {role, summary, fromId, timestamp} and JSON.stringify keeps that order (messages.ts:100-107); the former expectation was a Go map's sorted order.
+	want := `{"role":"branchSummary","summary":"summary","fromId":"entry-1","timestamp":789}`
 	if string(encoded) != want {
 		t.Fatalf("Marshal = %s, want %s", encoded, want)
 	}

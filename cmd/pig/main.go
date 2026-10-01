@@ -543,6 +543,10 @@ func runStableCLI() {
 		switch os.Args[1] {
 		case "config":
 			exitProcess(runConfigCommand(os.Args[2:]))
+		case "mcp":
+			if code := runMcpCommand(os.Args[1:]); code >= 0 {
+				exitProcess(code)
+			}
 		case "diagnose":
 			runDiagnose(os.Stdout, binaryPath)
 			exitProcess(0)
@@ -938,12 +942,14 @@ func runStableCLI() {
 		printCLIError("%v", messageErr)
 		exitProcess(1)
 	}
-	if len(extensionDiagnostics) > 0 || modelErr != nil {
-		if len(extensionDiagnostics) > 0 {
-			reportExtensionLoadFailures(startupDiagnostics)
-		} else {
-			codingagent.ReportDiagnostics(startupDiagnostics)
-		}
+	// main.ts:898 applies the configured theme in every mode before the run starts; the interactive controller applies its own at construction. Print, JSON and RPC runs draw tool output and exports with it.
+	if processAppMode(flags) != appModeInteractive {
+		initTheme(build.Services.SettingsManager(), agentDir)
+	}
+	// Only an error diagnostic stops startup; warnings are reported and startup goes on (main.ts:908-916).
+	hasRuntimeErrors := modelErr != nil || slices.ContainsFunc(extensionDiagnostics, func(diagnostic codingagent.AgentSessionRuntimeDiagnostic) bool { return diagnostic.Type == "error" })
+	if hasRuntimeErrors {
+		reportExtensionLoadFailures(startupDiagnostics)
 		exitProcess(1)
 	}
 	stopModelServices = build.Services.Close
@@ -1173,6 +1179,7 @@ func runStableCLI() {
 		DefaultModelPerProvider: codingagent.DefaultModelPerProvider(),
 		ModelLookup:             codingSess.ModelRuntime().GetModel,
 		ModelCatalog:            codingSess.ModelRuntime().GetModels,
+		ModelClassify:           codingSess.ModelRuntime().Classify,
 		RequestAuthRuntime:      requestAuthRuntime,
 		ModelRegistry:           services.Registry().ModelRegistry,
 		ExtensionRunner:         codingSess.ExtensionRunner(),

@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding"
 )
 
-// The helpers in .upstream/v0.87.1/packages/ai/test/abort.test.ts:14-99 assert cancellation and follow-up behavior independently of generated wording. The paced faux provider supplies the deterministic generation side; remote transport cancellation is live-only.
+// The helpers in .upstream/v0.99.1/packages/ai/test/abort.test.ts:14-99 assert cancellation and follow-up behavior independently of generated wording. The paced faux provider supplies the deterministic generation side; remote transport cancellation is live-only.
 func TestAbortMatrixUpstream(t *testing.T) {
 	services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
@@ -17,7 +17,7 @@ func TestAbortMatrixUpstream(t *testing.T) {
 	}
 	specs := []struct{ provider, model string }{
 		{"google", "gemini-2.5-flash"}, {"openai", "gpt-4o-mini"}, {"openai", "gpt-5-mini"}, {"azure-openai-responses", "gpt-4o-mini"},
-		{"anthropic", "claude-sonnet-4-6"}, {"mistral", "devstral-medium-latest"}, {"together", "moonshotai/Kimi-K2.6"}, {"baseten", "zai-org/GLM-5.2"},
+		{"anthropic", "claude-sonnet-4-6"}, {"mistral", "devstral-medium-latest"}, {"together", "moonshotai/Kimi-K3"}, {"baseten", "zai-org/GLM-5.2"},
 		{"minimax", "MiniMax-M2.7"}, {"xiaomi", "mimo-v2.5-pro"}, {"xiaomi-token-plan-cn", "mimo-v2.5-pro"}, {"xiaomi-token-plan-ams", "mimo-v2.5-pro"},
 		{"xiaomi-token-plan-sgp", "mimo-v2.5-pro"}, {"qwen-token-plan", "qwen3.7-max"}, {"qwen-token-plan-individual", "qwen3.8-max"}, {"qwen-token-plan-cn", "qwen3.7-max"},
 		{"kimi-coding", "kimi-for-coding"}, {"vercel-ai-gateway", "google/gemini-2.5-flash"}, {"openai-codex", "gpt-5.5"}, {"amazon-bedrock", "global.anthropic.claude-sonnet-4-5-20250929-v1:0"},
@@ -28,7 +28,7 @@ func TestAbortMatrixUpstream(t *testing.T) {
 	}
 	for index, tc := range cases {
 		t.Run(tc.ID, func(t *testing.T) {
-			t.Logf(".upstream/v0.87.1/packages/ai/test/abort.test.ts:%d", tc.Line)
+			t.Logf(".upstream/current/packages/ai/test/abort.test.ts:%d", tc.Line)
 			spec := specs[min(index/2, len(specs)-1)]
 			if _, ok := ai.LookupModelExact(spec.provider + "/" + spec.model); !ok {
 				t.Fatal("missing upstream model", spec)

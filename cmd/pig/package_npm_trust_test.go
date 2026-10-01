@@ -263,7 +263,7 @@ func TestPackageLocalMutationRequiresTrustBeforeCommand(t *testing.T) {
 	}
 }
 
-// package-manager.ts:1747-1757,1772-1778 treats absent and empty argv as npm with --omit=dev for Git dependencies.
+// .upstream/v0.99.1/packages/coding-agent/src/core/package-manager.ts:1780-1791,1821-1838 treats absent and empty argv as npm with --omit=dev --legacy-peer-deps for Git dependencies.
 func TestPackageNpmCommandDefaultsRespectTrust(t *testing.T) {
 	for _, argv := range [][]string{nil, {}} {
 		cwd, agentDir, _ := npmTrustFixture(t)
@@ -276,8 +276,8 @@ func TestPackageNpmCommandDefaultsRespectTrust(t *testing.T) {
 		if got := packagemanager.DefaultNpmCommand(sm); !slices.Equal(got, []string{"npm"}) {
 			t.Fatalf("default command = %v", got)
 		}
-		if got := packagemanager.GetGitDependencyInstallArgs(sm); !slices.Equal(got, []string{"install", "--omit=dev"}) {
-			t.Fatalf("default dependency args = %v", got)
+		if got, err := packagemanager.GetGitDependencyInstallArgs(sm); err != nil || !slices.Equal(got, []string{"install", "--omit=dev", "--legacy-peer-deps"}) {
+			t.Fatalf("default dependency args = %v, %v", got, err)
 		}
 	}
 }

@@ -225,3 +225,49 @@ func TestUpstreamOverlayOptionsStacked(t *testing.T) {
 		}
 	})
 }
+
+// cursorVisibility replays the cursor show and hide sequences a renderer wrote; a terminal starts with its cursor visible (upstream `CursorTrackingTerminal.cursorVisible`, overlay-options.test.ts:25).
+func cursorVisibility(output string) bool {
+	visible := true
+	for i := 0; i+len("\x1b[?25l") <= len(output); i++ {
+		switch output[i : i+len("\x1b[?25l")] {
+		case "\x1b[?25l":
+			visible = false
+		case "\x1b[?25h":
+			visible = true
+		}
+	}
+	return visible
+}
+
+// .upstream/v0.99.2/packages/tui/test/overlay-options.test.ts:557 (https://github.com/earendil-works/pi/issues/10026).
+func TestUpstreamOverlayOptionsHidingAfterStop(t *testing.T) {
+	// overlay-options.test.ts:558.
+	t.Run("hideOverlay() leaves the cursor visible", func(t *testing.T) {
+		output := new(bytes.Buffer)
+		ui := NewWithOutput(output, 80, 24)
+		ui.Start()
+		ui.OpenOverlay(&recordingComponent{lines: []string{"OVERLAY"}}, OverlayOptions{nonCapturing: true})
+
+		ui.Stop()
+		ui.hideOverlay()
+
+		if !cursorVisibility(output.String()) {
+			t.Fatalf("cursor hidden after hideOverlay() following stop(): %q", output.String())
+		}
+	})
+	// overlay-options.test.ts:572.
+	t.Run("overlay handle hide() leaves the cursor visible", func(t *testing.T) {
+		output := new(bytes.Buffer)
+		ui := NewWithOutput(output, 80, 24)
+		ui.Start()
+		handle := ui.OpenOverlay(&recordingComponent{lines: []string{"OVERLAY"}}, OverlayOptions{nonCapturing: true})
+
+		ui.Stop()
+		handle.Hide()
+
+		if !cursorVisibility(output.String()) {
+			t.Fatalf("cursor hidden after handle.Hide() following stop(): %q", output.String())
+		}
+	})
+}

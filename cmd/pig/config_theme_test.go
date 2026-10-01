@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// Pi 0.87.1 config-selector.ts:22 calls initTheme(settingsManager.getTheme(), true). getTheme (settings-manager.ts:788-791) hides an automatic slash setting, so it and an unset theme select the environment theme (theme.ts:731-733,774-788). An explicitly empty or unknown name falls back to dark.
+// Pi 0.99.1 config-selector.ts:22 calls initTheme(settingsManager.getTheme(), true). getTheme (settings-manager.ts:854-857) hides an automatic slash setting, so it and an unset theme select the system theme (theme.ts initTheme: themeName ?? SYSTEM_THEME_NAME); an explicitly empty or unknown name fails to load and falls back to the system theme. COLORFGBG no longer selects a built-in theme. Node on the pinned 0.99.1 dist: initTheme over these settings gives ["system","system","system","system","dark"].
 func TestConfigSelectorThemeMatchesPiInitTheme(t *testing.T) {
 	previousRegistry, previousName := tui.ActiveThemeRegistry(), tui.ActiveTheme().Name
 	t.Cleanup(func() {
@@ -17,10 +17,10 @@ func TestConfigSelectorThemeMatchesPiInitTheme(t *testing.T) {
 	})
 	t.Setenv("COLORFGBG", "0;15")
 	for _, tc := range []struct{ name, global, want string }{
-		{"unset follows the environment", `{}`, "light"},
-		{"automatic pair follows the environment, not the pair", `{"theme":"dark/dark"}`, "light"},
-		{"empty name falls back to dark", `{"theme":""}`, "dark"},
-		{"unknown name falls back to dark", `{"theme":"missing-theme"}`, "dark"},
+		{"unset selects the system theme", `{}`, "system"},
+		{"automatic pair selects the system theme, not the pair", `{"theme":"dark/dark"}`, "system"},
+		{"empty name falls back to the system theme", `{"theme":""}`, "system"},
+		{"unknown name falls back to the system theme", `{"theme":"missing-theme"}`, "system"},
 		{"fixed name", `{"theme":"dark"}`, "dark"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

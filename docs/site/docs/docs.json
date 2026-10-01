@@ -2,6 +2,7 @@
   "provenance": {
     "cli-integration.md": "adapted-pi",
     "cli.md": "adapted-pi",
+    "codemode.md": "adapted-pi",
     "compaction.md": "adapted-pi",
     "concepts.md": "pig-authored",
     "configuration.md": "adapted-pi",
@@ -19,6 +20,7 @@
     "keybindings.md": "adapted-pi",
     "knowledge-graph.md": "pig-authored",
     "llama-cpp.md": "adapted-pi",
+    "mcp.md": "adapted-pi",
     "message-types.md": "adapted-pi",
     "models.md": "adapted-pi",
     "packages.md": "adapted-pi",
@@ -44,6 +46,7 @@
     "tmux.md": "adapted-pi",
     "tui.md": "adapted-pi",
     "usage.md": "adapted-pi",
+    "virtual-models.md": "adapted-pi",
     "windows.md": "adapted-pi"
   },
   "navigation": [
@@ -77,6 +80,14 @@
             {
               "title": "Choose a Model",
               "path": "models.md"
+            },
+            {
+              "title": "Use MCP Servers",
+              "path": "mcp.md"
+            },
+            {
+              "title": "Run Scripts with Codemode",
+              "path": "codemode.md"
             },
             {
               "title": "Manage Sessions and Context",
@@ -138,6 +149,10 @@
             {
               "title": "Use PiG Packages",
               "path": "packages.md"
+            },
+            {
+              "title": "Create Virtual Models",
+              "path": "virtual-models.md"
             }
           ]
         },

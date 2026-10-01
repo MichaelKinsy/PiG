@@ -233,6 +233,9 @@ func (f *FilterableList) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResul
 	f.cursor = clickedIndex
 	f.selectedIndex = f.filtered[f.cursor]
 	f.done = true
+	if f.onSelect != nil {
+		f.onSelect(f.selectedIndex)
+	}
 	f.Invalidate()
 	return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true}}
 }
@@ -532,5 +535,5 @@ func fg(color, s string) string {
 	if color == "" {
 		return s
 	}
-	return color + s + SGRFgReset
+	return color + s + FgClose(color)
 }

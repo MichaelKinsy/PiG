@@ -1,7 +1,7 @@
 # Behavior family: settings
 # Surface: main /settings selector overlay
 #
-# Upstream evidence (Pi 0.87.1): `/settings`, Enter at 100×35 renders 31 visible rows: the compiled 33-entry upstream roster minus two image-only rows.
+# Upstream evidence (Pi 0.99.1, settings-selector.ts:470-857): `/settings`, Enter at 100×35 renders 32 visible rows: the 34-entry upstream roster (23 base, 2 image, 9 always shown, including fullscreen-wheel-scroll-lines at :733) minus two image-only rows.
 # Divergence D80 adds exactly one PiG setting. Assert both raw counts, then map only that approved count difference before comparing the complete crop and ANSI. The independent setting/menu tests verify the added row.
 
 name = "02-settings-selector"
@@ -45,11 +45,11 @@ output_equal = true
 escaped_output_equal = true
 runtime_ratio_max = 1.25
 runs = 3
-pig_contains = ["(1/32)"]
-pi_contains = ["(1/31)"]
+pig_contains = ["(1/33)"]
+pi_contains = ["(1/32)"]
 
 # normalize-rationale: divergence D80 introduces one visible PiG-only setting; the raw assertions above reject any other count change.
 [[assert.normalize_replace]]
-pattern = '\(1/32\)'
-with = '(1/31)'
-reason = "D80 adds exactly one visible PiG-only settings row; raw assertions require 32 PiG rows and 31 Pi rows before this replacement."
+pattern = '\(1/33\)'
+with = '(1/32)'
+reason = "D80 adds exactly one visible PiG-only settings row; raw assertions require 33 PiG rows and 32 Pi rows before this replacement."

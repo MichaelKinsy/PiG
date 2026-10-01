@@ -34,8 +34,16 @@ func checkCodingAgentVendor(t *testing.T, root, file string, got []byte) {
 		replacements = append(replacements, [2]string{`from "../../index.js";`, `from "../../../../pi-coding-agent.mjs";`})
 	case "modes/interactive/theme/theme.js":
 		replacements = append(replacements,
-			[2]string{`import { getCapabilities, } from "@earendil-works/pi-tui";`, `import { getCapabilities, } from "../../../../pi-tui/terminal-image.js";`},
+			// .upstream/v0.99.1/packages/coding-agent/src/modes/interactive/theme/theme.ts:4-24 imports its colour helpers and getTerminalColorMode from the pi-tui barrel.
+			[2]string{`import { backgroundAnsi, colorToHex, colorToOklch, foregroundAnsi, getTerminalColorMode, indexedColor, mixColors, parseColor, rgbColor, styleTextWithAnsi, } from "@earendil-works/pi-tui";`, `import { backgroundAnsi, colorToHex, colorToOklch, foregroundAnsi, indexedColor, mixColors, parseColor, rgbColor, styleTextWithAnsi, } from "../../../../pi-tui/colors.js";
+import { getTerminalColorMode, } from "../../../../pi-tui/terminal-image.js";`},
 			[2]string{`import { highlight, supportsLanguage } from "../../../utils/syntax-highlight.js";`, `import { highlight, supportsLanguage } from "../../../../../syntax-highlight.mjs";`},
+		)
+	case "modes/interactive/theme/system-theme.js":
+		replacements = append(replacements,
+			// .upstream/v0.99.1/packages/coding-agent/src/modes/interactive/theme/system-theme.ts:21-29 imports its colour helpers from the pi-tui barrel.
+			[2]string{`import { colorToOkhsl, colorToOklch, okhslColor, oklabToOkhslLightness, rgbColor, } from "@earendil-works/pi-tui";`, `import { colorToOkhsl, colorToOklch, okhslColor, rgbColor, } from "../../../../pi-tui/colors.js";
+import { oklabToOkhslLightness, } from "../../../../pi-tui/oklab.js";`},
 		)
 	case "config.js":
 		replacements = append(replacements,
@@ -44,6 +52,9 @@ func checkCodingAgentVendor(t *testing.T, root, file string, got []byte) {
 			[2]string{`export const CONFIG_DIR_NAME = pkg.piConfig?.configDir || ".pi";`, `export { CONFIG_DIR_NAME } from "../../pig-config.mjs"; // pig divergence (D2): selected host configuration tree.`},
 			[2]string{"export const ENV_AGENT_DIR = `${APP_NAME.toUpperCase()}_CODING_AGENT_DIR`;", `export { ENV_AGENT_DIR } from "../../pig-config.mjs";`},
 			[2]string{`const srcOrDist = existsSync(join(packageDir, "src")) ? "src" : "dist";`, `const srcOrDist = ".";`},
+			// .upstream/v0.99.2/packages/coding-agent/src/config.ts:488-490,496-505 (getQuickJSWasmPath, resolveCodemodeWorkerSpecifier): the private quickjs-wasi copy is not under node_modules, and the bundled worker entry is the copied dist/extensions/codemode/worker.js.
+			[2]string{`return embeddedQuickJSWasmPath ?? createRequire(import.meta.url).resolve("quickjs-wasi/quickjs.wasm");`, `return embeddedQuickJSWasmPath ?? fileURLToPath(new URL("../../quickjs-wasi/quickjs.wasm", import.meta.url));`},
+			[2]string{`return new URL("./codemode-worker.js", moduleUrl);`, `return new URL("./extensions/codemode/worker.js", moduleUrl);`},
 			[2]string{`export function getAgentDir() {
     const envDir = process.env[ENV_AGENT_DIR];
     if (envDir) {

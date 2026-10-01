@@ -1,6 +1,6 @@
 # Message types
 
-PiG uses one message format in session files, in JSON and RPC events, and in the Go SDK. This page defines the messages and the content blocks inside them. The JSON field names match Pi 0.87.1.
+PiG uses one message format in session files, in JSON and RPC events, and in the Go SDK. This page defines the messages and the content blocks inside them. The JSON field names match Pi 0.99.2, except that PiG does not yet carry the `nestedCalls` record that Pi 0.99.2 adds to tool result messages.
 
 Every message has a `role` field that names its type. A message `timestamp` is a Unix time in milliseconds. Session entries use ISO 8601 timestamps instead. See [session file format](/docs/latest/session-format).
 
@@ -113,7 +113,7 @@ A system message sets the instructions and the tool set from its position in the
 
 The first system message declares the starting prompt and tools. Replay the later ones in order to get the current state.
 
-Pi's `message-types.md` also lists a `replace` field. The Pi 0.87.1 source does not define that field, and PiG does not read or write it.
+Pi's `message-types.md` also lists a `replace` field. The Pi 0.99.2 source does not define that field, and PiG does not read or write it.
 
 Go type: `ai.SystemMessage`.
 
@@ -141,6 +141,7 @@ Go type: `agent.UserMessage`, or `ai.UserMessage` for a provider request.
 | `model` | string | The requested model ID. |
 | `responseModel` | string, optional | The model the provider reports, when it differs from `model`. |
 | `responseId` | string, optional | The provider's response ID. |
+| `thinkingLevel` | string, optional | The thinking level that the agent loop requested for this response. Absent outside the agent loop and in older messages. |
 | `providerThinkingLevel` | string, optional | The thinking level the provider applied. |
 | `diagnostics` | array, optional | Runtime diagnostics, each with `type`, `timestamp`, and an optional `error` and `details`. |
 | `usage` | object | See [Usage](#usage). |

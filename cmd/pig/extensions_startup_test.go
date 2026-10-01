@@ -17,6 +17,7 @@ import (
 // final selection. Exercise the real entrypoints so a second host cannot hide
 // behind correct lower-level load bookkeeping.
 func TestStartupReusesPreTrustExtensionsAcrossEntrypoints(t *testing.T) {
+	t.Parallel()
 	binary := buildPigBinaryForSignalTest(t)
 	for _, mode := range []string{"print", "json", "rpc", "model-error", "failed-preload"} {
 		for _, trusted := range []bool{true, false} {

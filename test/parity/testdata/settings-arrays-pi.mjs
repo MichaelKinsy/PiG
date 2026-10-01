@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 const root = resolve('extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent');
-assert.equal(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version, '0.87.1');
+assert.equal(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version, '0.99.2');
 const { SettingsManager } = await import(pathToFileURL(join(root, 'dist/core/settings-manager.js')));
 const empty = { packages: [], extensions: [], skills: [], prompts: [], themes: [], enabledModels: [], defaultTools: [], npmCommand: [] };
 const settings = SettingsManager.inMemory(empty);
