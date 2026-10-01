@@ -170,6 +170,15 @@ classification = "release-content"
 rationale = "Identifies released content, a dependency constraint, or a runtime/toolchain requirement rather than selecting a Pig schema reader."
 
 [[fields]]
+id = "coding/extension/host/subprocess/terminal_capabilities_env.go#const.productVersionEnv:go:-"
+path = "coding/extension/host/subprocess/terminal_capabilities_env.go"
+owner = "<package>"
+field = "productVersionEnv"
+wire_name = "-"
+classification = "release-content"
+rationale = "Names the environment variable that carries PiG's composite release version to a Node extension process for its user agent. It identifies released content and selects no Pig schema reader."
+
+[[fields]]
 id = "coding/piglet/artifact/plan.go#Origin.Version:json:version"
 path = "coding/piglet/artifact/plan.go"
 owner = "Origin"

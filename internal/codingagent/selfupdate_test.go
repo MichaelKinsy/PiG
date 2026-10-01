@@ -218,7 +218,7 @@ func TestFetchUpdateManifest(t *testing.T) {
 	srv := newSignedManifestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/ok":
-			_, _ = w.Write([]byte(`{"version":"0.2.0","packageName":"pig","notes":"n","binaries":{"` + platformKey() + `":{"url":"u","sha256":"` + strings.Repeat("0", sha256.Size*2) + `"}}}`))
+			_, _ = w.Write([]byte(`{"version":"0.2.0","packageName":"@pi-in-go/pig","notes":"n","binaries":{"` + platformKey() + `":{"url":"u","sha256":"` + strings.Repeat("0", sha256.Size*2) + `"}}}`))
 		case "/noversion":
 			_, _ = w.Write([]byte(`{"binaries":{}}`))
 		case "/badversion":
@@ -228,9 +228,9 @@ func TestFetchUpdateManifest(t *testing.T) {
 		case "/badjson":
 			_, _ = w.Write([]byte(`not json`))
 		case "/unknown":
-			_, _ = w.Write([]byte(`{"version":"0.2.0","packageName":"pig","unknown":true,"binaries":{}}`))
+			_, _ = w.Write([]byte(`{"version":"0.2.0","packageName":"@pi-in-go/pig","unknown":true,"binaries":{}}`))
 		case "/trailing":
-			_, _ = w.Write([]byte(`{"version":"0.2.0","packageName":"pig","binaries":{}} {}`))
+			_, _ = w.Write([]byte(`{"version":"0.2.0","packageName":"@pi-in-go/pig","binaries":{}} {}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -301,7 +301,7 @@ func TestUpdateManifestScriptEmitsCurrentStrictShape(t *testing.T) {
 }
 
 func TestAC8AuthenticatedReleaseMetadata(t *testing.T) {
-	body := []byte(`{"version":"1.2.3","packageName":"pig","binaries":{}}`)
+	body := []byte(`{"version":"1.2.3","packageName":"@pi-in-go/pig","binaries":{}}`)
 
 	t.Run("signed_loopback_development_source", func(t *testing.T) {
 		srv := newSignedManifestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -347,7 +347,7 @@ func TestAC8AuthenticatedReleaseMetadata(t *testing.T) {
 		signature := base64.StdEncoding.EncodeToString(ed25519.Sign(privateKey, body))
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set(UpdateSignatureHeader, signature)
-			_, _ = w.Write([]byte(`{"version":"9.9.9","packageName":"pig","binaries":{}}`))
+			_, _ = w.Write([]byte(`{"version":"9.9.9","packageName":"@pi-in-go/pig","binaries":{}}`))
 		}))
 		defer srv.Close()
 		if _, err := FetchUpdateManifest(context.Background(), srv.Client(), srv.URL); err == nil || !strings.Contains(err.Error(), "signature") {
@@ -391,7 +391,7 @@ func TestFetchUpdateManifestRejectsOversizedResponse(t *testing.T) {
 
 func TestCheckForBinaryUpdate(t *testing.T) {
 	srv := newSignedManifestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`{"version":"9.9.9","packageName":"pig","binaries":{"` + platformKey() + `":{"url":"u","sha256":"` + strings.Repeat("0", sha256.Size*2) + `"}}}`))
+		_, _ = w.Write([]byte(`{"version":"9.9.9","packageName":"@pi-in-go/pig","binaries":{"` + platformKey() + `":{"url":"u","sha256":"` + strings.Repeat("0", sha256.Size*2) + `"}}}`))
 	}))
 	defer srv.Close()
 	t.Setenv("PIG_UPDATE_URL", srv.URL)
@@ -640,7 +640,7 @@ func TestAC3StandaloneUpdateVerificationAndAtomicity(t *testing.T) {
 	t.Run("wrong_platform_does_not_mutate", func(t *testing.T) {
 		target := newTarget(t)
 		srv := newSignedManifestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			_, _ = w.Write([]byte(`{"version":"9.9.9","packageName":"pig","binaries":{"plan9/sparc":{"url":"https://unused.example/pig","sha256":"` + goodChecksum + `"}}}`))
+			_, _ = w.Write([]byte(`{"version":"9.9.9","packageName":"@pi-in-go/pig","binaries":{"plan9/sparc":{"url":"https://unused.example/pig","sha256":"` + goodChecksum + `"}}}`))
 		}))
 		defer srv.Close()
 		manifest, err := FetchUpdateManifest(context.Background(), srv.Client(), srv.URL)
@@ -694,7 +694,7 @@ func TestAC6CheckAndFallbackBehavior(t *testing.T) {
 	var requests atomic.Int32
 	srv := newSignedManifestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		requests.Add(1)
-		_, _ = w.Write([]byte(`{"version":"9.9.9","packageName":"pig","binaries":{"` + platformKey() + `":{"url":"u","sha256":"` + strings.Repeat("0", sha256.Size*2) + `"}}}`))
+		_, _ = w.Write([]byte(`{"version":"9.9.9","packageName":"@pi-in-go/pig","binaries":{"` + platformKey() + `":{"url":"u","sha256":"` + strings.Repeat("0", sha256.Size*2) + `"}}}`))
 	}))
 	defer srv.Close()
 	t.Setenv("PIG_UPDATE_URL", srv.URL)

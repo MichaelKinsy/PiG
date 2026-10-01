@@ -15,9 +15,11 @@ import (
 // AppName is the binary/CLI name, independent of the selected configuration directories.
 const AppName = "pig"
 
-// PackageName identifies the installed package/binary for self-update messaging.
-// Mirrors upstream PACKAGE_NAME export.
-const PackageName = "pig"
+// PackageName is PiG's npm package: the launcher that a global npm-family
+// install owns and that the signed update manifest names. Mirrors upstream
+// PACKAGE_NAME export. automation/release/pig_package.py reads this line, so keep
+// the declaration on one line.
+const PackageName = "@pi-in-go/pig"
 
 // CONFIG_DIR_NAME is the default per-project config directory name.
 const CONFIG_DIR_NAME = "." + AppName

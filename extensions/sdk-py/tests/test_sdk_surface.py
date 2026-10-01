@@ -188,8 +188,10 @@ def test_set_footer_and_header_send_lines() -> None:
 
     calls, _ = _run_command(handler, {})
     assert [(c["call"]["method"], c["call"]["args"]) for c in calls] == [
-        ("ui.setFooter", {"lines": ["f1", "f2"]}),
-        ("ui.setHeader", {"lines": ["h1"]}),
+        # Rows carry the width the SDK held (the ready width, 80): the host paints
+        # them only at that width (public issue #104).
+        ("ui.setFooter", {"lines": ["f1", "f2"], "width": 80}),
+        ("ui.setHeader", {"lines": ["h1"], "width": 80}),
         ("ui.setFooter", {"clear": True}),
         ("ui.setHeader", {"clear": True}),
     ]

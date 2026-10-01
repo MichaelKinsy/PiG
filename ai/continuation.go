@@ -373,7 +373,19 @@ func awaitContinuation[T any](turn *continuationTurn, promise *continuationPromi
 		result = value
 		turn.grant()
 	})
+	// The executor's observation is the running turn's. Other turns replace it while this one waits, so a turn that owns the observation takes it back when it resumes; a host call it makes next (a result wait, a nested await) then releases the turn that runs it.
+	turn.executor.mu.Lock()
+	observation := turn.executor.observation
+	if observation != nil && observation.turn != turn {
+		observation = nil
+	}
+	turn.executor.mu.Unlock()
 	turn.release()
 	<-turn.permit
+	if observation != nil {
+		turn.executor.mu.Lock()
+		turn.executor.observation = observation
+		turn.executor.mu.Unlock()
+	}
 	return result
 }

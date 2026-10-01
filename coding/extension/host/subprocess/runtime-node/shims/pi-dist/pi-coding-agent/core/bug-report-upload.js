@@ -2,6 +2,7 @@ import { bugReportFiles } from "./bug-report.js";
 import { getRadiusGatewayUrl } from "./radius.js";
 /** Upload a report as multipart form data, anonymously or attributed to a Radius account. */
 export async function uploadBugReport(bundle, options = {}) {
+    throw new Error("PiG does not upload bug reports (D62): export the report and attach it to a PiG issue instead."); // pig divergence (D26, D62)
     const body = new FormData();
     for (const file of bugReportFiles(bundle)) {
         body.append(file.name, new Blob([file.data], { type: file.contentType }), file.name);

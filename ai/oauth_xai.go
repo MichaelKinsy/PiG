@@ -12,6 +12,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
 )
 
 const (
@@ -84,7 +86,8 @@ func (p xaiOAuthProvider) LoginContext(ctx context.Context, callbacks OAuthLogin
 	status, body, err := p.postForm(ctx, p.deviceURL, url.Values{
 		"client_id": {xaiClientID},
 		"scope":     {xaiScope},
-		"referrer":  {"pi"},
+		// pig divergence (D26): PiG names itself as the device-code referrer.
+		"referrer": {pigidentity.XAIReferrer},
 	})
 	if err != nil {
 		return OAuthCredentials{}, err

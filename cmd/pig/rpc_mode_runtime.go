@@ -69,10 +69,14 @@ func (b *cliRuntimeBuilder) rpcInputs(build *cliBuild, startup *rpcStartup) (cli
 		scopePatterns = settings.EnabledModels
 	}
 	start := coding.SessionStartOptions{
-		ScopedModels:     extensionScopedModels(build.Services, scopePatterns),
-		Model:            build.Model,
-		ThinkingLevel:    ai.ThinkingLevel(flags.Thinking),
-		SkipBuiltinTools: flags.NoBuiltinTools,
+		ScopedModels:  extensionScopedModels(build.Services, scopePatterns),
+		Model:         build.Model,
+		ThinkingLevel: ai.ThinkingLevel(flags.Thinking),
+		// The tool selection is the build's, the one print, JSON and interactive modes start their Sessions with (main.ts:822-830 passes the same tools, excludeTools and noTools to every mode).
+		AllowedTools:       build.Allowed,
+		ActiveBuiltinTools: build.ActiveBuiltin,
+		ExcludedTools:      build.ExcludedTools,
+		SkipBuiltinTools:   build.SkipBuiltinTools,
 	}
 	if startup != nil {
 		start.SessionManager = startup.Manager
@@ -101,36 +105,19 @@ func (b *cliRuntimeBuilder) rpcInputs(build *cliBuild, startup *rpcStartup) (cli
 	}, state
 }
 
-// rpcPrepare keeps the full Session tool registry available to extension and Piglet scoping, while the startup agent loadout follows the coding-agent defaults. The prompt lists extension tools in the runner's first-wins registration order, as AgentSession._refreshToolRegistry does.
+// rpcPrepare lists the startup agent loadout in the prompt: the build's builtin selection, which already applies --tools, --no-tools, --no-builtin-tools, --exclude-tools and the defaultTools setting, then the extension tools that selection allows. The prompt lists extension tools in the runner's first-wins registration order, as AgentSession._refreshToolRegistry does.
 func (b *cliRuntimeBuilder) rpcPrepare(build *cliBuild, state *rpcSessionState, runner *inproc.Runner, start *coding.SessionStartOptions) {
-	flags, settings := build.Flags, build.Settings
-	defaultToolNames := []string{"read", "bash", "edit", "write"}
-	if settings.DefaultTools != nil {
-		defaultToolNames = settings.DefaultTools
-	}
-	agentToolNames := []string{}
-	var allowed map[string]struct{}
-	if !flags.NoBuiltinTools {
-		switch {
-		case flags.NoTools:
-			allowed = map[string]struct{}{}
-		case len(flags.Tools) > 0:
-			allowed = make(map[string]struct{}, len(flags.Tools))
-			for _, t := range flags.Tools {
-				allowed[t] = struct{}{}
-			}
-			for _, n := range tools.BuiltinToolNames() {
-				if _, ok := allowed[n]; ok {
-					agentToolNames = append(agentToolNames, n)
-				}
-			}
-		default:
-			agentToolNames = slices.Clone(defaultToolNames)
-		}
-	}
+	agentToolNames := slices.Clone(build.AgentToolNames)
 	if runner != nil {
 		for _, tool := range runner.Tools() {
-			agentToolNames = append(agentToolNames, tool.Definition.Name)
+			name := tool.Definition.Name
+			if _, ok := build.ExcludedTools[name]; ok {
+				continue
+			}
+			if _, ok := build.Allowed[name]; build.Allowed != nil && !ok {
+				continue
+			}
+			agentToolNames = append(agentToolNames, name)
 		}
 	}
 	promptOptions := prompts.Options{
@@ -147,7 +134,6 @@ func (b *cliRuntimeBuilder) rpcPrepare(build *cliBuild, state *rpcSessionState, 
 	if build.ResolvedPrompts.custom != "" {
 		promptOptions.AppendMode = "replace"
 	}
-	start.AllowedTools = allowed
 	start.SystemPromptSections = prompts.BuildSystemPromptSections(promptOptions)
 	start.SystemPromptResources = sessionPromptResources(build.ResolvedPrompts, build.ContextFiles, state.Skills)
 	start.ResourceLoader = coding.NoResources // the RPC command catalog expands skills and prompts itself

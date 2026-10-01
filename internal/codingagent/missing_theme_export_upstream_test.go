@@ -48,7 +48,7 @@ func TestMissingConfiguredThemeExportsWithActiveFallback(t *testing.T) {
 	}
 
 	outputPath := filepath.Join(cwd, "export.html")
-	got, err := icodingagent.ExportSessionToHTML(session.Path(), outputPath, nil, cwd)
+	got, err := icodingagent.ExportSessionToHTML(session.Path(), outputPath, nil, cwd, icodingagent.ShareState{})
 	if err != nil || got != outputPath {
 		t.Fatalf("export = %q, %v, want %q", got, err, outputPath)
 	}

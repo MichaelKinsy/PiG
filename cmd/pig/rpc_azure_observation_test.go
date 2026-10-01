@@ -137,6 +137,11 @@ func runAzureRPCOnce(t *testing.T, bin string, bodies map[string]string, shape, 
 	var requests atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.Copy(io.Discard, r.Body)
+		// Only the model's Responses request takes a response slot. A foreign client that reaches this reused loopback port must not consume the first body, or PiG's first request would receive the follow-up body.
+		if r.Method != http.MethodPost || r.URL.Path != "/openai/v1/responses" {
+			http.NotFound(w, r)
+			return
+		}
 		w.Header().Set("Content-Type", "text/event-stream")
 		if requests.Add(1) != 1 {
 			_, _ = io.WriteString(w, bodies["followup"])

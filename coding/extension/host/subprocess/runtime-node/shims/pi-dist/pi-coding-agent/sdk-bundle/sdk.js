@@ -17,7 +17,7 @@ import {
   getDefaultSessionDir,
   isInstallTelemetryEnabled,
   time
-} from "./chunk-CIPWXUZ4.js";
+} from "./chunk-DB45HMOM.js";
 import {
   createBashTool,
   createCodingTools,
@@ -74,19 +74,19 @@ function getDefaultAttributionHeaders(model, settingsManager) {
   }
   if (isOpenRouterModel(model)) {
     return {
-      "HTTP-Referer": "https://pi.dev",
-      "X-OpenRouter-Title": "pi",
+      "HTTP-Referer": "https://github.com/MichaelKinsy/PiG",
+      "X-OpenRouter-Title": "PiG",
       "X-OpenRouter-Categories": "cli-agent"
     };
   }
   if (isNvidiaNimModel(model)) {
     return {
-      "X-BILLING-INVOKE-ORIGIN": "Pi"
+      "X-BILLING-INVOKE-ORIGIN": "PiG"
     };
   }
   if (isCloudflareModel(model)) {
     return {
-      "User-Agent": "pi-coding-agent"
+      "User-Agent": "pig-coding-agent"
     };
   }
   return void 0;
@@ -98,7 +98,7 @@ function getSessionHeaders(model, sessionId) {
   if (model.provider !== "opencode" && model.provider !== "opencode-go" && !matchesHost(model.baseUrl, OPENCODE_HOST)) {
     return void 0;
   }
-  return { "x-opencode-session": sessionId, "x-opencode-client": "pi" };
+  return { "x-opencode-session": sessionId, "x-opencode-client": "pig" };
 }
 __name(getSessionHeaders, "getSessionHeaders");
 function mergeProviderAttributionHeaders(model, settingsManager, sessionId, ...headerSources) {

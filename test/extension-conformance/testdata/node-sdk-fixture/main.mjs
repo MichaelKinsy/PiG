@@ -266,6 +266,11 @@ export default function (pi) {
   });
   pi.registerCommand("report_geometry", { description: "Report observed terminal geometry", handler: async (_args, ctx) => ctx.ui.notify(`geometry:${ctx.width}x${ctx.height}`, "info") });
 
+  pi.registerCommand("surface_footer", { description: "Install a footer renderer", handler: async (_args, ctx) => ctx.ui.setFooter(() => ({ render: (width) => [`footer@${width}`], invalidate() {} })) });
+  pi.registerCommand("surface_header", { description: "Install a header renderer", handler: async (_args, ctx) => ctx.ui.setHeader(() => ({ render: (width) => [`header@${width}`], invalidate() {} })) });
+  pi.registerCommand("surface_static_footer", { description: "Push static footer rows", handler: async (_args, ctx) => ctx.ui.setFooter(() => ({ render: () => [`static@${ctx.width}`], invalidate() {} })) });
+  pi.registerCommand("surface_widget", { description: "Set a string list widget wider than the pane", handler: async (_args, ctx) => ctx.ui.setWidget("wide", ["A".repeat(60) + " tail", "short"]) });
+
   let unsubscribeTerminalInput;
   pi.registerCommand("term_subscribe", {
     description: "Subscribe to raw terminal input",

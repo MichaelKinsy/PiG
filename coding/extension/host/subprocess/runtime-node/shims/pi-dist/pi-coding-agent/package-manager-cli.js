@@ -17,7 +17,7 @@ import { canonicalizePath, getCwdRelativePath } from "./utils/paths.js";
 import { getPiUserAgent } from "./utils/pi-user-agent.js";
 import { formatVersionCheckError, getLatestPiRelease, isNewerPackageVersion } from "./utils/version-check.js";
 import { cleanupWindowsSelfUpdateQuarantine, quarantineWindowsNativeDependencies, } from "./utils/windows-self-update.js";
-const DEFAULT_INSTALLER_API_BASE = "https://pi.dev/api/installer/releases";
+const DEFAULT_INSTALLER_API_BASE = "https://pi-in-go.dev/api/installer/releases";
 const MANAGED_INSTALL_MARKER = "managed-install.json";
 const MANAGED_RELEASE_VERSION_RE = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 function getActiveManagedInstallRoot() {

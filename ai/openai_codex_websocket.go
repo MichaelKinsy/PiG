@@ -15,6 +15,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+
+	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
 )
 
 const (
@@ -209,7 +211,8 @@ func codexWebSocketHeaders(base map[string]string, options ProviderHeaders, toke
 	}
 	headers.Set("Authorization", "Bearer "+token)
 	headers.Set("chatgpt-account-id", accountID)
-	headers.Set("originator", "pi")
+	// pig divergence (D26): PiG names itself as the Codex originator.
+	headers.Set("originator", pigidentity.CodexOriginator)
 	// pig divergence (D65): Codex applies PiG's product identity after model
 	// and request headers, preserving upstream precedence.
 	headers.Set("User-Agent", PiUserAgent())

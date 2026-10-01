@@ -465,7 +465,7 @@ func TestPortWave10NativeSelfUpdate(t *testing.T) {
 		var requests atomic.Int32
 		server := signedManifestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			requests.Add(1)
-			_, _ = fmt.Fprintf(w, `{"version":%q,"packageName":"pig","binaries":{}}`, selfUpdateVersion())
+			_, _ = fmt.Fprintf(w, `{"version":%q,"packageName":"@pi-in-go/pig","binaries":{}}`, selfUpdateVersion())
 		}))
 		t.Cleanup(server.Close)
 		t.Setenv("PIG_UPDATE_URL", server.URL)
@@ -525,7 +525,7 @@ func TestPortWave10NativeSelfUpdate(t *testing.T) {
 		t.Cleanup(binaryServer.Close)
 		t.Cleanup(unblock)
 		manifestServer := signedManifestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			_, _ = fmt.Fprintf(w, `{"version":"99.0.0","packageName":"pig","binaries":{%q:{"url":%q,"sha256":%q}}}`, codingagent.PlatformKey(), binaryServer.URL, hex.EncodeToString(digest[:]))
+			_, _ = fmt.Fprintf(w, `{"version":"99.0.0","packageName":"@pi-in-go/pig","binaries":{%q:{"url":%q,"sha256":%q}}}`, codingagent.PlatformKey(), binaryServer.URL, hex.EncodeToString(digest[:]))
 		}))
 		t.Cleanup(manifestServer.Close)
 		t.Setenv("PIG_UPDATE_URL", manifestServer.URL)
