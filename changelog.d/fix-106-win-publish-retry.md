@@ -1,0 +1,3 @@
+### Fixed
+
+- On Windows, retry publishing a Node extension cell (and any other cached runtime cell) when the final directory rename fails with `Access is denied`, a sharing violation or a lock violation, instead of stopping extension loading. Anti-virus scanners and indexers hold freshly written files open for a short time, and Windows refuses to rename the directory that contains them. PiG now retries with backoff for up to 10 seconds, adopts the cell if another PiG process publishes it meanwhile, and reports any other error, or the last error after the 10 seconds, unchanged. Other platforms are unaffected. Thanks to @worldofgeese for the detailed report (#106).

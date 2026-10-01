@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
 )
 
 func codexTestToken(t *testing.T, accountID string) string {
@@ -116,8 +118,8 @@ func TestOpenAICodexResponses_RequestMatchesCodexProtocol(t *testing.T) {
 	if got := capturedHeader.Get("Accept"); got != "text/event-stream" {
 		t.Errorf("Accept = %q, want text/event-stream", got)
 	}
-	if got := capturedHeader.Get("originator"); got != "pi" {
-		t.Errorf("originator = %q, want pi", got)
+	if got := capturedHeader.Get("originator"); got != pigidentity.CodexOriginator {
+		t.Errorf("originator = %q, want %q", got, pigidentity.CodexOriginator)
 	}
 	if got := capturedHeader.Get("OpenAI-Beta"); got != "responses=experimental" {
 		t.Errorf("OpenAI-Beta = %q, want responses=experimental", got)

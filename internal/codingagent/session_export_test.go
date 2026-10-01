@@ -1,6 +1,7 @@
 package codingagent
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -293,5 +294,44 @@ func TestExportHandlerJSONLTakesQuotedPathArgument(t *testing.T) {
 	filePath := filepath.Join(dir, "my branch.jsonl")
 	if got := out.String(); got != "Session exported to: "+filePath+"\n" {
 		t.Fatalf("status = %q", got)
+	}
+}
+
+// Upstream handleExportCommand calls session.exportToHtml, which passes the
+// live agent state (core/export-html/index.ts:267-268): session-data carries
+// systemPrompt and tools {name, description, parameters}.
+func TestExportHandlerHTMLIncludesLiveSystemPromptAndTools(t *testing.T) {
+	dir := chdirTemp(t)
+	session := htmlExportSession(t, "s.jsonl")
+	sc, _ := newFakeSlashCtx()
+	sc.CurrentSession = func() *Session { return session }
+	sc.ShareState = func() ShareState {
+		return ShareState{SystemPrompt: "LIVE <system> prompt", Tools: []ShareTool{{Name: "read", Description: "Read a file", Parameters: map[string]any{"type": "object"}}, {Name: "bare", Description: "No schema"}}}
+	}
+	sc.Args = "out.html"
+	if err := exportHandler(sc); err != nil {
+		t.Fatal(err)
+	}
+	html, err := os.ReadFile(filepath.Join(dir, "out.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	match := regexp.MustCompile(`<script id="session-data" type="application/json">([^<]+)</script>`).FindSubmatch(html)
+	if match == nil {
+		t.Fatal("session-data script not found")
+	}
+	raw, err := base64.StdEncoding.DecodeString(string(match[1]))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var data map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &data); err != nil {
+		t.Fatal(err)
+	}
+	if got := string(data["systemPrompt"]); got != `"LIVE <system> prompt"` {
+		t.Fatalf("systemPrompt = %s", got)
+	}
+	if got, want := string(data["tools"]), `[{"name":"read","description":"Read a file","parameters":{"type":"object"}},{"name":"bare","description":"No schema"}]`; got != want {
+		t.Fatalf("tools = %s, want %s", got, want)
 	}
 }

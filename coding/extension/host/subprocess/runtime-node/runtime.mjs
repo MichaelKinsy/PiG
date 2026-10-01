@@ -14,6 +14,7 @@ import { basename } from "node:path";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { importExtension } from "./jiti-loader.mjs";
 import { randomUUID } from "node:crypto";
+import { inspect } from "node:util";
 import { createRequire, flushCompileCache } from "node:module";
 import { stringWidget } from "./widget-component.mjs";
 import { currentRuntime, runWithRuntime, setRuntime } from "./state.mjs";
@@ -50,6 +51,26 @@ const lockstep = new Set();
 // (shims/builtin-tools.mjs): the host draws those halves with its built-in
 // renderers for the named tool.
 const builtInToolRenderer = Symbol.for("pig.builtInToolRenderer");
+
+// A host call the runtime cancels (its parent request was cancelled, or its connection closed on shutdown, reload or session replacement) rejects with an error made here. Pi never rejects a host call that way: its calls are in-process and outlive the command that started them (interactive-mode.ts showExtensionCustom 2858-2940 settles only through done() or a factory failure). An extension that dropped the call's promise, as pi-mcp-adapter drops ctx.ui.custom's, owns nothing that can observe this rejection, so it must not end the process, which a packed cell shares with the successor generation of a reload. Every other unhandled rejection keeps Node's default (lib/internal/process/promises.js, --unhandled-rejections=throw): an extension listener handles it, and with none it raises as an uncaught exception, as in Pi, whose process the extension shares.
+const hostCancellations = new WeakSet();
+
+function hostCancelled(message) {
+  const error = new Error(message);
+  hostCancellations.add(error);
+  return error;
+}
+
+process.on("unhandledRejection", (reason) => {
+  if (hostCancellations.has(reason)) return;
+  // Node raises only when no listener handles the event; this listener is registered before any extension loads.
+  if (process.listenerCount("unhandledRejection") > 1) return;
+  // Node's isErrorLike: an object with its own stack is raised as is.
+  if (typeof reason === "object" && reason !== null && Object.hasOwn(reason, "stack")) throw reason;
+  const error = new Error(`This error originated either by throwing inside of an async function without a catch block, or by rejecting a promise which was not handled with .catch(). The promise rejected with the reason "${inspect(reason)}".`);
+  error.code = "ERR_UNHANDLED_REJECTION";
+  throw error;
+});
 
 const USER_BLOCKING_CALLS = new Set(["ui.select", "ui.confirm", "ui.input", "ui.editor", "ui.custom"]);
 const MAX_FRAME_SIZE = 128 * 1024 * 1024;
@@ -545,6 +566,7 @@ function windowPending(owner) {
 }
 
 // armRequestWindow closes the window of a command or of a quit session_shutdown handler at the next check phase after its handler's synchronous prefix, or once its pending short host calls settle. A command arms it before its handler runs with early set: its immediate is then queued ahead of every immediate the handler and its microtask continuations queue in this iteration, and it closes a MessagePort, whose close callback runs in this iteration's closing phase, after the check phase and before the next poll phase. A threadpool completion, a nested immediate and a timer therefore land after the window closes.
+// pig divergence (D85): a continuation that runs after this window closes can still execute in this runtime process until the host stops it, and the window cannot see a suspended session_shutdown handler of another runtime process; Pi runs everything on one event loop and exits.
 function armRequestWindow(owner, early = false) {
   const close = () => {
     if (owner.responded || owner.turned) return;
@@ -635,7 +657,7 @@ export class Connection {
       // A received result still belongs to the ordered receive loop, even if the peer closes before that loop reaches it.
       if (pending.responseQueued) continue;
       this.pending.delete(id);
-      pending.reject(new Error("connection closed"));
+      pending.reject(hostCancelled("connection closed"));
     }
   }
 
@@ -765,7 +787,7 @@ export class Connection {
     for (const [id, pending] of this.pending) {
       if (pending.parentRequestId !== parentRequestId || (synchronousOnly && !pending.synchronous)) continue;
       this.pending.delete(id);
-      pending.reject(new Error(`host call cancelled with parent request ${parentRequestId}`));
+      pending.reject(hostCancelled(`host call cancelled with parent request ${parentRequestId}`));
     }
   }
 
@@ -3127,7 +3149,6 @@ export class Runtime {
       owner.settled = true;
       if (owner.pendingHostCalls.size > 0) await Promise.all([...owner.pendingHostCalls]);
       owner.responded = true;
-      this.conn.cancelParent(id);
     }
     this.conn.respond(id, result, error);
   }
@@ -3135,9 +3156,9 @@ export class Runtime {
   // The host request whose handler is running the current code. Code the
   // handler left scheduled when it returned (a timer, a promise it did not
   // await) still carries the request's async context, but it is no longer part
-  // of that request, whose host calls the host cancels once it ends. As in Pi,
-  // where nothing ties a call to the event that scheduled it, such calls are
-  // the extension's own: pi-powerline-footer opens its welcome overlay from a
+  // of that request. As in Pi, where nothing ties a call to the event that
+  // scheduled it, the command's return cancels none of its host calls, and
+  // calls made later are the extension's own: pi-powerline-footer opens its welcome overlay from a
   // timer its session_start handler starts.
   activeRequest() {
     const request = this.requestContext.getStore();
@@ -3215,7 +3236,7 @@ export class Runtime {
     const connection = owner?.connection ?? this.conn;
     if (!connection || connection.closed || connection !== this.conn) throw new Error("extension connection closed or replaced");
     if (owner?.cancelled || (!owner?.settled && owner?.controller.signal.aborted)) {
-      throw new Error("host call cancelled with its parent request");
+      throw hostCancelled("host call cancelled with its parent request");
     }
     const parentRequestId = owner && !owner.settled ? owner.id : "";
     if (parentRequestId && !USER_BLOCKING_CALLS.has(method)) {

@@ -556,3 +556,36 @@ func TestSessionWorkerAcceptedWriteNeverFollowsShutdown(t *testing.T) {
 		})
 	}
 }
+
+// upstream: session-worker-manager.ts:#removeWorker (:794) rejects a pending demand of the disconnected worker with "Session worker disconnected during demand update", and the attachment release (:228-236) rethrows it unless the manager is detached or replaced. A release that is in flight when the worker dies therefore fails, while a release after the worker is retired fails through #applyDemand's stopping check (:289). The router hides the second order by invalidating the Session on termination; the first is what cleanup observes when a test kills a worker and closes the server before the manager has retired it (TestExperimentalFauxWorkerFixtureUsesNativeProcessAndHarness must join manager retirement, not only OS process exit).
+func TestSessionWorkerReleaseRacingWorkerDisconnectRejectsDemand(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		coordinator, manager, metadata := newGatedManager(t)
+		defer coordinator.unblock()
+		attachment := attachedWorker(t, coordinator, manager, metadata)
+		coordinator.setOnSend(nil)
+		released := make(chan error, 1)
+		go func() { released <- attachment.Release(context.Background()) }()
+		synctest.Wait()
+		manager.mu.Lock()
+		pending := len(manager.pendingDemand)
+		manager.mu.Unlock()
+		if pending != 1 {
+			t.Fatalf("pending demands = %d, want the unacknowledged detach demand", pending)
+		}
+		coordinator.disconnect("worker-1")
+		synctest.Wait()
+		select {
+		case err := <-released:
+			if err == nil || err.Error() != "Session worker disconnected during demand update" {
+				t.Fatalf("Release error = %v, want the disconnected-during-demand rejection", err)
+			}
+		default:
+			t.Fatal("Release did not settle after the worker disconnected")
+		}
+		manager.Detach()
+		manager.work.Wait()
+		manager.background.Wait()
+		coordinator.callbacks.Wait()
+	})
+}

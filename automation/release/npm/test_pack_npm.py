@@ -92,6 +92,7 @@ class ManifestTest(unittest.TestCase):
 
     def test_launcher_package_names_match_generator(self):
         launcher = (pathlib.Path(pack_npm.HERE) / "launcher" / "bin" / "pig.js").read_text()
+        self.assertIn(f'const SCOPE = "{pack_npm.SCOPE}";', launcher)
         for npm_os, npm_cpu in pack_npm.TARGETS.values():
             self.assertIn(f'"{npm_os} {npm_cpu}": `${{SCOPE}}/pig-{npm_os}-{npm_cpu}`', launcher)
 

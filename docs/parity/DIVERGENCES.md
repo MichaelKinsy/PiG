@@ -29,7 +29,7 @@ Every active divergence must have:
 
 - D54 — Fenced-code wrapping. Retired after re-probing Pi 0.87.1: `Markdown.render` already wraps every non-image rendered row, including code rows. PiG now uses that same final content-width pass and its continuation breakpoints. The ID remains reserved. Evidence: `tui/markdown_upstream_test.go`, `tui/markdown_codeblock_wrap_test.go`, and `test/parity/scenarios/tui-components/16-markdown-user-components.toml`.
 
-## Active divergences (31)
+## Active divergences (32)
 
 D78, D82 and D83 record owner-approved known gaps for 0.3.x (decision 2026-09-28). Approval records a difference; it does not prove parity, waive an unrelated defect, or turn a failing comparison into a pass. Same-process object behavior must remain Pi-exact. See `docs/findings/0.3.0-known-gaps.md` for the integration boundary and retained failures.
 
@@ -105,59 +105,40 @@ that exercise the full extract pipeline against synthetic fd/rg archives.
 PORT_MAP path: `packages/coding-agent/src/utils/tools-manager.ts`
 SCRUTINIZED:approved
 
-## D26 Provider attribution headers are pig-branded
+## D26 PiG never identifies itself as Pi to a service
 
-What: upstream's `mergeProviderAttributionHeaders` (provider-attribution.ts)
-sends telemetry-gated attribution headers for OpenRouter
-(`HTTP-Referer: https://pi.dev`, `X-OpenRouter-Title: pi`,
-`X-OpenRouter-Categories: cli-agent`), NVIDIA NIM
-(`X-BILLING-INVOKE-ORIGIN: Pi`), and Cloudflare (`User-Agent: pi-coding-agent`),
-plus an always-on OpenCode session-correlation pair
-(`x-opencode-session: <id>`, `x-opencode-client: pi`) that upstream's
-`getSessionHeaders` emits regardless of the telemetry gate. pig's
-`mergeProviderAttributionHeaders` (`coding/model.go`) matches that shape
-file-for-file with pig branding substituted for every pi-branded value:
-OpenRouter gets `HTTP-Referer: https://github.com/MichaelKinsy/PiG`,
-`X-OpenRouter-Title: PiG`, `X-OpenRouter-Categories: cli-agent`; NVIDIA gets
-`X-BILLING-INVOKE-ORIGIN: PiG`; Cloudflare gets `User-Agent: pig-coding-agent`;
-OpenCode gets `x-opencode-client: pig` (still unconditional on telemetry, only
-gated on a session ID being present, matching upstream). The OpenRouter/
-NVIDIA/Cloudflare headers are gated on
-`SettingsManager.IsInstallTelemetryEnabled()`, matching upstream's
-`getDefaultAttributionHeaders` telemetry gate exactly.
+What: every string upstream sends to identify Pi, and every Pi-owned endpoint it calls, is PiG's own. One file, `internal/coding/pigidentity/identity.json`, holds the values. The Go host reads it (`internal/coding/pigidentity`), and `automation/gen/pi-identity-patches.mjs` applies the same values to the Pi JavaScript the Node extension runtime vendors, so a Node extension that calls the Pi SDK (`createAgentSession`) or pi-ai sends the identity the Go host sends. The vendoring step (`automation/gen/vendor-pi-dist.sh`) runs the patch before it compiles the SDK bundle, so a re-vendor keeps it, and `vendor-manifest.json` labels each patched file. An exact-line patch that no longer matches a new Pi release fails the vendoring step.
 
-Why: every upstream attribution value is pi-branded (`pi.dev`,
-`X-OpenRouter-Title: pi`, `X-BILLING-INVOKE-ORIGIN: Pi`, `pi-coding-agent`,
-`x-opencode-client: pi`). A rebranded port must not misattribute its traffic
-as pi, so pig substitutes pig branding host-for-host and header-for-header
-instead of narrowing upstream's provider set. Only the literal string values
-change; the provider/host matching, the telemetry gate, and the
-always-on OpenCode session pair are unchanged from upstream.
+Replaced values (Pi 0.87.1 → PiG):
+- Provider attribution (`provider-attribution.ts`, telemetry-gated, gate unchanged): OpenRouter `HTTP-Referer: https://pi.dev` → `https://github.com/MichaelKinsy/PiG`, `X-OpenRouter-Title: pi` → `PiG`, `X-OpenRouter-Categories: cli-agent` unchanged; NVIDIA NIM `X-BILLING-INVOKE-ORIGIN: Pi` → `PiG`; Cloudflare `User-Agent: pi-coding-agent` → `pig-coding-agent`. The OpenCode pair `x-opencode-session` and `x-opencode-client: pi` → `pig` stays independent of the telemetry gate, as upstream's `getSessionHeaders`. Host and provider matching are unchanged. Node: `core/provider-attribution.js` in the vendored SDK, which `createAgentSession` calls.
+- User agents: D65 (`pig/<coding.Version> (<platform> <release>; <arch>)`) now also covers the vendored `getPiUserAgent` of coding-agent and pi-ai. The host names its composite version to each Node runtime process in `PIG_PRODUCT_VERSION`.
+- OpenAI Codex: `originator: pi` on the SSE request, the websocket handshake and the OAuth authorize URL → `pig`. xAI device-code `referrer: pi` → `pig`.
+- Child processes: `AI_AGENT=pi` → `AI_AGENT=pig` (Pi's `cli/setup.ts` and `rpc-entry.ts` export it so tools name the launching agent). `PI_CODING_AGENT=true` is unchanged, because Pi extensions read it to detect the harness.
+- Pi-owned endpoints the vendored Node code would call, routed as the Go host does (D62, D64): the version check (`utils/version-check.js`), the remote model catalog overlay (`core/remote-catalog-provider.js`), the install report (`interactive-mode.js`) and the managed installer API (`package-manager-cli.js`) go to `https://pi-in-go.dev`. The bug-report upload (`core/bug-report-upload.js`) refuses, because PiG never uploads bug reports (D62). The Radius share upload (`session-share.js` `tryShareViaRadius`) returns "unavailable", because PiG never sends a Radius token to Radius's share gateway (D64). None of these run in a PiG session today (the Go host implements the interactive commands), so the patches close paths that an extension could reach by importing Pi's `InteractiveMode`, `getLatestPiRelease`, `withRemoteCatalog` or `uploadBugReport`.
 
-`IsInstallTelemetryEnabled` mirrors upstream `isInstallTelemetryEnabled`
-(telemetry.ts:8): `PI_TELEMETRY` env truthiness wins when set, otherwise the
-`enableInstallTelemetry` setting (default true). This is the same gate that
-also covers the install/update ping, sent to PiG's own `pi-in-go.dev`
-endpoint instead of pi.dev (D64; `internal/codingagent/install_telemetry.go`).
+Kept as Pi sends them, by design: GitHub Copilot's `GitHubCopilotChat/0.35.0`, `Editor-Version`, `Editor-Plugin-Version` and `Copilot-Integration-Id` headers and Anthropic OAuth's `claude-cli/…` user agent, because those providers accept requests only from the client they name; Radius's `radius.pi.dev` gateway, model catalog and `pi-gateway` OAuth client id, which the user selects by logging in to the `radius` provider (Pi's own product, the same in the Go host); Pi documentation and migration-guide links printed as text and the update notification's changelog link; `pi-messages` (a protocol name). The guard test `TestVendoredRuntimeCarriesNoPiIdentityOutsideTheAllowlist` scans every vendored file and lists each remaining literal with its reason.
 
-Remove when: pig sends byte-identical (unbranded) attribution headers to
-upstream, which would require pig to claim it is pi — not planned.
+Why: every upstream identity value is pi-branded (`pi.dev`, `pi`, `Pi`, `pi-coding-agent`). A rebranded port must not misattribute its traffic to Pi, so PiG substitutes its own branding host-for-host and header-for-header instead of narrowing upstream's provider set, and sends nothing to a service PiG does not operate on the user's behalf. The Node extension runtime ships Pi's own JavaScript, which is a second way out of the process; the owner directive for 0.3.1 is that no path identify as Pi. Only the literal values and the disabled Pi-only uploads change; the provider and host matching, the telemetry gate and the OpenCode session pair are unchanged from upstream.
+
+`IsInstallTelemetryEnabled` mirrors upstream `isInstallTelemetryEnabled` (telemetry.ts:8): `PI_TELEMETRY` env truthiness wins when set, otherwise the `enableInstallTelemetry` setting (default true). This is the same gate that also covers the install/update ping, sent to PiG's own `pi-in-go.dev` endpoint instead of pi.dev (D64; `internal/codingagent/install_telemetry.go`).
+
+Unverified against the live services: OpenAI's Codex backend and login and xAI's device-code endpoint accept an `originator`/`referrer` other than `pi` (Pi's own client and other Codex clients use their own names). No credentials were available to run them.
+
+Remove when: PiG sends byte-identical (unbranded) identity to services, which would require PiG to claim it is Pi. Not planned.
 
 Call-site markers:
-- `coding/model.go`: the OpenRouter/NVIDIA/Cloudflare branch and the
-  OpenCode session pair in `mergeProviderAttributionHeaders`
-- `internal/codingagent/settings.go`: `IsInstallTelemetryEnabled`,
-  `isTruthyTelemetryEnvFlag`
-Locked by: `internal/codingagent/settings_test.go` -
-`TestSettingsManager_IsInstallTelemetryEnabled`;
-`coding/provider_attribution_0861_test.go` -
-`TestMergeProviderAttributionHeadersMatchesPinnedProvidersAndHosts`,
-`TestProviderAttributionWrapperReachesHTTPRequest`;
-`coding/model_test.go` -
-`TestBuildModelGatesAttributionHeadersOnInstallTelemetrySetting`.
-PORT_MAP path: `packages/coding-agent/src/core/provider-attribution.ts`,
-`packages/coding-agent/src/core/telemetry.ts` (setting/env gate ported; the
-install-report ping it also gates is not wired in yet).
+- `internal/coding/pigidentity/pigidentity.go`: the values and their single source, `identity.json`.
+- `coding/model.go`: the OpenRouter/NVIDIA/Cloudflare branch and the OpenCode session pair in `mergeProviderAttributionHeaders`.
+- `ai/openai_responses.go`, `ai/openai_codex_responses.go`, `ai/openai_codex_websocket.go`, `ai/oauth_openai_codex.go`, `ai/oauth_xai.go`: the Codex originator and the xAI referrer. `ai/user_agent.go`: the product name in D65's user agent.
+- `cmd/pig/setup_cli.go`: `AI_AGENT`.
+- `coding/extension/host/subprocess/terminal_capabilities_env.go`: `PIG_PRODUCT_VERSION` for the Node runtime.
+- `automation/gen/pi-identity-patches.mjs` and `coding/extension/host/subprocess/runtime-node/shims/pig-identity.mjs`: the Node runtime patches and the user-agent builder they call.
+- `internal/codingagent/settings.go`: `IsInstallTelemetryEnabled`, `isTruthyTelemetryEnvFlag`.
+
+Locked by: `internal/coding/pigidentity` `TestIdentityValuesAreThePiGBrand`, `TestIdentityJSONIsTheSingleSource`; `coding` `TestModelRuntimeRequestsCarryPiGAttributionNeverPis` (Go host, real HTTP), `TestMergeProviderAttributionHeadersMatchesPinnedProvidersAndHosts`, `TestProviderAttributionWrapperReachesHTTPRequest`, `TestBuildModelGatesAttributionHeadersOnInstallTelemetrySetting`; `cmd/pig` `TestNodeExtensionModelCallsCarryPiGIdentityNeverPis` (the real binary, a Node extension's `createAgentSession` and pi-ai `completeSimple` against OpenRouter-, NVIDIA- and OpenCode-shaped servers) and `TestSetupCliSetsInheritedProcessMarkers`; `test/extension-conformance` `TestSDKModelCallsCarryPiGIdentityNeverPis` (the Go, Python and Rust SDKs' host model calls); `coding/extension/host/subprocess` `TestVendoredRuntimeCarriesNoPiIdentityOutsideTheAllowlist`, `TestVendoredRuntimeRequestsAreNeverMadeAsPi`, `TestVendoredPiDistMatchesThePinnedPackage` (the patch table), `TestNodeExtensionUserAgentNamesPiGAndItsVersion`; `ai` `TestLoginOpenAICodexAuthorizeURLNamesPiGAsOriginator`, `TestCodexWebSocketHeadersNamePiGAsOriginator` and the Codex and xAI request tests; `internal/codingagent` `TestHostedEndpointsUseTheIdentityOrigin`, `TestSettingsManager_IsInstallTelemetryEnabled`.
+
+PORT_MAP path: `packages/coding-agent/src/core/provider-attribution.ts`, `packages/coding-agent/src/core/telemetry.ts` (setting/env gate ported; the install-report ping it also gates is D64), `packages/ai/src/auth/oauth/openai-codex.ts`, `packages/ai/src/auth/oauth/xai.ts`, `packages/coding-agent/src/cli/setup.ts`.
+
 SCRUTINIZED:approved
 
 ## D27 Word segmentation always uses ICU's warm dictionary-engine cache
@@ -268,7 +249,7 @@ source, compares the running version to the manifest version, and, when newer,
 downloads the platform binary, requires and verifies its SHA256, rejects declared
 or streamed content above the bounded size, and atomically replaces the running
 executable and its ownership receipt as one rollback-safe operation.
-Missing/malformed/mismatched checksums fail before staging. A standalone replacement holds a per-executable OS lock through download, receipt commit, and rollback. A concurrent update fails before downloading. The `<executable>.update.lock` sidecar remains on disk; the OS releases ownership when the process exits. Do not delete a live lock sidecar.
+Missing/malformed/mismatched checksums fail before staging. A standalone replacement holds a per-executable OS lock through download, receipt commit, and rollback. A concurrent update fails before downloading. Like Pi's proper-lockfile lock (`package-manager-cli.ts:171-222`, released in `finally`), the `<executable>.update.lock` sidecar is removed when the update ends. The holder removes it before it releases the OS lock, and every acquirer checks after locking that its descriptor is still the file the path names, so a process that opened the sidecar before removal reopens instead of sharing the lock. A crash leaves an unlocked sidecar that the next update reuses and removes. An updater built before this behavior does not make that check, so two updaters of different builds that start within microseconds of each other can both proceed.
 
 Explicit version checks use Pi's management HTTP policy: at most two immediate retries for transport failures and HTTP 408, 425, 429, 500, 502, 503, or 504, within one ten-second budget. Caller cancellation ends the check. Signature verification and manifest parsing failures are not retried. Startup checks remain best-effort and do not retry.
 
@@ -339,9 +320,12 @@ self-updates and PiG did not. Upstream *does* check for and notify about a new v
 notification ("Update Available. New version X is available. Run `pig update`"),
 laid out identically (Spacer, warning DynamicBorder, bold-warning heading +
 muted/accent instruction, an optional muted release-note block between spacers,
-closing DynamicBorder). The one omission is upstream's trailing `Changelog:
-https://pi.dev/changelog` line: that URL is a hardcoded pi-product page with no
-generic pig equivalent, so pig drops it rather than bake a dead or wrong link.
+closing DynamicBorder), with the one-column padding Pi's `Text` and `Markdown`
+blocks use. Pi's trailing `Changelog: https://pi.dev/changelog` line names a
+hardcoded pi-product page. pig has no such page and bakes no URL: when the signed
+manifest's `notes` is a release page URL, pig shows it on the `Changelog:` line
+(and not again as a note block), and when the manifest carries no URL pig omits the
+line. Any other manifest note is shown as the muted Markdown note block.
 Only the update *mechanism* diverges: upstream updates via the package manager,
 pig replaces the standalone binary. The self/package command surface matches upstream (`pi update` = self, `--self`, `--extensions`, `--all`,
 `--extension`, `--force`, positional package source, and conflict handling),
@@ -1055,10 +1039,11 @@ What: inside an extension process, pi-ai's compat layer, API registry, lazy API 
 
 Why: the upstream implementations import the vendor SDKs (`@anthropic-ai/sdk`, `openai`, `@google/genai`, `@aws-sdk/client-bedrock-runtime`), which PiG does not ship to extensions, and PiG already carries parity-tested Go ports of these providers, which its own agent uses. Running every builtin API through one bridge keeps credential resolution and request behavior uniform. Owner-directed launch P0 fix (Reddit report on 2026-09-26: pi-hermes-memory calls `completeSimple` from `@earendil-works/pi-ai/compat`).
 
-Observable effect: an extension's `stream`/`complete`/`streamSimple`/`completeSimple` sends the same request (credential, model, messages) and receives the same event and result shapes as under Pi, from PiG's provider; a request aborted in flight carries the Go provider's abort message rather than the vendor SDK's. Provider-specific `stream()` options beyond the common ones (for example Anthropic `thinkingEnabled`) are not forwarded, results lack `responseId` and `rawStopReason`, and `generateImages` for OpenRouter returns an error result where Pi generates images.
+Observable effect: an extension's `stream`/`complete`/`streamSimple`/`completeSimple` sends the same request (credential, model, messages) and receives the same event and result shapes as under Pi, from PiG's provider; a request aborted in flight carries the Go provider's abort message rather than the vendor SDK's. Provider-specific `stream()` options beyond the common ones (for example Anthropic `thinkingEnabled`) are not forwarded, results lack `responseId` and `rawStopReason`, and `generateImages` for OpenRouter returns an error result where Pi generates images. A direct pi-ai call also carries the provider attribution headers that PiG's Go provider adds to every model it builds (`coding.BuildModel`, `providerAttributionProvider` in `coding/model.go`): OpenRouter's `HTTP-Referer`, `X-OpenRouter-Title` and `X-OpenRouter-Categories`, and NVIDIA NIM's `X-BILLING-INVOKE-ORIGIN`, with PiG's values (D26) and subject to the install-telemetry setting. Pi's pi-ai sends only its own `User-Agent` (`packages/ai/src/api/openai-completions.ts:760`) on a direct call; Pi adds attribution headers only in the coding agent's request path (`packages/coding-agent/src/core/provider-attribution.ts`, `sdk.ts:326`).
 
 Call-site markers:
 - `coding/extension/host/subprocess/runtime-node/shims/pi-ai-bridge.mjs`: the bridge the vendored `api/<api>.js` stubs load.
+- `coding/model.go`: `providerAttributionProvider.Stream`, which adds the attribution headers to a direct pi-ai call that the bridge streams through `coding.BuildModel`.
 
 Locked by: `coding/extension/host/subprocess` `TestVendoredPiDistMatchesThePinnedPackage` (every vendored pi-ai file is verbatim except the listed bridge stubs), `TestNodeRuntimeShimsExportEveryPinnedPiValue` (the compat surface), and `TestNodeCompatCompletionAbortCancelsHostRequest` (the extension's `apiKey` reaches the host, no session thinking level is applied, and an aborted signal cancels the host request).
 
@@ -1217,5 +1202,29 @@ Evidence: `docs/parity/model-availability-task-ownership.md` (registration refre
 Parity allowance: no paired scenario exercises a direct Go registration because Pi has no Go caller; the paired scenarios cover extension-host registrations and remain strict. Unit tests above lock the queued, awaited-call behavior.
 
 Remove when: Go gains a turn boundary that can run the refresh after the registering caller's synchronous work without running Provider callbacks inside its request sequence, or upstream awaits the registration refresh.
+
+SCRUTINIZED:approved
+
+## D85 RPC stdin end: a suspended extension command's continuation can run before its runtime stops, and one runtime's suspended session_shutdown does not keep another runtime's command alive
+
+What: when RPC stdin ends, PiG decides for each extension command whether Pi's process would still have answered it. A command answers if it settles inside the microtasks, ticks and check phase of its line's own event-loop iteration, or while a `session_shutdown` handler that awaits a timer or I/O keeps the process alive. Two differences remain in that decision.
+1. PiG stops a Node runtime process only after the host reaches its exit decision. A command handler that Pi never resumes (its continuation is a timer, file I/O, a nested `setImmediate` or a child process) is suspended in Pi's exited process. In PiG its continuation can still run in the runtime process between the suspension report and the host stopping that process, so its side effects (a file write, a recorded event, a host call the host still accepts) can happen. Pi never runs them. PiG never prints the held response.
+2. A suspended quit `session_shutdown` handler keeps Pi's process alive, so a suspended command can still settle and answer. PiG observes this only within one runtime process: a suspended `session_shutdown` handler in one runtime process does not keep a command of another runtime process alive. Node factories normally pack into one process, so this is reachable only with an extension in its own runtime process (a quarantined or isolated Node extension) or a non-Node runtime whose handler is suspended.
+
+Why: extensions run in runtime processes outside the host. The host learns that a handler is suspended from a `request_state` frame and must then stop the process, so the continuation races the stop. An exact match would need the host to freeze or stop the runtime before the suspension frame is sent, which stays racy, or a keepalive aggregated across runtime processes with a new wire message for handler suspension. Pi runs every extension on its one event loop (`rpc-mode.ts:728-744,804-807`, `output-guard.ts:105-108`).
+
+Observable effect: (1) an extension whose command continues through a timer or I/O after stdin ended can perform that continuation's side effects under PiG and not under Pi, in a short window before its runtime stops. Stdout is identical. (2) With extensions in separate runtime processes, a command that Pi answers because another extension's shutdown handler holds the process open is not answered by PiG.
+
+Scope: only RPC stdin end, and only these two cases. Outside them, which commands answer, the held responses, the per-command window, the ordering of suspensions before responses, pending dialogs, `session_shutdown` delivery and exit codes are not waived and must match Pi.
+
+Owner decision: 2026-09-29, owner Michael Kinsy approves this divergence ("RPC shutdown residuals from process-per-extension hosting") because extensions run in separate runtime processes and the exact fixes are neither cheap nor safe now. Approval covers only the scope above.
+
+Call-site markers: `coding/extension/host/subprocess/runtime-node/runtime.mjs`: `armRequestWindow`. `coding/extension/host/subprocess/host.go`: `setQuitHandlerSuspended`. `cmd/pig/rpc_shutdown_test.go`: the `afterExit` tolerance in `TestRPCInputEndAfterExtensionCommandComparedWithPi`.
+
+Evidence: `TestRPCInputEndAfterExtensionCommandComparedWithPi` (stdout and the extension's event records against Pi for each command shape, with and without the default shutdown handler, plus a sibling extension), `TestRPCInputEndWindowClosesBeforeNextPollComparedWithPi` (stdout against Pi over repeated runs of the window-edge shapes), `TestRPCInputEndCommandSettlesDuringSlowShutdownHandler` and `TestRPCInputEndJoinsEachExtensionCommand` in `cmd/pig/rpc_shutdown_test.go`, `TestCommandFlightsSuspendPerCommand` in `coding/extension/host/subprocess/command_flight_test.go`, and `TestConformance_SuspendedCommandFlush` in `test/extension-conformance/command_flush_test.go`. The stdin-end contract is in `docs/extension-api-parity.md`.
+
+Parity allowance: the Pi rows of the comparison tests are strict. The PiG rows drop the command's own event record for the shapes Pi does not answer (`afterExit`), which is difference 1. No test covers difference 2.
+
+Remove when: the host stops or freezes a runtime process before a suspended continuation can run and the stdin-end window is aggregated across runtime processes, or PiG runs extensions on one shared event loop as Pi does.
 
 SCRUTINIZED:approved

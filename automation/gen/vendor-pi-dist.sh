@@ -8,6 +8,7 @@
 # Whole coding-agent modules, docs, examples, themes and image-worker assets
 # remain available for source verification and absolute package-root imports.
 # bundle-pi-sdk.mjs compiles the same graph without changing its API bodies.
+# pi-identity-patches.mjs replaces Pi's identity literals with PiG's (D26).
 # vendor-manifest.json records package identities, input/output hashes and seams.
 set -euo pipefail
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -131,6 +132,8 @@ rm -rf "$shims/photon-node"
 node "$root/automation/gen/vendor-node-dependencies.mjs" "$agent/node_modules/@silvia-odwyer/photon-node/package.json" "$shims/photon-node"
 node "$root/automation/gen/vendor-pi-session-seams.mjs" "$agent" "$dist/pi-coding-agent"
 node "$root/automation/gen/vendor-pi-startup-seams.mjs" "$dist/pi-coding-agent"
+# PiG's product identity for Pi's outbound identity literals and hosted endpoints (D26); the same values the Go host sends.
+node "$root/automation/gen/pi-identity-patches.mjs" "$dist"
 rm -rf "$shims/cross-spawn"
 node "$root/automation/gen/vendor-node-dependencies.mjs" "$agent/node_modules/cross-spawn/package.json" "$shims/cross-spawn"
 cp -R "$yaml/browser/dist" "$shims/yaml/dist"

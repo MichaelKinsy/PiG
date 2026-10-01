@@ -372,9 +372,57 @@ func owningPackageFromExecutable(goos, exe string) (string, string) {
 		if strings.HasPrefix(parts[i+1], "@") && i+2 < len(parts) {
 			end++
 		}
-		return strings.Join(parts[i+1:end], "/"), filepath.FromSlash(strings.Join(parts[:end], "/"))
+		name := strings.Join(parts[i+1:end], "/")
+		if isNpmPlatformPackage(name) {
+			return PackageName, filepath.FromSlash(launcherPackageDir(goos, parts[:i]))
+		}
+		return name, filepath.FromSlash(strings.Join(parts[:end], "/"))
 	}
 	return PackageName, filepath.Dir(exe)
+}
+
+// The npm os and cpu names of the platform packages that carry the native
+// binary: automation/release/npm/pack_npm.py TARGETS.
+var (
+	npmPlatformOSes = []string{"darwin", "linux", "win32"}
+	npmPlatformCPUs = []string{"arm64", "x64"}
+)
+
+// isNpmPlatformPackage reports whether name is one of the launcher's platform
+// packages, "<launcher>-<os>-<cpu>". The launcher package PackageName owns the
+// installation; a platform package only holds the executable.
+func isNpmPlatformPackage(name string) bool {
+	suffix, ok := strings.CutPrefix(name, PackageName+"-")
+	if !ok {
+		return false
+	}
+	npmOS, npmCPU, ok := strings.Cut(suffix, "-")
+	return ok && slices.Contains(npmPlatformOSes, npmOS) && slices.Contains(npmPlatformCPUs, npmCPU)
+}
+
+// launcherPackageDir returns the directory of the launcher package for a
+// platform package installed under the node_modules directory whose path
+// segments, without the trailing node_modules entry, are parts. npm nests the
+// platform package inside the launcher; yarn and bun hoist it beside the
+// launcher; pnpm keeps it in its own virtual-store entry, so the launcher lives
+// in the node_modules directory that holds the .pnpm store.
+func launcherPackageDir(goos string, parts []string) string {
+	launcher := strings.Split(PackageName, "/")
+	if n := len(launcher); len(parts) >= n && samePathSegments(goos, parts[len(parts)-n:], launcher) {
+		return strings.Join(parts, "/")
+	}
+	for i, part := range parts {
+		if part == ".pnpm" {
+			return strings.Join(append(slices.Clone(parts[:i]), PackageName), "/")
+		}
+	}
+	return strings.Join(append(slices.Clone(parts), "node_modules", PackageName), "/")
+}
+
+func samePathSegments(goos string, got, want []string) bool {
+	return slices.EqualFunc(got, want, func(a, b string) bool {
+		return a == b || goos == "windows" && strings.EqualFold(a, b)
+	})
 }
 
 func npmGlobalRoots(runner cmdRunner) []string {

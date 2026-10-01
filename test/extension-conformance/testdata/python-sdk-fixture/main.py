@@ -368,6 +368,11 @@ def new_extension() -> pig_sdk.Extension:
         lambda ctx, args: ctx.notify(f"geometry:{ctx.width}x{ctx.height}", "info"),
     )
 
+    ext.command("surface_footer", "Install a footer renderer", lambda ctx, args: ctx.set_footer_renderer(lambda width: [f"footer@{width}"]))
+    ext.command("surface_header", "Install a header renderer", lambda ctx, args: ctx.set_header_renderer(lambda width: [f"header@{width}"]))
+    ext.command("surface_static_footer", "Push static footer rows", lambda ctx, args: ctx.set_footer([f"static@{ctx.width}"]))
+    ext.command("surface_widget", "Set a string list widget wider than the pane", lambda ctx, args: ctx.set_widget("wide", ["A" * 60 + " tail", "short"]))
+
     term_unsub: list = []
 
     def term_verdict(ctx: pig_sdk.Context, data: str) -> pig_sdk.TerminalInputResult:

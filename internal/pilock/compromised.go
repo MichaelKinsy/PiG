@@ -80,16 +80,24 @@ func nodeFSError(err error) (nodeFSFailure, bool) {
 	if !errors.As(err, &pathErr) {
 		return nodeFSFailure{}, false
 	}
-	call := pathErr.Op
-	if call == "chtimes" {
-		call = "utime"
-	}
+	call := nodeSyscall(pathErr.Op)
 	for _, entry := range nodeErrnoNames {
 		if errors.Is(pathErr.Err, entry.errno) || (entry.matchesFileSystemErrors != nil && entry.matchesFileSystemErrors(pathErr.Err)) {
 			return nodeFSFailure{code: entry.code, description: entry.description, syscall: call, path: pathErr.Path, errnoValue: entry.errno}, true
 		}
 	}
 	return nodeFSFailure{}, false
+}
+
+// nodeSyscall names the Node fs call behind a Go path error's operation. os.Chtimes is Node's utime. On Windows os.Stat names the Win32 call that failed (os/stat_windows.go, os/types_windows.go), and Node reports each as stat.
+func nodeSyscall(op string) string {
+	switch op {
+	case "chtimes":
+		return "utime"
+	case "GetFileAttributesEx", "FindFirstFile", "CreateFile", "GetFileType", "GetFileInformationByHandle", "GetFileInformationByHandleEx":
+		return "stat"
+	}
+	return op
 }
 
 func (f nodeFSFailure) errno() (int, bool) {

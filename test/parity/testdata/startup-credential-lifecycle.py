@@ -88,6 +88,13 @@ def run(binary, api):
                 if event.get("type") == terminal:
                     return events
 
+        def prompt(payload):
+            # Pi clears the active-run state only when it emits agent_settled, after agent_end (agent-session.ts:_emitAgentSettled), and rejects a prompt sent in between ("Agent is already processing"). Wait for agent_settled like rpc-client.ts:waitForIdle, then return the events through agent_end.
+            events = command(payload, "agent_settled")
+            end = next((i for i, event in enumerate(events) if event.get("type") == "agent_end"), None)
+            assert end is not None, events
+            return events[: end + 1]
+
         try:
             state = command({"type": "get_state", "id": "state"}, "response")[-1]
             assert state["success"], state
@@ -95,7 +102,7 @@ def run(binary, api):
             assert server.requests == [], server.requests
             assert state["data"]["model"]["api"] == api, state
             print(f"{provider}/{api}: startup model={model} requests=0")
-            events = command({"type": "prompt", "message": "hello", "id": "first"}, "agent_end")
+            events = prompt({"type": "prompt", "message": "hello", "id": "first"})
             if radius:
                 assert server.requests == [("/v1/oauth/token", "")], server.requests
                 encoded = json.dumps(events)
@@ -108,7 +115,7 @@ def run(binary, api):
                 assert events[-1]["messages"][-1]["stopReason"] == "stop", events
                 # /logout deletes the credential; do not rebuild the running startup model.
                 (home / "auth.json").write_text("{}")
-                events = command({"type": "prompt", "message": "again", "id": "second"}, "agent_end")
+                events = prompt({"type": "prompt", "message": "again", "id": "second"})
                 assert events[-1]["messages"][-1]["stopReason"] == "stop", events
                 assert server.requests == [(path, "Bearer stored-key"), (path, "Bearer env-key")], server.requests
                 print(f"openai/{api}: request keys=stored-key,env-key after credential deletion")

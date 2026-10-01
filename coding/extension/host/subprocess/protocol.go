@@ -735,11 +735,13 @@ type CallResultPayload struct {
 
 // ── WidgetPush (ext→host) ────────────────────────────────────────────────────
 
-// WidgetPushPayload carries rendered widget lines from extension to host.
+// WidgetPushPayload carries widget lines from extension to host. With a width
+// the lines are a frame a component rendered at that width; without one they
+// are a string list the host lays out as Pi's setWidget(key, string[]) does.
 type WidgetPushPayload struct {
 	Key   string   `json:"key"`             // Widget slot key (matches WidgetDecl.Key)
-	Lines []string `json:"lines"`           // Pre-rendered lines (may contain ANSI)
-	Width int      `json:"width,omitempty"` // Width the lines were rendered at (0 = unknown)
+	Lines []string `json:"lines"`           // Frame rows or string list entries (may contain ANSI)
+	Width int      `json:"width,omitempty"` // Width the frame was rendered at (0 = a string list)
 }
 
 // ── Shutdown (host→ext) ──────────────────────────────────────────────────────

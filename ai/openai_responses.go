@@ -16,6 +16,8 @@ import (
 	"slices"
 	"strings"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
 )
 
 // ─── Config ──────────────────────────────────────────────────────────────────
@@ -1062,7 +1064,8 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	if p.cfg.Codex {
 		httpReq.Header.Set("Authorization", "Bearer "+apiKey)
 		httpReq.Header.Set("chatgpt-account-id", accountID)
-		httpReq.Header.Set("originator", "pi")
+		// pig divergence (D26): PiG names itself as the Codex originator.
+		httpReq.Header.Set("originator", pigidentity.CodexOriginator)
 		httpReq.Header.Set("OpenAI-Beta", "responses=experimental")
 		httpReq.Header.Set("Accept", "text/event-stream")
 		httpReq.Header.Set("Content-Type", "application/json")

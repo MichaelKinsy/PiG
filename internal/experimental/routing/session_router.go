@@ -154,6 +154,12 @@ func (r *SessionRouter[C]) RemoveSession(ctx context.Context, sessionID string) 
 	}
 	r.mu.Lock()
 	hosted := r.hosted[sessionID]
+	r.mu.Unlock()
+	if hosted != nil {
+		r.applyTermination(hosted)
+	}
+	r.mu.Lock()
+	hosted = r.hosted[sessionID]
 	if hosted == nil {
 		r.mu.Unlock()
 		return nil
@@ -196,6 +202,7 @@ func (r *SessionRouter[C]) closeInternal(ctx context.Context, operations []*rout
 	for _, operation := range opening {
 		<-operation.done
 	}
+	r.invalidateTerminated()
 	// Promise.allSettled resolves before any rejection is reported, and results keep the snapshot order.
 	for _, operation := range opening {
 		if operation.err != nil {
@@ -380,10 +387,16 @@ func (r *SessionRouter[C]) releaseAttachments(ctx context.Context, attachments [
 	return failures
 }
 func (r *SessionRouter[C]) acquire(ctx context.Context, sessionID string) (*hostedSession[C], error) {
-	r.mu.Lock()
-	if hosted := r.hosted[sessionID]; hosted != nil {
+	for {
+		r.mu.Lock()
+		hosted := r.hosted[sessionID]
+		if hosted == nil {
+			break
+		}
 		r.mu.Unlock()
-		return hosted, nil
+		if !r.applyTermination(hosted) {
+			return hosted, nil
+		}
 	}
 	pending := r.opening[sessionID]
 	if pending == nil {
@@ -438,6 +451,36 @@ func (r *SessionRouter[C]) open(ctx context.Context, sessionID string) (*hostedS
 	}
 	r.mu.Unlock()
 	return hosted, nil
+}
+
+// invalidateTerminated applies every termination already signalled. session-router.ts:#open registers `handle.terminated?.then(invalidate)`, a microtask that runs before any later event, so no later step (a close, an acquisition or a Session removal) observes a terminated handle as live. The Go watcher goroutine may not have run yet, and a release or attach through the retired handle fails with the worker no longer registered. invalidate is idempotent.
+func (r *SessionRouter[C]) invalidateTerminated() {
+	r.mu.Lock()
+	hosted := make([]*hostedSession[C], 0, len(r.hostedOrder))
+	for _, id := range r.hostedOrder {
+		if value := r.hosted[id]; value != nil {
+			hosted = append(hosted, value)
+		}
+	}
+	r.mu.Unlock()
+	for _, value := range hosted {
+		r.applyTermination(value)
+	}
+}
+
+// applyTermination invalidates hosted when its Harness termination is already signalled and reports whether it did.
+func (r *SessionRouter[C]) applyTermination(hosted *hostedSession[C]) bool {
+	channel := hosted.handle.Terminated()
+	if channel == nil {
+		return false
+	}
+	select {
+	case <-channel:
+		r.invalidate(hosted, hosted.handle.TerminalError())
+		return true
+	default:
+		return false
+	}
 }
 func (r *SessionRouter[C]) invalidate(hosted *hostedSession[C], failure error) {
 	r.mu.Lock()

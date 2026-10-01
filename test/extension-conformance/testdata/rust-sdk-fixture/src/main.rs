@@ -498,6 +498,30 @@ fn main() {
             CommandResult::Error("awaited command exploded".to_string())
         },
     );
+    ext.command("surface_footer", "Install a footer renderer", |ctx, _args| {
+        match ctx.set_footer_renderer(Some(|width: u32| vec![format!("footer@{width}")])) {
+            Ok(()) => CommandResult::Ok,
+            Err(error) => CommandResult::Error(error.to_string()),
+        }
+    });
+    ext.command("surface_header", "Install a header renderer", |ctx, _args| {
+        match ctx.set_header_renderer(Some(|width: u32| vec![format!("header@{width}")])) {
+            Ok(()) => CommandResult::Ok,
+            Err(error) => CommandResult::Error(error.to_string()),
+        }
+    });
+    ext.command("surface_static_footer", "Push static footer rows", |ctx, _args| {
+        match ctx.set_footer(vec![format!("static@{}", ctx.width())]) {
+            Ok(()) => CommandResult::Ok,
+            Err(error) => CommandResult::Error(error.to_string()),
+        }
+    });
+    ext.command("surface_widget", "Set a string list widget wider than the pane", |ctx, _args| {
+        match ctx.set_widget("wide", vec![format!("{} tail", "A".repeat(60)), "short".to_string()]) {
+            Ok(()) => CommandResult::Ok,
+            Err(error) => CommandResult::Error(error.to_string()),
+        }
+    });
     ext.command(
         "report_geometry",
         "Report observed terminal geometry",

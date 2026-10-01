@@ -46,6 +46,8 @@ func TestExperimentalFauxWorkerFixtureUsesNativeProcessAndHarness(t *testing.T) 
 	}
 	killWorkerProcess(t, pid)
 	waitProcessExited(t, pid)
+	// OS reaping and the manager's retirement of the worker are independent observations. Cleanup releases the still-attached Session, and a release that races the manager noticing the death is rejected with "Session worker disconnected during demand update" (upstream session-worker-manager.ts:#removeWorker), so join retirement before the test returns.
+	waitExperimentalWorkerRetired(t, server, "demo-1")
 	if processExists(t, pid) {
 		t.Fatalf("fixture worker %d remains alive after actual process reaping", pid)
 	}

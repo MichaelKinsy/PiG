@@ -61,6 +61,7 @@ export { getAgentDir };`},
 		}
 		want = bytes.ReplaceAll(want, []byte(replacement[0]), []byte(replacement[1]))
 	}
+	want = applyVendoredIdentityPatches(t, "pi-coding-agent/"+file, want)
 	path := filepath.Join(root, "pi-coding-agent", filepath.FromSlash(file))
 	if !sameExceptBareImports(t, path, got, want) {
 		t.Errorf("%s differs from Pi beyond the declared module/configuration seams", path)

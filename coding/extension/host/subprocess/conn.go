@@ -134,6 +134,8 @@ type Conn struct {
 	hostCallMu      sync.Mutex
 	hostCalls       map[string]map[string]context.CancelFunc
 	cancelledParent map[string]struct{}
+	// reservedCalls holds the context of each call frame the read loop admitted and the host has not yet started, by call ID.
+	reservedCalls map[string]reservedHostCall
 
 	// nextID is an atomic counter for generating request IDs.
 	nextID atomic.Uint64
@@ -207,6 +209,7 @@ func newConnWithOptions(name string, c net.Conn, options connOptions) *Conn {
 		suspensionsSettled: make(chan struct{}),
 		hostCalls:          make(map[string]map[string]context.CancelFunc),
 		cancelledParent:    make(map[string]struct{}),
+		reservedCalls:      make(map[string]reservedHostCall),
 		clock:              options.Clock,
 		heartbeatInterval:  options.HeartbeatInterval,
 		heartbeatTimeout:   options.HeartbeatTimeout,
@@ -611,11 +614,11 @@ func (c *Conn) request(ctx context.Context, env *Envelope, inactivity time.Durat
 				inactivityC = inactivityTimer.C()
 			}
 		case <-inactivityC:
-			c.cancelHostCalls(env.ID)
 			_ = c.Send(&Envelope{Type: MsgCancel, ID: env.ID, Cancel: &CancelPayload{RequestID: env.ID, Reason: "handler inactivity"}})
+			c.cancelHostCalls(env.ID)
 			return nil, &HandlerStalledError{Extension: c.name, Operation: operation, HeartbeatHealthy: !c.closed.Load()}
 		case <-cancelled:
-			c.cancelHostCalls(env.ID)
+			// pig additive (D19): the cancel is queued before the request's calls are cancelled, so a call's cancellation result follows it on the wire. The extension cancels its own pending calls on the cancel, and the result finds none.
 			_ = c.Send(&Envelope{
 				Type: MsgCancel,
 				ID:   env.ID,
@@ -624,6 +627,7 @@ func (c *Conn) request(ctx context.Context, env *Envelope, inactivity time.Durat
 					Reason:    ctx.Err().Error(),
 				},
 			})
+			c.cancelHostCalls(env.ID)
 			if env.Request != nil && env.Request.Method == MethodProviderStream && (errors.Is(context.Cause(ctx), context.Canceled) || errors.Is(context.Cause(ctx), context.DeadlineExceeded)) {
 				// Pi forwards the native stream's own terminal event after signaling
 				// abort. The connection still owns liveness and closes on shutdown.
@@ -881,6 +885,11 @@ func (c *Conn) readLoop(ctx context.Context) {
 			continue
 		}
 
+		// A call frame owns its parent-scoped context from the moment it is read, while the frames before a response are still ahead of it.
+		if env.Type == MsgCall && env.Call != nil && env.ID != "" {
+			c.reserveHostCall(env.Call.ParentRequestID, env.ID)
+		}
+
 		// Everything else goes to the host.
 		select {
 		case c.inCh <- &env:
@@ -1031,6 +1040,43 @@ func (c *Conn) deliverToolUpdate(args json.RawMessage) {
 }
 
 func (c *Conn) hostCallContext(parentRequestID, callID string) (context.Context, func()) {
+	if callID != "" {
+		c.hostCallMu.Lock()
+		reserved, ok := c.reservedCalls[callID]
+		delete(c.reservedCalls, callID)
+		c.hostCallMu.Unlock()
+		if ok {
+			return reserved.ctx, reserved.release
+		}
+	}
+	return c.openHostCall(parentRequestID, callID)
+}
+
+type reservedHostCall struct {
+	ctx     context.Context
+	release func()
+}
+
+// reserveHostCall opens the call's context while the read loop still holds every frame the extension sent after it. Pi's calls are in-process, so a call the extension made before its command returned completes whatever order the host reaches it in; the read loop routes that command's response directly, and the request record can be gone before the host takes its turn on the call.
+func (c *Conn) reserveHostCall(parentRequestID, callID string) {
+	ctx, release := c.openHostCall(parentRequestID, callID)
+	c.hostCallMu.Lock()
+	c.reservedCalls[callID] = reservedHostCall{ctx: ctx, release: release}
+	c.hostCallMu.Unlock()
+}
+
+// dropReservedHostCall ends the context of a call frame the host will not run.
+func (c *Conn) dropReservedHostCall(callID string) {
+	c.hostCallMu.Lock()
+	reserved, ok := c.reservedCalls[callID]
+	delete(c.reservedCalls, callID)
+	c.hostCallMu.Unlock()
+	if ok {
+		reserved.release()
+	}
+}
+
+func (c *Conn) openHostCall(parentRequestID, callID string) (context.Context, func()) {
 	ctx, cancel := context.WithCancel(context.Background())
 	if parentRequestID != "" {
 		c.pendingMu.Lock()
@@ -1096,6 +1142,7 @@ func (c *Conn) cancelAllHostCalls() {
 		}
 	}
 	clear(c.hostCalls)
+	clear(c.reservedCalls)
 	c.hostCallMu.Unlock()
 	for _, cancel := range cancels {
 		cancel()

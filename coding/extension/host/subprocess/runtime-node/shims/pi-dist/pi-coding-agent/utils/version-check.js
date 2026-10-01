@@ -1,7 +1,7 @@
 import { compare, valid } from "../../../semver/index.js";
 import { fetchWithRetry } from "./management-http.js";
 import { getPiUserAgent } from "./pi-user-agent.js";
-const LATEST_VERSION_URL = "https://pi.dev/api/latest-version";
+const LATEST_VERSION_URL = "https://pi-in-go.dev/api/latest-version";
 const DEFAULT_VERSION_CHECK_TIMEOUT_MS = 10000;
 /** Include useful errno details hidden behind Node's generic "fetch failed" error. */
 export function formatVersionCheckError(error) {

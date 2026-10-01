@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -38,6 +39,7 @@ type Lock struct {
 	path       string
 	mu         sync.Mutex
 	mtime      time.Time
+	precision  mtimePrecision
 	err        error
 	ctx        context.Context
 	cancel     context.CancelCauseFunc
@@ -129,15 +131,21 @@ func AcquireWithOptions(ctx context.Context, path string, options AcquireOptions
 	}
 }
 
+// acquire is lockSync: it probes the mtime precision on every call.
 func acquire(path string, stale time.Duration) (*Lock, error) {
-	return tryAcquire(context.Background(), path, stale)
+	return acquireWithProbe(context.Background(), path, stale, stale/2, nil, probeMtime)
 }
 
+// tryAcquire is one async lockfile.lock attempt: it reuses the process's probed precision.
 func tryAcquire(ctx context.Context, path string, stale time.Duration) (*Lock, error) {
 	return tryAcquireWithUpdate(ctx, path, stale, stale/2, nil)
 }
 
 func tryAcquireWithUpdate(ctx context.Context, path string, stale, update time.Duration, onCompromised func(error)) (*Lock, error) {
+	return acquireWithProbe(ctx, path, stale, update, onCompromised, probeMtimeCached)
+}
+
+func acquireWithProbe(ctx context.Context, path string, stale, update time.Duration, onCompromised func(error), probe func(string) (time.Time, mtimePrecision, error)) (*Lock, error) {
 	path, err := filepath.Abs(path + ".lock")
 	if err != nil {
 		return nil, err
@@ -145,26 +153,30 @@ func tryAcquireWithUpdate(ctx context.Context, path string, stale, update time.D
 	if err := mkdir(path, stale); err != nil {
 		return nil, err
 	}
-	mtime, err := touch(path)
+	mtime, precision, err := probe(path)
 	if err != nil {
 		return nil, errors.Join(err, syscall.Rmdir(path))
 	}
 	ctx, cancel := context.WithCancelCause(ctx)
-	lock := &Lock{path: path, mtime: mtime, ctx: ctx, cancel: cancel, stop: make(chan struct{}), done: make(chan struct{}), onCompromised: onCompromised}
+	lock := &Lock{path: path, mtime: mtime, precision: precision, ctx: ctx, cancel: cancel, stop: make(chan struct{}), done: make(chan struct{}), onCompromised: onCompromised}
 	held.add(lock)
 	go lock.heartbeat(stale, update)
 	return lock, nil
 }
 
+// osMkdir creates the lock directory; tests replace it to inject platform errors.
+var osMkdir = os.Mkdir
+
+// mkdir mirrors proper-lockfile 4.1.2 lib/lockfile.js acquireLock (lines 22-48): only EEXIST means the directory is held. isEEXIST matches Node's EEXIST exactly; fs.ErrExist is wider because it also matches ENOTEMPTY and Windows ERROR_DIR_NOT_EMPTY. Every other mkdir error, including the ERROR_ACCESS_DENIED Windows returns while a just-removed lock directory is pending deletion, is returned unretried. libuv's uv_translate_sys_error (src/win/error.c) surfaces ERROR_ACCESS_DENIED as EPERM, ERROR_SHARING_VIOLATION as EBUSY and ERROR_DIR_NOT_EMPTY as ENOTEMPTY, none of which are ELOCKED, so Pi's auth-storage.ts acquireLockSyncWithRetry (`code !== "ELOCKED"`) and acquireLockAsync throw them. Do not widen this to retry them.
 func mkdir(path string, stale time.Duration) error {
-	err := os.Mkdir(path, 0o777)
-	if err == nil || !errors.Is(err, fs.ErrExist) {
+	err := osMkdir(path, 0o777)
+	if err == nil || !isEEXIST(err) {
 		return err
 	}
 	if stale <= 0 {
 		return ErrLocked
 	}
-	info, err := os.Lstat(path)
+	info, err := lstatLock(path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return mkdir(path, 0)
 	}
@@ -197,16 +209,73 @@ func mkdir(path string, stale time.Duration) error {
 	return mkdir(path, 0)
 }
 
-func touch(path string) (time.Time, error) {
-	now := time.Now().Truncate(time.Millisecond)
-	if err := os.Chtimes(path, now, now); err != nil {
-		return time.Time{}, err
+// mtimePrecision is proper-lockfile's 's' or 'ms' file-system timestamp precision (lib/mtime-precision.js).
+type mtimePrecision int
+
+const (
+	precisionUnknown mtimePrecision = iota
+	precisionMillisecond
+	precisionSecond
+)
+
+// cachedPrecision is lib/mtime-precision.js's cache on the graceful-fs object that every async lockfile.lock in a Node process shares (lib/mtime-precision.js:6-17,36-37). lockSync never hits it: lib/adapter.js:5-8 gives each call a copy of fs, and the copy drops the non-enumerable cache.
+var cachedPrecision atomic.Int32
+
+// osChtimes sets the lock directory's mtime; tests replace it to place a foreign write at an exact point of the heartbeat.
+var osChtimes = os.Chtimes
+
+// probeMtimeCached is lib/mtime-precision.js probe on the shared async fs: once a probe has set the cache, it only stats the new lock directory and returns that mtime with the cached precision (lines 8-17). The first probe to finish keeps the cache.
+func probeMtimeCached(path string) (time.Time, mtimePrecision, error) {
+	if precision := mtimePrecision(cachedPrecision.Load()); precision != precisionUnknown {
+		info, err := os.Stat(path)
+		if err != nil {
+			return time.Time{}, 0, err
+		}
+		return info.ModTime(), precision, nil
+	}
+	mtime, precision, err := probeMtime(path)
+	if err == nil {
+		cachedPrecision.CompareAndSwap(int32(precisionUnknown), int32(precision))
+	}
+	return mtime, precision, err
+}
+
+// probeMtime is lib/mtime-precision.js probe without a cached precision (lines 19-40): it sets an mtime that is 5 ms past a whole second, reads it back, and reports 's' when the file system dropped the milliseconds. The read-back mtime is the lock's initial mtime, as in lockfile.js:33-43.
+func probeMtime(path string) (time.Time, mtimePrecision, error) {
+	mtime := time.UnixMilli((time.Now().UnixMilli()+999)/1000*1000 + 5)
+	if err := osChtimes(path, mtime, mtime); err != nil {
+		return time.Time{}, 0, err
 	}
 	info, err := os.Stat(path)
 	if err != nil {
+		return time.Time{}, 0, err
+	}
+	observed := info.ModTime()
+	if nodeDateMs(observed)%1000 == 0 {
+		return observed, precisionSecond, nil
+	}
+	return observed, precisionMillisecond, nil
+}
+
+// touch is lib/mtime-precision.js getMtime (lines 44-52) plus lockfile.js:143's utimes. It returns the mtime it wrote and does not read the directory back: lockfile.js:164 records the written value, so a foreign write after the utimes still differs from the recorded mtime at the next heartbeat. A read-back would adopt that write as the lock's own mtime and hide the compromise.
+func touch(path string, precision mtimePrecision) (time.Time, error) {
+	now := time.Now().UnixMilli()
+	if precision == precisionSecond {
+		now = (now + 999) / 1000 * 1000
+	}
+	mtime := time.UnixMilli(now)
+	if err := osChtimes(path, mtime, mtime); err != nil {
 		return time.Time{}, err
 	}
-	return info.ModTime(), nil
+	return mtime, nil
+}
+
+// sameMtime is lockfile.js:129's `lock.mtime.getTime() === stat.mtime.getTime()`: the comparison is in whole milliseconds as Node's stat Date holds them.
+func sameMtime(a, b time.Time) bool { return nodeDateMs(a) == nodeDateMs(b) }
+
+// nodeDateMs is getTime() of a Node fs.Stats Date: Node builds it from mtimeMs (sec*1e3 + nsec/1e6) with Math.round, so a sub-millisecond part of 0.5 ms or more rounds up rather than truncating.
+func nodeDateMs(t time.Time) int64 {
+	return t.Unix()*1000 + (int64(t.Nanosecond())+500_000)/1_000_000
 }
 
 func (l *Lock) check() error {
@@ -216,7 +285,7 @@ func (l *Lock) check() error {
 	info, err := os.Stat(l.path)
 	if err != nil {
 		l.err = &CompromisedError{Cause: err}
-	} else if !info.IsDir() || !info.ModTime().Equal(l.mtime) {
+	} else if !info.IsDir() || !sameMtime(info.ModTime(), l.mtime) {
 		l.err = &CompromisedError{}
 	}
 	if l.err != nil {
@@ -250,12 +319,12 @@ func (l *Lock) heartbeat(stale, update time.Duration) {
 		}
 		l.mu.Lock()
 		info, err := os.Stat(l.path)
-		if err == nil && (!info.IsDir() || !info.ModTime().Equal(l.mtime)) {
+		if err == nil && (!info.IsDir() || !sameMtime(info.ModTime(), l.mtime)) {
 			l.err = &CompromisedError{}
 		} else {
 			if err == nil {
 				var next time.Time
-				next, err = touch(l.path)
+				next, err = touch(l.path, l.precision)
 				if err == nil {
 					l.mtime = next
 				}

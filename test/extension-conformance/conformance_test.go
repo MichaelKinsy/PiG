@@ -1959,6 +1959,11 @@ type recordingUI struct {
 	terminalInputMu sync.Mutex
 	terminalInput   extension.RemoteTerminalInputHandler
 
+	// footers and headers are the frames the host received, oldest first; a
+	// cleared surface records a nil frame.
+	footers []*extension.WidthLines
+	headers []*extension.WidthLines
+
 	// recordMu guards notify and status. The host calls Notify from the
 	// goroutine servicing the extension socket while the test body reads the
 	// slices, so the append and the read are on different goroutines.
@@ -2068,8 +2073,31 @@ func (u *recordingUI) SetWorkingIndicator(extension.WorkingIndicatorOptions) {}
 func (u *recordingUI) SetHiddenThinkingLabel(string)                         {}
 func (u *recordingUI) SetWidget(string, any, extension.ExtensionWidgetOptions) {
 }
-func (u *recordingUI) SetFooter(any) {}
-func (u *recordingUI) SetHeader(any) {}
+func (u *recordingUI) SetFooter(factory any) { u.recordSurface(&u.footers, factory) }
+func (u *recordingUI) SetHeader(factory any) { u.recordSurface(&u.headers, factory) }
+
+func (u *recordingUI) recordSurface(frames *[]*extension.WidthLines, factory any) {
+	var frame *extension.WidthLines
+	switch v := factory.(type) {
+	case []string:
+		frame = &extension.WidthLines{Lines: v}
+	case extension.WidthLines:
+		frame = &v
+	}
+	u.recordMu.Lock()
+	defer u.recordMu.Unlock()
+	*frames = append(*frames, frame)
+}
+
+// SurfaceFrames returns the footer or header frames received so far.
+func (u *recordingUI) SurfaceFrames(header bool) []*extension.WidthLines {
+	u.recordMu.Lock()
+	defer u.recordMu.Unlock()
+	if header {
+		return slices.Clone(u.headers)
+	}
+	return slices.Clone(u.footers)
+}
 func (u *recordingUI) SetLogin(definition extension.LoginDefinition) error {
 	if _, err := extension.ValidateLoginDefinition(definition); err != nil {
 		return fmt.Errorf("invalid_login: %w", err)
@@ -3017,4 +3045,124 @@ func sectionCount(sections *ai.OrderedSections) int {
 		return 0
 	}
 	return len(*sections)
+}
+
+// Pi 0.87.1 renders a footer or header component at the host's current width
+// every frame (interactive-mode.ts:2418-2480). Every SDK's subprocess form must
+// therefore deliver rows laid out for the width the host reports, re-laid out
+// when the width changes, tagged with that width so the host never paints rows
+// for another one (public issue #104). Widths 72 and 53 differ from every
+// SDK's fallback (120 from the host, 80 in the Node runtime), so an SDK that
+// never re-renders cannot pass by defaulting.
+func TestConformance_FooterAndHeaderFollowHostWidth(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
+	}
+	for _, tc := range sdkHarnessCases() {
+		for _, surface := range []string{"footer", "header"} {
+			t.Run(tc.name+"/"+surface, func(t *testing.T) {
+				h := tc.make(t)
+				t.Cleanup(func() {
+					if h.cleanup != nil {
+						h.cleanup()
+					}
+					if h.host != nil {
+						h.host.Shutdown("test done")
+					}
+				})
+				h.host.NotifyWidth(72)
+				last := func() *extension.WidthLines {
+					frames := h.ui.SurfaceFrames(surface == "header")
+					if len(frames) == 0 {
+						return nil
+					}
+					return frames[len(frames)-1]
+				}
+				waitFor := func(width int) {
+					t.Helper()
+					want := fmt.Sprintf("%s@%d", surface, width)
+					pollUntilConformance(t, 5*time.Second, fmt.Sprintf("no %s frame at width %d; last = %+v", surface, width, last()), func() bool {
+						frame := last()
+						return frame != nil && frame.Width == width && slices.Equal(frame.Lines, []string{want})
+					})
+				}
+				// The command may run before the SDK has stored width 72, so
+				// install until a frame at 72 arrives, then require the SDK to
+				// follow later resizes with no further command.
+				pollUntilConformance(t, 5*time.Second, "renderer never laid out at width 72", func() bool {
+					runConformanceCommand(t, h, "surface_"+surface)
+					time.Sleep(50 * time.Millisecond)
+					frame := last()
+					return frame != nil && frame.Width == 72
+				})
+				waitFor(72)
+				h.host.NotifyWidth(53)
+				waitFor(53)
+				h.host.NotifyWidth(114)
+				waitFor(114)
+			})
+		}
+	}
+}
+
+// A static footer is tagged with the SDK's current width, so a frame pushed for
+// one width is never painted at another.
+func TestConformance_StaticFooterRowsCarryTheirWidth(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
+	}
+	for _, tc := range sdkHarnessCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			h := tc.make(t)
+			t.Cleanup(func() {
+				if h.cleanup != nil {
+					h.cleanup()
+				}
+				if h.host != nil {
+					h.host.Shutdown("test done")
+				}
+			})
+			h.host.NotifyWidth(72)
+			pollUntilConformance(t, 5*time.Second, "static footer never tagged with width 72", func() bool {
+				runConformanceCommand(t, h, "surface_static_footer")
+				time.Sleep(50 * time.Millisecond)
+				frames := h.ui.SurfaceFrames(false)
+				if len(frames) == 0 || frames[len(frames)-1] == nil {
+					return false
+				}
+				frame := frames[len(frames)-1]
+				return frame.Width == 72 && slices.Equal(frame.Lines, []string{"static@72"})
+			})
+		})
+	}
+}
+
+// Pi 0.87.1 interactive-mode.ts:2321-2336: a string[] widget is laid out by
+// Text(line, 1, 0) at the host width, so a row wider than the pane wraps. Every
+// SDK's string list widget must reach the host as the same rows.
+func TestConformance_StringWidgetUsesPiTextLayoutInEverySDK(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
+	}
+	want := []string{" " + strings.Repeat("A", 38) + " ", " " + strings.Repeat("A", 22) + " tail            ", " short                                  "}
+	for _, tc := range sdkHarnessCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			h := tc.make(t)
+			t.Cleanup(func() {
+				if h.cleanup != nil {
+					h.cleanup()
+				}
+				if h.host != nil {
+					h.host.Shutdown("test done")
+				}
+			})
+			h.host.NotifyWidth(40)
+			pollUntilConformance(t, 5*time.Second, "string widget never rendered as Pi's Text layout at width 40", func() bool {
+				runConformanceCommand(t, h, "surface_widget")
+				time.Sleep(50 * time.Millisecond)
+				proxy := h.bridge.GetWidget(tc.extName, "wide")
+				return proxy != nil && slices.Equal(proxy.Render(40), want)
+			})
+		})
+	}
 }

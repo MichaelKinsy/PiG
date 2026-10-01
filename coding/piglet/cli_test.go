@@ -485,6 +485,162 @@ func TestRunCommandAddRemoteOfflineFailsBeforeMaterialization(t *testing.T) {
 	}
 }
 
+// writeEffectiveShowLocalFixture creates a Piglet with each local Resource source and returns the expected canonical paths.
+func writeEffectiveShowLocalFixture(t *testing.T) (string, map[string]string) {
+	t.Helper()
+	t.Setenv("PIG_HOME", t.TempDir())
+	t.Chdir(t.TempDir())
+
+	root := t.TempDir()
+	canonicalRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	paths := map[string]string{
+		"package":   filepath.Join(canonicalRoot, "package"),
+		"extension": filepath.Join(canonicalRoot, "extensions", "demo"),
+		"skill":     filepath.Join(canonicalRoot, "skills", "review"),
+	}
+	for _, path := range []string{
+		filepath.Join(root, "package"),
+		filepath.Join(root, "extensions", "demo"),
+		filepath.Join(root, "skills", "review"),
+	} {
+		if err := os.MkdirAll(path, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	source := filepath.Join(root, "local.yaml")
+	data := `name: local
+packages:
+  base: local:./package
+extensions:
+  - name: demo
+    origins: [local:./extensions/demo]
+  - name: packaged
+    origins: [package:base]
+skills:
+  - name: review
+    origins: [local:./skills/review]
+agentEnv:
+  image: ghcr.io/acme/dev:1
+`
+	if err := os.WriteFile(source, []byte(data), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return source, paths
+}
+
+// TestRunCommandShowEffectiveHumanResolvesLocalResourcePaths verifies that human output includes anchored Resource paths and environment defaults.
+func TestRunCommandShowEffectiveHumanResolvesLocalResourcePaths(t *testing.T) {
+	source, paths := writeEffectiveShowLocalFixture(t)
+	var stdout, stderr strings.Builder
+	code := RunCommand([]string{"piglet", "show", source, "--effective"}, &stdout, &stderr)
+	if code != 0 || stderr.Len() != 0 {
+		t.Fatalf("code=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+	}
+	for _, want := range []string{
+		"base  source=local:" + paths["package"],
+		"demo  tools=all  origin=local:" + paths["extension"],
+		"packaged  tools=all  origin=package:base",
+		"review  origin=local:" + paths["skill"],
+		"Pig runtime: inject@latest",
+		"policy: standard",
+	} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Errorf("effective show output missing %q:\n%s", want, stdout.String())
+		}
+	}
+}
+
+// TestRunCommandShowEffectiveJSONResolvesLocalResourcePaths verifies that JSON output includes anchored Resource paths and environment defaults.
+func TestRunCommandShowEffectiveJSONResolvesLocalResourcePaths(t *testing.T) {
+	source, paths := writeEffectiveShowLocalFixture(t)
+	var stdout, stderr strings.Builder
+	code := RunCommand([]string{"piglet", "show", source, "--effective", "--json"}, &stdout, &stderr)
+	if code != 0 || stderr.Len() != 0 {
+		t.Fatalf("code=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+	}
+	var output struct {
+		Effective bool `json:"effective"`
+		Piglet    struct {
+			Packages   map[string]string `json:"packages"`
+			Extensions []struct {
+				Name    string   `json:"name"`
+				Origins []string `json:"origins"`
+			} `json:"extensions"`
+			Skills []struct {
+				Name    string   `json:"name"`
+				Origins []string `json:"origins"`
+			} `json:"skills"`
+			AgentEnv struct {
+				PigRuntime struct {
+					Mode    string `json:"mode"`
+					Version string `json:"version"`
+				} `json:"pigRuntime"`
+				Policy struct {
+					Preset string `json:"preset"`
+				} `json:"policy"`
+			} `json:"agentEnv"`
+		} `json:"piglet"`
+	}
+	if err := json.Unmarshal([]byte(stdout.String()), &output); err != nil {
+		t.Fatal(err)
+	}
+	if !output.Effective {
+		t.Fatalf("effective = false: %s", stdout.String())
+	}
+	if got, want := output.Piglet.Packages["base"], "local:"+paths["package"]; got != want {
+		t.Errorf("Package source = %q, want %q", got, want)
+	}
+	if len(output.Piglet.Extensions) != 2 || len(output.Piglet.Extensions[0].Origins) != 1 || len(output.Piglet.Extensions[1].Origins) != 1 {
+		t.Fatalf("extensions = %#v", output.Piglet.Extensions)
+	}
+	if got, want := output.Piglet.Extensions[0].Origins[0], "local:"+paths["extension"]; got != want {
+		t.Errorf("extension origin = %q, want %q", got, want)
+	}
+	if got := output.Piglet.Extensions[1].Origins[0]; got != "package:base" {
+		t.Errorf("Package extension origin = %q, want package:base", got)
+	}
+	if len(output.Piglet.Skills) != 1 || len(output.Piglet.Skills[0].Origins) != 1 {
+		t.Fatalf("skills = %#v", output.Piglet.Skills)
+	}
+	if got, want := output.Piglet.Skills[0].Origins[0], "local:"+paths["skill"]; got != want {
+		t.Errorf("skill origin = %q, want %q", got, want)
+	}
+	if runtime := output.Piglet.AgentEnv.PigRuntime; runtime.Mode != "inject" || runtime.Version != "latest" {
+		t.Errorf("effective Pig runtime = %#v", runtime)
+	}
+	if got := output.Piglet.AgentEnv.Policy.Preset; got != "standard" {
+		t.Errorf("effective policy = %q, want standard", got)
+	}
+}
+
+// TestRunCommandShowEffectiveRejectsAuthoredAbsoluteLocalPaths verifies that effective inspection does not weaken source validation.
+func TestRunCommandShowEffectiveRejectsAuthoredAbsoluteLocalPaths(t *testing.T) {
+	absolute := filepath.ToSlash(t.TempDir())
+	cases := map[string]string{
+		"Package":   "name: invalid\npackages:\n  base: local:" + absolute + "\n",
+		"extension": "name: invalid\nextensions:\n  - name: demo\n    origins: [local:" + absolute + "]\n",
+		"skill":     "name: invalid\nskills:\n  - name: review\n    origins: [local:" + absolute + "]\n",
+	}
+	for name, data := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Setenv("PIG_HOME", t.TempDir())
+			t.Chdir(t.TempDir())
+			source := filepath.Join(t.TempDir(), "invalid.yaml")
+			if err := os.WriteFile(source, []byte(data), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			var stdout, stderr strings.Builder
+			code := RunCommand([]string{"piglet", "show", source, "--effective", "--json"}, &stdout, &stderr)
+			if code != 1 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "must be a relative piglet: path") {
+				t.Fatalf("code=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+			}
+		})
+	}
+}
+
 func TestRunCommandShowEffectiveExpandsAgentEnvironmentDefaults(t *testing.T) {
 	t.Setenv("PIG_HOME", t.TempDir())
 	t.Chdir(t.TempDir())
