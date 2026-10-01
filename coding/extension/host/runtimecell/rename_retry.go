@@ -9,6 +9,8 @@ import (
 
 // Backoff for a transient rename lock: the delay doubles from renameRetryFirstDelay
 // up to renameRetryMaxDelay, and the delays sum to renameRetryBudget.
+// pig additive (D20): the shared cell cache publish retry has no upstream
+// equivalent.
 const (
 	renameRetryBudget     = 10 * time.Second
 	renameRetryFirstDelay = 25 * time.Millisecond
