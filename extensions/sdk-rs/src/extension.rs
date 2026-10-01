@@ -327,6 +327,7 @@ impl Context {
             model_streams: self.model_streams.clone(),
             model_stream_seq: self.model_stream_seq.clone(),
             shared_ui: self.shared_ui.clone(),
+            surfaces: self.surfaces.clone(),
         }
     }
 }
@@ -964,6 +965,7 @@ impl Extension {
             model_stream_seq,
             overlays,
             shared_ui,
+            surfaces: Arc::new(Mutex::new(HashMap::new())),
         };
         let ext = Arc::new(self);
         let active_requests: Arc<Mutex<HashMap<String, RequestCancel>>> =
@@ -1163,6 +1165,7 @@ impl Extension {
                                             for handler in width_subs {
                                                 handler(w as u32);
                                             }
+                                            base_ctx.refresh_surfaces();
                                             let overlays: Vec<_> = base_ctx
                                                 .overlays
                                                 .lock()

@@ -49,9 +49,9 @@ npx @pi-in-go/pig --version
 (`@pi-in-go/pig-<os>-<cpu>`, for macOS, Linux and Windows on x64 and arm64) as
 an optional dependency, and Node.js runs only a small launcher. Do not install
 with `--omit=optional` or `--no-optional`, which leaves the binary out. Update
-with `npm update -g @pi-in-go/pig` and uninstall with
-`npm uninstall -g @pi-in-go/pig`. `pig update` does not replace an
-npm-installed binary; update through npm.
+with `npm update -g @pi-in-go/pig` or `pig update`, which runs
+`npm install -g @pi-in-go/pig@<version>` for the release it finds, and uninstall
+with `npm uninstall -g @pi-in-go/pig`.
 
 ## Install with Go
 
@@ -84,7 +84,7 @@ version or with `@latest`. PiG does not treat a Go-installed executable as a
 standalone release download, so `pig update` refuses to replace it without a
 matching installation receipt.
 
-Explicit `pig update` version checks retry transient transport failures and transient HTTP statuses at most twice within one ten-second budget. Startup checks do not retry. Signature and manifest errors stop the update. Native standalone updates reject concurrent replacement of the same executable and hold the installation lock until receipt commit or rollback completes (D39). The `<executable>.update.lock` sidecar remains on disk; do not delete it while an update runs.
+Explicit `pig update` version checks retry transient transport failures and transient HTTP statuses at most twice within one ten-second budget. Startup checks do not retry. Signature and manifest errors stop the update. Native standalone updates reject concurrent replacement of the same executable and hold the installation lock until receipt commit or rollback completes (D39). The `<executable>.update.lock` sidecar exists only while an update runs; the update removes it when it ends.
 
 Each release tags the root module (`v0.2.0`) and the nested Go extension SDK
 module (`extensions/sdk/v0.2.0`) on the same commit; `go install` needs both.

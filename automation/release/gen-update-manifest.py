@@ -7,7 +7,7 @@ Pig at it with PIG_UPDATE_URL.
 The exact bytes this emits must be signed before publication. The manifest
 matches what pig's self-update reads (internal/codingagent D39):
 
-    {"version": "<v>", "packageName": "pig", "notes": "...",
+    {"version": "<v>", "packageName": "@pi-in-go/pig", "notes": "...",
      "binaries": {"<goos>/<goarch>": {"url": "<base>/<file>", "sha256": "<hex>"}}}
 
 With --dir, binaries are matched by the naming pig-<goos>-<goarch> (and
@@ -34,6 +34,8 @@ import re
 import sys
 from pathlib import Path
 from urllib.parse import urlparse
+
+import pig_package
 
 # GOOS/GOARCH releases produced for stock Pig.
 PLATFORMS = [
@@ -120,7 +122,11 @@ def main() -> int:
     source = ap.add_mutually_exclusive_group(required=True)
     source.add_argument("--dir", type=Path, help="directory containing the pig-<os>-<arch> binaries")
     source.add_argument("--sha256sums", type=Path, help="release SHA256SUMS naming the pig-<version>-<os>-<arch>.tar.gz archives")
-    ap.add_argument("--package-name", default="pig", help="signed package-manager release identity")
+    ap.add_argument(
+        "--package-name",
+        default=pig_package.package_name(),
+        help="signed package-manager release identity (default: PackageName in internal/codingagent/paths.go)",
+    )
     ap.add_argument(
         "--allow-loopback-http",
         action="store_true",

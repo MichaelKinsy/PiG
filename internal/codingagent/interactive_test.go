@@ -1726,9 +1726,18 @@ func newSwitchTuiProbe(t *testing.T) *InteractiveMode {
 
 func newSwitchTuiProbeWithOptions(t *testing.T, opts InteractiveOptions) *InteractiveMode {
 	t.Helper()
+	m := newUnmountedSwitchTuiProbe(t, opts, &bytes.Buffer{})
+	m.mountInteractiveTui()
+	return m
+}
+
+// newUnmountedSwitchTuiProbe builds the probe's renderer writing to out without
+// mounting it, so a caller can order raw mode before the first mount as Run does.
+func newUnmountedSwitchTuiProbe(t *testing.T, opts InteractiveOptions, out io.Writer) *InteractiveMode {
+	t.Helper()
 	m := NewInteractiveMode(opts)
 	m.runCtx = context.Background()
-	m.rendererOut = &bytes.Buffer{}
+	m.rendererOut = out
 	m.editor = tui.NewEditor()
 	m.chatContainer = tui.NewContainer()
 	m.statusContainer = tui.NewContainer()
@@ -1741,7 +1750,6 @@ func newSwitchTuiProbeWithOptions(t *testing.T, opts InteractiveOptions) *Intera
 	m.statusLine = NewStatusLine(opts.Model, "", nil)
 	m.createInteractiveTui(m.runCtx)
 	m.installRenderDispatcher()
-	m.mountInteractiveTui()
 	return m
 }
 

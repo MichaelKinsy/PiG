@@ -32,9 +32,24 @@ type SessionData struct {
 	Header        json.RawMessage           `json:"header"`
 	Entries       []json.RawMessage         `json:"entries"`
 	LeafID        *string                   `json:"leafId"`
-	SystemPrompt  string                    `json:"systemPrompt,omitempty"`
-	Tools         []map[string]any          `json:"tools,omitempty"`
+	SystemPrompt  *string                   `json:"systemPrompt,omitempty"`
+	Tools         []ToolSchema              `json:"tools,omitzero"`
 	RenderedTools map[string]map[string]any `json:"renderedTools,omitempty"`
+}
+
+// ToolSchema is one tool in the export's session data: upstream
+// Pick<ToolDefinition, "name" | "description" | "parameters">.
+type ToolSchema struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Parameters  any    `json:"parameters,omitempty"`
+}
+
+// AgentState is the live agent state upstream exportSessionToHtml receives as
+// its state argument: state.systemPrompt and state.tools.
+type AgentState struct {
+	SystemPrompt string
+	Tools        []ToolSchema
 }
 
 // defaultTextColor is the fallback for empty-string color tokens in the
@@ -244,13 +259,16 @@ func FromJSONL(data []byte) (SessionData, error) {
 
 // ExportFromFile reads a session JSONL file and writes the upstream-style HTML export.
 func ExportFromFile(inputPath, outputPath string) (string, error) {
-	return ExportFromFileWithTools(inputPath, outputPath, nil, "")
+	return ExportFromFileWithTools(inputPath, outputPath, nil, "", nil)
 }
 
 // ExportFromFileWithTools is ExportFromFile with the session's registered
 // tools drawing their calls and results through their renderers, as
-// upstream AgentSession.exportToHtml passes a tool renderer.
-func ExportFromFileWithTools(inputPath, outputPath string, tools []extension.RegisteredTool, cwd string) (string, error) {
+// upstream AgentSession.exportToHtml passes a tool renderer. A non-nil state
+// is the live agent state upstream passes to exportSessionToHtml, which embeds
+// its systemPrompt and tools; nil is upstream exportFromFile (CLI --export),
+// whose session data carries neither.
+func ExportFromFileWithTools(inputPath, outputPath string, tools []extension.RegisteredTool, cwd string, state *AgentState) (string, error) {
 	data, err := os.ReadFile(inputPath)
 	if err != nil {
 		return "", fmt.Errorf("read session: %w", err)
@@ -258,6 +276,11 @@ func ExportFromFileWithTools(inputPath, outputPath string, tools []extension.Reg
 	sd, err := FromJSONL(data)
 	if err != nil {
 		return "", fmt.Errorf("parse session: %w", err)
+	}
+	if state != nil {
+		sd.SystemPrompt = &state.SystemPrompt
+		// upstream state.tools.map(...) is an array even when no tool is active.
+		sd.Tools = append([]ToolSchema{}, state.Tools...)
 	}
 	RenderCustomTools(&sd, tools, cwd, 100)
 	htmlStr := ToHTML(sd)

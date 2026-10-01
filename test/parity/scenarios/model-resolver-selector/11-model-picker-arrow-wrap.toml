@@ -8,6 +8,16 @@
 # The paired Go unit test red-proved Pig previously clamped at model-two.
 # Pi 0.87.1 (re-probed 2026-09-23) renders the current-model "✓ " as a prefix
 # column, so the wrapped selection reads "→   model-one [fixture]".
+#
+# Settled state (intermittent CI failure): Pi's ModelSelectorComponent
+# constructor renders the snapshot list at once, then runs refreshModels() in
+# the background (`void this.refreshModels()`). When that await completes it
+# calls loadModelsFromSnapshot(), which sets selectedIndex back to the current
+# model, undoing an Up sent between the first render and "Model catalogs
+# refreshed." (selection returns to model-two). Pig's ModelSelector.UpdateModels
+# re-anchors the cursor the same way, so both sides are equally asynchronous.
+# The first step therefore waits for the refresh status, the settled state,
+# before Up is sent on both sides. Comparators are unchanged.
 
 name = "11-model-picker-arrow-wrap"
 description = "Up from the first model wraps to the final filtered model."
@@ -28,7 +38,7 @@ capture_end = "Model Name: Model One"
 
 [[tmux.steps]]
 keys = ["/model", "Enter"]
-wait_contains = ["Model Name: Model Two"]
+wait_contains = ["Model Name: Model Two", "Model catalogs refreshed."]
 wait_timeout_seconds = 10
 
 [[tmux.steps]]

@@ -6254,9 +6254,9 @@ import * as os from "node:os";
 import { contentText as contentText4, normalizeContext as normalizeContext3, uuidv7 as uuidv73 } from "../../pi-ai/sdk-bundle/index.js";
 
 // pi-dist/pi-coding-agent/utils/pi-user-agent.js
+import { pigUserAgent } from "../../../pig-identity.mjs";
 function getPiUserAgent(version2) {
-  const runtime = process.versions.bun ? `bun/${process.versions.bun}` : `node/${process.version}`;
-  return `pi/${version2} (${process.platform}; ${runtime}; ${process.arch})`;
+  return pigUserAgent("pig");
 }
 __name(getPiUserAgent, "getPiUserAgent");
 
@@ -11618,7 +11618,7 @@ var FileModelsStore = class {
 };
 
 // pi-dist/pi-coding-agent/core/remote-catalog-provider.js
-var DEFAULT_CATALOG_BASE_URL = "https://pi.dev";
+var DEFAULT_CATALOG_BASE_URL = "https://pi-in-go.dev";
 var REMOTE_CATALOG_ATTEMPT_TIMEOUT_MS = 4e3;
 var REMOTE_CATALOG_REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1e3;
 function mergeModels(baseline, dynamic) {

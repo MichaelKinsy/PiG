@@ -728,18 +728,18 @@ wire = "literal:placement"
 
 [[row]]
 key = "ctx.ui.setFooter"
-go = "Context.SetFooter"
-rust = "Context::set_footer"
-python = "Context.set_footer"
-partial = "pre-rendered lines, or nil to restore the built-in footer; a component factory cannot cross the process boundary"
+go = "Context.SetFooter|Context.SetFooterRenderer"
+rust = "Context::set_footer|Context::set_footer_renderer"
+python = "Context.set_footer|Context.set_footer_renderer"
+partial = "a render(width) callback the SDK renders at the host width and again after every resize, or pre-rendered lines tagged with the SDK's width; nil restores the built-in footer; a live component factory cannot cross the process boundary"
 node_partial = "the factory's component renders to lines inside the extension process, with Pi's footer data provider"
 
 [[row]]
 key = "ctx.ui.setHeader"
-go = "Context.SetHeader"
-rust = "Context::set_header"
-python = "Context.set_header"
-partial = "pre-rendered lines, or nil to restore the built-in header; a component factory cannot cross the process boundary"
+go = "Context.SetHeader|Context.SetHeaderRenderer"
+rust = "Context::set_header|Context::set_header_renderer"
+python = "Context.set_header|Context.set_header_renderer"
+partial = "a render(width) callback the SDK renders at the host width and again after every resize, or pre-rendered lines tagged with the SDK's width; nil restores the built-in header; a live component factory cannot cross the process boundary"
 node_partial = "the factory's component renders to lines inside the extension process"
 
 [[row]]

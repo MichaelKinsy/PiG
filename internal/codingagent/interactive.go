@@ -1589,17 +1589,7 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 			if update == nil {
 				return
 			}
-			t := tui.ActiveTheme()
-			heading := binaryUpdateNoticeBody(t, update.LatestVersion, update.Command)
-			blocks := []tui.Component{tui.NewText(heading)}
-			if notes := strings.TrimSpace(update.Notes); notes != "" {
-				// Upstream renders the release note as its own muted block
-				// between spacers (showNewVersionNotification).
-				blocks = append(blocks, tui.NewSpacer(1), tui.NewText(t.Muted+notes+"\x1b[0m"), tui.NewSpacer(1))
-			}
-			m.postUITask(func() {
-				m.appendBorderedNotice(blocks...)
-			})
+			m.postUITask(func() { m.showNewVersionNotification(update) })
 		}()
 	}
 

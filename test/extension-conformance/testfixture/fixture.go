@@ -453,6 +453,18 @@ func Extension() *sdk.Extension {
 		ctx.Notify(fmt.Sprintf("geometry:%dx%d", ctx.Width(), ctx.Height()), "info")
 		return nil
 	})
+	ext.Command("surface_footer", "Install a footer renderer", func(ctx sdk.Context, args string) error {
+		return ctx.SetFooterRenderer(func(width int) []string { return []string{fmt.Sprintf("footer@%d", width)} })
+	})
+	ext.Command("surface_header", "Install a header renderer", func(ctx sdk.Context, args string) error {
+		return ctx.SetHeaderRenderer(func(width int) []string { return []string{fmt.Sprintf("header@%d", width)} })
+	})
+	ext.Command("surface_static_footer", "Push static footer rows", func(ctx sdk.Context, args string) error {
+		return ctx.SetFooter([]string{fmt.Sprintf("static@%d", ctx.Width())})
+	})
+	ext.Command("surface_widget", "Set a string list widget wider than the pane", func(ctx sdk.Context, args string) error {
+		return ctx.SetWidget("wide", []string{strings.Repeat("A", 60) + " tail", "short"})
+	})
 	ext.Command("status", "Set a status entry", func(ctx sdk.Context, args string) error {
 		ctx.SetStatus("conformance", "ok")
 		return nil

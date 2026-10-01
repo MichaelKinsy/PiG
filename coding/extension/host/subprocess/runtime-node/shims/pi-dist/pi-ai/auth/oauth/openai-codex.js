@@ -226,7 +226,7 @@ async function pollOpenAICodexDeviceAuth(device, signal) {
         },
     });
 }
-async function createAuthorizationFlow(originator = "pi") {
+async function createAuthorizationFlow(originator = "pig") {
     const { verifier, challenge } = await generatePKCE();
     const state = createState();
     const url = new URL(AUTHORIZE_URL);

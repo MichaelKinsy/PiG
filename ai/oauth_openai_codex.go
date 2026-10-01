@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 )
@@ -493,7 +494,8 @@ func LoginOpenAICodex(ctx context.Context, callbacks OAuthLoginCallbacks) (OAuth
 		resultCh = nil
 	}
 
-	originator := "pi"
+	// pig divergence (D26): PiG names itself as the OpenAI login's originator.
+	originator := pigidentity.CodexOriginator
 	// Build the authorize URL with the EXACT parameter order upstream
 	// uses (URLSearchParams preserves insertion order; Go's url.Values
 	// would alphabetize and diverge). See

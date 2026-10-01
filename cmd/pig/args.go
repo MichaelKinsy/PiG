@@ -82,11 +82,9 @@ type CLIFlags struct {
 	// NoBuiltinTools disables built-in tools while leaving extension/custom tools available.
 	// Mirrors upstream --no-builtin-tools / -nbt (args.ts:100 in v0.70.0).
 	NoBuiltinTools bool
-	// Tools is a comma-separated allowlist of tool names.
-	// Mirrors upstream --tools / -t (args.ts:99).
+	// Tools is the allowlist from the last --tools / -t (args.ts:147-151). nil means the flag is absent; a non-nil empty list is an explicit empty allowlist.
 	Tools []string
-	// ExcludeTools is a comma-separated list of tool names to exclude.
-	// Mirrors upstream --exclude-tools / -xt (args.ts, v0.77.0).
+	// ExcludeTools is the denylist from the last --exclude-tools / -xt (args.ts:152-156).
 	ExcludeTools []string
 	// ListModels prints available models and exits. Optional search pattern.
 	// Mirrors upstream --list-models (args.ts:147).
@@ -187,6 +185,17 @@ func sessionNameFromFlags(flags CLIFlags) (string, error) {
 }
 
 // parseFlags parses CLI options, treating arguments after -- as messages or @files.
+// parseToolList is Pi's args[++i].split(",").map((s) => s.trim()).filter((name) => name.length > 0): a non-nil list that replaces any earlier occurrence of the flag.
+func parseToolList(value string) []string {
+	names := []string{}
+	for name := range strings.SplitSeq(value, ",") {
+		if name = widthx.JSTrim(name); name != "" {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
 func parseFlags(args []string) CLIFlags {
 	flags := CLIFlags{Mode: "text", UnknownFlags: map[string]any{}}
 	i := 0
@@ -277,20 +286,10 @@ func parseFlags(args []string) CLIFlags {
 			flags.NoBuiltinTools = true
 		case (arg == "--tools" || arg == "-t") && i+1 < len(args):
 			i++
-			for t := range strings.SplitSeq(args[i], ",") {
-				t = strings.TrimSpace(t)
-				if t != "" {
-					flags.Tools = append(flags.Tools, t)
-				}
-			}
+			flags.Tools = parseToolList(args[i])
 		case (arg == "--exclude-tools" || arg == "-xt") && i+1 < len(args):
 			i++
-			for t := range strings.SplitSeq(args[i], ",") {
-				t = strings.TrimSpace(t)
-				if t != "" {
-					flags.ExcludeTools = append(flags.ExcludeTools, t)
-				}
-			}
+			flags.ExcludeTools = parseToolList(args[i])
 		case arg == "--models" && i+1 < len(args):
 			i++
 			for m := range strings.SplitSeq(args[i], ",") {

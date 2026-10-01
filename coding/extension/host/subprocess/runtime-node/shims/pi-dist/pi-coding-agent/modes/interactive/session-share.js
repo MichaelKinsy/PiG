@@ -79,6 +79,7 @@ export async function shareSession(context) {
     }
 }
 async function tryShareViaRadius(tmpFile, context) {
+    return false; // pig divergence (D26, D64): PiG never sends a Radius token to Radius's share gateway.
     const provider = context.session.modelRuntime.getProvider("radius");
     if (!provider)
         return false;

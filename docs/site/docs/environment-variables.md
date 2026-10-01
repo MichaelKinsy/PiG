@@ -119,11 +119,11 @@ copy. Use them while developing the SDK itself. See
 
 ## Process markers
 
-Pig sets two markers that every child process inherits, as Pi does:
+Pig sets two markers that every child process inherits, as Pi does. Pig names itself in `AI_AGENT` where Pi names itself (divergence D26):
 
 | Variable | Effect |
 |---|---|
-| `AI_AGENT=pi` | Generic marker that lets tooling identify the launching agent |
+| `AI_AGENT=pig` | Generic marker that lets tooling identify the launching agent. Pi sets `pi`. |
 | `PI_CODING_AGENT=true` | Lets a child process detect that it runs inside the coding agent |
 
 ## Related

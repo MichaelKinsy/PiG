@@ -1,0 +1,46 @@
+# Behavior family: extensions-runtime
+# Surface: a string[] widget set by a Python SDK extension wraps at the host width.
+#
+# Public issue #104: the SDK pushed the list as pre-rendered rows, so PiG
+# painted a row wider than the pane as it was, and the differential renderer
+# exited with "Rendered line N exceeds terminal width".
+#
+# Upstream evidence (Pi 0.87.1, tmux 114x30): interactive-mode.ts:2321-2336
+# wraps a string[] widget in a Container of Text(line, 1, 0), so a 150-column
+# word run wraps at the pane and both rows keep Text's one-column indent and
+# padding. The capture runs from the widget through the editor and footer.
+# The Pi side sets the same list from TypeScript
+# (testdata/ext/sdk-string-widget.mjs); the PiG side sets it through the Python SDK.
+
+name = "69-sdk-string-widget-python"
+description = "A string list widget set through the Python SDK wraps as Pi's Text does at 114 columns"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/sdk-string-widget/pywidget.py"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/sdk-string-widget.mjs",
+]
+
+[tmux]
+width = 114
+height = 30
+ready_pattern_pig = "short entry"
+ready_pattern_pi = "short entry"
+ready_timeout_seconds = 90
+capture_start = "WIDGET-START"
+
+[assert]
+both_reach_ready = true
+both_contain = ["WIDGET-START", "short entry"]
+both_not_contain = ["panic:", "goroutine ", "exceeds terminal width"]
+escaped_output_equal = true
+runs = 3

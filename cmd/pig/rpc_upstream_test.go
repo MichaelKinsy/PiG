@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -438,6 +440,116 @@ func TestRPCModeUpstream(t *testing.T) {
 		}
 		f.finish()
 	})
+	// .upstream/v0.87.1/packages/coding-agent/src/modes/rpc/rpc-mode.ts:601 calls
+	// AgentSession.exportToHtml, which passes agent.state to
+	// exportSessionToHtml (core/export-html/index.ts:267-268): session-data
+	// carries systemPrompt and tools {name, description, parameters}.
+	// state.systemPrompt is replayed from the transcript's system messages
+	// (agent/src/agent.ts:89-91), so it keeps a section a before_agent_start
+	// handler recorded for the run after the run clears its options
+	// (agent-session.ts:1485), where AgentSession.systemPrompt returns the base
+	// prompt. Pi 0.87.1 RPC exports "...\n\n<runmark>\nRUN-SECTION-MARKER\n</runmark>"
+	// for the extension case. The provider request is the independent oracle
+	// for what the transcript held.
+	sectionExtension := filepath.Join(t.TempDir(), "section.mjs")
+	if err := os.WriteFile(sectionExtension, []byte(`export default function (pi) {
+ pi.on("before_agent_start", (event) => { event.systemPromptOptions.sections.runmark = "RUN-SECTION-MARKER"; });
+}
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name, marker string
+		args         []string
+	}{
+		{"should export the live system prompt and active tools", "", nil},
+		{"should export the transcript system prompt a before_agent_start section edit recorded", "<runmark>\nRUN-SECTION-MARKER\n</runmark>", []string{"-e", sectionExtension}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newUpstreamRPC(t, false, tc.args...)
+			f.prompt("Hello")
+			path := f.command("export_html", nil)["path"].(string)
+			html, err := os.ReadFile(filepath.Join(f.p.cmd.Dir, path))
+			if err != nil {
+				t.Fatal(err)
+			}
+			match := regexp.MustCompile(`<script id="session-data" type="application/json">([^<]+)</script>`).FindSubmatch(html)
+			if match == nil {
+				t.Fatal("session-data script not found")
+			}
+			raw, err := base64.StdEncoding.DecodeString(string(match[1]))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var data struct {
+				SystemPrompt *string `json:"systemPrompt"`
+				Tools        []struct {
+					Name        string          `json:"name"`
+					Description string          `json:"description"`
+					Parameters  json.RawMessage `json:"parameters"`
+				} `json:"tools"`
+			}
+			if err := json.Unmarshal(raw, &data); err != nil {
+				t.Fatal(err)
+			}
+			f.mu.Lock()
+			if len(f.requests) == 0 {
+				f.mu.Unlock()
+				t.Fatal("no provider request recorded")
+			}
+			body := f.requests[0]
+			f.mu.Unlock()
+			var request struct {
+				System []struct {
+					Text string `json:"text"`
+				} `json:"system"`
+				Tools []struct {
+					Name        string          `json:"name"`
+					Description string          `json:"description"`
+					InputSchema json.RawMessage `json:"input_schema"`
+				} `json:"tools"`
+			}
+			if err := json.Unmarshal(body, &request); err != nil {
+				t.Fatal(err)
+			}
+			var system strings.Builder
+			for _, block := range request.System {
+				system.WriteString(block.Text)
+			}
+			if system.String() == "" || len(request.Tools) == 0 {
+				t.Fatalf("provider request has no system prompt or tools: %s", body)
+			}
+			if !strings.Contains(system.String(), tc.marker) {
+				t.Fatalf("provider system prompt %q lacks %q", system.String(), tc.marker)
+			}
+			if data.SystemPrompt == nil {
+				t.Fatalf("systemPrompt is absent, want the prompt the model received %q", system.String())
+			}
+			if *data.SystemPrompt != system.String() {
+				t.Fatalf("systemPrompt = %q, want the prompt the model received %q", *data.SystemPrompt, system.String())
+			}
+			if len(data.Tools) != len(request.Tools) {
+				t.Fatalf("tools = %d entries, want the %d the model received", len(data.Tools), len(request.Tools))
+			}
+			for i, want := range request.Tools {
+				got := data.Tools[i]
+				if got.Name != want.Name || got.Description != want.Description {
+					t.Fatalf("tool %d = %s %q, want %s %q", i, got.Name, got.Description, want.Name, want.Description)
+				}
+				var gotParams, wantParams any
+				if err := json.Unmarshal(got.Parameters, &gotParams); err != nil {
+					t.Fatalf("tool %s parameters: %v", got.Name, err)
+				}
+				if err := json.Unmarshal(want.InputSchema, &wantParams); err != nil {
+					t.Fatal(err)
+				}
+				if !reflect.DeepEqual(gotParams, wantParams) {
+					t.Fatalf("tool %s parameters = %s, want %s", got.Name, got.Parameters, want.InputSchema)
+				}
+			}
+			f.finish()
+		})
+	}
 	// Upstream exportSessionToHtml throws for an in-memory session and for one
 	// whose file is not written yet; RPC returns that message as the error.
 	for _, tc := range []struct {

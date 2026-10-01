@@ -97,6 +97,17 @@ host-side `UIContext.OnRemoteTerminalInput`. The interactive host asks for its
 verdict on an owned background task and resumes the listener pass on the TUI
 loop, so rendering continues while a verdict is pending, and input typed after
 the chunk waits so verdicts, rewrites, and handling keep upstream's order.
+Footers and headers follow Pi's component contract across the process
+boundary. Pi renders the component at the current width every frame
+(`interactive-mode.ts:2418-2480`). Each SDK therefore offers a renderer form
+(`SetFooterRenderer`/`SetHeaderRenderer`, `set_footer_renderer`/`set_header_renderer`)
+that renders at the host's width and again after every `width_change`, and every
+static `SetFooter`/`SetHeader` call tags its rows with the width the SDK holds.
+The host paints rows only at the width they carry, so a frame laid out for a
+wider pane never reaches the renderer's overflow check after a resize (public
+issue #104). A string-list widget is sent with no width, as a `widget_push`
+that needs no reply, and the host lays a width-less list out with
+`Text(line, 1, 0)` as Pi does (`interactive-mode.ts:2321-2336`).
 The wire has no independent version or compatibility
 negotiation; it changes atomically with the running Pig binary and staged SDKs.
 

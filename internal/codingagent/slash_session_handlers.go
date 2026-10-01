@@ -1364,7 +1364,11 @@ func exportHandler(sc *SlashContext) error {
 		if sc.RegisteredTools != nil {
 			tools = sc.RegisteredTools()
 		}
-		filePath, err = ExportSessionToHTML(s.Path(), outputPath, tools, s.CWD())
+		var state ShareState
+		if sc.ShareState != nil {
+			state = sc.ShareState()
+		}
+		filePath, err = ExportSessionToHTML(s.Path(), outputPath, tools, s.CWD(), state)
 	}
 	if err != nil {
 		return fmt.Errorf("Failed to export session: %w", err)
