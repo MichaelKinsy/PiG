@@ -86,7 +86,7 @@ func TestWindowsNpmSelfUpdateReplacesTheRunningInstallation(t *testing.T) {
 		t.Fatalf("pig update in an npm install: %v\n%s", err, out)
 	}
 	got, err := os.ReadFile(pigExe)
-	if err != nil || string(got) != "install -g --ignore-scripts --min-release-age=0 pig@9.9.9" {
+	if err != nil || string(got) != "install -g --ignore-scripts --min-release-age=0 @pi-in-go/pig@9.9.9" {
 		t.Fatalf("npm did not replace the package: %q (err=%v)\n%s", got, err, out)
 	}
 	quarantine := filepath.Join(root, ".pig-native-quarantine")

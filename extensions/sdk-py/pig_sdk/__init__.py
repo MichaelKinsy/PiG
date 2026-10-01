@@ -1390,7 +1390,9 @@ class Context:
             raise TypeError("a surface renderer must be callable")
         surface = _SurfaceRenderer(method, render)
         self.extension._replace_surface(method, surface)
-        surface.push(Context(self.extension))
+        # The initial push belongs to the caller's request, as the Go SDK's does; later
+        # width-change pushes have no parent and use a fresh Context.
+        surface.push(self)
 
     def clear_editor_component(self) -> None:
         self._call("ui.setEditorComponent", {"clear": True})
