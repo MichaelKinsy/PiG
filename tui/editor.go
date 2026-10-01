@@ -528,24 +528,18 @@ func clonePastes(m map[int]string) map[int]string {
 	return c
 }
 
-// thinkingBorderSGR maps a thinking level string to a truecolor foreground
-// SGR prefix for the editor's top divider. Colors mirror upstream
-// theme/dark.json thinkingLow/Medium/High values, used as fg on the border
-// rule (not bg-tints: no rendering-model adjustment needed).
-//
-//	thinkingLow    #5f87af : upstream dark.json:73
-//	thinkingMedium #81a2be : upstream dark.json:74
-//	thinkingHigh   #b294bb : upstream dark.json:75
-//
-// Returns "" for "off" so the caller falls back to borderMuted.
+// thinkingBorderSGR maps a thinking level string to the active theme's
+// foreground SGR prefix for the editor's top divider. "off" (and unknown
+// levels) return "" so the caller falls back to borderMuted.
 func thinkingBorderSGR(level string) string {
+	t := ActiveTheme()
 	switch level {
 	case "low":
-		return ThemeHexFg("#5f87af")
+		return t.ThinkingLow
 	case "medium":
-		return ThemeHexFg("#81a2be")
+		return t.ThinkingMedium
 	case "high":
-		return ThemeHexFg("#b294bb")
+		return t.ThinkingHigh
 	}
 	return ""
 }

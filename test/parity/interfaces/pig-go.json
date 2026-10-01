@@ -205678,6 +205678,17 @@
       "shapeHash": "sha256:707fc90479c2ec9fd29ad88c9cff8783a4d75657ee38b800c436d6bed29d3440"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#kittyKeyboardProtocolPush",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "kittyKeyboardProtocolPush",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#kittyKeyboardProtocolQuery",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "kittyKeyboardProtocolQuery",
@@ -210378,12 +210389,12 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#thinkingVisibleSGR",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "thinkingVisibleSGR",
-      "kind": "constant",
+      "kind": "function",
       "exported": false,
       "shape": {
-        "type": "untyped string"
+        "type": "func() string"
       },
-      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#tmuxHyperlinkProbe",

@@ -137,7 +137,6 @@ func (s *SettingsList) Render(width int) []string {
 	start, end := s.visibleRange(display)
 
 	// Accent color cursor: matches upstream theme.cursor "→ ".
-	accentCursor := ThemeHexFg("#8abeb7") + "→ \x1b[0m"
 	const noCursor = "  "
 	th := ActiveTheme()
 	muted := th.Dim
@@ -152,6 +151,7 @@ func (s *SettingsList) Render(width int) []string {
 	if accent == "" {
 		accent = "\x1b[38;2;138;190;183m"
 	}
+	accentCursor := accent + "→ \x1b[0m"
 
 	for i := start; i < end; i++ {
 		item := s.items[display[i]]
