@@ -265,6 +265,7 @@ func TestRPCInputEndAfterExtensionCommandComparedWithPi(t *testing.T) {
 		// afterExit marks a command that runs after Pi's exit. Pi records nothing
 		// for it. Pig's runtime is a separate process that its host stops after the
 		// exit decision, so the continuation may record its event before then.
+		// pig divergence (D85): the afterExit tolerance is D85's first difference; the Pi rows stay strict.
 		afterExit bool
 	}{
 		{command: "micro", response: true},

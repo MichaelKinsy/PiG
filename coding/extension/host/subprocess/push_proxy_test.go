@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 func TestPushProxy_RenderReturnsCache(t *testing.T) {
@@ -316,9 +318,11 @@ func TestUIBridge_HandleWidgetPush(t *testing.T) {
 		t.Fatal("widget proxy is nil")
 	}
 
+	// A push without a width is a string list widget, laid out as Pi's
+	// Text(line, 1, 0) (interactive-mode.ts:2321-2336).
 	lines := proxy.Render(80)
-	if len(lines) != 1 || lines[0] != "◆ 3 files, 42 symbols indexed" {
-		t.Errorf("widget lines = %v", lines)
+	if want := " ◆ 3 files, 42 symbols indexed" + strings.Repeat(" ", 80-1-widthx.VisibleWidth("◆ 3 files, 42 symbols indexed")); len(lines) != 1 || lines[0] != want {
+		t.Errorf("widget lines = %q, want [%q]", lines, want)
 	}
 
 	if invalidated.Load() != 1 {

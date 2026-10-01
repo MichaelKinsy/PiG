@@ -1779,6 +1779,23 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/69-sdk-string-widget-python.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "WIDGET-START"
+          },
+          "reason": "Owned visible surface: A string list widget set through the Python SDK wraps as Pi's Text does at 114 columns",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/footer/01-footer-default.toml",
       "transforms": [
         {
@@ -3464,6 +3481,42 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/model-resolver-selector/22-model-picker-unbound-keys-refilter.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Only showing models",
+            "capture_end": "Model Name: Model Two"
+          },
+          "reason": "Owned visible surface: Unbound picker keys reapply the query and select the first match.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/model-resolver-selector/23-model-picker-shift-tab-keeps-scope.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Scope:",
+            "capture_end": "Model catalogs refreshed."
+          },
+          "reason": "Owned visible surface: Shift+Tab does not toggle the model-picker scope.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/model-runtime-store-catalog/10-model-picker-refresh-status.toml",
       "transforms": [
         {
@@ -4954,6 +5007,52 @@
             "/**/timestamp"
           ],
           "reason": "Independent message wall clocks differ; preserve all event order, content, display, details and command response fields."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/40-rpc-exclude-tools.toml",
+      "transforms": [
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "D2: alias only the exact isolated cwd embedded in the system section; retain its tags, whitespace and suffix."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message wall clocks vary; retain field presence, timestamp type and valid syntax."
+        },
+        {
+          "kind": "canonical_json",
+          "reason": "JSON object member order is not semantic. Raw stdout remains retained; fields and record order are not projected."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/41-rpc-tools-allowlist-overrides-no-tools.toml",
+      "transforms": [
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "D2: alias only the exact isolated cwd embedded in the system section; retain its tags, whitespace and suffix."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message wall clocks vary; retain field presence, timestamp type and valid syntax."
+        },
+        {
+          "kind": "canonical_json",
+          "reason": "JSON object member order is not semantic. Raw stdout remains retained; fields and record order are not projected."
         }
       ]
     },

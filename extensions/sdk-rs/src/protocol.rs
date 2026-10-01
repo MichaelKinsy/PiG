@@ -408,6 +408,8 @@ pub struct CallResultMsg<R = Value> {
     pub error: Option<ErrorInfo>,
 }
 
+/// A string list widget. It has no width: the host lays the list out at its
+/// own width, as Pi does for `setWidget(key, string[])`.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct WidgetPushMsg {
     pub key: String,

@@ -122,17 +122,16 @@ func TestExportHTMLPayloadPreservesText(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		sd.SystemPrompt = text
+		sd.SystemPrompt = &text
 		html := ToHTML(sd)
 		payload, err := base64.StdEncoding.DecodeString(extractSessionDataBase64(t, html))
 		if err != nil {
 			t.Fatal(err)
 		}
 		want := `{"header":` + header + `,"entries":[],"leafId":null`
-		if text != "" {
-			quoted := strings.ReplaceAll(text, `\`, `\\`)
-			want += `,"systemPrompt":"` + quoted + `"`
-		}
+		// JSON.stringify keeps a defined empty systemPrompt and omits only undefined.
+		quoted := strings.ReplaceAll(text, `\`, `\\`)
+		want += `,"systemPrompt":"` + quoted + `"`
 		want += `}`
 		if string(payload) != want {
 			t.Errorf("text %q: got %s, want %s", text, payload, want)

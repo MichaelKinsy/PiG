@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -407,5 +408,51 @@ func TestRenderCustomTools_RendersExtensionProcessComponents(t *testing.T) {
 	RenderCustomTools(sd, tools, "/tmp", 80)
 	if sd.RenderedTools != nil || calls != 1 {
 		t.Fatalf("unanswered renders: rendered %v after %d requests, want none after 1", sd.RenderedTools, calls)
+	}
+}
+
+// upstream exportFromFile (CLI --export) passes systemPrompt/tools undefined
+// (core/export-html/index.ts:302-303), so its session data has neither key;
+// exportSessionToHtml with a live state (index.ts:267-268) always has both,
+// tools as an array even when no tool is active.
+func TestExportFromFileWithToolsStateControlsSystemPromptAndTools(t *testing.T) {
+	dir := t.TempDir()
+	input := filepath.Join(dir, "session.jsonl")
+	jsonl := `{"type":"session","id":"test","cwd":"/tmp","timestamp":"2026-05-10T12:00:00Z"}
+{"type":"message","id":"u1","parentId":null,"timestamp":"2026-05-10T12:00:01Z","message":{"role":"user","content":[{"type":"text","text":"hello"}]}}
+`
+	if err := os.WriteFile(input, []byte(jsonl), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name  string
+		state *AgentState
+		want  string
+	}{
+		{"no state", nil, ""},
+		{"empty state", &AgentState{}, `"systemPrompt":"","tools":[]`},
+		{"live state", &AgentState{SystemPrompt: "SYS", Tools: []ToolSchema{{Name: "read", Description: "Read", Parameters: map[string]any{"type": "object"}}, {Name: "bare", Description: "No schema"}}}, `"systemPrompt":"SYS","tools":[{"name":"read","description":"Read","parameters":{"type":"object"}},{"name":"bare","description":"No schema"}]`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			out := filepath.Join(dir, strings.ReplaceAll(tc.name, " ", "-")+".html")
+			if _, err := ExportFromFileWithTools(input, out, nil, "", tc.state); err != nil {
+				t.Fatal(err)
+			}
+			html, err := os.ReadFile(out)
+			if err != nil {
+				t.Fatal(err)
+			}
+			payload, err := base64.StdEncoding.DecodeString(extractSessionDataBase64(t, string(html)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := `{"header":{"type":"session","id":"test","cwd":"/tmp","timestamp":"2026-05-10T12:00:00Z"},"entries":[{"type":"message","id":"u1","parentId":null,"timestamp":"2026-05-10T12:00:01Z","message":{"role":"user","content":[{"type":"text","text":"hello"}]}}],"leafId":"u1"`
+			if tc.want != "" {
+				want += "," + tc.want
+			}
+			if got := string(payload); got != want+"}" {
+				t.Fatalf("payload = %s\nwant %s}", got, want)
+			}
+		})
 	}
 }

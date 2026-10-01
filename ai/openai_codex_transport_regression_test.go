@@ -16,6 +16,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+
+	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
 )
 
 func reviewCodexProvider(t *testing.T, url, account string) Provider {
@@ -346,8 +348,8 @@ func TestCodexSSEProtocolHeadersWinOverRequestHeaders(t *testing.T) {
 	if v := got.Get("session-id"); v != "sess" {
 		t.Errorf("session-id=%q, want sess", v)
 	}
-	if v := got.Get("originator"); v != "pi" {
-		t.Errorf("originator=%q, want pi", v)
+	if v := got.Get("originator"); v != pigidentity.CodexOriginator {
+		t.Errorf("originator=%q, want %q", v, pigidentity.CodexOriginator)
 	}
 	if v := got.Get("Authorization"); v == "" || v == "Bearer spoof" {
 		t.Errorf("Authorization=%q, want the Codex bearer token", v)

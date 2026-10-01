@@ -13,6 +13,8 @@ import (
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
 )
 
 func testXaiProvider(deviceURL, tokenURL string) xaiOAuthProvider {
@@ -71,7 +73,7 @@ func TestXaiOAuthDeviceGrantTimingUpstream(t *testing.T) {
 				p = upstreamXaiProvider(t, func(r *http.Request) (*http.Response, error) {
 					if r.URL.String() == "https://auth.x.ai/oauth2/device/code" {
 						assertXaiForm(t, r, "https://auth.x.ai/oauth2/device/code", url.Values{
-							"client_id": {"b1a00492-073a-47ea-816f-4c329264a828"}, "scope": {"openid profile email offline_access grok-cli:access api:access"}, "referrer": {"pi"},
+							"client_id": {"b1a00492-073a-47ea-816f-4c329264a828"}, "scope": {"openid profile email offline_access grok-cli:access api:access"}, "referrer": {pigidentity.XAIReferrer},
 						})
 						return metaJSONResponse(200, upstreamXaiDeviceCode()), nil
 					}

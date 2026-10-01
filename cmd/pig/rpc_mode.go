@@ -952,7 +952,9 @@ commandLoop:
 			if runner != nil {
 				registered = runner().Tools()
 			}
-			outputPath, err := codingagent.ExportSessionToHTML(sess().Path(), cmd.OutputPath, registered, services().CWD())
+			// upstream rpc-mode.ts:601 exportToHtml passes agent.state: the transcript's system prompt and the active tools.
+			state := codingagent.NewShareState(codingagent.AgentStateSystemPrompt(sess().Agent().MessagesSnapshot()), sess().Tools())
+			outputPath, err := codingagent.ExportSessionToHTML(sess().Path(), cmd.OutputPath, registered, services().CWD(), state)
 			if err != nil {
 				writeRPC(rpcError(env.ID, "export_html", err.Error()))
 				continue

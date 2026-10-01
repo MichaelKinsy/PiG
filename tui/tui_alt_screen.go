@@ -379,7 +379,20 @@ func (t *TuiAltScreen) Start() {
 		SetCapabilities(suppressed)
 		t.invalidateMountedRoots()
 	}
-	_, _ = fmt.Fprint(t.out, altEnterAltScreen+altDisableAutowrap+mouse+"\x1b[2J\x1b[H\x1b[?25l")
+	// The main and alternate screens keep independent Kitty keyboard-protocol
+	// stacks. Pi enters the alternate screen before Terminal.start pushes, so its
+	// single push lives on the active screen (tui.ts start, terminal.ts
+	// queryAndEnableKittyProtocol). The driver pushes on the main screen before
+	// this renderer starts, so when that push is outstanding, move it: pop the
+	// main stack, enter the alternate screen, push there. The pop and push write
+	// no query because the driver's negotiation already ran and its replies are
+	// screen independent. Without this, fullscreen terminals report legacy keys
+	// (ctrl+digit and shift+enter lose their modifiers).
+	enter := altEnterAltScreen + altDisableAutowrap + mouse + "\x1b[2J\x1b[H\x1b[?25l"
+	if keyboardProtocolPushed.Load() {
+		enter = keyboardProtocolPop + altEnterAltScreen + kittyKeyboardProtocolPush + altDisableAutowrap + mouse + "\x1b[2J\x1b[H\x1b[?25l"
+	}
+	_, _ = fmt.Fprint(t.out, enter)
 	t.QueryCellSize()
 	t.Render()
 }
@@ -459,8 +472,17 @@ func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
 		t.savedCapabilities = nil
 	}
 	width := max(1, t.width)
+	// Pi pops in terminal.stop() before afterTerminalStop leaves the alternate
+	// screen. An outstanding push belongs to the alternate screen; return it to
+	// the main screen so the driver's DrainInput or restore pops the active
+	// stack. When DrainInput already popped, nothing is outstanding and the
+	// exit writes neither.
+	exit := altExitAltScreen
+	if keyboardProtocolPushed.Load() {
+		exit = keyboardProtocolPop + altExitAltScreen + kittyKeyboardProtocolPush
+	}
 	if options.PreserveScreen {
-		_, _ = fmt.Fprint(t.out, altBeginSynchronizedOutput+altExitAltScreen+"\x1b[?25h"+altEndSynchronizedOutput)
+		_, _ = fmt.Fprint(t.out, altBeginSynchronizedOutput+exit+"\x1b[?25h"+altEndSynchronizedOutput)
 		t.unlockAndApplyHover()
 		if restore != nil {
 			SetCapabilities(*restore)
@@ -469,7 +491,7 @@ func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
 	}
 	document := t.renderDocument(width)
 	var buf strings.Builder
-	buf.WriteString(altBeginSynchronizedOutput + altExitAltScreen + altDisableAutowrap)
+	buf.WriteString(altBeginSynchronizedOutput + exit + altDisableAutowrap)
 	for row := range document {
 		if row > 0 {
 			buf.WriteString("\r\n")

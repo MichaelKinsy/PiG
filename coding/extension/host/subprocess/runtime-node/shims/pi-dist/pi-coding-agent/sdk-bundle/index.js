@@ -113,7 +113,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-CIPWXUZ4.js";
+} from "./chunk-DB45HMOM.js";
 import {
   APP_NAME,
   APP_TITLE,
@@ -5117,7 +5117,7 @@ __name(loadAllHighlightLanguages, "loadAllHighlightLanguages");
 
 // pi-dist/pi-coding-agent/utils/version-check.js
 import { compare, valid } from "../../../semver/index.js";
-var LATEST_VERSION_URL = "https://pi.dev/api/latest-version";
+var LATEST_VERSION_URL = "https://pi-in-go.dev/api/latest-version";
 var DEFAULT_VERSION_CHECK_TIMEOUT_MS = 1e4;
 function formatVersionCheckError(error) {
   const rootMessage = error instanceof Error && error.message ? error.message : String(error);
@@ -5203,6 +5203,7 @@ __name(getRadiusGatewayUrl, "getRadiusGatewayUrl");
 
 // pi-dist/pi-coding-agent/core/bug-report-upload.js
 async function uploadBugReport(bundle, options = {}) {
+  throw new Error("PiG does not upload bug reports (D62): export the report and attach it to a PiG issue instead.");
   const body = new FormData();
   for (const file of bugReportFiles(bundle)) {
     body.append(file.name, new Blob([file.data], { type: file.contentType }), file.name);
@@ -5463,6 +5464,7 @@ async function shareSession(context) {
 }
 __name(shareSession, "shareSession");
 async function tryShareViaRadius(tmpFile, context) {
+  return false;
   const provider = context.session.modelRuntime.getProvider("radius");
   if (!provider)
     return false;
@@ -12046,7 +12048,7 @@ ${onboarding}`, this.getStartupExpansionState(), 1, 0);
     if (!isInstallTelemetryEnabled(this.settingsManager)) {
       return;
     }
-    void fetch(`https://pi.dev/api/report-install?version=${encodeURIComponent(version)}`, {
+    void fetch(`https://pi-in-go.dev/api/report-install?version=${encodeURIComponent(version)}`, {
       headers: {
         "User-Agent": getPiUserAgent(version)
       },
@@ -18726,7 +18728,7 @@ function quarantineWindowsNativeDependencies(packageDir) {
 __name(quarantineWindowsNativeDependencies, "quarantineWindowsNativeDependencies");
 
 // pi-dist/pi-coding-agent/package-manager-cli.js
-var DEFAULT_INSTALLER_API_BASE = "https://pi.dev/api/installer/releases";
+var DEFAULT_INSTALLER_API_BASE = "https://pi-in-go.dev/api/installer/releases";
 var MANAGED_INSTALL_MARKER = "managed-install.json";
 var MANAGED_RELEASE_VERSION_RE = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 function getActiveManagedInstallRoot() {

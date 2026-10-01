@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
 )
 
 const defaultCodexBaseURL = "https://chatgpt.com/backend-api"
@@ -54,7 +56,8 @@ func NewOpenAICodexResponsesProvider(cfg OpenAICodexResponsesConfig) Provider {
 		APIKeyPrefix:          "Bearer ",
 		ExtraHeaders: map[string]string{
 			"OpenAI-Beta": "responses=experimental",
-			"originator":  "pi",
+			// pig divergence (D26): PiG names itself as the Codex originator.
+			"originator": pigidentity.CodexOriginator,
 		},
 		Compat: &compat,
 		GetAPIKey: func(context.Context) (string, error) {

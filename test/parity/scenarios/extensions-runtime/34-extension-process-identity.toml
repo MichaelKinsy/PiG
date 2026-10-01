@@ -19,6 +19,10 @@
 # "@earendil-works/pi-coding-agent","binIsEntry":true},"relaunch":{"status":0,
 # "stdout":"0.87.1"}}. PiG's extension process was titled "node", its
 # argv[1] was the runtime's cell.mjs, and the re-launch ran that script.
+#
+# D26: Pi exports AI_AGENT=pi so tools can name the launching agent; PiG
+# exports AI_AGENT=pig. The regex accepts either name and the [diverge]
+# block pins each binary to its own; every other field is Pi's.
 
 name = "34-extension-process-identity"
 description = "An extension sees Pi's process title and re-launches the harness from process.argv[1]"
@@ -51,5 +55,10 @@ both_not_contain = ["Failed to load extension", "panic:"]
 # The re-launched harness prints its own version: Pi's release, or PiG's
 # composite version ending in the Pi release it ports (D63).
 both_match_regex = [
-  '"name":"process-identity","description":"\{\\"title\\":\\"pi\\",\\"piCodingAgent\\":\\"true\\",\\"aiAgent\\":\\"pi\\",\\"warned\\":false,\\"entryIsScript\\":true,\\"harness\\":\{\\"name\\":\\"@earendil-works/pi-coding-agent\\",\\"binIsEntry\\":true\},\\"relaunch\\":\{\\"status\\":0,\\"stdout\\":\\"([0-9.]+\+)?0\.87\.1\\"\}\}"',
+  '"name":"process-identity","description":"\{\\"title\\":\\"pi\\",\\"piCodingAgent\\":\\"true\\",\\"aiAgent\\":\\"(pig|pi)\\",\\"warned\\":false,\\"entryIsScript\\":true,\\"harness\\":\{\\"name\\":\\"@earendil-works/pi-coding-agent\\",\\"binIsEntry\\":true\},\\"relaunch\\":\{\\"status\\":0,\\"stdout\\":\\"([0-9.]+\+)?0\.87\.1\\"\}\}"',
 ]
+
+[diverge]
+pig_contains = ['\"aiAgent\":\"pig\"']
+pi_contains = ['\"aiAgent\":\"pi\"']
+reason = "D26 SCRUTINIZED:approved. PiG names itself in AI_AGENT, the marker tools read to identify the launching agent; Pi names itself pi."

@@ -66,10 +66,10 @@ func TestModelSelector_TabCyclesScope(t *testing.T) {
 	if ms.Scope() != ModelScopeScoped || ms.VisibleCount() != 1 {
 		t.Errorf("after Tab again: expected scope=scoped count=1, got scope=%v count=%d", ms.Scope(), ms.VisibleCount())
 	}
-	// Shift+Tab also toggles.
+	// Upstream handleInput toggles only on tui.input.tab; Shift+Tab reaches the search input and changes nothing.
 	ms.HandleInput("\x1b[Z")
-	if ms.Scope() != ModelScopeAll {
-		t.Errorf("Shift+Tab should also toggle, got scope=%v", ms.Scope())
+	if ms.Scope() != ModelScopeScoped || ms.searchInput.Text() != "" {
+		t.Errorf("Shift+Tab changed scope=%v query=%q", ms.Scope(), ms.searchInput.Text())
 	}
 }
 
@@ -221,20 +221,71 @@ func TestModelSelectorArrowNavigationWrapsAtBothEnds(t *testing.T) {
 	}
 }
 
-func TestModelSelectorPageNavigationClampsWithoutWrapping(t *testing.T) {
+// Upstream model-selector.ts handleInput has no page actions: PageUp and PageDown reach the search input, leave the query empty, and keep the selection.
+func TestModelSelectorPageKeysDoNotMoveSelection(t *testing.T) {
 	items := make([]ModelSelectorItem, 15)
 	for i := range items {
 		items[i] = ModelSelectorItem{Provider: "fixture", ID: fmt.Sprintf("model-%02d", i)}
 	}
-	selector := NewModelSelector("x", items, items, "")
-	selector.HandleInput("\x1b[5~")
-	if selector.cursor != 0 {
-		t.Fatalf("page up from first selected %d", selector.cursor)
+	selector := NewModelSelector("x", nil, items, "")
+	selector.HandleInput("\x1b[B")
+	for _, key := range []string{"\x1b[5~", "\x1b[6~", "\x1b[6~"} {
+		selector.HandleInput(key)
+		if selector.cursor != 1 || selector.searchInput.Text() != "" {
+			t.Fatalf("%q moved selection to %d with query %q", key, selector.cursor, selector.searchInput.Text())
+		}
 	}
-	selector.HandleInput("\x1b[6~")
-	selector.HandleInput("\x1b[6~")
-	if selector.cursor != len(items)-1 {
-		t.Fatalf("page down past last selected %d", selector.cursor)
+}
+
+// Upstream handleInput passes every other key to the search input and then always calls filterModels, which selects the first row while a query is active, even when the key did not change the query.
+func TestModelSelectorUnchangedQueryKeyReselectsFirstMatch(t *testing.T) {
+	items := mkItems("fixture/model-two", "fixture/model-one")
+	for _, key := range []string{"\x1b[D", "\x1b[5~", "\x1b[Z"} {
+		selector := NewModelSelector("x", nil, items, "fixture/model-two")
+		for _, r := range "model" {
+			selector.HandleInput(string(r))
+		}
+		selector.HandleInput("\x1b[B")
+		if selector.cursor != 1 {
+			t.Fatalf("down selected %d", selector.cursor)
+		}
+		selector.HandleInput(key)
+		if selector.cursor != 0 || selector.searchInput.Text() != "model" {
+			t.Errorf("%q left selection %d with query %q, want 0 with model", key, selector.cursor, selector.searchInput.Text())
+		}
+	}
+}
+
+// Upstream setScope selects the current model's index in the new unfiltered scope, or the first row when it is absent, and then filterModels selects the first row for an active query.
+func TestModelSelectorScopeToggleSelectsCurrentOrFirst(t *testing.T) {
+	scoped := mkItems("p/model-a", "p/model-c")
+	all := mkItems("p/model-a", "p/model-b", "p/model-c", "p/model-d")
+
+	query := NewModelSelector("x", scoped, all, "p/model-c")
+	for _, r := range "model" {
+		query.HandleInput(string(r))
+	}
+	query.HandleInput("\t")
+	query.HandleInput("\t")
+	if query.Scope() != ModelScopeScoped || query.cursor != 0 {
+		t.Errorf("scope toggle with a query selected %d in %v, want 0 in scoped", query.cursor, query.Scope())
+	}
+
+	absent := NewModelSelector("x", scoped, all, "p/model-d")
+	absent.HandleInput("\t")
+	absent.HandleInput("\x1b[B")
+	absent.HandleInput("\x1b[B")
+	absent.HandleInput("\t")
+	if absent.Scope() != ModelScopeScoped || absent.cursor != 0 {
+		t.Errorf("scope toggle without current selected %d in %v, want 0 in scoped", absent.cursor, absent.Scope())
+	}
+
+	present := NewModelSelector("x", scoped, all, "p/model-c")
+	present.HandleInput("\x1b[A")
+	present.HandleInput("\t")
+	present.HandleInput("\t")
+	if present.Scope() != ModelScopeScoped || present.cursor != 1 {
+		t.Errorf("scope toggle selected %d in %v, want current at 1 in scoped", present.cursor, present.Scope())
 	}
 }
 

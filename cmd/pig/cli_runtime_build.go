@@ -446,25 +446,25 @@ func (b *cliRuntimeBuilder) buildSession(ctx context.Context, build *cliBuild, i
 	if flags.NoBuiltinTools {
 		agentToolNames = []string{}
 	}
+	// An explicit --tools list outranks --no-tools and --no-builtin-tools, as sdk.ts allowedToolNames = tools ?? (noTools === "all" ? [] : undefined) and initialActiveToolNames = tools ?? (noTools ? [] : defaults).
 	switch {
-	case flags.NoTools:
-		allowed = make(map[string]struct{})
-		agentToolNames = []string{}
-		skipBuiltinTools = false
-	case len(flags.Tools) > 0:
+	case flags.Tools != nil:
 		allowed = make(map[string]struct{}, len(flags.Tools))
 		for _, t := range flags.Tools {
 			allowed[t] = struct{}{}
 		}
-		if !flags.NoBuiltinTools {
-			filtered := make([]string, 0, len(flags.Tools))
-			for _, n := range registryToolNames {
-				if _, ok := allowed[n]; ok {
-					filtered = append(filtered, n)
-				}
+		filtered := make([]string, 0, len(flags.Tools))
+		for _, n := range registryToolNames {
+			if _, ok := allowed[n]; ok {
+				filtered = append(filtered, n)
 			}
-			agentToolNames = filtered
 		}
+		agentToolNames = filtered
+		skipBuiltinTools = false
+	case flags.NoTools:
+		allowed = make(map[string]struct{})
+		agentToolNames = []string{}
+		skipBuiltinTools = false
 	default:
 		if !flags.NoBuiltinTools {
 			activeBuiltin = make(map[string]struct{}, len(agentToolNames))

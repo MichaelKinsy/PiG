@@ -516,3 +516,92 @@ func TestShareHandlerSharesInMemorySession(t *testing.T) {
 		t.Fatalf("shared = %v, output = %q", shared, out.String())
 	}
 }
+
+// Upstream agent.state.systemPrompt replays every transcript system message
+// (agent/src/agent.ts:89-91, ai/src/utils/transcript.ts:99-102): a later
+// section diff joins the earlier baseline, and no system message renders "".
+func TestAgentStateSystemPromptReplaysTranscriptSystemMessages(t *testing.T) {
+	base := agent.AgentMessage{System: &ai.SystemMessage{Content: ai.SystemText(""), Sections: ai.OrderedSections{{Name: "preamble", Value: new("Test")}, {Name: "cwd", Value: new("<cwd>\n/w\n</cwd>")}}}}
+	run := agent.AgentMessage{System: &ai.SystemMessage{Content: ai.SystemText(""), Sections: ai.OrderedSections{{Name: "runmark", Value: new("<runmark>\nRUN\n</runmark>")}}}}
+	user := userMsg("hi")
+	for _, tc := range []struct {
+		name     string
+		messages []agent.AgentMessage
+		want     string
+	}{
+		{"empty", nil, ""},
+		{"no system message", []agent.AgentMessage{user}, ""},
+		{"baseline", []agent.AgentMessage{base, user}, "Test\n\n<cwd>\n/w\n</cwd>"},
+		{"later section diff", []agent.AgentMessage{base, user, run, user}, "Test\n\n<cwd>\n/w\n</cwd>\n\n<runmark>\nRUN\n</runmark>"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := AgentStateSystemPrompt(tc.messages); got != tc.want {
+				t.Fatalf("AgentStateSystemPrompt = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// Pi's /export, /share and /bug read session.state (agent-session.ts:3921,
+// session-share.ts:38): the transcript's prompt, not a request-only forced
+// prompt and not base-prompt changes the model has not seen yet.
+func TestInteractiveShareStateReadsTheTranscriptSystemPrompt(t *testing.T) {
+	m := sessionChromeMode(t)
+	m.agent = agent.NewAgent(agent.AgentOptions{})
+	m.agent.SetTools(tools.CreateCodingTools(t.TempDir(), Settings{}, t.TempDir())[:2])
+	m.agent.SetMessages([]agent.AgentMessage{
+		{System: &ai.SystemMessage{Content: ai.SystemText(""), Sections: ai.OrderedSections{{Name: "preamble", Value: new("TRANSCRIPT")}}}},
+		userMsg("hi"),
+	})
+	m.opts.SystemPrompt = "BASE-NOT-SENT"
+	m.agent.SetSystemPrompt("FORCED")
+	state := m.buildSlashContext(t.Context()).ShareState()
+	if state.SystemPrompt != "TRANSCRIPT" {
+		t.Fatalf("ShareState().SystemPrompt = %q, want the transcript prompt %q", state.SystemPrompt, "TRANSCRIPT")
+	}
+	active := m.agent.Tools()
+	if len(active) != 2 || len(state.Tools) != len(active) {
+		t.Fatalf("ShareState().Tools = %d entries, want the %d active tools", len(state.Tools), len(active))
+	}
+	for i, tool := range active {
+		if state.Tools[i].Name != tool.Name() {
+			t.Fatalf("ShareState().Tools[%d] = %q, want %q", i, state.Tools[i].Name, tool.Name())
+		}
+	}
+}
+
+// JSON.stringify writes Pi's tool.parameters in source key order without
+// escaping "<", "&" or U+2028; the export viewer lists parameters in that
+// order (export-html/template.js Object.entries(properties)). Pi 0.87.1's RPC
+// export_html writes read as {"type":"object","required":["path"],"properties":{"path":...,"offset":...,"limit":...}}.
+func TestNewShareStateKeepsToolParameterOrder(t *testing.T) {
+	var read agent.AgentTool
+	for _, tool := range tools.CreateCodingTools(t.TempDir(), Settings{}, t.TempDir()) {
+		if tool.Name() == "read" {
+			read = tool
+		}
+	}
+	if read == nil {
+		t.Fatal("read tool not found")
+	}
+	encoded, err := json.Marshal(NewShareState("", []agent.AgentTool{read}).Tools[0].Parameters)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"type":"object","required":["path"],"properties":{"path":{"type":"string","description":"Path to the file to read (relative or absolute)"},"offset":{"type":"number","description":"Line number to start reading from (1-indexed)"},"limit":{"type":"number","description":"Maximum number of lines to read"}}}`
+	if string(encoded) != want {
+		t.Fatalf("read parameters = %s, want %s", encoded, want)
+	}
+
+	var schema ai.ToolSchema
+	if err := json.Unmarshal([]byte(`{"name":"zz","description":"d","parameters":{"type":"object","properties":{"zeta":{"type":"string","description":"a\u2028b <x> & y"},"alpha":{"type":"number"}},"required":["zeta"]}}`), &schema); err != nil {
+		t.Fatal(err)
+	}
+	line, err := marshalJSONLine(ShareTool{Name: schema.Name, Description: schema.Description, Parameters: orderedToolParameters(schema)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "{\"name\":\"zz\",\"description\":\"d\",\"parameters\":{\"type\":\"object\",\"properties\":{\"zeta\":{\"type\":\"string\",\"description\":\"a\u2028b <x> & y\"},\"alpha\":{\"type\":\"number\"}},\"required\":[\"zeta\"]}}"; string(line) != want {
+		t.Fatalf("share tool = %s, want %s", line, want)
+	}
+}

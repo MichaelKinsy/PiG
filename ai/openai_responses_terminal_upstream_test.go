@@ -20,26 +20,37 @@ func terminalEventsUpstream(t *testing.T, sse string, wire bool) (*AssistantMess
 		}))
 		defer server.Close()
 		provider := NewOpenAIResponsesProvider(OpenAIResponsesConfig{Model: "gpt-5-mini", ProviderID: "openai", APIKey: "test", BaseURL: server.URL})
-		var err error
-		stream, err = provider.Stream(t.Context(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserContentBlocks{TextContent{Text: "hi"}}}}, Tools: []ToolSchema{}}), StreamOptions{})
+		// The upstream test starts its for-await in the job that called streamOpenAIResponses, so the buffered response cannot run before the consumer reads its first event. The consumer holds one continuation across Stream and iteration, as the Agent does (agent-loop.ts:402-411).
+		ctx := WithStreamContinuations(t.Context())
+		err := RunStreamContinuation(ctx, func(observation *StreamObservation) error {
+			var err error
+			stream, err = provider.Stream(observation.Context(ctx), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserContentBlocks{TextContent{Text: "hi"}}}}, Tools: []ToolSchema{}}), StreamOptions{})
+			if err != nil {
+				return err
+			}
+			for event := range stream.Events(observation.Context(ctx)) {
+				events = append(events, mapAssistantEventPartial(event, (*AssistantMessage).Observe))
+			}
+			return nil
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
-	} else {
-		provider := &openAIResponsesProvider{cfg: OpenAIResponsesConfig{Model: "gpt-5-mini", ProviderID: "openai"}}
-		builder := newAssistantStreamBuilder(t.Context(), APIOpenAIResponses, "openai", "gpt-5-mini")
-		stream = builder.stream
-		var frames []string
-		for frame := range strings.SplitSeq(sse, "\n\n") {
-			if frame != "" {
-				frames = append(frames, frame+"\n\n")
-			}
-		}
-		reader := &providerScratchReader{frames: frames, beforeRead: func(int) {
-			events = append(events, drainObservedAssistantEvents(t, stream)...)
-		}}
-		provider.parseResponsesSSE(t.Context(), reader, builder, nil)
+		return stream.Result(), events
 	}
+	provider := &openAIResponsesProvider{cfg: OpenAIResponsesConfig{Model: "gpt-5-mini", ProviderID: "openai"}}
+	builder := newAssistantStreamBuilder(t.Context(), APIOpenAIResponses, "openai", "gpt-5-mini")
+	stream = builder.stream
+	var frames []string
+	for frame := range strings.SplitSeq(sse, "\n\n") {
+		if frame != "" {
+			frames = append(frames, frame+"\n\n")
+		}
+	}
+	reader := &providerScratchReader{frames: frames, beforeRead: func(int) {
+		events = append(events, drainObservedAssistantEvents(t, stream)...)
+	}}
+	provider.parseResponsesSSE(t.Context(), reader, builder, nil)
 	for event := range stream.Events(t.Context()) {
 		events = append(events, mapAssistantEventPartial(event, (*AssistantMessage).Observe))
 	}

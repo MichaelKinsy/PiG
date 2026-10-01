@@ -132,7 +132,7 @@ func cachedBuildFailure(finalDir, inputDigest, language string) (error, bool) {
 	return &cachedBuildFailureError{message: meta.Message}, true
 }
 
-func publishCellFailure(finalDir, inputDigest, language, message string) error {
+func publishCellFailure(ctx context.Context, finalDir, inputDigest, language, message string) error {
 	parent := filepath.Dir(finalDir)
 	scratch, err := os.MkdirTemp(parent, ".failed-*")
 	if err != nil {
@@ -158,7 +158,12 @@ func publishCellFailure(finalDir, inputDigest, language, message string) error {
 	} else if !os.IsNotExist(err) {
 		return err
 	}
-	if err := os.Rename(scratch, finalDir); err != nil {
+	// A peer may have published the same deterministic failure while this
+	// publisher waited out a transient lock.
+	if _, err := publishRename.publish(ctx, scratch, finalDir, func() bool {
+		_, ok := cachedBuildFailure(finalDir, inputDigest, language)
+		return ok
+	}); err != nil {
 		return err
 	}
 	_ = TouchUsage(finalDir, time.Now())
@@ -304,7 +309,7 @@ func publishArtifact(ctx context.Context, finalDir, canonicalName, inputDigest, 
 	if err != nil {
 		var failure *cacheableBuildFailure
 		if cacheBuildFailures && errors.As(err, &failure) {
-			if cacheErr := publishCellFailure(finalDir, inputDigest, language, failure.Error()); cacheErr != nil {
+			if cacheErr := publishCellFailure(ctx, finalDir, inputDigest, language, failure.Error()); cacheErr != nil {
 				return PublishedEntry{}, errors.Join(err, fmt.Errorf("cache build failure: %w", cacheErr))
 			}
 		}
@@ -353,11 +358,17 @@ func publishArtifact(ctx context.Context, finalDir, canonicalName, inputDigest, 
 			return PublishedEntry{}, fmt.Errorf("replace stale cell entry: %w", err)
 		}
 	}
-	if err := os.Rename(scratch, finalDir); err != nil {
-		if art, ok := validCellEntry(finalDir, identity); ok {
-			return PublishedEntry{Dir: finalDir, ArtifactPath: art, Reused: true}, nil
-		}
+	var peerArtifact string
+	adopted, err := publishRename.publish(ctx, scratch, finalDir, func() bool {
+		art, ok := validCellEntry(finalDir, identity)
+		peerArtifact = art
+		return ok
+	})
+	if err != nil {
 		return PublishedEntry{}, fmt.Errorf("publish cell entry: %w", err)
+	}
+	if adopted {
+		return PublishedEntry{Dir: finalDir, ArtifactPath: peerArtifact, Reused: true}, nil
 	}
 	_ = TouchUsage(finalDir, time.Now())
 	return PublishedEntry{Dir: finalDir, ArtifactPath: filepath.Join(finalDir, canonicalName), Reused: false}, nil

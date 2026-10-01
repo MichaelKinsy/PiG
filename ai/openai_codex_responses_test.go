@@ -3,6 +3,8 @@ package ai
 import (
 	"context"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
 )
 
 func TestResolveCodexURL(t *testing.T) {
@@ -60,7 +62,7 @@ func TestNewOpenAICodexResponsesProvider(t *testing.T) {
 	if err != nil || baseURL != "https://chatgpt.com/backend-api/codex/responses" {
 		t.Fatalf("GetBaseURL = %q, %v", baseURL, err)
 	}
-	if op.cfg.ExtraHeaders["originator"] != "pi" {
+	if op.cfg.ExtraHeaders["originator"] != pigidentity.CodexOriginator {
 		t.Fatalf("missing originator header")
 	}
 }

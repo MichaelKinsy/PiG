@@ -636,6 +636,8 @@ pub struct Context {
     pub(crate) model_stream_seq: Arc<AtomicU64>,
     /// Replicated `hasUI` and theme palette.
     pub(crate) shared_ui: Arc<Mutex<UiState>>,
+    /// Footer and header renderers, keyed by the host method that installs them.
+    pub(crate) surfaces: Surfaces,
 }
 
 /// Local session mirror kept in sync by incremental appends from state_update.
@@ -1367,7 +1369,17 @@ impl Context {
 
     // ─── Widget ──────────────────────────────────────────────────────────
 
-    /// Push rendered lines to the host for display.
+    /// Sets a widget from a list of strings, as Pi's `ctx.ui.setWidget(key,
+    /// string[])`. The host lays the list out at its own width: each entry
+    /// becomes `Text(line, 1, 0)`, the first ten entries are shown, and a muted
+    /// "... (widget truncated)" row follows a longer list
+    /// (interactive-mode.ts:2321-2336). A row wider than the pane wraps.
+    ///
+    /// The list goes out as a `widget_push` frame without a width, which the
+    /// host applies in arrival order and never answers: Pi's `setWidget`
+    /// returns nothing, so it may be called from an
+    /// [`Self::on_width_change`] handler, and the error reports only a failure
+    /// to send. [`Self::set_widget_value`] waits for the host.
     pub fn set_widget(&self, key: &str, lines: Vec<String>) -> io::Result<()> {
         self.conn.push_widget(key, lines)
     }
@@ -1384,7 +1396,7 @@ impl Context {
 
     /// Clear a custom footer. Passing live component factories is intentionally unsupported by the subprocess bridge.
     pub fn clear_footer(&self) -> io::Result<()> {
-        call_result_to_io(self.call_wire("ui.setFooter", Some(serde_json::json!({"clear": true})))?)
+        self.set_surface("ui.setFooter", None)
     }
 
     /// Set the semantic login rendered by Pig's fixed native template.
@@ -1397,7 +1409,7 @@ impl Context {
 
     /// Clear a custom header. Passing live component factories is intentionally unsupported by the subprocess bridge.
     pub fn clear_header(&self) -> io::Result<()> {
-        call_result_to_io(self.call_wire("ui.setHeader", Some(serde_json::json!({"clear": true})))?)
+        self.set_surface("ui.setHeader", None)
     }
 
     /// Clear a custom editor component. Passing live component factories is intentionally unsupported by the subprocess bridge.
@@ -2139,18 +2151,48 @@ impl Context {
     /// Replaces the footer with pre-rendered lines (upstream
     /// `ctx.ui.setFooter`; a component factory cannot cross the process
     /// boundary). [`Self::clear_footer`] restores the default.
+    ///
+    /// Pi renders a footer component at the current width every frame, so it
+    /// never paints rows laid out for another width. The rows sent here carry
+    /// the width the SDK holds when they are sent, and the host paints them
+    /// only at that width: after a resize they stay hidden until the extension
+    /// sends rows for the new width (see [`Self::on_width_change`] for where to
+    /// send them from). A footer
+    /// that must never be wrong renders through [`Self::set_footer_renderer`].
+    /// Setting rows replaces any footer renderer.
     pub fn set_footer(&self, lines: Vec<String>) -> io::Result<()> {
-        call_result_to_io(
-            self.call_wire("ui.setFooter", Some(serde_json::json!({"lines": lines})))?,
-        )
+        self.set_surface("ui.setFooter", Some(lines))
     }
 
     /// Replaces the header with pre-rendered lines (upstream
-    /// `ctx.ui.setHeader`). [`Self::clear_header`] restores the default.
+    /// `ctx.ui.setHeader`). [`Self::clear_header`] restores the default. The
+    /// rows carry the width the SDK holds when they are sent, as described at
+    /// [`Self::set_footer`].
     pub fn set_header(&self, lines: Vec<String>) -> io::Result<()> {
-        call_result_to_io(
-            self.call_wire("ui.setHeader", Some(serde_json::json!({"lines": lines})))?,
-        )
+        self.set_surface("ui.setHeader", Some(lines))
+    }
+
+    /// Installs a footer that `render` lays out at the host's terminal width,
+    /// the subprocess form of the component factory Pi's `ctx.ui.setFooter`
+    /// takes. The SDK renders at the width the host reports and again after
+    /// every width change, and sends each set of rows with the width it was
+    /// rendered for, so the host never paints rows laid out for another width.
+    /// `None` restores the built-in footer. A panic in `render` is reported to
+    /// the user as "footer render failed: ..." and leaves the previous rows.
+    pub fn set_footer_renderer<F>(&self, render: Option<F>) -> io::Result<()>
+    where
+        F: Fn(u32) -> Vec<String> + Send + Sync + 'static,
+    {
+        self.set_surface_renderer("ui.setFooter", render)
+    }
+
+    /// Installs a header that `render` lays out at the host's terminal width;
+    /// it follows the contract of [`Self::set_footer_renderer`].
+    pub fn set_header_renderer<F>(&self, render: Option<F>) -> io::Result<()>
+    where
+        F: Fn(u32) -> Vec<String> + Send + Sync + 'static,
+    {
+        self.set_surface_renderer("ui.setHeader", render)
     }
 
     /// Upstream `ctx.hasUI`, from the host's replicated state.
@@ -2479,6 +2521,151 @@ impl Drop for TerminalInputSubscription {
     }
 }
 
+/// A footer or header renderer, the subprocess form of Pi's component factory.
+///
+/// pig additive (D19): Pi's TUI renders the in-process component every frame; a
+/// subprocess SDK renders at the host width itself and sends the width with the rows.
+///
+/// The TUI calls `render(width)` for every frame (interactive-mode.ts:2418-2480).
+/// The SDK renders at the width the host reported, sends the rows with that
+/// width so the host never paints them at another, and renders again after each
+/// `width_change`. Only the newest width is rendered when several arrive together.
+pub(crate) struct SurfaceRenderer {
+    method: &'static str,
+    render: Box<dyn Fn(u32) -> Vec<String> + Send + Sync>,
+    /// True once superseded. Held while a push is in flight, so a superseded
+    /// renderer never overwrites the rows that replaced it.
+    stopped: Mutex<bool>,
+    /// (a refresh is queued, a refresh thread is running)
+    refresh: Mutex<(bool, bool)>,
+}
+
+pub(crate) type Surfaces = Arc<Mutex<HashMap<&'static str, Arc<SurfaceRenderer>>>>;
+
+fn surface_args(lines: Vec<String>, width: u32) -> serde_json::Value {
+    if width > 0 {
+        serde_json::json!({"lines": lines, "width": width})
+    } else {
+        serde_json::json!({"lines": lines})
+    }
+}
+
+fn panic_message(payload: &(dyn std::any::Any + Send)) -> String {
+    payload
+        .downcast_ref::<&str>()
+        .map(|message| (*message).to_string())
+        .or_else(|| payload.downcast_ref::<String>().cloned())
+        .unwrap_or_else(|| "panic".to_string())
+}
+
+impl SurfaceRenderer {
+    fn kind(&self) -> &'static str {
+        if self.method == "ui.setHeader" { "header" } else { "footer" }
+    }
+
+    /// Renders at the current host width and sends the rows tagged with it. A
+    /// panicking renderer is reported as the Node runtime reports a failing
+    /// component (runtime.mjs renderSpecialSurface) and leaves the previous rows.
+    fn push(&self, ctx: &Context) -> io::Result<()> {
+        let stopped = self.stopped.lock().unwrap();
+        if *stopped {
+            return Ok(());
+        }
+        let width = ctx.width();
+        let lines = match catch_unwind(AssertUnwindSafe(|| (self.render)(width))) {
+            Ok(lines) => lines,
+            Err(payload) => {
+                ctx.notify(&format!("{} render failed: {}", self.kind(), panic_message(payload.as_ref())), "error");
+                return Ok(());
+            }
+        };
+        call_result_to_io(ctx.call_wire(self.method, Some(surface_args(lines, width)))?)
+    }
+
+    fn stop(&self) {
+        *self.stopped.lock().unwrap() = true;
+    }
+
+    /// Renders again off the message loop, coalescing calls that arrive while a
+    /// push is in flight into one more push at the newest width.
+    fn refresh(self: &Arc<Self>, ctx: Context) {
+        {
+            let mut state = self.refresh.lock().unwrap();
+            state.0 = true;
+            if state.1 {
+                return;
+            }
+            state.1 = true;
+        }
+        let renderer = self.clone();
+        std::thread::spawn(move || {
+            loop {
+                {
+                    let mut state = renderer.refresh.lock().unwrap();
+                    if !state.0 {
+                        state.1 = false;
+                        return;
+                    }
+                    state.0 = false;
+                }
+                let _ = renderer.push(&ctx);
+            }
+        });
+    }
+}
+
+impl Context {
+    /// Retires the renderer installed for `method` and installs `next`.
+    fn replace_surface(&self, method: &'static str, next: Option<Arc<SurfaceRenderer>>) {
+        let previous = {
+            let mut surfaces = self.surfaces.lock().unwrap();
+            let previous = match &next {
+                Some(renderer) => surfaces.insert(method, renderer.clone()),
+                None => surfaces.remove(method),
+            };
+            drop(surfaces);
+            previous
+        };
+        if let Some(previous) = previous {
+            previous.stop();
+        }
+    }
+
+    fn set_surface(&self, method: &'static str, lines: Option<Vec<String>>) -> io::Result<()> {
+        self.replace_surface(method, None);
+        let args = match lines {
+            Some(lines) => surface_args(lines, self.width()),
+            None => serde_json::json!({"clear": true}),
+        };
+        call_result_to_io(self.call_wire(method, Some(args))?)
+    }
+
+    fn set_surface_renderer<F>(&self, method: &'static str, render: Option<F>) -> io::Result<()>
+    where
+        F: Fn(u32) -> Vec<String> + Send + Sync + 'static,
+    {
+        let Some(render) = render else {
+            return self.set_surface(method, None);
+        };
+        let renderer = Arc::new(SurfaceRenderer {
+            method,
+            render: Box::new(render),
+            stopped: Mutex::new(false),
+            refresh: Mutex::new((false, false)),
+        });
+        self.replace_surface(method, Some(renderer.clone()));
+        renderer.push(self)
+    }
+
+    /// Renders every installed footer and header renderer again at the host's width.
+    pub(crate) fn refresh_surfaces(&self) {
+        let renderers: Vec<_> = self.surfaces.lock().unwrap().values().cloned().collect();
+        for renderer in renderers {
+            renderer.refresh(self.clone());
+        }
+    }
+}
+
 /// Unsubscribes a width handler when dropped.
 pub struct WidthChangeSubscription {
     id: u64,
@@ -2515,12 +2702,16 @@ impl Context {
     ///
     /// Upstream Pi installs headers and footers as component factories whose
     /// `render(width)` runs every frame, so they follow a resize with no work
-    /// from the extension. A pig extension is a subprocess and sends static
-    /// lines instead, so a footer keeps the width it was built for until
-    /// something re-pushes it. This is that trigger.
+    /// from the extension. Rows sent with [`Self::set_footer`] or
+    /// [`Self::set_header`] are painted only at the width they carry, so after
+    /// a resize they stay hidden until the extension sends rows for the new
+    /// width; this is that trigger. [`Self::set_footer_renderer`] and
+    /// [`Self::set_header_renderer`] follow a resize with no handler.
     ///
-    /// Handlers run on the message loop and must not block: re-push the lines
-    /// and return. The returned guard unsubscribes when dropped.
+    /// Handlers run on the loop that reads host replies, so a handler must not
+    /// wait for a host call: [`Self::set_widget`] returns without waiting, but
+    /// footer or header rows must be sent from another thread. The returned
+    /// guard unsubscribes when dropped.
     pub fn on_width_change<F>(&self, handler: F) -> WidthChangeSubscription
     where
         F: Fn(u32) + Send + Sync + 'static,
@@ -2582,6 +2773,7 @@ mod width_change_tests {
             model_streams: Arc::new(Mutex::new(HashMap::new())),
             model_stream_seq: Arc::new(AtomicU64::new(0)),
             shared_ui: Arc::new(Mutex::new(UiState::default())),
+            surfaces: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -2689,6 +2881,7 @@ mod login_call_tests {
             model_streams: Arc::new(Mutex::new(HashMap::new())),
             model_stream_seq: Arc::new(AtomicU64::new(0)),
             shared_ui: Arc::new(Mutex::new(UiState::default())),
+            surfaces: Arc::new(Mutex::new(HashMap::new())),
         })
     }
 
@@ -2886,6 +3079,7 @@ mod sdk_surface_call_tests {
             model_streams: Arc::new(Mutex::new(HashMap::new())),
             model_stream_seq: Arc::new(AtomicU64::new(0)),
             shared_ui: Arc::new(Mutex::new(UiState::default())),
+            surfaces: Arc::new(Mutex::new(HashMap::new())),
         })
     }
 

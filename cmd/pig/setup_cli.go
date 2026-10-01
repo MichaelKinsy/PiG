@@ -1,6 +1,10 @@
 package main
 
-import "os"
+import (
+	"os"
+
+	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
+)
 
 // setupCli mirrors upstream packages/coding-agent/src/cli/setup.ts, which the
 // CLI and RPC entry points run before main. It sets the process markers child
@@ -9,5 +13,7 @@ import "os"
 // HTTP transport is configured from settings in main.
 func setupCli() {
 	_ = os.Setenv("PI_CODING_AGENT", "true") // Setenv fails only for invalid names.
-	_ = os.Setenv("AI_AGENT", "pi")
+	// pig divergence (D26): upstream exports AI_AGENT=pi so tools can name the
+	// agent that launched them. Tools that report it must hear PiG's name.
+	_ = os.Setenv("AI_AGENT", pigidentity.AgentMarker)
 }

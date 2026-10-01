@@ -159,12 +159,14 @@ func TestStandaloneUpdateLocksThroughReceiptRollback(t *testing.T) {
 		joined = true
 		t.Fatalf("replacement failed before commit: %v", err)
 	}
+	assert.FileExists(t, target+".update.lock")
 	exe, err := os.Executable()
 	require.NoError(t, err)
 	child := exec.CommandContext(t.Context(), exe, "-test.run=^TestStandaloneUpdateLocksThroughReceiptRollback$")
 	child.Env = append(os.Environ(), "PIG_TEST_UPDATE_LOCK_TARGET="+alias, "PIG_TEST_UPDATE_LOCK_URL="+bin.URL, "PIG_TEST_UPDATE_LOCK_SHA256="+bin.SHA256)
 	output, err := child.CombinedOutput()
 	require.NoError(t, err, "%s", output)
+	assert.FileExists(t, target+".update.lock", "a refused updater must not remove the live holder's lock")
 	assert.Equal(t, int32(1), downloads.Load())
 	unblock()
 	err = <-result
@@ -173,8 +175,11 @@ func TestStandaloneUpdateLocksThroughReceiptRollback(t *testing.T) {
 	retained, err := os.ReadFile(target)
 	require.NoError(t, err)
 	assert.Equal(t, "old", string(retained))
+	// Pi's proper-lockfile release removes its lock (package-manager-cli.ts:219); the rollback path leaves no sidecar either.
+	assert.NoFileExists(t, target+".update.lock")
 	// The lock is released after rollback, so the next explicit operation succeeds.
 	require.NoError(t, codingagent.SelfReplaceAt(t.Context(), server.Client(), bin, alias))
+	assert.NoFileExists(t, target+".update.lock")
 	retained, err = os.ReadFile(target)
 	require.NoError(t, err)
 	assert.Equal(t, payload, retained)

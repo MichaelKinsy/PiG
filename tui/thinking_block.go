@@ -7,16 +7,17 @@ import (
 )
 
 // ThinkingBlock renders one reasoning trace.
-// Hidden blocks show `Thinking...`. Visible blocks use dim italic text.
+// Hidden blocks show `Thinking...`. Visible blocks use the theme's thinkingText
+// color in italic.
 
 // thinkingHiddenSGR is dim + italic: matches upstream's italic(fg("thinkingText"))
 // on a line renderer. "thinkingText" = "gray" in dark.json.
 const thinkingHiddenSGR = "\033[2m\033[3m"
 
-// thinkingVisibleSGR is gray fg + italic. Color #909090 is approximately
-// upstream's "gray" thinkingText (#808080-ish). We use a direct ANSI gray
-// (\033[90m = bright-black / dark-gray) + italic so it works on any terminal.
-const thinkingVisibleSGR = "\033[90m\033[3m"
+// thinkingVisibleSGR is the active theme's thinkingText fg + italic (Pi
+// assistant-message.ts theme.fg("thinkingText") with italic). The theme schema
+// requires the token.
+func thinkingVisibleSGR() string { return ActiveTheme().ThinkingText + "\033[3m" }
 
 const thinkingHiddenResetSGR = SGRBoldDimReset + SGRItalicReset
 const thinkingVisibleResetSGR = SGRFgReset + SGRItalicReset
@@ -67,12 +68,13 @@ func (b *ThinkingBlock) Render(width int) []string {
 		return hidden
 	}
 
-	// Wrap content lines column-aware (widthx), apply gray+italic SGR per line.
+	// Wrap content lines column-aware (widthx), apply themed italic SGR per line.
 	var out []string
+	visible := thinkingVisibleSGR()
 	for _, rawLine := range splitLines(b.content) {
 		wrapped := wrapLineByWidth(rawLine, width)
 		for _, chunk := range wrapped {
-			out = append(out, thinkingVisibleSGR+chunk+thinkingVisibleResetSGR)
+			out = append(out, visible+chunk+thinkingVisibleResetSGR)
 		}
 	}
 	return out

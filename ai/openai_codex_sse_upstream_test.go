@@ -11,6 +11,8 @@ import (
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
 )
 
 func codexUpstreamSSE(status string, endTurn *bool) string {
@@ -87,7 +89,7 @@ func TestCodexSSEAndPayloadUpstream(t *testing.T) {
 				t.Errorf("URL=%s", r.URL)
 			}
 			// D65 changes only product identity. The protocol and platform fields remain observable.
-			for key, want := range map[string]string{"Authorization": "Bearer " + codexTestToken(t, "acc_test"), "chatgpt-account-id": "acc_test", "OpenAI-Beta": "responses=experimental", "originator": "pi", "User-Agent": PiUserAgent(), "accept": "text/event-stream"} {
+			for key, want := range map[string]string{"Authorization": "Bearer " + codexTestToken(t, "acc_test"), "chatgpt-account-id": "acc_test", "OpenAI-Beta": "responses=experimental", "originator": pigidentity.CodexOriginator, "User-Agent": PiUserAgent(), "accept": "text/event-stream"} {
 				if r.Header.Get(key) != want {
 					t.Errorf("%s=%q want %q", key, r.Header.Get(key), want)
 				}

@@ -308,9 +308,11 @@ func TestHost_Integration_WidgetPushAndUICall(t *testing.T) {
 	if proxy == nil {
 		t.Fatal("initial widget push did not arrive: proxy is nil")
 	}
+	// A widget_push without a width is a string list widget, laid out as Pi's
+	// Text(line, 1, 0) (interactive-mode.ts:2321-2336).
 	lines := proxy.Render(80)
-	if len(lines) != 1 || lines[0] != "fixture: ready" {
-		t.Errorf("initial widget = %v, want [fixture: ready]", lines)
+	if want := " fixture: ready" + strings.Repeat(" ", 80-1-len("fixture: ready")); len(lines) != 1 || lines[0] != want {
+		t.Errorf("initial widget = %q, want [%q]", lines, want)
 	}
 
 	// Execute a tool: fixture sends ui.notify + widget_push + response.
@@ -351,7 +353,7 @@ func TestHost_Integration_WidgetPushAndUICall(t *testing.T) {
 	// Verify widget was updated after tool execution.
 	pollUntil(t, testTimeout(t, 2*time.Second), "widget not updated after tool execution", func() bool {
 		lines := proxy.Render(80)
-		return len(lines) == 1 && lines[0] == "fixture: greeted pig"
+		return len(lines) == 1 && lines[0] == " fixture: greeted pig"+strings.Repeat(" ", 80-1-len("fixture: greeted pig"))
 	})
 
 	h.Shutdown("test done")
@@ -1228,17 +1230,19 @@ func TestHost_Integration_SDKUIParityMethods(t *testing.T) {
 	if proxy == nil {
 		t.Fatal("sdk ui-probe widget missing")
 	}
+	// A string list is content the host lays out with Pi's Text(line, 1, 0)
+	// (interactive-mode.ts:2321-2336): one column of padding either side.
 	lines := proxy.Render(80)
-	if len(lines) != 1 || lines[0] != "sdk-fixture: ui-probe" {
-		t.Fatalf("widget lines = %v", lines)
+	if want := " sdk-fixture: ui-probe" + strings.Repeat(" ", 80-1-len("sdk-fixture: ui-probe")); len(lines) != 1 || lines[0] != want {
+		t.Fatalf("widget lines = %q, want [%q]", lines, want)
 	}
 	proxy = bridge.GetWidget("sdk-fixture", "status-call")
 	if proxy == nil {
 		t.Fatal("sdk ui-probe call-path widget missing")
 	}
 	lines = proxy.Render(80)
-	if len(lines) != 1 || lines[0] != "sdk-fixture: ui-probe call" {
-		t.Fatalf("call-path widget lines = %v", lines)
+	if want := " sdk-fixture: ui-probe call" + strings.Repeat(" ", 80-1-len("sdk-fixture: ui-probe call")); len(lines) != 1 || lines[0] != want {
+		t.Fatalf("call-path widget lines = %q", lines)
 	}
 
 	if len(notifications) == 0 {
