@@ -171,12 +171,30 @@ type footerProbeCase struct {
 	// the resize: the host must then paint no footer rather than the
 	// 128-column rows.
 	staleFooterUnpainted bool
+	// probe is the language's shared probe: its extension and PiG home, so the
+	// cases of one language build the extension once.
+	probe footerProbe
+}
+
+// footerProbe is one language's probe extension and the PiG home whose build
+// cache its cases share.
+type footerProbe struct{ extension, pigHome string }
+
+// footerProbes writes each language's probe once per test.
+func footerProbes(t *testing.T) map[string]footerProbe {
+	t.Helper()
+	probes := map[string]footerProbe{}
+	for _, language := range []string{"go", "py", "rs"} {
+		probes[language] = footerProbe{extension: writeFooterProbe(t, language), pigHome: t.TempDir()}
+	}
+	return probes
 }
 
 // TestExtensionFooterSurvivesNarrowingResize proves every SDK's footer reaches
 // the differential renderer no wider than the pane after the pane narrows.
 func TestExtensionFooterSurvivesNarrowingResize(t *testing.T) {
 	binary := buildPigBinaryForSignalTest(t)
+	probes := footerProbes(t)
 	for _, tc := range []footerProbeCase{
 		{language: "go", mode: "static", staleFooterUnpainted: true},
 		{language: "go", mode: "contextinfo"},
@@ -186,6 +204,7 @@ func TestExtensionFooterSurvivesNarrowingResize(t *testing.T) {
 		{language: "rs", mode: "static", staleFooterUnpainted: true},
 		{language: "rs", mode: "renderer"},
 	} {
+		tc.probe = probes[tc.language]
 		t.Run(tc.language+"/"+tc.mode, func(t *testing.T) { runFooterProbe(t, binary, tc) })
 	}
 }
@@ -195,16 +214,17 @@ func TestExtensionFooterSurvivesNarrowingResize(t *testing.T) {
 // starting width and after the pane narrows.
 func TestExtensionStringWidgetIsWrappedByTheHost(t *testing.T) {
 	binary := buildPigBinaryForSignalTest(t)
+	probes := footerProbes(t)
 	for _, language := range []string{"go", "py", "rs"} {
 		t.Run(language, func(t *testing.T) {
-			runFooterProbe(t, binary, footerProbeCase{language: language, mode: "none", widget: true})
+			runFooterProbe(t, binary, footerProbeCase{language: language, mode: "none", widget: true, probe: probes[language]})
 		})
 	}
 }
 
 func runFooterProbe(t *testing.T, binary string, tc footerProbeCase) {
 	t.Helper()
-	extension := writeFooterProbe(t, tc.language)
+	extension, pigHome := tc.probe.extension, tc.probe.pigHome
 	master, slave := openPTY(t, 30, 128)
 	defer func() { _ = master.Close() }()
 	widget := "0"
@@ -213,7 +233,7 @@ func runFooterProbe(t *testing.T, binary string, tc footerProbeCase) {
 	}
 	cmd := exec.Command(binary, "--no-extensions", "-e", extension, "--model", "test-faux/faux-1")
 	cmd.Dir = t.TempDir()
-	cmd.Env = append(os.Environ(), "PIG_HOME="+t.TempDir(), "PIG_CODING_AGENT_DIR="+t.TempDir(), "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "F104_MODE="+tc.mode, "F104_WIDGET="+widget, "TERM=xterm-256color")
+	cmd.Env = append(os.Environ(), "PIG_HOME="+pigHome, "PIG_CODING_AGENT_DIR="+t.TempDir(), "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "F104_MODE="+tc.mode, "F104_WIDGET="+widget, "TERM=xterm-256color")
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = slave, slave, slave
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true, Setctty: true}
 	if err := cmd.Start(); err != nil {
