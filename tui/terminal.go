@@ -189,11 +189,16 @@ func IsKittyProtocolActive() bool {
 	return kittyProtocolActive.Load()
 }
 
-// extendedKeyInit enables bracketed paste, requests Pi's desired Kitty flags
-// (disambiguation, event types, alternate keys), queries the resulting flags,
+// kittyKeyboardProtocolPush pushes Pi's desired Kitty flags (disambiguation,
+// event types, alternate keys) onto the active screen's stack.
+const kittyKeyboardProtocolPush = "\x1b[>7u"
+
+// kittyKeyboardProtocolQuery pushes the flags, queries the resulting flags,
 // then sends Device Attributes as a sentinel. A terminal without Kitty still
 // answers DA, which enables modifyOtherKeys without a startup timer.
-const kittyKeyboardProtocolQuery = "\x1b[>7u\x1b[?u\x1b[c"
+const kittyKeyboardProtocolQuery = kittyKeyboardProtocolPush + "\x1b[?u\x1b[c"
+
+// extendedKeyInit enables bracketed paste, then runs kittyKeyboardProtocolQuery.
 const extendedKeyInit = "\x1b[?2004h" + kittyKeyboardProtocolQuery
 
 func (t *ProcessTerminal) queryAndEnableKittyProtocol() {
