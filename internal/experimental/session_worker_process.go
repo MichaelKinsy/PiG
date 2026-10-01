@@ -233,12 +233,11 @@ func workerLifecycleDelay(name string, fallback int) (int, error) {
 		err = strconv.ErrSyntax
 	} else if value != "" {
 		if strings.HasPrefix(value, "0x") || strings.HasPrefix(value, "0X") || strings.HasPrefix(value, "0o") || strings.HasPrefix(value, "0O") || strings.HasPrefix(value, "0b") || strings.HasPrefix(value, "0B") {
-			var n uint64
-			n, err = strconv.ParseUint(value, 0, 64)
-			if err == nil && n > maxSafeInteger {
-				err = strconv.ErrRange
+			n, parseErr := strconv.ParseUint(value, 0, 64)
+			if parseErr != nil || n > maxSafeInteger || n > math.MaxInt {
+				return 0, fmt.Errorf("%s must be a non-negative safe integer", name)
 			}
-			number = float64(n)
+			return int(n), nil
 		} else {
 			number, err = strconv.ParseFloat(value, 64)
 		}
