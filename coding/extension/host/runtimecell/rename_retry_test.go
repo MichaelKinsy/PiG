@@ -265,7 +265,10 @@ func TestPublishArtifactRetriesATransientPublishRename(t *testing.T) {
 
 func TestPublishArtifactReportsAPersistentPublishRenameFailureUnchanged(t *testing.T) {
 	final := filepath.Join(t.TempDir(), "cells", "node", "deadbeef")
-	attempts := publishWithInjectedRename(t, retryEverything, func(_ int, oldpath, newpath string) error {
+	attempts := publishWithInjectedRename(t, retryEverything, func(attempt int, oldpath, newpath string) error {
+		if attempt > 10_000 {
+			t.Fatalf("still retrying after %d renames; the budget does not bound the publish retries", attempt)
+		}
 		return &os.LinkError{Op: "rename", Old: oldpath, New: newpath, Err: errTransientLock}
 	})
 	_, err := PublishArtifact(t.Context(), final, "runner", "deadbeef", "node", func(scratch string) (string, error) {
