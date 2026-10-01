@@ -3,6 +3,7 @@ package runtimecell
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -85,7 +86,7 @@ func TestRenameRetryReportsNonRetryableErrorUnchangedWithoutRetrying(t *testing.
 	if adopted {
 		t.Fatal("a failed rename must not report a peer's entry")
 	}
-	if err != error(want) {
+	if !errors.Is(err, want) || err.Error() != want.Error() {
 		t.Fatalf("err = %#v, want the rename error unchanged", err)
 	}
 	if rec.renames != 1 || len(rec.delays) != 0 {
@@ -97,7 +98,10 @@ func TestRenameRetryStopsAtTheBudgetAndReportsTheLastError(t *testing.T) {
 	var rec recordingRetry
 	var last error
 	policy := rec.policy(func(attempt int) error {
-		last = &os.LinkError{Op: "rename", Old: "a", New: "b", Err: errors.New("access denied attempt " + string(rune('0'+attempt%10)))}
+		if attempt > 10_000 {
+			t.Fatalf("still retrying after %d renames; the budget does not bound the retries", attempt)
+		}
+		last = &os.LinkError{Op: "rename", Old: "a", New: "b", Err: fmt.Errorf("access denied on attempt %d", attempt)}
 		return last
 	}, retryEverything)
 
@@ -105,7 +109,7 @@ func TestRenameRetryStopsAtTheBudgetAndReportsTheLastError(t *testing.T) {
 	if adopted {
 		t.Fatal("a failed rename must not report a peer's entry")
 	}
-	if err != last {
+	if !errors.Is(err, last) || err.Error() != last.Error() {
 		t.Fatalf("err = %v, want the final rename error unchanged (%v)", err, last)
 	}
 	if got := rec.totalDelay(); got != renameRetryBudget {
