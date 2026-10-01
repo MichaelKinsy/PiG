@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, relative } from "node:path";
+import { identityPatches, patchIdentity } from "./pi-identity-patches.mjs";
 
 const [shims, agent, output = join(shims, "vendor-manifest.json")] = process.argv.slice(2);
 const shrinkwrap = JSON.parse(readFileSync(join(agent, "npm-shrinkwrap.json"), "utf8"));
@@ -48,6 +49,9 @@ for (const [name, pkg] of piPackages) {
     let rewrite;
     if (hash(source) !== hash(output)) {
       rewrite = name === "pi-coding-agent" && rel === "config.js" ? "D2 configuration and private asset paths; published bundled loader" : name === "pi-ai" && rel.startsWith("api/") ? "D74 host API leaf" : "module specifiers";
+      // A file can carry both seams: keep the other rewrite's label unless the identity patches alone produce the output.
+      const identity = "D26 PiG product identity (automation/gen/pi-identity-patches.mjs)";
+      if (identityPatches[`${name}/${rel}`]) rewrite = patchIdentity(`${name}/${rel}`, readFileSync(source, "utf8")) === readFileSync(output, "utf8") ? identity : `${rewrite}; ${identity}`;
     }
     record(output, source, pkg, rewrite);
   }

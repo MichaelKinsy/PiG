@@ -1,0 +1,58 @@
+# Behavior family: model-resolver-selector
+# Surface: only tui.input.tab toggles the model-picker scope.
+#
+# Upstream evidence (Pi 0.87.1 model-selector.ts handleInput): the scope toggle
+# is guarded by kb.matches(keyData, "tui.input.tab"), whose default key is
+# "tab" (packages/tui/src/keybindings.ts). Shift+Tab (CSI Z) matches no
+# selector action, so it reaches the search input, which ignores it.
+# Exact Pi 0.87.1 re-probe (2026-09-29) with --models fixture/model-two:
+# after Shift+Tab the picker stays in scoped scope and lists only model-two.
+# Pig previously hard-coded Shift+Tab as a scope toggle and listed both models.
+# The first step waits for the background refresh, the settled state that
+# re-anchors the selection on both sides (see 11-model-picker-arrow-wrap).
+
+name = "23-model-picker-shift-tab-keeps-scope"
+description = "Shift+Tab does not toggle the model-picker scope."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/model-selector.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 20
+capture_start = "Scope:"
+capture_end = "Model catalogs refreshed."
+
+[[tmux.steps]]
+keys = ["/model", "Enter"]
+wait_contains = ["Scope:", "Model catalogs refreshed."]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["hex:1b 5b 5a"]
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../model-resolver-selector/testdata/pig-agent-local"]
+pi = ["PI_CODING_AGENT_DIR=../model-resolver-selector/testdata/pi-agent-local"]
+pig_args = ["--no-extensions", "--offline", "--models", "fixture/model-two", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--models", "fixture/model-two", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = [
+  "Scope:",
+  "tab scope (all/scoped)",
+  "→ ✓ model-two [fixture]",
+  "Model Name: Model Two",
+  "Model catalogs refreshed.",
+]
+both_not_contain = ["panic:", "goroutine ", "model-one [fixture]"]
+output_equal = true
+escaped_output_equal = true
+runs = 3

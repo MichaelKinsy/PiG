@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -63,7 +64,7 @@ func signedManifestServer(t *testing.T, handler http.Handler) *httptest.Server {
 func upToDateManifest(t *testing.T) *httptest.Server {
 	t.Helper()
 	ver := selfUpdateVersion()
-	body := `{"version":"` + ver + `","packageName":"pig","binaries":{"` + codingagent.PlatformKey() + `":{"url":"u","sha256":"s"}}}`
+	body := `{"version":"` + ver + `","packageName":"@pi-in-go/pig","binaries":{"` + codingagent.PlatformKey() + `":{"url":"u","sha256":"s"}}}`
 	return signedManifestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(body))
 	}))
@@ -77,7 +78,7 @@ func newerManifest(t *testing.T, payload []byte) (*httptest.Server, *httptest.Se
 	binSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write(payload)
 	}))
-	manifest := `{"version":"9.9.9","packageName":"pig","binaries":{"` + codingagent.PlatformKey() + `":{"url":"` + binSrv.URL + `","sha256":"` + hex.EncodeToString(sum[:]) + `"}}}`
+	manifest := `{"version":"9.9.9","packageName":"@pi-in-go/pig","binaries":{"` + codingagent.PlatformKey() + `":{"url":"` + binSrv.URL + `","sha256":"` + hex.EncodeToString(sum[:]) + `"}}}`
 	manSrv := signedManifestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(manifest))
 	}))
@@ -187,7 +188,7 @@ func TestAC5ImmutableBinaryPathRefusesMutation(t *testing.T) {
 		t.Error("the immutable binary started a download")
 	}))
 	defer downloads.Close()
-	manifest := `{"version":"99.0.0","packageName":"pig","binaries":{"` + codingagent.PlatformKey() + `":{"url":"` + downloads.URL + `","sha256":"` + strings.Repeat("0", 64) + `"}}}`
+	manifest := `{"version":"99.0.0","packageName":"@pi-in-go/pig","binaries":{"` + codingagent.PlatformKey() + `":{"url":"` + downloads.URL + `","sha256":"` + strings.Repeat("0", 64) + `"}}}`
 	srv := signedManifestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(manifest))
 	}))
@@ -271,7 +272,7 @@ func TestAC3PrivateCATransportUpdatesWithoutTLSOverride(t *testing.T) {
 			_, _ = w.Write(payload)
 			return
 		}
-		manifest := []byte(`{"version":"9.9.9","packageName":"pig","binaries":{"` + codingagent.PlatformKey() + `":{"url":"` + serverURL + `/pig","sha256":"` + hex.EncodeToString(sum[:]) + `"}}}`)
+		manifest := []byte(`{"version":"9.9.9","packageName":"@pi-in-go/pig","binaries":{"` + codingagent.PlatformKey() + `":{"url":"` + serverURL + `/pig","sha256":"` + hex.EncodeToString(sum[:]) + `"}}}`)
 		w.Header().Set(codingagent.UpdateSignatureHeader, base64.StdEncoding.EncodeToString(ed25519.Sign(privateKey, manifest)))
 		_, _ = w.Write(manifest)
 	}))
@@ -370,7 +371,7 @@ func TestAC11ForceReinstallsCurrentStandaloneRelease(t *testing.T) {
 		_, _ = w.Write(payload)
 	}))
 	defer binSrv.Close()
-	manifest := `{"version":"` + PigVersion + `","packageName":"pig","binaries":{"` + codingagent.PlatformKey() + `":{"url":"` + binSrv.URL + `","sha256":"` + hex.EncodeToString(sum[:]) + `"}}}`
+	manifest := `{"version":"` + PigVersion + `","packageName":"@pi-in-go/pig","binaries":{"` + codingagent.PlatformKey() + `":{"url":"` + binSrv.URL + `","sha256":"` + hex.EncodeToString(sum[:]) + `"}}}`
 	manifestSrv := signedManifestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(manifest))
 	}))
@@ -511,7 +512,51 @@ func TestSelfUpdatePlansASameVersionPackageRename(t *testing.T) {
 	if readErr != nil {
 		t.Fatal(readErr)
 	}
-	if want := "uninstall -g pig\ninstall -g --ignore-scripts --min-release-age=0 pig-next@" + ver + "\n"; string(data) != want {
+	if want := "uninstall -g @pi-in-go/pig\ninstall -g --ignore-scripts --min-release-age=0 pig-next@" + ver + "\n"; string(data) != want {
 		t.Fatalf("package manager ran %q, want %q", data, want)
+	}
+}
+
+// A release manifest built by the release generator without overrides names
+// PiG's npm package, so the npm update installs @pi-in-go/pig (the package the
+// global install owns) and never the unrelated unscoped "pig" package.
+func TestNpmSelfUpdateInstallsTheScopedPackageFromTheGeneratedManifest(t *testing.T) {
+	python, err := exec.LookPath("python3")
+	if err != nil {
+		t.Skip("python3 is unavailable")
+	}
+	dir := t.TempDir()
+	name := "pig-" + runtime.GOOS + "-" + runtime.GOARCH
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+	if err := os.WriteFile(filepath.Join(dir, name), []byte("pig-binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	script := filepath.Join("..", "..", "automation", "release", "gen-update-manifest.py")
+	manifest, err := exec.Command(python, script, "--version", "9.9.9", "--base-url", "https://updates.example", "--dir", dir).Output()
+	if err != nil {
+		t.Fatalf("generate manifest: %v", err)
+	}
+	srv := signedManifestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(manifest) }))
+	defer srv.Close()
+	t.Setenv("PIG_UPDATE_URL", srv.URL)
+	log := filepath.Join(t.TempDir(), "manager.log")
+	t.Setenv(managerLogEnv, log)
+	manager := filepath.Join(t.TempDir(), "npm")
+	if runtime.GOOS == "windows" {
+		manager += ".exe"
+	}
+	copyTestBinary(t, manager)
+	prov := &codingagent.SelfUpdateProvenance{Tier: codingagent.TierPackageManager, PackageOwner: "npm", PackageName: "@pi-in-go/pig", ExePath: filepath.Join(t.TempDir(), "pig")}
+	if err := applyPackageManagerUpdate(prov, []string{manager}, false); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(log)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "install -g --ignore-scripts --min-release-age=0 @pi-in-go/pig@9.9.9\n"; string(data) != want {
+		t.Fatalf("npm ran %q, want %q", data, want)
 	}
 }

@@ -116,7 +116,9 @@ func ExportSessionToJsonl(session *Session, outputPath string, createTrailingEnt
 // upstream's messages. outputPath is normalized as upstream normalizePath does
 // and written relative to the process working directory without creating its
 // parent; an empty outputPath becomes pig-session-<session basename>.html.
-func ExportSessionToHTML(sessionFile, outputPath string, tools []extension.RegisteredTool, cwd string) (string, error) {
+// state is the live agent state upstream passes to exportSessionToHtml: the
+// export embeds its system prompt and active tool schemas.
+func ExportSessionToHTML(sessionFile, outputPath string, tools []extension.RegisteredTool, cwd string, state ShareState) (string, error) {
 	if sessionFile == "" {
 		return "", errors.New("Cannot export in-memory session to HTML")
 	}
@@ -127,7 +129,11 @@ func ExportSessionToHTML(sessionFile, outputPath string, tools []extension.Regis
 	if err != nil {
 		return "", err
 	}
-	return export.ExportFromFileWithTools(sessionFile, outputPath, tools, cwd)
+	agentState := export.AgentState{SystemPrompt: state.SystemPrompt, Tools: make([]export.ToolSchema, len(state.Tools))}
+	for i, tool := range state.Tools {
+		agentState.Tools[i] = export.ToolSchema(tool)
+	}
+	return export.ExportFromFileWithTools(sessionFile, outputPath, tools, cwd, &agentState)
 }
 
 // resolveExportPath mirrors upstream resolvePath(input, baseDir): expand a

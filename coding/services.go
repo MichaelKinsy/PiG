@@ -376,17 +376,20 @@ func (runtime *ModelRuntime) start(ctx context.Context, model *ai.Model, transcr
 		}
 		provider = &composedStreamProvider{Provider: provider, model: preparedModel}
 	}
-	inner, err := provider.Stream(ctx, transcript, preparedOptions)
-	if err != nil {
-		runtime.fail(ctx, outer, preparedModel, err)
-		return
-	}
-	if inner == nil {
-		runtime.fail(ctx, outer, preparedModel, fmt.Errorf("model runtime: provider %q returned a nil stream", provider.ID()))
-		return
-	}
-	// Pi lazy.ts:forwardStream drains the provider's iterator and awaits its result without observing a partial snapshot.
-	if err := outer.ForwardStream(ctx, inner); err != nil {
+	// Pi lazy.ts:48-60 `setup().then((inner) => forwardStream(outer, inner))`: the provider stream is created and the forwarder registered in one continuation, with one reaction between them. A provider that has its response buffered queues its whole run behind that continuation; creating the stream outside it lets the response finish before the forwarder reads its first event.
+	if err := ai.RunStreamContinuation(ctx, func(observation *ai.StreamObservation) error {
+		ctx := observation.Context(ctx)
+		inner, err := provider.Stream(ctx, transcript, preparedOptions)
+		if err != nil {
+			return err
+		}
+		if inner == nil {
+			return fmt.Errorf("model runtime: provider %q returned a nil stream", provider.ID())
+		}
+		observation.Yield()
+		// Pi lazy.ts:forwardStream drains the provider's iterator and awaits its result without observing a partial snapshot.
+		return outer.ForwardStream(ctx, inner)
+	}); err != nil {
 		runtime.fail(ctx, outer, preparedModel, err)
 	}
 }

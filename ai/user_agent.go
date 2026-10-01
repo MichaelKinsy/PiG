@@ -3,6 +3,7 @@ package ai
 import (
 	"runtime"
 
+	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
 
@@ -19,7 +20,7 @@ var ProductVersion = pigversion.Version
 // (<platform> <release>; <arch>)" (owner decision, delivery/OWNER-DECISIONS.md
 // Q4).
 func PiUserAgent() string {
-	return "pig/" + ProductVersion + " (" + piUserAgentPlatform(runtime.GOOS) + " " + piUserAgentRelease() + "; " + piUserAgentArch(runtime.GOARCH) + ")"
+	return pigidentity.UserAgentProduct + "/" + ProductVersion + " (" + piUserAgentPlatform(runtime.GOOS) + " " + piUserAgentRelease() + "; " + piUserAgentArch(runtime.GOARCH) + ")"
 }
 
 // piUserAgentPlatform maps runtime.GOOS to the vocabulary Node's

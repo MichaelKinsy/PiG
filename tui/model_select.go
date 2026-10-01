@@ -309,40 +309,31 @@ func (m *ModelSelector) Render(width int) []string {
 	return append(out, border.Render(width)...)
 }
 
+// HandleInput mirrors upstream model-selector.ts handleInput: it checks tui.input.tab, tui.select.up, tui.select.down, tui.select.confirm, tui.select.cancel and app.models.save in that order, and passes every other key to the search input before it reapplies the query.
 func (m *ModelSelector) HandleInput(data string) {
-	// Route through TUI keybinding registry. Mirrors upstream
-	// model-select.ts handleInput dispatch.
 	kb := GetTUIKeybindings()
 	switch {
-	case kb.Matches(data, KBSelectCancel):
-		m.cancelled = true
-		m.done = true
+	case kb.Matches(data, KBInputTab):
+		if len(m.scoped) > 0 {
+			if m.scope == ModelScopeAll {
+				m.setScope(ModelScopeScoped)
+			} else {
+				m.setScope(ModelScopeAll)
+			}
+		}
+	case kb.Matches(data, KBSelectUp):
+		m.moveCursor(-1, true)
+	case kb.Matches(data, KBSelectDown):
+		m.moveCursor(1, true)
 	case kb.Matches(data, KBSelectConfirm):
 		if len(m.filtered) > 0 && m.cursor < len(m.filtered) {
 			item := m.active[m.filtered[m.cursor]]
 			m.selectedFQ = item.FQ()
 			m.done = true
 		}
-	case data == "\t" || kb.Matches(data, KBInputTab) || data == "\x1b[Z": // Tab / Shift+Tab: toggle scope
-		// Only toggle if there's a meaningful difference between the
-		// two lists (mirrors upstream's `if scopedModelItems.length > 0`
-		// guard).
-		if len(m.scoped) > 0 {
-			if m.scope == ModelScopeAll {
-				m.scope = ModelScopeScoped
-			} else {
-				m.scope = ModelScopeAll
-			}
-			m.refreshActive()
-		}
-	case kb.Matches(data, KBSelectUp):
-		m.moveCursor(-1, true)
-	case kb.Matches(data, KBSelectDown):
-		m.moveCursor(1, true)
-	case kb.Matches(data, KBSelectPageUp):
-		m.moveCursor(-10, false)
-	case kb.Matches(data, KBSelectPageDown):
-		m.moveCursor(10, false)
+	case kb.Matches(data, KBSelectCancel):
+		m.cancelled = true
+		m.done = true
 	case scopedModelsActionMatches(kb, data, "app.models.save", "ctrl+s"):
 		if len(m.filtered) > 0 && m.cursor < len(m.filtered) {
 			m.selectedFQ = m.active[m.filtered[m.cursor]].FQ()
@@ -350,13 +341,25 @@ func (m *ModelSelector) HandleInput(data string) {
 			m.done = true
 		}
 	default:
-		before := m.searchInput.Text()
 		m.searchInput.HandleInput(data)
-		if m.searchInput.Text() != before {
-			m.applyFilter()
-		}
+		m.applyFilter()
 	}
 	m.Invalidate()
+}
+
+// setScope mirrors upstream setScope: it selects the current model in the new scope's unfiltered list, or the first row, and then reapplies the query.
+func (m *ModelSelector) setScope(scope ModelScope) {
+	if m.scope == scope {
+		return
+	}
+	m.scope = scope
+	if scope == ModelScopeScoped {
+		m.active = m.scoped
+	} else {
+		m.active = m.all
+	}
+	m.cursor = max(0, slices.IndexFunc(m.active, func(item ModelSelectorItem) bool { return item.FQ() == m.current }))
+	m.applyFilter()
 }
 
 func (m *ModelSelector) applyFilter() {

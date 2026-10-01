@@ -300,12 +300,12 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			}
 			return m.newRunner.Tools()
 		},
+		// Pi's /export, /share and /bug read session.state (agent-session.ts:3921, session-share.ts:38): the transcript's system prompt and the active tools.
 		ShareState: func() ShareState {
-			var activeTools []agent.AgentTool
-			if m.agent != nil {
-				activeTools = m.agent.Tools()
+			if m.agent == nil {
+				return NewShareState("", nil)
 			}
-			return NewShareState(m.currentSystemPrompt(), activeTools)
+			return NewShareState(AgentStateSystemPrompt(m.agent.MessagesSnapshot()), m.agent.Tools())
 		},
 		ShareSession: func(session *Session, state ShareState, showStatus func(string)) (string, error) {
 			return m.shareSessionWithLoader(ctx, session, state, showStatus)

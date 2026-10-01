@@ -187,6 +187,11 @@ func runBedrockRPCOnce(t *testing.T, bin string, inputs *bedrockRPCInputs, shape
 	var requests atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.Copy(io.Discard, r.Body)
+		// Only the model's ConverseStream request takes a response slot. A foreign client that reaches this reused loopback port must not consume the first body, or PiG's first request would receive the follow-up body and its buffered start state.
+		if r.Method != http.MethodPost || r.URL.Path != "/model/strict/converse-stream" {
+			http.NotFound(w, r)
+			return
+		}
 		w.Header().Set("Content-Type", "application/vnd.amazon.eventstream")
 		w.Header().Set("X-Amzn-Requestid", "req-"+strconv.Itoa(int(requests.Load())))
 		if requests.Add(1) != 1 {

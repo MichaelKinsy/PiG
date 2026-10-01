@@ -315,12 +315,12 @@ func (stream *AssistantMessageEventStream) ObservationContext(ctx context.Contex
 	return context.WithValue(ctx, continuationExecutorKey{}, executor)
 }
 
-// ForwardStream awaits and forwards one source iterator without observing or cloning its partial references. Its caller owns setup, cancellation, errors and draining.
+// ForwardStream awaits and forwards one source iterator without observing or cloning its partial references. Its caller owns setup, cancellation, errors and draining. A caller that owns the running turn forwards in it, so the source it just created cannot advance before the first await; any other caller acquires the queue, and a source it created earlier may already have run ahead.
 func (stream *AssistantMessageEventStream) ForwardStream(ctx context.Context, source *AssistantMessageEventStream) error {
 	ctx = stream.ObservationContext(ctx)
 	executor := stream.executor
 	var failure error
-	executor.run(func(turn *continuationTurn) {
+	forward := func(turn *continuationTurn) {
 		observation := context.WithValue(context.WithoutCancel(ctx), continuationTurnKey{}, turn)
 		for event := range source.events(observation, false) {
 			if err := stream.Push(event); err != nil {
@@ -329,7 +329,12 @@ func (stream *AssistantMessageEventStream) ForwardStream(ctx context.Context, so
 			}
 		}
 		stream.End(awaitContinuation(turn, source.resultContinuation(executor)))
-	})
+	}
+	if owned := ownedContinuationTurn(ctx, executor); owned != nil {
+		forward(owned)
+	} else {
+		executor.run(forward)
+	}
 	return failure
 }
 

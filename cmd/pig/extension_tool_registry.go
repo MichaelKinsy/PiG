@@ -7,7 +7,7 @@ package main
 // set, so it leaves the registry whole.
 func toolRegistryFilters(flags CLIFlags) (allowed, excluded map[string]struct{}) {
 	switch {
-	case len(flags.Tools) > 0:
+	case flags.Tools != nil:
 		allowed = make(map[string]struct{}, len(flags.Tools))
 		for _, name := range flags.Tools {
 			allowed[name] = struct{}{}

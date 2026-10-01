@@ -1446,6 +1446,7 @@ func (h *Host) quitSuspended() chan struct{} {
 }
 
 // setQuitHandlerSuspended records that a quit session_shutdown handler is suspended after its event-loop window: in Pi its wait keeps the process alive, so suspended commands can still settle and respond.
+// pig divergence (D85): the suspended quit handler keeps only this runtime process's commands alive; Pi's single process keeps every extension's command alive.
 func (h *Host) setQuitHandlerSuspended() {
 	h.commandFlightMu.Lock()
 	defer h.commandFlightMu.Unlock()
@@ -2555,6 +2556,9 @@ func (h *Host) waitForRegister(ctx context.Context, me *managedExt, conn *Conn) 
 				h.queueCall(me, conn, lanes, env.ID, env.Call)
 				continue
 			}
+			if env.Type == MsgCall {
+				conn.dropReservedHostCall(env.ID)
+			}
 			if env.Type == MsgNotify && env.Notify != nil && env.Notify.Method == NotifyLoadFailed {
 				var failure FactoryLoadError
 				if err := json.Unmarshal(env.Notify.Args, &failure); err != nil || failure.Message == "" {
@@ -3282,6 +3286,9 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 		if !h.acceptsNodeGeneration(me) {
 			if env.Type == MsgRequestState && env.RequestState != nil {
 				conn.settleSuspension(env.RequestState.RequestID)
+			}
+			if env.Type == MsgCall {
+				conn.dropReservedHostCall(env.ID)
 			}
 			continue
 		}

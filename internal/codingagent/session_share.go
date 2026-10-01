@@ -20,6 +20,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/rpcclient"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -44,11 +46,37 @@ func NewShareState(systemPrompt string, tools []agent.AgentTool) ShareState {
 		schema := tool.Schema()
 		shareTool := ShareTool{Name: tool.Name(), Description: schema.Description}
 		if schema.Parameters != nil {
-			shareTool.Parameters = schema.Parameters
+			shareTool.Parameters = orderedToolParameters(schema)
 		}
 		state.Tools = append(state.Tools, shareTool)
 	}
 	return state
+}
+
+// orderedToolParameters encodes the parameters in the schema's source key order, without HTML or line-separator escapes, as JSON.stringify writes Pi's tool.parameters. The export viewer lists parameters in that order (template.js Object.entries(properties)).
+func orderedToolParameters(schema ai.ToolSchema) any {
+	encoded, err := rpcclient.SerializeJsonLine(schema)
+	if err != nil {
+		return schema.Parameters
+	}
+	var wire struct {
+		Parameters json.RawMessage `json:"parameters"`
+	}
+	if err := json.Unmarshal(encoded, &wire); err != nil {
+		return schema.Parameters
+	}
+	return wire.Parameters
+}
+
+// AgentStateSystemPrompt returns upstream agent.state.systemPrompt: the prompt replayed from the transcript's system messages (agent.ts:89-91). It excludes a request-only forced prompt and base-prompt changes not yet sent to the model, which AgentSession.systemPrompt includes.
+func AgentStateSystemPrompt(messages []agent.AgentMessage) string {
+	var systems []ai.Message
+	for _, message := range messages {
+		if message.System != nil {
+			systems = append(systems, *message.System)
+		}
+	}
+	return ai.GetCurrentSystemPrompt(systems)
 }
 
 type shareEntryData struct {
