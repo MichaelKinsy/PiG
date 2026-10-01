@@ -3,10 +3,10 @@ package tui
 // BranchSummaryComponent renders a collapsible branch-summary marker.
 // It preserves Pi's horizontal and vertical Box padding.
 
-// customMsgLabelBranchFg is the fg color for the [branch] label.
-// Mirrors upstream customMessageLabel "#9575cd" exactly (same as [compaction]).
-// Value reuses the already-computed constant from compaction_summary.go.
-func customMsgLabelBranchFg() string { return customMsgLabelFg() } // #9575cd upstream exact
+// customMsgLabelBranchFg is the fg color for the [branch] label: the active
+// theme's "customMessageLabel" token, as for [compaction] (Pi
+// branch-summary-message.ts theme.fg("customMessageLabel", ...)).
+func customMsgLabelBranchFg() string { return customMsgLabelFg() }
 
 // BranchSummaryComponent renders a branch-summary boundary marker in the chat
 // transcript. Replaces the single-row BranchSummaryChip.

@@ -253,13 +253,9 @@ func (b *BashExecutionBlock) statusLines(hidden int) []string {
 	return lines
 }
 
-// Color tokens. Truecolor matches upstream theme/dark.json:
-//
-//	bashMode  #b5bd68  green   (181,189,104)
-//	dim       #666666  dimGray (102,102,102)
-//	muted     #808080  gray    (128,128,128)
-//
-// Each follows the active theme's color mode.
-func bashHeaderColor() string { return ThemeHexFg("#b5bd68") } // bashMode
-func bashDimColor() string    { return ThemeHexFg("#666666") } // dim
-func bashMutedColor() string  { return ThemeHexFg("#808080") } // muted
+// Color tokens. Each is the active theme's token (Pi bash-execution.ts
+// theme.fg("bashMode" | "dim" | "muted")), already built in the theme's color
+// mode. The theme schema requires every token, so none is ever empty.
+func bashHeaderColor() string { return ActiveTheme().BashMode }
+func bashDimColor() string    { return ActiveTheme().Dim }
+func bashMutedColor() string  { return ActiveTheme().Muted }

@@ -210378,12 +210378,12 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#thinkingVisibleSGR",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "thinkingVisibleSGR",
-      "kind": "constant",
+      "kind": "function",
       "exported": false,
       "shape": {
-        "type": "untyped string"
+        "type": "func() string"
       },
-      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#tmuxHyperlinkProbe",
