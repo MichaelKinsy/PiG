@@ -846,13 +846,10 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 		return nil, loadErr
 	}
 	me.flagDefaults = reg.flagDefaults
-	readyWidth := 120
-	if h.widthFunc != nil {
-		if w := h.widthFunc(); w > 0 {
-			readyWidth = w
-		}
-	}
-	readyPayload := &ReadyPayload{Cwd: h.cwd, Mode: h.mode, Width: readyWidth}
+	readyWidth, readyHeight := h.readyGeometry()
+	h.lastWidth = readyWidth
+	h.lastHeight = readyHeight
+	readyPayload := &ReadyPayload{Cwd: h.cwd, Mode: h.mode, Width: readyWidth, Height: readyHeight}
 	if h.uiBridge != nil {
 		// Same contract as the isolated path: a registering extension gets the
 		// whole log once, then only what is new.
