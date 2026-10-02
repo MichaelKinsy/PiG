@@ -182,12 +182,14 @@ func replaceOnlySlot(method string) string {
 		return "header"
 	case "ui.setFooter":
 		return "footer"
+	case "ui.setWidget":
+		return "widgets"
 	default:
 		return ""
 	}
 }
 
-// slotCall is one header, footer or login call that has been read and not yet run. run is its slot's application lock.
+// slotCall is a UI replacement read from the connection but not yet applied. run is the slot's application lock.
 type slotCall struct {
 	me     *managedExt
 	conn   *Conn
@@ -196,7 +198,7 @@ type slotCall struct {
 	run    *sync.Mutex
 }
 
-// pendingSlotCalls lists the read, not yet run calls of each replace-only slot in read order. It has its own lock so the read loop registers a call while another lane runs one. running holds one application lock per slot, so a header call held in the UI does not delay a footer call.
+// pendingSlotCalls keeps UI replacements in arrival order across request lanes. Each slot has its own application lock.
 type pendingSlotCalls struct {
 	mu      sync.Mutex
 	pending map[string][]*slotCall

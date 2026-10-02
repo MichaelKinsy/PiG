@@ -32,6 +32,7 @@ type UIBridge struct {
 	headerMu            sync.Mutex
 	footerMu            sync.Mutex            // footer admission, pending state and application are one step, as for headerMu; lock headerMu first
 	widgets             map[string]*PushProxy // key → proxy
+	widgetOrder         uint64
 
 	// customOverlays tracks the active ui.custom overlays keyed by
 	// "<extName>:<key>" so render/close notifications from the TS
@@ -1252,16 +1253,15 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 // list widget (the Go, Rust and Python SDKs' setWidget(key, string[])), which
 // the host lays out at its own width as Pi's setExtensionWidget does.
 func (b *UIBridge) HandleWidgetPush(extName string, push *WidgetPushPayload) {
+	placement := ""
 	if push.Width == 0 {
-		b.updateWidget(extName, push.Key, func(proxy *PushProxy) { proxy.UpdateContent(push.Lines) })
-		return
+		placement = "aboveEditor"
 	}
-	b.updateWidget(extName, push.Key, func(proxy *PushProxy) { proxy.UpdateLinesAt(push.Lines, push.Width) })
+	b.updateWidget(extName, push.Key, push.Lines, push.Width, placement)
 }
 
-// updateWidget applies update to the widget's proxy, creating and mounting the
-// proxy when the widget is new.
-func (b *UIBridge) updateWidget(extName, widgetKey string, update func(*PushProxy)) {
+// updateWidget replaces string-list widgets and updates component frames. An empty placement keeps a frame's current slot.
+func (b *UIBridge) updateWidget(extName, widgetKey string, lines []string, width int, placement string) {
 	key := extName + ":" + widgetKey
 
 	b.mu.Lock()
@@ -1269,19 +1269,30 @@ func (b *UIBridge) updateWidget(extName, widgetKey string, update func(*PushProx
 		b.mu.Unlock()
 		return
 	}
-	proxy, ok := b.widgets[key]
-	if !ok {
-		// b.Invalidate reads the callback at call time, so a widget pushed
-		// before the TUI wires SetInvalidate still repaints on later pushes.
+	proxy, exists := b.widgets[key]
+	replaced := !exists || width == 0
+	if replaced {
 		proxy = NewPushProxy(b.Invalidate, nil)
 		b.widgets[key] = proxy
 	}
+	proxy.mu.Lock()
+	moved := placement != "" && placement != proxy.placement
+	if replaced || moved {
+		b.widgetOrder++
+		proxy.order = b.widgetOrder
+	}
+	if placement != "" {
+		proxy.placement = placement
+	}
+	proxy.mu.Unlock()
 	b.mu.Unlock()
 
-	update(proxy)
-	// Only sync widget container when a NEW proxy was created (widget added).
-	// Existing proxy updates request a render through PushProxy.UpdateLines.
-	if !ok {
+	if width == 0 {
+		proxy.UpdateContent(lines)
+	} else {
+		proxy.UpdateLinesAt(lines, width)
+	}
+	if replaced || moved {
 		b.notifyWidgetSync()
 	}
 }
@@ -3321,14 +3332,19 @@ func (b *UIBridge) handleSetWidget(extName string, args json.RawMessage) (*CallR
 		// Clear outside b.mu: it requests a render through b.Invalidate.
 		if ok {
 			proxy.Clear()
+			b.notifyWidgetSync()
 		}
 	} else {
 		// A list with no width is a string[] widget: content the host lays out
 		// at its own width, as Pi's setExtensionWidget does. A list with a width
 		// is a frame a Node component rendered at that width.
-		b.HandleWidgetPush(extName, &WidgetPushPayload{Key: p.Key, Lines: lines, Width: p.Width})
+		options, _ := p.Options.(map[string]any)
+		placement := "aboveEditor"
+		if options["placement"] == "belowEditor" {
+			placement = "belowEditor"
+		}
+		b.updateWidget(extName, p.Key, lines, p.Width, placement)
 	}
-	b.notifyWidgetSync()
 
 	return &CallResultPayload{}, nil
 }

@@ -811,12 +811,6 @@ export class Connection {
       request_state: { request_id: id, state, ...(reason ? { reason } : {}) },
     });
   }
-
-  // width is the terminal width the lines were rendered at; the host never
-  // paints a frame rendered for another width.
-  pushWidget(key, lines, width) {
-    this.send({ type: "widget_push", widget_push: { key, lines, width } });
-  }
 }
 
 // errorInfo is the wire form of a thrown error. The stack travels with it
@@ -1929,12 +1923,7 @@ export class Runtime {
   }
 
   setWidgetFactory(key, factory, options = {}) {
-    const previous = this.widgets.get(key);
-    if (previous) {
-      previous.active = false;
-      if (previous.renderTimer !== undefined) clearTimeout(previous.renderTimer);
-      try { previous.component?.dispose?.(); } catch {}
-    }
+    if (this.widgets.has(key)) this.clearWidget(key);
     let requestFrame = () => {};
     const tuiShim = {
       requestRender: () => requestFrame(),
@@ -1992,11 +1981,8 @@ export class Runtime {
     if (width === widget.lastWidth && lines.length === widget.lastLines.length && lines.every((line, index) => line === widget.lastLines[index])) return;
     widget.lastLines = lines;
     widget.lastWidth = width;
-    if (widget.options?.placement) {
-      this.fireAndForget("ui.setWidget", { key, content: lines, options: widget.options, width });
-    } else {
-      this.conn?.pushWidget(key, lines, width);
-    }
+    // Frames use the same call lane as clears so a replacement cannot overtake its clear.
+    this.fireAndForget("ui.setWidget", { key, content: lines, options: widget.options, width });
   }
 
   applyState(snapshot) {

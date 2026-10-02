@@ -49,6 +49,7 @@ func (m *InteractiveMode) buildChatViewport() ChatViewport {
 		Status:              m.statusContainer,
 		WidgetsAbove:        m.widgetContainer,
 		Editor:              m.editorContainer,
+		WidgetsBelow:        m.widgetContainerBelow,
 		Footer:              tui.NewContainer(m.extFooter, m.statusLine),
 		Scrollbar:           (&SettingsManager{merged: m.opts.Settings}).GetFullscreenScrollbar(),
 		ScrollbarTrackStyle: themedScrollbarTrackStyle,
@@ -67,6 +68,9 @@ func (m *InteractiveMode) ensureLoadedResourcesContainer() {
 // mountInteractiveTui builds and paints the mode-appropriate layout from the shared component tree. Fullscreen arranges the transcript scroll view over the dock and enters the alt screen; regular adds the flat layout to the main screen. The initial paint does not depend on a welcome header or input. Run and live tui-mode switching reuse the same containers across renderer mounts.
 func (m *InteractiveMode) mountInteractiveTui() {
 	m.ensureLoadedResourcesContainer()
+	if m.widgetContainerBelow == nil {
+		m.widgetContainerBelow = tui.NewContainer()
+	}
 	layoutChildren := []tui.Component{
 		m.headerContainer(),
 		m.loadedResourcesContainer,
@@ -75,6 +79,7 @@ func (m *InteractiveMode) mountInteractiveTui() {
 		m.statusContainer,
 		m.widgetContainer,
 		m.editorContainer,
+		m.widgetContainerBelow,
 		m.extFooter,
 		m.statusLine,
 	}

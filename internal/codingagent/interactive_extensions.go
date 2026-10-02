@@ -1,6 +1,7 @@
 package codingagent
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -350,17 +351,35 @@ func (m *InteractiveMode) publishSlashCommandCatalog() {
 	m.slashCatalog.Store(catalog)
 }
 
-// syncWidgets keeps the above-editor spacer before the current widget frames, including when the widget set is empty. Mirrors interactive-mode.ts:renderWidgetContainer.
+// syncWidgets puts widgets on the selected side of the editor in insertion order. Only the above-editor slot has a leading blank row.
 func (m *InteractiveMode) syncWidgets(widgets map[string]*subprocess.PushProxy) {
 	if m.widgetContainer == nil {
 		return
 	}
-	children := make([]tui.Component, 0, len(widgets)+1)
-	children = append(children, tui.NewSpacer(1))
-	for _, proxy := range widgets {
-		children = append(children, proxy)
+	type widgetEntry struct {
+		proxy     *subprocess.PushProxy
+		placement string
+		order     uint64
 	}
-	m.widgetContainer.SetChildren(children...)
+	entries := make([]widgetEntry, 0, len(widgets))
+	for _, proxy := range widgets {
+		placement, order := proxy.WidgetLayout()
+		entries = append(entries, widgetEntry{proxy, placement, order})
+	}
+	slices.SortFunc(entries, func(a, b widgetEntry) int { return cmp.Compare(a.order, b.order) })
+	above := []tui.Component{tui.NewSpacer(1)}
+	var below []tui.Component
+	for _, entry := range entries {
+		if entry.placement == "belowEditor" {
+			below = append(below, entry.proxy)
+		} else {
+			above = append(above, entry.proxy)
+		}
+	}
+	m.widgetContainer.SetChildren(above...)
+	if m.widgetContainerBelow != nil {
+		m.widgetContainerBelow.SetChildren(below...)
+	}
 	if m.tuiInst != nil {
 		m.tuiInst.RequestRender()
 	}

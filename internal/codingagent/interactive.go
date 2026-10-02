@@ -168,14 +168,15 @@ type InteractiveMode struct {
 	resourceSourceInfo map[string]ResourceSourceInfo
 
 	// UI components
-	chatContainer       *tui.Container
-	extHeader           *specialLinesComponent
-	extFooter           *specialLinesComponent
-	widgetContainer     *tui.Container
-	editor              *tui.Editor
-	editorSnapshotOwner *tui.Editor
-	editorSnapshot      atomic.Pointer[string]
-	statusLine          *StatusLine
+	chatContainer        *tui.Container
+	extHeader            *specialLinesComponent
+	extFooter            *specialLinesComponent
+	widgetContainer      *tui.Container
+	widgetContainerBelow *tui.Container
+	editor               *tui.Editor
+	editorSnapshotOwner  *tui.Editor
+	editorSnapshot       atomic.Pointer[string]
+	statusLine           *StatusLine
 
 	// loadedResourcesContainer holds the loaded-resources listing between the
 	// header and the transcript, so clearing the transcript keeps it.
@@ -1371,6 +1372,7 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 	m.statusContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.widgetContainer = tui.NewContainer(tui.NewSpacer(1))
+	m.widgetContainerBelow = tui.NewContainer()
 	m.mountInteractiveTui()
 	// Pi sets up managed tools after the startup header and before extensions, still under handleStartupSubmit; setupEditorSubmitHandler follows (interactive-mode.ts:1017-1028).
 	m.ensureManagedTools(ctx, tools.NewToolsManager(m.opts.AgentDir))

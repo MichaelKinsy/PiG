@@ -322,6 +322,9 @@ func runSlotOrder(t *testing.T, ui *orderedSlotUI, sends ...slotSend) (blocked, 
 	t.Helper()
 	bridge := NewUIBridge(func() {})
 	bridge.SetUIContext(ui)
+	bridge.SetWidgetRequestFunc(func(_ string, _ string, lines []string, _ extension.ExtensionWidgetOptions) {
+		ui.record("widget:" + strings.Join(lines, ","))
+	})
 	f = newBridgeCallOrderFixture(t, bridge)
 	f.conn.pendingMu.Lock()
 	f.conn.pending["r9"] = make(chan *Envelope, 1)
@@ -352,6 +355,12 @@ func TestReadLoopRunsSlotCallsInSendOrder(t *testing.T) {
 		}},
 		{"footer", func(*testing.T) []slotSend {
 			return []slotSend{footerSend("c1", "", "older"), footerSend("c2", "r9", "newer")}
+		}},
+		{"widget", func(*testing.T) []slotSend {
+			return []slotSend{
+				{"c1", "ui.setWidget", "", map[string]any{"key": "list", "lines": []string{"older"}, "width": 20}, "widget:older"},
+				{"c2", "ui.setWidget", "r9", map[string]any{"key": "list", "lines": []string{"newer"}, "width": 40}, "widget:newer"},
+			}
 		}},
 		{"header then login", func(t *testing.T) []slotSend {
 			return []slotSend{headerSend("c1", "", "older"), loginSend(t, "c2", "r9", "newer")}

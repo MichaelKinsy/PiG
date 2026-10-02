@@ -26,6 +26,8 @@ type PushProxy struct {
 	lines []string
 	// linesWidth is the width the extension rendered lines at (0 = unknown).
 	linesWidth int
+	placement  string
+	order      uint64
 
 	// text holds the widget's Text components when the extension set a string
 	// list: content the host lays out at the width it renders, as Pi does for
@@ -50,9 +52,17 @@ type PushProxy struct {
 // of the new terminal width.
 func NewPushProxy(invalidate func(), onWidthChange func(width int)) *PushProxy {
 	return &PushProxy{
+		placement:     "aboveEditor",
 		invalidate:    invalidate,
 		onWidthChange: onWidthChange,
 	}
+}
+
+// WidgetLayout returns the dock placement and insertion order of this widget.
+func (p *PushProxy) WidgetLayout() (placement string, order uint64) {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.placement, p.order
 }
 
 // Render returns the cached lines, or lays a string list widget out at width.
