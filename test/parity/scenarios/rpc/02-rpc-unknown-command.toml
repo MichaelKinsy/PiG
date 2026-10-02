@@ -28,17 +28,32 @@ tags = ["hermetic", "fast"]
 driver = "rpc-mode"
 
 [rpc]
-input_lines = [
-  '{"type":"hello"}',
-  '{"type":"nonexistent"}',
-  '{"type":"does_not_exist","id":"test-id"}',
-  '{"id":"test","type":"foobar"}',
-  '{"id":"unicode","type":"a b c"}',
-]
 timeout_seconds = 15
-# Pi 0.84 dispatches JSONL handlers asynchronously; closing stdin immediately
-# races command publication with runtime disposal.
-settle_seconds = 1
+
+[[rpc.steps]]
+line = '{"type":"hello"}'
+wait_contains = ['"command":"hello"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"type":"nonexistent"}'
+wait_contains = ['"command":"nonexistent"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"type":"does_not_exist","id":"test-id"}'
+wait_contains = ['"id":"test-id"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"test","type":"foobar"}'
+wait_contains = ['"id":"test"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"unicode","type":"a b c"}'
+wait_contains = ['"id":"unicode"']
+wait_timeout_seconds = 10
 
 [env]
 pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
