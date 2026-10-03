@@ -45,9 +45,11 @@ export function createFacetBridge(host) {
     async request(args, signal) {
       if (args.op === "exits") return new Promise(resolve => setImmediate(() => resolve(exits.slice())));
       if (args.op !== "await") return driver.request(args, signal);
-      host.callSync({ observer: args.observer });
-      try { return await driver.request(args, signal); }
-      finally { exits.push(args.observer); }
+      // The entry call is inside the try: the host reports entry from within this synchronous call, so a cancel frame can land while it waits for its reply and abort it (cancelParent). That is still this observer's exit and must be recorded.
+      try {
+        host.callSync({ observer: args.observer });
+        return await driver.request(args, signal);
+      } finally { exits.push(args.observer); }
     }
   };
 }
@@ -137,7 +139,7 @@ export function createFacetBridge(host) {
 	if got := <-results["cancelled"]; !errors.Is(got.err, context.Canceled) {
 		t.Fatalf("cancelled observer=%#v, %v; want context cancellation", got.value, got.err)
 	}
-	// The cancel frame is queued ahead of this request, but Node reads socket frames in separate event-loop turns on Windows, so a single checkpoint can precede the abort. Poll until the exit is recorded; the producer stays unsettled throughout.
+	// The cancel frame is queued ahead of this request, but Node reads socket frames in separate event-loop turns, so a single checkpoint can precede the abort. Poll until the exit is recorded; the producer stays unsettled throughout.
 	var exits []string
 	for deadline := time.Now().Add(10 * time.Second); ; {
 		exits = nil
