@@ -65,6 +65,11 @@ type TuiAltScreen struct {
 	layoutRoot           Component
 	currentLayout        *LayoutFrame
 
+	// One worker coalesces pending geometry so slow callbacks cannot reorder resizes.
+	pendingWidth      int
+	pendingHeight     int
+	notifyingGeometry bool
+
 	implicitDocument   Component
 	implicitScrollView *ScrollView
 	flashes            *AltScreenFlashContainer
@@ -442,6 +447,8 @@ func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
 	t.clearComponentMouseGesture()
 	t.mu.Lock()
 	t.stopped = true
+	t.pendingWidth = 0
+	t.pendingHeight = 0
 	if t.renderTimer != nil {
 		t.renderTimer.Stop()
 		t.renderTimer = nil
@@ -873,17 +880,42 @@ func (t *TuiAltScreen) doRender() {
 	buf.WriteString(altEndSynchronizedOutput)
 	_, _ = fmt.Fprint(t.out, buf.String())
 
-	// Subprocess components render at the notified geometry, as in the regular renderer. Keep IPC callbacks off the render loop.
 	if t.previousScreenWidth > 0 && t.previousScreenWidth != width && t.onWidthChange != nil {
-		go t.onWidthChange(width)
+		t.pendingWidth = width
 	}
 	if t.previousScreenHeight > 0 && t.previousScreenHeight != height && t.onHeightChange != nil {
-		go t.onHeightChange(height)
+		t.pendingHeight = height
+	}
+	if !t.notifyingGeometry && (t.pendingWidth != 0 || t.pendingHeight != 0) {
+		t.notifyingGeometry = true
+		go t.notifyGeometryChanges()
 	}
 	t.previousScreen = screen
 	t.previousScreenWidth = width
 	t.previousScreenHeight = height
 	t.currentLayout = &nextLayout
+}
+
+func (t *TuiAltScreen) notifyGeometryChanges() {
+	for {
+		t.mu.Lock()
+		if t.stopped || (t.pendingWidth == 0 && t.pendingHeight == 0) {
+			t.notifyingGeometry = false
+			t.mu.Unlock()
+			return
+		}
+		callback, size := t.onWidthChange, t.pendingWidth
+		if size != 0 {
+			t.pendingWidth = 0
+		} else {
+			callback, size = t.onHeightChange, t.pendingHeight
+			t.pendingHeight = 0
+		}
+		t.mu.Unlock()
+		if callback != nil {
+			callback(size)
+		}
+	}
 }
 
 // altScreenRow returns screen[row], or "" past the end (upstream's

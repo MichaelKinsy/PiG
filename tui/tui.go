@@ -1090,16 +1090,14 @@ func (t *TUI) RenderSnapshot(width int) []string {
 	return t.Container.Render(width)
 }
 
-// SetOnWidthChange registers a callback that fires whenever the terminal
-// width changes between render frames. Thread-safe.
+// SetOnWidthChange registers a terminal-width callback. Fullscreen coalesces pending changes while a callback runs. Thread-safe.
 func (t *tuiBase) SetOnWidthChange(fn func(width int)) {
 	t.mu.Lock()
 	t.onWidthChange = fn
 	t.mu.Unlock()
 }
 
-// SetOnHeightChange registers a callback that fires whenever the terminal
-// height changes between render frames. Thread-safe.
+// SetOnHeightChange registers a terminal-height callback. Fullscreen coalesces pending changes while a callback runs. Thread-safe.
 func (t *tuiBase) SetOnHeightChange(fn func(height int)) {
 	t.mu.Lock()
 	t.onHeightChange = fn

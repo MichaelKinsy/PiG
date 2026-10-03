@@ -200376,6 +200376,17 @@
       "shapeHash": "sha256:048fa808af31faea66f07e7beb68759c51bdae9b613f4bbf8b64af764afa9b27"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.notifyGeometryChanges",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.notifyGeometryChanges",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.openModalOverlay",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiAltScreen.openModalOverlay",

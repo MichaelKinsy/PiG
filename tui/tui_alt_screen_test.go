@@ -133,6 +133,97 @@ func TestAltScreenNotifiesGeometryChanges(t *testing.T) {
 	})
 }
 
+func TestAltScreenGeometryCallbacksCoalesceInRenderOrder(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		first   [2]int
+		resizes [][2]int
+		want    []string
+	}{
+		{"width", [2]int{12, 4}, [][2]int{{20, 9}, {8, 6}, {8, 6}}, []string{"width:12", "width:8", "height:6"}},
+		{"height", [2]int{20, 6}, [][2]int{{12, 9}, {8, 4}, {8, 4}}, []string{"height:6", "width:8", "height:4"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				var out bytes.Buffer
+				tui := newAltScreenForTest(&out, 20, 4, TuiAltScreenOptions{})
+				started, release := make(chan struct{}), make(chan struct{})
+				events := make(chan string, 16)
+				notify := func(kind string, value int) {
+					event := fmt.Sprintf("%s:%d", kind, value)
+					if event == tc.want[0] {
+						close(started)
+						<-release
+					}
+					events <- event
+				}
+				tui.SetOnWidthChange(func(width int) { notify("width", width) })
+				tui.SetOnHeightChange(func(height int) { notify("height", height) })
+				tui.Start()
+				t.Cleanup(func() { tui.StopWithOptions(StopOptions{PreserveScreen: true}) })
+				tui.SetFixedSize(tc.first[0], tc.first[1])
+				tui.Render()
+				<-started
+				for _, size := range tc.resizes {
+					tui.SetFixedSize(size[0], size[1])
+					tui.Render()
+				}
+				synctest.Wait()
+				if len(events) != 0 {
+					t.Errorf("%d callbacks overtook the blocked %s callback", len(events), tc.name)
+				}
+				close(release)
+				synctest.Wait()
+				var got []string
+				for len(events) > 0 {
+					got = append(got, <-events)
+				}
+				if !slices.Equal(got, tc.want) {
+					t.Fatalf("geometry callbacks = %v; want %v", got, tc.want)
+				}
+			})
+		})
+	}
+}
+
+func TestAltScreenStopDiscardsPendingGeometry(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var out bytes.Buffer
+		tui := newAltScreenForTest(&out, 20, 4, TuiAltScreenOptions{})
+		started, release := make(chan struct{}), make(chan struct{})
+		events := make(chan string, 8)
+		tui.SetOnWidthChange(func(width int) {
+			if width == 12 {
+				close(started)
+				<-release
+			}
+			events <- fmt.Sprintf("width:%d", width)
+		})
+		tui.SetOnHeightChange(func(height int) { events <- fmt.Sprintf("height:%d", height) })
+		tui.Start()
+		t.Cleanup(func() { tui.StopWithOptions(StopOptions{PreserveScreen: true}) })
+		tui.SetFixedSize(12, 4)
+		tui.Render()
+		<-started
+		tui.SetFixedSize(8, 6)
+		tui.Render()
+		tui.StopWithOptions(StopOptions{PreserveScreen: true})
+		tui.Start()
+		close(release)
+		synctest.Wait()
+		tui.SetFixedSize(30, 10)
+		tui.Render()
+		synctest.Wait()
+		var got []string
+		for len(events) > 0 {
+			got = append(got, <-events)
+		}
+		if want := []string{"width:12", "width:30", "height:10"}; !slices.Equal(got, want) {
+			t.Fatalf("geometry callbacks across restart = %v; want %v", got, want)
+		}
+	})
+}
+
 func TestAltScreenDifferentialSkipsUnchangedRows(t *testing.T) {
 	var out bytes.Buffer
 	width, height := 20, 6
