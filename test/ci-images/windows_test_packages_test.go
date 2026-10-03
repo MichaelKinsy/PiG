@@ -4,7 +4,6 @@
 package ciimages
 
 import (
-	"bytes"
 	"io/fs"
 	"maps"
 	"os"
@@ -189,7 +188,8 @@ func TestWindowsShardsTestEverySelectedPackage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	excluded := regexp.MustCompile(`-e "\$module/([^"]+)"`).FindAllStringSubmatch(string(shardScript[:bytes.Index(shardScript, []byte("shard1="))]), -1)
+	exclusions, _, _ := strings.Cut(string(shardScript), "shard1=")
+	excluded := regexp.MustCompile(`-e "\$module/([^"]+)"`).FindAllStringSubmatch(exclusions, -1)
 	if len(excluded) == 0 {
 		t.Fatalf("expected the native shards to drop the extension host packages: %s", shardScript)
 	}
@@ -240,7 +240,7 @@ func TestWindowsNativeShardsPartitionTheSelectedPackages(t *testing.T) {
 		t.Fatalf("windows-test-packages.sh: %v\n%s", err, output)
 	}
 	want := map[string]bool{}
-	for _, pkg := range strings.Fields(output) {
+	for pkg := range strings.FieldsSeq(output) {
 		switch strings.TrimPrefix(pkg, modulePath+"/") {
 		case "coding/extension/host/runtimecell", "coding/extension/host/subprocess", "cmd/pig":
 		default:
@@ -254,7 +254,7 @@ func TestWindowsNativeShardsPartitionTheSelectedPackages(t *testing.T) {
 		if err != nil {
 			t.Fatalf("windows-native-shard.sh %d: %v", shard, err)
 		}
-		for _, pkg := range strings.Fields(string(out)) {
+		for pkg := range strings.FieldsSeq(string(out)) {
 			seen[pkg]++
 		}
 	}
