@@ -105446,6 +105446,17 @@
       "shapeHash": "sha256:a7be68e99ffc14317d80fda650ad822ba3da260bdb47ada851dba62e625d0f8e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#PushProxy.WidgetLayout",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "PushProxy.WidgetLayout",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (placement string, order uint64)"
+      },
+      "shapeHash": "sha256:12ef7d2d1768ce25fd87edd1d4ed6c1ad815531d04083c09e75149d924b48e1a"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ReadyPayload",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "ReadyPayload",
@@ -106491,6 +106502,17 @@
       "shapeHash": "sha256:9235af9a2f55268fa36f6f6f03832cd663fb8244aa887a320e5c395276ff6867"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.admitSurface",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "UIBridge.admitSurface",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(kind string, owner surfaceOwner, updateOnly bool) bool"
+      },
+      "shapeHash": "sha256:a8c4fcb445aadf8e9884965cd1317931917a682a57bef541609ba70741caad39"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.autocompleteReference",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "UIBridge.autocompleteReference",
@@ -107256,9 +107278,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(args github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) (*CallResultPayload, error)"
+        "type": "func(extName string, conn *Conn, args github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) (*CallResultPayload, error)"
       },
-      "shapeHash": "sha256:eb918c2f23976a626f90374aeeac5f32c9bc88bb3c537a924b4bcbf71c350f22"
+      "shapeHash": "sha256:e019d72fbfe65cba02c7a47253cd0afe966fbe6d43e394c69be08c0f73d8be08"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.handleSetHeader",
@@ -107267,9 +107289,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(args github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) (*CallResultPayload, error)"
+        "type": "func(extName string, conn *Conn, args github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) (*CallResultPayload, error)"
       },
-      "shapeHash": "sha256:eb918c2f23976a626f90374aeeac5f32c9bc88bb3c537a924b4bcbf71c350f22"
+      "shapeHash": "sha256:e019d72fbfe65cba02c7a47253cd0afe966fbe6d43e394c69be08c0f73d8be08"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.handleSetHiddenThinkingLabel",
@@ -107300,9 +107322,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(args github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) (*CallResultPayload, error)"
+        "type": "func(extName string, conn *Conn, args github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) (*CallResultPayload, error)"
       },
-      "shapeHash": "sha256:eb918c2f23976a626f90374aeeac5f32c9bc88bb3c537a924b4bcbf71c350f22"
+      "shapeHash": "sha256:e019d72fbfe65cba02c7a47253cd0afe966fbe6d43e394c69be08c0f73d8be08"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.handleSetModel",
@@ -107597,9 +107619,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(extName string, widgetKey string, update func(*PushProxy))"
+        "type": "func(extName string, widgetKey string, lines []string, width int, placement string)"
       },
-      "shapeHash": "sha256:5a36aed8a193273104e12aeb832a5b0224093cdf4a90f6251ffd6de6cb707a56"
+      "shapeHash": "sha256:0465b0cdc9a6db60189e4172e9d410fd53719c28102dbfb0d5a84f578095003d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIPromptScope",
@@ -111821,9 +111843,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(slot string, call *slotCall) *slotCall"
+        "type": "func(slot string, apply func()) *slotCall"
       },
-      "shapeHash": "sha256:293b8cad344e006caebb252b8759d898430bebce7afd56c216fd60b573ea9f77"
+      "shapeHash": "sha256:a6580ddca98e84f1d8f3d4d8d37b79285880f4dac258864bbc59b0fc490317b9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#pendingSlotCalls.takeThrough",
@@ -113221,6 +113243,17 @@
         "type": "func(creds github.com/MichaelKinsy/PiG/ai.OAuthCredentials) (encoding/json.RawMessage, error)"
       },
       "shapeHash": "sha256:45688521f885dfb5a6fe20ec0afb6309a0160ab4b5ef949e772c75cb70f152fa"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#surfaceOwner",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "surfaceOwner",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "surfaceOwner"
+      },
+      "shapeHash": "sha256:ecf77c6ea9445d49bf383215d0945bc2913ff30a9fcc88cabb89de9f14096051"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#takesInteractiveFocus",
