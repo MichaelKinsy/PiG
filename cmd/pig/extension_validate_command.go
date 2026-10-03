@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/coding/extension/pigsdk"
 	extsource "github.com/MichaelKinsy/PiG/coding/extension/source"
@@ -229,6 +230,18 @@ func printValidationError(message string, jsonOut bool) int {
 	return 1
 }
 
+// validationLoadTimeout is the time validation allows to start and register an
+// extension once it is built.
+const validationLoadTimeout = 2 * time.Minute
+
+// validationTimeout bounds validation: the build budget, which
+// PIG_CELL_BUILD_TIMEOUT sets, then the time to load what was built. A fixed
+// bound shorter than the build budget kills a slow build, such as a Rust cell
+// on a phone, that the variable allows.
+func validationTimeout() time.Duration {
+	return runtimecell.BuildTimeout() + validationLoadTimeout
+}
+
 func validateExtensionRuntimes(input string) ([]extensionValidationReport, error) {
 	abs, err := filepath.Abs(input)
 	if err != nil {
@@ -238,7 +251,7 @@ func validateExtensionRuntimes(input string) ([]extensionValidationReport, error
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), validationTimeout())
 	defer cancel()
 	host := subprocess.NewHostWithConfigRoot(filepath.Dir(abs), codingagent.ConfigRoot())
 	defer host.Shutdown("validation complete")

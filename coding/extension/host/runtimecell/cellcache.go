@@ -79,6 +79,12 @@ type PublishedEntry struct {
 // pig additive (D20): the shared build cache and its lock have no upstream
 // equivalent.
 func cellBuildTimeout() time.Duration {
+	return BuildTimeout()
+}
+
+// BuildTimeout is the time an extension build may take: PIG_CELL_BUILD_TIMEOUT
+// as a Go duration, else ten minutes.
+func BuildTimeout() time.Duration {
 	if v := os.Getenv("PIG_CELL_BUILD_TIMEOUT"); v != "" {
 		if d, err := time.ParseDuration(v); err == nil && d > 0 {
 			return d

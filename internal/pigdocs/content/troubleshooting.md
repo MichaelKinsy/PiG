@@ -42,7 +42,7 @@ The release workflow builds binaries with cgo disabled, so they do not depend on
 
 ## Android (Termux)
 
-Termux reports `uname -s` as `Linux` and `uname -o` as `Android`. The installer detects this, downloads the `android-arm64` archive, and installs `pig` into `$PREFIX/bin`. Other Android CPUs have no archive; `uname -m` must print `aarch64`. Do not use `linux-arm64` there: it is static, and Termux's loader rejects it with `has unexpected e_type: 2`. See [Termux](https://pi-in-go.dev/docs/latest/termux/).
+Termux reports `uname -s` as `Linux` and `uname -o` as `Android`. The installer detects this, downloads the `android-arm64` archive, and installs `pig` into `$PREFIX/bin`. Other Android CPUs have no archive; `uname -m` must print `aarch64`. Do not use `linux-arm64` there: it is static, and Termux's loader rejects it with `has unexpected e_type: 2`. See [Termux](https://pi-in-go.dev/docs/latest/termux/). `pig setup go` cannot install Go on Android, because Go publishes no archive for `android/arm64`: it stops and tells you to run `pkg install golang`. PiG uses the `go` on `PATH`, and `pig setup status` shows it. `pig install npm:...` and `pig install git:...` start `npm` and `git` through `/system/bin/linker64` like every other program PiG starts. `PIG_CELL_BUILD_TIMEOUT` (default 10 minutes) also bounds `pig install <dir> --validate-only`, so a slow Rust build on a phone can be given more time.
 
 ## Proxies and certificates
 

@@ -253,6 +253,14 @@ func SetStarterForTest(s Starter) (restore func()) {
 // it.
 func Prepare(cmd *exec.Cmd) { Current().Prepare(cmd) }
 
+// Command is exec.Command for a command that starts through the linker when
+// the running process needs it.
+func Command(name string, args ...string) *exec.Cmd {
+	cmd := exec.Command(name, args...)
+	Prepare(cmd)
+	return cmd
+}
+
 // CommandContext is exec.CommandContext for a command that starts through the
 // linker when the running process needs it.
 func CommandContext(ctx context.Context, name string, args ...string) *exec.Cmd {

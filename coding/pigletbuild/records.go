@@ -9,7 +9,6 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -17,6 +16,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 
 	"golang.org/x/mod/modfile"
 
@@ -560,7 +560,7 @@ func sha256Sum(data []byte) []byte {
 func smokeArtifact(path string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	output, err := exec.CommandContext(ctx, path, "--version").CombinedOutput()
+	output, err := linkerexec.CommandContext(ctx, path, "--version").CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("basic artifact verification failed: %w: %s", err, strings.TrimSpace(string(output)))
 	}
@@ -638,7 +638,7 @@ func toolchainVersions(cells []subprocess.CellSpec) (map[string]string, error) {
 	}
 	versions := make(map[string]string, len(commands))
 	for name, command := range commands {
-		output, err := exec.Command(command[0], command[1:]...).CombinedOutput()
+		output, err := linkerexec.Command(command[0], command[1:]...).CombinedOutput()
 		if err != nil {
 			return nil, fmt.Errorf("resolve %s toolchain identity: %w: %s", name, err, strings.TrimSpace(string(output)))
 		}

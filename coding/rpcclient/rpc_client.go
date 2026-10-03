@@ -23,6 +23,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 )
 
 // Upstream's fixed waits: the start settle delay, the per-request response
@@ -146,7 +148,7 @@ func (c *RpcClient) spawn() (*agentProcess, io.ReadCloser, io.ReadCloser, error)
 	}
 	args = append(args, c.options.Args...)
 
-	cmd := exec.Command(cliPath, args...)
+	cmd := linkerexec.Command(cliPath, args...)
 	cmd.Dir = c.options.Cwd
 	cmd.Env = os.Environ()
 	for _, key := range slices.Sorted(maps.Keys(c.options.Env)) {

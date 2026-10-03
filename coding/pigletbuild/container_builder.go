@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 
 	"go.yaml.in/yaml/v3"
 
@@ -347,7 +348,7 @@ func (b containerBuilder) runCommand(ctx context.Context, engine string, args ..
 	if b.run != nil {
 		return b.run(ctx, engine, args...)
 	}
-	command := exec.CommandContext(ctx, engine, args...)
+	command := linkerexec.CommandContext(ctx, engine, args...)
 	var stdout, stderr bytes.Buffer
 	command.Stdout = &stdout
 	command.Stderr = &stderr
@@ -369,7 +370,7 @@ func (b containerBuilder) runCommandWithStreams(ctx context.Context, engine stri
 		}
 		return output, err
 	}
-	command := exec.CommandContext(ctx, engine, args...)
+	command := linkerexec.CommandContext(ctx, engine, args...)
 	if buildprogress.Enabled(ctx) {
 		if err := buildprogress.Run(ctx, command); err != nil {
 			return nil, fmt.Errorf("%s build: %w", engine, err)

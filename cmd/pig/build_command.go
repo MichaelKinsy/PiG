@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/buildprogress"
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
@@ -74,7 +75,7 @@ Use --verbose to stream toolchain output. Progress is written to stderr.
 	if err != nil {
 		return fail(err)
 	}
-	cmd := exec.CommandContext(ctx, goToolchain.Command, buildArgs...)
+	cmd := linkerexec.CommandContext(ctx, goToolchain.Command, buildArgs...)
 	cmd.Dir = root
 	cmd.Env = goToolchain.Environ(os.Environ())
 	if err := buildprogress.Run(buildprogress.Member(ctx, "pig"), cmd); err != nil {
@@ -207,7 +208,7 @@ func pigSourceRootCandidates() []string {
 }
 
 func gitShortCommit(root string) string {
-	cmd := exec.Command("git", "rev-parse", "--short", "HEAD")
+	cmd := linkerexec.Command("git", "rev-parse", "--short", "HEAD")
 	cmd.Dir = root
 	out, err := cmd.Output()
 	if err != nil {
@@ -223,7 +224,7 @@ func gitShortCommit(root string) string {
 // builtPigVersion names the installed binary from the fields of `pig version`,
 // which every PiG build prints.
 func builtPigVersion(path string) string {
-	if out, err := exec.Command(path, "version").Output(); err == nil {
+	if out, err := linkerexec.Command(path, "version").Output(); err == nil {
 		if identity, ok := pigVersionIdentity(string(out)); ok {
 			return identity
 		}
