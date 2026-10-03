@@ -181,3 +181,21 @@ func TestVerifyProvenanceWithoutGhNamesTheExactCommand(t *testing.T) {
 		t.Fatalf("custom signer workflow: exit %d\n%s", code, out)
 	}
 }
+
+func TestSetupGoOnAndroidPointsToTheTermuxPackage(t *testing.T) {
+	message := goSetupUnsupported("android", "arm64")
+	for _, want := range []string{"android/arm64", "pkg install golang", "pig setup status"} {
+		if !strings.Contains(message, want) {
+			t.Fatalf("message lacks %q:\n%s", want, message)
+		}
+	}
+	if got := goSetupUnsupported("linux", "arm64"); got != "" {
+		t.Fatalf("linux message = %q", got)
+	}
+	if got := goRemedy("android"); got != "pkg install golang" {
+		t.Fatalf("android remedy = %q", got)
+	}
+	if got := goRemedy("linux"); got != "pig setup go" {
+		t.Fatalf("linux remedy = %q", got)
+	}
+}

@@ -13,6 +13,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 )
 
 const (
@@ -94,6 +95,7 @@ func spawnTrash(args []string) trashSpawnResult {
 func runTrashCommand(ctx context.Context, path string, args []string, output *trashOutput) (*exec.Cmd, error) {
 	cmd := exec.CommandContext(ctx, path, args...)
 	cmd.Args[0] = "trash"
+	linkerexec.Prepare(cmd)
 	cmd.Cancel = func() error { return terminateTrash(cmd.Process) }
 	cmd.Stdout = trashOutputWriter{output: output}
 	cmd.Stderr = trashOutputWriter{output: output, stderr: true}

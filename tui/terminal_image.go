@@ -8,7 +8,6 @@ import (
 	"math/rand/v2"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -16,6 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -115,7 +115,7 @@ func SetCellDimensions(dims CellDimensions) {
 func probeTmuxHyperlinks() bool {
 	ctx, cancel := context.WithTimeout(context.Background(), tmuxProbeTimeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "tmux", "display-message", "-p", "#{client_termfeatures}")
+	cmd := linkerexec.CommandContext(ctx, "tmux", "display-message", "-p", "#{client_termfeatures}")
 	out, err := cmd.Output()
 	if err != nil {
 		return false

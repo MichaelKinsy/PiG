@@ -3,11 +3,11 @@ package codingagent
 import (
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 )
@@ -365,7 +365,7 @@ func MarkPathIgnoredByCloudSync(path string) {
 		return
 	}
 	for _, args := range commands {
-		cmd := exec.Command(args[0], args[1:]...)
+		cmd := linkerexec.Command(args[0], args[1:]...)
 		cmd.Stdout = io.Discard
 		cmd.Stderr = io.Discard
 		_ = cmd.Run()

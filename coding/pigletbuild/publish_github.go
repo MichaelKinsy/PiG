@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 
 	"golang.org/x/mod/semver"
 
@@ -620,7 +621,7 @@ func writeReleaseIndex(release publishRelease, assets []publishAsset, stage stri
 }
 
 func githubReleaseExists(ctx context.Context, repo, tag string) (bool, error) {
-	command := exec.CommandContext(ctx, "gh", "release", "view", tag, "--repo", repo, "--json", "tagName")
+	command := linkerexec.CommandContext(ctx, "gh", "release", "view", tag, "--repo", repo, "--json", "tagName")
 	command.Env = ghEnvironment()
 	var stderr bytes.Buffer
 	command.Stderr = &stderr
@@ -650,7 +651,7 @@ func uploadGitHubRelease(ctx context.Context, release publishRelease, assets []p
 	if semver.Prerelease("v"+release.version) != "" {
 		args = append(args, "--prerelease")
 	}
-	command := exec.CommandContext(ctx, "gh", args...)
+	command := linkerexec.CommandContext(ctx, "gh", args...)
 	command.Dir = stage
 	command.Env = ghEnvironment()
 	command.Stdout = stdout

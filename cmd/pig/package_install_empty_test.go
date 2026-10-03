@@ -218,3 +218,18 @@ func TestInstallDoesNotRefuseDirectoriesThatMerelyLookLikeCode(t *testing.T) {
 		})
 	}
 }
+
+// Pi's installAndPersist records a source only after its install succeeds, so a
+// failed npm install leaves nothing in settings to remove by hand.
+func TestFailedNpmInstallPersistsNothing(t *testing.T) {
+	f := newPackageProcessFixture(t, `throw new Error('fork/exec npm: permission denied');`)
+	t.Chdir(f.cwd)
+	_, _, code := captureStdoutStderr(t, func() int { return runPackageCommand([]string{"install", "npm:plain-library@7.0.0"}) })
+	if code == 0 {
+		t.Fatal("install of a failing npm succeeded")
+	}
+	data, err := os.ReadFile(filepath.Join(f.agent, "settings.json"))
+	if err == nil && strings.Contains(string(data), "plain-library") {
+		t.Fatalf("failed install persisted its source: %s", data)
+	}
+}

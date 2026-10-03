@@ -7,7 +7,6 @@ import (
 	"io/fs"
 	"maps"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -17,12 +16,13 @@ import (
 
 	sourceref "github.com/MichaelKinsy/PiG/coding/source"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 )
 
 // pig additive (D18): a subdirectory add binds a clean selected Git tree to an exact commit, not a movable checkout or repository-root fallback.
 func verifyPinnedPigletRoot(ref sourceref.Ref, root string) error {
 	git := func(args ...string) (string, error) {
-		output, err := exec.Command("git", append([]string{"-C", root}, args...)...).Output()
+		output, err := linkerexec.Command("git", append([]string{"-C", root}, args...)...).Output()
 		if err != nil {
 			return "", fmt.Errorf("inspect pinned Piglet Git source: %w", err)
 		}

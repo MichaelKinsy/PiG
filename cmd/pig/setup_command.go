@@ -64,7 +64,7 @@ func onPath(name string) func() (string, bool) {
 
 func setupTools() []setupTool {
 	return []setupTool{
-		{name: "go", purpose: "Go extension cells and native Piglet builds", remedy: "pig setup go", find: func() (string, bool) {
+		{name: "go", purpose: "Go extension cells and native Piglet builds", remedy: goRemedy(runtime.GOOS), find: func() (string, bool) {
 			path, err := toolchain.Go()
 			return path, err == nil
 		}},
@@ -77,6 +77,14 @@ func setupTools() []setupTool {
 		{name: python3Name(), purpose: "Python extensions", remedy: "install Python 3 from https://www.python.org/downloads/", find: onPath(python3Name())},
 		{name: "git", purpose: "git: Package sources", remedy: "install Git from https://git-scm.com/downloads", find: onPath("git")},
 	}
+}
+
+// goRemedy is the next step that status gives for a missing go.
+func goRemedy(goos string) string {
+	if goos == "android" {
+		return "pkg install golang"
+	}
+	return "pig setup go"
 }
 
 func python3Name() string {
@@ -127,6 +135,10 @@ func setupGo(args []string, stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stderr, "pig setup go: %q is not a Go release; pass --version goX.Y.Z\n", version)
 		return 2
 	}
+	if message := goSetupUnsupported(runtime.GOOS, runtime.GOARCH); message != "" {
+		_, _ = fmt.Fprintf(stderr, "pig setup go: %s\n", message)
+		return 1
+	}
 	root, err := toolchain.ConfigRoot()
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "pig setup go: %v\n", err)
@@ -143,6 +155,16 @@ func setupGo(args []string, stdout, stderr io.Writer) int {
 	}
 	_, _ = fmt.Fprintf(stdout, "Installed %s at %s.\nPiG uses it automatically when go is not on PATH. To use it in your shell, add %s to PATH.\n", version, goCommand, filepath.Dir(goCommand))
 	return 0
+}
+
+// goSetupUnsupported explains why pig setup go cannot install Go on goos, or
+// returns "" when it can. Go publishes no archive for android, which is Termux:
+// the distribution's package is the toolchain there.
+func goSetupUnsupported(goos, goarch string) string {
+	if goos != "android" {
+		return ""
+	}
+	return fmt.Sprintf("Go publishes no archive for %s/%s, so PiG cannot download one on Termux.\nInstall Go with Termux's package manager instead:\n  pkg install golang\nPiG finds the go on your PATH; check it with `pig setup status`.", goos, goarch)
 }
 
 func containerGuide(goos string) string {
