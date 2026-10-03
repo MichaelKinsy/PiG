@@ -873,6 +873,13 @@ func (t *TuiAltScreen) doRender() {
 	buf.WriteString(altEndSynchronizedOutput)
 	_, _ = fmt.Fprint(t.out, buf.String())
 
+	// Subprocess components render at the notified geometry, as in the regular renderer. Keep IPC callbacks off the render loop.
+	if t.previousScreenWidth > 0 && t.previousScreenWidth != width && t.onWidthChange != nil {
+		go t.onWidthChange(width)
+	}
+	if t.previousScreenHeight > 0 && t.previousScreenHeight != height && t.onHeightChange != nil {
+		go t.onHeightChange(height)
+	}
 	t.previousScreen = screen
 	t.previousScreenWidth = width
 	t.previousScreenHeight = height
