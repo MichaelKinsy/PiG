@@ -352,6 +352,11 @@ func TestHost_Integration_WidgetPushAndUICall(t *testing.T) {
 
 	// Verify widget was updated after tool execution.
 	pollUntil(t, testTimeout(t, 2*time.Second), "widget not updated after tool execution", func() bool {
+		// Pi replaces the component when a string list is set again.
+		proxy := bridge.GetWidget("fixture", "status")
+		if proxy == nil {
+			return false
+		}
 		lines := proxy.Render(80)
 		return len(lines) == 1 && lines[0] == " fixture: greeted pig"+strings.Repeat(" ", 80-1-len("fixture: greeted pig"))
 	})

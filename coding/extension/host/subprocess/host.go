@@ -242,7 +242,7 @@ func extConfigOrigin(config ExtConfig) string {
 //
 // pig-specific: no upstream equivalent.
 type Host struct {
-	// slotCalls keeps header, footer and login calls in the order the extensions sent them (runSlotCall).
+	// slotCalls keeps UI replacements in the order the extensions sent them (runSlotCall).
 	slotCalls          pendingSlotCalls
 	toolRegistrationMu sync.Mutex
 	mu                 sync.Mutex
@@ -3324,16 +3324,24 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 			if env.WidgetPush == nil {
 				continue
 			}
-			if h.uiBridge != nil {
-				func() {
-					defer func() {
-						if r := recover(); r != nil {
-							fmt.Fprintf(os.Stderr, "panic in HandleWidgetPush for %s: %v\n", me.config.Name, r)
-						}
-					}()
-					h.uiBridge.HandleWidgetPush(me.config.Name, env.WidgetPush)
+			pending := h.slotCalls.register("widgets", &slotCall{apply: func() {
+				select {
+				case <-conn.Done():
+					return
+				default:
+				}
+				if !h.acceptsNodeGeneration(me) || h.uiBridge == nil {
+					return
+				}
+				defer func() {
+					if r := recover(); r != nil {
+						fmt.Fprintf(os.Stderr, "panic in HandleWidgetPush for %s: %v\n", me.config.Name, r)
+					}
 				}()
-			}
+				h.uiBridge.HandleWidgetPush(me.config.Name, env.WidgetPush)
+			}})
+			// No-reply pushes share widget ordering but cannot wait for a host-call lane: a width handler may send one while that lane awaits the extension.
+			lanes.push(MsgWidgetPush, func() { h.runSlotCall("widgets", pending) })
 
 		case MsgNotify:
 			// Node→Go fire-and-forget notification. Used by the TS

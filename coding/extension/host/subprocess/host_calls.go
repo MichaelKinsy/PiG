@@ -143,7 +143,7 @@ func (l *callLanes) barrier() {
 func (h *Host) queueCall(me *managedExt, conn *Conn, lanes *callLanes, callID string, call *CallPayload) {
 	if slot := replaceOnlySlot(call.Method); slot != "" {
 		// The caller is the connection's read loop, so registration follows the order the extension sent the calls.
-		pending := h.slotCalls.register(slot, &slotCall{me: me, conn: conn, callID: callID, call: call})
+		pending := h.slotCalls.register(slot, &slotCall{apply: func() { h.runCall(me, conn, callID, call, nil) }})
 		lanes.push(call.ParentRequestID, func() { h.runSlotCall(slot, pending) })
 		return
 	}
@@ -191,11 +191,8 @@ func replaceOnlySlot(method string) string {
 
 // slotCall is a UI replacement read from the connection but not yet applied. run is the slot's application lock.
 type slotCall struct {
-	me     *managedExt
-	conn   *Conn
-	callID string
-	call   *CallPayload
-	run    *sync.Mutex
+	apply func()
+	run   *sync.Mutex
 }
 
 // pendingSlotCalls keeps UI replacements in arrival order across request lanes. Each slot has its own application lock.
@@ -239,7 +236,7 @@ func (h *Host) runSlotCall(slot string, through *slotCall) {
 	through.run.Lock()
 	defer through.run.Unlock()
 	for _, next := range h.slotCalls.takeThrough(slot, through) {
-		h.runCall(next.me, next.conn, next.callID, next.call, nil)
+		next.apply()
 	}
 }
 
