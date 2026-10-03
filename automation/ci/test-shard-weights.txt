@@ -1,0 +1,63 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+#
+# Placement of the slowest cmd/pig tests, read by test-shard-pattern.sh.
+# "package" and "shards" name the package and shard count the placement
+# balances; with any other count every test is placed by name hash. Each line "<shard> <test>" pins that
+# test to the shard, packed by measured duration (tests over 10 s, measured
+# with go test -json) on top of the hash-placed rest. A name that is no longer
+# listed is ignored; a test not named here is placed by hash, so every test
+# still lands in exactly one shard.
+package ./cmd/pig
+shards 8
+1 TestPigMcpAppliesTheHTTPProxySetting
+1 TestRPCBashPersistenceFailureRejectsResponse
+1 TestRPCPiMessagesMatchesPi
+1 TestRPCStartupMalformedPackageManifests
+1 TestRPCStartupModelFromExtensionProvider
+1 TestRuntimeMetadataUsesLoadedExtensionsInEveryMode
+1 TestUpstreamSDKSkillsSubprocess
+2 TestAuthInspectionReadsEmbeddedRuntimeRegistration
+2 TestForkMissingOrInvalidSessionPathComparedWithPi
+2 TestInteractiveCLIThinkingOverrideReachesSession
+2 TestModelOperationsThroughPrintJSONAndRPCEntrypoints
+2 TestRPCInputEndAfterExtensionCommandComparedWithPi
+2 TestRPCInputEndResponsePrecedesShutdownNotificationComparedWithPi
+2 TestRPCPreflightAdmission
+3 TestExtensionVirtualModelFlushFailureStopsStartup
+3 TestNodeExtensionModelCallsCarryPiGIdentityNeverPis
+3 TestRPCMistralMatchesPi
+3 TestRPCPromptResponseSemanticsUpstream
+3 TestRPCUserBashFailurePort
+3 TestWarningOnlyExtensionDiagnosticsDoNotStopStartup
+4 TestEmbeddedPackedAuthDiscoveryAndLoginByLanguage
+4 TestHeadlessExtensionSessionActionsMatchPi
+4 TestRPCCodexSSEStartMatchesPi
+4 TestRPCSessionCommandsReplaceThroughTheRuntimeFactory
+4 TestRPCToolFlagsSelectSameToolsAsPi
+4 TestReplacedSession2860AcrossSDKs
+4 TestStartupNativeProviderCallbacksWaitForEveryExtensionFactory
+5 TestExtensionInitScaffoldsBuildAndRegister
+5 TestExtensionSuppliedJSONKeepsMemberOrderOnEverySurface
+5 TestHeadlessExtensionSessionIdentity
+5 TestPrintModeWritesExtensionErrorsToStderr
+5 TestRPCModeUpstream
+5 TestRPCSignalWithOpenStdin
+5 TestStartupDuplicateExtensionCopiesMatchUpstream
+5 TestSystemPromptOptionsThroughHeadlessStartup
+6 TestExtensionCLIFlagsReachEveryHeadlessMode
+6 TestPigletExtensionToolsScopeInEveryMode
+6 TestPrintModeReportsInvalidSettingsOnce
+6 TestRPCInputEndQuarantinedNodeCommandComparedWithPi
+6 TestRPCSwitchSessionRebuildsServicesForTheDestinationCWD
+6 TestStartupModelFlagSelectsExtensionVirtualModel
+6 TestStartupReusesPreTrustExtensionsAcrossEntrypoints
+7 TestHeadlessExtensionsReadContextUsageAndShutdown
+7 TestRPCAncestorSkillTrustAndPrecedence
+7 TestRPCAzureOpenAIResponsesObservation
+7 TestRPCInputEndAfterCommandNotificationAnswersComparedWithPi
+7 TestRPCInputEndWindowClosesBeforeNextPollComparedWithPi
+7 TestSubprocessVirtualModelReachesTheModelRuntime
+8 TestRPCBedrockConverseStreamObservation
+8 TestResourceLoaderUpstreamRPCFileURLs
+8 TestSharedSubprocessExecAcrossModes

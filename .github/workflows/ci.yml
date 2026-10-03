@@ -291,11 +291,11 @@ jobs:
         # extension-host: the extension host packages (runtimecell and
         # subprocess). extension-conformance: every SDK against the in-process
         # reference. native: the smoke run and every other package that carries
-        # Windows tests. cli-1 to cli-5: one job for each of the five
+        # Windows tests. cli-1 to cli-8: one job for each of the eight
         # cmd/pig shards, run in parallel. The two extension
         # shards were one shard whose extension step took 49 of the job's 60
         # minutes, and native with cmd/pig reached the 60-minute limit.
-        shard: [native, cli-1, cli-2, cli-3, cli-4, cli-5, extension-host, extension-conformance]
+        shard: [native, cli-1, cli-2, cli-3, cli-4, cli-5, cli-6, cli-7, cli-8, extension-host, extension-conformance]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -407,7 +407,7 @@ jobs:
           packages=$(automation/ci/windows-test-packages.sh | grep -v -e '/coding/extension/host/runtimecell$' -e '/coding/extension/host/subprocess$' -e '/cmd/pig$')
           echo "$packages"
           go test -timeout 30m $packages
-      - name: Test cmd/pig, shard ${{ matrix.shard }} of 5
+      - name: Test cmd/pig, shard ${{ matrix.shard }} of 8
         # Each cli-N shard is its own job running shard N of automation/ci/test-shard-pattern.sh, as make test-cli runs the shards on Linux: each in its own go test process and timeout.
         if: startsWith(matrix.shard, 'cli-')
         shell: bash
@@ -420,7 +420,7 @@ jobs:
           mkdir -p "$acceptance"
           export PIG_HOME="$acceptance/config with spaces"
           export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
-          run=$(automation/ci/test-shard-pattern.sh "${CLI_SHARD#cli-}" 5 ./cmd/pig)
+          run=$(automation/ci/test-shard-pattern.sh "${CLI_SHARD#cli-}" 8 ./cmd/pig)
           go test -timeout 30m -run "$run" ./cmd/pig
       - name: Test Windows extension host packages
         if: matrix.shard == 'extension-host'

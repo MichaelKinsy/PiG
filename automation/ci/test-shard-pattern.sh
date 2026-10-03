@@ -10,6 +10,11 @@
 # partition the package exactly once and a new test lands in one shard without
 # editing a list. Each shard runs as its own go test process, under its own
 # package timeout.
+#
+# automation/ci/test-shard-weights.txt may pin named slow tests of a package to
+# shards, balanced by measured duration, for the shard count it declares. Every
+# other test, and every test when the file does not declare this package and
+# shard count, is placed by hash, so the shards still partition the package.
 set -euo pipefail
 export LC_ALL=C
 
@@ -48,10 +53,47 @@ fnv1a32() {
   done
 }
 
+# Read the pins that apply to this package and shard count.
+declare -A pinned=()
+weights=${TEST_SHARD_WEIGHTS:-$(dirname -- "${BASH_SOURCE[0]}")/test-shard-weights.txt}
+if [[ -f $weights ]]; then
+  w_package='' w_shards=''
+  while read -r first second || [[ -n ${first:-} ]]; do
+    case ${first:-} in
+      '' | '#'*) continue ;;
+      package) w_package=$second ;;
+      shards) w_shards=$second ;;
+      *)
+        if [[ ! $first =~ ^[1-9][0-9]*$ || ! $second =~ ^(Test|Example|Fuzz)[A-Za-z0-9_]*$ ]]; then
+          echo "test-shard-pattern: bad line in $weights: $first $second" >&2
+          exit 1
+        fi
+        # CI passes ./cmd/pig, make passes the import path; both name the package.
+        if [[ ( $package == "$w_package" || $package == */"${w_package#./}" ) && $w_shards == "$shards" ]]; then
+          if ((first > shards)); then
+            echo "test-shard-pattern: $weights pins $second to shard $first of $shards" >&2
+            exit 1
+          fi
+          if [[ -n ${pinned[$second]:-} ]]; then
+            echo "test-shard-pattern: $weights pins $second twice" >&2
+            exit 1
+          fi
+          pinned[$second]=$first
+        fi
+        ;;
+    esac
+  done <"$weights"
+fi
+
 selected=()
 for name in "${names[@]}"; do
-  fnv1a32 "$name"
-  if ((hash % shards + 1 == shard)); then
+  if [[ -n ${pinned[$name]:-} ]]; then
+    place=${pinned[$name]}
+  else
+    fnv1a32 "$name"
+    place=$((hash % shards + 1))
+  fi
+  if ((place == shard)); then
     selected+=("$name")
   fi
 done
