@@ -9,7 +9,6 @@ import (
 	"os/exec"
 
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
-
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
