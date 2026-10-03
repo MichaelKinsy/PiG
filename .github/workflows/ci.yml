@@ -290,12 +290,13 @@ jobs:
       matrix:
         # extension-host: the extension host packages (runtimecell and
         # subprocess). extension-conformance: every SDK against the in-process
-        # reference. native: the smoke run and every other package that carries
-        # Windows tests. cli-1 to cli-8: one job for each of the eight
+        # reference. native-1 to native-3: the smoke run (native-1) and every other
+        # package that carries Windows tests, in three parallel jobs
+        # (automation/ci/windows-native-shard.sh). cli-1 to cli-8: one job for each of the eight
         # cmd/pig shards, run in parallel. The two extension
         # shards were one shard whose extension step took 49 of the job's 60
         # minutes, and native with cmd/pig reached the 60-minute limit.
-        shard: [native, cli-1, cli-2, cli-3, cli-4, cli-5, cli-6, cli-7, cli-8, extension-host, extension-conformance]
+        shard: [native-1, native-2, native-3, cli-1, cli-2, cli-3, cli-4, cli-5, cli-6, cli-7, cli-8, extension-host, extension-conformance]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -368,7 +369,7 @@ jobs:
           MSYS: winsymlinks:nativestrict
         run: ./automation/gen/mirror-upstream.sh
       - name: Build and smoke-test native Windows paths
-        if: matrix.shard == 'native'
+        if: matrix.shard == 'native-1'
         shell: pwsh
         run: |
           $acceptanceRoot = Join-Path $env:RUNNER_TEMP 'pig native acceptance'
@@ -394,17 +395,18 @@ jobs:
         # without editing this workflow. The list holds packages with a
         # Windows-only test file; tests that branch on runtime.GOOS in a
         # file every platform builds are not selected by it.
-        if: matrix.shard == 'native'
+        if: startsWith(matrix.shard, 'native-')
         shell: bash
         env:
           PI_TEST_NATIVE_CLIPBOARD: '1'
+          NATIVE_SHARD: ${{ matrix.shard }}
         run: |
           set -euo pipefail
           acceptance="$RUNNER_TEMP/pig native acceptance"
           mkdir -p "$acceptance"
           export PIG_HOME="$acceptance/config with spaces"
           export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
-          packages=$(automation/ci/windows-test-packages.sh | grep -v -e '/coding/extension/host/runtimecell$' -e '/coding/extension/host/subprocess$' -e '/cmd/pig$')
+          packages=$(automation/ci/windows-native-shard.sh "${NATIVE_SHARD#native-}")
           echo "$packages"
           go test -timeout 30m $packages
       - name: Test cmd/pig, shard ${{ matrix.shard }} of 8
@@ -453,7 +455,7 @@ jobs:
           go test -v -timeout 30m ./test/extension-conformance
           if ($LASTEXITCODE -ne 0) { throw "Windows Go, Node, Rust, Python, or fused-Go extension conformance failed" }
       - name: Save the Go build cache
-        if: success() && matrix.shard == 'native'
+        if: success() && matrix.shard == 'native-1'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~\AppData\Local\go-build
