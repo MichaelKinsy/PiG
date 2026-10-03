@@ -33,6 +33,7 @@ type UIBridge struct {
 	footerMu            sync.Mutex            // footer admission, pending state and application are one step, as for headerMu; lock headerMu first
 	widgets             map[string]*PushProxy // key → proxy
 	widgetOrder         uint64
+	surfaceOwners       map[string]surfaceOwner
 
 	// customOverlays tracks the active ui.custom overlays keyed by
 	// "<extName>:<key>" so render/close notifications from the TS
@@ -72,17 +73,19 @@ type UIBridge struct {
 	// keybindings reports the host's resolved keybinding table.
 	keybindings func() any
 
-	uiCtx            extension.UIContext
-	uiReady          bool
-	promptScope      UIPromptScope
-	pendingStatuses  map[string]string
-	pendingFooterSet bool
-	pendingFooter    []string
-	pendingFooterW   int
-	pendingHeaderSet bool
-	pendingHeader    []string
-	pendingHeaderW   int
-	pendingLogin     *extension.LoginDefinition
+	uiCtx              extension.UIContext
+	uiReady            bool
+	promptScope        UIPromptScope
+	pendingStatuses    map[string]string
+	pendingFooterSet   bool
+	pendingFooterClear bool
+	pendingFooter      []string
+	pendingFooterW     int
+	pendingHeaderSet   bool
+	pendingHeaderClear bool
+	pendingHeader      []string
+	pendingHeaderW     int
+	pendingLogin       *extension.LoginDefinition
 
 	// actions holds agent-loop callbacks (sendMessage, setModel, etc.).
 	// Set via [SetActions] after the agent session is created.
@@ -573,6 +576,7 @@ func (b *UIBridge) SetTerminalCapabilitiesFunc(fn func() TerminalCapabilitiesPay
 func NewUIBridge(invalidateTUI func()) *UIBridge {
 	bridge := &UIBridge{
 		widgets:          make(map[string]*PushProxy),
+		surfaceOwners:    make(map[string]surfaceOwner),
 		customOverlays:   make(map[string]extension.RemoteOverlayHandle),
 		interactiveFocus: make(chan struct{}, 1),
 		extConns:         make(map[string]*Conn),
@@ -636,6 +640,12 @@ func (b *UIBridge) SetUIContext(ctx extension.UIContext) {
 	statuses := maps.Clone(b.pendingStatuses)
 	footerSet, footer := b.pendingFooterSet, framedLines(b.pendingFooter, b.pendingFooterW)
 	headerSet, header := b.pendingHeaderSet, framedLines(b.pendingHeader, b.pendingHeaderW)
+	if b.pendingFooterClear {
+		footer = nil
+	}
+	if b.pendingHeaderClear {
+		header = nil
+	}
 	pendingLogin := cloneLoginDefinition(b.pendingLogin)
 	conns := make([]*Conn, 0, len(b.extConns))
 	for _, conn := range b.extConns {
@@ -1081,11 +1091,11 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 
 	// ── Category 3: Component Factories ──────────────────────────────────
 	case "ui.setFooter":
-		return b.handleSetFooter(call.Args)
+		return b.handleSetFooter(extName, owner, call.Args)
 	case "ui.setHeader":
-		return b.handleSetHeader(call.Args)
+		return b.handleSetHeader(extName, owner, call.Args)
 	case CallUISetLogin:
-		return b.handleSetLogin(call.Args)
+		return b.handleSetLogin(extName, owner, call.Args)
 	case "ui.setTitle":
 		return b.handleSetTitle(ui, call.Args)
 	case "ui.setEditorComponent":
@@ -2321,15 +2331,43 @@ func (b *UIBridge) handleEditor(ctx context.Context, ui extension.UIContext, arg
 // Category 3: Component Factories
 // ═══════════════════════════════════════════════════════════════════════════════
 
-func (b *UIBridge) handleSetFooter(args json.RawMessage) (*CallResultPayload, error) {
+type surfaceOwner struct {
+	extName string
+	conn    *Conn
+	id      int
+}
+
+// admitSurface fences frame updates by the installed factory's identity. Callers hold the slot's application lock.
+func (b *UIBridge) admitSurface(kind string, owner surfaceOwner, updateOnly bool) bool {
+	b.mu.Lock()
+	previous, exists := b.surfaceOwners[kind]
+	if updateOnly {
+		b.mu.Unlock()
+		return exists && previous == owner
+	}
+	b.surfaceOwners[kind] = owner
+	b.mu.Unlock()
+	if previous != owner && previous.conn != nil && previous.id != 0 {
+		args, _ := json.Marshal(map[string]any{"kind": kind, "surfaceId": previous.id})
+		_ = previous.conn.Send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: "ui.surface_retired", Args: args}})
+	}
+	return true
+}
+
+func (b *UIBridge) handleSetFooter(extName string, conn *Conn, args json.RawMessage) (*CallResultPayload, error) {
 	b.footerMu.Lock()
 	defer b.footerMu.Unlock()
 	var p struct {
-		Clear bool     `json:"clear"`
-		Lines []string `json:"lines"`
-		Width int      `json:"width"`
+		Clear      bool     `json:"clear"`
+		Lines      []string `json:"lines"`
+		Width      int      `json:"width"`
+		SurfaceID  int      `json:"surfaceId"`
+		UpdateOnly bool     `json:"updateOnly"`
 	}
 	_ = json.Unmarshal(args, &p)
+	if !b.admitSurface("footer", surfaceOwner{extName: extName, conn: conn, id: p.SurfaceID}, p.UpdateOnly) {
+		return &CallResultPayload{}, nil
+	}
 	cleared := p.Clear || len(args) == 0 || string(args) == "null"
 	var factory any
 	if !cleared {
@@ -2337,6 +2375,7 @@ func (b *UIBridge) handleSetFooter(args json.RawMessage) (*CallResultPayload, er
 	}
 	b.mu.Lock()
 	b.pendingFooterSet = true
+	b.pendingFooterClear = cleared
 	if cleared {
 		b.pendingFooter = nil
 	} else {
@@ -2349,15 +2388,20 @@ func (b *UIBridge) handleSetFooter(args json.RawMessage) (*CallResultPayload, er
 	return &CallResultPayload{}, nil
 }
 
-func (b *UIBridge) handleSetHeader(args json.RawMessage) (*CallResultPayload, error) {
+func (b *UIBridge) handleSetHeader(extName string, conn *Conn, args json.RawMessage) (*CallResultPayload, error) {
 	b.headerMu.Lock()
 	defer b.headerMu.Unlock()
 	var p struct {
-		Clear bool     `json:"clear"`
-		Lines []string `json:"lines"`
-		Width int      `json:"width"`
+		Clear      bool     `json:"clear"`
+		Lines      []string `json:"lines"`
+		Width      int      `json:"width"`
+		SurfaceID  int      `json:"surfaceId"`
+		UpdateOnly bool     `json:"updateOnly"`
 	}
 	_ = json.Unmarshal(args, &p)
+	if !b.admitSurface("header", surfaceOwner{extName: extName, conn: conn, id: p.SurfaceID}, p.UpdateOnly) {
+		return &CallResultPayload{}, nil
+	}
 	cleared := p.Clear || len(args) == 0 || string(args) == "null"
 	var factory any
 	if !cleared {
@@ -2365,6 +2409,7 @@ func (b *UIBridge) handleSetHeader(args json.RawMessage) (*CallResultPayload, er
 	}
 	b.mu.Lock()
 	b.pendingHeaderSet = true
+	b.pendingHeaderClear = cleared
 	b.pendingLogin = nil
 	if cleared {
 		b.pendingHeader = nil
@@ -2380,7 +2425,7 @@ func (b *UIBridge) handleSetHeader(args json.RawMessage) (*CallResultPayload, er
 
 // pig additive (D60): apply the typed native login call while preserving the
 // shared header slot and the latest pending operation before UI binding.
-func (b *UIBridge) handleSetLogin(args json.RawMessage) (*CallResultPayload, error) {
+func (b *UIBridge) handleSetLogin(extName string, conn *Conn, args json.RawMessage) (*CallResultPayload, error) {
 	if _, err := extension.DecodeLoginDefinitionJSON(args); err != nil {
 		return &CallResultPayload{Error: &ErrorInfo{Code: "invalid_login", Message: err.Error()}}, nil
 	}
@@ -2402,6 +2447,7 @@ func (b *UIBridge) handleSetLogin(args json.RawMessage) (*CallResultPayload, err
 		}
 	}
 
+	b.admitSurface("header", surfaceOwner{extName: extName, conn: conn}, false)
 	b.mu.Lock()
 	b.pendingHeaderSet = false
 	b.pendingHeader = nil

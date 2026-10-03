@@ -1009,17 +1009,17 @@ class RuntimeUI {
     throw new Error("setWidget content must be a component factory, string array, or undefined");
   }
   setFooter(factory) {
-    this.runtime.specialSurfaceComponents.get("footer")?.dispose?.();
+    this.runtime.specialSurfaceComponents.get("footer")?.component?.dispose?.();
     this.runtime.footerFactory = typeof factory === "function" ? factory : undefined;
     this.runtime.specialSurfaceComponents.delete("footer");
-    if (this.runtime.footerFactory) this.runtime.renderSpecialSurface("footer");
+    if (this.runtime.footerFactory) this.runtime.renderSpecialSurface("footer", true);
     else this.runtime.fireAndForget("ui.setFooter", { clear: true });
   }
   setHeader(factory) {
-    this.runtime.specialSurfaceComponents.get("header")?.dispose?.();
+    this.runtime.specialSurfaceComponents.get("header")?.component?.dispose?.();
     this.runtime.headerFactory = typeof factory === "function" ? factory : undefined;
     this.runtime.specialSurfaceComponents.delete("header");
-    if (this.runtime.headerFactory) this.runtime.renderSpecialSurface("header");
+    if (this.runtime.headerFactory) this.runtime.renderSpecialSurface("header", true);
     else this.runtime.fireAndForget("ui.setHeader", { clear: true });
   }
   // pig additive (D60): Pig accepts typed login data across the subprocess wire.
@@ -1324,6 +1324,7 @@ export class Runtime {
     this.customOverlays = new Map();
     this.branchChangeCallbacks = new Set();
     this.specialSurfaceComponents = new Map();
+    this.specialSurfaceSeq = 0;
     this.customOverlaySeq = 0;
     this.ready = { cwd: process.cwd(), width: 80, model: "" };
     this.sessionLogRequested = false;
@@ -1981,7 +1982,6 @@ export class Runtime {
     if (width === widget.lastWidth && lines.length === widget.lastLines.length && lines.every((line, index) => line === widget.lastLines[index])) return;
     widget.lastLines = lines;
     widget.lastWidth = width;
-    // Frames use the same call lane as clears so a replacement cannot overtake its clear.
     this.fireAndForget("ui.setWidget", { key, content: lines, options: widget.options, width });
   }
 
@@ -2245,29 +2245,29 @@ export class Runtime {
     }
   }
 
-  renderSpecialSurface(kind) {
+  renderSpecialSurface(kind, replace = false) {
     if (!this.conn) return;
     const factory = kind === "footer" ? this.footerFactory : this.headerFactory;
-    // State updates redraw only this extension's installed surfaces. An explicit UI setter owns clearing the shared slot.
     if (!factory) return;
     try {
-      // Upstream builds the component once and re-renders it; rebuilding per
-      // frame would re-run factory side effects, and a footer that subscribes
-      // via onBranchChange would leak one subscriber per render.
-      let component = this.specialSurfaceComponents.get(kind);
-      if (!component) {
+      // Reuse the component so renders do not repeat factory side effects or subscriptions.
+      let surface = this.specialSurfaceComponents.get(kind);
+      if (!surface) {
         const tuiShim = this.specialSurfaceTui(kind);
-        component = kind === "footer"
+        const component = kind === "footer"
           ? factory(tuiShim, this.ui.theme, this.footerDataProvider())
           : factory(tuiShim, this.ui.theme);
-        this.specialSurfaceComponents.set(kind, component);
+        surface = { component, id: ++this.specialSurfaceSeq };
+        this.specialSurfaceComponents.set(kind, surface);
       }
       const width = this.ready.width || 80;
-      const lines = component?.render?.(width);
+      const lines = surface.component?.render?.(width);
       this.fireAndForget(kind === "footer" ? "ui.setFooter" : "ui.setHeader", {
         clear: false,
         lines: Array.isArray(lines) ? lines.map((v) => String(v)) : [],
         width,
+        surfaceId: surface.id,
+        updateOnly: !replace,
       });
     } catch (err) {
       this.fireAndForget("ui.notify", {
@@ -2580,6 +2580,20 @@ export class Runtime {
       case "autocomplete.release":
         this.autocomplete.release(notify.args?.id);
         return;
+      case "ui.surface_retired": {
+        const args = typeof notify.args === "string" ? JSON.parse(notify.args) : notify.args;
+        const surface = this.specialSurfaceComponents.get(args?.kind);
+        if (!surface || surface.id !== args?.surfaceId) return;
+        this.specialSurfaceComponents.delete(args.kind);
+        if (args.kind === "footer") this.footerFactory = undefined;
+        else this.headerFactory = undefined;
+        try {
+          surface.component?.dispose?.();
+        } catch (err) {
+          this.fireAndForget("ui.notify", { message: `${args.kind} dispose failed: ${err?.message || String(err)}`, level: "error" });
+        }
+        return;
+      }
       case "provider_release": {
         this.nativeProviderCallbacks.delete(notify.args?.key);
         return;
@@ -2633,8 +2647,6 @@ export class Runtime {
           for (const overlay of this.customOverlays?.values() || []) {
             overlay.renderFrame();
           }
-          // Headers and footers are frames at a width too; re-render them so
-          // the host receives frames for the new width.
           this.renderSpecialSurface("header");
           this.renderSpecialSurface("footer");
           this.editorHost.refresh();
@@ -2652,12 +2664,12 @@ export class Runtime {
         if (height > 0) {
           this.ready.height = height;
           syncTerminalGeometry(this.ready);
-          // Re-render widgets: height-dependent layouts (chain graphs,
-          // dashboards) may want to reflow.
           for (const key of this.widgets.keys()) this.renderWidget(key);
           for (const overlay of this.customOverlays?.values() || []) {
             overlay.renderFrame();
           }
+          this.renderSpecialSurface("header");
+          this.renderSpecialSurface("footer");
           this.editorHost.refresh();
         }
         return;

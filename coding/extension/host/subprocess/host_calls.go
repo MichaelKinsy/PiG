@@ -143,7 +143,7 @@ func (l *callLanes) barrier() {
 func (h *Host) queueCall(me *managedExt, conn *Conn, lanes *callLanes, callID string, call *CallPayload) {
 	if slot := replaceOnlySlot(call.Method); slot != "" {
 		// The caller is the connection's read loop, so registration follows the order the extension sent the calls.
-		pending := h.slotCalls.register(slot, &slotCall{apply: func() { h.runCall(me, conn, callID, call, nil) }})
+		pending := h.slotCalls.register(slot, func() { h.runCall(me, conn, callID, call, nil) })
 		lanes.push(call.ParentRequestID, func() { h.runSlotCall(slot, pending) })
 		return
 	}
@@ -202,7 +202,7 @@ type pendingSlotCalls struct {
 	running map[string]*sync.Mutex
 }
 
-func (p *pendingSlotCalls) register(slot string, call *slotCall) *slotCall {
+func (p *pendingSlotCalls) register(slot string, apply func()) *slotCall {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.pending == nil {
@@ -212,7 +212,7 @@ func (p *pendingSlotCalls) register(slot string, call *slotCall) *slotCall {
 	if p.running[slot] == nil {
 		p.running[slot] = &sync.Mutex{}
 	}
-	call.run = p.running[slot]
+	call := &slotCall{apply: apply, run: p.running[slot]}
 	p.pending[slot] = append(p.pending[slot], call)
 	return call
 }
@@ -231,7 +231,7 @@ func (p *pendingSlotCalls) takeThrough(slot string, through *slotCall) []*slotCa
 	return taken
 }
 
-// runSlotCall runs through and every call the extension sent to the same slot before it that its own lane has not reached. Pi's setExtensionHeader and setExtensionFooter run each call once, in program order (interactive-mode.ts:2427-2488), while lanes let a later call reach the host first. The later call must not wait for the earlier lane, which may be blocked, so it runs the earlier calls itself, in send order, and the earlier lane finds them already run. The slot's application lock makes the whole sequence one step, so no call of the slot runs between an earlier call and the call that took it.
+// runSlotCall drains earlier replacements in arrival order without waiting for their potentially blocked lanes. Each replacement runs once under the slot's application lock.
 func (h *Host) runSlotCall(slot string, through *slotCall) {
 	through.run.Lock()
 	defer through.run.Unlock()

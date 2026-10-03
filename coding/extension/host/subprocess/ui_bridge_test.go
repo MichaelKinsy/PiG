@@ -484,10 +484,10 @@ func TestUIBridgeReplaysCurrentStateAcrossContextUpgrade(t *testing.T) {
 	if _, err := bridge.handleSetStatus(json.RawMessage(`{"key":"build","text":"ready"}`)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := bridge.handleSetFooter(json.RawMessage(`{"lines":["footer"]}`)); err != nil {
+	if _, err := bridge.handleSetFooter("test-ext", nil, json.RawMessage(`{"lines":["footer"]}`)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := bridge.handleSetHeader(json.RawMessage(`{"clear":true}`)); err != nil {
+	if _, err := bridge.handleSetHeader("test-ext", nil, json.RawMessage(`{"clear":true}`)); err != nil {
 		t.Fatal(err)
 	}
 	current := &mockUIContext{}
@@ -1571,7 +1571,7 @@ func TestUIBridgeLoginAndHeaderSharePendingSlot(t *testing.T) {
 	t.Run("login then header", func(t *testing.T) {
 		bridge := NewUIBridge(func() {})
 		_, _ = bridge.HandleCall("test-ext", &CallPayload{Method: CallUISetLogin, Args: validLoginJSON(t, "login")})
-		_, _ = bridge.handleSetHeader(json.RawMessage(`{"lines":["header"]}`))
+		_, _ = bridge.handleSetHeader("test-ext", nil, json.RawMessage(`{"lines":["header"]}`))
 		ui := &mockUIContext{}
 		bridge.SetUIContext(ui)
 		if len(ui.loginCalls) != 0 || len(ui.headerCalls) != 1 {
@@ -1580,7 +1580,7 @@ func TestUIBridgeLoginAndHeaderSharePendingSlot(t *testing.T) {
 	})
 	t.Run("header then login", func(t *testing.T) {
 		bridge := NewUIBridge(func() {})
-		_, _ = bridge.handleSetHeader(json.RawMessage(`{"lines":["header"]}`))
+		_, _ = bridge.handleSetHeader("test-ext", nil, json.RawMessage(`{"lines":["header"]}`))
 		_, _ = bridge.HandleCall("test-ext", &CallPayload{Method: CallUISetLogin, Args: validLoginJSON(t, "login")})
 		ui := &mockUIContext{}
 		bridge.SetUIContext(ui)
@@ -1591,7 +1591,7 @@ func TestUIBridgeLoginAndHeaderSharePendingSlot(t *testing.T) {
 	t.Run("clear wins and restores default", func(t *testing.T) {
 		bridge := NewUIBridge(func() {})
 		_, _ = bridge.HandleCall("test-ext", &CallPayload{Method: CallUISetLogin, Args: validLoginJSON(t, "login")})
-		_, _ = bridge.handleSetHeader(json.RawMessage(`{"clear":true}`))
+		_, _ = bridge.handleSetHeader("test-ext", nil, json.RawMessage(`{"clear":true}`))
 		ui := &mockUIContext{}
 		bridge.SetUIContext(ui)
 		if len(ui.loginCalls) != 0 || len(ui.headerCalls) != 1 || !ui.headerCleared {
@@ -1811,6 +1811,129 @@ func TestUIBridgeSlotReplayAndLiveCallAreAtomic(t *testing.T) {
 			ui.mu.Unlock()
 			if len(applied) == 0 || applied[len(applied)-1] != "NEWER" {
 				t.Fatalf("%s applications = %v, want NEWER last", tc.slot, applied)
+			}
+		})
+	}
+}
+
+func TestUIBridgeSharedSurfacesRejectRetiredFrames(t *testing.T) {
+	for _, kind := range []string{"header", "footer"} {
+		t.Run(kind, func(t *testing.T) {
+			bridge := NewUIBridge(func() {})
+			ui := &mockUIContext{}
+			bridge.SetUIContext(ui)
+			call := func(extName, args string) {
+				t.Helper()
+				if _, err := bridge.HandleCall(extName, &CallPayload{Method: "ui.set" + strings.ToUpper(kind[:1]) + kind[1:], Args: json.RawMessage(args)}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			current := func() any {
+				if kind == "header" {
+					return ui.headerCalls[len(ui.headerCalls)-1]
+				}
+				return ui.footerValue
+			}
+			call("old", `{"lines":["old"],"surfaceId":17}`)
+			call("new", `{"lines":["new"],"surfaceId":17}`)
+			call("old", `{"lines":["stale"],"surfaceId":17,"updateOnly":true}`)
+			if lines, _ := current().([]string); !slices.Equal(lines, []string{"new"}) {
+				t.Fatalf("retired extension replaced current surface: %v", current())
+			}
+			call("new", `{"lines":["resized"],"surfaceId":17,"updateOnly":true}`)
+			if lines, _ := current().([]string); !slices.Equal(lines, []string{"resized"}) {
+				t.Fatalf("current frame did not apply: %v", current())
+			}
+			call("old", `{"lines":["replacement"],"surfaceId":18}`)
+			call("old", `{"lines":["stale generation"],"surfaceId":17,"updateOnly":true}`)
+			if lines, _ := current().([]string); !slices.Equal(lines, []string{"replacement"}) {
+				t.Fatalf("retired generation replaced current surface: %v", current())
+			}
+			call("new", `{"clear":true}`)
+			call("old", `{"lines":["resurrected"],"surfaceId":18,"updateOnly":true}`)
+			rebound := &mockUIContext{}
+			bridge.SetUIContext(rebound)
+			if kind == "header" && !rebound.headerCleared || kind == "footer" && !rebound.footerCleared {
+				t.Fatalf("retired surface revived after clear and rebind: %#v", rebound)
+			}
+		})
+	}
+}
+
+func TestUIBridgeSurfaceReplacementRetiresPreviousComponent(t *testing.T) {
+	for _, method := range []string{"ui.setHeader", "ui.setFooter"} {
+		t.Run(method, func(t *testing.T) {
+			host, peer := net.Pipe()
+			conn := NewConn("ext", host)
+			t.Cleanup(func() { _ = host.Close(); _ = peer.Close() })
+			bridge := newTestBridge(&mockUIContext{})
+			args := json.RawMessage(`{"lines":["old"],"surfaceId":17}`)
+			if _, err := bridge.handleCall(context.Background(), "ext", conn, &CallPayload{Method: method, Args: args}); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := bridge.handleCall(context.Background(), "ext", nil, &CallPayload{Method: method, Args: args}); err != nil {
+				t.Fatal(err)
+			}
+			select {
+			case frame := <-conn.outCh:
+				var env Envelope
+				if err := json.Unmarshal(frame.data, &env); err != nil {
+					t.Fatal(err)
+				}
+				want := `{"kind":"` + strings.ToLower(strings.TrimPrefix(method, "ui.set")) + `","surfaceId":17}`
+				if env.Type != MsgNotify || env.Notify == nil || env.Notify.Method != "ui.surface_retired" || string(env.Notify.Args) != want {
+					t.Fatalf("retirement notification = %+v, want %s", env, want)
+				}
+			default:
+				t.Fatal("replacing a connection did not retire its component")
+			}
+		})
+	}
+}
+
+func TestUIBridgeSurfaceClearAndEmptyFrameSurviveRebind(t *testing.T) {
+	for _, method := range []string{"ui.setHeader", "ui.setFooter"} {
+		t.Run(method, func(t *testing.T) {
+			bridge := newTestBridge(&mockUIContext{})
+			for _, clear := range []bool{false, true} {
+				args := json.RawMessage(fmt.Sprintf(`{"lines":[],"width":73,"clear":%t}`, clear))
+				if _, err := bridge.HandleCall("ext", &CallPayload{Method: method, Args: args}); err != nil {
+					t.Fatal(err)
+				}
+				ui := &mockUIContext{}
+				bridge.SetUIContext(ui)
+				var got = ui.footerValue
+				if method == "ui.setHeader" {
+					if len(ui.headerCalls) == 0 {
+						t.Fatal("header was not replayed")
+					}
+					got = ui.headerCalls[len(ui.headerCalls)-1]
+				}
+				if (got == nil) != clear {
+					t.Fatalf("rebound surface = %#v, clear = %v", got, clear)
+				}
+			}
+		})
+	}
+}
+
+func TestUIBridgeLoginRetiresHeaderOnlyWhenAccepted(t *testing.T) {
+	for _, rejected := range []bool{false, true} {
+		t.Run(fmt.Sprintf("rejected=%v", rejected), func(t *testing.T) {
+			ui := &mockUIContext{}
+			if rejected {
+				ui.loginErr = errors.New("login unavailable")
+			}
+			bridge := newTestBridge(ui)
+			_, _ = bridge.HandleCall("header", &CallPayload{Method: "ui.setHeader", Args: json.RawMessage(`{"lines":["header"],"surfaceId":17}`)})
+			_, _ = bridge.HandleCall("login", &CallPayload{Method: CallUISetLogin, Args: validLoginJSON(t, "login")})
+			_, _ = bridge.HandleCall("header", &CallPayload{Method: "ui.setHeader", Args: json.RawMessage(`{"lines":["updated"],"surfaceId":17,"updateOnly":true}`)})
+			want := 1
+			if rejected {
+				want = 2
+			}
+			if got := len(ui.headerCalls); got != want {
+				t.Fatalf("header calls = %#v, rejected = %v", ui.headerCalls, rejected)
 			}
 		})
 	}

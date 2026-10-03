@@ -3324,7 +3324,7 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 			if env.WidgetPush == nil {
 				continue
 			}
-			pending := h.slotCalls.register("widgets", &slotCall{apply: func() {
+			pending := h.slotCalls.register("widgets", func() {
 				select {
 				case <-conn.Done():
 					return
@@ -3339,8 +3339,8 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 					}
 				}()
 				h.uiBridge.HandleWidgetPush(me.config.Name, env.WidgetPush)
-			}})
-			// No-reply pushes share widget ordering but cannot wait for a host-call lane: a width handler may send one while that lane awaits the extension.
+			})
+			// A separate lane lets width-handler pushes run while a host call waits.
 			lanes.push(MsgWidgetPush, func() { h.runSlotCall("widgets", pending) })
 
 		case MsgNotify:
