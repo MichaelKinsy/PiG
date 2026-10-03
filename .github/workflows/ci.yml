@@ -106,6 +106,15 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      # setup-go restores the build cache keyed on go.sum and never refreshes it on a hit.
+      # This restores the newest cache a previous run saved, so a job recompiles only what changed.
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
@@ -159,6 +168,12 @@ jobs:
           CI: '1'
           SHARD: ${{ matrix.shard }}
         run: make "ci-$SHARD"
+      - name: Save the Go build cache
+        if: success() && matrix.shard == 'test-fast'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
 
   node-runtime:
     name: Node extensions / ${{ matrix.node_version_file }}
@@ -289,6 +304,15 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      # setup-go restores the build cache keyed on go.sum and never refreshes it on a hit.
+      # This restores the newest cache a previous run saved, so a job recompiles only what changed.
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~\AppData\Local\go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
@@ -428,6 +452,12 @@ jobs:
           $env:PIG_HOME = Join-Path $acceptanceRoot 'config with spaces'
           go test -v -timeout 30m ./test/extension-conformance
           if ($LASTEXITCODE -ne 0) { throw "Windows Go, Node, Rust, Python, or fused-Go extension conformance failed" }
+      - name: Save the Go build cache
+        if: success() && matrix.shard == 'native'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~\AppData\Local\go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
 
   macos:
     name: macOS native
