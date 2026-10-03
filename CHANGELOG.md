@@ -9,6 +9,8 @@ All notable public changes to PiG will be recorded in this file.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-03
+
 ### Added
 
 - PiG follows Pi 1.0.0. `pig --version` prints `<PiG release>+1.0.0`.
