@@ -122,32 +122,38 @@ func TestWindowsTestPackagesFailWhenGoListFails(t *testing.T) {
 // The native shard drops the extension host packages and cmd/pig from the
 // script's list. The extension-host shard must test each dropped extension host
 // package, the extension-conformance shard must test the conformance package,
-// and the cli shard must test every cmd/pig shard that make
-// test-cli runs on Linux, each in its own step.
+// and the cli-N shards must together test every cmd/pig shard that make
+// test-cli runs on Linux, each shard on its own job.
 func TestWindowsShardsTestEverySelectedPackage(t *testing.T) {
 	job, ok := verificationJobs(t)["windows"]
 	if !ok {
 		t.Fatal("ci.yml has no windows job")
 	}
-	if !slices.Equal(job.Strategy.Matrix.Shard, []string{"native", "cli", "extension-host", "extension-conformance"}) {
-		t.Fatalf("windows shards = %v, want [native cli extension-host extension-conformance]", job.Strategy.Matrix.Shard)
-	}
 	shards, cliPkg := cliShards(t)
 	cliPkg = strings.TrimPrefix(cliPkg, "./")
-	shardStep := regexp.MustCompile(`(?m)^\s*run=\$\(automation/ci/test-shard-pattern\.sh ([0-9]+) ([0-9]+) \./` + regexp.QuoteMeta(cliPkg) + `\)\n\s*go test -timeout 30m -run "\$run" \./` + regexp.QuoteMeta(cliPkg) + `\n`)
-	var cliShardSteps []string
+	// One matrix entry per cmd/pig shard, so the shards run in parallel on separate runners.
+	wantMatrix := []string{"native"}
+	for shard := 1; shard <= shards; shard++ {
+		wantMatrix = append(wantMatrix, "cli-"+strconv.Itoa(shard))
+	}
+	wantMatrix = append(wantMatrix, "extension-host", "extension-conformance")
+	if !slices.Equal(job.Strategy.Matrix.Shard, wantMatrix) {
+		t.Fatalf("windows shards = %v, want %v", job.Strategy.Matrix.Shard, wantMatrix)
+	}
+	shardStep := regexp.MustCompile(`(?m)^\s*run=\$\(automation/ci/test-shard-pattern\.sh "\$\{CLI_SHARD#cli-\}" ([0-9]+) \./` + regexp.QuoteMeta(cliPkg) + `\)\n\s*go test -timeout 30m -run "\$run" \./` + regexp.QuoteMeta(cliPkg) + `\n`)
+	cliShardSteps := 0
 	selectLine := ""
 	extensionRuns := ""
 	conformanceRuns := ""
 	for _, step := range job.Steps {
 		if match := shardStep.FindStringSubmatch(step.Run); match != nil {
-			if step.If != "matrix.shard == 'cli'" {
-				t.Errorf("cmd/pig shard step runs when %q, want the cli shard", step.If)
+			if step.If != "startsWith(matrix.shard, 'cli-')" {
+				t.Errorf("cmd/pig shard step runs when %q, want only the cli-N shards", step.If)
 			}
-			if match[2] != strconv.Itoa(shards) {
-				t.Errorf("cmd/pig shard step runs shard %s of %s, want %d shards as make test-cli runs", match[1], match[2], shards)
+			if match[1] != strconv.Itoa(shards) {
+				t.Errorf("cmd/pig shard step runs of %s shards, want %d as make test-cli runs", match[1], shards)
 			}
-			cliShardSteps = append(cliShardSteps, match[1])
+			cliShardSteps++
 		}
 		if strings.Contains(step.Run, "windows-test-packages.sh") {
 			if step.If != "matrix.shard == 'native'" {
@@ -176,12 +182,9 @@ func TestWindowsShardsTestEverySelectedPackage(t *testing.T) {
 	if len(excluded) == 0 {
 		t.Fatalf("expected the native shard to drop the extension host packages: %s", selectLine)
 	}
-	var want []string
-	for shard := 1; shard <= shards; shard++ {
-		want = append(want, strconv.Itoa(shard))
-	}
-	if !slices.Equal(cliShardSteps, want) {
-		t.Errorf("native shard tests cmd/pig shards %v, want one step for each of %v", cliShardSteps, want)
+	// Exactly one step serves every cli-N job, and it derives N from the matrix value, so each shard 1..shards runs once, on its own job.
+	if cliShardSteps != 1 {
+		t.Errorf("windows job has %d cmd/pig shard steps, want one step run by each cli-N job", cliShardSteps)
 	}
 	droppedCLI := false
 	for _, match := range excluded {

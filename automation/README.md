@@ -70,7 +70,7 @@ The automation writes only where the environment allows. Set these when the defa
 | Script | Purpose |
 |---|---|
 | `test-grouped.sh` | The `make test` scheduler: runs Go packages in groups sized for the machine, and `cmd/pig` in shards. |
-| `test-shard-pattern.sh` | Prints the `go test -run` pattern for one shard of a package's tests. `make test-cli` and the Windows cli job run `cmd/pig` in these shards, each in its own `go test` process and timeout. |
+| `test-shard-pattern.sh` | Prints the `go test -run` pattern for one shard of a package's tests. `make test-cli` and the Windows `cli-1` to `cli-5` jobs run `cmd/pig` in these shards, each shard in its own parallel job, `go test` process and timeout. |
 | `test-fixtures.sh` | Builds the Go and Rust extension fixtures tests load. |
 | `test-race.sh` | Race and goroutine-leak gate for the TUI concurrency model. |
 | `integration-tests.sh` | The tmux integration tier, split by category. |

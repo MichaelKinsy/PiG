@@ -276,10 +276,11 @@ jobs:
         # extension-host: the extension host packages (runtimecell and
         # subprocess). extension-conformance: every SDK against the in-process
         # reference. native: the smoke run and every other package that carries
-        # Windows tests. cli: cmd/pig in its five shards. The two extension
+        # Windows tests. cli-1 to cli-5: one job for each of the five
+        # cmd/pig shards, run in parallel. The two extension
         # shards were one shard whose extension step took 49 of the job's 60
         # minutes, and native with cmd/pig reached the 60-minute limit.
-        shard: [native, cli, extension-host, extension-conformance]
+        shard: [native, cli-1, cli-2, cli-3, cli-4, cli-5, extension-host, extension-conformance]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -364,7 +365,7 @@ jobs:
           if ((Get-Content -Raw (Join-Path $acceptanceRoot 'rpc.jsonl')) -notmatch '"type":"response"') { throw "Windows RPC response missing" }
       - name: Test every package with Windows tests
         # The extension-host shard runs the extension host packages, and the
-        # steps after this one run cmd/pig in shards. The package
+        # cli-N shards run cmd/pig in shards. The package
         # list comes from the toolchain, so a new Windows test file is run
         # without editing this workflow. The list holds packages with a
         # Windows-only test file; tests that branch on runtime.GOOS in a
@@ -382,75 +383,20 @@ jobs:
           packages=$(automation/ci/windows-test-packages.sh | grep -v -e '/coding/extension/host/runtimecell$' -e '/coding/extension/host/subprocess$' -e '/cmd/pig$')
           echo "$packages"
           go test -timeout 30m $packages
-      - name: Test cmd/pig, shard 1 of 5
-        # cmd/pig runs as make test-cli runs it on Linux: in the shards of automation/ci/test-shard-pattern.sh, each in its own go test process and timeout.
-        if: matrix.shard == 'cli'
+      - name: Test cmd/pig, shard ${{ matrix.shard }} of 5
+        # Each cli-N shard is its own job running shard N of automation/ci/test-shard-pattern.sh, as make test-cli runs the shards on Linux: each in its own go test process and timeout.
+        if: startsWith(matrix.shard, 'cli-')
         shell: bash
         env:
           PI_TEST_NATIVE_CLIPBOARD: '1'
+          CLI_SHARD: ${{ matrix.shard }}
         run: |
           set -euo pipefail
           acceptance="$RUNNER_TEMP/pig native acceptance"
           mkdir -p "$acceptance"
           export PIG_HOME="$acceptance/config with spaces"
           export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
-          run=$(automation/ci/test-shard-pattern.sh 1 5 ./cmd/pig)
-          go test -timeout 30m -run "$run" ./cmd/pig
-      - name: Test cmd/pig, shard 2 of 5
-        # cmd/pig runs as make test-cli runs it on Linux: in the shards of automation/ci/test-shard-pattern.sh, each in its own go test process and timeout.
-        if: matrix.shard == 'cli'
-        shell: bash
-        env:
-          PI_TEST_NATIVE_CLIPBOARD: '1'
-        run: |
-          set -euo pipefail
-          acceptance="$RUNNER_TEMP/pig native acceptance"
-          mkdir -p "$acceptance"
-          export PIG_HOME="$acceptance/config with spaces"
-          export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
-          run=$(automation/ci/test-shard-pattern.sh 2 5 ./cmd/pig)
-          go test -timeout 30m -run "$run" ./cmd/pig
-      - name: Test cmd/pig, shard 3 of 5
-        # cmd/pig runs as make test-cli runs it on Linux: in the shards of automation/ci/test-shard-pattern.sh, each in its own go test process and timeout.
-        if: matrix.shard == 'cli'
-        shell: bash
-        env:
-          PI_TEST_NATIVE_CLIPBOARD: '1'
-        run: |
-          set -euo pipefail
-          acceptance="$RUNNER_TEMP/pig native acceptance"
-          mkdir -p "$acceptance"
-          export PIG_HOME="$acceptance/config with spaces"
-          export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
-          run=$(automation/ci/test-shard-pattern.sh 3 5 ./cmd/pig)
-          go test -timeout 30m -run "$run" ./cmd/pig
-      - name: Test cmd/pig, shard 4 of 5
-        # cmd/pig runs as make test-cli runs it on Linux: in the shards of automation/ci/test-shard-pattern.sh, each in its own go test process and timeout.
-        if: matrix.shard == 'cli'
-        shell: bash
-        env:
-          PI_TEST_NATIVE_CLIPBOARD: '1'
-        run: |
-          set -euo pipefail
-          acceptance="$RUNNER_TEMP/pig native acceptance"
-          mkdir -p "$acceptance"
-          export PIG_HOME="$acceptance/config with spaces"
-          export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
-          run=$(automation/ci/test-shard-pattern.sh 4 5 ./cmd/pig)
-          go test -timeout 30m -run "$run" ./cmd/pig
-      - name: Test cmd/pig, shard 5 of 5
-        # cmd/pig runs as make test-cli runs it on Linux: in the shards of automation/ci/test-shard-pattern.sh, each in its own go test process and timeout.
-        if: matrix.shard == 'cli'
-        shell: bash
-        env:
-          PI_TEST_NATIVE_CLIPBOARD: '1'
-        run: |
-          set -euo pipefail
-          acceptance="$RUNNER_TEMP/pig native acceptance"
-          mkdir -p "$acceptance"
-          export PIG_HOME="$acceptance/config with spaces"
-          export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
-          run=$(automation/ci/test-shard-pattern.sh 5 5 ./cmd/pig)
+          run=$(automation/ci/test-shard-pattern.sh "${CLI_SHARD#cli-}" 5 ./cmd/pig)
           go test -timeout 30m -run "$run" ./cmd/pig
       - name: Test Windows extension host packages
         if: matrix.shard == 'extension-host'
