@@ -68,16 +68,16 @@ func (m *InteractiveMode) startupExpansionState() bool {
 
 // showLoadedResources rebuilds the loaded-resources listing between the
 // header and the transcript: one expandable section per resource kind, each
-// followed by a blank line, then the diagnostics blocks. Quiet startup omits
-// the listing unless force is set, and the diagnostics unless
-// showDiagnosticsWhenQuiet is set (interactive-mode.ts:1695-1707).
+// followed by a blank line, then the diagnostics blocks. Quiet startup (true or
+// "header") omits the listing unless force is set, and the diagnostics unless
+// showDiagnosticsWhenQuiet is set (interactive-mode.ts:1759-1771).
 func (m *InteractiveMode) showLoadedResources(force, showDiagnosticsWhenQuiet bool) {
 	if m.loadedResourcesContainer == nil {
 		return
 	}
 	m.loadedResourcesContainer.Clear()
 	m.loadedResourceSections = nil
-	showListing := force || m.opts.Verbose || !m.opts.Settings.QuietStartup
+	showListing := force || m.shouldShowStartupDetails()
 	showDiagnostics := showListing || showDiagnosticsWhenQuiet
 	if !showDiagnostics {
 		return
@@ -132,7 +132,7 @@ func (m *InteractiveMode) showLoadedResources(force, showDiagnosticsWhenQuiet bo
 		addDiagnostics := func(name string, diagnostics []extension.ResourceDiagnostic) {
 			if len(diagnostics) > 0 {
 				body := formatResourceDiagnostics(diagnostics, sourceInfos)
-				m.loadedResourcesContainer.Add(tui.NewPaddedText(theme.FgText("warning", "["+name+"]")+"\n"+body, 0, 0, nil))
+				m.loadedResourcesContainer.Add(tui.NewThemedText(func() string { return tui.ActiveTheme().FgText("warning", "["+name+"]") + "\n" + body }, 0, 0))
 				m.loadedResourcesContainer.Add(tui.NewSpacer(1))
 			}
 		}
@@ -143,8 +143,9 @@ func (m *InteractiveMode) showLoadedResources(force, showDiagnosticsWhenQuiet bo
 	}
 }
 
-// addLoadedListing appends the Context, Skills, Prompts, Extensions and
-// Themes sections.
+// addLoadedListing appends the Context, Skills, Prompts and Extensions
+// sections. Upstream 0.99.1 has no Themes section (interactive-mode.ts
+// showLoadedResources lists themes only through source info and conflicts).
 func (m *InteractiveMode) addLoadedListing(addLoadedSection func(name, collapsedBody, expandedBody string), formatCompactList func([]string, bool) string, theme *tui.Theme, collator *collate.Collator) {
 	contextPaths := append(slices.Clone(m.opts.SystemPromptSourcePaths), contextFilePaths(m.opts.ContextFiles)...)
 	if len(contextPaths) > 0 {
@@ -197,18 +198,6 @@ func (m *InteractiveMode) addLoadedListing(addLoadedSection func(name, collapsed
 		)
 		addLoadedSection("Extensions", formatCompactList(getCompactExtensionLabels(extensions), true), list)
 	}
-
-	var themes []loadedResource
-	var names []string
-	for _, loaded := range m.loadedThemes {
-		item := m.loadedResourceFor(loaded.path, "themes")
-		themes = append(themes, item)
-		names = append(names, loaded.theme.Name)
-	}
-	if len(themes) > 0 {
-		list := formatScopeGroups(theme, collator, buildScopeGroups(themes), formatDisplayPathItem, getShortPathItem)
-		addLoadedSection("Themes", formatCompactList(names, true), list)
-	}
 }
 
 func contextFilePaths(files []ContextFile) []string {
@@ -219,9 +208,10 @@ func contextFilePaths(files []ContextFile) []string {
 	return paths
 }
 
-// loadedExtensionResources lists the loaded extensions with the SourceInfo
-// stamped where each was collected, else the one the resource provenance
-// records for its path.
+// loadedExtensionResources lists the loaded extensions that are not hidden with
+// the SourceInfo stamped where each was collected, else the one the resource
+// provenance records for its path. Ports interactive-mode.ts:1759-1766
+// (`extensions.filter((extension) => !extension.hidden)`).
 func (m *InteractiveMode) loadedExtensionResources() []loadedResource {
 	if m.newRunner == nil {
 		return nil
@@ -229,7 +219,7 @@ func (m *InteractiveMode) loadedExtensionResources() []loadedResource {
 	sources := m.newRunner.ExtensionSources()
 	out := make([]loadedResource, 0, len(sources))
 	for _, source := range sources {
-		if source.ResolvedPath == "" {
+		if source.ResolvedPath == "" || source.Hidden {
 			continue
 		}
 		if info, ok := source.SourceInfo.(PiSourceInfo); ok {

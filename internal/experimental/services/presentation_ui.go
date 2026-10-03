@@ -4,7 +4,6 @@ package services
 import (
 	"context"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 )
 
@@ -22,7 +21,7 @@ type PresentationUI interface {
 }
 
 // PresentationUIDefinition names the local service; Go shares type and value names.
-var PresentationUIDefinition = pico3.DefineServiceWithOptions[PresentationUI]("pi.local.presentation-ui", pico3.ServiceOptions{Local: true})
+var PresentationUIDefinition = chord.DefineServiceWithOptions[PresentationUI]("pi.local.presentation-ui", chord.ServiceOptions{Local: true})
 
 func init() {
 	chord.RegisterServiceView(PresentationUIDefinition, func(resolve func() (PresentationUI, error)) PresentationUI {

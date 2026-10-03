@@ -33,9 +33,9 @@ exit_code = 0
 json_output_equal = true
 stderr_equal = true
 both_contain = [
-  '"command":"prompt","id":"prompt","success":true,"type":"response"',
-  '"command":"steer","id":"steer","success":true,"type":"response"',
-  '"command":"follow_up","id":"follow","success":true,"type":"response"',
+  '"command":"prompt","data":{"disposition":"started"},"id":"prompt","success":true,"type":"response"',
+  '"command":"steer","data":{"disposition":"queued"},"id":"steer","success":true,"type":"response"',
+  '"command":"follow_up","data":{"disposition":"queued"},"id":"follow","success":true,"type":"response"',
   '"steering":["What is 20+22?"]',
   '"followUp":["Remember this exact code: letters A L P H A and digits 7 7 4 9"]',
   '"followUp":[],"steering":[],"type":"queue_update"',

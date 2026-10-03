@@ -15,10 +15,3 @@ func packedRunnerName(goos, language string) string {
 		return "runner"
 	}
 }
-
-func pythonExecutableName(goos string) string {
-	if goos == "windows" {
-		return "python"
-	}
-	return "python3"
-}

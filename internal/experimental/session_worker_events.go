@@ -12,27 +12,10 @@ import (
 	"path/filepath"
 	"slices"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/session"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 )
 
 func encodeSessionKey(path string) string { return base64.RawURLEncoding.EncodeToString([]byte(path)) }
-
-// sessionWorkerMetadata is the StrictObject SessionWorkerMetadataSchema (session-worker.ts:73-81) sent in launch options and echoed in worker_ready. Required fields stay present when zero; Session metadata outside the schema, such as legacyParentSessionPath, is not sent.
-type sessionWorkerMetadata struct {
-	ID              string `json:"id"`
-	CreatedAt       int64  `json:"createdAt"`
-	StorageVersion  int    `json:"storageVersion"`
-	Cwd             string `json:"cwd"`
-	Path            string `json:"path"`
-	ModifiedAt      int64  `json:"modifiedAt"`
-	ParentSessionID string `json:"parentSessionId,omitempty"`
-}
-
-// newSessionWorkerMetadata mirrors session-worker-manager.ts #launch, which copies only the schema fields and a present parentSessionId.
-func newSessionWorkerMetadata(metadata session.SessionMetadata) sessionWorkerMetadata {
-	return sessionWorkerMetadata{ID: metadata.ID, CreatedAt: metadata.CreatedAt, StorageVersion: metadata.StorageVersion, Cwd: metadata.Cwd, Path: metadata.Path, ModifiedAt: metadata.ModifiedAt, ParentSessionID: metadata.ParentSessionID}
-}
 
 type sessionWorkerEvent struct {
 	Type                string                   `json:"type"`
@@ -40,7 +23,7 @@ type sessionWorkerEvent struct {
 	SessionKey          string                   `json:"sessionKey"`
 	SessionID           string                   `json:"sessionId"`
 	PID                 int                      `json:"-"`
-	Metadata            session.SessionMetadata  `json:"-"`
+	Metadata            SessionCatalogMetadata   `json:"-"`
 	PluginManifestPaths []string                 `json:"pluginManifestPaths"`
 	RequestID           string                   `json:"requestId"`
 	AttachmentID        string                   `json:"attachmentId"`
@@ -69,48 +52,24 @@ func scopeValid(raw json.RawMessage) bool {
 	return json.Unmarshal(raw, &fields) == nil && len(fields) == 2 && stringMember(fields, "serverConnectionId") && stringMember(fields, "attachmentId")
 }
 
-// decodeSessionWorkerMetadata validates worker_ready metadata against SessionWorkerMetadataSchema (session-worker.ts:73-81). createdAt and storageVersion are Type.Integer, so any finite JSON number with no fractional part is accepted, as Number.isInteger does. modifiedAt is Type.Number: the filesystem mtimeMs a Pi worker reports is fractional (jsonl/repo.ts:85,254-256). session.SessionMetadata carries modifiedAt as Unix milliseconds in an int64, so the fraction is truncated, as the Go JSONL repository already does for the value it reads from the file system.
-func decodeSessionWorkerMetadata(raw json.RawMessage) (session.SessionMetadata, bool) {
+// decodeSessionWorkerMetadata validates metadata against the StrictObject SessionWorkerMetadataSchema (session-worker.ts:69-74): exactly id (a non-empty string), createdAt (any number), cwd and path (strings). Members are read by exact key, because a case-variant key such as CreatedAt is an additional property to TypeBox, while encoding/json matches struct tags case-insensitively.
+func decodeSessionWorkerMetadata(raw json.RawMessage) (SessionCatalogMetadata, bool) {
 	var fields map[string]json.RawMessage
-	var value session.SessionMetadata
-	if json.Unmarshal(raw, &fields) != nil || !stringMember(fields, "id") || !stringMember(fields, "cwd") || !stringMember(fields, "path") {
+	var value SessionCatalogMetadata
+	if json.Unmarshal(raw, &fields) != nil || len(fields) != 4 || !stringMember(fields, "id") || !stringMember(fields, "cwd") || !stringMember(fields, "path") {
 		return value, false
 	}
-	for key := range fields {
-		switch key {
-		case "id", "cwd", "path", "createdAt", "storageVersion", "modifiedAt", "parentSessionId":
-		default:
-			return value, false
-		}
-	}
-	var wire struct {
-		ID              string   `json:"id"`
-		CreatedAt       *float64 `json:"createdAt"`
-		StorageVersion  *float64 `json:"storageVersion"`
-		Cwd             string   `json:"cwd"`
-		Path            string   `json:"path"`
-		ModifiedAt      *float64 `json:"modifiedAt"`
-		ParentSessionID string   `json:"parentSessionId"`
-	}
-	if json.Unmarshal(raw, &wire) != nil || wire.ID == "" || wire.Path == "" || wire.CreatedAt == nil || wire.StorageVersion == nil || wire.ModifiedAt == nil {
+	var createdAt *float64
+	rawCreatedAt, present := fields["createdAt"]
+	if !present || json.Unmarshal(rawCreatedAt, &createdAt) != nil || createdAt == nil {
 		return value, false
 	}
-	if parent, present := fields["parentSessionId"]; present && (len(parent) == 0 || parent[0] != '"') {
-		return value, false
+	if json.Unmarshal(fields["id"], &value.ID) != nil || value.ID == "" || json.Unmarshal(fields["cwd"], &value.Cwd) != nil || json.Unmarshal(fields["path"], &value.Path) != nil {
+		return SessionCatalogMetadata{}, false
 	}
-	for _, integer := range []float64{*wire.CreatedAt, *wire.StorageVersion} {
-		if !wireInt64(integer) || integer != math.Trunc(integer) {
-			return session.SessionMetadata{}, false
-		}
-	}
-	if !wireInt64(*wire.ModifiedAt) || *wire.StorageVersion < float64(math.MinInt) || *wire.StorageVersion >= float64(math.MaxInt) {
-		return session.SessionMetadata{}, false
-	}
-	return session.SessionMetadata{ID: wire.ID, CreatedAt: int64(*wire.CreatedAt), StorageVersion: int(*wire.StorageVersion), Cwd: wire.Cwd, Path: wire.Path, ModifiedAt: int64(*wire.ModifiedAt), ParentSessionID: wire.ParentSessionID}, true
+	value.CreatedAt = *createdAt
+	return value, true
 }
-
-// wireInt64 reports whether a finite JSON number truncates into int64. Pi accepts any finite number; the int64 fields of session.SessionMetadata are the only limit, so a value at or beyond 2^63 cannot be represented and is rejected.
-func wireInt64(value float64) bool { return value >= -(1<<63) && value < 1<<63 }
 
 // integerMember decodes a Type.Integer({minimum}) member: Number.isInteger of the JSON.parse value, so 1e3 and 1.0 are integers.
 func integerMember(fields map[string]json.RawMessage, key string, minimum int) (int, bool) {

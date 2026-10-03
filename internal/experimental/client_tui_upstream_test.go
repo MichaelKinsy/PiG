@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -15,13 +14,9 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/agent"
-	"github.com/MichaelKinsy/PiG/agent/harness/agentharness"
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
-	harnessruntime "github.com/MichaelKinsy/PiG/agent/harness/runtime"
-	"github.com/MichaelKinsy/PiG/agent/harness/session"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/chord"
+	"github.com/MichaelKinsy/PiG/internal/experimental/durabletest"
 	"github.com/MichaelKinsy/PiG/internal/experimental/services"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -71,15 +66,6 @@ func TestExperimentalClientTuiUpstream(t *testing.T) {
 				Configuration: services.ModelsConfiguration{Model: &services.ModelRef{Provider: "test", ModelId: "one"}, ThinkingLevel: "off"},
 				Refresh:       services.ModelsRefresh{Status: "idle"},
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
-			transcriptState, err := chord.NewReplicatedState(&services.TranscriptState{Snapshot: &agentharness.LaneSnapshot{
-				Lane: "main", Transcript: []session.Entry{}, TipID: nil,
-				Configuration: session.LaneConfiguration{Model: session.ModelRef{Provider: "test", ModelID: "one"}, ThinkingLevel: "off", ActiveToolNames: []string{}},
-				Stats:         session.SessionStats{MessageCount: 0, Usage: ai.Usage{}},
-				Operation:     nil, Queues: []agentharness.LaneQueuedItem{}, Faulted: false,
-			}, Event: json.RawMessage("null")})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -159,52 +145,30 @@ func TestExperimentalClientTuiUpstream(t *testing.T) {
 					return nil
 				},
 			}
-			emit := func(payload agentharness.HarnessEventPayload) error {
-				event := agentharness.HarnessEvent{Lane: "main", Payload: payload}
-				return transcriptState.Change(background, func(draft *services.TranscriptState) error {
-					if harnessruntime.ReduceLaneSnapshot(draft.Snapshot, event) == "rebase" {
-						return errors.New("Test transcript event unexpectedly requires a rebase")
-					}
-					wire, err := json.Marshal(event)
-					draft.Event = wire
-					return err
-				})
-			}
 			finishPrompt := make(chan struct{})
 			var finishOnce sync.Once
 			finish := func() { finishOnce.Do(func() { close(finishPrompt) }) }
 			t.Cleanup(finish)
-			promptCompleted := make(chan struct{})
-			var completeOnce sync.Once
-			var promptCalls []clientTuiPromptCall
-			lane := &clientTuiPromptLane{prompt: func(ctx context.Context, message string, images []ai.ImageContent) (services.LaneOperation, error) {
-				defer completeOnce.Do(func() { close(promptCompleted) })
+			var prompts []string
+			// experimental-client-tui.test.ts:107-118: the faux response records the prompt it answers, waits for promptFinished, then answers.
+			durable := durabletest.OpenFauxConversation(func(ctx context.Context, input string) (string, error) {
 				callsMu.Lock()
-				promptCalls = append(promptCalls, clientTuiPromptCall{message, slices.Clone(images), ctx})
+				prompts = append(prompts, input)
 				callsMu.Unlock()
 				notify()
-				if err := emit(agentharness.RunStartPayload{RunID: "run-1", StartedAt: 1}); err != nil {
-					return services.LaneOperation{}, err
+				select {
+				case <-finishPrompt:
+				case <-ctx.Done():
+					return "", context.Cause(ctx)
 				}
-				<-finishPrompt
-				if err := emit(agentharness.EntryAddedPayload{Entry: session.Entry{
-					ID: "entry-user", ParentID: nil, Seq: 1, Timestamp: 1, Type: session.EntryTypeMessage,
-					Message: agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "hello"}}, Timestamp: 1}},
-				}}); err != nil {
-					return services.LaneOperation{}, err
-				}
-				usage := transcriptState.Value().Snapshot.Stats.Usage
-				if err := emit(agentharness.EntryAddedPayload{Entry: session.Entry{
-					ID: "entry-assistant", ParentID: new("entry-user"), Seq: 2, Timestamp: 2, Type: session.EntryTypeMessage,
-					Message: agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: "assistant", Content: []ai.AssistantContentBlock{ai.TextContent{Text: "remote answer"}}, Provider: "test", ModelID: "one", API: "test", Usage: &usage, StopReason: "stop", Timestamp: 2}},
-				}}); err != nil {
-					return services.LaneOperation{}, err
-				}
-				if err := emit(agentharness.RunEndPayload{RunID: "run-1", Status: "completed", FromTipID: nil, TipID: new("entry-assistant"), EndedAt: 2}); err != nil {
-					return services.LaneOperation{}, err
-				}
-				return services.LaneOperation{OperationID: "run-1", Status: "completed"}, nil
-			}}
+				return "remote answer", nil
+			})
+			t.Cleanup(func() { _ = durable.Harness.Close(background) })
+			transcriptView, err := durable.Conversation.ViewState(background)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(transcriptView.Dispose)
 
 			reloadSource := "\"use strict\";\nconst { defineFacet, defineService } = require(\"@earendil-works/chord\");\nconst Models = defineService(\"pi.models\");\nmodule.exports = { __esModule: true, default: defineFacet({ id: \"test-tui-facet\", setup(env) { env.use(Models); } }) };\n"
 			hash := sha256.Sum256([]byte(reloadSource))
@@ -218,7 +182,7 @@ func TestExperimentalClientTuiUpstream(t *testing.T) {
 			var prepares []services.PrepareSessionPluginsRequest
 			var presentationReloads, sessionReloads atomic.Int64
 			plugins := &clientTuiPresentationPluginsSpy{
-				prepare: func(ctx context.Context, request services.PrepareSessionPluginsRequest) (pico3.JsonValue, error) {
+				prepare: func(ctx context.Context, request services.PrepareSessionPluginsRequest) (chord.JsonValue, error) {
 					if ctx == nil {
 						return nil, errors.New("prepareSession requires a context")
 					}
@@ -227,7 +191,7 @@ func TestExperimentalClientTuiUpstream(t *testing.T) {
 					callsMu.Unlock()
 					return reloadData, nil
 				},
-				reload: func(context.Context) (pico3.JsonValue, error) {
+				reload: func(context.Context) (chord.JsonValue, error) {
 					presentationReloads.Add(1)
 					notify()
 					return reloadData, nil
@@ -264,13 +228,13 @@ func TestExperimentalClientTuiUpstream(t *testing.T) {
 			if err := chord.Provide[services.Models](sessionProvider, services.ModelsDefinition, models); err != nil {
 				t.Fatal(err)
 			}
-			if err := chord.Provide[services.AgentController](sessionProvider, services.AgentControllerDefinition, services.CreateAgentController(lane)); err != nil {
+			if err := chord.Provide[services.AgentController](sessionProvider, services.AgentControllerDefinition, services.CreateAgentController(durable.Harness, durable.Conversation)); err != nil {
 				t.Fatal(err)
 			}
 			if err := chord.Provide[services.SessionPlugins](sessionProvider, services.SessionPluginsDefinition, sessionPlugins); err != nil {
 				t.Fatal(err)
 			}
-			if err := chord.Provide[services.Transcript](sessionProvider, services.TranscriptDefinition, &clientTuiStateService[*services.TranscriptState]{transcriptState}); err != nil {
+			if err := chord.Provide[services.Transcript](sessionProvider, services.TranscriptDefinition, clientTuiViewTranscript{transcriptView}); err != nil {
 				t.Fatal(err)
 			}
 			server, disposeSources := newClientTuiLoopbackServer(t, serverId, serverProvider, sessionProvider, connectionState, attachment)
@@ -346,7 +310,7 @@ func TestExperimentalClientTuiUpstream(t *testing.T) {
 			if modelSelectCount != 0 {
 				t.Fatalf("startup selected a model %d times", modelSelectCount)
 			}
-			for _, text := range []string{"Server: " + serverId, "Session: " + tt.sessionId, "test/one"} {
+			for _, text := range []string{"Server: " + serverId, "Session: " + tt.sessionId, "faux/faux-1"} {
 				if got := render(); !strings.Contains(got, text) {
 					t.Fatalf("render lacks %q: %q", text, got)
 				}
@@ -364,22 +328,18 @@ func TestExperimentalClientTuiUpstream(t *testing.T) {
 			waitFor("prompt call", func() bool {
 				callsMu.Lock()
 				defer callsMu.Unlock()
-				return len(promptCalls) > 0
+				return len(prompts) > 0
 			})
 			callsMu.Lock()
-			observedPrompts := slices.Clone(promptCalls)
+			observedPrompts := slices.Clone(prompts)
 			callsMu.Unlock()
-			if !slices.ContainsFunc(observedPrompts, func(call clientTuiPromptCall) bool {
-				return call.message == "hello" && call.images == nil && call.ctx == background
-			}) {
-				t.Fatalf("prompt calls = %#v, want hello, undefined options, BACKGROUND_CONTEXT", observedPrompts)
+			if !reflect.DeepEqual(observedPrompts, []string{"hello"}) {
+				t.Fatalf("faux provider prompts = %#v, want [hello]", observedPrompts)
 			}
 			waitRendered("Working...", true)
 			finish()
-			// The upstream prompt emits its remaining events without yielding after promptFinished resolves.
-			<-promptCompleted
 			waitRendered("remote answer", true)
-			if got := render(); !strings.Contains(got, "hello") || strings.Contains(got, "Working...") || strings.Contains(got, "Operation run-1 completed") {
+			if got := render(); !strings.Contains(got, "hello") || strings.Contains(got, "Working...") {
 				t.Fatalf("completed prompt render = %q", got)
 			}
 
@@ -495,7 +455,7 @@ type clientTuiStateService[T any] struct {
 	state *chord.MutableReplicatedState[T]
 }
 
-func (service *clientTuiStateService[T]) State() pico3.ReplicatedStateOf[T] { return service.state }
+func (service *clientTuiStateService[T]) State() chord.ReplicatedStateOf[T] { return service.state }
 
 type clientTuiManagementSpy struct {
 	create func(context.Context, services.SessionCreateOptions) (services.SessionSummary, error)
@@ -531,14 +491,14 @@ func (spy *clientTuiModelsSpy) SelectThinking(ctx context.Context, level ai.Thin
 }
 
 type clientTuiPresentationPluginsSpy struct {
-	prepare func(context.Context, services.PrepareSessionPluginsRequest) (pico3.JsonValue, error)
-	reload  func(context.Context) (pico3.JsonValue, error)
+	prepare func(context.Context, services.PrepareSessionPluginsRequest) (chord.JsonValue, error)
+	reload  func(context.Context) (chord.JsonValue, error)
 }
 
-func (spy *clientTuiPresentationPluginsSpy) PrepareSession(ctx context.Context, request services.PrepareSessionPluginsRequest) (pico3.JsonValue, error) {
+func (spy *clientTuiPresentationPluginsSpy) PrepareSession(ctx context.Context, request services.PrepareSessionPluginsRequest) (chord.JsonValue, error) {
 	return spy.prepare(ctx, request)
 }
-func (spy *clientTuiPresentationPluginsSpy) Reload(ctx context.Context) (pico3.JsonValue, error) {
+func (spy *clientTuiPresentationPluginsSpy) Reload(ctx context.Context) (chord.JsonValue, error) {
 	return spy.reload(ctx)
 }
 
@@ -546,17 +506,9 @@ type clientTuiSessionPluginsSpy struct{ reload func(context.Context) error }
 
 func (spy *clientTuiSessionPluginsSpy) Reload(ctx context.Context) error { return spy.reload(ctx) }
 
-type clientTuiPromptCall struct {
-	message string
-	images  []ai.ImageContent
-	ctx     context.Context
-}
+// clientTuiViewTranscript serves a durable conversation's attached view state as the Transcript service.
+type clientTuiViewTranscript struct{ state services.TranscriptViewState }
 
-type clientTuiPromptLane struct {
-	services.AgentLane
-	prompt func(context.Context, string, []ai.ImageContent) (services.LaneOperation, error)
-}
-
-func (lane *clientTuiPromptLane) Prompt(ctx context.Context, message string, images []ai.ImageContent) (services.LaneOperation, error) {
-	return lane.prompt(ctx, message, images)
+func (transcript clientTuiViewTranscript) State() chord.ReplicatedStateOf[services.ConversationView] {
+	return transcript.state
 }

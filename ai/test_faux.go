@@ -174,6 +174,10 @@ func (p *TestFauxProvider) Stream(ctx context.Context, transcript TranscriptCont
 		}
 		if strings.Contains(lastText, "Trigger: retryable provider error") {
 			if _, loaded := testFauxRetryState.LoadOrStore("retryable-provider-error", true); !loaded {
+				// test/parity/testdata/test-faux-provider.ts:531-535 sets the error state on its output, then pushes `start` and `error`.
+				builder.partial.StopReason = StopReasonError
+				builder.partial.ErrorMessage = "please retry your request"
+				builder.start()
 				builder.fail(StopReasonError, errors.New("please retry your request"))
 				return
 			}
@@ -472,6 +476,14 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 		}
 	}
 
+	// Failing bash parity: a non-zero exit is a RETURNED error result, which keeps `isError` inside tool_execution_end.result (bash.ts:403-409).
+	if strings.Contains(lastText, "Run: bash failing exit") {
+		return "tool", "", []testFauxToolCall{{
+			Name: "bash",
+			Args: map[string]any{"command": "echo out; exit 3"},
+		}}
+	}
+
 	// Extension tool_call blocker parity.
 	if strings.Contains(lastText, "Run: bash BLOCK_ME") {
 		return "tool", "", []testFauxToolCall{{
@@ -639,6 +651,9 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 				}
 			}
 			return "error", "test-faux: extension UI result missing dialog marker", nil
+		}
+		if strings.Contains(currentUserText, "Run: bash failing exit") {
+			return "text", "failed-bash-done", nil
 		}
 		if strings.Contains(currentUserText, "Run: bash BLOCK_ME") {
 			if strings.Contains(historyText, "parity-blocked") {

@@ -18,9 +18,7 @@ import (
 	"golang.org/x/text/collate"
 	"golang.org/x/text/language"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/env"
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
-	"github.com/MichaelKinsy/PiG/agent/harness/session"
+	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/experimental/routing"
 	"github.com/MichaelKinsy/PiG/internal/experimental/services"
 )
@@ -241,7 +239,7 @@ func StartServer(ctx context.Context, options StartServerOptions) (runtime *Runn
 	}
 	var selectionsMu sync.Mutex
 	selections := make(map[string]resolvedSessionPlugins)
-	resolveSessionPlugins := func(ctx context.Context, metadata session.SessionMetadata, requested []string) (resolvedSessionPlugins, error) {
+	resolveSessionPlugins := func(ctx context.Context, metadata SessionCatalogMetadata, requested []string) (resolvedSessionPlugins, error) {
 		if requested != nil {
 			normalized, err := NormalizePluginPackagePaths(requested)
 			if err != nil {
@@ -303,7 +301,7 @@ func StartServer(ctx context.Context, options StartServerOptions) (runtime *Runn
 		selectionsMu.Unlock()
 		return selected, nil
 	}
-	removeSessionPlugins := func(metadata session.SessionMetadata) error {
+	removeSessionPlugins := func(metadata SessionCatalogMetadata) error {
 		selectionsMu.Lock()
 		delete(selections, metadata.Path)
 		selectionsMu.Unlock()
@@ -418,8 +416,8 @@ type startServerBackendOptions struct {
 	path                           string
 	serverId                       string
 	sessionDir                     *string
-	resolveSessionPlugins          func(context.Context, session.SessionMetadata, []string) (resolvedSessionPlugins, error)
-	removeSessionPlugins           func(session.SessionMetadata) error
+	resolveSessionPlugins          func(context.Context, SessionCatalogMetadata, []string) (resolvedSessionPlugins, error)
+	removeSessionPlugins           func(SessionCatalogMetadata) error
 	reloadPresentationFacetBundles func(context.Context, []string) ([]FacetBundleArtifact, error)
 }
 
@@ -441,10 +439,9 @@ func startServerBackend(options startServerBackendOptions, workers *SessionWorke
 	if err != nil {
 		return nil, err
 	}
-	executionEnv := env.NewNodeExecutionEnv(env.NodeExecutionEnvOptions{Cwd: cwd})
-	repo := session.NewJsonlSessionRepo(session.JsonlSessionRepoOptions{FileSystem: executionEnv, SessionsRoot: sessionDir})
-	listSessions := func(ctx context.Context) ([]session.SessionMetadata, error) {
-		metadata, err := repo.List(ctx, nil)
+	// server.ts:383-387: the catalog lists the Sessions on disk, and a tracked worker's Session replaces its listed entry.
+	listSessions := func() ([]SessionCatalogMetadata, error) {
+		metadata, err := ListSessions(sessionDir)
 		if err != nil {
 			return nil, err
 		}
@@ -452,48 +449,34 @@ func startServerBackend(options startServerBackendOptions, workers *SessionWorke
 		for i, item := range metadata {
 			byPath[item.Path] = i
 		}
-		for _, item := range workers.TrackedSessions() {
-			if i, exists := byPath[item.Path]; exists {
-				metadata[i] = item
+		for _, tracked := range workers.TrackedSessions() {
+			if i, exists := byPath[tracked.Path]; exists {
+				metadata[i] = tracked
 			} else {
-				byPath[item.Path] = len(metadata)
-				metadata = append(metadata, item)
+				byPath[tracked.Path] = len(metadata)
+				metadata = append(metadata, tracked)
 			}
 		}
 		return metadata, nil
 	}
-	resolveSession := func(ctx context.Context, id string) (session.SessionMetadata, error) {
-		metadata, err := listSessions(ctx)
-		if err != nil {
-			return session.SessionMetadata{}, err
-		}
-		var match *session.SessionMetadata
-		for _, item := range metadata {
-			if item.ID != id {
-				continue
+	// server.ts:388-393: a tracked worker's Session wins, then the catalog; the catalog holds one directory per ID, so there is no ambiguity.
+	resolveSession := func(_ context.Context, id string) (SessionCatalogMetadata, error) {
+		for _, tracked := range workers.TrackedSessions() {
+			if tracked.ID == id {
+				return tracked, nil
 			}
-			if match != nil {
-				return session.SessionMetadata{}, routing.NewSessionAmbiguousError()
-			}
-			match = &item
 		}
-		if match == nil {
-			return session.SessionMetadata{}, routing.NewSessionNotFoundError(fmt.Sprintf("Unknown session: %s", id))
+		if metadata := ReadSession(sessionDir, id); metadata != nil {
+			return *metadata, nil
 		}
-		return *match, nil
+		return SessionCatalogMetadata{}, routing.NewSessionNotFoundError(fmt.Sprintf("Unknown session: %s", id))
 	}
-	summarize := func(metadata session.SessionMetadata) services.SessionSummary {
-		return services.SessionSummary{SessionAddress: services.SessionAddress{ServerId: options.serverId, SessionId: metadata.ID}, CreatedAt: float64(metadata.CreatedAt)}
-	}
-	closeStorage := func() error {
-		return settleServerCleanup("Experimental session storage cleanup failed",
-			func() error { return repo.Close(context.Background()) },
-			func() error { executionEnv.Cleanup(context.Background()); return nil },
-		)
+	summarize := func(metadata SessionCatalogMetadata) services.SessionSummary {
+		return services.SessionSummary{SessionAddress: services.SessionAddress{ServerId: options.serverId, SessionId: metadata.ID}, CreatedAt: metadata.CreatedAt}
 	}
 	serverServices, err := services.CreateExperimentalServerServices(services.ExperimentalServerServicesOptions{
-		List: func(ctx context.Context) ([]services.SessionSummary, error) {
-			metadata, err := listSessions(ctx)
+		List: func(context.Context) ([]services.SessionSummary, error) {
+			metadata, err := listSessions()
 			if err != nil {
 				return nil, err
 			}
@@ -510,18 +493,9 @@ func startServerBackend(options startServerBackendOptions, workers *SessionWorke
 			})
 			return result, nil
 		},
-		Create: func(ctx context.Context, createOptions services.SessionCreateOptions) (services.SessionSummary, error) {
-			options := session.SessionCreateOptions{Cwd: cwd}
-			if createOptions.Id != nil {
-				options.ID = *createOptions.Id
-				options.HasID = true
-			}
-			created, err := repo.Create(ctx, options)
+		Create: func(_ context.Context, createOptions services.SessionCreateOptions) (services.SessionSummary, error) {
+			metadata, err := CreateSession(sessionDir, CreateSessionOptions{ID: createOptions.Id, Cwd: cwd})
 			if err != nil {
-				return services.SessionSummary{}, err
-			}
-			metadata := created.Metadata()
-			if err := created.Close(ctx); err != nil {
 				return services.SessionSummary{}, err
 			}
 			return summarize(metadata), nil
@@ -534,7 +508,7 @@ func startServerBackend(options startServerBackendOptions, workers *SessionWorke
 			if err := workers.CloseSession(ctx, metadata); err != nil {
 				return err
 			}
-			if err := repo.Delete(ctx, metadata); err != nil {
+			if err := DeleteSession(metadata); err != nil {
 				return err
 			}
 			return options.removeSessionPlugins(metadata)
@@ -556,7 +530,7 @@ func startServerBackend(options startServerBackendOptions, workers *SessionWorke
 			}
 			return services.PreparedSessionPlugins{PackagePaths: selected.packagePaths, PresentationPlugins: CreatePresentationFacetData(selected.presentationArtifacts)}, nil
 		},
-		ReloadPresentationPlugins: func(ctx context.Context, paths []string) (pico3.JsonValue, error) {
+		ReloadPresentationPlugins: func(ctx context.Context, paths []string) (chord.JsonValue, error) {
 			artifacts, err := options.reloadPresentationFacetBundles(ctx, paths)
 			if err != nil {
 				return nil, err
@@ -565,15 +539,16 @@ func startServerBackend(options startServerBackendOptions, workers *SessionWorke
 		},
 	})
 	if err != nil {
-		return nil, settleServerCleanup("Server service startup and cleanup failed", func() error { return err }, closeStorage)
+		return nil, err
 	}
-	closeCatalog := func() error {
-		return settleServerCleanup("Experimental session catalog cleanup failed", serverServices.Dispose, closeStorage)
-	}
+	closeCatalog := serverServices.Dispose
 	host := routing.ServerHost{
 		ServerServices: serverRuntimeServiceHost{host: serverServices.Host},
-		ResolveSession: resolveSession,
-		OpenSession: func(ctx context.Context, metadata session.SessionMetadata) (routing.RoutedSessionHandle, error) {
+		ResolveSession: func(ctx context.Context, id string) (routing.SessionMetadata, error) {
+			return resolveSession(ctx, id)
+		},
+		OpenSession: func(ctx context.Context, resolved routing.SessionMetadata) (routing.RoutedSessionHandle, error) {
+			metadata := resolved.(SessionCatalogMetadata)
 			selected, err := options.resolveSessionPlugins(ctx, metadata, nil)
 			if err != nil {
 				return nil, err
@@ -595,7 +570,7 @@ func startServerBackend(options startServerBackendOptions, workers *SessionWorke
 	backend := &runningServerBackend{server: server, sessionDir: sessionDir, services: serverServices, closed: make(chan struct{})}
 	go func() {
 		<-server.Closed()
-		failure := settleServerCleanup("Server and repository shutdown failed", server.ClosedError, closeCatalog)
+		failure := settleServerCleanup("Server and catalog shutdown failed", server.ClosedError, closeCatalog)
 		backend.mu.Lock()
 		backend.closedErr = failure
 		backend.mu.Unlock()

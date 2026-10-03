@@ -43,7 +43,8 @@ func (m *InteractiveMode) setupEditorSubmitHandler(ctx context.Context) {
 		}
 		// Pi recognizes the hidden commands only here, before history, compaction queueing and prompt dispatch.
 		switch text {
-		case "/arminsayshi":
+		// pig divergence (D87): /pigsayhi is PiG's name for the same easter egg; Pi sends it to the model.
+		case "/arminsayshi", "/pigsayhi":
 			m.handleArminSaysHi(ctx)
 			m.editor.SetText("")
 			return

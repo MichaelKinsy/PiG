@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 const nodePreflightHelperFIFOEnv = "PIG_TEST_NODE_PREFLIGHT_FIFO"
@@ -28,9 +30,14 @@ func TestMain(m *testing.M) {
 			time.Sleep(time.Hour)
 		}
 	}
-	testRoot, err := os.MkdirTemp("", "pig-subprocess-tests-")
+	testRoot, err := os.MkdirTemp("", "pig-sp-")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "create isolated test home:", err)
+		os.Exit(2)
+	}
+	if err := testenv.ScopeTempDir(testRoot); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		_ = os.RemoveAll(testRoot)
 		os.Exit(2)
 	}
 	for key, value := range map[string]string{

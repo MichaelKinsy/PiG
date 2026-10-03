@@ -468,7 +468,7 @@ func composeAPIKeyAuth(providerID string, base ai.ProviderAuth, config providerC
 				}
 			case rawKey != "":
 				env := configContextEnv([]string{rawKey}, input.Ctx, nil)
-				key, keyErr := configvalue.ResolveOrError(rawKey, fmt.Sprintf(`API key for provider "%s"`, providerID), env)
+				key, keyErr := configvalue.ResolveOrError(rawKey, "API key for provider "+quotedLabel(providerID), env)
 				if keyErr != nil {
 					return nil, keyErr
 				}
@@ -489,7 +489,7 @@ func composeAPIKeyAuth(providerID string, base ai.ProviderAuth, config providerC
 			}
 			maps.Copy(explicitEnv, result.Env)
 			headerEnv := configContextEnv(headerValues(rawHeaders), input.Ctx, explicitEnv)
-			headers, err := resolveHeadersOrError(rawHeaders, fmt.Sprintf(`provider "%s"`, providerID), headerEnv)
+			headers, err := resolveHeadersOrError(rawHeaders, "provider "+quotedLabel(providerID), headerEnv)
 			if err != nil {
 				return nil, err
 			}
@@ -518,7 +518,7 @@ func composeOAuthAuth(providerID string, oauth *ai.OAuthAuth, config providerCon
 		if err != nil {
 			return ai.ModelAuth{}, err
 		}
-		headers, err := resolveHeadersOrError(rawHeaders, fmt.Sprintf(`provider "%s"`, providerID), credential.Env)
+		headers, err := resolveHeadersOrError(rawHeaders, "provider "+quotedLabel(providerID), credential.Env)
 		if err != nil {
 			return ai.ModelAuth{}, err
 		}
@@ -720,4 +720,10 @@ func (r *RequestAuthRuntime) refreshCatalogs(ctx context.Context) {
 		}})
 	}
 	r.rebuildProviders()
+}
+
+// quotedLabel wraps s in double quotes for human-readable messages, escaping
+// embedded quotes; ordinary ids stay byte-identical to upstream's "${id}".
+func quotedLabel(s string) string {
+	return `"` + strings.ReplaceAll(s, `"`, `\"`) + `"`
 }

@@ -25,14 +25,14 @@ type AgentOperationError struct {
 	Message string `json:"message"`
 }
 
-// AgentOperationResponse distinguishes admission from completion. Accepted operations have an operation ID and may carry a terminal error; rejected operations always carry an error and may identify an existing operation.
+// AgentOperationResponse distinguishes admission from rejection. An accepted operation has an operation ID and no error; a rejected one has an error and no operation ID. OperationID identifies the durable submission of a prompt, or the task of a compaction.
 type AgentOperationResponse struct {
 	Accepted    bool                 `json:"accepted"`
 	OperationID *string              `json:"operationId"`
 	Error       *AgentOperationError `json:"error"`
 }
 
-// AgentQueueResponse has an entry ID and no error when accepted, or an error and no entry ID when rejected.
+// AgentQueueResponse has an entry ID and no error when accepted, or an error and no entry ID when rejected. EntryID identifies the durable submission; CancelQueued withdraws it while it is still queued.
 type AgentQueueResponse struct {
 	Accepted bool                 `json:"accepted"`
 	EntryID  *string              `json:"entryId"`
@@ -44,12 +44,11 @@ type AgentCompactionRequest struct {
 	CustomInstructions *string `json:"customInstructions"`
 }
 
-// AgentNavigationRequest selects a target and optional summary instructions. A null target selects the root.
-type AgentNavigationRequest struct {
-	TargetID           *string `json:"targetId"`
-	Summarize          bool    `json:"summarize"`
-	Label              *string `json:"label"`
-	CustomInstructions *string `json:"customInstructions"`
+// AgentPromptResult is the settled outcome of a prompt: "done" with the answer's text, or "unanswered" with the reason it got none.
+type AgentPromptResult struct {
+	Status string  `json:"status"`
+	Text   *string `json:"text"`
+	Reason *string `json:"reason"`
 }
 
 // AgentCancelQueuedResponse reports "cancelled", "already_consumed", or "not_found".
@@ -57,15 +56,18 @@ type AgentCancelQueuedResponse struct {
 	Outcome string `json:"outcome"`
 }
 
-// AgentController is the presentation-safe command facade over the worker-owned main AgentLane. Calls wait for the lane result, propagate context cancellation, and return transport/rejection errors separately from admission responses.
+// AgentController is the presentation-safe command facade over the worker-owned root conversation. Calls wait for the conversation's result, propagate context cancellation, and return transport errors separately from admission responses.
 type AgentController interface {
+	// Prompt starts a run; it is rejected with code "busy" while one is active.
 	Prompt(context.Context, AgentPromptRequest) (AgentOperationResponse, error)
-	RequestAbort(context.Context, string) error
+	// Steer steers the active run, or starts one when idle.
 	Steer(context.Context, AgentPromptRequest) (AgentQueueResponse, error)
+	// FollowUp queues input for after the active run, or starts one when idle.
 	FollowUp(context.Context, AgentPromptRequest) (AgentQueueResponse, error)
-	NextRun(context.Context, AgentPromptRequest) (AgentQueueResponse, error)
 	CancelQueued(context.Context, string) (AgentCancelQueuedResponse, error)
-	Resume(context.Context) (AgentOperationResponse, error)
+	// Abort withdraws queued input and aborts the active run and compaction.
+	Abort(context.Context) error
 	Compact(context.Context, AgentCompactionRequest) (AgentOperationResponse, error)
-	Navigate(context.Context, AgentNavigationRequest) (AgentOperationResponse, error)
+	// WaitForPrompt waits until the prompt with this operation ID is answered or settles unanswered.
+	WaitForPrompt(context.Context, string) (AgentPromptResult, error)
 }

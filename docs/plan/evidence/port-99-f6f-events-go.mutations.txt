@@ -1,0 +1,37 @@
+# mutation checks: Go SDK pi.events bridge
+
+Each row: change, then `go test ./test/extension-conformance -run TestNativeEventBus` (or the named test), then restore.
+
+| mutation | result |
+|---|---|
+| M1 native call does not switch the Host registry on (`joinNativeRealm` skips `routeEventBus`) | 12 tests red (every shared-ok case has one node realm, so the in-heap EventEmitter keeps its listeners) |
+| M2 native emitter's emission is not settled before `Emit` returns | `TestNativeEventBusNativeEmitterSettlesNodeContinuationsBeforeEmitReturns` red (the node listener's continuation is missing before the emitter's line). This test was added after M2 survived the first 21 tests. |
+| M3 SDK deletes a listener at unsubscribe instead of at the Host's release | `TestNativeEventBusUnsubscribeDuringDispatchKeepsTheSnapshot` red |
+| M4 `Context.Events()` makes parentless calls | `TestNativeEventBusEmitterReentersThroughItsOwnListener` hangs (nested emit queued behind the outer emit in the empty-parent lane). Added after M4 survived the first 21 tests. |
+| M6 the Host does not report a failed native delivery | `TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners`, `TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener` red |
+| M7 a top-level BigInt payload becomes `null` instead of failing the delivery | `TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener/bigint` red. The first version only had `{n: 1n}` (owner-side `JSON.stringify` failure) and passed; the top-level case was added. |
+| M8 a native listener is counted as a foreign listener of the emission | the suite hangs (the native realm never sends `events.quiesce`) |
+| M9 the native emitter's payload is delivered as `null` | `NativeEmitterReachesNodeAndOtherCellListeners`, `ListenerFailure...` red |
+
+## Python and Rust SDKs
+
+| mutation | result |
+|---|---|
+| Python `Context.events` makes parentless calls | `TestNativeEventBusEmitterReentersThroughItsOwnListener/python/*` hang and fail at the 60 s guard |
+| Python unsubscribe drops the listener at once instead of at the Host's release | `TestNativeEventBusUnsubscribeDuringDispatchKeepsTheSnapshot/python/*` red |
+| Rust `Context::events` makes parentless calls | `TestNativeEventBusEmitterReentersThroughItsOwnListener/rust/*` fail at the 60 s guard |
+| Rust unsubscribe drops the listener at once instead of at the Host's release | `TestNativeEventBusUnsubscribeDuringDispatchKeepsTheSnapshot/rust/*` red |
+
+## Primitive payloads and newListener
+
+| mutation | result |
+|---|---|
+| a node `-0` payload becomes `null` instead of `0` | `TestNativeEventBusNodePrimitivePayloads` red |
+| the Host does not emit `newListener` for a native `events.on` | `TestNativeEventBusNewListenerAndRemoveListenerEvents` red |
+
+## Dispatch during load
+
+| mutation | result |
+|---|---|
+| Go: the wait for ready does not serve `events.dispatch` requests | `TestEventBusDispatchDuringLoadIsServed` red |
+| Python: the load-time reader does not serve `events.dispatch` requests | `test_dispatch_during_load_is_served` red |

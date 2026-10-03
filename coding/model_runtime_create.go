@@ -22,7 +22,10 @@ type CreateModelRuntimeOptions struct {
 	ModelsStorePath       string
 	AllowModelNetwork     bool
 	ModelRefreshTimeoutMs *int
-	RefreshOnCreate       *bool
+	// CatalogBaseURL is the base URL of the remote model catalog; empty selects the default.
+	// upstream: model-runtime.ts:CreateModelRuntimeOptions.catalogBaseUrl
+	CatalogBaseURL  string
+	RefreshOnCreate *bool
 }
 
 // CreateModelRuntime creates a model runtime without a Session. The caller owns ModelRuntime.Close. Initial refresh restores cached catalogs without network unless explicitly enabled, and shares the caller's cancellation with every refresh operation.
@@ -64,6 +67,7 @@ func CreateModelRuntime(ctx context.Context, options CreateModelRuntimeOptions) 
 	registry := icodingagent.NewModelRegistryWithModelsPath(modelsPath)
 	registry.SetCredentialStore(credentials)
 	registry.SetModelsStore(store)
+	registry.SetCatalogBaseURL(options.CatalogBaseURL)
 	services, err := newConfiguredServices("", agentDir, auth, credentials, nil, registry)
 	if err != nil {
 		return nil, err

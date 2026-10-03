@@ -20,7 +20,9 @@ import (
 var trackedRoots = []string{
 	"packages/agent/src",
 	"packages/ai/src",
+	"packages/codemode/src",
 	"packages/coding-agent/src",
+	"packages/mcp/src",
 	"packages/tui/src",
 }
 

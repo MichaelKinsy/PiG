@@ -194,11 +194,12 @@ func TestJSONModeToolExecutionEventsCarryNameAndErrorState(t *testing.T) {
 			ToolCallID: "call-1", ToolName: "read", Args: []byte(`{"path":"/tmp/x"}`),
 		},
 		agent.ToolExecutionUpdateEvent{
-			ToolCallID: "call-1", ToolName: "read", Args: []byte(`{"path":"/tmp/x"}`), Content: "working", Details: map[string]any{"progress": float64(1)},
+			ToolCallID: "call-1", ToolName: "read", Args: []byte(`{"path":"/tmp/x"}`), PartialResult: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "working"}}, Details: map[string]any{"progress": float64(1)}},
 		},
 		agent.ToolExecutionEndEvent{
 			ToolCallID: "call-1", ToolName: "read",
-			Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "boom"}, ai.ImageContent{Data: "aW1n", MimeType: "image/png"}}, Details: map[string]any{"nested": map[string]any{"value": "kept"}}, IsError: true},
+			Result:  agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "boom"}, ai.ImageContent{Data: "aW1n", MimeType: "image/png"}}, Details: map[string]any{"nested": map[string]any{"value": "kept"}}},
+			IsError: true,
 		},
 	)
 	data, err := json.Marshal(events)
@@ -341,7 +342,7 @@ func (jsonProductionTool) Schema() ai.ToolSchema {
 	return ai.ToolSchema{Name: "json_production_tool", Parameters: map[string]any{"type": "object"}}
 }
 func (jsonProductionTool) Execute(_ context.Context, _ string, _ json.RawMessage, update agent.ToolUpdateCallback) (agent.AgentToolResult, error) {
-	update("working", map[string]any{"progress": float64(1)})
+	update(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "working"}}, Details: map[string]any{"progress": float64(1)}})
 	return agent.AgentToolResult{
 		Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "done"}, ai.ImageContent{Data: "aW1n", MimeType: "image/png"}},
 		Details: map[string]any{"nested": map[string]any{"value": "kept"}},
@@ -427,12 +428,13 @@ func TestJSONAndRPCProductionToolEventsMatchPersistedResult(t *testing.T) {
 		t.Fatal(err)
 	}
 	persistedMap := decodeRPCEvent(t, persistedWire)
-	// Pi 0.87.1 agent-loop.ts:870-894 puts isError beside result on the event, and inside the persisted toolResult message.
+	// Pi 0.99.1 agent-loop.ts:912-919 puts the call's isError beside result on the event, and agent-loop.ts:930 inside the persisted toolResult message.
 	if !reflect.DeepEqual(endResult["content"], persistedMap["content"]) || !reflect.DeepEqual(endResult["details"], persistedMap["details"]) || toolEvents[2]["isError"] != persistedMap["isError"] {
 		t.Fatalf("execution end = %#v, persisted ToolResultMessage = %#v", endResult, persistedMap)
 	}
-	if _, exists := endResult["isError"]; exists {
-		t.Fatalf("nested result must not inject isError: %#v", endResult)
+	// This tool returns `isError: true`, so Pi 0.99.1 keeps it inside the result (types.ts:436-441; agent-loop.ts:840,912-919).
+	if endResult["isError"] != true {
+		t.Fatalf("a returned isError must stay inside the result: %#v", endResult)
 	}
 }
 

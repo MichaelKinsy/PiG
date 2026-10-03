@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
 // Package-level state in a compiled or interpreted factory module persists across /reload for the same reason an .mjs module's does in Pi 0.87.1: the factory is invoked again inside the process that holds the module. The probe tool reports how many times the factory has run in its process.
@@ -87,6 +89,7 @@ func retainedNativeReplacementTest(t *testing.T, config func() ExtConfig) {
 }
 
 func TestGoFactoryReloadReinvokesFactoryInTheRetainedProcess(t *testing.T) {
+	t.Parallel()
 	goFactoryRetainedCases(t, "retained-go")
 }
 
@@ -95,7 +98,6 @@ func goFactoryRetainedCases(t *testing.T, name string) {
 	for _, isolation := range []string{"shared-ok", "isolated"} {
 		t.Run(isolation, func(t *testing.T) {
 			retainedNativeCases(t, func() ExtConfig {
-				t.Setenv("PIG_SDK_GO_ROOT", filepath.Join(findModuleRoot(t), "extensions", "sdk"))
 				dir := t.TempDir()
 				modulePath := "example.com/retained" + isolation
 				if err := os.WriteFile(filepath.Join(dir, "go.mod"), fmt.Appendf(nil, "module %s\n\ngo 1.26\n\nrequire github.com/MichaelKinsy/PiG/extensions/sdk v0.0.0\n", modulePath), 0o644); err != nil {
@@ -139,7 +141,7 @@ func TestPythonFactoryReloadReinvokesFactoryInTheRetainedProcess(t *testing.T) {
 
 func pythonFactoryRetainedCases(t *testing.T, name string) {
 	t.Helper()
-	python := findPythonExecutable(runtime.GOOS, exec.LookPath)
+	python := toolchain.PythonExecutable(runtime.GOOS, exec.LookPath)
 	if _, err := exec.LookPath(python); err != nil {
 		t.Skipf("%s not found: %v", python, err)
 	}
@@ -178,6 +180,7 @@ def new_extension():
 }
 
 func TestRustFactoryReloadReinvokesFactoryInTheRetainedProcess(t *testing.T) {
+	t.Parallel()
 	rustFactoryRetainedCases(t, "retained-rs")
 }
 

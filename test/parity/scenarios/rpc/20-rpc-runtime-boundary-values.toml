@@ -57,13 +57,13 @@ both_contain = [
   '"id":"model","type":"response","command":"set_model","success":false,"error":"Model not found: /"',
   '"id":"steering-mode","type":"response","command":"set_steering_mode","success":true',
   '"id":"follow-mode","type":"response","command":"set_follow_up_mode","success":true',
-  '"id":"steer","type":"response","command":"steer","success":true',
-  '"id":"follow","type":"response","command":"follow_up","success":true',
+  '"id":"steer","type":"response","command":"steer","success":true,"data":{"disposition":"queued"}',
+  '"id":"follow","type":"response","command":"follow_up","success":true,"data":{"disposition":"queued"}',
   '"id":"switch","type":"response","command":"switch_session","success":false,"error":"EISDIR: illegal operation on a directory, read"',
   '"id":"fork","type":"response","command":"fork","success":false,"error":"Invalid entry ID for forking"',
   '"id":"bash","type":"response","command":"bash","success":true',
   '"output":""',
-  '"id":"prompt","type":"response","command":"prompt","success":true',
+  '"id":"prompt","type":"response","command":"prompt","success":true,"data":{"disposition":"started"}',
 ]
 both_not_contain = [
   'message is required',

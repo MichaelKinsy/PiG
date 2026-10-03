@@ -10,8 +10,12 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
+	"unicode"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
 // defaultProviderMaxRetryDelayMs mirrors upstream provider-retry.ts
@@ -122,26 +126,42 @@ func validateServerRetryDelay(delayMs float64, maxRetryDelayMs int, providerMsg 
 	return time.Duration(delayMs) * time.Millisecond, nil
 }
 
-// providerRetryDelay ports getRetryDelayMs: a server-requested delay
-// (retry-after-ms, or retry-after as seconds or an HTTP date) capped by
-// maxRetryDelayMs, otherwise exponential backoff min(0.5*2^i, 8)s with downward
-// jitter. Server-requested delays are cap-validated; the exponential fallback
-// is not (it never exceeds 8s).
+var jsFloatPrefix = lazyregexp.New(`^[+-]?(?:Infinity|(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?)`)
+
+// jsParseFloat is Number.parseFloat: it reads the longest numeric prefix after leading whitespace and returns NaN when there is none.
+func jsParseFloat(value string) float64 {
+	value = strings.TrimLeftFunc(value, func(r rune) bool { return r == '\ufeff' || r != '\u0085' && unicode.IsSpace(r) })
+	prefix := jsFloatPrefix.FindString(value)
+	if prefix == "" {
+		return math.NaN()
+	}
+	// A range error carries the Infinity value required by Number.parseFloat.
+	parsed, _ := strconv.ParseFloat(prefix, 64)
+	return parsed
+}
+
+// providerRetryDelay ports getRetryDelayMs (provider-retry.ts:52-66): a finite server-requested delay (retry-after-ms,
+// or retry-after as seconds or any date Date.parse accepts) capped by maxRetryDelayMs, otherwise exponential backoff
+// min(0.5*2^i, 8)s with downward jitter. A header whose delay is not finite (an unparseable date, Infinity) falls
+// through to the next source. Server-requested delays are cap-validated; the exponential fallback is not (it never
+// exceeds 8s).
 func providerRetryDelay(headers http.Header, retryIndex, maxRetryDelayMs int, providerMsg string) (time.Duration, error) {
 	if v := headers.Get("retry-after-ms"); v != "" {
-		if ms, err := strconv.ParseFloat(v, 64); err == nil {
+		if ms := jsParseFloat(v); !math.IsNaN(ms) && !math.IsInf(ms, 0) {
 			return validateServerRetryDelay(ms, maxRetryDelayMs, providerMsg)
 		}
 	}
 	if v := headers.Get("retry-after"); v != "" {
-		if secs, err := strconv.ParseFloat(v, 64); err == nil {
-			return validateServerRetryDelay(secs*1000, maxRetryDelayMs, providerMsg)
+		var delayMs float64
+		if seconds := jsParseFloat(v); !math.IsNaN(seconds) {
+			delayMs = seconds * 1000
+		} else {
+			// provider-retry.ts:60: Date.parse(retryAfter) - Date.now(); an unparseable date is NaN and falls through.
+			delayMs = jsDateParse(v) - float64(time.Now().UnixMilli())
 		}
-		if t, err := http.ParseTime(v); err == nil {
-			return validateServerRetryDelay(float64(time.Until(t).Milliseconds()), maxRetryDelayMs, providerMsg)
+		if !math.IsNaN(delayMs) && !math.IsInf(delayMs, 0) {
+			return validateServerRetryDelay(delayMs, maxRetryDelayMs, providerMsg)
 		}
-		// Unparseable date: upstream yields NaN, which sleeps ~0 (immediate).
-		return 0, nil
 	}
 	exponentialMs := math.Min(0.5*math.Pow(2, float64(retryIndex)), 8) * 1000
 	jitteredMs := exponentialMs * (1 - providerRetryJitter()*0.25)

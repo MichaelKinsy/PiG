@@ -51,8 +51,8 @@ func paintBgWith(open, line string, width int) string {
 		line = strings.ReplaceAll(line, "\x1b[0m", "\x1b[0m"+open)
 		line = strings.ReplaceAll(line, "\x1b[m", "\x1b[m"+open)
 	}
-	// \x1b[K (erase to end of line) uses the current bg color to fill
-	// the remainder of the terminal row, preventing "stripes" when
-	// lineDisplayWidth undercounts or the terminal is wider than width.
-	return open + line + strings.Repeat(" ", pad) + "\x1b[K" + bgClose
+	// The padding ends the line, as upstream applyBackgroundToLine pads to width
+	// (utils.ts:1099-1108); an erase-to-end-of-line here would change the cells a
+	// fullscreen frame leaves past the padding.
+	return open + line + strings.Repeat(" ", pad) + bgClose
 }

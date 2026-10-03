@@ -62,6 +62,24 @@ type ToolDefinition struct {
 	// Execute runs the tool. The request's cancellation is ctx.Done and
 	// partial results stream through ctx.OnUpdate.
 	Execute ToolFunc
+	// OutputSchema is the JSON Schema of StructuredContent in successful results. A tool that declares it should always set StructuredContent.
+	// upstream: types.ts:585 (outputSchema)
+	OutputSchema Schema
+	// Exposure is how the model reaches the tool. Empty is [ToolExposureDirect].
+	// upstream: types.ts:590 (exposure)
+	Exposure ToolExposure
+	// Namespace groups the tool with related tools, for example its MCP server.
+	// upstream: types.ts:593 (namespace)
+	Namespace *ToolNamespace
+	// Annotations are hints about what the tool does.
+	// upstream: types.ts:596 (annotations)
+	Annotations *ToolAnnotations
+	// DefaultActive is whether registering the tool activates it. Nil is the exposure's default: true for direct and model-only tools, false for the others. A tool with DefaultActive false is activated by naming it in `--tools` or the `defaultTools` setting, or with SetActiveTools.
+	// upstream: types.ts:600 (defaultActive)
+	DefaultActive *bool
+	// PrepareLoadout adjusts how the loadout is presented to the model while this tool is active. The host calls it whenever the active tools change.
+	// upstream: types.ts:607 (prepareLoadout)
+	PrepareLoadout ToolPrepareLoadoutFunc
 	// RenderCall renders the tool call; nil uses the host's default.
 	RenderCall ToolRenderCallFunc
 	// RenderResult renders the tool result; nil uses the host's default.
@@ -81,6 +99,14 @@ func (e *Extension) RegisterTool(def ToolDefinition) {
 		ExecutionMode:    def.ExecutionMode,
 
 		ConstrainedSampling: constrainedSamplingWire(def.ConstrainedSampling),
+
+		OutputSchema:    def.OutputSchema,
+		Exposure:        def.Exposure,
+		Namespace:       def.Namespace,
+		Annotations:     def.Annotations,
+		DefaultActive:   def.DefaultActive,
+		PreparesLoadout: def.PrepareLoadout != nil,
+		prepareLoadout:  def.PrepareLoadout,
 	}
 	e.registerTool(decl, def.Execute, def.PrepareArguments, ToolRenderers{Shell: def.RenderShell, Call: def.RenderCall, Result: def.RenderResult})
 }
@@ -93,6 +119,7 @@ func (e *Extension) registerTool(decl toolDef, handler ToolFunc, prepare ToolPre
 		decl.RenderShell = string(ToolRenderShellSelf)
 	}
 	decl.RendersCall, decl.RendersResult = renderers.Call != nil, renderers.Result != nil
+	decl.PreparesArguments = prepare != nil
 	replaced := false
 	for i := range e.tools {
 		if e.tools[i].Name == decl.Name {
@@ -106,6 +133,11 @@ func (e *Extension) registerTool(decl toolDef, handler ToolFunc, prepare ToolPre
 	}
 	e.toolFuncs[decl.Name] = handler
 	e.toolPrepareFuncs[decl.Name] = prepare
+	if decl.prepareLoadout != nil {
+		e.toolLoadoutFuncs[decl.Name] = decl.prepareLoadout
+	} else {
+		delete(e.toolLoadoutFuncs, decl.Name)
+	}
 	e.toolRenderMu.Lock()
 	if e.toolRenderers == nil {
 		e.toolRenderers = make(map[string]ToolRenderers)

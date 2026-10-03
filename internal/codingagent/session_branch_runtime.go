@@ -45,7 +45,7 @@ func (s *Session) replaceSessionLog(branched *Session) {
 	s.sessionDir = branched.sessionDir
 	s.leafID = branched.leafID
 	s.flushed = branched.flushed
-	s.hasAssistant = branched.hasAssistant
+	s.hasConversation = branched.hasConversation
 	s.stats = branched.stats
 	s.msgCache = nil
 	s.undecodable = nil

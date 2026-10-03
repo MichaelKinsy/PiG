@@ -59,8 +59,19 @@ func (m *InteractiveMode) getLogoutProviderOptions() ([]tui.OAuthProvider, error
 			}
 		}
 	}
+	for i := range providers {
+		providers[i].Subscription = m.loginProviderSubscription(providers[i].ID)
+	}
 	sortAuthProviders(providers)
 	return providers, nil
+}
+
+// authSubscriptionArg passes an option's subscription flag as Pi's optional argument: nil is undefined.
+func authSubscriptionArg(subscription *bool) []bool {
+	if subscription == nil {
+		return nil
+	}
+	return []bool{*subscription}
 }
 
 func sortAuthProviders(providers []tui.OAuthProvider) {
@@ -127,6 +138,9 @@ func (m *InteractiveMode) getLoginProviderOptions(includeStatus ...bool) []tui.O
 			}
 		}
 	}
+	for i := range providers {
+		providers[i].Subscription = m.loginProviderSubscription(providers[i].ID)
+	}
 	sortAuthProviders(providers)
 	return providers
 }
@@ -134,6 +148,8 @@ func (m *InteractiveMode) getLoginProviderOptions(includeStatus ...bool) []tui.O
 type loginProviderCompletionOption struct {
 	id, name  string
 	authTypes []string
+	// subscription is Pi's optional subscription argument of formatAuthSelectorProviderType: empty is undefined.
+	subscription []bool
 }
 
 func (m *InteractiveMode) loginArgCompletions(prefix string) []tui.AutocompleteItem {
@@ -141,7 +157,7 @@ func (m *InteractiveMode) loginArgCompletions(prefix string) []tui.AutocompleteI
 	for _, option := range m.getLoginProviderOptions(false) {
 		index := slices.IndexFunc(providers, func(p loginProviderCompletionOption) bool { return p.id == option.ID })
 		if index < 0 {
-			providers = append(providers, loginProviderCompletionOption{id: option.ID, name: option.Name, authTypes: []string{option.AuthType}})
+			providers = append(providers, loginProviderCompletionOption{id: option.ID, name: option.Name, authTypes: []string{option.AuthType}, subscription: authSubscriptionArg(option.Subscription)})
 			continue
 		}
 		if !slices.Contains(providers[index].authTypes, option.AuthType) {
@@ -160,7 +176,7 @@ func (m *InteractiveMode) loginArgCompletions(prefix string) []tui.AutocompleteI
 	filtered := tui.FuzzyFilter(providers, prefix, func(p loginProviderCompletionOption) string {
 		authTypes := make([]string, len(p.authTypes))
 		for i, kind := range p.authTypes {
-			authTypes[i] = kind + " " + tui.FormatAuthSelectorProviderType(kind)
+			authTypes[i] = kind + " " + tui.FormatAuthSelectorProviderType(kind, p.subscription...)
 		}
 		return p.id + " " + p.name + " " + strings.Join(authTypes, " ")
 	})
@@ -168,7 +184,7 @@ func (m *InteractiveMode) loginArgCompletions(prefix string) []tui.AutocompleteI
 	for _, p := range filtered {
 		kinds := make([]string, len(p.authTypes))
 		for i, kind := range p.authTypes {
-			kinds[i] = tui.FormatAuthSelectorProviderType(kind)
+			kinds[i] = tui.FormatAuthSelectorProviderType(kind, p.subscription...)
 		}
 		description := strings.Join(kinds, "/")
 		if p.name != p.id {
@@ -179,7 +195,17 @@ func (m *InteractiveMode) loginArgCompletions(prefix string) []tui.AutocompleteI
 	return out
 }
 
+// showLoginAuthTypeSelector mirrors Pi's showLoginAuthTypeSelector (interactive-mode.ts:5809-5883). The top-level
+// menu (nil providers) offers Radius directly, as its last option, labeled with its status; choosing it returns the
+// Radius provider ID.
 func (m *InteractiveMode) showLoginAuthTypeSelector(providers []tui.OAuthProvider) (string, bool) {
+	var radius *tui.OAuthProvider
+	if providers == nil {
+		options := m.getLoginProviderOptions()
+		if index := slices.IndexFunc(options, func(p tui.OAuthProvider) bool { return p.ID == RadiusProviderID && p.AuthType == "oauth" }); index >= 0 {
+			radius = &options[index]
+		}
+	}
 	title, oauthLabel := "Select authentication method:", "Sign in with an account"
 	if len(providers) > 0 {
 		title = "Select authentication method for " + providers[0].Name + ":"
@@ -189,9 +215,25 @@ func (m *InteractiveMode) showLoginAuthTypeSelector(providers []tui.OAuthProvide
 			}
 		}
 	}
-	index, ok := m.runEditorSlotExtensionSelector(tui.NewExtensionSelector(title, []string{oauthLabel, "Sign in with an API key"}))
-	if index == 1 {
+	options := []string{oauthLabel, "Sign in with an API key"}
+	if radius == nil {
+		index, ok := m.runEditorSlotExtensionSelector(tui.NewExtensionSelector(title, options))
+		if index == 1 {
+			return "api_key", ok
+		}
+		return "oauth", ok
+	}
+	radiusText := radiusLoginMenuPrefix + radius.Name
+	radiusLabel := radiusText + tui.FormatAuthSelectorProviderStatus(*radius)
+	selector := tui.NewExtensionSelector(title, append(options, radiusLabel))
+	menu := newRadiusLoginMenu(selector, radiusLabel, radiusText, m.requestRender)
+	defer menu.Dispose()
+	index, ok := m.runEditorSlotExtensionSelectorAs(selector, menu)
+	switch index {
+	case 1:
 		return "api_key", ok
+	case 2:
+		return radius.ID, ok
 	}
 	return "oauth", ok
 }

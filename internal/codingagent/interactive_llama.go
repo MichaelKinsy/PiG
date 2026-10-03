@@ -173,7 +173,7 @@ func (m *InteractiveMode) loginAPIKeyProvider(providerID string) bool {
 	if m.opts.Llama == nil || providerID != m.opts.Llama.Provider().ID {
 		return false
 	}
-	if err := m.runAPIKeyLogin(tui.OAuthProvider{ID: providerID, Name: m.opts.Llama.Provider().Name, AuthType: "api_key"}); err != nil {
+	if err := m.runAPIKeyLogin(tui.OAuthProvider{ID: providerID, Name: m.opts.Llama.Provider().Name, AuthType: "api_key"}); err != nil && !errors.Is(err, errLoginCancelled) {
 		m.showError(err.Error())
 	}
 	return true

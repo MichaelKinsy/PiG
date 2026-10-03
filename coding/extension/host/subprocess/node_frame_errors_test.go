@@ -13,7 +13,7 @@ func TestNodeProviderSocketRejectsBadFrameBeforeNextEnvelope(t *testing.T) {
 	module := filepath.Join(findModuleRoot(t), "coding", "extension", "host", "subprocess", "runtime-node", "provider-socket.mjs")
 	for _, kind := range []string{"oversized", "empty", "invalid-json", "null"} {
 		t.Run(kind, func(t *testing.T) {
-			listener, path, err := ListenExtension(filepath.Join(t.TempDir(), "s"), true)
+			listener, path, err := ListenExtension(filepath.Join(shortSockDir(t), "s"), true)
 			if err != nil {
 				t.Fatal(err)
 			}

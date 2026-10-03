@@ -11,14 +11,13 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/session"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 )
 
 // upstream: session-worker-manager.ts:699-703 and :810-812 notify the count synchronously from #recordReadyWorker on the event loop that also runs the server.ts:313-317 idle timer, so a registered worker is always visible to that timer. A delayed count delivery in Go must not let the timer retire a generation that already holds a worker.
 func TestServerLifetimeDoesNotRetireWhileWorkerCountDeliveryIsBlocked(t *testing.T) {
 	directory := t.TempDir()
-	metadata := session.SessionMetadata{ID: "session-1", CreatedAt: 1, StorageVersion: 1, Cwd: directory, Path: filepath.Join(directory, "session-1.jsonl"), ModifiedAt: 1}
+	metadata := SessionCatalogMetadata{ID: "session-1", CreatedAt: 1, Cwd: directory, Path: filepath.Join(directory, "session-1.jsonl")}
 	coordinator := &workerManagerCoordinator{metadata: metadata}
 	lifetime := NewServerLifetime(false)
 	manager := newLifetimeSessionWorkerManager(coordinator, directory, nil, lifetime)
@@ -70,48 +69,62 @@ func TestServerLifetimeDoesNotRetireWhileWorkerCountDeliveryIsBlocked(t *testing
 	<-delivered
 }
 
-// upstream: session-worker.ts:73-81 declares modifiedAt as Type.Number (a fractional fs mtimeMs is valid, agent jsonl/repo.ts:85,254-256) and createdAt/storageVersion as Type.Integer (Number.isInteger, so 1e3 is valid).
-func TestSessionWorkerMetadataWireNumbers(t *testing.T) {
+// upstream: session-worker.ts:69-74 declares SessionWorkerMetadataSchema as StrictObject({ id: Type.String({ minLength: 1 }), createdAt: Type.Number(), cwd: Type.String(), path: Type.String() }). A TypeBox 1.3.27 Check of each JSON.parse value under Node 24 gave the expected validity: any finite number is a valid createdAt, 1e400 (Infinity) is not, and the 0.99.2 storageVersion/modifiedAt/parentSessionId members are rejected as additional properties.
+func TestSessionWorkerMetadataWireSchema(t *testing.T) {
 	directory := t.TempDir()
-	path := filepath.Join(directory, "session-1.jsonl")
-	metadataJSON := func(createdAt, storageVersion, modifiedAt string) json.RawMessage {
-		encodedPath, _ := json.Marshal(path)
-		encodedCwd, _ := json.Marshal(directory)
-		return json.RawMessage(`{"id":"session-1","createdAt":` + createdAt + `,"storageVersion":` + storageVersion + `,"cwd":` + string(encodedCwd) + `,"path":` + string(encodedPath) + `,"modifiedAt":` + modifiedAt + `}`)
+	path := filepath.Join(directory, "session-1")
+	encodedPath, _ := json.Marshal(path)
+	encodedCwd, _ := json.Marshal(directory)
+	metadataJSON := func(id, createdAt, extra string) json.RawMessage {
+		members := `"id":` + id + `,"cwd":` + string(encodedCwd) + `,"path":` + string(encodedPath)
+		if createdAt != "" {
+			members += `,"createdAt":` + createdAt
+		}
+		return json.RawMessage(`{` + members + extra + `}`)
 	}
 	tests := []struct {
-		name                                  string
-		createdAt, storageVersion, modifiedAt string
-		valid                                 bool
-		wantModifiedAt                        int64
+		name, id, createdAt, extra string
+		valid                      bool
+		wantCreatedAt              float64
 	}{
-		{"fractional modification time", "1", "1", "1712345678901.5", true, 1712345678901},
-		{"exponent integer", "1e3", "1.0", "0", true, 0},
-		{"fractional createdAt", "1.5", "1", "1", false, 0},
-		{"fractional storageVersion", "1", "1.5", "1", false, 0},
-		{"string modifiedAt", "1", "1", `"1"`, false, 0},
-		{"null modifiedAt", "1", "1", "null", false, 0},
-		{"beyond int64", "1e300", "1", "1", false, 0},
+		{"integer creation time", `"session-1"`, "1", "", true, 1},
+		{"zero creation time", `"session-1"`, "0", "", true, 0},
+		{"fractional creation time", `"session-1"`, "1712345678901.5", "", true, 1712345678901.5},
+		{"exponent creation time", `"session-1"`, "1e3", "", true, 1000},
+		{"negative creation time", `"session-1"`, "-1.5", "", true, -1.5},
+		{"large finite creation time", `"session-1"`, "1e300", "", true, 1e300},
+		{"non-finite creation time", `"session-1"`, "1e400", "", false, 0},
+		{"string creation time", `"session-1"`, `"1"`, "", false, 0},
+		{"null creation time", `"session-1"`, "null", "", false, 0},
+		{"absent creation time", `"session-1"`, "", "", false, 0},
+		{"empty id", `""`, "1", "", false, 0},
+		{"storage version", `"session-1"`, "1", `,"storageVersion":1`, false, 0},
+		{"0.99.2 metadata", `"session-1"`, "1", `,"storageVersion":1,"modifiedAt":1`, false, 0},
+		{"parent session id", `"session-1"`, "1", `,"parentSessionId":"parent-1"`, false, 0},
+		// TypeBox matches property names exactly: CreatedAt is an additional property and createdAt is missing.
+		{"case-variant creation time", `"session-1"`, "", `,"CreatedAt":1`, false, 0},
+		{"lower-case creation time", `"session-1"`, "", `,"createdat":1`, false, 0},
 	}
 	for _, test := range tests {
+		metadata := metadataJSON(test.id, test.createdAt, test.extra)
 		t.Run("worker_ready "+test.name, func(t *testing.T) {
-			payload, _ := json.Marshal(map[string]any{"type": "worker_ready", "token": "t", "sessionKey": path, "sessionId": "session-1", "pid": 1, "metadata": metadataJSON(test.createdAt, test.storageVersion, test.modifiedAt), "pluginManifestPaths": []string{}})
+			payload, _ := json.Marshal(map[string]any{"type": "worker_ready", "token": "t", "sessionKey": path, "sessionId": "session-1", "pid": 1, "metadata": metadata, "pluginManifestPaths": []string{}})
 			event, err := decodeSessionWorkerEvent(payload)
 			if (err == nil) != test.valid {
 				t.Fatalf("decode error = %v, want valid=%t", err, test.valid)
 			}
-			if test.valid && event.Metadata.ModifiedAt != test.wantModifiedAt {
-				t.Fatalf("modifiedAt = %d, want %d", event.Metadata.ModifiedAt, test.wantModifiedAt)
+			if test.valid && event.Metadata != (SessionCatalogMetadata{ID: "session-1", CreatedAt: test.wantCreatedAt, Cwd: directory, Path: path}) {
+				t.Fatalf("metadata = %+v", event.Metadata)
 			}
 		})
 		t.Run("options "+test.name, func(t *testing.T) {
 			encodedDir, _ := json.Marshal(directory)
-			options, err := parseSessionWorkerOptions([]string{`{"sessionDir":` + string(encodedDir) + `,"metadata":` + string(metadataJSON(test.createdAt, test.storageVersion, test.modifiedAt)) + `,"pluginManifestPaths":[]}`})
+			options, err := parseSessionWorkerOptions([]string{`{"sessionDir":` + string(encodedDir) + `,"metadata":` + string(metadata) + `,"pluginManifestPaths":[]}`})
 			if (err == nil) != test.valid {
 				t.Fatalf("parse error = %v, want valid=%t", err, test.valid)
 			}
-			if test.valid && options.Metadata.ModifiedAt != test.wantModifiedAt {
-				t.Fatalf("modifiedAt = %d, want %d", options.Metadata.ModifiedAt, test.wantModifiedAt)
+			if test.valid && options.Metadata.CreatedAt != test.wantCreatedAt {
+				t.Fatalf("createdAt = %v, want %v", options.Metadata.CreatedAt, test.wantCreatedAt)
 			}
 		})
 	}
@@ -120,7 +133,7 @@ func TestSessionWorkerMetadataWireNumbers(t *testing.T) {
 // upstream: session-worker-manager.ts:643-647 parses a service_update with parseServiceProviderUpdate and drops an invalid update instead of delivering it to the subscription listener.
 func TestSessionWorkerInvalidServiceUpdateIsNotDelivered(t *testing.T) {
 	directory := t.TempDir()
-	metadata := session.SessionMetadata{ID: "session-1", CreatedAt: 1, StorageVersion: 1, Cwd: directory, Path: filepath.Join(directory, "session-1.jsonl"), ModifiedAt: 1}
+	metadata := SessionCatalogMetadata{ID: "session-1", CreatedAt: 1, Cwd: directory, Path: filepath.Join(directory, "session-1.jsonl")}
 	coordinator := &workerManagerCoordinator{metadata: metadata}
 	manager := NewSessionWorkerManager(coordinator, directory, nil, nil)
 	defer func() { manager.Detach(); manager.work.Wait(); manager.background.Wait() }()
@@ -155,17 +168,17 @@ func TestSessionWorkerInvalidServiceUpdateIsNotDelivered(t *testing.T) {
 	}
 }
 
-// upstream: a Pi worker forwards the fractional fs mtimeMs (jsonl/repo.ts:85,254-256) in worker_ready; server replacement adopts that worker (session-worker-manager.ts:699-703).
-func TestSessionWorkerAdoptsWorkerWithFractionalModifiedAt(t *testing.T) {
+// upstream: a Pi worker echoes its launch metadata in worker_ready, and createdAt is Type.Number (session-worker.ts:69-74); server replacement adopts that worker (session-worker-manager.ts:641-692 #recordReadyWorker) and tracks the reported metadata unchanged.
+func TestSessionWorkerAdoptsWorkerWithFractionalCreatedAt(t *testing.T) {
 	directory := t.TempDir()
-	metadata := session.SessionMetadata{ID: "session-1", CreatedAt: 1, StorageVersion: 1, Cwd: directory, Path: filepath.Join(directory, "session-1.jsonl")}
+	metadata := SessionCatalogMetadata{ID: "session-1", CreatedAt: 1712345678901.5, Cwd: directory, Path: filepath.Join(directory, "session-1")}
 	coordinator := &workerManagerCoordinator{metadata: metadata}
 	manager := NewSessionWorkerManager(coordinator, directory, nil, nil)
 	defer manager.Detach()
-	coordinator.emit("worker-1", map[string]any{"type": "worker_ready", "token": "worker-token", "sessionKey": metadata.Path, "sessionId": metadata.ID, "pid": 123, "metadata": map[string]any{"id": metadata.ID, "createdAt": 1, "storageVersion": 1, "cwd": metadata.Cwd, "path": metadata.Path, "modifiedAt": 1712345678901.5}, "pluginManifestPaths": []string{}})
+	coordinator.emit("worker-1", map[string]any{"type": "worker_ready", "token": "worker-token", "sessionKey": metadata.Path, "sessionId": metadata.ID, "pid": 123, "metadata": map[string]any{"id": metadata.ID, "createdAt": 1712345678901.5, "cwd": metadata.Cwd, "path": metadata.Path}, "pluginManifestPaths": []string{}})
 	tracked := manager.TrackedSessions()
-	if len(manager.WorkerPids()) != 1 || len(tracked) != 1 || tracked[0].ModifiedAt != 1712345678901 {
-		t.Fatalf("pids=%v tracked=%+v, want the fractional-mtime worker adopted", manager.WorkerPids(), tracked)
+	if len(manager.WorkerPids()) != 1 || len(tracked) != 1 || tracked[0] != metadata {
+		t.Fatalf("pids=%v tracked=%+v, want the fractional-creation-time worker adopted", manager.WorkerPids(), tracked)
 	}
 }
 
@@ -173,7 +186,7 @@ func TestSessionWorkerAdoptsWorkerWithFractionalModifiedAt(t *testing.T) {
 func TestSessionWorkerShutdownRejectsOnFirstStopFailureWhileOthersContinue(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		directory := t.TempDir()
-		metadata := session.SessionMetadata{ID: "session-1", CreatedAt: 1, StorageVersion: 1, Cwd: directory, Path: filepath.Join(directory, "session-1.jsonl"), ModifiedAt: 1}
+		metadata := SessionCatalogMetadata{ID: "session-1", CreatedAt: 1, Cwd: directory, Path: filepath.Join(directory, "session-1.jsonl")}
 		coordinator := &workerManagerCoordinator{metadata: metadata}
 		manager := NewSessionWorkerManager(coordinator, directory, nil, nil)
 		failure := errors.New("kill failed")
@@ -189,7 +202,7 @@ func TestSessionWorkerShutdownRejectsOnFirstStopFailureWhileOthersContinue(t *te
 		}
 		second := metadata
 		second.ID, second.Path = "session-2", filepath.Join(directory, "session-2.jsonl")
-		for i, m := range []session.SessionMetadata{metadata, second} {
+		for i, m := range []SessionCatalogMetadata{metadata, second} {
 			coordinator.emit("worker-"+string(rune('1'+i)), map[string]any{"type": "worker_ready", "token": "token", "sessionKey": m.Path, "sessionId": m.ID, "pid": i + 1, "metadata": m, "pluginManifestPaths": []string{}})
 		}
 		result := make(chan error, 1)
@@ -222,7 +235,7 @@ func TestSessionWorkerShutdownRejectsOnFirstStopFailureWhileOthersContinue(t *te
 func TestSessionWorkerShutdownKillsEveryPendingChildBeforeJoiningReaps(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		directory := t.TempDir()
-		metadata := session.SessionMetadata{ID: "session-1", CreatedAt: 1, StorageVersion: 1, Cwd: directory, Path: filepath.Join(directory, "session-1.jsonl"), ModifiedAt: 1}
+		metadata := SessionCatalogMetadata{ID: "session-1", CreatedAt: 1, Cwd: directory, Path: filepath.Join(directory, "session-1.jsonl")}
 		coordinator := &workerManagerCoordinator{metadata: metadata}
 		manager := NewSessionWorkerManager(coordinator, directory, nil, nil)
 		// Shutdown snapshots m.pending, a map, so which child is signaled first is unspecified. The child signaled first is the one that stays stuck after SIGKILL, so the dangerous order (a stuck child ahead of an unkilled one) is exercised whatever the iteration order.
@@ -286,7 +299,7 @@ func TestSessionWorkerReadyPIDWireNumbers(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			encodedPath, _ := json.Marshal(path)
 			encodedCwd, _ := json.Marshal(directory)
-			payload := `{"type":"worker_ready","token":"t","sessionKey":` + string(encodedPath) + `,"sessionId":"session-1","pid":` + test.pid + `,"metadata":{"id":"session-1","createdAt":1,"storageVersion":1,"cwd":` + string(encodedCwd) + `,"path":` + string(encodedPath) + `,"modifiedAt":1},"pluginManifestPaths":[]}`
+			payload := `{"type":"worker_ready","token":"t","sessionKey":` + string(encodedPath) + `,"sessionId":"session-1","pid":` + test.pid + `,"metadata":{"id":"session-1","createdAt":1,"cwd":` + string(encodedCwd) + `,"path":` + string(encodedPath) + `},"pluginManifestPaths":[]}`
 			event, err := decodeSessionWorkerEvent(json.RawMessage(payload))
 			if (err == nil) != (test.want != 0) {
 				t.Fatalf("decode error = %v, want valid=%t", err, test.want != 0)
@@ -296,39 +309,6 @@ func TestSessionWorkerReadyPIDWireNumbers(t *testing.T) {
 			}
 		})
 	}
-}
-
-// upstream: session-worker.ts:75-79 accepts any finite integer for createdAt and storageVersion and any finite number for modifiedAt. session.SessionMetadata stores int64, so 2^62 (a valid Number.isInteger value) is representable and must be accepted; only values that overflow int64 are rejected.
-func TestSessionWorkerMetadataWireNumbersUpToInt64(t *testing.T) {
-	for _, test := range []struct {
-		name, value string
-		valid       bool
-	}{
-		{"2^62", "4611686018427387904", true},
-		{"-2^62", "-4611686018427387904", true},
-		{"-2^63", "-9223372036854775808", true},
-		{"2^63", "9223372036854775808", false},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			metadata := `{"id":"session-1","createdAt":` + test.value + `,"storageVersion":1,"cwd":"/","path":"/s.jsonl","modifiedAt":` + test.value + `}`
-			decoded, ok := decodeSessionWorkerMetadata(json.RawMessage(metadata))
-			if ok != test.valid {
-				t.Fatalf("valid = %t, want %t", ok, test.valid)
-			}
-			if ok && (decoded.CreatedAt != int64(float64FromString(t, test.value)) || decoded.ModifiedAt != decoded.CreatedAt) {
-				t.Fatalf("createdAt = %d for %s", decoded.CreatedAt, test.value)
-			}
-		})
-	}
-}
-
-func float64FromString(t *testing.T, value string) float64 {
-	t.Helper()
-	var parsed float64
-	if err := json.Unmarshal([]byte(value), &parsed); err != nil {
-		t.Fatal(err)
-	}
-	return parsed
 }
 
 // upstream: session-worker.ts:781 throws Error("Session worker received invalid options", { cause }) for unparseable JSON; the message excludes the parse error.

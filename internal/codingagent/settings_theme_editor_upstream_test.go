@@ -55,7 +55,7 @@ func BenchmarkSettingsEditorAndPadding(b *testing.B) {
 }
 
 func TestSettingsThemeAndEditorUpstream(t *testing.T) {
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:203
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:220
 	t.Run("stores slash-separated automatic theme settings separately from fixed theme names", func(t *testing.T) {
 		sm := writeSettingsLayers(t, `{"theme":"light/dark"}`, `{}`)
 		if got := sm.GetTheme(); got != "" {
@@ -71,7 +71,7 @@ func TestSettingsThemeAndEditorUpstream(t *testing.T) {
 		settingsOK(t, sm.Flush())
 		assertSettingsFileJSON(t, filepath.Join(sm.AgentDir(), "settings.json"), `{"theme":"solarized-light/tokyo-night"}`)
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:439
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:456
 	t.Run("should resolve editor commands by precedence", func(t *testing.T) {
 		t.Setenv("VISUAL", "vim")
 		t.Setenv("EDITOR", "nano")
@@ -91,7 +91,7 @@ func TestSettingsThemeAndEditorUpstream(t *testing.T) {
 			t.Fatalf("EDITOR command=%q", got)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager.test.ts:450
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:467
 	t.Run("should fall back to platform defaults", func(t *testing.T) {
 		t.Setenv("VISUAL", "")
 		t.Setenv("EDITOR", "")

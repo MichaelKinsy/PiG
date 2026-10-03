@@ -139,10 +139,18 @@ func autocompleteTriggered(before string, characters []string) bool {
 				return true
 			}
 		}
-		previousBoundary = autocompleteSeparator(r)
+		previousBoundary = nextAutocompleteBoundary(previousBoundary, r)
 	}
 	return false
 }
+
+// nextAutocompleteBoundary reports whether a trigger token may start after r, given whether one could start before it. A trigger token starts at a boundary, optionally after opening wrappers, e.g. "(@src/foo" or "`@src/foo" (editor.ts autocompleteTokenStartSource).
+func nextAutocompleteBoundary(previousBoundary bool, r rune) bool {
+	return autocompleteSeparator(r) || (previousBoundary && strings.ContainsRune(autocompleteTokenWrappers, r))
+}
+
+// autocompleteTokenWrappers are the opening wrappers that may sit between a boundary and a trigger token.
+const autocompleteTokenWrappers = "([{<`"
 
 func (e *Editor) naturalAsyncAutocomplete() (bool, bool) {
 	before := jsstring.Slice(e.lines[e.cursor[0]], 0, e.cursor[1])

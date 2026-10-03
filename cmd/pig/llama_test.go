@@ -10,13 +10,16 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/llama"
 )
 
-// RPC lists and runs /llama like upstream's built-in inline extension
-// command: after every path extension's commands in get_commands, since
-// upstream loads inline extensions last (resource-loader.ts
-// loadFinalExtensionSet), and in RPC mode it only warns.
+// RPC lists /llama where the loader placed the built-in llama.cpp extension, and runs it like upstream's built-in extension
+// command: llama.cpp is the first entry of builtInExtensions (extensions/index.ts:8), so the runner lists /llama with the other
+// extension commands in load order, ahead of a later built-in such as /mcp, and the catalog adds no command of its own. In RPC
+// mode /llama only warns.
+// Ports .upstream/v0.99.2/packages/coding-agent/src/extensions/index.ts:8-14 with src/core/resource-loader.ts:703-735 and
+// src/modes/rpc/rpc-mode.ts:683.
 func TestRPCCatalogListsAndRunsBuiltInLlamaCommand(t *testing.T) {
 	t.Setenv("LLAMA_BASE_URL", "")
 	t.Setenv("LLAMA_API_KEY", "")
@@ -27,18 +30,28 @@ func TestRPCCatalogListsAndRunsBuiltInLlamaCommand(t *testing.T) {
 	}
 	host := startBuiltInLlama(context.Background(), services)
 	var notices [][2]string
-	runner := &fakeRPCCommandRunner{commands: []extension.ResolvedCommand{{RegisteredCommand: extension.RegisteredCommand{Name: "other"}, InvocationName: "other"}}}
+	builtinInfo := func(name string) codingagent.PiSourceInfo {
+		path := "builtin:" + name
+		return codingagent.PiSourceInfo{Path: path, Source: "builtin", Scope: "temporary", Origin: "top-level"}
+	}
+	resolved := func(name, description string, info codingagent.PiSourceInfo) extension.ResolvedCommand {
+		return extension.ResolvedCommand{RegisteredCommand: extension.RegisteredCommand{Name: name, Description: description, SourceInfo: info}, InvocationName: name}
+	}
+	runner := &fakeRPCCommandRunner{commands: []extension.ResolvedCommand{
+		resolved("other", "", codingagent.PiSourceInfo{Path: "/x/other.ts", Source: "local", Scope: "user", Origin: "top-level"}),
+		resolved("llama", "Manage llama.cpp router models", builtinInfo("llama.cpp")),
+		resolved("mcp", "Manage MCP servers", builtinInfo("mcp")),
+	}}
 	catalog := headlessCommandCatalog{runner: runner, llama: host, notify: func(message, kind string) {
 		notices = append(notices, [2]string{message, kind})
 	}}
 
-	commands := catalog.commands()
-	want := RPCSlashCommand{
-		Name: "llama", Description: "Manage llama.cpp router models", Source: "extension",
-		SourceInfo: RPCSourceInfo{Path: "<inline:llama.cpp>", Source: "inline", Scope: "temporary", Origin: "top-level"},
+	var names []string
+	for _, command := range catalog.commands() {
+		names = append(names, command.Name)
 	}
-	if len(commands) != 2 || commands[0].Name != "other" || !reflect.DeepEqual(commands[1], want) {
-		t.Fatalf("commands = %#v", commands)
+	if want := []string{"other", "llama", "mcp"}; !reflect.DeepEqual(names, want) {
+		t.Fatalf("commands = %v, want the runner's own order %v with no extra llama entry", names, want)
 	}
 	if expanded, handled := catalog.routePrompt(context.Background(), "/llama now"); !handled || expanded != "" {
 		t.Fatalf("routePrompt(/llama) = %q, %v", expanded, handled)
@@ -73,5 +86,46 @@ func TestStartBuiltInLlamaRestoresTheStoredCatalog(t *testing.T) {
 	}
 	if model := services.ModelRuntime().GetModel(llama.LlamaProviderID, "cached"); model == nil {
 		t.Fatal("model runtime does not expose the cached llama.cpp model")
+	}
+}
+
+// Only the built-in llama.cpp extension's command runs the llama host. Upstream each registered command keeps its own handler
+// (core/extensions/runner.ts resolveRegisteredCommands), so a file extension that also registers /llama runs its own handler
+// as llama:1 and the built-in one stays llama:2 (Pi 0.99.2 RPC probe: `/llama:1` notifies the file extension's message,
+// `/llama:2` warns "/llama is available in interactive mode").
+// Ports .upstream/v0.99.2/packages/coding-agent/src/core/extensions/runner.ts (resolveRegisteredCommands) with
+// src/extensions/llama/index.ts (registerCommand "llama").
+func TestRPCCatalogRunsAnotherExtensionsLlamaCommandThroughTheRunner(t *testing.T) {
+	t.Setenv("LLAMA_BASE_URL", "")
+	t.Setenv("LLAMA_API_KEY", "")
+	dir := t.TempDir()
+	services, err := coding.NewServices(coding.ServicesOptions{CWD: dir, AgentDir: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	host := startBuiltInLlama(context.Background(), services)
+	var notices [][2]string
+	resolved := func(invocation, path, source string) extension.ResolvedCommand {
+		info := codingagent.PiSourceInfo{Path: path, Source: source, Scope: "user", Origin: "top-level"}
+		return extension.ResolvedCommand{RegisteredCommand: extension.RegisteredCommand{Name: "llama", SourceInfo: info}, InvocationName: invocation}
+	}
+	runner := &fakeRPCCommandRunner{commands: []extension.ResolvedCommand{
+		resolved("llama:1", "/x/other.ts", "auto"),
+		resolved("llama:2", codingagent.LlamaExtensionPath, "builtin"),
+	}}
+	catalog := headlessCommandCatalog{runner: runner, mode: "rpc", llama: host, notify: func(message, kind string) {
+		notices = append(notices, [2]string{message, kind})
+	}}
+	if _, handled := catalog.routePrompt(context.Background(), "/llama:1 now"); !handled {
+		t.Fatal("/llama:1 was not handled")
+	}
+	if want := []string{"llama:1 now"}; !reflect.DeepEqual(runner.executed, want) || len(notices) != 0 {
+		t.Fatalf("/llama:1: runner executed %v, notices %v; want the file extension's handler only", runner.executed, notices)
+	}
+	if _, handled := catalog.routePrompt(context.Background(), "/llama:2"); !handled {
+		t.Fatal("/llama:2 was not handled")
+	}
+	if want := [][2]string{{"/llama is available in interactive mode", "warning"}}; !reflect.DeepEqual(notices, want) || len(runner.executed) != 1 {
+		t.Fatalf("/llama:2: notices %v, runner executed %v; want the llama host only", notices, runner.executed)
 	}
 }

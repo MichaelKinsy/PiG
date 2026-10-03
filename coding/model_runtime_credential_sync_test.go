@@ -20,8 +20,11 @@ func TestModelRuntimeCredentialSynchronizationErrorRetainsCommit(t *testing.T) {
 			}
 			login := func(context.Context, ai.AuthInteraction) (ai.Credential, error) { return credential, nil }
 			provider.Auth.APIKey.Login = login
+			oauthLogin := func(ctx context.Context, interaction ai.AuthInteraction, _ ai.LoginOptions) (ai.Credential, error) {
+				return login(ctx, interaction)
+			}
 			// Pi's OAuthAuth requires refresh and toAuth (ai/src/auth/types.ts:206-230); the registration's scheduled availability check may resolve the committed OAuth credential.
-			provider.Auth.OAuth = &ai.OAuthAuth{Login: login, Refresh: func(_ context.Context, current ai.Credential) (ai.Credential, error) { return current, nil }, ToAuth: func(current ai.Credential) (ai.ModelAuth, error) {
+			provider.Auth.OAuth = &ai.OAuthAuth{Login: oauthLogin, Refresh: func(_ context.Context, current ai.Credential) (ai.Credential, error) { return current, nil }, ToAuth: func(current ai.Credential) (ai.ModelAuth, error) {
 				return ai.ModelAuth{APIKey: current.Access}, nil
 			}}
 			cause := errors.New("cached catalog unavailable")

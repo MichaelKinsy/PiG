@@ -139,6 +139,7 @@ func (m *InteractiveMode) refreshForcedPrompt() {
 	defer m.runPromptMu.Unlock()
 	text := m.baseSystemPrompt()
 	if m.runPrompt != nil {
+		m.runPrompt.run.Options = m.runPrompt.run.NextTurnOptions(*m.currentSystemPromptOptions())
 		rendered, err := m.renderRunPrompt(m.runPrompt)
 		if err != nil {
 			return
@@ -149,29 +150,73 @@ func (m *InteractiveMode) refreshForcedPrompt() {
 	m.agent.SetSystemPrompt(text)
 }
 
-// renderRunPrompt renders the run's prompt with the live active tools, as agent-session.ts:1409-1419 builds it from the run options. A returned systemPrompt is exact. An opaque caller prompt is the preamble of the run's sections.
+// installRunPromptTurnRefresh wraps the agent's next-turn hook once per agent. After the Session's hook has compacted, each later turn of a run refreshes the run's options and forces the re-rendered prompt, as agent-session.ts:864-883 (_installAgentNextTurnRefresh) rebuilds the run options before every later turn. A failing earlier hook stops the turn before the refresh, as there.
+func (m *InteractiveMode) installRunPromptTurnRefresh() {
+	target := m.agent
+	if target == nil || m.runPromptTurnAgent == target {
+		return
+	}
+	m.runPromptTurnAgent = target
+	previous := target.PrepareNextTurnHook()
+	target.SetPrepareNextTurn(func(ctx context.Context, turn agent.PrepareNextTurnContext) (*agent.AgentLoopTurnUpdate, error) {
+		var update *agent.AgentLoopTurnUpdate
+		if previous != nil {
+			var err error
+			if update, err = previous(ctx, turn); err != nil {
+				return update, err
+			}
+		}
+		m.refreshRunPromptForNextTurn(target)
+		return update, nil
+	})
+}
+
+// refreshRunPromptForNextTurn merges the base snippets and guidelines under the run's and forces the run's prompt rendered with the live tools on target. Outside a run the base prompt stays.
+func (m *InteractiveMode) refreshRunPromptForNextTurn(target *agent.Agent) {
+	m.runPromptMu.Lock()
+	defer m.runPromptMu.Unlock()
+	if m.runPrompt == nil {
+		return
+	}
+	m.runPrompt.run.Options = m.runPrompt.run.NextTurnOptions(*m.currentSystemPromptOptions())
+	text, err := m.renderRunPrompt(m.runPrompt)
+	if err != nil {
+		return
+	}
+	m.setTurnSystemPrompt(text)
+	target.SetSystemPrompt(text)
+}
+
+// renderRunPrompt renders the run's prompt with the live active tools through the builder every mode shares (BeforeAgentStartRun.PromptSections, agent-session.ts:1669-1683). A returned systemPrompt is exact. An opaque caller prompt is the preamble of the run's sections.
 func (m *InteractiveMode) renderRunPrompt(state *interactiveRunPrompt) (string, error) {
 	run := state.run
 	if run.SystemPrompt != nil {
 		return *run.SystemPrompt, nil
 	}
-	var base ai.OrderedSections
 	if m.structuredSystemPrompt() {
-		options := run.Options
-		options.SelectedTools = m.activeToolNames()
-		base = prompts.BuildSystemPromptSections(prompts.FromExtensionOptions(options))
-	} else {
-		text := m.baseSystemPrompt()
-		if len(run.Sections) == 0 {
-			return text, nil
+		sections, err := run.PromptSections(m.activeToolNames(), m.hiddenDeclarations())
+		if err != nil {
+			return "", err
 		}
-		base = ai.OrderedSections{{Name: "preamble", Value: new(text)}}
+		return ai.GetCurrentSystemPrompt([]ai.Message{ai.SystemMessage{Content: ai.SystemText(""), Sections: sections}}), nil
 	}
-	sections, err := prompts.ApplyCustomSystemPromptSections(base, run.Sections)
+	text := m.baseSystemPrompt()
+	if len(run.Sections) == 0 {
+		return text, nil
+	}
+	sections, err := prompts.ApplyCustomSystemPromptSections(ai.OrderedSections{{Name: "preamble", Value: new(text)}}, run.Sections)
 	if err != nil {
 		return "", err
 	}
 	return ai.GetCurrentSystemPrompt([]ai.Message{ai.SystemMessage{Content: ai.SystemText(""), Sections: sections}}), nil
+}
+
+// hiddenDeclarations returns the tools whose declarations the Session's loadout hides from every request. A mode without a Session hides none.
+func (m *InteractiveMode) hiddenDeclarations() map[string]struct{} {
+	if session, ok := m.opts.SessionHandle.(interface{ HiddenDeclarations() map[string]struct{} }); ok {
+		return session.HiddenDeclarations()
+	}
+	return nil
 }
 
 // baseSystemPrompt returns the base prompt without a run's replacement.

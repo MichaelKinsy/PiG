@@ -1,0 +1,60 @@
+FAIL ./tui ^TestFormatToolCallWithArgs$
+FAIL ./tui ^TestFormatToolCallWithArgsColorsTheArgumentsMuted$
+FAIL ./coding/mcpext ^TestMCPToolCallRendererTitlesTheCallServerSlashTool$
+FAIL ./coding/mcpext ^TestMCPToolCallRendererReusesTheLastComponent$
+FAIL ./coding/mcpext ^TestMCPToolResultRendererCollapsesAfterFiveLines$
+FAIL ./coding/mcpext ^TestMCPToolResultRendererStylesAndTrimsTheOutput$
+FAIL ./coding/mcpext ^TestMCPToolResultRendererNamesImagesItDoesNotShow$
+PASS ./internal/codingagent ^TestToolExecutionComponentUpstream$/^renders_read_calls_with_null
+FAIL ./internal/codingagent ^TestToolExecutionComponentUpstream$/^shows_arguments_in_the_fallback
+FAIL ./internal/codingagent ^TestRegisteredToolWithoutRenderersDrawsTheFallbackHeaderThroughTheEventPath$
+FAIL ./internal/codingagent ^TestRegisteredToolFallbackResultKeepsTheTenLinePreview$
+PASS ./internal/codingagent ^TestRegisteredToolCustomCallRendererReplacesTheFallback$
+FAIL ./internal/codingagent ^TestNestedToolCallsGetNoCardOfTheirOwn$
+PASS ./internal/codingagent ^TestSessionCostOmitsTheBreakdownOfTheSelectedModel$
+FAIL ./internal/codingagent ^TestSessionCostNamesAModelOtherThanTheSelectedOne$
+FAIL ./internal/codingagent ^TestSessionCostWithoutASelectedModelShowsTheBreakdown$
+FAIL ./internal/codingagent ^TestPasteActionDescriptionNamesFilesOnMacOS$
+FAIL ./internal/codingagent ^TestHotkeysTableNamesFilesOnMacOS$
+FAIL ./internal/codingagent ^TestAutocompleteSourceTag$
+FAIL ./internal/codingagent ^TestPrefixAutocompleteDescription$
+FAIL ./internal/codingagent ^TestAutocompleteProviderTagsResourceCommands$
+FAIL ./internal/codingagent/export ^TestExportHTMLPinnedAssets$
+FAIL ./internal/codingagent/export ^TestExportHTMLHiddenMessagesAndNestedCalls$
+
+## Second red run: /mcp command, manager view, in-process Custom (each test alone; stubs panic 'not implemented' or Custom returns its stub error)
+FAIL TestMcpCommandWithoutArgumentsShowsTheManagerInTheTerminalUIAndTheStatusElsewhere
+FAIL TestMcpCommandWarnsWithTheUsageForAnUnknownActionOrExtraArguments
+FAIL TestMcpLoginNeedsInteractiveMode
+FAIL TestMcpCommandNamesTheServerItCannotUse
+FAIL TestMcpCommandWithoutAServerToPickSaysSo
+FAIL TestMcpLogoutWithoutStoredCredentials
+FAIL TestMcpReconnectReportsTheStateOfTheServer
+FAIL TestMcpCommandAsksWhichServerWhenSeveralQualify
+FAIL TestMcpCommandCompletions
+FAIL TestMcpFactoryRegistersTheCommand
+FAIL TestMcpManagerViewStartsAsALoadingFrame
+FAIL TestMcpManagerViewMenuLayout
+FAIL TestMcpManagerViewMenuSelectsWithTheKeys
+FAIL TestMcpManagerViewMenuOpensOnTheSelectedItem
+FAIL TestMcpManagerViewEmptyMenu
+FAIL TestMcpManagerViewMenuRebuildsOnChangeKeepingTheSelection
+FAIL TestMcpManagerViewStatus
+FAIL TestMcpManagerViewRedirectURL
+FAIL TestMcpManagerViewRedirectURLEnds
+FAIL TestMcpManagerViewFocusReachesTheInput
+FAIL TestMcpManagerViewCutsRowsToTheWidth
+FAIL TestMcpManagerServersMenu
+FAIL TestMcpManagerServerMenuAndDisable
+FAIL TestMcpManagerToolsMenu
+FAIL TestMcpManagerExposureMenu
+FAIL TestMcpManagerReconnectShowsItsStatus
+FAIL TestMcpManagerServerMenuOfAMissingServer
+FAIL TestExtUIContextCustomMountsTheComponentInTheEditorSlotAndRestoresItOnDone
+FAIL TestExtUIContextCustomRestoresTheEditorTextItHeldAtOpen
+FAIL TestExtUIContextCustomDoneBeforeTheFactoryReturnsMountsNothing
+FAIL TestExtUIContextCustomFactoryErrorRejects
+FAIL TestExtUIContextCustomOverlay
+FAIL TestExtUIContextCustomEndsWithItsContext
+PASS TestExtUIContextCustomRejectsAValueThatIsNotAFactory
+Skipped by name (waits for port-99-f8-spec): TestCodemodeRenderer/{hides the script header and shows the output, shows the cost of model calls and their total, shows results without a header such as rejected options}

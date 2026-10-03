@@ -1,6 +1,6 @@
 package codingagent
 
-// Ports packages/coding-agent/src/core/model-resolver.ts
+// Ports packages/coding-agent/src/core/model-resolver.ts (.upstream/v0.99.1/packages/coding-agent/src/core/model-resolver.ts:19-59).
 
 // DefaultModelPerProviderOrder preserves the declaration order used by findInitialModel.
 var DefaultModelPerProviderOrder = []struct{ Provider, ModelID string }{
@@ -9,7 +9,7 @@ var DefaultModelPerProviderOrder = []struct{ Provider, ModelID string }{
 	{"anthropic", "claude-opus-4-8"},
 	{"openai", "gpt-5.5"},
 	{"azure-openai-responses", "gpt-5.4"},
-	{"openai-codex", "gpt-5.5"},
+	{"openai-codex", "gpt-6.1-sol"},
 	{"radius", "balanced"},
 	{"nvidia", "nvidia/nemotron-3-super-120b-a12b"},
 	{"deepseek", "deepseek-v4-pro"},
@@ -29,11 +29,11 @@ var DefaultModelPerProviderOrder = []struct{ Provider, ModelID string }{
 	{"moonshotai", "kimi-k2.6"},
 	{"moonshotai-cn", "kimi-k2.6"},
 	{"huggingface", "moonshotai/Kimi-K2.6"},
-	{"fireworks", "accounts/fireworks/models/kimi-k2p6"},
-	{"together", "moonshotai/Kimi-K2.6"},
+	{"fireworks", "accounts/fireworks/models/kimi-k3"},
+	{"together", "moonshotai/Kimi-K3"},
 	{"baseten", "zai-org/GLM-5.2"},
 	{"opencode", "kimi-k2.6"},
-	{"opencode-go", "kimi-k2.6"},
+	{"opencode-go", "kimi-k3"},
 	{"kimi-coding", "kimi-for-coding"},
 	{"meta", "muse-spark-1.3"},
 	{"cloudflare-workers-ai", "@cf/moonshotai/kimi-k2.6"},

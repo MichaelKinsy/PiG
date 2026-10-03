@@ -61,7 +61,7 @@ func runConfigCommand(args []string) int {
 	}
 	settings := codingagent.NewSettingsManagerWithProjectTrust(cwd, agentDir, projectTrusted)
 	reportSettingsErrors(settings, "config command")
-	selector, err := newScopedConfigSelector(cwd, agentDir, globalSettings, settings, local, projectTrusted)
+	selector, err := newScopedConfigSelector(cwd, agentDir, globalSettings, settings, local, projectTrusted, cliBuiltinExtensionNames())
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "pig config:", err)
 		return 1
@@ -75,20 +75,25 @@ func runConfigCommand(args []string) int {
 
 func newConfigSelector(cwd, agentDir string, sm *codingagent.SettingsManager) (*tui.ConfigSelectorComponent, error) {
 	global := codingagent.NewSettingsManagerWithProjectTrust(cwd, agentDir, false)
-	return newScopedConfigSelector(cwd, agentDir, global, sm, false, sm.IsProjectTrusted())
+	return newScopedConfigSelector(cwd, agentDir, global, sm, false, sm.IsProjectTrusted(), nil)
 }
 
-func newScopedConfigSelector(cwd, agentDir string, global, settings *codingagent.SettingsManager, local, projectModeAvailable bool) (*tui.ConfigSelectorComponent, error) {
+// newScopedConfigSelector builds the `pig config` selector. builtins are the names of the built-in extensions, which each scope lists
+// as `builtin:<name>` extension resources after its other resources (package-manager-cli.ts:842-853, the builtinExtensions option
+// of DefaultPackageManager).
+func newScopedConfigSelector(cwd, agentDir string, global, settings *codingagent.SettingsManager, local, projectModeAvailable bool, builtins []string) (*tui.ConfigSelectorComponent, error) {
 	globalItems, err := collectConfigResourceItems(cwd, agentDir, global)
 	if err != nil {
 		return nil, err
 	}
+	globalItems = append(globalItems, packagemanager.ResolveBuiltinExtensions(global, builtins)...)
 	projectItems := globalItems
 	if projectModeAvailable {
 		projectItems, err = collectConfigResourceItems(cwd, agentDir, settings)
 		if err != nil {
 			return nil, err
 		}
+		projectItems = append(projectItems, packagemanager.ResolveBuiltinExtensions(settings, builtins)...)
 		globalByKey := make(map[string]bool, len(globalItems))
 		for _, item := range globalItems {
 			globalByKey[configItemKey(item)] = item.Enabled
@@ -137,17 +142,8 @@ func runConfigSelectorTUI(selector *tui.ConfigSelectorComponent, settings *codin
 }
 
 // newConfigSelectorUI themes the process and builds the config selector's terminal UI, as Pi's selectConfig (config-selector.ts:20-30) does before it starts.
-// Pi's initTheme(settingsManager.getTheme()) sees no theme for an automatic slash setting, so that and an unset theme use the environment theme; an empty or unknown name falls back to dark.
 func newConfigSelectorUI(selector *tui.ConfigSelectorComponent, settings *codingagent.SettingsManager, agentDir string) *tui.TUI {
-	theme := settings.GetThemeSetting()
-	if theme != nil && strings.Contains(*theme, "/") {
-		theme = nil
-	}
-	tui.SetThemeSettingPresence(theme)
-	_ = tui.ActiveThemeRegistry().LoadDir(filepath.Join(agentDir, "themes"))
-	if theme != nil {
-		tui.SetThemeSettingPresence(theme)
-	}
+	initTheme(settings, agentDir)
 	ui := tui.New()
 	ui.SetLogDirectory(agentDir)
 	ui.Add(selector)
@@ -345,7 +341,8 @@ func applyTopLevelToggle(cwd, agentDir string, sm *codingagent.SettingsManager, 
 		baseDir = codingagent.ProjectConfigDir(cwd)
 	}
 	pattern, err := filepath.Rel(baseDir, item.Path)
-	if err != nil {
+	if err != nil || item.Source == "builtin" {
+		// A built-in extension path is its own pattern (config-selector.ts:863-866).
 		pattern = item.Path
 	}
 	pattern = filepath.ToSlash(pattern)
@@ -387,11 +384,16 @@ func applyTopLevelToggle(cwd, agentDir string, sm *codingagent.SettingsManager, 
 	default:
 		return nil
 	}
-	current = slices.DeleteFunc(current, func(s string) bool {
-		return filepath.ToSlash(s) == pattern || filepath.ToSlash(resolveSettingsPath(baseDir, s)) == filepath.ToSlash(item.Path)
+	// Pi drops the entries that name the resource, with or without an override prefix, then records the new state as `+pattern` or
+	// `-pattern` (config-selector.ts:545-560).
+	current = slices.DeleteFunc(current, func(entry string) bool {
+		target := patternEntryTarget(entry)
+		return filepath.ToSlash(target) == pattern || filepath.ToSlash(resolveSettingsPath(baseDir, target)) == filepath.ToSlash(item.Path)
 	})
 	if enabled {
-		current = append(current, pattern)
+		current = append(current, "+"+pattern)
+	} else {
+		current = append(current, "-"+pattern)
 	}
 	return setter(current)
 }
@@ -459,6 +461,14 @@ func applyPackageToggle(cwd string, sm *codingagent.SettingsManager, item *tui.R
 	return nil
 }
 
+// patternEntryTarget is the entry without its one `!`, `+` or `-` override prefix (config-selector.ts:846-848, getPatternEntryTarget).
+func patternEntryTarget(entry string) string {
+	if strings.HasPrefix(entry, "!") || strings.HasPrefix(entry, "+") || strings.HasPrefix(entry, "-") {
+		return entry[1:]
+	}
+	return entry
+}
+
 func configItemKey(item tui.ResourceItem) string {
 	return string(item.ResourceType) + "\x00" + canonicalStatusPath(item.Path)
 }
@@ -506,6 +516,9 @@ func projectConfigOverride(sm *codingagent.SettingsManager, item *tui.ResourceIt
 			pattern, _ = filepath.Rel(base, packagecontent.SkillFile(item.Path))
 		}
 		pattern = filepath.ToSlash(pattern)
+		if item.Source == "builtin" {
+			pattern = item.Path
+		}
 	}
 	state := "inherit"
 	for _, entry := range entries {
@@ -608,17 +621,21 @@ func applyProjectConfigOverride(cwd string, sm *codingagent.SettingsManager, ite
 	// with the platform separator. Pi matches override entries by exact string.
 	projectBase := codingagent.ProjectConfigDir(cwd)
 	pattern := item.Path
-	if !item.Inherited && item.Scope == "project" {
+	if !item.Inherited && item.Scope == "project" && item.Source != "builtin" {
 		if relative, err := filepath.Rel(projectBase, item.Path); err == nil {
 			pattern = relative
 		}
 	}
 	entries = slices.DeleteFunc(slices.Clone(entries), func(entry string) bool {
 		target := strings.TrimLeft(entry, "+-!")
+		if item.Source == "builtin" {
+			return target == item.Path
+		}
 		return canonicalStatusPath(resolveSettingsPath(projectBase, target)) == canonicalStatusPath(item.Path)
 	})
 	if state != "inherit" {
-		if item.Inherited && !slices.Contains(entries, pattern) {
+		// Project entries name inherited files to override them. Built-in paths need no entry (config-selector.ts:688-690).
+		if item.Inherited && item.Source != "builtin" && !slices.Contains(entries, pattern) {
 			entries = append(entries, pattern)
 		}
 		entries = append(entries, map[bool]string{true: "+", false: "-"}[state == "load"]+pattern)

@@ -25,6 +25,10 @@ func TestComputeDelta(t *testing.T) {
 	writeTestFile(t, to, "packages/tui/src/added.tsx", "added")
 	writeTestFile(t, from, "packages/coding-agent/src/ignored.test.ts", "old")
 	writeTestFile(t, to, "packages/coding-agent/src/ignored.test.ts", "new")
+	writeTestFile(t, from, "packages/codemode/src/runtime/prelude-source.ts", "old")
+	writeTestFile(t, to, "packages/codemode/src/runtime/prelude-source.ts", "new")
+	writeTestFile(t, from, "packages/mcp/src/transports/streamable-http.ts", "old")
+	writeTestFile(t, to, "packages/mcp/src/transports/streamable-http.ts", "new")
 
 	got, err := computeDelta(from, to)
 	if err != nil {
@@ -33,6 +37,8 @@ func TestComputeDelta(t *testing.T) {
 	want := []sourceDelta{
 		{Path: "packages/agent/src/removed.ts", Change: "removed"},
 		{Path: "packages/ai/src/modified.ts", Change: "modified"},
+		{Path: "packages/codemode/src/runtime/prelude-source.ts", Change: "modified"},
+		{Path: "packages/mcp/src/transports/streamable-http.ts", Change: "modified"},
 		{Path: "packages/tui/src/added.tsx", Change: "added"},
 	}
 	if !slices.Equal(got, want) {

@@ -1,7 +1,7 @@
 [
   {
     "type": "message_start",
-    "outputTokens": 1,
+    "outputTokens": 0,
     "stopReason": "pending",
     "text": "a"
   },

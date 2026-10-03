@@ -101,7 +101,8 @@ func TestTemporaryGitInstallAndCleanup(t *testing.T) {
 			writeStubScript(t, filepath.Join(bin, "npm"), "#!/bin/sh\nexit "+exit+"\n")
 			t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 			const source = "git:github.com/test/extension@v1"
-			digest := sha256.Sum256([]byte("git-github.com-test/extension"))
+			// package-manager.ts:2153-2181 (0.99.1) hashes the pinned ref into the temporary directory.
+			digest := sha256.Sum256([]byte("git-github.com-test/extension@v1"))
 			cached := filepath.Join(sm.AgentDir(), "tmp", "extensions", "git-github.com", fmt.Sprintf("%x", digest)[:8], "test", "extension")
 			configs := collectExtensionConfigs(cwd, sm.AgentDir(), sm, CLIFlags{Extensions: []string{source}, NoExtensions: true}, nil)
 			if len(configs) != 1 {
@@ -143,7 +144,12 @@ func TestTemporaryGitCacheBoundaries(t *testing.T) {
 			if tc.offline {
 				t.Setenv("PI_OFFLINE", "1")
 			}
-			digest := sha256.Sum256([]byte("git-github.com-test/extension"))
+			key := "git-github.com-test/extension"
+			if _, ref, pinned := strings.Cut(tc.source, "@"); pinned {
+				// package-manager.ts:2153-2181 (0.99.1) hashes the pinned ref into the temporary directory.
+				key += "@" + ref
+			}
+			digest := sha256.Sum256([]byte(key))
 			cached := filepath.Join(agentDir, "tmp", "extensions", "git-github.com", fmt.Sprintf("%x", digest)[:8], "test", "extension")
 			file := filepath.Join(cached, "pi-extensions", "session-breakdown.ts")
 			if !tc.missing {
@@ -228,5 +234,63 @@ func TestTemporaryGitSourceLoadsOnlyPackageResources(t *testing.T) {
 				t.Fatalf("configs = %+v, want only %s with %+v", configs, want, wantInfo)
 			}
 		})
+	}
+}
+
+// Ports .upstream/v0.99.1/packages/coding-agent/test/package-manager.test.ts:2647-2673 ("should load a new checkout when a pinned
+// temporary git source changes ref", https://github.com/earendil-works/pi/issues/9982). Pi spies installParsedSource; here the
+// git binary is the recorder. A pinned ref names its own checkout, so the changed ref installs into a new directory instead of
+// reusing the old one, and only the new checkout's extension loads.
+func TestPinnedTemporaryGitSourceChangingRefLoadsNewCheckout(t *testing.T) {
+	cwd, agentDir := t.TempDir(), t.TempDir()
+	t.Setenv("PIG_CODING_AGENT_DIR", agentDir)
+	t.Setenv("PIG_OFFLINE", "")
+	t.Setenv("PI_OFFLINE", "")
+	temporaryDir := func(ref string) string {
+		digest := sha256.Sum256([]byte("git-github.com-example/repo@" + ref))
+		return filepath.Join(agentDir, "tmp", "extensions", "git-github.com", fmt.Sprintf("%x", digest)[:8], "example", "repo")
+	}
+	oldPath, newPath := temporaryDir("aaaaaaa"), temporaryDir("bbbbbbb")
+	if oldPath == newPath {
+		t.Fatal("the two refs share a checkout directory")
+	}
+	writePackageResource(t, filepath.Join(oldPath, "package.json"), `{"name":"repo","version":"1.0.0"}`)
+	writePackageResource(t, filepath.Join(oldPath, "extensions", "old.ts"), "export default function() {};")
+
+	bin, log := t.TempDir(), filepath.Join(t.TempDir(), "commands")
+	t.Setenv("PIG_TEMP_REF_LOG", log)
+	t.Setenv("PIG_TEMP_REF_NEW", newPath)
+	writeStubScript(t, filepath.Join(bin, "git"), `#!/bin/sh
+printf 'git %s\n' "$*" >> "$PIG_TEMP_REF_LOG"
+if [ "$1" = "clone" ]; then
+ mkdir -p "$PIG_TEMP_REF_NEW/extensions" "$3"
+ printf '{"name":"repo","version":"1.0.0"}' > "$3/package.json"
+ printf 'export default function() {};' > "$3/extensions/new.ts"
+fi
+`)
+	writeStubScript(t, filepath.Join(bin, "npm"), "#!/bin/sh\nexit 0\n")
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	sm := codingagent.NewSettingsManager(cwd, agentDir)
+	flags, err := resolveCLIResourceFlags(CLIFlags{Extensions: []string{"git:github.com/example/repo@bbbbbbb"}, NoExtensions: true}, cwd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	configs := collectExtensionConfigs(cwd, agentDir, sm, flags, nil)
+	commands, _ := os.ReadFile(log)
+	if got := strings.Count(string(commands), "git clone"); got != 1 {
+		t.Fatalf("clone count = %d, want 1; commands:\n%s", got, commands)
+	}
+	var sources []string
+	for _, config := range configs {
+		if config.Enabled {
+			sources = append(sources, config.Source)
+		}
+	}
+	if want := filepath.Join(newPath, "extensions", "new.ts"); !slices.Contains(sources, want) {
+		t.Fatalf("new checkout extension missing: sources = %q, want %q", sources, want)
+	}
+	if want := filepath.Join(oldPath, "extensions", "old.ts"); slices.Contains(sources, want) {
+		t.Fatalf("old checkout extension loaded: sources = %q", sources)
 	}
 }

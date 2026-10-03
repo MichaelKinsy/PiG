@@ -233,3 +233,22 @@ func TestExtensionDirectoryFollowsSymlinksAndIgnoreFiles(t *testing.T) {
 	assertContains(t, resources.ExtensionEntries, filepath.Join(root, "extensions", "linked.ts"))
 	assertNotContains(t, resources.ExtensionEntries, filepath.Join(root, "extensions", "skipped.ts"))
 }
+
+// A directory extension and its own index entry are one extension (pi-web-access
+// declares both "dist" and "dist/index.js").
+func TestFindMemberTreatsDirectoryAndIndexEntryAsOneExtension(t *testing.T) {
+	root := t.TempDir()
+	dist := filepath.Join(root, "dist")
+	index := filepath.Join(dist, "index.js")
+	resources := Resources{ExtensionEntries: []string{dist, index}}
+	got, err := FindMember(resources, Extensions, "dist")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != index {
+		t.Fatalf("FindMember = %q, want %q", got, index)
+	}
+	if err := validateUniqueMemberNames(resources, Extensions); err != nil {
+		t.Fatalf("duplicate check: %v", err)
+	}
+}

@@ -3,6 +3,7 @@ package nodeurl
 
 import (
 	"fmt"
+	"math"
 	"net/netip"
 	"strconv"
 	"strings"
@@ -128,7 +129,7 @@ func parseIPv4Host(host string) (string, error) {
 	return fmt.Sprintf("%d.%d.%d.%d", byte(ipv4>>24), byte(ipv4>>16), byte(ipv4>>8), byte(ipv4)), nil
 }
 
-// parseIPv4Number is the WHATWG IPv4 number parser.
+// parseIPv4Number is the WHATWG IPv4 number parser. The spec's number is unbounded, so a valid number past the uint64 range is MaxUint64: it still ends the host in a number, and the IPv4 parser rejects it as out of range.
 func parseIPv4Number(part string) (uint64, bool) {
 	if part == "" {
 		return 0, false
@@ -144,9 +145,21 @@ func parseIPv4Number(part string) (uint64, bool) {
 	if digits == "" {
 		return 0, true
 	}
+	for _, c := range []byte(digits) {
+		digit := 16
+		switch {
+		case c >= '0' && c <= '9':
+			digit = int(c - '0')
+		case c|0x20 >= 'a' && c|0x20 <= 'f':
+			digit = int(c|0x20-'a') + 10
+		}
+		if digit >= base {
+			return 0, false
+		}
+	}
 	n, err := strconv.ParseUint(digits, base, 64)
 	if err != nil {
-		return 0, false
+		return math.MaxUint64, true
 	}
 	return n, true
 }

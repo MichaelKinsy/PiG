@@ -28,7 +28,7 @@ func BenchmarkResourceLoaderExtensionDiscovery(b *testing.B) {
 				}
 			}
 			for _, dir := range []string{filepath.Join(cwd, ".pig"), agentDir} {
-				testenv.Symlink(b, shared, filepath.Join(dir, "extensions"))
+				testenv.RequireDirectoryLink(b, shared, filepath.Join(dir, "extensions"))
 			}
 			for i := range count {
 				if err := os.WriteFile(filepath.Join(shared, fmt.Sprintf("extension-%03d.ts", i)), []byte("export default function() {}"), 0o600); err != nil {
@@ -70,7 +70,7 @@ func TestResourceLoaderUpstreamSymlinkedExtensions(t *testing.T) {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		testenv.Symlink(t, shared, filepath.Join(dir, "extensions"))
+		testenv.RequireDirectoryLink(t, shared, filepath.Join(dir, "extensions"))
 	}
 	configs := collectExtensionConfigs(cwd, agentDir, codingagent.NewSettingsManager(cwd, agentDir), CLIFlags{}, nil)
 	wantPath := filepath.Join(cwd, ".pig", "extensions", "shared.ts")

@@ -264,6 +264,8 @@ THIS SOFTWARE.
 
 The Node extension runtime highlights code for Pi 0.87.1's `highlightCode` and `getMarkdownTheme` with the same highlighter Pi 0.87.1 uses. `coding/extension/host/subprocess/runtime-node/shims/highlight.js/` holds the unmodified CommonJS build (`lib/`), `package.json` and `LICENSE` of the npm package `highlight.js@10.7.3` (integrity `sha512-tzcUFauisWKNHaRkN4Wjl/ZA07gENAjFl3J/c480dprkGTg5EQstgaNFqBfUqCq54kZRIEcreTsAgF/m2quD7A==`), copied by `automation/gen/vendor-pi-dist.sh`.
 
+`tui/internal/hljs/` ports the same highlighter to Go for PiG's own `highlightCode`: its `.go` files translate `lib/core.js` and the language callbacks, `grammars_eager.json.gz` and `grammars_all.json.gz` serialize the language definitions Pi 1.0.0 registers (`automation/gen/generate-highlight-grammars.mjs`), and `testdata/corpus.json` holds the test inputs of highlight.js's repository at tag 10.7.3 (`automation/gen/import-highlight-corpus.mjs`).
+
 ```text
 BSD 3-Clause License
 
@@ -295,6 +297,18 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
+
+## V8 TimSort (CPython listsort)
+
+Source: <https://github.com/v8/v8/blob/13.6.233.17/third_party/v8/builtins/array-sort.tq>
+
+Distributed file: `internal/jsarray/sort.go`
+
+- Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018 Python Software Foundation; All Rights Reserved
+- License: PSF-2.0
+- License text: `LICENSES/PSF-2.0.txt`
+
+`internal/jsarray.Sort` reproduces the order of Node 24's `Array.prototype.sort` for highlight.js's `highlightAuto`, whose comparator is not a consistent order. V8 version 13.6, which Node 24 uses, implements the sort as TimSort in `array-sort.tq`, based on CPython's `Objects/listobject.c`. Summary of changes: the Torque builtin is translated to Go and made generic over the element type; it sorts a Go slice in place, so the steps that copy elements from and back to a JavaScript array, compact holes and handle `undefined` are omitted; the comparator returns a float64, and a NaN result counts as 0, as in V8.
 
 ## marked 18.0.11
 
@@ -496,3 +510,37 @@ Source: <https://github.com/libuv/libuv/blob/v1.51.0/src/win/process.c>
 ## Unicode 17.0.0 character data
 
 The generated `tui/widthx/unicode_tables.go` derives character properties and emoji sequences from the Unicode Character Database and Unicode emoji data, pinned in `tui/widthx/gen/inputs.sha256`. Copyright © 1991-2026 Unicode, Inc. Used under Unicode License V3, reproduced in `LICENSES/Unicode-3.0.txt` (source: https://www.unicode.org/license.txt). This data license supplements the MIT license for the Go implementation.
+
+## quickjs-wasi 3.6.2 and the codemode prelude
+
+`codemode/assets/quickjs.wasm` is the unmodified `quickjs.wasm` of the npm package `quickjs-wasi@3.6.2` (SHA-256 `d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9`), the engine that upstream's codemode package runs. The module contains QuickJS-NG (MIT, copyright Ben Noordhuis, Saúl Ibarra Corretgé, Fabrice Bellard and Charlie Gordon) and wasi-libc from wasi-sdk 30. PiG hosts it with wazero (Apache-2.0, `LICENSES/Apache-2.0.txt`). `codemode/assets/prelude.js` is upstream's `PRELUDE_SOURCE` (MIT, copyright (c) 2025 Mario Zechner). `codemode/assets/PROVENANCE.md` records the source and the refresh procedure.
+
+```text
+MIT License
+
+Copyright (c) 2026 Vercel, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```
+
+## Model Context Protocol TypeScript SDK v1.29.0 (OAuth client)
+
+Source: <https://github.com/modelcontextprotocol/typescript-sdk/blob/v1.29.0/src/client/auth.ts>
+
+`mcp/oauth` translates, through upstream's `packages/mcp/src/oauth`, the SDK's OAuth client subset (discovery, PKCE authorization code flow, dynamic client registration, token refresh) into Go. It retains the notice Copyright (c) 2024 Anthropic, PBC, under the MIT license reproduced in `LICENSES/MIT.txt`.

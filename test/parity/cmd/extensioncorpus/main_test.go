@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -88,7 +90,7 @@ func TestValidateExampleRecordsFailedRegistration(t *testing.T) {
 	}
 	copyTestBinary(t, binary)
 	t.Setenv(fakePigOutputEnv, `{"valid":true,"registered":false,"name":"example","code":"not_registered"}`)
-	got, err := validateExample(root, binary, corpus, source, 30*time.Second)
+	got, err := validateExample(t.Context(), root, binary, corpus, source, 30*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,5 +99,35 @@ func TestValidateExampleRecordsFailedRegistration(t *testing.T) {
 	}
 	if len(got.SourceSHA256) != 64 {
 		t.Fatalf("source hash = %q", got.SourceSHA256)
+	}
+}
+
+// A signal cancels main's context. The validation must stop with that error, not record a timeout, and must still remove its scratch home.
+func TestValidateExampleCancelledRemovesScratchHome(t *testing.T) {
+	root := t.TempDir()
+	corpus := filepath.Join(root, "corpus")
+	if err := os.MkdirAll(corpus, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	source := filepath.Join(corpus, "example.ts")
+	if err := os.WriteFile(source, []byte("export default () => {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	binary := filepath.Join(root, "pig")
+	if runtime.GOOS == "windows" {
+		binary += ".exe"
+	}
+	copyTestBinary(t, binary)
+	scratch := t.TempDir()
+	for _, key := range []string{"TMPDIR", "TMP", "TEMP"} {
+		t.Setenv(key, scratch)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if _, err := validateExample(ctx, root, binary, corpus, source, 30*time.Second); !errors.Is(err, context.Canceled) {
+		t.Fatalf("error = %v, want context.Canceled", err)
+	}
+	if left, err := os.ReadDir(scratch); err != nil || len(left) != 0 {
+		t.Fatalf("scratch home left behind: %v, %v", left, err)
 	}
 }

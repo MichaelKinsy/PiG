@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -47,13 +48,13 @@ func shortenPath(p string) string {
 	return p
 }
 
-// debugLog writes to /tmp/pig-debug.log when PIG_DEBUG is set. Used for
+// debugLog writes to pig-debug.log in the temporary directory when PIG_DEBUG is set. Used for
 // diagnosing TUI event flow without polluting the alt-screen.
 func debugLog(format string, args ...any) {
 	if os.Getenv("PIG_DEBUG") == "" {
 		return
 	}
-	f, err := os.OpenFile("/tmp/pig-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(filepath.Join(os.TempDir(), "pig-debug.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return
 	}
@@ -64,7 +65,7 @@ func debugLog(format string, args ...any) {
 
 // showWarning appends a padded, theme-colored warning with Pi's textual prefix.
 func (m *InteractiveMode) showWarning(msg string) {
-	m.appendChatBlock(tui.NewPaddedText(tui.ActiveTheme().FgText("warning", "Warning: "+msg), 1, 0, nil))
+	m.appendChatBlock(themedNotice("warning", "Warning: "+msg, 1))
 	m.tuiInst.Render()
 }
 

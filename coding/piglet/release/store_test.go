@@ -73,7 +73,7 @@ func TestPinnedDirectoryCannotFollowReplacedAncestor(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		testenv.Symlink(t, outside, original)
+		testenv.RequireDirectoryLink(t, outside, original)
 	}
 	name, err := stageIn(parent, bytes.NewBufferString("verified bytes"), 0o755)
 	if err != nil {

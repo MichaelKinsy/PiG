@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"golang.org/x/term"
 
+	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	extsource "github.com/MichaelKinsy/PiG/coding/extension/source"
 	"github.com/MichaelKinsy/PiG/coding/packagecontent"
@@ -98,6 +100,10 @@ func collectExtensionConfigs(cwd, agentDir string, sm *codingagent.SettingsManag
 	configs := make([]subprocess.ExtConfig, 0)
 	var missing []subprocess.ExtConfig
 	for _, p := range flags.Extensions {
+		if strings.HasPrefix(p, codingagent.BuiltinPathPrefix) {
+			// `-e builtin:<name>` loads a built-in extension; the extension set loads it and reports an unknown name (package-manager.ts:996-1006).
+			continue
+		}
 		resolved, err := resolveCLIExtensionSource(cwd, agentDir, sm, p, nil)
 		if err != nil {
 			missing = append(missing, subprocess.UnresolvedExtConfig(p, err))
@@ -392,6 +398,10 @@ func (e extensionPathMissingError) Error() string {
 // cell.mjs) already words it as Pi's loader does.
 func extensionLoadFailureDiagnostic(path string, err error) codingagent.AgentSessionRuntimeDiagnostic {
 	message := "Failed to load extension: " + err.Error()
+	if build, built := errors.AsType[*runtimecell.BuildFailure](err); built {
+		// pig additive (D20): a failed compile is one summary line in Pi's loader-error shape (Pi 0.87.1 loader.ts:578 `Failed to load extension: ${message}`); the compiler output is in the log it names.
+		message = "Failed to load extension: " + build.Error()
+	}
 	if _, missing := errors.AsType[extensionPathMissingError](err); missing {
 		message = err.Error()
 	}
@@ -405,7 +415,11 @@ func extensionLoadFailureDiagnostic(path string, err error) codingagent.AgentSes
 // extension path, such as an embedded cell failure, keeps its own text.
 func extensionLoadDiagnostics(errs []error) []codingagent.AgentSessionRuntimeDiagnostic {
 	diagnostics := make([]codingagent.AgentSessionRuntimeDiagnostic, 0, len(errs))
-	for _, err := range errs {
+	for _, err := range subprocess.GroupLoadErrors(errs) {
+		if group, ok := errors.AsType[*subprocess.BuildFailureGroup](err); ok {
+			diagnostics = append(diagnostics, codingagent.AgentSessionRuntimeDiagnostic{Type: "error", Message: group.Error()})
+			continue
+		}
 		if loadErr, ok := errors.AsType[*subprocess.ExtensionLoadError](err); ok && loadErr.Path != "" {
 			diagnostics = append(diagnostics, extensionLoadFailureDiagnostic(loadErr.Path, loadErr.Err))
 			continue
@@ -426,10 +440,18 @@ func extensionConflictDiagnostics(conflicts []codingagent.ExtensionConflict) []c
 	return diagnostics
 }
 
-// reportExtensionLoadFailures mirrors upstream main.ts on extension load
-// errors: it reports the startup diagnostics, then the -ne hint in yellow.
+// reportExtensionLoadFailures mirrors upstream main.ts on extension startup
+// errors: it reports the startup diagnostics, then the -ne hint in yellow when
+// one of them is a load failure (main.ts:912-914). A failed virtual-model
+// registration alone reports no hint.
 func reportExtensionLoadFailures(diagnostics []codingagent.AgentSessionRuntimeDiagnostic) {
 	codingagent.ReportDiagnostics(codingagent.DeduplicateDiagnostics(diagnostics))
+	if !slices.ContainsFunc(diagnostics, func(diagnostic codingagent.AgentSessionRuntimeDiagnostic) bool {
+		// pig additive (D20): a grouped build failure stands for one `Failed to load extension` error per member, so it gets Pi's hint too.
+		return strings.Contains(diagnostic.Message, "Failed to load extension") || subprocess.IsBuildFailureGroupMessage(diagnostic.Message)
+	}) {
+		return
+	}
 	hint := extensionLoadFailureHint
 	if term.IsTerminal(int(os.Stderr.Fd())) {
 		hint = "\x1b[33m" + hint + "\x1b[39m"

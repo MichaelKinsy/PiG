@@ -99,8 +99,20 @@ func (state *bedrockStreamState) handleItem(item bedrockStreamItem) error {
 		if u := e.Value.Usage; u != nil {
 			handleBedrockUsage(u, builder, &state.usage)
 		}
+
+	case *btypes.UnknownUnionMember:
+		// `throw item.internalServerException` and its four siblings (bedrock-converse-stream.ts:318-327).
+		if exception := bedrockStreamException(e.Tag, e.Value); exception != nil {
+			return exception
+		}
 	}
 	return nil
+}
+
+// bedrockStreamItemModeled reports whether Pi's ConverseStream union models the item. The SDK reader yields *types.UnknownUnionMember for every event type the Go union lacks; Pi's deserializer returns `$unknown` for those outside its union, which SmithyMessageDecoderStream drops before the loop sees them.
+func bedrockStreamItemModeled(event btypes.ConverseStreamOutput) bool {
+	unknown, ok := event.(*btypes.UnknownUnionMember)
+	return !ok || bedrockStreamException(unknown.Tag, unknown.Value) != nil
 }
 
 // finish is the code after the loop: an ended stream without a stop reason, or with an error stop reason, fails; otherwise the message completes. streamErr is the stream's terminal error.

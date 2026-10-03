@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -427,30 +428,34 @@ func TestUpstreamSettingsManager(t *testing.T) {
 		})
 	})
 
+	// .upstream/v1.0.0/packages/coding-agent/test/settings-manager.test.ts:480-509 (Pi 1.0.0 made fullscreen the default).
 	t.Run("TUI mode", func(t *testing.T) {
-		t.Run("defaults to regular and persists fullscreen mode", func(t *testing.T) {
+		// settings-manager.test.ts:481.
+		t.Run("defaults to fullscreen and persists regular mode", func(t *testing.T) {
 			f := newUpstreamSettingsFixture(t)
 			manager := f.create()
-			if manager.GetTuiMode() != "regular" {
+			if manager.GetTuiMode() != "fullscreen" {
 				t.Fatalf("default = %q", manager.GetTuiMode())
 			}
-			mustNoError(t, manager.SetTuiMode("fullscreen"))
+			mustNoError(t, manager.SetTuiMode("regular"))
 			mustNoError(t, manager.Flush())
-			if manager.GetTuiMode() != "fullscreen" || f.readJSON(f.global())["tuiMode"] != "fullscreen" {
+			if manager.GetTuiMode() != "regular" || f.readJSON(f.global())["tuiMode"] != "regular" {
 				t.Fatalf("mode=%q file=%#v", manager.GetTuiMode(), f.readJSON(f.global()))
 			}
 		})
-		t.Run("falls back to regular for unsupported values", func(t *testing.T) {
+		// settings-manager.test.ts:494.
+		t.Run("falls back to fullscreen for unsupported values", func(t *testing.T) {
 			f := newUpstreamSettingsFixture(t)
 			f.write(f.global(), map[string]any{"tuiMode": "other"})
-			if got := f.create().GetTuiMode(); got != "regular" {
+			if got := f.create().GetTuiMode(); got != "fullscreen" {
 				t.Fatalf("mode = %q", got)
 			}
 		})
+		// settings-manager.test.ts:502.
 		t.Run("does not recognize the old uiMode setting", func(t *testing.T) {
 			f := newUpstreamSettingsFixture(t)
-			f.write(f.global(), map[string]any{"uiMode": "fullscreen"})
-			if got := f.create().GetTuiMode(); got != "regular" {
+			f.write(f.global(), map[string]any{"uiMode": "regular"})
+			if got := f.create().GetTuiMode(); got != "fullscreen" {
 				t.Fatalf("mode = %q", got)
 			}
 		})
@@ -477,6 +482,37 @@ func TestUpstreamSettingsManager(t *testing.T) {
 		}
 	})
 
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:537 (#9758)
+	t.Run("persists fullscreen wheel scroll lines", func(t *testing.T) {
+		f := newUpstreamSettingsFixture(t)
+		manager := f.create()
+		if got := manager.GetFullscreenWheelScrollLines(); got != (WheelScrollLines{Auto: true}) {
+			t.Fatalf("default = %#v, want auto", got)
+		}
+
+		mustNoError(t, manager.SetFullscreenWheelScrollLines(WheelScrollLines{Lines: 3}))
+		mustNoError(t, manager.Flush())
+		if saved := f.readJSON(f.global())["fullscreenWheelScrollLines"]; saved != float64(3) {
+			t.Fatalf("saved = %#v, want 3", saved)
+		}
+
+		for _, tc := range []struct {
+			value any
+			want  WheelScrollLines
+		}{
+			{7.9, WheelScrollLines{Lines: 7}},
+			{0, WheelScrollLines{Lines: 1}},
+			{1000, WheelScrollLines{Lines: 100}},
+			{"fast", WheelScrollLines{Auto: true}},
+			{nil, WheelScrollLines{Auto: true}},
+		} {
+			f.write(f.global(), map[string]any{"fullscreenWheelScrollLines": tc.value})
+			if got := f.create().GetFullscreenWheelScrollLines(); got != tc.want {
+				t.Fatalf("value %#v: got %#v, want %#v", tc.value, got, tc.want)
+			}
+		}
+	})
+
 	t.Run("outputPad", func(t *testing.T) {
 		t.Run("should default to 1 and persist binary values", func(t *testing.T) {
 			f := newUpstreamSettingsFixture(t)
@@ -495,6 +531,32 @@ func TestUpstreamSettingsManager(t *testing.T) {
 			f.write(f.global(), map[string]any{"outputPad": 2})
 			if got := f.create().GetOutputPad(); got != 1 {
 				t.Fatalf("pad = %d", got)
+			}
+		})
+	})
+
+	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:114
+	t.Run("deviceId", func(t *testing.T) {
+		t.Run("creates one global device ID and reuses it in later processes", func(t *testing.T) {
+			f := newUpstreamSettingsFixture(t)
+			f.write(f.global(), map[string]any{"theme": "dark"})
+			f.write(f.project(), map[string]any{"deviceId": "project-device"})
+			first := f.create()
+
+			deviceID := first.GetOrCreateDeviceID()
+			mustNoError(t, first.Flush())
+
+			if !regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`).MatchString(deviceID) {
+				t.Fatalf("device ID %q is not a UUID", deviceID)
+			}
+			if got := first.GetOrCreateDeviceID(); got != deviceID {
+				t.Fatalf("second call = %q, want %q", got, deviceID)
+			}
+			if got := f.create().GetOrCreateDeviceID(); got != deviceID {
+				t.Fatalf("later process = %q, want %q", got, deviceID)
+			}
+			if saved := f.readJSON(f.global()); !reflect.DeepEqual(saved, map[string]any{"theme": "dark", "deviceId": deviceID}) {
+				t.Fatalf("saved = %#v", saved)
 			}
 		})
 	})
@@ -568,6 +630,40 @@ func TestUpstreamSettingsManager(t *testing.T) {
 			}
 			if got := NewInMemorySettingsManager(Settings{}).GetDefaultTools(); got != nil {
 				t.Fatalf("unset = %#v, want nil", got)
+			}
+		})
+		// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:650
+		t.Run("applies +name and -name to the default selection", func(t *testing.T) {
+			if got := NewInMemorySettingsManager(Settings{DefaultTools: []string{"+codemode", "-write"}}).GetDefaultTools(); !reflect.DeepEqual(got, []string{"read", "bash", "edit", "codemode"}) {
+				t.Fatalf("modifiers = %#v", got)
+			}
+			if got := NewInMemorySettingsManager(Settings{DefaultTools: []string{"read", "+grep", "+read"}}).GetDefaultTools(); !reflect.DeepEqual(got, []string{"read", "grep"}) {
+				t.Fatalf("plain and modifiers = %#v", got)
+			}
+		})
+		// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:663
+		t.Run("layers project modifiers on top of the global selection", func(t *testing.T) {
+			f := newUpstreamSettingsFixture(t)
+			f.write(f.global(), map[string]any{"defaultTools": []string{"read", "bash", "+codemode"}})
+			f.write(f.project(), map[string]any{"defaultTools": []string{"-codemode", "+tool_search"}})
+
+			manager := f.create()
+			if got := manager.GetDefaultTools(); !reflect.DeepEqual(got, []string{"read", "bash", "tool_search"}) {
+				t.Fatalf("layered = %#v", got)
+			}
+
+			manager.ApplyOverrides(Settings{DefaultTools: []string{"+codemode"}})
+			if got := manager.GetDefaultTools(); !reflect.DeepEqual(got, []string{"read", "bash", "tool_search", "codemode"}) {
+				t.Fatalf("overrides = %#v", got)
+			}
+		})
+		// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:680
+		t.Run("applies project modifiers to the built-in defaults without a global setting", func(t *testing.T) {
+			f := newUpstreamSettingsFixture(t)
+			f.write(f.project(), map[string]any{"defaultTools": []string{"+codemode"}})
+
+			if got := f.create().GetDefaultTools(); !reflect.DeepEqual(got, []string{"read", "bash", "edit", "write", "codemode"}) {
+				t.Fatalf("project modifiers = %#v", got)
 			}
 		})
 	})

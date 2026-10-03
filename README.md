@@ -18,20 +18,20 @@ SPDX-License-Identifier: MIT
 [![Minimum Go version](https://img.shields.io/github/go-mod/go-version/MichaelKinsy/PiG?label=Go%20%E2%89%A5)](go.mod)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/MichaelKinsy/PiG?sort=semver)](https://github.com/MichaelKinsy/PiG/releases)
-[![Pi pin 0.87.1](https://img.shields.io/badge/Pi%20pin-0.87.1-8A2BE2)](https://github.com/earendil-works/pi/releases/tag/v0.87.1)
+[![Pi pin 1.0.0](https://img.shields.io/badge/Pi%20pin-1.0.0-8A2BE2)](https://github.com/earendil-works/pi/releases/tag/v1.0.0)
 [![Pi port progress](.github/badges/parity-coverage.svg)](test/parity/coverage.md)
 [![Follow PiG on X](https://img.shields.io/badge/X-%40PiGCodingAgent-000000?logo=x&logoColor=white)](https://x.com/PiGCodingAgent)
 [![Join r/PiGCodingAgent](https://img.shields.io/badge/Reddit-r%2FPiGCodingAgent-FF4500?logo=reddit&logoColor=white)](https://www.reddit.com/r/PiGCodingAgent/)
 
 PiG is [Pi](https://github.com/earendil-works/pi), the minimal and extensible coding agent for the terminal, rebuilt in Go as one native binary. It starts quickly, needs no Node.js, and runs Pi's TypeScript extensions unchanged. You can also write extensions in Go, Rust, or Python, and bundle extensions, skills, and prompts into a Piglet: one named agent you can share or build into its own executable.
 
-PiG is a pre-stable 0.x release. Core paths are ported and checked against Pi 0.87.1 with paired parity scenarios; edge cases are still hardening. See the [port status](test/parity/coverage.md) and [file map](docs/parity/PORT_MAP.md) for current scope and evidence.
+PiG is a pre-stable 0.x release. Core paths are ported and checked against Pi 1.0.0 with paired parity scenarios; edge cases are still hardening. See the [port status](test/parity/coverage.md) and [file map](docs/parity/PORT_MAP.md) for current scope and evidence.
 
 If PiG behaves differently from Pi, that is either a bug or a documented divergence. Windows support is a preview.
 
 ## Install
 
-On macOS or Linux:
+On macOS, Linux, or Android with [Termux](docs/site/docs/termux.md) (arm64):
 
 ```bash
 curl -fsSL https://pi-in-go.dev/install.sh | sh
@@ -100,7 +100,7 @@ PiG adds a Go implementation to the Pi ecosystem and follows the Pi reference im
 - Prefer changes that reduce the cost of the next upstream sync.
 - Share generally useful findings with the broader ecosystem when the contribution route permits it.
 
-The pinned Pi release is 0.87.1 at commit `f07218c4d4bbc12bef056a7058c3dd49dfe41abe`. The pin names the behavior oracle. It does not claim that every upstream change is already ported: [`test/parity/coverage.md`](test/parity/coverage.md) reports verified behavior, and the upgrade ledgers under [`test/parity/upstream-sync/`](test/parity/upstream-sync/) list each upstream change and its disposition.
+The pinned Pi release is 0.99.1 at commit `d86654abb8862e201933517d6f1fce9f88dd117f`. The pin names the behavior oracle. It does not claim that every upstream change is already ported: [`test/parity/coverage.md`](test/parity/coverage.md) reports verified behavior, and the upgrade ledgers under [`test/parity/upstream-sync/`](test/parity/upstream-sync/) list each upstream change and its disposition.
 
 PiG's current package scope covers Pi's agent, AI, coding-agent, and TUI
 packages. It does not implement Pi's experimental remote Session packages or
@@ -118,7 +118,7 @@ its standalone telemetry and evaluation packages. See
 - Main verification gate: `make check`
 - Full verification and coverage refresh: `make verify`
 
-`pig --version` prints PiG's version as `<PiG release>+<Pi release>`, for example `0.2.0+0.87.1` (D63): the Pi release is semver build metadata, so the version sorts as the PiG release. `pig version` prints the PiG release and the pinned Pi release as separate fields. Neither command reads user configuration.
+`pig --version` prints PiG's version as `<PiG release>+<Pi release>`, for example `0.3.0+0.99.1` (D63): the Pi release is semver build metadata, so the version sorts as the PiG release. `pig version` prints the PiG release and the pinned Pi release as separate fields. Neither command reads user configuration.
 
 ## Repository map
 
@@ -187,7 +187,7 @@ npx @pi-in-go/pig --version
 ```
 
 `pig` itself is the native binary: npm installs the matching platform package
-(`@pi-in-go/pig-<os>-<cpu>`, for macOS, Linux and Windows on x64 and arm64) as
+(`@pi-in-go/pig-<os>-<cpu>`, for macOS, Linux and Windows on x64 and arm64, and Android on arm64 for Termux) as
 an optional dependency, and Node.js runs only a small launcher. Do not install
 with `--omit=optional` or `--no-optional`, which leaves the binary out. Update
 with `npm update -g @pi-in-go/pig` and uninstall with

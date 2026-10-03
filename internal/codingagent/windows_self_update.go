@@ -14,8 +14,9 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 )
 
-// quarantineDirName is the directory, beside the nearest node_modules, that
-// holds native images moved out of an installation npm is about to replace.
+// quarantineDirName is the directory, in the node_modules holding the
+// installed package, that holds native images moved out of an installation npm
+// is about to replace.
 const quarantineDirName = ".pig-native-quarantine"
 
 // GetPackageDir is the installation directory of a compiled pig: the
@@ -41,6 +42,13 @@ func normalizeWindowsPath(path string) (string, error) {
 	return nodepath.ToNamespacedPath(resolved)
 }
 
+// getQuarantineRoot is the quarantine in the nearest node_modules holding
+// packageDir, as upstream's, except that it skips the node_modules inside the
+// launcher package PackageName. npm nests the platform package that holds
+// pig.exe there and replaces the launcher's whole tree on an update, so a
+// quarantine inside it would hold the running image in the tree npm removes.
+// Upstream's packageDir is the installed package itself, whose nearest
+// node_modules is outside it.
 func getQuarantineRoot(packageDir string) (string, bool) {
 	if packageDir == "" {
 		return "", false
@@ -49,8 +57,9 @@ func getQuarantineRoot(packageDir string) (string, bool) {
 	if err != nil {
 		return "", false
 	}
+	launcher := strings.Split(PackageName, "/")
 	for {
-		if strings.ToLower(filepath.Base(current)) == "node_modules" {
+		if strings.ToLower(filepath.Base(current)) == "node_modules" && !isPackageDir(filepath.Dir(current), launcher) {
 			return filepath.Join(current, quarantineDirName), true
 		}
 		parent := filepath.Dir(current)
@@ -59,6 +68,16 @@ func getQuarantineRoot(packageDir string) (string, bool) {
 		}
 		current = parent
 	}
+}
+
+// isPackageDir reports whether dir ends in the path segments of a package name.
+func isPackageDir(dir string, name []string) bool {
+	segments := make([]string, len(name))
+	for i := len(name) - 1; i >= 0; i-- {
+		segments[i] = filepath.Base(dir)
+		dir = filepath.Dir(dir)
+	}
+	return samePathSegments(runtime.GOOS, segments, name)
 }
 
 // loadedSharedObjectsInPackageDir returns the loaded images inside

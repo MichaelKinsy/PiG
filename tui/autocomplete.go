@@ -18,7 +18,10 @@ package tui
 
 import (
 	"context"
+	"slices"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // AutocompleteItem is one popup row.
@@ -97,11 +100,8 @@ func (p *SlashOnlyProvider) GetSuggestions(lines []string, cursorLine, cursorCol
 	if cursorCol > len(line) {
 		cursorCol = len(line)
 	}
-	before := line[:cursorCol]
-
-	// Slash-command path requires the buffer (the *entire* current
-	// logical line up to cursor) to start with `/`. Multi-line is
-	// allowed only on the first line.
+	// The slash-command path applies when the current line up to the cursor starts with `/` after leading whitespace (autocomplete.ts:338-339, #10218).
+	before := widthx.JSTrimStart(line[:cursorCol])
 	if !strings.HasPrefix(before, "/") {
 		return nil
 	}
@@ -112,19 +112,30 @@ func (p *SlashOnlyProvider) GetSuggestions(lines []string, cursorLine, cursorCol
 		type item struct {
 			cmd  SlashCommand
 			text string
+			idx  int
 		}
 		all := make([]item, 0, len(p.Commands))
-		for _, c := range p.Commands {
-			all = append(all, item{cmd: c, text: c.Name})
+		for i, c := range p.Commands {
+			all = append(all, item{cmd: c, text: c.Name, idx: i})
 		}
 		// Upstream autocomplete.ts matches skill commands by their bare name
-		// unless the query itself names the skill: namespace.
-		filtered := FuzzyFilter(all, prefix, func(it item) string {
-			if !strings.HasPrefix(prefix, "skill:") && strings.HasPrefix(it.text, "skill:") {
-				return strings.TrimPrefix(it.text, "skill:")
-			}
-			return it.text
+		// first, then by their full skill: name, so `/skill` lists skills whose
+		// names lack its letters and `/skbra` still finds skill:brainstorm.
+		bareNameMatches := FuzzyFilter(all, prefix, func(it item) string {
+			return strings.TrimPrefix(it.text, "skill:")
 		})
+		bareNameMatched := make(map[int]bool, len(bareNameMatches))
+		for _, match := range bareNameMatches {
+			bareNameMatched[match.idx] = true
+		}
+		var fullNameCandidates []item
+		for _, it := range all {
+			if strings.HasPrefix(it.text, "skill:") && !bareNameMatched[it.idx] {
+				fullNameCandidates = append(fullNameCandidates, it)
+			}
+		}
+		fullNameOnlyMatches := FuzzyFilter(fullNameCandidates, prefix, func(it item) string { return it.text })
+		filtered := slices.Concat(bareNameMatches, fullNameOnlyMatches)
 		if len(filtered) == 0 {
 			return nil
 		}
@@ -165,7 +176,9 @@ func (p *SlashOnlyProvider) GetSuggestions(lines []string, cursorLine, cursorCol
 	return nil
 }
 
+// slashArgumentPrefix splits `/<cmd> <args>` after leading whitespace into the command name and argument text.
 func slashArgumentPrefix(before string) (string, string, bool) {
+	before = widthx.JSTrimStart(before)
 	if !strings.HasPrefix(before, "/") {
 		return "", "", false
 	}
@@ -230,7 +243,7 @@ func (p *SlashOnlyProvider) ApplyCompletion(lines []string, cursorLine, cursorCo
 	// before the prefix is empty/whitespace (line start).
 	isSlashName := strings.HasPrefix(prefix, "/") &&
 		!strings.Contains(prefix[1:], "/") &&
-		strings.TrimSpace(beforePrefix) == ""
+		widthx.JSTrim(beforePrefix) == ""
 	if isSlashName {
 		newLine := beforePrefix + "/" + item.Value + " " + afterCursor
 		out[cursorLine] = newLine

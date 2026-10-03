@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
+	"github.com/MichaelKinsy/PiG/internal/chord"
 )
 
 // SessionAddress identifies a Session on a server.
@@ -31,11 +31,11 @@ type SessionDirectoryState struct {
 
 // SessionDirectory exposes replicated Session discovery without mutation operations.
 type SessionDirectory interface {
-	State() pico3.ReplicatedStateOf[*SessionDirectoryState]
+	State() chord.ReplicatedStateOf[*SessionDirectoryState]
 }
 
 // SessionDirectoryDefinition is the pi.session-directory token.
-var SessionDirectoryDefinition = pico3.DefineService[SessionDirectory]("pi.session-directory")
+var SessionDirectoryDefinition = chord.DefineService[SessionDirectory]("pi.session-directory")
 
 // SessionManagement creates, removes, and selects Sessions. Calls wait for completion and return operation errors.
 type SessionManagement interface {
@@ -46,4 +46,4 @@ type SessionManagement interface {
 }
 
 // SessionManagementDefinition is the pi.session-management token.
-var SessionManagementDefinition = pico3.DefineService[SessionManagement]("pi.session-management")
+var SessionManagementDefinition = chord.DefineService[SessionManagement]("pi.session-management")

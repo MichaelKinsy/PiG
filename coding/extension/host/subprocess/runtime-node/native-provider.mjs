@@ -2,7 +2,7 @@ export { dispatchProviderObject as dispatchNativeProvider } from "./provider-obj
 
 export function nativeDeclaration(provider, key) {
   const paths = [
-    "getModels", "filterModels", "refreshModels", "stream", "streamSimple", "fetchDeferred", "cancelDeferred",
+    "getModels", "filterModels", "refreshModels", "stream", "streamSimple", "fetchDeferred", "cancelDeferred", "generateImages", "classify",
     "auth.apiKey.check", "auth.apiKey.resolve", "auth.apiKey.login", "auth.oauth.login", "auth.oauth.refresh", "auth.oauth.toAuth",
   ];
   const methods = paths.filter(path => typeof path.split(".").reduce((object, name) => object?.[name], provider) === "function");

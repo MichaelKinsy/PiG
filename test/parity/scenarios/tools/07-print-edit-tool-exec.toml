@@ -17,9 +17,7 @@ name = "07-print-edit-tool-exec"
 description = "Faux triggers edit(parity-edit-target.txt), both produce edited in print mode"
 covers = [
   "packages/coding-agent/src/core/tools/edit.ts",
-  "packages/agent/src/harness/tools/edit.ts",
   "packages/coding-agent/src/core/tools/edit-diff.ts",
-  "packages/agent/src/harness/tools/edit-diff.ts",
 ]
 tags = ["hermetic", "fast"]
 driver = "print-mode"

@@ -3,7 +3,7 @@
 // This translator accepts only the constructs in this test file and rejects unknown statements.
 import { readFileSync } from 'node:fs';
 import ts from '../../../extensions/sdk-ts/node_modules/typescript/lib/typescript.js';
-const path = '.upstream/v0.87.1/packages/tui/test/overlay-non-capturing.test.ts';
+const path = '.upstream/current/packages/tui/test/overlay-non-capturing.test.ts';
 const text = readFileSync(path, 'utf8');
 const source = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true);
 const q = JSON.stringify;

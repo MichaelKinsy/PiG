@@ -95,13 +95,13 @@ func TestCustomToolResultHTMLTrimsSpacing(t *testing.T) {
 	}
 }
 
-// These are the reviewed Pi 0.87.1 source assets, not hashes of Pig's generated output.
+// These are the reviewed upstream 0.99.1 source assets, not hashes of Pig's generated output.
 // Refresh from .upstream/current/packages/coding-agent/src/core/export-html with sha256sum when the upstream pin changes.
 func TestExportHTMLPinnedAssets(t *testing.T) {
 	for name, want := range map[string]string{
 		"template.html":           "916782b1184a9597527605ad751e2b3af30fcea23ba2194002969cd217a06881",
-		"template.css":            "28c16e3827c23a62eef8283cac316b478f946e023093adad25ff9c9b891d41af",
-		"template.js":             "56270347d35faac17e3b79b16ac5d8dbab664e9c83cfbc05437a3f5976074d76",
+		"template.css":            "8ee19851f8e583277ed396cbb76496687aa556707fdfc1f78d1118bff87c740a",
+		"template.js":             "b5bbffdf5d9ec8bb519df45c7ff953ac1969af80e8aba33331b9f87983f91fa5",
 		"vendor/marked.min.js":    "d5487edc7258b404bfa74c393d74a6393155f02517bd5e7e77cd64f8187f39a0",
 		"vendor/highlight.min.js": "837a6fa5b0c736b52bbde2b2b6190f305da3fc9ed41681db5321507057b5c846",
 	} {

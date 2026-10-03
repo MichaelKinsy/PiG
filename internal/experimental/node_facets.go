@@ -17,7 +17,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/experimental/protocol"
 
@@ -37,7 +36,7 @@ type FacetBundleLoaderOptions struct {
 
 // FacetBundleArtifactLoaderOptions selects a transported entry and its optional materialization parent.
 type FacetBundleArtifactLoaderOptions struct {
-	Artifact           pico3.JsonValue
+	Artifact           chord.JsonValue
 	TemporaryDirectory string
 	ResolveExternal    FacetBundleExternalResolver
 }
@@ -94,7 +93,7 @@ func CreateSessionPluginFacetLoader(manifestPaths []string) (chord.FacetLoader, 
 }
 
 // CreatePresentationFacetLoaders creates local loaders only for artifacts selected by the connected server. Validation completes before any plugin code is evaluated.
-func CreatePresentationFacetLoaders(data pico3.JsonValue) ([]chord.FacetLoader, error) {
+func CreatePresentationFacetLoaders(data chord.JsonValue) ([]chord.FacetLoader, error) {
 	raw, err := nodeFacetInputJSON(data)
 	if err != nil {
 		return nil, err

@@ -1,0 +1,51 @@
+# Behavior family: startup
+# Upstream evidence: interactive-mode.ts:977-1023 builds the header as the logo,
+# then the first line of hints, which wrap in the width-2 cells of the padded
+# text. At 52 columns the compact hint line wraps over several lines in Pi. PiG's
+# sprite login art is 51 cells wide and does not fit the 50 cells there, so the
+# header uses the one-line PiG. text mark in the 4 cells of Pi's logo (D2, owner
+# decisions 2026-10-01). The wrapped hints, onboarding and every ANSI byte from
+# the first hint on are compared with Pi. The crop starts at the first hint, so the
+# logo region is outside it; the unit tests assert the text mark's line and the art
+# threshold (53 columns).
+name = "13-startup-narrow-mark-wrapping"
+description = "Below the pig head's width PiG's one-line text mark leaves Pi's header wrapping unchanged."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_OFFLINE=1", "PIG_CODING_AGENT_DIR=../interactive-rendering/testdata/pig-agent"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1", "PI_CODING_AGENT_DIR=../interactive-rendering/testdata/pi-agent"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions"]
+
+[tmux]
+width = 26
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "escape"
+capture_end_regex = 'extend Pi(G)?\.'
+
+[assert]
+both_reach_ready = true
+both_contain = ["interrupt", "clear/exit", "commands", "bash", "more", "resources."]
+both_not_contain = ["Ready. Type", "config=", "bin=", "cwd="]
+escaped_output_equal = true
+runs = 3
+
+# normalize-rationale: D2 substitutes the product name only; key labels,
+# descriptions, ANSI styling and all whitespace remain byte-faithful.
+[[assert.normalize_replace]]
+pattern = 'extend PiG\.'
+with = "extend Pi."
+reason = "D2: the onboarding sentence names the host product. Match only that sentence fragment, not arbitrary PiG text."
+
+[[assert.normalize_replace]]
+pattern = 'PiG can explain its own'
+with = 'Pi can explain its own'
+reason = "D2: the same onboarding sentence starts with the host product name; all remaining words, ANSI and spaces stay literal."
+

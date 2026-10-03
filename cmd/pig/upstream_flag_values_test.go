@@ -49,6 +49,7 @@ func TestHeadlessFlagBindingSharesReferenceAndWireValues(t *testing.T) {
 // .upstream/v0.87.1/packages/coding-agent/src/main.ts:741
 // .upstream/v0.87.1/packages/coding-agent/src/core/extensions/loader.ts:344
 func TestExtensionCLIFlagsReachEveryHeadlessMode(t *testing.T) {
+	t.Parallel()
 	binary := buildPigBinaryForSignalTest(t)
 	for _, mode := range []string{"print", "json", "rpc"} {
 		t.Run(mode, func(t *testing.T) {

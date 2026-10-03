@@ -9,8 +9,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 )
 
 type counterState struct {
@@ -19,18 +17,18 @@ type counterState struct {
 }
 
 type Counter interface {
-	State() pico3.ReplicatedStateOf[*counterState]
+	State() ReplicatedStateOf[*counterState]
 	Add(ctx context.Context, amount int, label string) (int, error)
 	Fail(ctx context.Context) error
 }
 
-var counterDefinition = pico3.DefineService[Counter]("test.counter")
+var counterDefinition = DefineService[Counter]("test.counter")
 
 type counterImpl struct {
 	state *MutableReplicatedState[*counterState]
 }
 
-func (counter *counterImpl) State() pico3.ReplicatedStateOf[*counterState] { return counter.state }
+func (counter *counterImpl) State() ReplicatedStateOf[*counterState] { return counter.state }
 
 func (counter *counterImpl) Add(ctx context.Context, amount int, label string) (int, error) {
 	var result int
@@ -68,7 +66,7 @@ type recorder struct {
 
 func newRecorder() *recorder { return &recorder{changed: make(chan struct{}, 64)} }
 
-func (rec *recorder) listen(value *counterState, _ context.Context, info pico3.ReplicatedStateDelivery) {
+func (rec *recorder) listen(value *counterState, _ context.Context, info ReplicatedStateDelivery) {
 	rec.mu.Lock()
 	rec.deliveries = append(rec.deliveries, delivery{Kind: info.Kind, Sequence: info.Sequence, Value: *value})
 	rec.mu.Unlock()
@@ -327,11 +325,11 @@ func (badImpl) Nope(int) string { return "" }
 
 func TestWireUpdateRoundTrip(t *testing.T) {
 	updates := []ServiceProviderUpdate{
-		{Type: UpdateState, Member: "state", Sequence: 0, Ops: []pico3.Op{{"r", map[string]any{"a": 1.0}}}},
-		{Type: UpdateState, Address: &ServiceInstanceAddress{Key: "k", Generation: 2}, Member: "state", Sequence: 3, Ops: []pico3.Op{{"s", []any{"a"}, 2.0}}},
+		{Type: UpdateState, Member: "state", Sequence: 0, Ops: []Op{{"r", map[string]any{"a": 1.0}}}},
+		{Type: UpdateState, Address: &ServiceInstanceAddress{Key: "k", Generation: 2}, Member: "state", Sequence: 3, Ops: []Op{{"s", []any{"a"}, 2.0}}},
 		{Type: UpdateUnavailable},
 		{Type: UpdateReplaced, Snapshot: &ServiceInstanceSnapshot{Members: []ServiceMemberSnapshot{{Name: "m", Kind: MemberMethod}}}},
-		{Type: UpdateSpawned, Snapshot: &ServiceInstanceSnapshot{Instance: &ServiceInstanceAddress{Key: "k", Generation: 1}, Members: []ServiceMemberSnapshot{{Name: "s", Kind: MemberState, Sequence: 0, Ops: []pico3.Op{{"r", []any{}}}}}}},
+		{Type: UpdateSpawned, Snapshot: &ServiceInstanceSnapshot{Instance: &ServiceInstanceAddress{Key: "k", Generation: 1}, Members: []ServiceMemberSnapshot{{Name: "s", Kind: MemberState, Sequence: 0, Ops: []Op{{"r", []any{}}}}}}},
 		{Type: UpdateClosed, Address: &ServiceInstanceAddress{Key: "k", Generation: 1}},
 	}
 	wantJSON := []string{
@@ -366,8 +364,8 @@ type counterView struct {
 	resolve func() (Counter, error)
 }
 
-func (view counterView) State() pico3.ReplicatedStateOf[*counterState] {
-	return StateView(func() (pico3.ReplicatedStateOf[*counterState], error) {
+func (view counterView) State() ReplicatedStateOf[*counterState] {
+	return StateView(func() (ReplicatedStateOf[*counterState], error) {
 		target, err := view.resolve()
 		if err != nil {
 			return nil, err

@@ -12,11 +12,17 @@ import (
 )
 
 // Anthropic credential variables. Mirrors upstream ANTHROPIC_AUTH_TOKEN_ENV,
-// ANTHROPIC_OAUTH_TOKEN_ENV, and ANTHROPIC_API_KEY_ENV.
+// ANTHROPIC_OAUTH_TOKEN_ENV, ANTHROPIC_API_KEY_ENV and the workload identity
+// federation variables of packages/ai/src/env-api-keys.ts.
 const (
-	AnthropicAuthTokenEnv  = "ANTHROPIC_AUTH_TOKEN"
-	AnthropicOAuthTokenEnv = "ANTHROPIC_OAUTH_TOKEN"
-	AnthropicAPIKeyEnv     = "ANTHROPIC_API_KEY"
+	AnthropicAuthTokenEnv         = "ANTHROPIC_AUTH_TOKEN"
+	AnthropicOAuthTokenEnv        = "ANTHROPIC_OAUTH_TOKEN"
+	AnthropicAPIKeyEnv            = "ANTHROPIC_API_KEY"
+	AnthropicFederationRuleIDEnv  = "ANTHROPIC_FEDERATION_RULE_ID"
+	AnthropicOrganizationIDEnv    = "ANTHROPIC_ORGANIZATION_ID"
+	AnthropicServiceAccountIDEnv  = "ANTHROPIC_SERVICE_ACCOUNT_ID"
+	AnthropicIdentityTokenFileEnv = "ANTHROPIC_IDENTITY_TOKEN_FILE"
+	AnthropicWorkspaceIDEnv       = "ANTHROPIC_WORKSPACE_ID"
 )
 
 // envAPIKeyVars mirrors the envMap of upstream getApiKeyEnvVars. Providers
@@ -35,6 +41,7 @@ var envAPIKeyVars = map[string]string{
 	"groq":                       "GROQ_API_KEY",
 	"cerebras":                   "CEREBRAS_API_KEY",
 	"xai":                        "XAI_API_KEY",
+	"typesafe":                   "TYPESAFE_API_KEY",
 	"radius":                     "RADIUS_API_KEY",
 	"openrouter":                 "OPENROUTER_API_KEY",
 	"vercel-ai-gateway":          "AI_GATEWAY_API_KEY",

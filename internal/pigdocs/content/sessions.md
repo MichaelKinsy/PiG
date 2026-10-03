@@ -1,6 +1,6 @@
 # Sessions
 
-A session is one conversation with its full history. PiG saves its log after the first assistant response. Use `--no-session` to keep the Session log in memory.
+A session is one conversation with its full history. PiG saves its log from the first user message. Use `--no-session` to keep the Session log in memory.
 
 Every Session has an ID, including print (`-p`), JSON, RPC, and `--no-session` runs. A new Session gets a UUIDv7 unless you supply `--session-id`. Extensions can read the ID before the first model response. `--no-session` disables Session file persistence; it does not remove the ID or prevent an extension from keeping its own session-keyed data.
 

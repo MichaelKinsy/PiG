@@ -20,8 +20,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
-	"github.com/google/uuid"
-
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
@@ -193,7 +191,9 @@ func redactBugReportSettings(settings Settings) (any, error) {
 		return nil, err
 	}
 	if object, ok := redacted.(map[string]any); ok {
+		// Upstream bug-report.ts:62 drops trackingId and deviceId.
 		delete(object, "trackingId")
+		delete(object, "deviceId")
 	}
 	return redacted, nil
 }
@@ -488,7 +488,8 @@ func isoTimestamp(t time.Time) string {
 // CollectBugReportMetadata builds report.json. Mirrors upstream
 // collectBugReportMetadata.
 func CollectBugReportMetadata(inputs BugReportInputs, options BugReportOptions, summaryIncluded bool, now time.Time) (BugReportMetadata, error) {
-	id, err := uuid.NewV7()
+	// upstream: packages/coding-agent/src/core/bug-report.ts: id: options.id ?? uuidv7()
+	id, err := ai.UUIDv7(nil)
 	if err != nil {
 		return BugReportMetadata{}, err
 	}
@@ -510,7 +511,7 @@ func CollectBugReportMetadata(inputs BugReportInputs, options BugReportOptions, 
 	}
 	metadata := BugReportMetadata{
 		SchemaVersion: bugReportSchemaVersion,
-		ID:            id.String(),
+		ID:            id,
 		CreatedAt:     isoTimestamp(now),
 		Hint:          hint,
 		Environment:   collectBugReportEnvironment(inputs.Version, os.Getenv, os.Environ()),

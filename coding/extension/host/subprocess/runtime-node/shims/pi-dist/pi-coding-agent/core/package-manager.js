@@ -31,6 +31,7 @@ import { canonicalizePath, isLocalPath, markPathIgnoredByCloudSync, resolvePath 
 import { stripBom } from "../utils/text.js";
 import { isStdoutTakenOver } from "./output-guard.js";
 import { readPiManifest } from "./pi-manifest.js";
+import { BUILTIN_PATH_PREFIX } from "./source-info.js";
 const NETWORK_TIMEOUT_MS = 10000;
 const UPDATE_CHECK_CONCURRENCY = 4;
 const GIT_UPDATE_CONCURRENCY = 4;
@@ -59,6 +60,9 @@ function getNpmVersionRange(version) {
  *   4  package resource (origin: "package")
  */
 function resourcePrecedenceRank(m) {
+    // Built-in extensions load after file and package extensions, whichever scope enables them.
+    if (m.source === "builtin")
+        return 5;
     if (m.origin === "package")
         return 4;
     const scopeBase = m.scope === "project" ? 0 : 2;
@@ -604,6 +608,7 @@ export class DefaultPackageManager {
     cwd;
     agentDir;
     settingsManager;
+    builtinExtensions;
     globalNpmRoot;
     globalNpmRootCommandKey;
     progressCallback;
@@ -611,6 +616,7 @@ export class DefaultPackageManager {
         this.cwd = resolvePath(options.cwd);
         this.agentDir = resolvePath(options.agentDir);
         this.settingsManager = options.settingsManager;
+        this.builtinExtensions = options.builtinExtensions ?? [];
     }
     setProgressCallback(callback) {
         this.progressCallback = callback;
@@ -728,12 +734,25 @@ export class DefaultPackageManager {
             }, globalBaseDir);
         }
         this.addAutoDiscoveredResources(accumulator, globalSettings, projectSettings, globalBaseDir, projectBaseDir);
+        // Built-in extensions are enabled unless the user `extensions` setting excludes them, for example
+        // with `-builtin:mcp`. A matching `+`, `-`, or `!` entry in the project setting overrides that.
+        for (const name of this.builtinExtensions) {
+            const path = `${BUILTIN_PATH_PREFIX}${name}`;
+            const projectEnabled = applyAutoloadDisabledPatterns([path], getOverridePatterns(projectSettings.extensions ?? []), projectBaseDir).get(path);
+            this.addResource(accumulator.extensions, path, { source: "builtin", scope: projectEnabled === undefined ? "user" : "project", origin: "top-level" }, projectEnabled ?? isEnabledByOverrides(path, globalSettings.extensions ?? [], globalBaseDir));
+        }
         return this.toResolvedPaths(accumulator);
     }
     async resolveExtensionSources(sources, options) {
         const accumulator = this.createAccumulator();
         const scope = options?.temporary ? "temporary" : options?.local ? "project" : "user";
-        const packageSources = sources.map((source) => ({ pkg: source, scope }));
+        // `-e builtin:<name>` loads a built-in extension; the resource loader reports unknown names.
+        for (const source of sources.filter((source) => source.startsWith(BUILTIN_PATH_PREFIX))) {
+            this.addResource(accumulator.extensions, source, { source: "builtin", scope, origin: "top-level" }, true);
+        }
+        const packageSources = sources
+            .filter((source) => !source.startsWith(BUILTIN_PATH_PREFIX))
+            .map((source) => ({ pkg: source, scope }));
         await this.resolvePackageSources(packageSources, accumulator);
         return this.toResolvedPaths(accumulator);
     }
@@ -1017,6 +1036,7 @@ export class DefaultPackageManager {
                     installedPath = this.getNpmInstallPath(parsed, resolvedScope);
                 }
                 metadata.baseDir = installedPath;
+                metadata.packageRoot = installedPath;
                 this.collectPackageResources(installedPath, accumulator, filter, metadata);
                 continue;
             }
@@ -1031,6 +1051,7 @@ export class DefaultPackageManager {
                     await this.refreshTemporaryGitSource(parsed, resolvedSource);
                 }
                 metadata.baseDir = installedPath;
+                metadata.packageRoot = installedPath;
                 this.collectPackageResources(installedPath, accumulator, filter, metadata);
             }
         }
@@ -1057,6 +1078,7 @@ export class DefaultPackageManager {
             }
             if (stats.isDirectory()) {
                 metadata.baseDir = resolved;
+                metadata.packageRoot = resolved;
                 const resources = this.collectPackageResources(resolved, accumulator, filter, metadata);
                 if (!resources) {
                     this.addResource(accumulator.extensions, resolved, metadata, true);
@@ -1436,21 +1458,45 @@ export class DefaultPackageManager {
     }
     getPackageManagerName() {
         const npmCommand = this.getNpmCommand();
-        const commandParts = [npmCommand.command, ...npmCommand.args];
-        const separatorIndex = commandParts.lastIndexOf("--");
-        const packageManagerCommand = separatorIndex >= 0 ? commandParts[separatorIndex + 1] : npmCommand.command;
-        return packageManagerCommand ? basename(packageManagerCommand).replace(/\.(cmd|exe)$/i, "") : "";
+        const normalizeCommandName = (command) => basename(command).replace(/\.(cmd|exe)$/i, "");
+        const supportedPackageManagers = new Set(["npm", "pnpm", "bun"]);
+        const directCommand = normalizeCommandName(npmCommand.command);
+        const separatorIndex = npmCommand.args.lastIndexOf("--");
+        if (separatorIndex >= 0) {
+            const wrappedCommand = npmCommand.args[separatorIndex + 1];
+            return wrappedCommand ? normalizeCommandName(wrappedCommand) : directCommand;
+        }
+        if (supportedPackageManagers.has(directCommand))
+            return directCommand;
+        const wrappedPackageManagers = [
+            ...new Set(npmCommand.args.map(normalizeCommandName).filter((command) => supportedPackageManagers.has(command))),
+        ];
+        if (wrappedPackageManagers.length > 1) {
+            throw new Error(`Ambiguous npmCommand package managers: ${wrappedPackageManagers.join(", ")}`);
+        }
+        return wrappedPackageManagers[0] ?? directCommand;
     }
     async runNpmCommand(args, options) {
         const npmCommand = this.getNpmCommand();
         await this.runCommand(npmCommand.command, [...npmCommand.args, ...args], options);
     }
     getGitDependencyInstallArgs() {
-        const configuredCommand = this.settingsManager.getNpmCommand();
-        if (configuredCommand && configuredCommand.length > 0) {
-            return ["install"];
+        switch (this.getPackageManagerName()) {
+            case "bun":
+                return ["install", "--omit=dev", "--omit=peer"];
+            case "pnpm":
+                return [
+                    "install",
+                    "--prod",
+                    "--config.auto-install-peers=false",
+                    "--config.strict-peer-dependencies=false",
+                    "--config.strict-dep-builds=false",
+                ];
+            case "npm":
+                return ["install", "--omit=dev", "--legacy-peer-deps"];
+            default:
+                return ["install"];
         }
-        return ["install", "--omit=dev"];
     }
     runNpmCommandSync(args) {
         const npmCommand = this.getNpmCommand();
@@ -1748,7 +1794,8 @@ export class DefaultPackageManager {
     }
     getGitInstallPath(source, scope) {
         if (scope === "temporary") {
-            return this.getTemporaryDir(`git-${source.host}`, source.path);
+            // Include the ref in the hash so each pinned ref gets its own checkout.
+            return this.getTemporaryDir(`git-${source.host}`, source.path, source.ref);
         }
         const installRoot = this.getGitInstallRoot(scope);
         if (!installRoot) {
@@ -1766,10 +1813,10 @@ export class DefaultPackageManager {
         }
         return join(this.agentDir, "git");
     }
-    getTemporaryDir(prefix, suffix) {
+    getTemporaryDir(prefix, suffix, ref) {
         const root = this.resolveManagedPath(getExtensionTempFolder(this.agentDir), prefix);
         const hash = createHash("sha256")
-            .update(`${prefix}-${suffix ?? ""}`)
+            .update(`${prefix}-${suffix ?? ""}${ref ? `@${ref}` : ""}`)
             .digest("hex")
             .slice(0, 8);
         return this.resolveManagedPath(root, hash, suffix ?? "");

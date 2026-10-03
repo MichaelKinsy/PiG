@@ -25,7 +25,7 @@ func TestRuntimeForwardsExtensionRefreshCancellationUpstream(t *testing.T) {
 		t.Fatal(err)
 	}
 	var signal context.Context
-	registerRefreshSignalProvider(t, services, "extension-oauth", ProviderConfigInput{Name: "Extension OAuth", BaseURL: "https://example.test/v1", API: ai.APIOpenAICompletions, Models: []*ai.Model{refreshSignalModel("extension-model")}, OAuth: &ExtensionOAuthConfig{Name: "Extension subscription", Login: func(context.Context, ai.OAuthLoginCallbacks) (ai.Credential, error) {
+	registerRefreshSignalProvider(t, services, "extension-oauth", ProviderConfigInput{Name: "Extension OAuth", BaseURL: "https://example.test/v1", API: ai.APIOpenAICompletions, Models: []ai.AnyModel{refreshSignalModel("extension-model")}, OAuth: &ExtensionOAuthConfig{Name: "Extension subscription", Login: func(context.Context, ai.OAuthLoginCallbacks) (ai.Credential, error) {
 		return ai.Credential{Type: ai.CredentialOAuth, Access: "access", Refresh: "refresh", Expires: time.Now().Add(time.Minute).UnixMilli()}, nil
 	}, RefreshToken: func(ctx context.Context, credential ai.Credential) (ai.Credential, error) {
 		signal = ctx

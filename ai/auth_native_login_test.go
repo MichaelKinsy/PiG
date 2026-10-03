@@ -80,7 +80,7 @@ func TestNativeOAuthLoginPreservesPromptContextAndCallbackURL(t *testing.T) {
 			t.Errorf("prompt=%+v context=%v", prompt, received)
 		}
 		return "code", nil
-	}, Notify: func(event AuthEvent) { notifications = append(notifications, event) }})
+	}, Notify: func(event AuthEvent) { notifications = append(notifications, event) }}, LoginOptions{})
 	if err != nil || credential.Type != CredentialOAuth || credential.Access != "code" || credential.Refresh != "refresh" || credential.Expires != 100 || credential.Scope != "profile" || len(notifications) != 1 {
 		t.Fatalf("credential=%v events=%v err=%v", credential, notifications, err)
 	}

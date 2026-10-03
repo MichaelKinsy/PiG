@@ -60,7 +60,7 @@ func observeLegacy(path string, _ fs.FileInfo) (fs.FileInfo, error) {
 func removeLegacy(file *os.File, path string) error {
 	// Move the verified handle's file, not a possibly replaced pathname, off the lock name first. Deleting it in place would leave a delete-pending lock name until the handle closes, and other upgraders' stat, open and mkdir calls fail on that name with access denied.
 	handle := windows.Handle(file.Fd())
-	if err := renameLegacy(handle, fmt.Sprintf("%s.%d-%x.reclaimed", filepath.Base(path), os.Getpid(), rand.Uint64())); err != nil {
+	if err := renameLegacy(handle, filepath.Join(filepath.Dir(path), fmt.Sprintf("%s.%d-%x.reclaimed", filepath.Base(path), os.Getpid(), rand.Uint64()))); err != nil {
 		return err
 	}
 	// Deletion completes when replaceLegacy closes the handle, releasing its byte-range lock.
@@ -68,13 +68,13 @@ func removeLegacy(file *os.File, path string) error {
 	return windows.SetFileInformationByHandle(handle, windows.FileDispositionInfo, &deleteFile, uint32(unsafe.Sizeof(deleteFile)))
 }
 
-// renameLegacy renames the handle's file within its directory without replacing an existing name.
+// renameLegacy renames the handle's file to the full path name without replacing an existing name; callers pass a sibling path so the move stays on one volume.
 func renameLegacy(handle windows.Handle, name string) error {
 	wide, err := windows.UTF16FromString(name)
 	if err != nil {
 		return err
 	}
-	// FILE_RENAME_INFO with one path component: without separators or a RootDirectory, the name stays in the file's directory.
+	// FILE_RENAME_INFO with a null RootDirectory takes a fully qualified path; a bare name is resolved against no volume and fails with ERROR_NOT_SAME_DEVICE.
 	var info struct {
 		replaceIfExists uint32
 		rootDirectory   windows.Handle

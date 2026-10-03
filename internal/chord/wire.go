@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 )
 
 // Upstream services/wire.ts control-call vocabulary.
@@ -77,10 +75,10 @@ func mustRaw(value any) json.RawMessage {
 }
 
 type wireMember struct {
-	Name     string     `json:"name"`
-	Kind     string     `json:"kind"`
-	Sequence *int       `json:"sequence,omitempty"`
-	Ops      []pico3.Op `json:"ops,omitempty"`
+	Name     string `json:"name"`
+	Kind     string `json:"kind"`
+	Sequence *int   `json:"sequence,omitempty"`
+	Ops      []Op   `json:"ops,omitempty"`
 }
 
 // MarshalJSON emits the upstream discriminated member shape.
@@ -91,7 +89,7 @@ func (member ServiceMemberSnapshot) MarshalJSON() ([]byte, error) {
 		wire.Sequence = &sequence
 		wire.Ops = member.Ops
 		if wire.Ops == nil {
-			wire.Ops = []pico3.Op{}
+			wire.Ops = []Op{}
 		}
 	}
 	return json.Marshal(wire)
@@ -125,7 +123,7 @@ type wireUpdate struct {
 	Instance json.RawMessage `json:"instance,omitempty"`
 	Member   string          `json:"member,omitempty"`
 	Sequence *int            `json:"sequence,omitempty"`
-	Ops      []pico3.Op      `json:"ops,omitempty"`
+	Ops      []Op            `json:"ops,omitempty"`
 	Snapshot json.RawMessage `json:"snapshot,omitempty"`
 }
 
@@ -141,8 +139,10 @@ func (update ServiceProviderUpdate) MarshalJSON() ([]byte, error) {
 		sequence := update.Sequence
 		wire.Member, wire.Sequence, wire.Ops = update.Member, &sequence, update.Ops
 		if wire.Ops == nil {
-			wire.Ops = []pico3.Op{}
+			wire.Ops = []Op{}
 		}
+	case UpdateReset:
+		wire.Snapshot, err = json.Marshal(update.Reset)
 	case UpdateUnavailable:
 	case UpdateReplaced:
 		wire.Snapshot, err = json.Marshal(update.Snapshot)
@@ -178,6 +178,11 @@ func (update *ServiceProviderUpdate) UnmarshalJSON(data []byte) error {
 			}
 		}
 		result.Member, result.Sequence, result.Ops = wire.Member, *wire.Sequence, wire.Ops
+	case UpdateReset:
+		result.Reset = new(ServiceSubscriptionSnapshot)
+		if err := json.Unmarshal(wire.Snapshot, result.Reset); err != nil {
+			return err
+		}
 	case UpdateUnavailable:
 	case UpdateReplaced:
 		result.Snapshot = new(ServiceInstanceSnapshot)

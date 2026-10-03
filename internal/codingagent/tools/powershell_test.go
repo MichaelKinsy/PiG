@@ -102,8 +102,8 @@ func TestPowerShellToolExecute(t *testing.T) {
 	var updates []string
 	tool := &PowerShellTool{CWD: t.TempDir()}
 	args, _ := json.Marshal(bashParams{Command: "Write-Output 'héllo €'; Get-ExecutionPolicy -Scope Process"})
-	res, err := tool.Execute(t.Context(), "", args, func(content string, details any) {
-		updates = append(updates, content)
+	res, err := tool.Execute(t.Context(), "", args, func(partial agent.AgentToolResult) {
+		updates = append(updates, partial.Text())
 	})
 	if err != nil {
 		t.Fatalf("Execute returned a hard error: %v", err)
@@ -188,7 +188,7 @@ func TestShellToolTimeoutAndAbortStatus(t *testing.T) {
 	done := make(chan agent.AgentToolResult, 1)
 	go func() {
 		args, _ := json.Marshal(bashParams{Command: "sleep 30"})
-		r, _ := executeShellTool(ctx, t.TempDir(), cfg, args, func(string, any) {
+		r, _ := executeShellTool(ctx, t.TempDir(), cfg, args, func(agent.AgentToolResult) {
 			once.Do(func() { time.AfterFunc(200*time.Millisecond, cancel) })
 		})
 		done <- r

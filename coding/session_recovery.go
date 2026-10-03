@@ -239,12 +239,13 @@ func (s *Session) handlePostAgentRun(ctx context.Context) (bool, error) {
 	if message == nil {
 		return s.agent.HasQueuedMessages(), nil
 	}
-	if icodingagent.IsRetryableError(message, s.contextWindow()) {
+	if icodingagent.IsRetryableError(message, s.contextWindowFor(message)) {
 		retrying, err := s.prepareRetry(ctx, message)
 		if err != nil {
 			return false, err
 		}
 		if retrying {
+			s.failedResponse.Store(message)
 			if s.agentRunAborted(ctx) {
 				s.finishCancelledRetry()
 			}
@@ -371,6 +372,20 @@ func (s *Session) popAssistantEnd() assistantEndNote {
 	note := s.assistantEnds[0]
 	s.assistantEnds = s.assistantEnds[1:]
 	return note
+}
+
+// contextWindowFor is the context window that applies to message: the window of the model that produced it, else of the selected model.
+//
+// upstream: agent-session.ts:3613 (_isRetryableError)
+func (s *Session) contextWindowFor(message *agent.AssistantMessage) int {
+	model := s.modelForMessage(message)
+	if model == nil {
+		model = s.Model()
+	}
+	if model == nil {
+		return 0
+	}
+	return model.Capabilities.ContextWindow
 }
 
 func (s *Session) contextWindow() int {

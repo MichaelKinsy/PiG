@@ -392,7 +392,7 @@ func (converter *proxyEventConverter) process(proxyEvent ProxyAssistantMessageEv
 			return nil, errors.New("Received toolcall_delta for non-toolCall content")
 		}
 		converter.toolJSON[proxyEvent.ContentIndex] += proxyEvent.Delta
-		toolCall.Arguments = ai.ParseStreamingJson(converter.toolJSON[proxyEvent.ContentIndex])
+		toolCall.SetStreamingArguments(converter.toolJSON[proxyEvent.ContentIndex])
 		partial.Content[proxyEvent.ContentIndex] = toolCall
 		return ai.ToolCallDeltaEvent{ContentIndex: proxyEvent.ContentIndex, Delta: proxyEvent.Delta, Partial: partial}, nil
 	case "toolcall_end":

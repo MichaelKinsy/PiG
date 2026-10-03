@@ -75,10 +75,12 @@ Do not concatenate `message_end` text with accumulated deltas. Use one or the ot
 A tool call emits lifecycle records:
 
 ```json
-{"type":"tool_execution_start","toolCallId":"call-1","toolName":"read","args":{"path":"README.md"}}
-{"type":"tool_execution_update","toolCallId":"call-1","toolName":"read","args":{"path":"README.md"},"partialResult":{"content":[{"type":"text","text":"..."}],"isError":false}}
-{"type":"tool_execution_end","toolCallId":"call-1","toolName":"read","result":{"content":[{"type":"text","text":"..."}],"isError":false},"isError":false}
+{"type":"tool_execution_start","toolCallId":"call-1","toolName":"bash","args":{"command":"echo out; exit 3"}}
+{"type":"tool_execution_update","toolCallId":"call-1","toolName":"bash","args":{"command":"echo out; exit 3"},"partialResult":{"content":[{"type":"text","text":"out\n"}],"details":{}}}
+{"type":"tool_execution_end","toolCallId":"call-1","toolName":"bash","result":{"content":[{"type":"text","text":"out\n\n\nCommand exited with code 3"}],"structuredContent":{"output":"out\n","truncated":false,"exit_code":3,"wall_time_seconds":0},"isError":true},"isError":true}
 ```
+
+The top-level `isError` reports whether the call failed. `result` is the tool's finalized result object. It carries its own `isError` only when the tool returned a failure, as `bash` does for a non-zero exit. A thrown tool error, an unknown tool, invalid arguments, a blocked call, and a failing `tool_result` handler produce a result of `content` and an empty `details` object without `isError`.
 
 ## Completion and errors
 

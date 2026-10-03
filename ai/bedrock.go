@@ -85,6 +85,7 @@ func (p *BedrockProvider) Stream(ctx context.Context, transcript TranscriptConte
 	}
 	builder := newObservedProviderBuilder(ctx, APIBedrockConverseStream, p.ID(), p.model)
 	builder.modelCost = opts.ModelCost
+	builder.setProviderEventObserver(opts, providerEventModel(p.selectedModel, APIBedrockConverseStream, p.ID(), p.model))
 	if requestErr != nil {
 		failBedrockResponse(ctx, builder, requestErr, "", false)
 		return builder.stream, nil
@@ -853,7 +854,7 @@ func convertBedrockTools(tools []ToolSchema, toolChoice any, supportsStrictMode 
 	}
 	out := make([]btypes.Tool, 0, len(tools))
 	for _, tool := range tools {
-		strict, err := resolveJSONSchemaStrictSampling(tool, supportsStrictMode)
+		strict, err := resolveJSONSchemaStrictSampling(tool, supportsStrictMode, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -1080,7 +1081,14 @@ func (p *BedrockProvider) parseBedrockEvents(ctx context.Context, stream bedrock
 				state.finish(ctx, streamErr, requestID)
 				return
 			}
-			if err := state.handle(ev); err != nil {
+			if !bedrockStreamItemModeled(ev) {
+				continue
+			}
+			err := builder.observeProviderEventData(ev) // bedrock-converse-stream.ts:297
+			if err == nil {
+				err = state.handle(ev)
+			}
+			if err != nil {
 				state.finalizeBlocks()
 				failBedrockResponse(ctx, builder, err, requestID, true)
 				return

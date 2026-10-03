@@ -171,9 +171,9 @@ func TestAnthropicUpstreamSSEParsing(t *testing.T) {
 		}
 		assertShapeJSON(t, body["stream"], "true")
 	})
-	// .upstream/v0.87.1/packages/ai/test/anthropic-sse-parsing.test.ts:242
+	// .upstream/v0.99.1/packages/ai/test/anthropic-sse-parsing.test.ts:271 (0.99.1 moved the fixture from anthropic/claude-3-haiku to anthropic/claude-haiku-4.5)
 	t.Run("omits the interleaved-thinking beta when thinking is disabled", func(t *testing.T) {
-		result, _, headers := streamAnthropicFixture(t, AnthropicConfig{Model: "anthropic/claude-3-haiku", ProviderID: "openrouter"}, anthropicMinimalFixture(), StreamOptions{ThinkingEnabled: new(false)})
+		result, _, headers := streamAnthropicFixture(t, AnthropicConfig{Model: "anthropic/claude-haiku-4.5", ProviderID: "openrouter"}, anthropicMinimalFixture(), StreamOptions{ThinkingEnabled: new(false)})
 		if result.StopReason != StopReasonStop || result.ErrorMessage != "" {
 			t.Fatalf("disabled-thinking stream failed: %+v", result)
 		}

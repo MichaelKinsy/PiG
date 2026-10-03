@@ -4,6 +4,11 @@
 # crop ends at the resume-hint label, retaining the blank row below the footer.
 # The command spelling and random/session-dir argument follow the crop and are
 # not this layout contract. All captured color and spacing bytes are retained.
+# The screen is 45 rows so neither transcript scrolls: PiG's startup header is 7
+# rows taller than Pi's (D2), and once the content fills the screen both Pi and
+# PiG print the hint directly below the footer (probed at 28 rows, where both
+# overflow and match), so a 35-row screen compared PiG's overflow layout with
+# Pi's non-overflow layout.
 name = "22-exit-final-layout"
 description = "The final frame retains message box padding and parks below the footer before the resume hint"
 covers = [
@@ -24,7 +29,7 @@ pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/exit-notice.m
 
 [tmux]
 width = 100
-height = 35
+height = 45
 cwd = "testdata/custom-msg-cwd"
 ready_pattern_pig = "Ready. Type a message"
 ready_pattern_pi = "(auto)"

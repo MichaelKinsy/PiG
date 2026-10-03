@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	"github.com/MichaelKinsy/PiG/internal/bytesize"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
@@ -29,7 +29,7 @@ func runExtensionsCommand(args []string) int {
 		printExtensionsCacheHelp()
 		return 2
 	}
-	jsonOutput, dryRun := false, false
+	jsonOutput, dryRun, failures := false, false, false
 	retention := 30 * 24 * time.Hour
 	var maxSize *int64
 	for index := 3; index < len(args); index++ {
@@ -42,6 +42,12 @@ func runExtensionsCommand(args []string) int {
 				return 2
 			}
 			dryRun = true
+		case "--failures":
+			if command != "prune" {
+				fmt.Fprintln(os.Stderr, "pig extensions cache stats: --failures is only valid for prune")
+				return 2
+			}
+			failures = true
 		case "--retention":
 			if command != "prune" || index+1 >= len(args) {
 				fmt.Fprintln(os.Stderr, "pig extensions cache: --retention requires a duration on prune")
@@ -60,7 +66,7 @@ func runExtensionsCommand(args []string) int {
 				return 2
 			}
 			index++
-			parsed, err := parseCacheSize(args[index])
+			parsed, err := bytesize.Parse(args[index])
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "pig extensions cache prune:", err)
 				return 2
@@ -85,7 +91,7 @@ func runExtensionsCommand(args []string) int {
 	}
 	options := runtimecell.CacheLifecycleOptions{
 		CacheRoot: cacheRoot, Current: current, LiveFingerprints: currentSDKFingerprints(),
-		Retention: retention, MaxSize: maxSize, DryRun: dryRun,
+		Retention: retention, MaxSize: maxSize, DryRun: dryRun, RemoveFailures: failures,
 	}
 	var report runtimecell.CacheReport
 	var err error
@@ -161,6 +167,11 @@ func currentSDKFingerprints() map[string]struct{} {
 	return fingerprints
 }
 
+// automaticCacheLimit bounds the extension cache the daily automatic prune leaves behind. Entries the current
+// extensions use, and entries in use, are never removed to meet it, so the cache can exceed it.
+// pig additive (D20): the packed-runtime cache has no upstream equivalent.
+var automaticCacheLimit int64 = 5 << 30
+
 func runAutomaticExtensionCacheGC(configs []subprocess.ExtConfig) error {
 	cacheRoot := filepath.Join(codingagent.ConfigRoot(), "cache")
 	if err := os.MkdirAll(cacheRoot, 0o755); err != nil {
@@ -189,8 +200,9 @@ func runAutomaticExtensionCacheGC(configs []subprocess.ExtConfig) error {
 	if len(resolutionErrors) > 0 {
 		return fmt.Errorf("resolve current extension cache roots: %v", resolutionErrors)
 	}
+	limit := automaticCacheLimit
 	report, err := runtimecell.PruneCaches(runtimecell.CacheLifecycleOptions{
-		CacheRoot: cacheRoot, Current: current, LiveFingerprints: currentSDKFingerprints(),
+		CacheRoot: cacheRoot, Current: current, LiveFingerprints: currentSDKFingerprints(), MaxSize: &limit,
 	})
 	if err != nil {
 		return err
@@ -214,27 +226,6 @@ func runAutomaticExtensionCacheGC(configs []subprocess.ExtConfig) error {
 	return nil
 }
 
-func parseCacheSize(value string) (int64, error) {
-	trimmed := strings.TrimSpace(strings.ToUpper(value))
-	multipliers := []struct {
-		suffix string
-		value  int64
-	}{{"GIB", 1 << 30}, {"GB", 1_000_000_000}, {"MIB", 1 << 20}, {"MB", 1_000_000}, {"KIB", 1 << 10}, {"KB", 1_000}, {"B", 1}}
-	multiplier := int64(1)
-	for _, candidate := range multipliers {
-		if before, ok := strings.CutSuffix(trimmed, candidate.suffix); ok {
-			trimmed = strings.TrimSpace(before)
-			multiplier = candidate.value
-			break
-		}
-	}
-	number, err := strconv.ParseInt(trimmed, 10, 64)
-	if err != nil || number < 0 || multiplier > 0 && number > (1<<63-1)/multiplier {
-		return 0, fmt.Errorf("invalid byte size %q", value)
-	}
-	return number * multiplier, nil
-}
-
 func printExtensionsCacheHelp() {
-	fmt.Print("Usage:\n  pig extensions cache stats [--json]\n  pig extensions cache prune [--retention <duration>] [--max-size <bytes>] [--dry-run] [--json]\n")
+	fmt.Print("Usage:\n  pig extensions cache stats [--json]\n  pig extensions cache prune [--retention <duration>] [--max-size <bytes>] [--failures] [--dry-run] [--json]\n\n--failures removes recorded build failures so the next start compiles those extensions again.\n")
 }

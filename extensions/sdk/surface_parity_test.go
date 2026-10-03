@@ -127,8 +127,8 @@ func TestRegisterToolSendsFullDefinition(t *testing.T) {
 			return params, nil
 		},
 		Execute: func(_ Context, params map[string]any) (any, error) {
-			if params["prepared"] != true {
-				return nil, errors.New("arguments were not prepared")
+			if params["prepared"] != nil {
+				return nil, errors.New("tool_call prepared the arguments the host already prepared")
 			}
 			return ToolResult{Content: "done", Usage: map[string]any{"input": 3, "output": 4, "totalTokens": 7}}, nil
 		},
@@ -155,6 +155,7 @@ func TestRegisterToolSendsFullDefinition(t *testing.T) {
 		"execution_mode":       "sequential",
 		"render_shell":         "self",
 		"renders_call":         true,
+		"prepares_arguments":   true,
 	}
 	if len(tools) != 1 || !reflect.DeepEqual(tools[0], want) {
 		t.Fatalf("registered tools = %#v, want [%#v]", tools, want)

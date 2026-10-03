@@ -144,12 +144,13 @@ func TestUpstreamEditorCompletionUndoAndForce(t *testing.T) {
 	}
 }
 
-// packages/tui/test/editor.test.ts:2135: every punctuation × trigger row, including the 19+1 ms boundary twice.
+// .upstream/v0.99.2/packages/tui/test/editor.test.ts:2135: every punctuation and opening-wrapper × trigger row, including the 19+1 ms boundary twice.
 func TestUpstreamEditorCompletionCJKSymbolDebounce(t *testing.T) {
 	beforeValues := []string{"查看，", "\u3000"}
 	for _, ch := range "，．：；！？（）［］｛｝“”‘’…—。、「」『』《》【】" {
 		beforeValues = append(beforeValues, string(ch))
 	}
+	beforeValues = append(beforeValues, "(", "see (", "`", "[")
 	for _, before := range beforeValues {
 		for _, trigger := range []string{"@", "#", "$", "-"} {
 			t.Run(before+trigger, func(t *testing.T) {

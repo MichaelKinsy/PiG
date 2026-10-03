@@ -1,21 +1,12 @@
 # Behavior family: extensions-runtime
-# Surface: generic extension tool arguments and Ctrl+O details expansion.
+# Surface: the fallback call header of a registered extension tool without renderCall, and the global expansion toggle.
 #
-# D59 records the intentional difference. A registered upstream extension tool
-# with no renderCall uses createCallFallback(), which shows only the tool name;
-# Ctrl+O cannot reveal its arguments. Pig keeps the generic card compact, marks
-# hidden arguments as recoverable, and shows the complete retained value after
-# Ctrl+O. Both use the same extension tool and provider call.
-#
-# Upstream evidence (Pi 0.84.0): an interactive tmux probe with
-# parity-echo.mjs showed only `echo_bridge` plus its result before and after
-# Ctrl+O; the complete JSON argument never appeared.
-# lint-known-gap: D59 intentionally changes the generic fallback layout, so no
-# symmetric equality comparator can describe the accepted output difference;
-# the [diverge] block and complete-argument markers assert both sides.
+# Upstream evidence, 0.99.1 (tool-execution.ts:155-157, render-utils.ts:71-96): createCallFallback shows
+# `echo_bridge text="..."` (cut at 100 characters) while collapsed and one `text: ...` line per argument after Ctrl+O.
+# The 0.87.1 fallback showed the tool name only; both sides now draw the same rows.
 
 name = "19-generic-tool-details"
-description = "Generic extension tool details retain complete arguments behind the global expansion toggle (D59)"
+description = "A registered extension tool without renderCall shows its arguments in the fallback call header and expands them with Ctrl+O"
 covers = [
   "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
   "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
@@ -64,9 +55,5 @@ settle_seconds = 1
 both_reach_ready = true
 both_contain = ["DETAILS_ALPHA_BRAVO_CHARLIE", "KILO_LIMA_TAIL", "details-probe-done"]
 both_not_contain = ["panic:", "goroutine ", "test-faux:"]
+output_equal = true
 runs = 3
-
-[diverge]
-pig_contains = ["Arguments:"]
-pi_contains = ["echo-bridge:"]
-reason = "D59 SCRUTINIZED:approved. PiG gives generic extension cards a width-aware, recoverable details toggle. Upstream's registered-tool fallback shows only the tool name, and Ctrl+O cannot reveal arguments."

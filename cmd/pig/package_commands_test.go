@@ -413,19 +413,49 @@ func TestInstallManagedNPMPassesCustomRegistryToPackageManager(t *testing.T) {
 	}
 }
 
+// Ports .upstream/v0.99.1/packages/coding-agent/src/core/package-manager.ts:1821-1838 (getGitDependencyInstallArgs): the install
+// arguments follow the package manager the npmCommand names, and no manager auto-installs peer dependencies. The pnpm, bun and
+// wrapped rows are package-manager.test.ts:916-975, :977-1004 and :1096-1140.
 func TestGetGitDependencyInstallArgs(t *testing.T) {
-	cwd := t.TempDir()
-	agentDir := t.TempDir()
-	sm := codingagent.NewSettingsManager(cwd, agentDir)
-	if got := packagemanager.GetGitDependencyInstallArgs(sm); len(got) != 2 || got[0] != "install" || got[1] != "--omit=dev" {
-		t.Fatalf("default args = %v", got)
+	npm := []string{"install", "--omit=dev", "--legacy-peer-deps"}
+	pnpm := []string{"install", "--prod", "--config.auto-install-peers=false", "--config.strict-peer-dependencies=false", "--config.strict-dep-builds=false"}
+	for _, tc := range []struct {
+		name    string
+		command []string
+		want    []string
+	}{
+		{"default", nil, npm},
+		{"npm", []string{"npm"}, npm},
+		{"pnpm", []string{"pnpm"}, pnpm},
+		{"pnpm exe", []string{"pnpm.exe"}, pnpm},
+		{"bun", []string{"bun"}, []string{"install", "--omit=dev", "--omit=peer"}},
+		{"outer executable before separator", []string{"npm", "exec", "--", "pnpm"}, pnpm},
+		{"corepack wrapper without separator", []string{"corepack", "pnpm"}, pnpm},
+		{"unknown manager", []string{"yarn"}, []string{"install"}},
+		{"unknown wrapper", []string{"mise", "exec"}, []string{"install"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			sm := codingagent.NewSettingsManager(t.TempDir(), t.TempDir())
+			if tc.command != nil {
+				if err := sm.SetNpmCommand(tc.command); err != nil {
+					t.Fatal(err)
+				}
+			}
+			got, err := packagemanager.GetGitDependencyInstallArgs(sm)
+			if err != nil || !slices.Equal(got, tc.want) {
+				t.Fatalf("args = %v, %v; want %v", got, err, tc.want)
+			}
+		})
 	}
-	if err := sm.SetNpmCommand([]string{"pnpm"}); err != nil {
-		t.Fatal(err)
-	}
-	if got := packagemanager.GetGitDependencyInstallArgs(sm); len(got) != 1 || got[0] != "install" {
-		t.Fatalf("configured npmCommand args = %v", got)
-	}
+	t.Run("ambiguous wrapper", func(t *testing.T) {
+		sm := codingagent.NewSettingsManager(t.TempDir(), t.TempDir())
+		if err := sm.SetNpmCommand([]string{"corepack", "pnpm", "npm"}); err != nil {
+			t.Fatal(err)
+		}
+		if got, err := packagemanager.GetGitDependencyInstallArgs(sm); err == nil || err.Error() != "Ambiguous npmCommand package managers: pnpm, npm" {
+			t.Fatalf("args = %v, error = %v", got, err)
+		}
+	})
 }
 
 func TestDetectSourceKind(t *testing.T) {

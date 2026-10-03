@@ -51,12 +51,12 @@ func TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream(t *testing.T) {
 		requireToolChoiceField(t, payload, "thinking", `{"type":"enabled"}`)
 		requireToolChoiceField(t, payload, "reasoning_effort", `"high"`)
 	})
-	// .upstream/v0.87.1/packages/ai/test/openai-completions-tool-choice.test.ts:1369
+	// .upstream/v0.99.1/packages/ai/test/openai-completions-tool-choice.test.ts:1369 (0.99.1 moved the fixture from kimi-k2.6 to kimi-k3)
 	t.Run("replays OpenCode Go reasoning thinking blocks as reasoning_content", func(t *testing.T) {
-		model := toolChoiceModel(t, "opencode-go", "kimi-k2.6", true)
+		model := toolChoiceModel(t, "opencode-go", "kimi-k3", true)
 		cfg := &OpenAICompat{SupportsStore: new(false), SupportsDeveloperRole: new(false), SupportsReasoningEffort: new(true), SupportsUsageInStreaming: new(true), SupportsFinishReason: new(true), MaxTokensField: "max_completion_tokens", ThinkingFormat: "openai", SupportsStrictMode: new(true), SupportsOpenAIGrammarTools: new(false), SendSessionAffinityHeaders: new(false), SessionAffinityFormat: SessionAffinityOpenAI, SupportsLongCacheRetention: new(true)}
 		provider := &openAIProvider{cfg: OpenAIConfig{Model: model.ID, ProviderID: "opencode-go", Compat: cfg, ModelMetadata: model}}
-		messages, err := provider.convertMessagesWithCompat([]Message{AssistantMessage{API: APIOpenAICompletions, Provider: "opencode-go", Model: "kimi-k2.6", Content: []AssistantContentBlock{ThinkingContent{Thinking: "think", ThinkingSignature: "reasoning"}, ToolCall{ID: "call_1", Name: "read", Arguments: JsonObject{"path": "README.md"}}}, StopReason: StopReasonStop}}, nil, "system", false)
+		messages, err := provider.convertMessagesWithCompat([]Message{AssistantMessage{API: APIOpenAICompletions, Provider: "opencode-go", Model: "kimi-k3", Content: []AssistantContentBlock{ThinkingContent{Thinking: "think", ThinkingSignature: "reasoning"}, ToolCall{ID: "call_1", Name: "read", Arguments: JsonObject{"path": "README.md"}}}, StopReason: StopReasonStop}}, nil, "system", false)
 		if err != nil || len(messages) == 0 {
 			t.Fatalf("messages=%#v err=%v", messages, err)
 		}
@@ -71,10 +71,10 @@ func TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream(t *testing.T) {
 		name, provider, id, thinking string
 		level                        ThinkingLevel
 	}{
-		// .upstream/v0.87.1/packages/ai/test/openai-completions-tool-choice.test.ts:1428
-		{"sends thinking disabled for OpenCode Go Kimi K2.6 when thinking is off", "opencode-go", "kimi-k2.6", `{"type":"disabled"}`, ""},
-		// .upstream/v0.87.1/packages/ai/test/openai-completions-tool-choice.test.ts:1450
-		{"sends thinking enabled for OpenCode Go Kimi K2.6 when thinking is enabled", "opencode-go", "kimi-k2.6", `{"type":"enabled"}`, ThinkingHigh},
+		// .upstream/v0.99.1/packages/ai/test/openai-completions-tool-choice.test.ts:1428 (0.99.1 moved the case from opencode-go to opencode)
+		{"sends thinking disabled for OpenCode Kimi K2.6 when thinking is off", "opencode", "kimi-k2.6", `{"type":"disabled"}`, ""},
+		// .upstream/v0.99.1/packages/ai/test/openai-completions-tool-choice.test.ts:1450
+		{"sends thinking enabled for OpenCode Kimi K2.6 when thinking is enabled", "opencode", "kimi-k2.6", `{"type":"enabled"}`, ThinkingHigh},
 		// .upstream/v0.87.1/packages/ai/test/openai-completions-tool-choice.test.ts:1473
 		{"omits disabled thinking for Moonshot Kimi K2.7 Code models/moonshotai", "moonshotai", "kimi-k2.7-code", "", ""},
 		{"omits disabled thinking for Moonshot Kimi K2.7 Code models/moonshotai-cn", "moonshotai-cn", "kimi-k2.7-code", "", ""},
@@ -197,8 +197,8 @@ func TestOpenAICompletionsToolChoiceMaxTokensUpstream(t *testing.T) {
 		name   string
 		models []*Model
 	}{
-		// .upstream/v0.87.1/packages/ai/test/openai-completions-tool-choice.test.ts:1521
-		{"sends max_tokens for OpenCode completions models", []*Model{toolChoiceModel(t, "opencode-go", "kimi-k2.6", false), toolChoiceModel(t, "opencode", "kimi-k2.6", false)}},
+		// .upstream/v0.99.1/packages/ai/test/openai-completions-tool-choice.test.ts:1521 (0.99.1 replaced opencode-go/kimi-k2.6 with opencode-go/kimi-k3)
+		{"sends max_tokens for OpenCode completions models", []*Model{toolChoiceModel(t, "opencode-go", "kimi-k3", false), toolChoiceModel(t, "opencode", "kimi-k2.6", false)}},
 		// .upstream/v0.87.1/packages/ai/test/openai-completions-tool-choice.test.ts:1548
 		{"sends max_tokens for built-in and custom DeepSeek API models", []*Model{toolChoiceModel(t, "deepseek", "deepseek-flash", false), toolChoiceModel(t, "deepseek", "deepseek-v4-pro", false)}},
 		// .upstream/v0.87.1/packages/ai/test/openai-completions-tool-choice.test.ts:1592

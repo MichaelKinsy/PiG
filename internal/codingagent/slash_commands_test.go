@@ -380,7 +380,7 @@ func TestBuiltinSlashCommands_MatchesRegistry(t *testing.T) {
 	for _, c := range got {
 		names[c.Name] = true
 	}
-	for _, want := range []string{"quit", "model", "scoped-models", "copy", "session", "hotkeys", "new", "settings", "export", "import", "login", "logout", "llama"} {
+	for _, want := range []string{"quit", "model", "scoped-models", "copy", "session", "hotkeys", "new", "settings", "export", "import", "login", "logout"} {
 		if !names[want] {
 			t.Errorf("BuiltinSlashCommands missing %q", want)
 		}
@@ -737,14 +737,16 @@ func TestFormatNumber(t *testing.T) {
 	}
 }
 
-// The visible builtin order follows BUILTIN_SLASH_COMMANDS in
-// packages/coding-agent/src/core/slash-commands.ts (0.87.1 moved tree after
-// model). llama is PiG's own command and follows the upstream table.
+// The visible builtin order is BUILTIN_SLASH_COMMANDS in
+// packages/coding-agent/src/core/slash-commands.ts:19-44 (0.87.1 moved tree
+// after model): 24 entries. /llama is not one of them; the built-in llama.cpp
+// extension registers it (extensions/llama/index.ts), so it is an extension
+// command that exists only while that extension is loaded.
 func TestBuiltinSlashCommandsFollowUpstreamOrder(t *testing.T) {
 	want := []string{
 		"settings", "model", "tree", "thinking", "scoped-models", "export", "import", "share", "bug",
 		"copy", "name", "session", "changelog", "hotkeys", "fork", "clone", "trust", "login", "logout",
-		"new", "compact", "resume", "reload", "quit", "llama",
+		"new", "compact", "resume", "reload", "quit",
 	}
 	var got []string
 	for _, cmd := range BuiltinSlashCommands() {

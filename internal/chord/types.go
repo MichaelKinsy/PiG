@@ -1,48 +1,17 @@
-// Package chord is the local Go runtime for the subset of Pi 0.87.1's
-// packages/chord that the experimental service graph consumes: replicated
-// state, the remote service provider and its endpoint, the operation-stream
-// replica binding, and JSON-copy transports.
+// Package chord ports Pi 1.0.0's packages/chord: replicated state, the remote service provider and its endpoint, the operation-stream replica binding, facet hosts and JSON-copy transports. The operation vocabulary lives in package delta, strict-JSON helpers in chordjson and context helpers in chordctx.
 //
-// Upstream source: .upstream/v0.87.1/packages/chord/src/{types,api}.ts and
-// services/{state,provider,consumer,instances,wire,errors,loopback}.ts.
-// packages/chord is outside PORT_MAP package scope (see docs/parity/PORT_MAP.md); this
-// package exists so experimental service lanes share one concrete runtime
-// instead of consumer-owned stand-ins.
+// Upstream source: .upstream/v1.0.0/packages/chord/src/{types,api}.ts and services/{state,provider,consumer,instances,wire,errors,loopback}.ts.
 //
 // Go mapping decisions (not wire changes):
-//   - Chord's Context is context.Context. Synthetic deliveries (hydration,
-//     provider lifecycle) use context.Background(), matching upstream's
-//     BACKGROUND_CONTEXT.
-//   - Service tokens are pico3.ServiceDefinition[T] created by
-//     pico3.DefineService; this package does not define a second token type.
-//   - Replicated state satisfies pico3.ReplicatedStateOf[T] and
-//     pico3.MutableReplicatedStateOf[T]. A state value is stored as its strict
-//     JSON representation; Value returns a detached decoded copy, which is the
-//     Go equivalent of upstream's immutable revisions.
-//   - Operations are pico3.Op tuples (the chord/delta vocabulary already ported
-//     in agent/harness/pico3/delta.go). Operation shape is not canonical
-//     upstream either; consumers depend only on the resulting value.
-//   - A provider classifies a Go implementation by reflection over the
-//     service type's method set. Member names are the method names with a
-//     lower-case first letter ("CycleThinking" -> "cycleThinking"), which is
-//     the upstream TypeScript member name. A method member has the signature
-//     func(context.Context, args...) error or func(context.Context, args...)
-//     (R, error); a state member takes no arguments and returns a replicated
-//     state created by NewReplicatedState.
-//   - Go cannot synthesize a typed proxy, so the consumer side exposes an
-//     untyped RemoteService facade (Call, State, CallResult). Typed client
-//     adapters over that facade belong to the owning service lane, which
-//     registers them with RegisterRemoteClient (or passes
-//     FacetOptions.RemoteClients). A facet host needs one for every
-//     remotely exposable singleton a facet uses: in-host ones go through the
-//     host's internal loopback binding, as upstream, so retained state
-//     subscriptions follow provider replacement. Keyed in-host observation
-//     still resolves through the local registry.
-//   - Value accessors on state handles panic with the access error after
-//     revocation (upstream throws); Load returns it.
-//   - Facets require a guarded service view registered with RegisterServiceView next to the contract's pico3.DefineService token, including for in-host services. Register once before acquiring or observing the service. Every method invocation must resolve the current target and check access; never cache the resolved implementation. State members use StateView. A missing registration fails Get or observation instead of exposing the raw implementation.
-//   - Mutate callbacks receive a detached decoded copy of the state rather
-//     than upstream's revocable copy-on-write Draft proxy.
+//   - Chord's Context is context.Context. Synthetic deliveries (hydration, provider lifecycle) use context.Background(), matching upstream's BACKGROUND_CONTEXT.
+//   - A service token is ServiceDefinition[T] created by DefineService.
+//   - Replicated state satisfies ReplicatedStateOf[T] and MutableReplicatedStateOf[T]. A state value is stored as its strict JSON representation; Value returns a detached decoded copy, which is the Go equivalent of upstream's immutable revisions. Mutate callbacks receive a detached decoded copy rather than upstream's revocable copy-on-write Draft proxy; the change is diffed against the stored revision by delta.Tracker.PrepareCandidate.
+//   - State delivery follows 1.0.0: each subscription serializes its callbacks and keeps at most 100 pending deliveries; a listener that is still working returns a Completion (the Go form of a Promise) through SubscribeAsync; subscriber failures go to the state's error reporter (SetUncaughtErrorReporter by default) and exact publication listeners' failures are returned by the publishing call.
+//   - Operations are Op tuples (delta.Op). Operation shape is not canonical upstream either; consumers depend only on the resulting value. A provider subscription buffers 100 updates and then rebaselines with a "reset" update.
+//   - A provider classifies a Go implementation by reflection over the service type's method set. Member names are the method names with a lower-case first letter ("CycleThinking" -> "cycleThinking"), which is the upstream TypeScript member name. A method member has the signature func(context.Context, args...) error or func(context.Context, args...) (R, error); a state member takes no arguments and returns a replicated state created by NewReplicatedState.
+//   - Go cannot synthesize a typed proxy, so the consumer side exposes an untyped RemoteService facade (Call, State, CallResult). Typed client adapters over that facade belong to the owning service lane, which registers them with RegisterRemoteClient (or passes FacetOptions.RemoteClients). A facet host needs one for every remotely exposable singleton a facet uses: in-host ones go through the host's internal loopback binding, as upstream, so retained state subscriptions follow provider replacement. Keyed in-host observation still resolves through the local registry.
+//   - Value accessors on state handles panic with the access error after revocation (upstream throws); Load returns it.
+//   - Facets require a guarded service view registered with RegisterServiceView next to the contract's DefineService token, including for in-host services. Register once before acquiring or observing the service. Every method invocation must resolve the current target and check access; never cache the resolved implementation. State members use StateView. A missing registration fails Get or observation instead of exposing the raw implementation.
 //
 // ServiceStateEncoder and ServiceStateDecoder maintain independent path dictionaries per subscription, instance, and state member. ParseService* and ParseWireService* validate their distinct tuple grammars before conversion. The JSON-copy transport remains local; framed routing supplies a separate transport boundary.
 package chord
@@ -52,8 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 )
 
 // ServiceMode is "singleton" or "keyed".
@@ -90,7 +57,7 @@ type ServiceMemberSnapshot struct {
 	Name     string
 	Kind     string
 	Sequence int
-	Ops      []pico3.Op
+	Ops      []Op
 }
 
 // ServiceInstanceSnapshot describes one live instance. Instance is nil for a
@@ -110,6 +77,7 @@ type ServiceSubscriptionSnapshot struct {
 // Provider update types.
 const (
 	UpdateState       = "state"
+	UpdateReset       = "reset"
 	UpdateUnavailable = "unavailable"
 	UpdateReplaced    = "replaced"
 	UpdateSpawned     = "spawned"
@@ -119,6 +87,7 @@ const (
 // ServiceProviderUpdate is one ordered provider publication.
 //
 //   - "state": Address (nil for a singleton), Member, Sequence, Ops.
+//   - "reset": Reset, a full subscription snapshot whose every state member is a root replacement. A subscription is rebaselined this way when its pending updates overflow.
 //   - "unavailable": no fields.
 //   - "replaced": Snapshot.
 //   - "spawned": Snapshot (serialized under the upstream "instance" key).
@@ -128,8 +97,9 @@ type ServiceProviderUpdate struct {
 	Address  *ServiceInstanceAddress
 	Member   string
 	Sequence int
-	Ops      []pico3.Op
+	Ops      []Op
 	Snapshot *ServiceInstanceSnapshot
+	Reset    *ServiceSubscriptionSnapshot
 }
 
 // ServiceCall addresses one method invocation. Args are strict JSON values.

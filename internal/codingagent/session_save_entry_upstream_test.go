@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 // .upstream/v0.87.1/packages/coding-agent/test/session-manager/save-entry.test.ts:5
@@ -47,7 +48,9 @@ func TestSessionSavesCustomEntriesAndIncludesThemInTreeTraversal(t *testing.T) {
 	if err := json.Unmarshal(entries[1].Raw(), &custom); err != nil {
 		t.Fatal(err)
 	}
-	if custom.Type != "custom" || custom.ID != customID || custom.ParentID == nil || *custom.ParentID != msgID || custom.CustomType != "my_data" || !reflect.DeepEqual(custom.Data, map[string]any{"foo": "bar"}) {
+	// An object in `data` is held as the raw JSON it was written as, so its members keep their order; toEqual({foo: "bar"}) compares its members.
+	data, _ := orderedjson.Map(custom.Data)
+	if custom.Type != "custom" || custom.ID != customID || custom.ParentID == nil || *custom.ParentID != msgID || custom.CustomType != "my_data" || !reflect.DeepEqual(data, map[string]any{"foo": "bar"}) {
 		t.Fatalf("custom entry = %+v", custom)
 	}
 	path := session.GetBranch()

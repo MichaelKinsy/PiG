@@ -11,6 +11,7 @@ import (
 
 // Pi system-prompt.ts:54-69 retains absent versus present-empty customPrompt. Registry and skill metadata accompany it in every realization, not just the nonempty conformance sentinel.
 func TestSystemPromptOptionContentAcrossSDKs(t *testing.T) {
+	t.Parallel()
 	cases := allHarnessCases()
 	for _, language := range []string{"go", "rust", "python"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})

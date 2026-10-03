@@ -28,6 +28,7 @@ func otherColumnKeys() *KeybindingsManager {
 // Windows and WSL columns do, or as a user can) unbinds the old key in every
 // encoding.
 func TestKittyEncodedKeysFollowAppBindings(t *testing.T) {
+	restoreTUIKeybindings(t)
 	km := DefaultKeybindingsManager()
 	km.SetUserBindings(map[string][]KeyID{
 		"app.message.followUp":     {"ctrl+q"},

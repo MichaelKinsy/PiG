@@ -7,6 +7,7 @@ import (
 )
 
 func TestAddCompactionSettingsVerticalKeepsMappingsUnderReview(t *testing.T) {
+	parallelHeavy(t)
 	root, err := filepath.Abs("../../..")
 	if err != nil {
 		t.Fatal(err)

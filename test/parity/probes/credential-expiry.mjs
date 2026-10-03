@@ -1,11 +1,11 @@
-// Records Pi 0.87.1 OAuth expiry behavior for canonical credential values.
+// Records Pi 0.99.1 OAuth expiry behavior for canonical credential values.
 //
 // Usage: node test/parity/probes/credential-expiry.mjs <pi-coding-agent package root> > ai/testdata/credential-expiry.json
 //
 // Each row stores one raw JSON `expires` value (or its absence) and records:
 //   - persisted: the provider entry after AuthStorage reads auth.json and rewrites it (JSON.parse then JSON.stringify);
-//   - getAuthRefreshes: whether Models.getAuth refreshes it (packages/ai/src/auth/resolve.ts:136-170);
-//   - modelRefreshRefreshes: whether Models.refresh refreshes it before refreshModels (packages/ai/src/models.ts:462-478);
+//   - getAuthRefreshes: whether Models.getAuth refreshes it (packages/ai/src/auth/resolve.ts:119-155);
+//   - modelRefreshRefreshes: whether Models.refresh refreshes it before refreshModels (packages/ai/src/models.ts:575, 608-625);
 //   - minValidityError: whether getAuth with minOAuthValidityMs rejects a refreshed credential carrying the same value.
 // Date.now is fixed so the rows are deterministic.
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -15,6 +15,9 @@ import { pathToFileURL } from "node:url";
 
 const root = process.argv[2];
 if (!root) throw new Error("usage: credential-expiry.mjs <pi-coding-agent package root>");
+const PI_VERSION = "1.0.0";
+const installed = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version;
+if (installed !== PI_VERSION) throw new Error(`expected Pi ${PI_VERSION}, got ${installed}`);
 const ai = await import(pathToFileURL(join(root, "node_modules/@earendil-works/pi-ai/dist/index.js")).href);
 const { AuthStorage } = await import(pathToFileURL(join(root, "dist/core/auth-storage.js")).href);
 
@@ -153,4 +156,4 @@ for (const raw of values) {
     minValidityError: await minValidityError(raw),
   });
 }
-process.stdout.write(JSON.stringify({ pi: "0.87.1", now: NOW, rows }, null, 2) + "\n");
+process.stdout.write(JSON.stringify({ pi: PI_VERSION, now: NOW, rows }, null, 2) + "\n");

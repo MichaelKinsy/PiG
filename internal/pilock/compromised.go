@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"runtime"
 	"strings"
-	"syscall"
+
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 )
 
 // CompromisedError is the ECOMPROMISED error that proper-lockfile 4.1.2 passes to onCompromised (lib/lockfile.js:119-138,153-156,185-201). Cause is the failed stat or utime, or nil when the lock directory's mtime is no longer ours.
@@ -40,53 +40,43 @@ func (e *CompromisedError) Error() string {
 func (e *CompromisedError) Inspect() string {
 	if e.Cause != nil {
 		if fsErr, ok := nodeFSError(e.Cause); ok {
-			properties := []string{}
-			if errno, known := fsErr.errno(); known {
-				properties = append(properties, fmt.Sprintf("errno: %d", errno))
-			}
-			properties = append(properties, "code: 'ECOMPROMISED'", "syscall: "+inspectString(fsErr.syscall), "path: "+inspectString(fsErr.path))
+			properties := []string{fmt.Sprintf("errno: %d", fsErr.errno), "code: 'ECOMPROMISED'", "syscall: " + inspectString(fsErr.syscall), "path: " + inspectString(fsErr.path)}
 			return "[Error: " + fsErr.message() + "] {\n  " + strings.Join(properties, ",\n  ") + "\n}"
 		}
 	}
 	return "Error: " + e.Error() + " {\n  code: 'ECOMPROMISED'\n}"
 }
 
+// nodeFS reports err, a failure of the fs call named call on path in proper-lockfile's protocol, with the message Node gives it, which Pi surfaces unchanged. A nil err stays nil.
+func nodeFS(err error, call, path string) error {
+	if err == nil {
+		return nil
+	}
+	return &nodeerrno.FSError{Syscall: call, Path: path, Err: err}
+}
+
 type nodeFSFailure struct {
 	code, description, syscall, path string
-	errnoValue                       syscall.Errno
+	errno                            int
 }
 
 func (f nodeFSFailure) message() string {
 	return f.code + ": " + f.description + ", " + f.syscall + " '" + f.path + "'"
 }
 
-var nodeErrnoNames = []struct {
-	errno                   syscall.Errno
-	code, description       string
-	windowsLibuvErrno       int
-	matchesFileSystemErrors func(error) bool
-}{
-	{syscall.ENOENT, "ENOENT", "no such file or directory", -4058, func(err error) bool { return errors.Is(err, fs.ErrNotExist) }},
-	{syscall.EACCES, "EACCES", "permission denied", -4092, nil},
-	{syscall.EPERM, "EPERM", "operation not permitted", -4048, nil},
-	{syscall.ENOTDIR, "ENOTDIR", "not a directory", -4052, nil},
-	{syscall.EIO, "EIO", "i/o error", -4070, nil},
-	{syscall.EROFS, "EROFS", "read-only file system", -4030, nil},
-}
-
-// nodeFSError maps a Go path error to the Node fs error it corresponds to for the errors proper-lockfile can meet. An error outside the table keeps Go's text.
+// nodeFSError maps a failed fs call to the Node fs error for it, as internal/nodeerrno describes it: libuv's code for the errno (a Windows system error translated as uv_translate_sys_error does, so ERROR_ACCESS_DENIED is EPERM and an error libuv does not translate is UNKNOWN; elsewhere uv_err_name's name for the negated errno, "Unknown system error <errno>" when libuv does not name it), uv_strerror's description and error.errno. Node never shows Go's text.
 func nodeFSError(err error) (nodeFSFailure, bool) {
-	var pathErr *fs.PathError
-	if !errors.As(err, &pathErr) {
+	var call, path string
+	var cause error
+	if failure, ok := errors.AsType[*nodeerrno.FSError](err); ok {
+		call, path, cause = failure.Syscall, failure.Path, failure.Err
+	} else if pathErr, ok := errors.AsType[*fs.PathError](err); ok {
+		call, path, cause = nodeSyscall(pathErr.Op), pathErr.Path, pathErr.Err
+	} else {
 		return nodeFSFailure{}, false
 	}
-	call := nodeSyscall(pathErr.Op)
-	for _, entry := range nodeErrnoNames {
-		if errors.Is(pathErr.Err, entry.errno) || (entry.matchesFileSystemErrors != nil && entry.matchesFileSystemErrors(pathErr.Err)) {
-			return nodeFSFailure{code: entry.code, description: entry.description, syscall: call, path: pathErr.Path, errnoValue: entry.errno}, true
-		}
-	}
-	return nodeFSFailure{}, false
+	code, description, errno := nodeerrno.Describe(cause)
+	return nodeFSFailure{code: code, description: description, syscall: call, path: path, errno: errno}, true
 }
 
 // nodeSyscall names the Node fs call behind a Go path error's operation. os.Chtimes is Node's utime. On Windows os.Stat names the Win32 call that failed (os/stat_windows.go, os/types_windows.go), and Node reports each as stat.
@@ -98,19 +88,6 @@ func nodeSyscall(op string) string {
 		return "stat"
 	}
 	return op
-}
-
-func (f nodeFSFailure) errno() (int, bool) {
-	for _, entry := range nodeErrnoNames {
-		if entry.errno != f.errnoValue {
-			continue
-		}
-		if runtime.GOOS == "windows" {
-			return entry.windowsLibuvErrno, true
-		}
-		return -int(entry.errno), true
-	}
-	return 0, false
 }
 
 // inspectString quotes as util.inspect does: single quotes unless the text contains one and no double quote.

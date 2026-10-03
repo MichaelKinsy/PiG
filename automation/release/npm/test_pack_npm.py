@@ -50,10 +50,10 @@ def make_archives(directory: pathlib.Path, version: str = VERSION) -> None:
 
 
 class ManifestTest(unittest.TestCase):
-    def test_os_cpu_mapping_covers_six_targets(self):
+    def test_os_cpu_mapping_covers_seven_targets(self):
         self.assertEqual(
             sorted(pack_npm.TARGETS.values()),
-            [("darwin", "arm64"), ("darwin", "x64"), ("linux", "arm64"), ("linux", "x64"), ("win32", "arm64"), ("win32", "x64")],
+            [("android", "arm64"), ("darwin", "arm64"), ("darwin", "x64"), ("linux", "arm64"), ("linux", "x64"), ("win32", "arm64"), ("win32", "x64")],
         )
         self.assertEqual(pack_npm.TARGETS[("windows", "amd64")], ("win32", "x64"))
         self.assertEqual(pack_npm.TARGETS[("linux", "amd64")], ("linux", "x64"))
@@ -78,12 +78,20 @@ class ManifestTest(unittest.TestCase):
         self.assertEqual(m["license"], "MIT")
         self.assertNotIn("scripts", m)
 
+    def test_the_android_package_is_for_android_only(self):
+        # Node on Termux reports process.platform "android"; npm installs a package only when its os field names that platform.
+        self.assertEqual(pack_npm.TARGETS[("android", "arm64")], ("android", "arm64"))
+        m = pack_npm.platform_manifest("0.2.0", "android", "arm64", "android", None)
+        self.assertEqual((m["name"], m["os"], m["cpu"]), ("@pi-in-go/pig-android-arm64", ["android"], ["arm64"]))
+        self.assertEqual(pack_npm.platform_manifest("0.2.0", "linux", "arm64", "linux", None)["os"], ["linux"])
+
     def test_launcher_manifest(self):
         m = pack_npm.launcher_manifest("0.2.0", "0.87.1")
         self.assertEqual(m["name"], "@pi-in-go/pig")
         self.assertEqual(m["bin"], {"pig": "bin/pig.js"})
         self.assertEqual(m["engines"], {"node": ">=18"})
-        self.assertEqual(len(m["optionalDependencies"]), 6)
+        self.assertEqual(len(m["optionalDependencies"]), 7)
+        self.assertEqual(m["optionalDependencies"]["@pi-in-go/pig-android-arm64"], "0.2.0")
         self.assertTrue(all(v == "0.2.0" for v in m["optionalDependencies"].values()))
         self.assertIn("@pi-in-go/pig-linux-x64", m["optionalDependencies"])
         self.assertIn("Pi 0.87.1", m["description"])
@@ -112,9 +120,9 @@ class GenerateTest(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def test_generates_seven_packages_in_publish_order(self):
+    def test_generates_eight_packages_in_publish_order(self):
         order = pack_npm.generate(self.archives, VERSION, self.out, "0.87.1")
-        self.assertEqual(len(order), 7)
+        self.assertEqual(len(order), 8)
         self.assertEqual(order[-1].name, "pig")
         for pkg_dir in order[:-1]:
             manifest = json.loads((pkg_dir / "package.json").read_text())

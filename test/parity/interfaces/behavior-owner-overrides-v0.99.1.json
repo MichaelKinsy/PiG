@@ -1,0 +1,13 @@
+{
+  "upstreamVersion": "0.99.1",
+  "owners": [
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderInfo",
+      "ownerFamily": "interactive-input"
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderStack",
+      "ownerFamily": "extensions-runtime"
+    }
+  ]
+}

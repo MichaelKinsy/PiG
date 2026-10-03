@@ -31,7 +31,7 @@ func TestResourceLoaderUpstreamThemePrecedence(t *testing.T) {
 		}
 	}
 	registry := tui.NewThemeRegistry()
-	if _, diagnostics := loadThemeResources(registry, []string{projectPath, userPath}); len(diagnostics) != 1 || diagnostics[0].Collision == nil {
+	if _, diagnostics := loadThemeResources(registry, []string{projectPath, userPath}, tui.GetTerminalColorMode()); len(diagnostics) != 1 || diagnostics[0].Collision == nil {
 		t.Fatalf("diagnostics = %#v, want the one collision", diagnostics)
 	}
 	if got := registry.PathOf("collision-theme"); got != projectPath {
@@ -61,8 +61,12 @@ func TestLoadThemePathsKeepsTheFirstThemeOfAName(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	// The assertion compares a 24-bit color, so pin the capability instead of inheriting the host's COLORTERM.
+	previousCaps := tui.GetCapabilities()
+	t.Cleanup(func() { tui.SetCapabilities(previousCaps) })
+	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
 	registry := tui.NewThemeRegistry()
-	loadThemeResources(registry, []string{first, second})
+	loadThemeResources(registry, []string{first, second}, tui.GetTerminalColorMode())
 	theme := registry.Get("fixture-theme")
 	if theme == nil || !strings.Contains(theme.Accent, "138;190;183") {
 		t.Fatalf("fixture-theme accent = %q, want the first path's #8abeb7", theme.Accent)

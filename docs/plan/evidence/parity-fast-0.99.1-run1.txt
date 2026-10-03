@@ -1,0 +1,55 @@
+make parity-fast against the real upstream 0.99.1 comparator, first run after the pin move (160 scenarios differ).
+Owner guess by scenario family (first diffs sampled, not every scenario analyzed): rpc scenarios lack data.disposition on prompt responses (family 7); most interactive scenarios differ in theme colors and the header (9a).
+
+extensions-runtime (24) owner: 9a
+  06-eventbus-pubsub 17-subprocess-widget-factory 21-extension-tool-and-command-info 21-packed-log-reload-cleanup 22-custom-message-markdown-wrap 23-extension-directory-entries 24-tool-renderers-collapsed 25-tool-renderers-expanded 26-extension-load-order 27-command-argument-completions 28-prompt-precedence 29-export-tool-renderers 30-overlay-over-editor-cursor 33-markdown-transformer 34-empty-custom-footer 34-extension-process-identity 35-custom-editor-component 35c-extension-editor-external 41-rpc-extension-session-replacement 53-extension-header-spacers 53-node-scrollview-footer 55-package-manifest-startup 56-node-lazy-imports 65-session-before-dialogs
+interactive-rendering (21) owner: 9a
+  12-custom-message 21-extension-notify-style 21-resume-thinking-blocks 22-exit-final-layout 22-resume-hidden-thinking 23-resume-assistant-terminal-state 24-resume-file-tool-previews 25-review-thinking-tool-boundary 26-review-thinking-markdown 27-compact-read-labels 28-compact-read-labels-collapsed 30-stock-light-256color 31-stock-dark-256color 32-stock-light-16color 33-stock-dark-16color 34-stock-light-truecolor 35-stock-colorfgbg-prefix 36-auto-theme-light-notification 37-auto-theme-dark-modal-notification 40-suspend-resume-session 42-skill-invocation-expansion
+rpc (21) owner: 7
+  06-rpc-chat-faux 13-rpc-steering-queue 17-rpc-abort-retry 19-rpc-extension-ui-select 20-rpc-runtime-boundary-values 26-rpc-session-stats-context-estimate 27-rpc-extension-discovered-resources 28-rpc-extension-has-ui 28-rpc-session-name-newlines 28-rpc-tool-result-wire 31-rpc-cycle-await-interleaving 33-rpc-real-provider-records 33-rpc-real-provider-records-anthropic 33-rpc-real-provider-records-google 33-rpc-real-provider-records-mistral 33-rpc-wire-mutations 35-rpc-queue-prompt-await 36-rpc-preflight-admission 38-rpc-idle-custom-message 40-rpc-exclude-tools 41-rpc-tools-allowlist-overrides-no-tools
+selectors (10) owner: 9a
+  01-config-empty 06-oauth-selector 09-extension-selector-summarize-branch 10-login-subscription-providers 11-extension-input 11-login-api-key-providers 12-extension-dialog-remapping 13-extension-theme-results 14-config-ctrl-c-exits 15-config-escape-exits
+model-resolver-selector (10) owner: 9a
+  07-model-spec-thinking-suffix 15-model-picker-google-and-hint 16-model-picker-enter-session-only 17-model-picker-save-default 18-model-picker-save-default-scope-order 19-model-picker-frame-spacing 20-model-picker-cancel-silent 21-post-login-default-model 22-model-picker-unbound-keys-refilter 23-model-picker-shift-tab-keeps-scope
+startup (10) owner: 9a
+  00-startup-banner 02-startup-compact-help 03-startup-expanded-help 04-startup-verbose-collapse 05-startup-loaded-resources 06-startup-loaded-resources-expanded 07-startup-package-entry-shapes 08-startup-package-entry-shapes-expanded 09-startup-package-glob-collisions 12-submit-ecmascript-whitespace
+oauth (9) owner: 9a
+  06-oauth-callback-page 14-login-secret-mask-disabled 15-cloudflare-provider-login 16-login-provider-back 17-login-method-search 18-logout-empty-state 19-logout-stored-api-key-label 22-login-scoped-methods 23-login-cross-type-environment
+settings (9) owner: 9a
+  02-settings-selector 03-settings-filter-theme 04-settings-theme-submenu 05-settings-thinking-submenu 06-settings-editor-padding-live 07-settings-model-thinking-model-step 08-settings-model-thinking-empty-search 09-settings-tmux-image-capability 12-settings-automatic-theme-child
+session (6) owner: 7 or 6A (check)
+  10-terminal-disconnect-exit 11-session-fork-label-boundaries 21-session-search-resume-picker 28-session-reload-ui 29-session-rebind-ui 31-resume-current-session
+footer (5) owner: 9a
+  05-footer-experimental-indicator 08-reftable-branch-watch 09-footer-session-thinking 10-interactive-thinking-wire 11-footer-fork-session-name
+slash-commands (5) owner: 9b
+  02-name-set-get 05-changelog-ignores-collapse-setting 09-hotkeys-styled-tables 12-earendil-announcement 13-armin-bitmap
+export-html (5) owner: 9b
+  01-export-cli-plain 02-export-cli-ansi 03-export-cli-tools 04-export-cli-full-mix 06-export-cli-skills
+tui-components (4) owner: 9a
+  02-box-tool-result-paint 16-markdown-user-components 21-editor-terminal-word-and-paste-navigation 22-editor-remapped-submit-with-key-diagnostics
+autocomplete (4) owner: 9a
+  01-slash-popup 09-extension-wrapper-state 10-custom-editor-wrapper-state 11-extension-wrapper-arguments
+project-trust (3) owner: 7 (check)
+  09-trust-selector-state 10-startup-trust-prompt-wording 14-resumed-denied-project-warning-follows-history
+tools (2) owner: 9b or 6G (check)
+  12-managed-tool-status 17-tool-rpc-error-and-bash-wire
+fullscreen (2) owner: 9a
+  01-conversation-fullscreen 02-keyboard-navigation-fullscreen
+compaction (2) owner: unassigned (check)
+  11-compaction-billing-render 13-compaction-completion-auth-errors
+ai-sdk (1) owner: unassigned (check)
+  01-ai-sdk-helpers
+providers-faux-streaming (1) owner: unassigned (check)
+  19-http-proxy-connect
+print (1) owner: 7
+  02-print-extension-command
+model-runtime-store-catalog (1) owner: unassigned (check)
+  18-images-runtime-auth
+tree (1) owner: 9b
+  06-tree-header-spacing
+json (1) owner: 7
+  02-json-mode-extension-command
+clipboard-images (1) owner: unassigned (check)
+  07-clipboard-bmp-command-normalization
+cli-utils (1) owner: 7
+  10-startup-resume-picker-cancel

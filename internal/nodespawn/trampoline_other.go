@@ -8,8 +8,9 @@ import (
 	"os/exec"
 	"runtime"
 	"strconv"
-	"strings"
 	"syscall"
+
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 )
 
 // trampolineEnv names the only variable of the environment of a trampoline.
@@ -41,29 +42,6 @@ func runTrampoline() {
 
 func init() { runTrampoline() }
 
-// sharesEnvKey reports that os/exec would drop an entry of env: its
-// dedupEnvCase (os/exec/exec.go) keeps only the last of the entries whose text
-// up to the first "=" is equal, where that "=" is searched for after a leading
-// one. libuv writes the block as it is, and the child's getenv sees the first
-// of such entries.
-func sharesEnvKey(env []string) bool {
-	seen := make(map[string]bool, len(env))
-	for _, entry := range env {
-		i := strings.IndexByte(entry, '=')
-		if i == 0 {
-			i = strings.IndexByte(entry[1:], '=') + 1
-		}
-		if i < 0 {
-			continue
-		}
-		if seen[entry[:i]] {
-			return true
-		}
-		seen[entry[:i]] = true
-	}
-	return false
-}
-
 // useTrampoline makes cmd start a copy of this program that executes the
 // program cmd.Path with cmd.Args and the environment cmd.Env unchanged,
 // because os/exec would remove an entry of that environment (sharesEnvKey).
@@ -79,9 +57,10 @@ func useTrampoline(cmd *exec.Cmd) {
 		return
 	}
 	self := "/proc/self/exe"
-	if runtime.GOOS != "linux" {
+	if runtime.GOOS != "linux" || linkerexec.Current().Active() {
+		// The linker is /proc/self/exe in a process it started.
 		var err error
-		if self, err = os.Executable(); err != nil {
+		if self, err = linkerexec.Executable(); err != nil {
 			cmd.Err = err
 			return
 		}

@@ -31,6 +31,11 @@ export const loadOpenAICodexOAuth = async () => {
         return bundledLoaders.openaiCodex();
     return (await importOAuthModule("./openai-codex.ts")).openaiCodexOAuth;
 };
+export const loadOpenAIChatGPTOAuth = async () => {
+    if (bundledLoaders)
+        return bundledLoaders.openaiChatGPT();
+    return (await importOAuthModule("./openai-chatgpt.ts")).openaiChatGPTOAuth;
+};
 export const loadGitHubCopilotOAuth = async () => {
     if (bundledLoaders)
         return bundledLoaders.githubCopilot();

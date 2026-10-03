@@ -14,6 +14,7 @@ import (
 
 // Pi agent-session.ts:1371-1394,2965,3125 rebuilds from the registry and loaded resources after resources_discover; all modes bind the same base options to command contexts.
 func TestSystemPromptOptionsThroughHeadlessStartup(t *testing.T) {
+	t.Parallel()
 	binary := buildPigBinaryForSignalTest(t)
 	for _, tc := range []struct{ mode, custom string }{{"print", "CUSTOM"}, {"json", "CUSTOM"}, {"rpc", "CUSTOM"}, {"print", ""}, {"json", ""}, {"rpc", ""}} {
 		t.Run(tc.mode+"/custom="+tc.custom, func(t *testing.T) {
@@ -65,13 +66,13 @@ export default function(pi) {
 			if err := json.Unmarshal(data, &got); err != nil {
 				t.Fatal(err)
 			}
-			if got.CustomPrompt != tc.custom || !got.CustomPromptSet || got.AppendSystemPrompt != "APPENDED" || got.Cwd != cwd {
+			if got.CustomPrompt != tc.custom || !got.CustomPromptSet || got.AppendSystemPrompt != "APPENDED" || got.Cwd != canonicalTestPath(t, cwd) {
 				t.Fatalf("prompt inputs = %s", data)
 			}
 			if !reflect.DeepEqual(got.SelectedTools, []string{"read", "bash", "edit", "write"}) || got.ToolSnippets["grep"] != "Search file contents for patterns (respects .gitignore)" || !reflect.DeepEqual(got.ToolGuidelines["read"], []string{"Use read to examine files instead of cat or sed."}) {
 				t.Fatalf("registry inputs = %s", data)
 			}
-			if !reflect.DeepEqual(got.ContextFiles, []extension.SystemPromptContextFile{{Path: contextPath, Content: "PROJECT RULES\n"}}) {
+			if !reflect.DeepEqual(got.ContextFiles, []extension.SystemPromptContextFile{{Path: canonicalTestPath(t, contextPath), Content: "PROJECT RULES\n"}}) {
 				t.Fatalf("context files = %+v", got.ContextFiles)
 			}
 			if len(got.Skills) != 2 || got.Skills[0].Name != "explicit" || got.Skills[1].Name != "review" {

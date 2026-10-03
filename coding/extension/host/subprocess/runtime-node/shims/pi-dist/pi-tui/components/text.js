@@ -1,4 +1,4 @@
-import { applyBackgroundToLine, visibleWidth, wrapTextWithAnsi } from "../utils.js";
+import { applyBackgroundToLine, flattenLines, visibleWidth, wrapTextWithAnsi } from "../utils.js";
 /**
  * Text component - displays multi-line text with word wrapping
  */
@@ -80,6 +80,7 @@ export class Text {
             emptyLines.push(line);
         }
         const result = [...emptyLines, ...contentLines, ...emptyLines];
+        flattenLines(result);
         // Update cache
         this.cachedText = this.text;
         this.cachedWidth = width;

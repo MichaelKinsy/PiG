@@ -318,7 +318,7 @@ func (m *InteractiveMode) renderSessionEntryList(entries []SessionEntry, trim bo
 				return
 			}
 			images := r.Images()
-			result := agent.AgentToolResult{Content: r.Content, Details: r.Details, IsError: r.IsError}
+			result := r.Result()
 			comp.BodyRenderer = toolBodyRendererForCall(call, result)
 			if len(images) > 0 {
 				blocks := make([]tui.ImageBlock, len(images))

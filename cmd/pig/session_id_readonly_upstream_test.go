@@ -81,9 +81,12 @@ func readonlyIDFixture(t *testing.T) (string, string) {
 	return canonicalStartupDir(cwd), filepath.Join(root, "sessions")
 }
 
+// Upstream 0.99.1 changes only how its harness starts the CLI: `--import` receives the source resolver as a file URL (pathToFileURL) instead of a path
+// (.upstream/v0.99.1/packages/coding-agent/test/session-id-readonly.test.ts:23-24). The Go test starts the compiled binary and has no Node loader flag, so that substitution has no Go
+// counterpart: the inputs and expectations of every case are unchanged.
 func TestUpstreamSessionIDReadonly(t *testing.T) {
 	observed := []any{}
-	// .upstream/v0.87.1/packages/coding-agent/test/session-id-readonly.test.ts:115
+	// .upstream/v0.99.1/packages/coding-agent/test/session-id-readonly.test.ts:117
 	t.Run("does not persist a custom ID for metadata commands", func(t *testing.T) {
 		cwd, _ := readonlyIDFixture(t)
 		agentDir := filepath.Join(t.TempDir(), "agent")
@@ -115,7 +118,7 @@ func TestUpstreamSessionIDReadonly(t *testing.T) {
 		}
 		observed = append(observed, []any{cmd.ProcessState.ExitCode(), persisted})
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-id-readonly.test.ts:122
+	// .upstream/v0.99.1/packages/coding-agent/test/session-id-readonly.test.ts:124
 	t.Run("creates missing IDs and reopens existing IDs in process", func(t *testing.T) {
 		cwd, dir := readonlyIDFixture(t)
 		previous := os.Stderr
@@ -172,7 +175,7 @@ func TestUpstreamSessionIDReadonly(t *testing.T) {
 		}
 		observed = append(observed, []any{readonly.ID(), readonly.Path() == "", warned, reopened.Path() == created.Path(), len(diagnostic)})
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-id-readonly.test.ts:160
+	// .upstream/v0.99.1/packages/coding-agent/test/session-id-readonly.test.ts:162
 	t.Run("looks up exact IDs without building full session listings", func(t *testing.T) {
 		cwd, dir := readonlyIDFixture(t)
 		unrelated, err := newSessionManagerWithDir(cwd, dir).Create("unrelated-id", "")
@@ -196,7 +199,7 @@ func TestUpstreamSessionIDReadonly(t *testing.T) {
 		}
 		observed = append(observed, []any{created.ID(), calls})
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-id-readonly.test.ts:181
+	// .upstream/v0.99.1/packages/coding-agent/test/session-id-readonly.test.ts:183
 	t.Run("reopens an exact ID from a renamed session file", func(t *testing.T) {
 		cwd, dir := readonlyIDFixture(t)
 		original, err := newSessionManagerWithDir(cwd, dir).Create("renamed-id", "")
@@ -217,7 +220,7 @@ func TestUpstreamSessionIDReadonly(t *testing.T) {
 		}
 		observed = append(observed, reopened.Path() == renamed)
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-id-readonly.test.ts:201
+	// .upstream/v0.99.1/packages/coding-agent/test/session-id-readonly.test.ts:203
 	t.Run("filters exact IDs by cwd in a custom session directory", func(t *testing.T) {
 		root := t.TempDir()
 		projectA, projectB, dir := filepath.Join(root, "project-a"), filepath.Join(root, "project-b"), filepath.Join(root, "sessions")
@@ -242,7 +245,7 @@ func TestUpstreamSessionIDReadonly(t *testing.T) {
 		}
 		observed = append(observed, []bool{foundA == "", foundB == foreign.Path()})
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-id-readonly.test.ts:215
+	// .upstream/v0.99.1/packages/coding-agent/test/session-id-readonly.test.ts:217
 	t.Run("rejects an existing fork target in process", func(t *testing.T) {
 		cwd, dir := readonlyIDFixture(t)
 		manager := newSessionManagerWithDir(cwd, dir)

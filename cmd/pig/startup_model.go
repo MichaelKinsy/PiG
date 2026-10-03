@@ -9,6 +9,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"slices"
 	"strings"
@@ -138,7 +139,9 @@ type startupModel struct {
 // selectStartupModel resolves explicit selection, then the loaded Session's model, then configured/provider defaults. It retains ordered errors in the result and returns their aggregate. A nil Model with nil error means no authenticated model is available.
 func selectStartupModel(ctx context.Context, options startupModelOptions, settings codingagent.Settings, services *coding.Services) (startupModel, error) {
 	registry := services.Registry().ModelRegistry
-	rt := newStartupModelRuntime(registry.RuntimeModels(), registry.HasConfiguredAuth)
+	// upstream: main.ts:803-819 resolves against modelRuntime, whose catalog and auth include the virtual models the services registered (agent-session-services.ts:182-193).
+	modelRuntime := services.ModelRuntime()
+	rt := newStartupModelRuntime(modelRuntime.RuntimeModels(), modelRuntime.HasConfiguredAuth)
 	var result startupModel
 	selected, err := selectSessionOptionModel(rt, options, settings, &result)
 	if err != nil {
@@ -177,7 +180,8 @@ func selectStartupModel(ctx context.Context, options startupModelOptions, settin
 		}
 	}
 	result.Model, err = buildModelFromRef(ctx, selected.Provider, selected.ID, services)
-	if err == nil && selected.Reasoning && result.Model != nil {
+	// A virtual model is the runtime's shared catalog entry and carries its reasoning from its definition (virtual-models.ts:159-176 createVirtualModel), so startup does not rewrite it.
+	if err == nil && selected.Reasoning && result.Model != nil && !coding.IsVirtualModel(result.Model) {
 		result.Model.ProviderMeta.Reasoning = true
 		if result.Model.Capabilities.MaxThinking == "" {
 			result.Model.Capabilities.MaxThinking = ai.ThinkingHigh
@@ -203,6 +207,10 @@ func selectSessionOptionModel(rt *startupModelRuntime, options startupModelOptio
 		return model, nil
 	}
 	var cliErr error
+	// Pi 1.0.0 main.ts:469-474 (#10236): --provider only scopes --model, so it fails without one.
+	if options.CLIProvider != "" && options.CLIModel == "" {
+		cliErr = fmt.Errorf("--provider requires --model (for example: --provider %s --model <pattern>)", options.CLIProvider)
+	}
 	if options.CLIModel != "" {
 		resolved := ResolveCliModel(options.CLIProvider, options.CLIModel, options.CLIThinking, rt)
 		if resolved.Warning != "" {

@@ -13,6 +13,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 )
 
 // nodeExtension is one TS/JS extension resolved for a packed Node cell.
@@ -94,7 +95,7 @@ func nodePackedLauncherCommand(ctx context.Context, binPath string) (*exec.Cmd, 
 	for _, member := range manifest {
 		args = append(args, member.Entry)
 	}
-	cmd := exec.CommandContext(ctx, "node", args...)
+	cmd := linkerexec.CommandContext(ctx, "node", args...)
 	if urlErr != nil && cmd.Err == nil {
 		cmd.Err = fmt.Errorf("node cell loader %s: %w", loaderPath, urlErr)
 	}

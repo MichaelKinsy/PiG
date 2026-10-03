@@ -206,12 +206,14 @@ type tmuxBlock struct {
 }
 
 type tmuxStepBlock struct {
-	Keys                []string `toml:"keys"`
-	SettleSeconds       int      `toml:"settle_seconds"`
-	WaitContains        []string `toml:"wait_contains"`
-	WaitVisibleContains []string `toml:"wait_visible_contains"`
-	WaitNotContains     []string `toml:"wait_not_contains"`
-	WaitTimeoutSeconds  int      `toml:"wait_timeout_seconds"`
+	Keys                   []string `toml:"keys"`
+	SettleSeconds          int      `toml:"settle_seconds"`
+	WaitContains           []string `toml:"wait_contains"`
+	WaitVisibleContains    []string `toml:"wait_visible_contains"`
+	WaitVisibleContainsPig []string `toml:"wait_visible_contains_pig"`
+	WaitVisibleContainsPi  []string `toml:"wait_visible_contains_pi"`
+	WaitNotContains        []string `toml:"wait_not_contains"`
+	WaitTimeoutSeconds     int      `toml:"wait_timeout_seconds"`
 
 	WaitStableMilliseconds int `toml:"wait_stable_milliseconds"`
 }

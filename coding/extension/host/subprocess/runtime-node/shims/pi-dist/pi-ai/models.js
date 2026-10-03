@@ -4,8 +4,19 @@ import { InMemoryCredentialStore } from "./auth/credential-store.js";
 import { ModelsError, resolveProviderAuth } from "./auth/resolve.js";
 import { InMemoryModelsStore } from "./models-store.js";
 import { operationSignal, raceWithAbortSignal } from "./utils/abort.js";
+import { assertChatModel, assertClassifierModel, assertImageModel, classifierErrorResult, getModelType, imageErrorResult, isModelType, } from "./utils/model-operations.js";
 import { normalizeContext } from "./utils/transcript.js";
 export { ModelsError } from "./auth/resolve.js";
+export { getModelType, isModelType } from "./utils/model-operations.js";
+const KNOWN_MODEL_TYPES = { chat: true, image: true, classifier: true };
+/** Models from stores and remote sources may have types that only newer versions know. */
+function hasKnownModelType(model) {
+    return Object.hasOwn(KNOWN_MODEL_TYPES, getModelType(model));
+}
+/** Drops stored models whose type this version does not know. */
+function withKnownModelTypes(entry) {
+    return { ...entry, models: entry.models.filter(hasKnownModelType) };
+}
 function mergeHeaders(base, override) {
     if (!base && !override)
         return undefined;
@@ -76,8 +87,37 @@ class ModelsImpl {
         }
         return models;
     }
+    getAllModels(provider) {
+        if (provider !== undefined) {
+            const entry = this.providers.get(provider);
+            if (!entry)
+                return [];
+            try {
+                return entry.getAllModels?.() ?? entry.getModels();
+            }
+            catch {
+                return [];
+            }
+        }
+        const models = [];
+        for (const entry of this.providers.values()) {
+            try {
+                models.push(...(entry.getAllModels?.() ?? entry.getModels()));
+            }
+            catch {
+                // Best-effort: ill-behaved providers yield no models.
+            }
+        }
+        return models;
+    }
+    getModelsOfType(type, provider) {
+        return this.getAllModels(provider).filter((model) => isModelType(model, type));
+    }
     getModel(provider, id) {
         return this.getModels(provider).find((model) => model.id === id);
+    }
+    getModelOfType(type, provider, id) {
+        return this.getModelsOfType(type, provider).find((model) => model.id === id);
     }
     supersedeProviderRefresh(providerId) {
         const generation = (this.refreshGenerations.get(providerId) ?? 0) + 1;
@@ -124,7 +164,7 @@ class ModelsImpl {
         const stored = await this.modelsStore.read(provider.id, { signal });
         await provider.refreshModels({
             credential,
-            stored: stored ? structuredClone(stored) : undefined,
+            stored: stored ? withKnownModelTypes(structuredClone(stored)) : undefined,
             publish: (publication) => this.publishProviderModels(provider.id, generation, signal, publication),
             allowNetwork,
             force: allowNetwork ? force : undefined,
@@ -253,22 +293,43 @@ class ModelsImpl {
         })();
         return raceWithAbortSignal(check, signal);
     }
+    async getAuthenticatedProviders(providerId, signal) {
+        signal.throwIfAborted();
+        const providers = providerId
+            ? [this.providers.get(providerId)].filter((entry) => entry !== undefined)
+            : this.getProviders();
+        const checks = await Promise.all(providers.map(async (provider) => {
+            const credential = await this.readCredential(provider.id, signal);
+            return { provider, credential, auth: await this.checkProviderAuth(provider, credential, signal) };
+        }));
+        return checks.filter((entry) => entry.auth !== undefined);
+    }
     getAvailable(providerId, options) {
         const signal = operationSignal(options?.signal);
         const available = (async () => {
-            signal.throwIfAborted();
-            const providers = providerId
-                ? [this.providers.get(providerId)].filter((entry) => entry !== undefined)
-                : this.getProviders();
-            const checks = await Promise.all(providers.map(async (provider) => {
-                const credential = await this.readCredential(provider.id, signal);
-                return { provider, credential, auth: await this.checkProviderAuth(provider, credential, signal) };
-            }));
-            return checks.flatMap(({ provider, credential, auth }) => {
-                if (!auth)
-                    return [];
+            const providers = await this.getAuthenticatedProviders(providerId, signal);
+            return providers.flatMap(({ provider, credential }) => {
                 const models = provider.getModels();
                 return provider.filterModels?.(models, credential) ?? models;
+            });
+        })();
+        return raceWithAbortSignal(available, signal);
+    }
+    async getAvailableOfType(type, providerId, options) {
+        return (await this.getAllAvailable(providerId, options)).filter((model) => isModelType(model, type));
+    }
+    getAllAvailable(providerId, options) {
+        const signal = operationSignal(options?.signal);
+        const available = (async () => {
+            const providers = await this.getAuthenticatedProviders(providerId, signal);
+            return providers.flatMap(({ provider, credential }) => {
+                const models = provider.getAllModels?.() ?? provider.getModels();
+                if (provider.filterAllModels)
+                    return provider.filterAllModels(models, credential);
+                if (!provider.filterModels)
+                    return models;
+                const availableChatIds = new Set(provider.filterModels(provider.getModels(), credential).map((model) => model.id));
+                return models.filter((model) => !isModelType(model, "chat") || availableChatIds.has(model.id));
             });
         })();
         return raceWithAbortSignal(available, signal);
@@ -290,7 +351,7 @@ class ModelsImpl {
             },
         };
     }
-    async login(providerId, type, interaction) {
+    async login(providerId, type, interaction, options) {
         const signal = operationSignal(interaction.signal);
         signal.throwIfAborted();
         const provider = this.providers.get(providerId);
@@ -300,7 +361,7 @@ class ModelsImpl {
         if (!method?.login) {
             throw new ModelsError("auth", `${provider.name} does not support ${type} login`);
         }
-        const loginOperation = method.login({ ...interaction, signal });
+        const loginOperation = method.login({ ...interaction, signal }, options);
         const credential = await raceWithAbortSignal(loginOperation, signal);
         let mutationStarted = false;
         let markMutationStarted;
@@ -356,6 +417,10 @@ class ModelsImpl {
         }
         return provider;
     }
+    requireChatProvider(model) {
+        assertChatModel(model);
+        return this.requireProvider(model);
+    }
     async applyAuth(model, options) {
         this.requireProvider(model);
         const resolution = await this.getAuth(model, {
@@ -381,7 +446,7 @@ class ModelsImpl {
     stream(model, context, options) {
         const transcript = normalizeContext(context);
         return lazyStream(model, async () => {
-            const provider = this.requireProvider(model);
+            const provider = this.requireChatProvider(model);
             const { requestModel, requestOptions } = await this.applyAuth(model, options);
             return provider.stream(requestModel, transcript, requestOptions);
         });
@@ -392,7 +457,7 @@ class ModelsImpl {
     streamSimple(model, context, options) {
         const transcript = normalizeContext(context);
         return lazyStream(model, async () => {
-            const provider = this.requireProvider(model);
+            const provider = this.requireChatProvider(model);
             const { requestModel, requestOptions } = await this.applyAuth(model, options);
             return provider.streamSimple(requestModel, transcript, requestOptions);
         });
@@ -402,7 +467,7 @@ class ModelsImpl {
     }
     streamDeferred(model, handle, options) {
         return lazyStream(model, async () => {
-            const provider = this.requireProvider(model);
+            const provider = this.requireChatProvider(model);
             if (!provider.fetchDeferred) {
                 throw new ModelsError("provider", `Provider ${model.provider} does not support deferred responses`);
             }
@@ -414,12 +479,40 @@ class ModelsImpl {
         return this.streamDeferred(model, handle, options).result();
     }
     async cancelDeferred(model, handle, options) {
-        const provider = this.requireProvider(model);
+        const provider = this.requireChatProvider(model);
         if (!provider.cancelDeferred) {
             throw new ModelsError("provider", `Provider ${model.provider} does not support deferred responses`);
         }
         const { requestModel, requestOptions } = await this.applyAuth(model, options);
         await provider.cancelDeferred(requestModel, handle, requestOptions);
+    }
+    async generateImages(model, context, options) {
+        try {
+            assertImageModel(model);
+            const provider = this.requireProvider(model);
+            if (!provider.generateImages) {
+                throw new ModelsError("provider", `Provider ${model.provider} does not support image generation`);
+            }
+            const { requestModel, requestOptions } = await this.applyAuth(model, options);
+            return await provider.generateImages(requestModel, context, requestOptions);
+        }
+        catch (error) {
+            return imageErrorResult(model, error, options?.signal?.aborted);
+        }
+    }
+    async classify(model, context, options) {
+        try {
+            assertClassifierModel(model);
+            const provider = this.requireProvider(model);
+            if (!provider.classify) {
+                throw new ModelsError("provider", `Provider ${model.provider} does not support classification`);
+            }
+            const { requestModel, requestOptions } = await this.applyAuth(model, options);
+            return await provider.classify(requestModel, context, requestOptions);
+        }
+        catch (error) {
+            return classifierErrorResult(model, error, options?.signal?.aborted);
+        }
     }
 }
 export function createModels(options) {
@@ -427,18 +520,32 @@ export function createModels(options) {
 }
 /**
  * Builds a provider from parts. Built-in provider factories and models.json
- * custom providers both go through this. A single `api` streams all models;
- * an `api` map dispatches on `model.api`, and a model whose api has no entry
- * produces a stream error.
+ * custom providers both go through this. A single `api` streams all chat
+ * models; an `api` map dispatches on `model.api`, and a model whose api has
+ * no entry produces a stream error. One-shot operation maps dispatch on
+ * `model.api` the same way. At least one concrete implementation across
+ * `api`/`images`/`classifiers` is required; empty maps are rejected.
  */
 export function createProvider(input) {
+    const single = input.api && typeof input.api.stream === "function"
+        ? input.api
+        : undefined;
+    const byApi = single || !input.api ? undefined : input.api;
+    const images = input.images;
+    const classifiers = input.classifiers;
+    const streams = single ? [single] : Object.values(byApi ?? {}).filter((entry) => entry !== undefined);
+    const imageImplementations = Object.values(images ?? {}).filter((entry) => entry !== undefined);
+    const classifierImplementations = Object.values(classifiers ?? {}).filter((entry) => entry !== undefined);
+    if (streams.length === 0 && imageImplementations.length === 0 && classifierImplementations.length === 0) {
+        throw new Error(`Provider ${input.id}: at least one of "api", "images", or "classifiers" is required.`);
+    }
     const baselineModels = input.models;
     let dynamicModels = [];
     const fetchModels = input.fetchModels;
     const currentModels = () => {
         const merged = [...baselineModels];
         for (const model of dynamicModels) {
-            const index = merged.findIndex((entry) => entry.id === model.id);
+            const index = merged.findIndex((entry) => getModelType(entry) === getModelType(model) && entry.id === model.id);
             if (index >= 0)
                 merged[index] = model;
             else
@@ -446,8 +553,6 @@ export function createProvider(input) {
         }
         return merged;
     };
-    const single = typeof input.api.stream === "function" ? input.api : undefined;
-    const byApi = single ? undefined : input.api;
     const apiFor = (model) => single ?? byApi?.[model.api];
     const dispatch = (model, run) => {
         const streams = apiFor(model);
@@ -464,7 +569,8 @@ export function createProvider(input) {
         baseUrl: input.baseUrl,
         headers: input.headers,
         auth: input.auth,
-        getModels: currentModels,
+        getModels: () => currentModels().filter((model) => isModelType(model, "chat")),
+        getAllModels: currentModels,
         refreshModels: fetchModels
             ? async (context) => {
                 if (context.stored) {
@@ -481,9 +587,10 @@ export function createProvider(input) {
                 }
                 if (!context.allowNetwork || context.signal.aborted)
                     return;
-                const refreshed = await fetchModels(context);
+                const fetched = await fetchModels(context);
                 if (context.signal.aborted)
                     return;
+                const refreshed = fetched.filter(hasKnownModelType);
                 await context.publish({
                     persist: { models: refreshed, checkedAt: Date.now() },
                     update: () => {
@@ -493,10 +600,10 @@ export function createProvider(input) {
             }
             : undefined,
         filterModels: input.filterModels,
+        filterAllModels: input.filterAllModels,
         stream: (model, context, options) => dispatch(model, (streams) => streams.stream(model, context, options)),
         streamSimple: (model, context, options) => dispatch(model, (streams) => streams.streamSimple(model, context, options)),
     };
-    const streams = single ? [single] : Object.values(byApi ?? {}).filter((entry) => entry !== undefined);
     if (streams.some((entry) => entry.fetchDeferred !== undefined)) {
         provider.fetchDeferred = (model, handle, options) => lazyStream(model, async () => {
             const implementation = apiFor(model);
@@ -515,6 +622,24 @@ export function createProvider(input) {
             await implementation.cancelDeferred(model, handle, options);
         };
     }
+    if (images && imageImplementations.length > 0) {
+        provider.generateImages = async (model, context, options) => {
+            const implementation = images[model.api];
+            if (!implementation) {
+                return imageErrorResult(model, new ModelsError("provider", `Provider ${input.id} has no image generation implementation for "${model.api}"`));
+            }
+            return implementation.generateImages(model, context, options);
+        };
+    }
+    if (classifiers && classifierImplementations.length > 0) {
+        provider.classify = async (model, context, options) => {
+            const implementation = classifiers[model.api];
+            if (!implementation) {
+                return classifierErrorResult(model, new ModelsError("provider", `Provider ${input.id} has no classifier implementation for "${model.api}"`));
+            }
+            return implementation.classify(model, context, options);
+        };
+    }
     return provider;
 }
 /**
@@ -526,9 +651,11 @@ export function createProvider(input) {
  *   // model: Model<"anthropic-messages">, stream options fully typed
  * }
  * ```
+ *
+ * Non-chat models never match, even when their api id equals `api`.
  */
 export function hasApi(model, api) {
-    return model.api === api;
+    return isModelType(model, "chat") && model.api === api;
 }
 export function calculateCost(model, usage) {
     const inputTokens = usage.input + usage.cacheRead + usage.cacheWrite;
@@ -583,12 +710,12 @@ export function clampThinkingLevel(model, level) {
     return availableLevels[0] ?? "off";
 }
 /**
- * Check if two models are equal by comparing both their id and provider.
+ * Check if two models are equal by comparing their type, id, and provider.
  * Returns false if either model is null or undefined.
  */
 export function modelsAreEqual(a, b) {
     if (!a || !b)
         return false;
-    return a.id === b.id && a.provider === b.provider;
+    return getModelType(a) === getModelType(b) && a.id === b.id && a.provider === b.provider;
 }
 //# sourceMappingURL=models.js.map

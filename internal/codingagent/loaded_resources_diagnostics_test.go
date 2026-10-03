@@ -101,7 +101,7 @@ func renderListing(m *InteractiveMode) string {
 // formatDiagnostics; the resource listing stays hidden.
 func TestShowLoadedResourcesQuietDiagnosticsAllKinds(t *testing.T) {
 	m := diagnosticsFixtureMode(t)
-	m.opts.Settings.QuietStartup = true
+	m.opts.Settings.QuietStartup = QuietStartupTrue
 	m.showLoadedResources(false, true)
 	if got := renderListing(m); got != wantDiagnosticsBlock {
 		t.Fatalf("quiet diagnostics =\n%s\nwant\n%s", got, wantDiagnosticsBlock)
@@ -112,7 +112,7 @@ func TestShowLoadedResourcesQuietDiagnosticsAllKinds(t *testing.T) {
 // showDiagnosticsWhenQuiet the container stays empty, diagnostics included.
 func TestShowLoadedResourcesQuietWithoutDiagnosticsRequestShowsNothing(t *testing.T) {
 	m := diagnosticsFixtureMode(t)
-	m.opts.Settings.QuietStartup = true
+	m.opts.Settings.QuietStartup = QuietStartupTrue
 	m.showLoadedResources(false, false)
 	if got := renderListing(m); got != "" {
 		t.Fatalf("quiet listing without the diagnostics request = %q, want empty", got)
@@ -150,7 +150,7 @@ func TestLoadThemeResourcesDiagnostics(t *testing.T) {
 	winner := writeNamedTheme(t, dir, "a-sunset.json", "sunset")
 	loser := writeNamedTheme(t, dir, "b-sunset.json", "sunset")
 	registry := tui.NewThemeRegistry()
-	_, diagnostics := loadThemeResources(registry, []string{missing, text, bad, winner, loser})
+	_, diagnostics := loadThemeResources(registry, []string{missing, text, bad, winner, loser}, tui.GetTerminalColorMode())
 	if len(diagnostics) != 4 ||
 		diagnostics[0] != (extension.ResourceDiagnostic{Type: extension.DiagnosticWarning, Message: "theme path does not exist", Path: missing}) ||
 		diagnostics[1] != (extension.ResourceDiagnostic{Type: extension.DiagnosticWarning, Message: "theme path is not a json file", Path: text}) ||
@@ -174,7 +174,7 @@ func TestLoadThemeResourcesDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry := tui.NewThemeRegistry()
-	_, diagnostics := loadThemeResources(registry, []string{dir})
+	_, diagnostics := loadThemeResources(registry, []string{dir}, tui.GetTerminalColorMode())
 	if len(diagnostics) != 1 || diagnostics[0].Path != bad || diagnostics[0].Type != extension.DiagnosticWarning {
 		t.Fatalf("diagnostics = %#v", diagnostics)
 	}
@@ -189,7 +189,7 @@ func TestExtensionDiagnosticsRetainInvalidFactoryPath(t *testing.T) {
 	m.opts.SubprocessHost = &reportingHost{report: &subprocess.ReloadReport{Issues: []string{
 		"/ext/bad.ts: Extension does not export a valid factory function: /ext/bad.ts",
 	}}}
-	m.opts.Settings.QuietStartup = true
+	m.opts.Settings.QuietStartup = QuietStartupTrue
 	m.showLoadedResources(false, true)
 	want := "[Extension issues]\n  /ext/bad.ts\n    Extension does not export a valid factory function: /ext/bad.ts"
 	if got := renderListing(m); got != want {

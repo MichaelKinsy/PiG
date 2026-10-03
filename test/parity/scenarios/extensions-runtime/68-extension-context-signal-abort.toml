@@ -1,0 +1,47 @@
+# Behavior family: extensions-runtime
+# Scenario: an extension's ctx.signal is the run's signal, and the user's abort reaches it.
+#
+# Upstream evidence (Pi runner.ts:917-920, agent-session.ts:3368): ctx.signal is `agent.signal`, the signal of the run in progress. A turn_start handler that holds it sees the abort the user requests with Escape, the agent_end handler still sees it aborted, and agent_settled, which Pi emits after the run is cleared, sees no signal.
+
+name = "68-extension-context-signal-abort"
+description = "Escape aborts the run's ctx.signal, which is gone at agent_settled"
+covers = [
+  "packages/coding-agent/src/core/extensions/runner.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/ctx-signal-abort.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/ctx-signal-abort.mjs",
+]
+
+[tmux]
+width = 100
+height = 32
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "signal-live"
+capture_end = "signal-done"
+
+[[tmux.steps]]
+keys = ["TUI_LIVE_STREAM_PAUSE", "Enter"]
+wait_contains = ["signal-live:true"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["Escape"]
+wait_contains = ["signal-done"]
+wait_timeout_seconds = 20
+
+[assert]
+both_contain = ["signal-live:true", "signal-aborted:true", "signal-end:true", "signal-settled:true"]
+output_equal = true
+runs = 1

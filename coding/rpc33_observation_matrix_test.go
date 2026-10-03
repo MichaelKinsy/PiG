@@ -241,10 +241,12 @@ func canonicalizeObservationClocks(value any) {
 
 func runObservationCase(t *testing.T, c observationCase, body string) observationCase {
 	t.Helper()
-	// This deadline detects a missing start/body handshake; it never releases the
-	// body or changes successful scheduling. A timed-out row remains a failure.
-	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
-	defer cancel()
+	// ctx is armed below, after server/runtime/provider setup. Its deadline detects a
+	// missing start/body handshake; it never releases the body or changes successful
+	// scheduling. Arming it earlier let slow parallel setup (NewServices disk I/O on
+	// Windows) consume the budget before any request existed. A timed-out row remains a failure.
+	ctx := t.Context()
+	cancel := func() {}
 	first := make(chan struct{})
 	release := sync.OnceFunc(func() { close(first) })
 	defer release()
@@ -303,6 +305,10 @@ func runObservationCase(t *testing.T, c observationCase, body string) observatio
 			t.Error(err)
 		}
 	}()
+	var stop context.CancelFunc
+	ctx, stop = context.WithTimeout(t.Context(), 2*time.Second)
+	cancel = stop
+	defer func() { cancel() }()
 	var response *ai.AssistantMessageEventStream
 	streamFn := func(requestCtx context.Context, m *ai.Model, transcript ai.TranscriptContext, opts ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 		opts.MaxRetries = new(0)
@@ -457,10 +463,14 @@ func observationAgentEvent(t *testing.T, event agent.AgentEvent) any {
 		if event.Result.Details != nil {
 			result["details"] = event.Result.Details
 		}
+		if event.Result.IsError {
+			result["isError"] = true
+		}
 		if event.Result.Usage != nil {
 			result["usage"] = event.Result.Usage
 		}
-		return map[string]any{"type": "tool_execution_end", "toolCallId": event.ToolCallID, "toolName": event.ToolName, "result": result, "isError": event.Result.IsError}
+		// upstream: agent-loop.ts:912-919 emits `isError: finalized.isError` beside `result`; result.isError exists only when the tool returned it.
+		return map[string]any{"type": "tool_execution_end", "toolCallId": event.ToolCallID, "toolName": event.ToolName, "result": result, "isError": event.IsError}
 	default:
 		t.Errorf("unexpected AgentEvent %T", event)
 		return map[string]any{"unexpected": reflect.TypeOf(event).String(), "value": event}

@@ -8,9 +8,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/session"
 	"github.com/MichaelKinsy/PiG/internal/experimental/protocol"
 	"github.com/MichaelKinsy/PiG/internal/experimental/routing"
+	"github.com/MichaelKinsy/PiG/internal/experimental/routing/routingtest"
 )
 
 // upstream: packages/server/src/session-router.ts:110-120 closeInternal snapshots openingSessions, an insertion-ordered Map, awaits Promise.allSettled, and reports the rejections in that snapshot order.
@@ -26,14 +26,14 @@ func TestRouterCloseReportsOpeningFailuresInOpeningOrder(t *testing.T) {
 		failures[ids[i]] = fmt.Errorf("resolve %s failed", ids[i])
 	}
 	host := routing.ServerHost{
-		ServerServices: testServerServices{},
-		ResolveSession: func(_ context.Context, id string) (session.SessionMetadata, error) {
+		ServerServices: routingtest.CreateTestServerServices(),
+		ResolveSession: func(_ context.Context, id string) (routing.SessionMetadata, error) {
 			index := slices.Index(ids, id)
 			close(entered[index])
 			<-release[index]
-			return session.SessionMetadata{}, failures[id]
+			return nil, failures[id]
 		},
-		OpenSession: func(context.Context, session.SessionMetadata) (routing.RoutedSessionHandle, error) {
+		OpenSession: func(context.Context, routing.SessionMetadata) (routing.RoutedSessionHandle, error) {
 			return nil, errors.New("unreachable")
 		},
 	}

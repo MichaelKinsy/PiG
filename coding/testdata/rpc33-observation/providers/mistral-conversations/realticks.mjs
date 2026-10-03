@@ -1,4 +1,4 @@
-// D82 W5 real-body tick oracle for mistral-conversations (Pi 0.87.1, packages/ai/src/api/mistral-conversations.ts).
+// D82 W5 real-body tick oracle for mistral-conversations (Pi 1.0.0, packages/ai/src/api/mistral-conversations.ts).
 //
 // ticks.mjs scripts the response body, so every read is an already buffered chunk. This probe runs Pi's real stream() against a
 // loopback server that writes headers and the whole body in one write (`buffered`), which is the case in which every microtask of
@@ -14,7 +14,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 
 const root = process.env.PI_PACKAGE_ROOT;
 const scope = root + '/node_modules/@earendil-works/';
-assert.equal(JSON.parse(await readFile(scope + 'pi-ai/package.json', 'utf8')).version, '0.87.1');
+assert.equal(JSON.parse(await readFile(scope + 'pi-ai/package.json', 'utf8')).version, '1.0.0');
 const { stream: mistralStream } = await import(scope + 'pi-ai/dist/api/mistral-conversations.js');
 const { AssistantMessageEventStream } = await import(scope + 'pi-ai/dist/utils/event-stream.js');
 
@@ -104,4 +104,4 @@ for (const fixture of ['tool', 'mixed', 'multi', 'errorFinish', 'malformed', 'no
   assert.ok(marks.every(([, tick]) => tick < 200), `${fixture} left the microtask domain`);
   out.push({ fixture, body: body.toString(), marks, stopReason: result.stopReason, errorMessage: result.errorMessage ?? null });
 }
-await writeFile(process.argv[2], JSON.stringify({ piVersion: '0.87.1', node: process.version, cases: out }, null, 2) + '\n');
+await writeFile(process.argv[2], JSON.stringify({ piVersion: '1.0.0', node: process.version, cases: out }, null, 2) + '\n');

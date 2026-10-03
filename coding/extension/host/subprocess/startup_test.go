@@ -58,6 +58,7 @@ func startupNodeFixture(t *testing.T, directory, name, body string) ExtConfig {
 // Source: resource-loader.test.ts, user extensions load before trust and are
 // reused after trust resolves. Also exercise the denied final selection.
 func TestHostFinalExtensionSetPreservesPreTrustState(t *testing.T) {
+	t.Parallel()
 	for _, trusted := range []bool{true, false} {
 		t.Run(fmt.Sprint(trusted), func(t *testing.T) {
 			dir := t.TempDir()

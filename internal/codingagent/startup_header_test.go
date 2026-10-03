@@ -114,8 +114,9 @@ func BenchmarkBuiltInHeaderRender(b *testing.B) {
 }
 
 // Pi's built-in header is expandable startup help, not a cwd/config/bin report.
-// D2 and D63 change only the product identity and composite version.
+// Upstream shows the pi logo beside the version (interactive-mode.ts:998-1006); D2 replaces the logo with the PiG pig head, changes the onboarding text, and D63 the composite version. At 120 columns every line fits beside the head.
 func TestBuiltInHeaderMatchesPiStartupHelp(t *testing.T) {
+	isolatePigHome(t)
 	km := &KeybindingsManager{definitions: appKeybindingDefinitions, ordered: appKeybindingOrder, platform: tui.HostKeybindingPlatform()}
 	km.rebuild()
 	m := &InteractiveMode{
@@ -125,9 +126,9 @@ func TestBuiltInHeaderMatchesPiStartupHelp(t *testing.T) {
 		tuiInst:     tui.NewWithOutput(io.Discard, 100, 40),
 	}
 	m.restoreBuiltInHeader()
-	compact := stripANSITest(strings.Join(m.extHeader.Render(100), "\n"))
+	compact := stripANSITest(strings.Join(m.extHeader.Render(120), "\n"))
 	for _, want := range []string{
-		"pig v" + pigversion.Version,
+		" v" + pigversion.Version,
 		"escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more",
 		"Press ctrl+o to show full startup help and loaded resources.",
 		"PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.",
@@ -137,7 +138,7 @@ func TestBuiltInHeaderMatchesPiStartupHelp(t *testing.T) {
 		}
 	}
 	m.setAllToolsExpanded(true)
-	expanded := stripANSITest(strings.Join(m.extHeader.Render(100), "\n"))
+	expanded := stripANSITest(strings.Join(m.extHeader.Render(120), "\n"))
 	for _, want := range []string{"escape to interrupt", "ctrl+c twice to exit", "ctrl+k to delete to end", "shift+tab to cycle thinking level", "!! to run bash (no context)", "drop files to attach"} {
 		if !strings.Contains(expanded, want) {
 			t.Errorf("expanded header missing %q: %q", want, expanded)
@@ -147,7 +148,7 @@ func TestBuiltInHeaderMatchesPiStartupHelp(t *testing.T) {
 		t.Error("expanded header retained compact onboarding")
 	}
 	m.setAllToolsExpanded(false)
-	if got := stripANSITest(strings.Join(m.extHeader.Render(100), "\n")); got != compact {
+	if got := stripANSITest(strings.Join(m.extHeader.Render(120), "\n")); got != compact {
 		t.Errorf("collapse did not restore compact header: %q", got)
 	}
 	m.opts.LoginVisible = false

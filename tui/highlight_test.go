@@ -111,10 +111,58 @@ func TestLanguageFromPath(t *testing.T) {
 		{"FOO.GO", "go"},
 		{"a/b/c.rs", "rust"},
 		{"", ""},
+		// theme.ts getLanguageFromPath reads the text after the last dot of the whole path, so an extensionless file below a directory maps to nothing.
+		{"a/b/Makefile", ""},
+		{"x.d/Dockerfile", ""},
+		{"file.", ""},
+		// toLowerCase maps U+0130 to "i\u0307" and U+212A (Kelvin) to "k" (Pi 1.0.0 getLanguageFromPath under Node 24).
+		{"Makef\u0130le", ""},
+		{"a.V\u0130M", ""},
+		{"x.\u212At", "kotlin"},
 	}
 	for _, tc := range cases {
 		if got := LanguageFromPath(tc.path); got != tc.want {
 			t.Errorf("LanguageFromPath(%q) = %q, want %q", tc.path, got, tc.want)
 		}
+	}
+}
+
+// renderHighlightedHtml reads theme[scope] on an object literal, so a scope naming an Object.prototype member finds that member and calls it with an undefined receiver, and an own undefined property shadows the member (utils/syntax-highlight.ts getScopeFormatter and getActiveFormatter). Expected strings and TypeError messages are Pi 1.0.0's renderHighlightedHtml output under Node 24.
+func TestRenderHighlightedHtmlReadsObjectPrototypeMembers(t *testing.T) {
+	const notObject = "Cannot convert undefined or null to object"
+	for _, tc := range []struct {
+		scope, want, err string
+	}{
+		{"constructor", "xy", ""},
+		{"toString", "[object Undefined]y", ""},
+		{"toString.x", "[object Undefined]y", ""},
+		{"isPrototypeOf", "falsey", ""},
+		{"isPrototypeOf-y", "falsey", ""},
+		{"default", "xy", ""},
+		{"toLocaleString", "", "Object.prototype.toLocaleString called on null or undefined"},
+		{"__proto__", "", "formatter is not a function"},
+		{"valueOf", "", notObject},
+		{"hasOwnProperty", "", notObject},
+		{"propertyIsEnumerable", "", notObject},
+		{"__defineGetter__", "", notObject},
+		{"__defineSetter__", "", notObject},
+		{"__lookupGetter__", "", notObject},
+		{"__lookupSetter__", "", notObject},
+	} {
+		got, err := renderHighlightedHTML(`<span class="hljs-`+tc.scope+`">x</span>y`, HighlightTheme{})
+		gotErr := ""
+		if err != nil {
+			gotErr = err.Error()
+		}
+		if got != tc.want || gotErr != tc.err {
+			t.Errorf("%s: got %q, error %q; want %q, error %q", tc.scope, got, gotErr, tc.want, tc.err)
+		}
+	}
+	defaultFormatter := func(text string) string { return "D" + text }
+	if got := RenderHighlightedHtml(`<span class="hljs-toString">x</span>`, HighlightTheme{"toString": nil, "default": defaultFormatter}); got != "Dx" {
+		t.Errorf("own undefined toString: got %q, want %q", got, "Dx")
+	}
+	if got := RenderHighlightedHtml(`<span class="hljs-keyword">x</span>y`, HighlightTheme{"keyword": nil, "default": defaultFormatter}); got != "DxDy" {
+		t.Errorf("own undefined keyword: got %q, want %q", got, "DxDy")
 	}
 }

@@ -99,7 +99,7 @@ func TestCacheRetentionResponsesUpstream(t *testing.T) {
 			if tc.compat != nil {
 				compat = tc.compat
 			}
-			provider := NewOpenAIResponsesProvider(OpenAIResponsesConfig{APIKey: "fake-key", ProviderID: "openai", Model: tc.model, BaseURL: tc.baseURL, Compat: compat})
+			provider := NewOpenAIResponsesProvider(OpenAIResponsesConfig{APIKey: "sk-fake-key", ProviderID: "openai", Model: tc.model, BaseURL: tc.baseURL, Compat: compat})
 			payload := captureSamplingPayload(t, provider, cacheRetentionTranscript(), StreamOptions{CacheRetention: CacheRetention(tc.retention), SessionID: tc.session})
 			assertCacheFields(t, payload, tc.want)
 		})
@@ -135,8 +135,8 @@ func TestCacheRetentionCompletionsUpstream(t *testing.T) {
 			assertCacheFields(t, payload, tc.want)
 		})
 	}
-	// .upstream/v0.87.1/packages/ai/test/cache-retention.test.ts:507 (all six rows)
-	for _, spec := range []string{"opencode/deepseek-v4-flash", "opencode/deepseek-v4-pro", "opencode/kimi-k2.5", "opencode/kimi-k2.6", "opencode/minimax-m2.7", "opencode-go/kimi-k2.6"} {
+	// .upstream/v0.99.1/packages/ai/test/cache-retention.test.ts:507 (five rows; 0.99.1 dropped opencode-go/kimi-k2.6)
+	for _, spec := range []string{"opencode/deepseek-v4-flash", "opencode/deepseek-v4-pro", "opencode/kimi-k2.5", "opencode/kimi-k2.6", "opencode/minimax-m2.7"} {
 		t.Run("should omit long cache retention for "+spec, func(t *testing.T) {
 			model, ok := LookupModelExact(spec)
 			if !ok {

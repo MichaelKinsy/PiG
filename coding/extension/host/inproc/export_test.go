@@ -24,14 +24,15 @@ func (r *Runner) AssertActiveForTest() error { return r.assertActive() }
 //
 //nolint:revive // exported because cross-package _test files need access.
 func ExtractToolResultFieldsForTest(event extension.ToolResultEvent) (content []any, details any, isError bool, usage any) {
-	return extractToolResultFields(event)
+	content, details, isError, usage, _ = extractToolResultFields(event)
+	return content, details, isError, usage
 }
 
 // WithToolResultFieldsForTest exposes withToolResultFields.
 //
 //nolint:revive // exported because cross-package _test files need access.
 func WithToolResultFieldsForTest(event extension.ToolResultEvent, content []any, details any, isError bool, usage any) extension.ToolResultEvent {
-	return withToolResultFields(event, content, details, isError, usage)
+	return withToolResultFields(event, content, details, isError, usage, nil)
 }
 
 // SessionBeforeIsCancelForTest exposes the package-private

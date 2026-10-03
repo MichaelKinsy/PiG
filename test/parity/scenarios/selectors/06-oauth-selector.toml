@@ -1,5 +1,6 @@
 # Behavior family: selectors
 # Upstream evidence: Pi 0.87.1 interactive-mode.ts:5724-5775 builds the top-level authentication method selector with account/API-key labels. The provider selector is not rendered at this stage.
+# Pi 1.0.0 interactive-mode.ts:5809-5831 adds the built-in Radius provider as the last top-level option, "Sign in with Radius" followed by its formatAuthSelectorProviderStatus suffix (oauth-selector.ts:36-53). Re-probed against Pi 1.0.0 with this fixture: the menu lists "Sign in with an account", "Sign in with an API key" and "Sign in with Radius • not configured". The shimmer (radius-login-selector.ts) animates only the selected row, so the unselected Radius row is static.
 # Both binaries use the same agent fixture. The former normalized comparison used different seeded themes and claimed oauth-selector.ts even though only the method selector was visible.
 name = "06-oauth-selector"
 description = "/login opens the top-level authentication method selector"
@@ -23,7 +24,7 @@ settle_seconds = 2
 
 [[tmux.steps]]
 keys = ["/login", "Enter"]
-wait_contains = ["Select authentication method:", "Sign in with an account", "Sign in with an API key"]
+wait_contains = ["Select authentication method:", "Sign in with an account", "Sign in with an API key", "Sign in with Radius • not configured"]
 
 [env]
 pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
@@ -35,5 +36,5 @@ pi_extensions = ["../../testdata/test-faux-provider.ts"]
 [assert]
 both_reach_ready = true
 escaped_output_equal = true
-both_contain = ["Select authentication method", "Sign in with an account", "Sign in with an API key", "navigate"]
+both_contain = ["Select authentication method", "Sign in with an account", "Sign in with an API key", "Sign in with Radius • not configured", "navigate"]
 runs = 3

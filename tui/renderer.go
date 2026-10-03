@@ -44,10 +44,10 @@ type Renderer interface {
 	// Width and Height report the current terminal geometry.
 	Width() int
 	Height() int
-	// QueryTerminalBackgroundColor asks for the default background and returns its one-shot completion.
-	QueryTerminalBackgroundColor(options TerminalColorQueryOptions) <-chan TerminalBackgroundColorResult
-	// ConsumeOsc11BackgroundResponse intercepts replies before input listeners, including late replies after timeout.
-	ConsumeOsc11BackgroundResponse(data string) bool
+	// QueryTerminalColors asks for the default colors and ANSI palette and returns its one-shot completion.
+	QueryTerminalColors(options TerminalColorQueryOptions) <-chan TerminalColorsResult
+	// ConsumeTerminalColorResponse intercepts color and DA1 replies before input listeners, including late replies after timeout.
+	ConsumeTerminalColorResponse(data string) bool
 	// QueryCellSize asks an image-capable terminal for its cell size.
 	QueryCellSize()
 	// ConsumeCellSizeResponse applies and consumes a cell-size response.

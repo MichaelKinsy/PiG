@@ -84,17 +84,15 @@ func TestBuildModelAnthropicAuthRequestShapes(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(dir, "models.json"), []byte(config), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			model, _, _, err := buildModel("anthropic/claude-haiku-4-5", testServices(t, dir))
+			services := testServices(t, dir)
+			model, _, _, err := buildModel("anthropic/claude-haiku-4-5", services)
 			if err != nil {
 				t.Fatal(err)
 			}
-			transcript := ai.NormalizeContext(ai.Context{SystemPrompt: "System prompt.", Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Hello")}}})
-			stream, err := model.Provider.Stream(context.Background(), transcript, ai.StreamOptions{})
-			if err != nil {
-				t.Fatal(err)
-			}
-			for range stream.Events(context.Background()) {
-			}
+			// ANTHROPIC_AUTH_TOKEN reaches the request only through the auth resolver, which the model runtime consults at
+			// the request boundary (anthropic-messages.ts:331-341: a provider stream owns no credential of its own).
+			transcript := ai.Context{SystemPrompt: "System prompt.", Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Hello")}}}
+			services.ModelRuntime().Complete(context.Background(), model, transcript, ai.StreamOptions{})
 			if got := header.Get("X-Api-Key"); got != tc.apiKey {
 				t.Errorf("X-Api-Key = %q, want %q", got, tc.apiKey)
 			}

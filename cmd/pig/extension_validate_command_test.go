@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 func TestInstallValidateOnlyLoadsAndRegistersExtension(t *testing.T) {
@@ -366,6 +367,87 @@ func TestPlacementPlanSeparatesStandalone(t *testing.T) {
 	}
 	if plan.Groups[1].Strategy != "isolated" || len(plan.Groups[1].Extensions) != 1 || plan.Groups[1].Extensions[0] != "c" {
 		t.Fatalf("isolated group = %+v", plan.Groups[1])
+	}
+}
+
+// An extension selected through a directory link resolves and loads from the
+// link target, so the reported content hash covers the target's sources.
+// filepath.WalkDir does not traverse a link used as its root.
+func TestExtensionContentHashFollowsLinkedDirectory(t *testing.T) {
+	parent := t.TempDir()
+	target := filepath.Join(parent, "x", "extension")
+	file := filepath.Join(target, "main.go")
+	if err := os.MkdirAll(target, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(file, []byte("package main\nfunc main() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(parent, "extensions", "x")
+	if err := os.MkdirAll(filepath.Dir(link), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	testenv.RequireDirectoryLink(t, target, link)
+	direct, err := extensionContentHash(target, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := extensionContentHash(link, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first != direct {
+		t.Fatalf("linked hash %q, want the target hash %q", first, direct)
+	}
+	if err := os.WriteFile(file, []byte("package main\nfunc main() { println(1) }\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	second, err := extensionContentHash(link, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second == first {
+		t.Fatalf("linked hash did not change after content update: %q", second)
+	}
+}
+
+// The selected root is hashed whatever its name. shouldSkipHashDir names
+// dependency and build-output directories below the root; a link such as
+// extensions/x -> ../x/build selects a root named build.
+func TestExtensionContentHashCoversRootWithSkippedName(t *testing.T) {
+	for _, name := range []string{"build", "dist", ".extension"} {
+		t.Run(name, func(t *testing.T) {
+			parent := t.TempDir()
+			target := filepath.Join(parent, "x", name)
+			file := filepath.Join(target, "main.go")
+			if err := os.MkdirAll(target, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(file, []byte("package main\nfunc main() {}\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			link := filepath.Join(parent, "extensions", "x")
+			if err := os.MkdirAll(filepath.Dir(link), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			testenv.RequireDirectoryLink(t, target, link)
+			for _, selected := range []string{target, link} {
+				first, err := extensionContentHash(selected, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(file, []byte("package main\nfunc main() { println(len(\""+selected+"\")) }\n"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				second, err := extensionContentHash(selected, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if second == first {
+					t.Fatalf("hash of %s did not change after content update: %q", selected, second)
+				}
+			}
+		})
 	}
 }
 

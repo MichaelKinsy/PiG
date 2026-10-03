@@ -5,8 +5,9 @@ Use this page to get from a fresh binary to a working session. Return to the
 
 ## 1. Build or install the binary
 
-On macOS or Linux, install the latest release with
-`curl -fsSL https://pi-in-go.dev/install.sh | sh`, or download an archive from
+On macOS, Linux or Android with Termux (arm64 only), install the latest release with
+`curl -fsSL https://pi-in-go.dev/install.sh | sh`; in Termux it installs the
+`android-arm64` release into `$PREFIX/bin`. Or download an archive from
 [GitHub Releases](https://github.com/MichaelKinsy/PiG/releases). Windows
 support is a preview. From a source checkout, build it with Go 1.27.1. Go 1.27 release binaries for macOS require macOS 13 or later:
 
@@ -29,7 +30,8 @@ npx @pi-in-go/pig --version
 ```
 
 `pig` itself is the native binary: npm installs the matching platform package
-(`@pi-in-go/pig-<os>-<cpu>`, for macOS, Linux and Windows on x64 and arm64) as
+(`@pi-in-go/pig-<os>-<cpu>`, for macOS, Linux and Windows on x64 and arm64, and Android on arm64 for
+Termux) as
 an optional dependency, and Node.js runs only a small launcher. Do not install
 with `--omit=optional` or `--no-optional`, which leaves the binary out. Update
 with `npm update -g @pi-in-go/pig` and uninstall with

@@ -79,6 +79,8 @@ func (h *Host) stageCellsInOrder(ctx context.Context, cells []CellSpec, commit f
 		defer stop()
 	}
 	ctx = context.WithValue(stageCtx, runtimeParentKey{}, parent)
+	ctx, closeBuildLine := h.withBuildLine(ctx, cells)
+	defer closeBuildLine()
 	type unit struct {
 		order     int
 		admission *memberAdmission
@@ -185,7 +187,15 @@ func (me *managedExt) activateNode() error {
 		}
 		me.entryCursorMu.Unlock()
 	}
-	if err := me.connection().Send(ready); err != nil {
+	// The geometry is read when the deferred payload is sent: a resize while later factories loaded may have changed it.
+	conn := me.connection()
+	var err error
+	if me.host != nil {
+		err = me.host.sendReady(me, conn, ready)
+	} else {
+		err = conn.Send(ready)
+	}
+	if err != nil {
 		return newLoadError(me.config.Name, "ready", "send_ready_failed", err)
 	}
 	return nil

@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-// The oracle is Pi 0.87.1's real anthropic-messages pipeline on Node 24.19.0 and 26.7.0 (identical), traced by coding/testdata/rpc33-observation/providers/anthropic-messages/probe.mjs. Every record carries the macrotask ordinal ("epoch") and the microtask round ("tick") in which Pi's consumer received an event or its result, and the message state visible at that instant.
+// The oracle is upstream 0.99.1's real anthropic-messages pipeline on Node 24.19.0 and 26.7.0 (identical), traced by coding/testdata/rpc33-observation/providers/anthropic-messages/probe.mjs. Every record carries the macrotask ordinal ("epoch") and the microtask round ("tick") in which Pi's consumer received an event or its result, and the message state visible at that instant.
 const anthropicOracleDir = "../coding/testdata/rpc33-observation/providers/anthropic-messages/"
 
 type anthropicOracleRecord struct {
@@ -74,8 +74,8 @@ func loadAnthropicOracle(t *testing.T) (cases []anthropicOracleCase, plans map[s
 	if err := json.Unmarshal(raw, &oracle); err != nil {
 		t.Fatal(err)
 	}
-	if oracle.PiVersion != "0.87.1" {
-		t.Fatalf("oracle pins Pi %s", oracle.PiVersion)
+	if oracle.PiVersion != UpstreamVersionString() {
+		t.Fatalf("oracle pins Pi %s; current Pi %s requires a fresh oracle", oracle.PiVersion, UpstreamVersionString())
 	}
 	raw, err = os.ReadFile(filepath.Join(anthropicOracleDir, "inputs.json"))
 	if err != nil {

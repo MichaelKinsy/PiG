@@ -48,6 +48,12 @@ type InteractiveSessionHandle interface {
 	SetModel(*ai.Model, ...ModelMutationOptions) error
 	// SetModelOnMain dispatches the synchronous state mutation to the owner loop, then waits for extension notifications on the caller. The dispatcher may reject a superseded mutation.
 	SetModelOnMain(*ai.Model, ModelMutationOptions, func(func() error) error) error
+	// CycleToModel applies a model-cycle selection as SetModel applies a direct one, and reports the selection to extensions with source "cycle".
+	CycleToModel(*ai.Model, ...ModelMutationOptions) error
+	// ExtensionCompact is the compact action Pi binds for extensions: it starts a manual compaction without waiting, reports the result to options.OnComplete and a failure to options.OnError, and drops the outcome without callbacks.
+	ExtensionCompact(*extension.CompactOptions)
+	// ExtensionSetModel answers an extension's pi.setModel: false without configured credentials, otherwise it switches as SetModel does and answers true.
+	ExtensionSetModel(context.Context, *ai.Model) (bool, error)
 	// SetThinkingLevel applies and records reasoning without changing defaults unless Persist is set.
 	SetThinkingLevel(ai.ThinkingLevel, ...ModelMutationOptions) error
 	// SetSessionName persists and publishes a sanitized Session name.

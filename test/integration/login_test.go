@@ -29,7 +29,10 @@ func TestAnthropicLoginAcceptsPastedRedirectURL(t *testing.T) {
 	h.send("\r")
 	h.expectContains(3*time.Second, "→ Anthropic")
 	h.send("\r")
-	h.expectContains(10*time.Second, "Login to Anthropic", "Paste redirect URL below")
+	// Pi 1.0.0 asks for the Anthropic login method first (anthropic.ts:273-291) and shows the flow's manual_code message (interactive-mode.ts:6207-6208).
+	h.expectContains(3*time.Second, "Select Anthropic login method:", "→ Browser login (default)")
+	h.send("\r")
+	h.expectContains(10*time.Second, "Login to Anthropic", "Complete login in your browser, or paste the authorization code / redirect URL here:")
 
 	h.paste("http://localhost:53692/callback?code=pasted-code&state=not-this-login")
 	h.expectContains(3*time.Second, "> http://localhost:53692/callback?code=pasted-code")

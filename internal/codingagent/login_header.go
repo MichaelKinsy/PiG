@@ -20,6 +20,7 @@ const (
 	loginSceneHeight = loginArtY + extension.LoginMascotHeight
 	loginArtY        = extension.LoginBrandHeight + 1
 	loginReset       = "\x1b[0m"
+	loginMargin      = "  "
 )
 
 // LoginHeaderOptions contains host-owned values used by the native login
@@ -73,6 +74,19 @@ func RenderLoginHeader(definition extension.ValidatedLoginDefinition, width int,
 	}
 
 	glyphFree := options.GlyphFree && width >= loginMarginWidth+loginSceneWidth*2
+	lines := renderLoginPixels(loginArtRows(definition), loginSceneWidth, definition, options.ColorOverrides, options.TrueColor, glyphFree, loginMargin)
+	lines = append(lines, "")
+	lines = appendWrappedLoginText(lines, "\x1b[1m"+definition.Name()+loginReset+"  "+definition.Description(), width)
+	lines = appendWrappedLoginText(lines, "\x1b[3m"+definition.Tagline(), width)
+	for _, line := range options.OperationalLines {
+		lines = appendWrappedLoginText(lines, line, width)
+	}
+	return lines
+}
+
+// loginArtRows composes the brand band, the hero and the mascot into the template's pixel scene. A fully transparent brand
+// omits the brand band so the art starts at the top of the header instead of below blank rows.
+func loginArtRows(definition extension.ValidatedLoginDefinition) []string {
 	scene := make([][]byte, loginSceneHeight)
 	for y := range scene {
 		scene[y] = []byte(strings.Repeat(".", loginSceneWidth))
@@ -81,8 +95,6 @@ func RenderLoginHeader(definition extension.ValidatedLoginDefinition, width int,
 	blitLoginGrid(scene, brand, 0, 0, 1, 1)
 	blitLoginGrid(scene, definition.Hero(), 0, loginArtY, 1, 1)
 	blitLoginGrid(scene, definition.Mascot(), loginMascotX, loginArtY, 1, 1)
-	// A fully transparent brand omits the brand band so the art starts at the
-	// top of the header instead of below blank rows.
 	top := 0
 	if loginGridTransparent(brand) {
 		top = loginArtY
@@ -91,14 +103,7 @@ func RenderLoginHeader(definition extension.ValidatedLoginDefinition, width int,
 	for y := top; y < len(scene); y++ {
 		rows = append(rows, string(scene[y]))
 	}
-	lines := renderLoginPixels(rows, loginSceneWidth, len(rows), definition, options.ColorOverrides, options.TrueColor, glyphFree)
-	lines = append(lines, "")
-	lines = appendWrappedLoginText(lines, "\x1b[1m"+definition.Name()+loginReset+"  "+definition.Description(), width)
-	lines = appendWrappedLoginText(lines, "\x1b[3m"+definition.Tagline(), width)
-	for _, line := range options.OperationalLines {
-		lines = appendWrappedLoginText(lines, line, width)
-	}
-	return lines
+	return rows
 }
 
 func renderCompactLoginHeader(definition extension.ValidatedLoginDefinition, width int, operationalLines []string) []string {
@@ -142,18 +147,20 @@ func blitLoginGrid(destination [][]byte, source []string, xOffset, yOffset, xSca
 	}
 }
 
-func renderLoginPixels(rows []string, pixelWidth, pixelHeight int, definition extension.ValidatedLoginDefinition, overrides map[byte]color.RGBA, trueColor, glyphFree bool) []string {
+// renderLoginPixels draws the pixel rows after margin: two pixels per cell in half blocks, or one per two-cell block when
+// glyphFree.
+func renderLoginPixels(rows []string, pixelWidth int, definition extension.ValidatedLoginDefinition, overrides map[byte]color.RGBA, trueColor, glyphFree bool, margin string) []string {
 	if glyphFree {
-		return renderLoginSolidPixels(rows, pixelWidth, pixelHeight, definition, overrides, trueColor)
+		return renderLoginSolidPixels(rows, pixelWidth, len(rows), definition, overrides, trueColor, margin)
 	}
-	return renderLoginHalfBlockPixels(rows, pixelWidth, pixelHeight, definition, overrides, trueColor)
+	return renderLoginHalfBlockPixels(rows, pixelWidth, len(rows), definition, overrides, trueColor, margin)
 }
 
-func renderLoginHalfBlockPixels(rows []string, pixelWidth, pixelHeight int, definition extension.ValidatedLoginDefinition, overrides map[byte]color.RGBA, trueColor bool) []string {
+func renderLoginHalfBlockPixels(rows []string, pixelWidth, pixelHeight int, definition extension.ValidatedLoginDefinition, overrides map[byte]color.RGBA, trueColor bool, margin string) []string {
 	output := make([]string, 0, (pixelHeight+1)/2)
 	for y := 0; y < pixelHeight; y += 2 {
 		var line strings.Builder
-		line.WriteString("  ")
+		line.WriteString(margin)
 		for x := range pixelWidth {
 			top, topOK := loginPixelColor(rows, x, y, definition, overrides)
 			bottom, bottomOK := loginPixelColor(rows, x, y+1, definition, overrides)
@@ -178,11 +185,11 @@ func renderLoginHalfBlockPixels(rows []string, pixelWidth, pixelHeight int, defi
 	return output
 }
 
-func renderLoginSolidPixels(rows []string, pixelWidth, pixelHeight int, definition extension.ValidatedLoginDefinition, overrides map[byte]color.RGBA, trueColor bool) []string {
+func renderLoginSolidPixels(rows []string, pixelWidth, pixelHeight int, definition extension.ValidatedLoginDefinition, overrides map[byte]color.RGBA, trueColor bool, margin string) []string {
 	output := make([]string, 0, pixelHeight)
 	for y := range pixelHeight {
 		var line strings.Builder
-		line.WriteString("  ")
+		line.WriteString(margin)
 		for x := range pixelWidth {
 			pixel, ok := loginPixelColor(rows, x, y, definition, overrides)
 			if ok {

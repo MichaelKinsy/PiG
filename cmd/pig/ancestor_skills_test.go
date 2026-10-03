@@ -53,6 +53,7 @@ func BenchmarkCollectAncestorSkillInputs(b *testing.B) {
 // the nearest Git root and only after trust. resource-loader.ts:468-470
 // appends --skill paths after that resolved set; skills.ts:425-454 is first-wins.
 func TestRPCAncestorSkillTrustAndPrecedence(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	repo := filepath.Join(root, "repo")
 	cwd := filepath.Join(repo, "nested")

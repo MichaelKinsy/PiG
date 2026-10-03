@@ -39,9 +39,13 @@ func TestParseBackslashRelativeSourcesAreLocalOnWindows(t *testing.T) {
 	}
 }
 
-// Pi expands ~\ like ~/ on win32 (paths.ts normalizePath).
+// Pi expands ~\ like ~/ on win32 (paths.ts normalizePath). The package
+// manager's home is process.env.HOME || homedir() (package-manager.ts:228) and
+// homedir() is USERPROFILE on Windows, so a HOME in the runner's environment
+// (Git Bash, MSYS) must be cleared for USERPROFILE to apply.
 func TestParseTildeBackslashSourceExpandsHomeOnWindows(t *testing.T) {
 	home := t.TempDir()
+	t.Setenv("HOME", "")
 	t.Setenv("USERPROFILE", home)
 	ref, err := Parse(`~\pkgs\tools`, Options{Bare: BareNPM})
 	if err != nil {

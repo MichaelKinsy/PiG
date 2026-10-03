@@ -16,7 +16,7 @@ type validationOracleTool struct {
 func (t *validationOracleTool) ArgumentSchema() json.RawMessage { return t.schema }
 
 // TestToolArgumentValidationPiOracle compares the production preparation path with
-// Pi 0.87.1 validateToolArguments, including the unmodified received-arguments error.
+// Pi 0.99.1 validateToolArguments, including the unmodified received-arguments error.
 func TestToolArgumentValidationPiOracle(t *testing.T) {
 	data, err := os.ReadFile("testdata/tool-validation.json")
 	if err != nil {

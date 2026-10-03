@@ -57,7 +57,7 @@ func hotkeysMarkdown() string {
 	row("Copy selection or last assistant message", "app.message.copy")
 	row("Queue follow-up message", "app.message.followUp")
 	row("Restore queued messages", "app.message.dequeue")
-	row("Paste image or text from clipboard", "app.clipboard.pasteImage")
+	row("Paste files on macOS, images, or text from clipboard", "app.clipboard.pasteImage")
 	b.WriteString("| `/` | Slash commands |\n| `!` | Run bash command |\n| `!!` | Run bash command (excluded from context) |\n")
 	return strings.TrimSpace(b.String())
 }

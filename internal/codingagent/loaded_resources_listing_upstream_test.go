@@ -19,11 +19,11 @@ func TestLoadedResourcesSkillAndExtensionListingsUpstream(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		verbose bool
-		quiet   bool
+		quiet   QuietStartup
 		expand  bool
 	}{
-		{"shows full resource listing when expanded", false, false, true},
-		{"shows full resource listing on verbose startup even when tool output is collapsed", true, true, false},
+		{"shows full resource listing when expanded", false, QuietStartupFalse, true},
+		{"shows full resource listing on verbose startup even when tool output is collapsed", true, QuietStartupTrue, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			m := upstreamListingMode(t, tc.expand, nil)

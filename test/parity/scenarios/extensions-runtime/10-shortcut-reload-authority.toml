@@ -32,8 +32,8 @@ pi_extensions = [
 [tmux]
 width = 100
 height = 35
-ready_pattern_pig = "(auto)"
-ready_pattern_pi = "(auto)"
+ready_pattern_pig = "[Extensions]"
+ready_pattern_pi = "[Extensions]"
 ready_timeout_seconds = 30
 capture_start = "shortcut-new"
 capture_end = "shortcut-new"

@@ -16,6 +16,9 @@ func TestExtendedKeyInitSequenceMatchesPi083(t *testing.T) {
 func TestKeyboardProtocolNegotiationUsesDeviceAttributesFallback(t *testing.T) {
 	var output bytes.Buffer
 	terminal := NewProcessTerminalWithOutput(nil, nil, &output)
+	// Only the DA1 reply owed to a keyboard protocol query is negotiation (terminal.ts:262,272).
+	terminal.queryAndEnableKittyProtocol()
+	output.Reset()
 	SetKittyProtocolActive(false)
 	modifyOtherKeysActive.Store(false)
 
@@ -33,6 +36,8 @@ func TestKeyboardProtocolNegotiationUsesDeviceAttributesFallback(t *testing.T) {
 func TestAC50KeyboardProtocolNegotiationMatchesPi083(t *testing.T) {
 	var output bytes.Buffer
 	terminal := NewProcessTerminalWithOutput(nil, nil, &output)
+	terminal.queryAndEnableKittyProtocol()
+	output.Reset()
 	SetKittyProtocolActive(false)
 	modifyOtherKeysActive.Store(true)
 

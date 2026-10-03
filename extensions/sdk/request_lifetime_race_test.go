@@ -3,6 +3,7 @@ package sdk
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -99,7 +100,8 @@ func TestActiveContextParentCancellationIsNotPromoted(t *testing.T) {
 	}
 }
 
-func TestCompletingContextCancelsUnsettledParentCall(t *testing.T) {
+// Pi's host calls belong to no request (loader.ts createExtensionRuntime has no request scope; interactive-mode.ts:2858-2940 settles a call only through its own completion), so a call a handler left pending when it returned keeps running and receives the host's result. The row asserted the opposite before #103 gave the Node runtime the same rule; TestExtensionAPIHostCallStartedByAHandlerOutlivesItsResponseGo drives it through the Host.
+func TestCompletingContextLeavesUnsettledParentCallRunning(t *testing.T) {
 	_, connection, host, ctx, finish := retainedContextHarness(t)
 	defer finish()
 	pending, err := ctx.beginHostCall("ui.getEditorText", nil)
@@ -114,8 +116,12 @@ func TestCompletingContextCancelsUnsettledParentCall(t *testing.T) {
 		t.Fatal(err)
 	}
 	finish()
-	if _, err := connection.waitCall(pending); err == nil {
-		t.Fatal("unsettled call survived originating request cleanup")
+	if err := host.send(envelope{Type: msgCallResult, ID: call.ID, CallResult: &callResultMsg{Result: json.RawMessage(`"text"`)}}); err != nil {
+		t.Fatal(err)
+	}
+	result, err := connection.waitCall(pending)
+	if err != nil || string(result.Result) != `"text"` {
+		t.Fatalf("the unsettled call after its request's response = %+v, %v, want the host's result", result, err)
 	}
 	if ctx.Err() != nil {
 		t.Fatalf("normal completion invalidated retained context: %v", ctx.Err())

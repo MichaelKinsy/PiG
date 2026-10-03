@@ -18,6 +18,7 @@ import (
 // Sequence numbers are assigned in the handler before any host call. We do not
 // compare notification completion order, which upstream deliberately leaves free.
 func TestPackedPromptHandlerBodyFIFO(t *testing.T) {
+	t.Parallel()
 	const prompts = 512
 	for _, language := range []string{"go", "python", "rust"} {
 		t.Run(language, func(t *testing.T) {

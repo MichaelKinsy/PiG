@@ -10,6 +10,7 @@ import (
 
 // Pi loader.ts:202-217 retains registrations before bindCore supplies a registry. The Go Host must not discard a factory registration merely because its registry callback binds after load.
 func TestHostProviderRegistrationBeforeBinding(t *testing.T) {
+	t.Parallel()
 	nodeCellRequireNode(t)
 	for _, isolation := range []string{"", "isolated"} {
 		t.Run("isolation="+isolation, func(t *testing.T) {

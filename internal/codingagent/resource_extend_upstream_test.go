@@ -32,7 +32,7 @@ func extensionResourceMode(t *testing.T, cwd, extensionPath string, result exten
 // upstreamThemeNamed returns upstream's dark.json under another name, as the upstream tests build their themes.
 func upstreamThemeNamed(t *testing.T, name string) string {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join("..", "..", ".upstream", "v0.87.1", "packages", "coding-agent", "src", "modes", "interactive", "theme", "dark.json"))
+	data, err := os.ReadFile(filepath.Join("..", "..", ".upstream", "current", "packages", "coding-agent", "src", "modes", "interactive", "theme", "dark.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,7 +189,7 @@ func TestThemePathsFirstPathWinsCollisions(t *testing.T) {
 		writeResourceFile(t, path, dark)
 	}
 	registry := tui.NewThemeRegistry()
-	_, diagnostics := loadThemeResources(registry, []string{projectTheme, userTheme})
+	_, diagnostics := loadThemeResources(registry, []string{projectTheme, userTheme}, tui.GetTerminalColorMode())
 	if len(diagnostics) != 1 || diagnostics[0].Type != extension.DiagnosticCollision {
 		t.Fatalf("theme diagnostics = %+v, want one name collision", diagnostics)
 	}

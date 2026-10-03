@@ -29,6 +29,7 @@ type WireServiceProviderUpdate struct {
 	Sequence int
 	Ops      []WireOp
 	Snapshot *WireServiceInstanceSnapshot
+	Reset    *WireServiceSubscriptionSnapshot
 }
 
 func (m WireServiceMemberSnapshot) MarshalJSON() ([]byte, error) {
@@ -82,6 +83,8 @@ func (u WireServiceProviderUpdate) MarshalJSON() ([]byte, error) {
 			ops = []WireOp{}
 		}
 		fields["ops"] = ops
+	case UpdateReset:
+		fields["snapshot"] = u.Reset
 	case UpdateUnavailable:
 	case UpdateReplaced:
 		fields["snapshot"] = u.Snapshot
@@ -113,6 +116,10 @@ func (u *WireServiceProviderUpdate) UnmarshalJSON(data []byte) error {
 			if err := json.Unmarshal(fields.Instance, &next.Address); err != nil {
 				return err
 			}
+		}
+	case UpdateReset:
+		if err := json.Unmarshal(fields.Snapshot, &next.Reset); err != nil {
+			return err
 		}
 	case UpdateReplaced:
 		if err := json.Unmarshal(fields.Snapshot, &next.Snapshot); err != nil {

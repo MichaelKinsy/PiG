@@ -45,8 +45,8 @@ func TestShowManagedToolStatus(t *testing.T) {
 		t.Fatalf("child count = %d, want spacer + 2 reports", got)
 	}
 	_, last := m.chatContainer.LastTwoChildren()
-	text, ok := last.(*tui.Text)
-	if !ok || !strings.Contains(text.Content, "Warning: Failed to download fd: boom") {
+	content, ok := chatTextContent(last)
+	if !ok || !strings.Contains(content, "Warning: Failed to download fd: boom") {
 		t.Fatalf("last child = %#v", last)
 	}
 	m.showStatus("next")

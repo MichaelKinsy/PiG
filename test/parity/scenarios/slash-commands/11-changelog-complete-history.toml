@@ -8,6 +8,13 @@
 # The unsubmitted editor marker is a terminal-consumption barrier after /changelog.
 # D22 owns the different bundled product documents. Compare every source-derived
 # release header in its original reversed order, without aliasing or deduplication.
+# Complete terminal history exists only in regular mode, which Pi 1.0.0 no longer
+# draws by default: the fullscreen alternate screen has no scrollback. A tmux pane
+# is limited to 10000 rows, and Pi's rendered changelog exceeds them (a 10000-row
+# fullscreen pane showed 190 of its release headers, without What's New), so the
+# scenario selects the documented --tui-mode regular on both binaries.
+# The contract under test, changelog.ts parsing and interactive-mode.ts ordering,
+# does not depend on the mode; 04-changelog-structure covers /changelog in fullscreen.
 # lint-known-gap: D22 documents differ; cross-product body/style equality is not
 # this contract. changelog_headers_complete checks each independent document.
 name = "11-changelog-complete-history"
@@ -38,8 +45,8 @@ wait_timeout_seconds = 10
 [env]
 pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent-collapse"]
 pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-collapse"]
-pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
-pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pig_args = ["--no-extensions", "--tui-mode", "regular", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--tui-mode", "regular", "--session-dir", "{{TEMP}}/sessions"]
 
 [assert]
 both_reach_ready = true

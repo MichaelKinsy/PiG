@@ -7,8 +7,6 @@ import (
 	"sync"
 	"testing"
 	"testing/synctest"
-
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 )
 
 type closeGateTransport struct {
@@ -220,19 +218,12 @@ func TestBindingRebindAndDisposeRejectWithAggregateErrorMessageOnly(t *testing.T
 	}
 }
 
-// upstream: state.ts:115 throws AggregateError(errors, "Replicated state listeners failed") for more than one listener failure; the message excludes the causes.
+// upstream: state.ts:230-238 (MutableReplicatedStateImpl.change) throws AggregateError(errors, "Replicated state listeners failed") for more than one exact publication listener failure; the message excludes the causes. Subscriber callbacks are not among them since 1.0.0: their failures are reported (state-delivery.test.ts).
 func TestReplicatedStateListenerFailuresAggregateMessageOnly(t *testing.T) {
 	state := mustState(t)
 	first, second := errors.New("first listener"), errors.New("second listener")
 	for _, failure := range []error{first, second} {
-		stop, err := state.Subscribe(func(_ *counterState, _ context.Context, info pico3.ReplicatedStateDelivery) {
-			if info.Kind == DeliveryUpdate {
-				panic(failure)
-			}
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		stop := state.core.subscribeOps(func(context.Context, []Op, int) { panic(failure) })
 		defer stop()
 	}
 	err := state.Change(context.Background(), func(value *counterState) error { value.Count++; return nil })

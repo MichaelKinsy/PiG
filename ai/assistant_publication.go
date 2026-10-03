@@ -26,7 +26,7 @@ func cleanupAssistantPublication(cleanup assistantPublicationCleanup) {
 }
 
 // The registry preserves source-object identity without retaining consumed messages or mutating caller-owned public structs. Builders publish their own cells; forwarded views keep the original cell.
-func (stream *AssistantMessageEventStream) publishPartialLocked(message *AssistantMessage) *AssistantMessage {
+func (stream *AssistantMessageEventStream) publishPartialLocked(message *AssistantMessage, replacements assistantMessageReplacements) *AssistantMessage {
 	if message == nil || message.observation != nil {
 		return message
 	}
@@ -50,20 +50,20 @@ func (stream *AssistantMessageEventStream) publishPartialLocked(message *Assista
 		cell = newAssistantMessageCell(message)
 		publication.cell = weak.Make(cell)
 	} else {
-		cell.publish(message, assistantMessageReplacements{})
+		cell.publish(message, replacements)
 	}
 	view := cell.view()
 	runtime.KeepAlive(message)
 	return view
 }
 
-func (stream *AssistantMessageEventStream) publishTerminalLocked(message *AssistantMessage) {
+func (stream *AssistantMessageEventStream) publishTerminalLocked(message *AssistantMessage, replacements assistantMessageReplacements) {
 	if message == nil {
 		return
 	}
 	if publication := stream.publications[weak.Make(message)]; publication != nil {
 		if cell := publication.cell.Value(); cell != nil {
-			cell.publish(message, assistantMessageReplacements{})
+			cell.publish(message, replacements)
 		}
 	}
 	runtime.KeepAlive(message)

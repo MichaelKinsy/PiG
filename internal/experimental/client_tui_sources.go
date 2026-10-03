@@ -13,7 +13,6 @@ import (
 	"golang.org/x/text/collate"
 	"golang.org/x/text/language"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/experimental/services"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -50,7 +49,7 @@ type RunClientTuiOptions struct {
 type preparedClientSession struct {
 	server              ClientTuiServer
 	summary             services.SessionSummary
-	presentationPlugins pico3.JsonValue
+	presentationPlugins chord.JsonValue
 }
 
 type clientSessionFeature struct {

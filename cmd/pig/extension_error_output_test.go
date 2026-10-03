@@ -53,6 +53,7 @@ func TestRPCModeOutputsExtensionErrors(t *testing.T) {
 // (${err.extensionPath}): ${err.error}`) in text and json modes alike. Pig
 // registered no listener in either, so handler failures were silent.
 func TestPrintModeWritesExtensionErrorsToStderr(t *testing.T) {
+	t.Parallel()
 	bin := buildPigBinaryForSignalTest(t)
 	fixture := failingHandlerFixture(t)
 	for _, mode := range []string{"text", "json"} {

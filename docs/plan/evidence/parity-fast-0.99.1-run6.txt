@@ -1,0 +1,41 @@
+make parity-fast after merging 9a and j5-ledgers (47 scenarios differ; 160 in run 1, 136 in run 5).
+Scenarios by family; owners are in docs/plan/upgrade-0.99.1-progress.md.
+
+extensions-runtime (10)
+  06-eventbus-pubsub 21-packed-log-reload-cleanup 24-tool-renderers-collapsed 25-tool-renderers-expanded 26-extension-load-order 28-prompt-precedence 29-export-tool-renderers 34-extension-process-identity 55-package-manifest-startup 56-node-lazy-imports
+session (5)
+  10-terminal-disconnect-exit 11-session-fork-label-boundaries 27-replaced-session-context 28-session-reload-ui 29-session-rebind-ui
+export-html (5)
+  01-export-cli-plain 02-export-cli-ansi 03-export-cli-tools 04-export-cli-full-mix 06-export-cli-skills
+selectors (4)
+  01-config-empty 10-login-subscription-providers 14-config-ctrl-c-exits 15-config-escape-exits
+rpc (3)
+  17-rpc-abort-retry 26-rpc-session-stats-context-estimate 41-rpc-tools-allowlist-overrides-no-tools
+startup (3)
+  05-startup-loaded-resources 07-startup-package-entry-shapes 09-startup-package-glob-collisions
+settings (3)
+  02-settings-selector 05-settings-thinking-submenu 09-settings-tmux-image-capability
+autocomplete (2)
+  01-slash-popup 12-editor-completion-lifecycle
+clipboard-images (2)
+  05-kitty-settings-visible 07-clipboard-bmp-command-normalization
+ai-sdk (1)
+  01-ai-sdk-helpers
+tools (1)
+  17-tool-rpc-error-and-bash-wire
+project-trust (1)
+  10-startup-trust-prompt-wording
+model-resolver-selector (1)
+  21-post-login-default-model
+oauth (1)
+  06-oauth-callback-page
+providers-faux-streaming (1)
+  19-http-proxy-connect
+model-runtime-store-catalog (1)
+  18-images-runtime-auth
+footer (1)
+  10-interactive-thinking-wire
+interactive-rendering (1)
+  40-suspend-resume-session
+compaction (1)
+  13-compaction-completion-auth-errors

@@ -113,7 +113,7 @@ func TestUpstreamNativeX11Transfers(t *testing.T) {
 	}
 	directory := t.TempDir()
 	producer := filepath.Join(directory, "x11-test")
-	source := filepath.Join("..", "..", ".upstream", "v0.87.1", "packages", "tui", "test", "fixtures", "clipboard-x11-test.c")
+	source := filepath.Join("..", "..", ".upstream", "current", "packages", "tui", "test", "fixtures", "clipboard-x11-test.c")
 	if output, err := exec.CommandContext(t.Context(), "cc", "-std=c11", "-D_POSIX_C_SOURCE=200809L", "-Wall", "-Wextra", "-Werror", "-pthread", source, "-lxcb", "-ldl", "-o", producer).CombinedOutput(); err != nil {
 		t.Fatalf("C selection owner: %v\n%s", err, output)
 	}

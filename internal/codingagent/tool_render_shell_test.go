@@ -115,7 +115,7 @@ func TestInteractiveMode_ShellToolUpdateUsesShellRenderer(t *testing.T) {
 	}
 	args := json.RawMessage(`{"command":"Get-Content log.txt"}`)
 	m.handleAgentEvent(agent.ToolExecutionStartEvent{ToolCallID: "ps-1", ToolName: "powershell", Args: args})
-	m.handleAgentEvent(agent.ToolExecutionUpdateEvent{ToolCallID: "ps-1", ToolName: "powershell", Content: "1\n2\n3\n4\n5\n6", Args: args})
+	m.handleAgentEvent(agent.ToolExecutionUpdateEvent{ToolCallID: "ps-1", ToolName: "powershell", Args: args, PartialResult: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "1\n2\n3\n4\n5\n6"}}}})
 	comp := m.toolByID["ps-1"]
 	if comp == nil || comp.BodyRenderer == nil {
 		t.Fatal("powershell update did not install the shell body renderer")
@@ -173,7 +173,10 @@ func TestShellResultRendersExecutedTruncation(t *testing.T) {
 		t.Fatalf("details: %#v", result.Details)
 	}
 	t.Cleanup(func() { _ = os.Remove(details.FullOutputPath) })
-	rendered := stripANSITest(strings.Join(toolBodyRenderer("bash", result, nil)(120, false), "\n"))
+	// The warning is one "[Full output: <path>. Truncated: ...]" line that wraps at the
+	// render width, and a Windows temp path is long enough to split it.
+	width := 120 + len(details.FullOutputPath)
+	rendered := stripANSITest(strings.Join(toolBodyRenderer("bash", result, nil)(width, false), "\n"))
 	if !strings.Contains(rendered, "Truncated: showing 2000 of 3000") ||
 		!strings.Contains(rendered, "lines]") || strings.Contains(rendered, "[Showing lines") {
 		t.Fatalf("truncated result card: %s", rendered)

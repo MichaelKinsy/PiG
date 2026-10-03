@@ -1,0 +1,63 @@
+# port-99-f6f-node wiring red: the real binary in print, json, rpc and interactive mode; a Node and a Go extension read pi.getSettings(), ctx.tools and ctx.executeTool() from inside their tool (go1.27.1, node v24.19.0, isolated HOME/PIG_HOME/PIG_CODING_AGENT_DIR)
+# Run against a tree whose Node runtime implements the API (regenerated archive), so the only missing piece is the mode wiring of HostCallbacks.GetSettings/GetCallableTools/ExecuteTool.
+
+--- FAIL: TestExtensionToolContextIsWiredInEveryMode (8.04s)
+    --- FAIL: TestExtensionToolContextIsWiredInEveryMode/node/print (0.61s)
+        extension_tool_context_wiring_test.go:229: the extension's calls failed: [getSettings: settings are not available: the host has not sent them]
+        extension_tool_context_wiring_test.go:229: getSettings().quietStartup = <nil>, want true from the agent directory's settings.json
+        extension_tool_context_wiring_test.go:229: ctx.tools = [], want it to list echo_bridge
+        extension_tool_context_wiring_test.go:229: ctx.tools = [], want it to list wired_helper
+        extension_tool_context_wiring_test.go:229: nested call id = "call_test_faux_1/0", want "call_test_faux_1/1"
+        extension_tool_context_wiring_test.go:229: nested outcome = "Nested tool calls are not available in this context" (isError true), want the helper's result
+    --- FAIL: TestExtensionToolContextIsWiredInEveryMode/node/json (0.64s)
+        extension_tool_context_wiring_test.go:229: the extension's calls failed: [getSettings: settings are not available: the host has not sent them]
+        extension_tool_context_wiring_test.go:229: getSettings().quietStartup = <nil>, want true from the agent directory's settings.json
+        extension_tool_context_wiring_test.go:229: ctx.tools = [], want it to list echo_bridge
+        extension_tool_context_wiring_test.go:229: ctx.tools = [], want it to list wired_helper
+        extension_tool_context_wiring_test.go:229: nested call id = "call_test_faux_1/0", want "call_test_faux_1/1"
+        extension_tool_context_wiring_test.go:229: nested outcome = "Nested tool calls are not available in this context" (isError true), want the helper's result
+    --- FAIL: TestExtensionToolContextIsWiredInEveryMode/node/rpc (0.60s)
+        extension_tool_context_wiring_test.go:229: the extension's calls failed: [getSettings: settings are not available: the host has not sent them]
+        extension_tool_context_wiring_test.go:229: getSettings().quietStartup = <nil>, want true from the agent directory's settings.json
+        extension_tool_context_wiring_test.go:229: ctx.tools = [], want it to list echo_bridge
+        extension_tool_context_wiring_test.go:229: ctx.tools = [], want it to list wired_helper
+        extension_tool_context_wiring_test.go:229: nested call id = "call_test_faux_1/0", want "call_test_faux_1/1"
+        extension_tool_context_wiring_test.go:229: nested outcome = "Nested tool calls are not available in this context" (isError true), want the helper's result
+    --- FAIL: TestExtensionToolContextIsWiredInEveryMode/node/interactive (0.93s)
+        extension_tool_context_wiring_test.go:229: the extension's calls failed: [getSettings: settings are not available: the host has not sent them]
+        extension_tool_context_wiring_test.go:229: getSettings().quietStartup = <nil>, want true from the agent directory's settings.json
+        extension_tool_context_wiring_test.go:229: ctx.tools = [], want it to list echo_bridge
+        extension_tool_context_wiring_test.go:229: ctx.tools = [], want it to list wired_helper
+        extension_tool_context_wiring_test.go:229: nested call id = "call_test_faux_1/0", want "call_test_faux_1/1"
+        extension_tool_context_wiring_test.go:229: nested outcome = "Nested tool calls are not available in this context" (isError true), want the helper's result
+    --- FAIL: TestExtensionToolContextIsWiredInEveryMode/go/print (0.66s)
+        extension_tool_context_wiring_test.go:229: the extension's calls failed: [getSettings: the host sent no settings]
+        extension_tool_context_wiring_test.go:229: getSettings().quietStartup = <nil>, want true from the agent directory's settings.json
+        extension_tool_context_wiring_test.go:229: ctx.tools = [], want it to list echo_bridge
+        extension_tool_context_wiring_test.go:229: ctx.tools = [], want it to list wired_helper
+        extension_tool_context_wiring_test.go:229: nested call id = "call_test_faux_1/0", want "call_test_faux_1/1"
+        extension_tool_context_wiring_test.go:229: nested outcome = "Nested tool calls are not available in this context" (isError true), want the helper's result
+    --- FAIL: TestExtensionToolContextIsWiredInEveryMode/go/json (0.55s)
+        extension_tool_context_wiring_test.go:229: the extension's calls failed: [getSettings: the host sent no settings]
+        extension_tool_context_wiring_test.go:229: getSettings().quietStartup = <nil>, want true from the agent directory's settings.json
+        extension_tool_context_wiring_test.go:229: ctx.tools = [], want it to list echo_bridge
+        extension_tool_context_wiring_test.go:229: ctx.tools = [], want it to list wired_helper
+        extension_tool_context_wiring_test.go:229: nested call id = "call_test_faux_1/0", want "call_test_faux_1/1"
+        extension_tool_context_wiring_test.go:229: nested outcome = "Nested tool calls are not available in this context" (isError true), want the helper's result
+    --- FAIL: TestExtensionToolContextIsWiredInEveryMode/go/rpc (0.55s)
+        extension_tool_context_wiring_test.go:229: the extension's calls failed: [getSettings: the host sent no settings]
+        extension_tool_context_wiring_test.go:229: getSettings().quietStartup = <nil>, want true from the agent directory's settings.json
+        extension_tool_context_wiring_test.go:229: ctx.tools = [], want it to list echo_bridge
+        extension_tool_context_wiring_test.go:229: ctx.tools = [], want it to list wired_helper
+        extension_tool_context_wiring_test.go:229: nested call id = "call_test_faux_1/0", want "call_test_faux_1/1"
+        extension_tool_context_wiring_test.go:229: nested outcome = "Nested tool calls are not available in this context" (isError true), want the helper's result
+    --- FAIL: TestExtensionToolContextIsWiredInEveryMode/go/interactive (0.93s)
+        extension_tool_context_wiring_test.go:229: the extension's calls failed: [getSettings: the host sent no settings]
+        extension_tool_context_wiring_test.go:229: getSettings().quietStartup = <nil>, want true from the agent directory's settings.json
+        extension_tool_context_wiring_test.go:229: ctx.tools = [], want it to list echo_bridge
+        extension_tool_context_wiring_test.go:229: ctx.tools = [], want it to list wired_helper
+        extension_tool_context_wiring_test.go:229: nested call id = "call_test_faux_1/0", want "call_test_faux_1/1"
+        extension_tool_context_wiring_test.go:229: nested outcome = "Nested tool calls are not available in this context" (isError true), want the helper's result
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/cmd/pig	8.097s
+FAIL

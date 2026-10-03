@@ -19,7 +19,12 @@ driver = "interactive-tmux"
 model = "test-faux/faux-1"
 
 [env]
-pig = ["PIG_TEST_FAUX=1"]
+# 256 colors in both binaries: PiG's header then takes Pi's two logo lines with
+# the PiG. text mark (D2), so the transcript behind the centered overlay has the
+# same rows in both binaries. In truecolor PiG's 7-line pig head makes the
+# header 2 rows taller and the overlay covers different rows.
+pig = ["PIG_TEST_FAUX=1", "COLORTERM="]
+pi = ["COLORTERM="]
 pig_args = ["--no-extensions"]
 pig_extensions = ["testdata/ext/late-welcome.mjs"]
 pi_extensions = [
@@ -28,8 +33,11 @@ pi_extensions = [
 ]
 
 [tmux]
-width = 100
-height = 35
+# At 42 rows the centered 4-row overlay covers rows 19-22, the editor frame and the
+# footer's masked cwd; at 35 it covered the resource listing, which names Pi's
+# faux provider extension.
+width = 52
+height = 42
 ready_pattern_pig = "LATE WELCOME"
 ready_pattern_pi = "LATE WELCOME"
 ready_timeout_seconds = 30

@@ -41,8 +41,8 @@ func TestTotalTokensUpstream(t *testing.T) {
 		{"cloudflare-ai-gateway", "workers-ai/@cf/moonshotai/kimi-k2.6", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:362
 		{"huggingface", "moonshotai/Kimi-K2.5", "", false, false, ""},
-		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:381
-		{"together", "moonshotai/Kimi-K2.6", "", false, false, "high"},
+		// .upstream/v0.99.1/packages/ai/test/total-tokens.test.ts:381 (0.99.1 moved Together to Kimi-K3)
+		{"together", "moonshotai/Kimi-K3", "", false, false, "high"},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:403
 		{"baseten", "zai-org/GLM-5.2", "", false, false, "high"},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:425

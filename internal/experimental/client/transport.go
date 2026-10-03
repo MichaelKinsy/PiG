@@ -35,7 +35,7 @@ func NewServerError(failure protocol.ProtocolError) *ServerError {
 	return &ServerError{Code: failure.Code, Message: failure.Message}
 }
 
-// DisconnectedError retains an underlying transport failure when there is one.
+// DisconnectedError retains an underlying transport failure when there is one. A composite literal is its constructor; disconnectedError supplies the upstream default message (stubgen:omit NewDisconnectedError).
 type DisconnectedError struct {
 	Message string
 	Cause   error

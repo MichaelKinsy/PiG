@@ -33,7 +33,6 @@ The Go API inventory already excludes both TUI test-support packages (`parity/cm
 
 Do not infer that a subpackage is private merely because `examples/sdk` does not import it. The audit deliberately retains these surfaces:
 
-- All `agent/harness` and `agent/search` packages remain public. Pi publishes harness/session/testing and reducer entry points in `packages/agent/package.json:17-39`, and exports harness, tool, output, and search contracts in `packages/agent/src/index.ts:42-160`. Their Go packages form the corresponding contract and type closure.
 - `tui/widthx` remains public. Pi exports `getOsc8LinkAtColumn`, `sliceByColumn`, `stripTerminalSequences`, `truncateToWidth`, `visibleWidth`, and `wrapTextWithAnsi` at `packages/tui/src/index.ts:147-156`. PiG implements those public utilities in this package; moving it would remove library capabilities even though the root package still compiled.
 - `coding/extension` and `coding/extension/host/inproc` remain public. `coding.RuntimeOptions.NewExtensions`, `Runtime.NewExtensionRunner`, and `coding.SessionOptions.Runner` expose their types (`coding/runtime.go:35-42,151`, `coding/session.go:231`). Hiding either package would change the usable embedding API.
 - `coding/rpcclient` remains public. Both `docs/site/docs/rpc.md` and `docs/site/docs/cli-integration.md` explicitly tell external Go programs to import it.

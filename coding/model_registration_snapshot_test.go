@@ -92,7 +92,7 @@ func snapshotRegistration(apiKey string) extension.ProviderConfig {
 }
 
 func coreRegistration(id, apiKey string) ProviderConfigInput {
-	return ProviderConfigInput{API: ai.APIOpenAICompletions, BaseURL: "https://registered.invalid/v1", APIKey: apiKey, Models: []*ai.Model{nativeCompatModel("registered", id, "https://registered.invalid/v1")}}
+	return ProviderConfigInput{API: ai.APIOpenAICompletions, BaseURL: "https://registered.invalid/v1", APIKey: apiKey, Models: []ai.AnyModel{nativeCompatModel("registered", id, "https://registered.invalid/v1")}}
 }
 
 // Pi model-runtime.ts:753-797 updates the shared snapshot synchronously in registerProvider and unregisterProvider; model-registry.ts:54-56 and every selector read that snapshot. AgentSession (agent-session.ts:3128-3139) and interactive listeners run after the update, so Pig's change observers must see it too. The gate proves the scheduled refresh is not the source.

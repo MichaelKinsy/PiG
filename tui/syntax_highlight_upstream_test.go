@@ -4,78 +4,107 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/tui/internal/hljs"
 )
 
-// Ports packages/coding-agent/test/syntax-highlight.test.ts:37-98 through the public highlighter. Upstream drives highlight.js and its HTML renderer; PiG lexes with chroma, which emits tokens rather than HTML. Case :37 keeps only its eager-availability half (chroma registers every lexer statically, so upstream's deferred-loading assertion that "ada" is unsupported before loadAllHighlightLanguages has no Go counterpart). Case :67 (an unscoped nested span such as language-xml inside a string) is designed out: chroma's delegating lexers emit typed tokens, so no unscoped nested span exists.
+// Ports packages/coding-agent/test/syntax-highlight.test.ts:37-98 (the "syntax highlight renderer" cases).
 func TestSyntaxHighlightRendererUpstream(t *testing.T) {
-	withTrueColor(t, true)
-	SetTheme("dark")
-	th := ActiveTheme()
-	styled := func(fg, text string) string { return fg + text + SGRFgReset }
-
-	// syntax-highlight.test.ts:37 "loads the twenty most common languages at startup and defers the rest", eager half; "ada" also highlights.
-	t.Run("supports the twenty most common languages and the uncommon rest", func(t *testing.T) {
-		samples := map[string]string{
-			"python": "def f():\n    return 1", "java": "public class A { int x = 1; }", "go": "func main() { return }",
-			"javascript": "const x = 1", "cpp": "int main() { return 0; }", "typescript": "const x: number = 1",
-			"php": "<?php function f() { return 1; }", "ruby": "def f\n  1\nend", "c": "int main(void) { return 0; }",
-			"csharp": "public class A { int x = 1; }", "nix": "let x = 1; in x", "bash": "if true; then echo hi; fi",
-			"rust": "fn main() { let x = 1; }", "scala": "def f = 1", "kotlin": "fun f() = 1", "swift": "func f() -> Int { 1 }",
-			"dart": "int f() { return 1; }", "groovy": "def x = 1", "perl": "my $x = 1;", "lua": "local x = 1",
-			"ada": "procedure Main is begin null; end Main;",
-		}
-		if len(samples) != 21 {
-			t.Fatalf("samples=%d, want the twenty eager languages plus ada", len(samples))
-		}
-		for language, code := range samples {
-			lines := HighlightCode(code, language)
-			if !strings.Contains(strings.Join(lines, "\n"), "\x1b[38;2;") {
-				t.Errorf("%s: highlighter left the code unstyled: %q", language, lines)
-			}
-			if got := stripANSI(strings.Join(lines, "\n")); got != code {
-				t.Errorf("%s: text changed: %q", language, got)
+	// syntax-highlight.test.ts:37 "loads the twenty most common languages at startup and defers the rest".
+	t.Run("loads the twenty most common languages at startup and defers the rest", func(t *testing.T) {
+		eagerLanguages := []string{"python", "java", "go", "javascript", "cpp", "typescript", "php", "ruby", "c", "csharp", "nix", "bash", "rust", "scala", "kotlin", "swift", "dart", "groovy", "perl", "lua"}
+		startup := hljs.NewRegistry()
+		for _, language := range eagerLanguages {
+			if !startup.SupportsLanguage(language) {
+				t.Errorf("%s is not loaded at startup", language)
 			}
 		}
-	})
-	// syntax-highlight.test.ts:44 "renders highlighted spans with the provided theme": exact styled output for a keyword followed by plain text.
-	t.Run("renders highlighted spans with the theme", func(t *testing.T) {
-		if got, want := HighlightCode("const value", "typescript")[0], styled(th.SyntaxKeyword, "const")+" value"; got != want {
-			t.Fatalf("got %q, want %q", got, want)
+		if startup.SupportsLanguage("ada") {
+			t.Fatal("ada is loaded at startup")
+		}
+		startup.LoadAllLanguages()
+		if !startup.SupportsLanguage("ada") {
+			t.Fatal("ada is not loaded after loading all languages")
+		}
+		LoadAllHighlightLanguages()
+		if !SupportsLanguage("ada") {
+			t.Fatal("LoadAllHighlightLanguages did not load ada")
 		}
 	})
-	// syntax-highlight.test.ts:51 "decodes HTML entities emitted by highlight.js": markup text and character references reach the output byte-for-byte.
-	t.Run("keeps markup and character references as written", func(t *testing.T) {
-		const source = `<tag attr="value">&#x41;A</tag>`
-		if got := stripANSI(strings.Join(HighlightCode(source, "html"), "\n")); got != source {
-			t.Fatalf("text=%q, want %q", got, source)
+	// syntax-highlight.test.ts:44 "renders highlighted spans with the provided theme".
+	t.Run("renders highlighted spans with the provided theme", func(t *testing.T) {
+		rendered := RenderHighlightedHtml(`<span class="hljs-keyword">const</span> value`, HighlightTheme{
+			"keyword": func(text string) string { return "[keyword:" + text + "]" },
+		})
+		if rendered != "[keyword:const] value" {
+			t.Fatalf("rendered %q", rendered)
 		}
 	})
-	// syntax-highlight.test.ts:56 "inherits parent formatting for unmapped nested scopes": an interpolation inside a string inherits the string style as one segment.
+	// syntax-highlight.test.ts:51 "decodes HTML entities emitted by highlight.js".
+	t.Run("decodes HTML entities emitted by highlight.js", func(t *testing.T) {
+		rendered := RenderHighlightedHtml("&lt;tag attr=&quot;value&quot;&gt;&amp;#x41;&#65;&lt;/tag&gt;", nil)
+		if rendered != `<tag attr="value">&#x41;A</tag>` {
+			t.Fatalf("rendered %q", rendered)
+		}
+	})
+	// syntax-highlight.test.ts:56 "inherits parent formatting for unmapped nested scopes".
 	t.Run("inherits parent formatting for unmapped nested scopes", func(t *testing.T) {
 		interpolation := "$" + "{x}"
-		want := styled(th.SyntaxString, "`a") + styled(th.SyntaxString, interpolation) + styled(th.SyntaxString, "b`")
-		if got := HighlightCode("`a"+interpolation+"b`", "javascript")[0]; got != want {
-			t.Fatalf("got %q, want %q", got, want)
+		rendered := RenderHighlightedHtml(`<span class="hljs-string">a<span class="hljs-subst">`+interpolation+`</span>b</span>`, HighlightTheme{
+			"string": func(text string) string { return "[string:" + text + "]" },
+		})
+		if want := "[string:a][string:" + interpolation + "][string:b]"; rendered != want {
+			t.Fatalf("rendered %q, want %q", rendered, want)
 		}
-		wantNumber := styled(th.SyntaxString, "`a") + styled(th.SyntaxString, "${") + styled(th.SyntaxNumber, "1") + styled(th.SyntaxString, "}") + styled(th.SyntaxString, "b`")
-		if got := HighlightCode("`a${1}b`", "javascript")[0]; got != wantNumber {
-			t.Fatalf("styled nested token: got %q, want %q", got, wantNumber)
-		}
-		wantPython := styled(th.SyntaxString, "f") + styled(th.SyntaxString, `"a`) + styled(th.SyntaxString, "{x}") + styled(th.SyntaxString, `b"`)
-		if got := HighlightCode(`f"a{x}b"`, "python")[0]; got != wantPython {
-			t.Fatalf("python interpolation: got %q, want %q", got, wantPython)
+	})
+	// syntax-highlight.test.ts:67 "keeps parent formatting across unscoped nested spans".
+	t.Run("keeps parent formatting across unscoped nested spans", func(t *testing.T) {
+		rendered := RenderHighlightedHtml(`<span class="hljs-string">a<span class="language-xml">b</span>c</span>`, HighlightTheme{
+			"string": func(text string) string { return "[string:" + text + "]" },
+		})
+		if rendered != "[string:a][string:b][string:c]" {
+			t.Fatalf("rendered %q", rendered)
 		}
 	})
 	// syntax-highlight.test.ts:74 "highlights code through highlight.js".
-	t.Run("highlights code with the lexer", func(t *testing.T) {
-		got := HighlightCode("const value = 1", "typescript")[0]
-		if !strings.Contains(got, styled(th.SyntaxKeyword, "const")) || !strings.Contains(got, styled(th.SyntaxNumber, "1")) {
-			t.Fatalf("got %q", got)
+	t.Run("highlights code through highlight.js", func(t *testing.T) {
+		if !SupportsLanguage("typescript") {
+			t.Fatal("typescript is not supported")
+		}
+		rendered, err := Highlight("const value = 1", HighlightOptions{
+			Language:       "typescript",
+			IgnoreIllegals: true,
+			Theme: HighlightTheme{
+				"keyword": func(text string) string { return "[keyword:" + text + "]" },
+				"number":  func(text string) string { return "[number:" + text + "]" },
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(rendered, "[keyword:const]") || !strings.Contains(rendered, "[number:1]") {
+			t.Fatalf("rendered %q", rendered)
 		}
 	})
 }
 
-// Interpolation inheritance ends at the string's closing delimiter, as renderHighlightedHtml pops the nested scope at the string's closing span (utils/syntax-highlight.ts:146-198). chroma.Coalesce merges adjacent delimiters ("}${", "}{", "}#{", ")\(", "}}") and some lexers fold a conversion into the closer ("!r}", "=}"), so code after the string must stay unstyled by the string color.
+// String interpolations take the string color through renderHighlightedHtml's scope inheritance; a styled nested token keeps its own color. Expected bytes are Pi 1.0.0 highlightCode output for the dark theme with truecolor.
+func TestSyntaxHighlightInterpolationInheritsTheString(t *testing.T) {
+	withTrueColor(t, true)
+	SetTheme("dark")
+	styled := func(token, text string) string { return ActiveTheme().FgText(token, text) }
+	for _, tc := range []struct{ lang, code, want string }{
+		{"javascript", "`a${x}b`", styled("syntaxString", "`a") + styled("syntaxString", "${x}") + styled("syntaxString", "b`")},
+		{"javascript", "`a${1}b`", styled("syntaxString", "`a") + styled("syntaxString", "${") + styled("syntaxNumber", "1") + styled("syntaxString", "}") + styled("syntaxString", "b`")},
+		{"python", `f"a{x}b"`, styled("syntaxString", `f"a`) + styled("syntaxString", "{x}") + styled("syntaxString", `b"`)},
+	} {
+		if got := HighlightCode(tc.code, tc.lang)[0]; got != tc.want {
+			t.Errorf("%s %q: got %q, want %q", tc.lang, tc.code, got, tc.want)
+		}
+	}
+}
+
+// Interpolation inheritance ends at the string's closing delimiter, as renderHighlightedHtml pops the nested scope at the string's closing span, so code after the string stays out of the string color.
 func TestSyntaxHighlightInterpolationEndsWithTheString(t *testing.T) {
 	withTrueColor(t, true)
 	SetTheme("dark")

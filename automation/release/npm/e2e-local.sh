@@ -3,9 +3,10 @@
 # SPDX-License-Identifier: MIT
 #
 # End-to-end local test of the npm distribution, with no registry access:
-#   1. cross-compile the six release targets (CGO_ENABLED=0, as release-candidate.yml does)
+#   1. cross-compile the seven release targets (CGO_ENABLED=0, as release-candidate.yml does for all but android,
+#      whose release build needs the NDK; this packaging test does not run the android binary)
 #      and lay them out as release archives plus SHA256SUMS;
-#   2. generate and `npm pack` the seven packages with pack_npm.py;
+#   2. generate and `npm pack` the eight packages with pack_npm.py;
 #   3. install the launcher and the host platform package into a temp prefix and
 #      run `pig --version` through the npm-installed launcher;
 #   4. install the launcher alone and check its missing-platform-package error.
@@ -22,7 +23,7 @@ npm_out="$work/npm"
 mkdir -p "$release" "$stage" "$npm_out"
 echo "e2e: version $version, workdir $work"
 
-for target in linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 windows-amd64 windows-arm64; do
+for target in android-arm64 linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 windows-amd64 windows-arm64; do
   goos=${target%-*}
   goarch=${target#*-}
   name="pig-${version}-${target}"
@@ -33,7 +34,7 @@ for target in linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 windows-amd64 wi
     -ldflags "-s -w -X main.Build=npm-e2e" -o "$stage/$name/$binary" ./cmd/pig) &
 done
 wait
-for target in linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 windows-amd64 windows-arm64; do
+for target in android-arm64 linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 windows-amd64 windows-arm64; do
   name="pig-${version}-${target}"
   cp "$repo/LICENSE" "$repo/NOTICE" "$repo/THIRD_PARTY_NOTICES.md" "$stage/$name/"
   if [[ "$target" = windows-* ]]; then
@@ -48,7 +49,10 @@ python3 "$repo/automation/release/npm/pack_npm.py" --archives "$release" --versi
 
 case "$(uname -s)" in
   Darwin) host_os=darwin ;;
-  Linux) host_os=linux ;;
+  Linux)
+    # Node on Termux reports process.platform "android", so npm installs the android package.
+    if [ "$(uname -o 2>/dev/null)" = Android ]; then host_os=android; else host_os=linux; fi
+    ;;
   *) host_os=win32 ;;
 esac
 case "$(uname -m)" in
@@ -58,10 +62,10 @@ case "$(uname -m)" in
 esac
 launcher_tgz=$(awk '$1 == "@pi-in-go/pig" {print $2}' "$npm_out/publish-order.txt")
 host_tgz=$(awk -v n="@pi-in-go/pig-${host_os}-${host_cpu}" '$1 == n {print $2}' "$npm_out/publish-order.txt")
-test "$(wc -l <"$npm_out/publish-order.txt" | tr -d ' ')" = 7
+test "$(wc -l <"$npm_out/publish-order.txt" | tr -d ' ')" = 8
 test "$(tail -n 1 "$npm_out/publish-order.txt" | cut -d' ' -f1)" = "@pi-in-go/pig"
 
-# --omit=optional keeps npm from asking the registry for the five other
+# --omit=optional keeps npm from asking the registry for the six other
 # (unpublished) platform packages; the host package is installed explicitly.
 prefix="$work/prefix"
 export npm_config_cache="$work/npm-cache" npm_config_audit=false npm_config_fund=false npm_config_update_notifier=false

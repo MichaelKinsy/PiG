@@ -3,7 +3,10 @@ import fs from "node:fs";
 import path from "node:path";
 import ts from "typescript";
 
-export const TRACKED_PACKAGES = ["agent", "ai", "coding-agent", "tui"];
+export const TRACKED_PACKAGES = ["agent", "ai", "codemode", "coding-agent", "mcp", "tui"];
+
+/** Packages upstream added after 0.87.1. A source mirror or published install without one is not an error. */
+export const OPTIONAL_PACKAGES = new Set(["codemode", "mcp"]);
 
 export function semanticHash(value) {
   return `sha256:${crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex")}`;
@@ -25,7 +28,9 @@ function packageKey(name) {
   const keys = {
     "@earendil-works/pi-agent-core": "agent",
     "@earendil-works/pi-ai": "ai",
+    "@earendil-works/pi-codemode": "codemode",
     "@earendil-works/pi-coding-agent": "coding-agent",
+    "@earendil-works/pi-mcp": "mcp",
     "@earendil-works/pi-tui": "tui",
   };
   const key = keys[name];
@@ -95,27 +100,33 @@ function expandTarget(packageRoot, subpath, target) {
 }
 
 function resolveSourcePackages(root) {
-  return TRACKED_PACKAGES.map((key) => path.join(root, "packages", key));
+  return TRACKED_PACKAGES.map((key) => ({ key, root: path.join(root, "packages", key) }));
 }
 
 function resolvePublishedPackages(codingAgentRoot) {
+  const scoped = (name) => path.join(codingAgentRoot, "node_modules", "@earendil-works", name);
   return [
-    path.join(codingAgentRoot, "node_modules", "@earendil-works", "pi-agent-core"),
-    path.join(codingAgentRoot, "node_modules", "@earendil-works", "pi-ai"),
-    codingAgentRoot,
-    path.join(codingAgentRoot, "node_modules", "@earendil-works", "pi-tui"),
+    { key: "agent", root: scoped("pi-agent-core") },
+    { key: "ai", root: scoped("pi-ai") },
+    { key: "codemode", root: scoped("pi-codemode") },
+    { key: "coding-agent", root: codingAgentRoot },
+    { key: "mcp", root: scoped("pi-mcp") },
+    { key: "tui", root: scoped("pi-tui") },
   ];
 }
 
 export function resolvePackages({ origin, root }) {
-  const packageRoots = origin === "source" ? resolveSourcePackages(root) : resolvePublishedPackages(root);
-  return packageRoots.map((packageRoot, index) => {
+  const candidates = origin === "source" ? resolveSourcePackages(root) : resolvePublishedPackages(root);
+  const present = candidates.filter(
+    ({ key, root: packageRoot }) => !OPTIONAL_PACKAGES.has(key) || fs.existsSync(path.join(packageRoot, "package.json")),
+  );
+  return present.map(({ key: expectedKey, root: packageRoot }) => {
     const manifestPath = path.join(packageRoot, "package.json");
     if (!fs.existsSync(manifestPath)) throw new Error(`package manifest not found: ${manifestPath}`);
     const manifest = readJSON(manifestPath);
     const key = packageKey(manifest.name);
-    if (key !== TRACKED_PACKAGES[index]) {
-      throw new Error(`package name mismatch at ${manifestPath}: expected ${TRACKED_PACKAGES[index]}, got ${manifest.name}`);
+    if (key !== expectedKey) {
+      throw new Error(`package name mismatch at ${manifestPath}: expected ${expectedKey}, got ${manifest.name}`);
     }
     const entrypoints = publicTargets(manifest).flatMap(({ subpath, target }) =>
       expandTarget(packageRoot, subpath, origin === "source" ? sourceTarget(packageRoot, target) : publishedTarget(packageRoot, target)),
@@ -426,10 +437,12 @@ function sourceLocation(root, symbol, fallback) {
   };
 }
 
-export function extractInventory({ origin, root, upstreamVersion, packageKeys = TRACKED_PACKAGES, dependencyRoot }) {
+export function extractInventory({ origin, root, upstreamVersion, packageKeys, dependencyRoot }) {
   if (ts.version !== "5.9.3") throw new Error(`TypeScript version skew: got ${ts.version}, want 5.9.3`);
-  const wanted = new Set(packageKeys);
-  const packages = resolvePackages({ origin, root }).filter((pkg) => wanted.has(pkg.key));
+  // Without an explicit list, every tracked package that this release has.
+  const resolved = resolvePackages({ origin, root });
+  const wanted = new Set(packageKeys ?? resolved.map((pkg) => pkg.key));
+  const packages = resolved.filter((pkg) => wanted.has(pkg.key));
   if (packages.length !== wanted.size) throw new Error(`requested package set was not resolved: ${[...wanted].join(",")}`);
   for (const pkg of packages) {
     if (pkg.version !== upstreamVersion) {
@@ -497,6 +510,20 @@ function walkFiles(root, suffix, out = []) {
   return out;
 }
 
+// Pi 0.99.1 publishes declaration maps without sourcesContent but keeps it in the JavaScript map that tsc emitted
+// for the same module. That map proves the same source when it names exactly the declaration map's sources.
+function siblingSourcesContent(declarationMapFile, declarationMap) {
+  const scriptMapFile = declarationMapFile.replace(/\.d\.ts\.map$/, ".js.map");
+  if (!fs.existsSync(scriptMapFile)) return undefined;
+  const scriptMap = readJSON(scriptMapFile);
+  const sources = declarationMap.sources ?? [];
+  const scriptSources = scriptMap.sources ?? [];
+  const contents = scriptMap.sourcesContent ?? [];
+  const sameSources = scriptSources.length === sources.length && scriptSources.every((source, index) => source === sources[index]);
+  const sameRoot = (scriptMap.sourceRoot ?? "") === (declarationMap.sourceRoot ?? "");
+  return sameSources && sameRoot && contents.length === sources.length ? contents : undefined;
+}
+
 export function verifyPublishedSources({ publishedRoot, sourceRoot, upstreamVersion }) {
   const problems = [];
   let checked = 0;
@@ -509,7 +536,8 @@ export function verifyPublishedSources({ publishedRoot, sourceRoot, upstreamVers
     for (const mapFile of walkFiles(dist, ".d.ts.map")) {
       const declarationMap = readJSON(mapFile);
       const sources = declarationMap.sources ?? [];
-      const contents = declarationMap.sourcesContent ?? [];
+      let contents = declarationMap.sourcesContent ?? [];
+      if (sources.length !== contents.length) contents = siblingSourcesContent(mapFile, declarationMap) ?? contents;
       if (sources.length !== contents.length) {
         problems.push(`${normalizePath(path.relative(publishedRoot, mapFile))}: sourcesContent is incomplete`);
         continue;

@@ -384,11 +384,11 @@ func TestTreeNodeAdapterSuppressesToolCallOnlyAssistant(t *testing.T) {
 	}
 }
 
-// Pi 0.87.1 themeItems marks the current theme with a "✓ " prefix column
+// Upstream 0.99.1 themeItems marks the current theme with a "✓ " prefix column
 // (settings/04-settings-theme-submenu probe).
 func TestThemeSubmenuMarksCurrentTheme(t *testing.T) {
-	sel := tui.NewSelectSubmenu("Theme", "Select a theme, or choose Automatic to follow terminal appearance.",
-		themeSelectItemsWithAutomatic([]string{"dark", "light"}, "dark"), "dark")
+	sel := tui.NewSelectSubmenu("Theme", "Select a theme, or choose automatic to follow terminal appearance.",
+		themeSelectItemsWithAutomatic([]string{"system", "dark", "light"}, "dark"), "dark")
 	var rows []string
 	for _, line := range sel.Render(100) {
 		plain := strings.TrimRight(stripANSI(line), " ")
@@ -397,7 +397,8 @@ func TestThemeSubmenuMarksCurrentTheme(t *testing.T) {
 		}
 	}
 	want := []string{
-		"    Automatic  Use separate themes for light and dark terminal appearance",
+		"    system     Theme created from your terminal's colors",
+		"    automatic  Use separate themes for light and dark terminal appearance",
 		"→ ✓ dark",
 		"    light",
 	}

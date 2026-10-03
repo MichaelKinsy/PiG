@@ -40,6 +40,10 @@ Add the directory that contains `pig.exe` to `PATH`, then open a new terminal. W
 
 The release workflow builds binaries with cgo disabled, so they do not depend on the system C library. Use `linux-amd64` when `uname -m` prints `x86_64` and `linux-arm64` when it prints `aarch64`. If a download fails with `permission denied`, run `chmod +x pig`; if the file sits on a `noexec` mount such as /tmp, move it to `~/.local/bin`.
 
+## Android (Termux)
+
+Termux reports `uname -s` as `Linux` and `uname -o` as `Android`. The installer detects this, downloads the `android-arm64` archive, and installs `pig` into `$PREFIX/bin`. Other Android CPUs have no archive; `uname -m` must print `aarch64`. Do not use `linux-arm64` there: it is static, and Termux's loader rejects it with `has unexpected e_type: 2`. See [Termux](https://pi-in-go.dev/docs/latest/termux/).
+
 ## Proxies and certificates
 
 PiG's HTTP clients honor `HTTPS_PROXY`, `HTTP_PROXY`, and `NO_PROXY`. On macOS and Windows PiG trusts the system certificate store. On Linux, set `SSL_CERT_FILE` or `SSL_CERT_DIR` when a corporate proxy re-signs TLS traffic. Node extensions read additional certificates from `NODE_EXTRA_CA_CERTS`.

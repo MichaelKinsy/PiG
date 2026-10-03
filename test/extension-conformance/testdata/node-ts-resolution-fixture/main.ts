@@ -16,8 +16,7 @@ import { CONFIG_DIR_NAME, estimateTokens, getAgentDir, getSettingsListTheme } fr
 const { EOL } = require("node:os");
 
 export default function (pi: any) {
-  pi.registerCommand({
-    name: "ts-resolution",
+  pi.registerCommand("ts-resolution", {
     description: "Report node runtime resolution and shim availability",
     handler: async (_args: string, ctx: any) => {
       const stack = new HStack([

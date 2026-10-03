@@ -164,7 +164,6 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	}
 	build.Services = services
 	trace.Mark("services-created")
-	build.Llama = startBuiltInLlama(ctx, services)
 	// --use-theme and --tui-mode reach only InteractiveMode (InitialThemeSetting
 	// and TuiMode), so the runtime settings keep the saved values as Pi's do.
 	settings := services.Settings()
@@ -248,6 +247,10 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 		trace.Mark("trust-resolved")
 	}
 	build.ProjectTrusted = projectTrusted
+	// The llama.cpp provider is the built-in extension `builtin:llama.cpp`: project settings that enable or disable it apply once trust is resolved, and --no-extensions disables it.
+	if builtinLlamaEnabled(services.SettingsManager(), resourceFlags) {
+		build.Llama = startBuiltInLlama(ctx, services)
+	}
 	if in.Startup {
 		tui.SetCapabilityOverrides(services.SettingsManager().GetTerminalCapabilityOverrides())
 	}
@@ -318,6 +321,11 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 		}
 	}
 	build.ExtraExtConfigs = extraExtConfigs
+	// A package manifest that lists host-provided packages under `dependencies` warns; one that cannot be parsed fails the load (resource-loader.ts:66-93,576-577).
+	packageWarnings, err := extensionPackageWarnings(extraExtConfigs)
+	if err != nil {
+		return nil, cliCLIError("%v", err)
+	}
 
 	var embeddedCells []subprocess.EmbeddedCell
 	if b.activePigletBaked {
@@ -347,6 +355,7 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	if !flags.NoExtensions || len(finalExtConfigs) > 0 || len(embeddedCells) > 0 {
 		build.SubprocessExtensions, build.Host, build.Bridge, extensionLoadErrs = loadFinalSubprocessExtensions(ctx, cwd, b.mode.extensionMode(), registry.ModelRegistry, finalExtConfigs, embeddedCells, reloadFinalExtConfigs, startupExtensions)
 	}
+	virtualModelDiagnostics := flushExtensionHostVirtualModels(build.Host, registry)
 	// Pi createAgentSessionServices awaits a local refresh after it flushes extension provider registrations, before model resolution and --list-models (agent-session-services.ts:158-182). The registrations only queued their refresh, and this call yields to it (model-runtime.ts:744-750). Later host registrations start their own refresh.
 	if in.Startup {
 		startupRegistrationRefreshReady.Store(true)
@@ -356,6 +365,8 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 		// Upstream /reload rediscovers extensions even when none loaded at
 		// startup, so interactive mode keeps a reload-capable host.
 		build.Host, build.Bridge = ensureReloadableExtensionHost(build.Host, build.Bridge, flags.NoExtensions, cwd, registry.ModelRegistry, build.ReloadExtensionConfigs)
+		// A host created for /reload has loaded nothing; binding it applies what a reload registers.
+		virtualModelDiagnostics = append(virtualModelDiagnostics, flushExtensionHostVirtualModels(build.Host, registry)...)
 	}
 	if in.StartupExtensions == nil {
 		// The final load adopted the pre-trust host, if any. This build owns it now.
@@ -373,14 +384,29 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 		}
 	}()
 
-	if activePiglet != nil {
-		build.ReloadBuiltinExtensions = func() []extension.Extension {
-			return []extension.Extension{piglet.BuildExtensionWithPiglet(activePiglet)}
+	// The built-in extensions the settings and flags enable load after the file extensions (resource-loader.ts:703-735).
+	builtinLoader := &extensionSetLoader{CWD: cwd, AgentDir: b.agentDir, Settings: services.SettingsManager(), Flags: resourceFlags, Inline: nativeBuiltInExtensions(services.SettingsManager())}
+	loadBuiltins := func() ([]extension.Extension, []extensionSetError, []extensionSetWarning) {
+		return builtinLoader.loadBuiltinsAfter(build.SubprocessExtensions)
+	}
+	builtinExtensions, builtinErrs, replacementWarnings := loadBuiltins()
+	withPiglet := func(builtins []extension.Extension) []extension.Extension {
+		if activePiglet == nil {
+			return builtins
 		}
-		build.BuiltinExtensions = build.ReloadBuiltinExtensions()
+		owner := pigletToolOwner(func() []extension.Extension { return build.Extensions })
+		return append([]extension.Extension{piglet.BuildExtensionWithPigletTools(activePiglet, owner)}, builtins...)
+	}
+	if activePiglet != nil || len(builtInExtensions) > 0 {
+		build.ReloadBuiltinExtensions = func() []extension.Extension {
+			reloaded, _, _ := loadBuiltins()
+			return withPiglet(reloaded)
+		}
+		build.BuiltinExtensions = withPiglet(builtinExtensions)
 	}
 	build.Extensions = codingagent.ExtensionsInLoadOrder(build.SubprocessExtensions, build.BuiltinExtensions)
-	build.ExtensionDiagnostics = slices.Concat(build.PreTrustExtensionDiagnostics, extensionLoadDiagnostics(extensionLoadErrs), extensionConflictDiagnostics(codingagent.DetectExtensionConflicts(build.Extensions)))
+	// Pi lists the services' registration failures before the extension load errors (main.ts:789-800).
+	build.ExtensionDiagnostics = slices.Concat(build.PreTrustExtensionDiagnostics, virtualModelDiagnostics, extensionLoadDiagnostics(extensionLoadErrs), extensionErrorDiagnostics(builtinErrs), extensionConflictDiagnostics(codingagent.DetectExtensionConflicts(build.Extensions)), extensionWarningDiagnostics(mergeExtensionWarnings(packageWarnings, replacementWarnings)))
 	trace.Mark("extensions-loaded")
 
 	build.Flags = flags
@@ -423,23 +449,11 @@ func (b *cliRuntimeBuilder) buildSession(ctx context.Context, build *cliBuild, i
 	}
 	trace.Mark("model-resolved")
 
-	slr, err := resolveAndLoadSkills(b.activePiglet, build.SkillInputs)
-	if err != nil {
-		return cliCLIError("%v", err)
-	}
-	build.SkillLoad = slr
-	build.SkillInputs = slr.Paths
-	build.SkillCatalog = codingagent.SlashCommandCatalog{CWD: cwd, AgentDir: b.agentDir, SourceInfo: resourceSourceInfoProvider(cwd, b.agentDir, services.SettingsManager(), build.ResourceFlags, build.SourceResolver.Resolve)()}
-	skillDefs := build.SkillCatalog.WithSkillSources(slr.Defs)
-	build.SkillDefs = skillDefs
-
 	registryToolNames := tools.BuiltinToolNames()
 	agentToolNames := []string{"read", "bash", "edit", "write"}
-	if settings.DefaultTools != nil {
-		agentToolNames = slices.Clone(settings.DefaultTools)
+	if tools := settings.GetDefaultTools(); tools != nil {
+		agentToolNames = tools
 	}
-	toolHints := prompts.DefaultToolSnippets()
-	toolGuidelines := tools.DefaultToolGuidelines()
 	allowed := map[string]struct{}(nil)
 	var activeBuiltin map[string]struct{}
 	skipBuiltinTools := flags.NoBuiltinTools
@@ -487,14 +501,38 @@ func (b *cliRuntimeBuilder) buildSession(ctx context.Context, build *cliBuild, i
 		}
 		agentToolNames = filtered
 	}
+	build.Flags = flags
+	build.AgentToolNames = agentToolNames
+	build.Allowed = allowed
+	build.ActiveBuiltin = activeBuiltin
+	build.ExcludedTools = excludedTools
+	build.SkipBuiltinTools = skipBuiltinTools
+	return b.loadPromptResources(build, agentToolNames, resourceSourceInfoProvider(cwd, b.agentDir, services.SettingsManager(), build.ResourceFlags, build.SourceResolver.Resolve)())
+}
+
+// loadPromptResources discovers the build's skills and context files and derives the system prompt from them, as the resource loader and AgentSession._rebuildSystemPrompt do. sourceInfo is the provenance of the resolved resource entries. build.SkillInputs, build.Flags and build.ProjectTrusted select what is read; agentToolNames are the tools the prompt lists.
+func (b *cliRuntimeBuilder) loadPromptResources(build *cliBuild, agentToolNames []string, sourceInfo map[string]codingagent.ResourceSourceInfo) error {
+	cwd := build.CWD
+	slr, err := resolveAndLoadSkills(b.activePiglet, build.SkillInputs)
+	if err != nil {
+		return cliCLIError("%v", err)
+	}
+	build.SkillLoad = slr
+	build.SkillInputs = slr.Paths
+	build.SkillCatalog = codingagent.SlashCommandCatalog{CWD: cwd, AgentDir: b.agentDir, SourceInfo: sourceInfo}
+	skillDefs := build.SkillCatalog.WithSkillSources(slr.Defs)
+	build.SkillDefs = skillDefs
+
+	toolHints := prompts.DefaultToolSnippets()
+	toolGuidelines := tools.DefaultToolGuidelines()
 	promptSkills := make([]prompts.Skill, 0, len(skillDefs))
 	for _, s := range skillDefs {
 		promptSkills = append(promptSkills, prompts.Skill{Name: s.Name, Description: s.Description, Path: s.Path, DisableModelInvocation: s.DisableModelInvocation})
 	}
 	trace.Mark("pre-system-prompt")
-	projectCtxFiles := loadContextFiles(cwd, b.agentDir, flags.NoContextFiles)
+	projectCtxFiles := loadContextFiles(cwd, b.agentDir, build.Flags.NoContextFiles)
 	promptCtxFiles := toPromptContextFiles(projectCtxFiles)
-	resolvedPrompts := resolvePromptInputs(cwd, b.agentDir, flags, build.ProjectTrusted)
+	resolvedPrompts := resolvePromptInputs(cwd, b.agentDir, build.Flags, build.ProjectTrusted)
 	promptOptions := prompts.Options{
 		Cwd:            cwd,
 		Tools:          agentToolNames,
@@ -518,7 +556,6 @@ func (b *cliRuntimeBuilder) buildSession(ctx context.Context, build *cliBuild, i
 	for _, cf := range promptCtxFiles {
 		extContextFiles = append(extContextFiles, extension.SystemPromptContextFile{Path: cf.Path, Content: cf.Content})
 	}
-	extSkills := extensionPromptSkills(skillDefs)
 	build.SystemPromptOptions = extension.BuildSystemPromptOptions{
 		CustomPrompt:       resolvedPrompts.custom,
 		CustomPromptSet:    resolvedPrompts.customSet,
@@ -528,14 +565,8 @@ func (b *cliRuntimeBuilder) buildSession(ctx context.Context, build *cliBuild, i
 		AppendSystemPrompt: resolvedPrompts.append,
 		Cwd:                cwd,
 		ContextFiles:       extContextFiles,
-		Skills:             extSkills,
+		Skills:             extensionPromptSkills(skillDefs),
 	}
-	build.Flags = flags
-	build.AgentToolNames = agentToolNames
-	build.Allowed = allowed
-	build.ActiveBuiltin = activeBuiltin
-	build.ExcludedTools = excludedTools
-	build.SkipBuiltinTools = skipBuiltinTools
 	build.ContextFiles = projectCtxFiles
 	build.ResolvedPrompts = resolvedPrompts
 	build.PromptOptions = promptOptions

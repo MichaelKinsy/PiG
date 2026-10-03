@@ -16,13 +16,14 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
 // TestDefaultModelPerProviderMatchesPinnedUpstream derives its expectation from
 // the pinned Pi model-resolver.ts defaultModelPerProvider table.
 func TestDefaultModelPerProviderMatchesPinnedUpstream(t *testing.T) {
-	source, err := os.ReadFile(filepath.Join("..", "..", ".upstream", "current", "packages", "coding-agent", "src", "core", "model-resolver.ts"))
+	source, err := os.ReadFile(filepath.Join("..", "..", ".upstream", "v"+pigversion.UpstreamVersion, "packages", "coding-agent", "src", "core", "model-resolver.ts"))
 	if err != nil {
 		t.Fatalf("read pinned Pi model-resolver.ts (run make upstream-mirror): %v", err)
 	}
@@ -84,21 +85,15 @@ func TestResolveModelUsesFirstAvailableCustomModel(t *testing.T) {
 	}
 }
 
-// TestResolveModelProviderFlagWithoutModelIsIgnored mirrors upstream
-// main.ts, which resolves --provider only together with --model: the
-// initial model comes from findInitialModel.
-func TestResolveModelProviderFlagWithoutModelIsIgnored(t *testing.T) {
+// TestResolveModelProviderFlagWithoutModelIsAnError mirrors Pi 1.0.0 main.ts:469-474 (#10236): --provider only
+// scopes --model, so without --model it is an error diagnostic instead of running another provider's default model.
+func TestResolveModelProviderFlagWithoutModelIsAnError(t *testing.T) {
 	dir := isolateProviderAuthEnv(t)
 	t.Setenv("TOGETHER_API_KEY", "sk-together")
-	model, _, _, err := resolveModel("", "anthropic", codingagent.Settings{}, testServices(t, dir))
-	if err != nil {
-		t.Fatalf("resolveModel: %v", err)
-	}
-	if model == nil || model.ProviderMeta.ProviderID != "together" || model.ID != "moonshotai/Kimi-K2.6" {
-		t.Fatalf("model = %+v, want the together default", model)
-	}
-	if got := model.ProviderMeta.BaseURL; got != "https://api.together.ai/v1" {
-		t.Fatalf("baseURL = %q, want %q", got, "https://api.together.ai/v1")
+	_, _, _, err := resolveModel("", "anthropic", codingagent.Settings{}, testServices(t, dir))
+	const want = "--provider requires --model (for example: --provider anthropic --model <pattern>)"
+	if err == nil || err.Error() != want {
+		t.Fatalf("resolveModel error = %v, want %q", err, want)
 	}
 }
 

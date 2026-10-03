@@ -1,0 +1,65 @@
+# Behavior family: extensions-runtime
+# Scenario: an extension that fails to load stops an interactive start, as it
+# stops a print, JSON or RPC start, with Pi's error line and -ne hint.
+#
+# Upstream evidence (Pi 0.99.2 and 1.0.0 main.ts:793-801 and 911-917): every
+# resourceLoader.getExtensions().errors entry is an "error" diagnostic
+# `Failed to load extension "<path>": <loader error>`; when any runtime
+# diagnostic is an error, main reports the diagnostics, prints the yellow
+# `Hint: Start without extensions using "pi -ne".` and calls process.exit(1)
+# before InteractiveMode is constructed. The check does not depend on appMode.
+# Probed with Pi 0.99.2 in tmux (2026-10-02), no --print/--mode:
+#   Error: Failed to load extension "<path>/load-failure.ts": Failed to load extension: pi.notAThing is not a function
+#   Hint: Start without extensions using "pi -ne".
+#   exit: 1
+# A demo take ended the same way for PiG with user extensions that failed to
+# build; this pins that the interactive exit is Pi's behavior, not a PiG crash.
+
+name = "70-interactive-extension-load-failure-exits"
+description = "An extension load failure ends an interactive start with Pi's error, -ne hint and status 1"
+covers = [
+  "packages/coding-agent/src/main.ts",
+]
+tags = ["hermetic", "fast", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-session"]
+pi_args = ["--no-session"]
+pig_extensions = ["testdata/ext/load-failure.ts"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/load-failure.ts"]
+
+[tmux]
+width = 120
+height = 30
+ready_pattern_pig = "Start without extensions using"
+ready_pattern_pi = "Start without extensions using"
+ready_timeout_seconds = 30
+capture_start = "Error: Failed to load extension"
+capture_join_wrapped = true
+
+[assert]
+both_reach_ready = true
+exit_code = 1
+both_contain = [
+  "Failed to load extension: pi.notAThing is not a function",
+  "Start without extensions using",
+]
+both_not_contain = ["panic:", "trace-warnings", "ExperimentalWarning", "(auto)"]
+output_normalized_equal = true
+runs = 3
+
+# normalize-rationale: the hint names each binary's own command.
+[[assert.normalize_replace]]
+pattern = '"pig? -ne"'
+with = '"<bin> -ne"'
+reason = "D2: the quoted no-extensions remediation command names the host executable; retain all error prose."
+
+# normalize-rationale: the runner copies the extension into its own temporary directory for each binary.
+[[assert.normalize_replace]]
+pattern = '/parity-snap-extension-[0-9]+/'
+with = '/<extension-snapshot>/'
+reason = "Harness isolation: each binary loads its own copy of the fixture. Only the random directory suffix is replaced; the file name and the full error prose stay compared."

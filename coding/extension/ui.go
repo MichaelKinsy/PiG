@@ -123,6 +123,10 @@ type UIContext interface {
 	// upstream: types.ts:187: the generic `<T>` is erased to `any` because Go
 	// interface methods cannot be generic (an ordinary TS→Go mechanic, not a
 	// divergence). Authors typed-assert at the call site or use the SDK helpers.
+	//
+	// An extension in the host process passes a [CustomFactory] and, optionally,
+	// [CustomOptions]; the call blocks until the factory's done callback returns
+	// the result.
 	Custom(ctx context.Context, factory any, opts any) (any, error)
 
 	// PasteToEditor pastes text into the editor, triggering paste

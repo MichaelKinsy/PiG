@@ -2,6 +2,7 @@ package rpcclient
 
 import (
 	"bytes"
+	"errors"
 	"time"
 )
 
@@ -88,20 +89,57 @@ func (c *RpcClient) sendOnly(cmd rpcCommand) error {
 	return err
 }
 
-// Prompt sends a prompt and returns once it is accepted; use OnEvent for the
-// streamed events and WaitForIdle for completion.
-func (c *RpcClient) Prompt(message string, images []ImageContent) error {
-	return c.sendOnly(command("prompt", append([]commandField{field("message", message)}, imagesField(images)...)...))
+// Prompt sends a prompt and returns its disposition once it is accepted; use
+// OnEvent for the streamed events. If the disposition is "handled", no run
+// started for this prompt, so do not wait for agent_settled. streamingBehavior
+// is nil unless the prompt may arrive during a run.
+//
+// upstream: .upstream/v0.99.1/packages/coding-agent/src/modes/rpc/rpc-client.ts:198-205 (prompt)
+func (c *RpcClient) Prompt(message string, images []ImageContent, streamingBehavior *StreamingBehavior) (PromptDisposition, error) {
+	fields := append([]commandField{field("message", message)}, imagesField(images)...)
+	fields = append(fields, optionalField("streamingBehavior", streamingBehavior)...)
+	disposition, err := c.sendForDisposition(command("prompt", fields...))
+	return PromptDisposition(disposition), err
 }
 
-// Steer queues a steering message to interrupt the agent mid-run.
-func (c *RpcClient) Steer(message string, images []ImageContent) error {
-	return c.sendOnly(command("steer", append([]commandField{field("message", message)}, imagesField(images)...)...))
+// Steer queues a steering message to interrupt the agent mid-run and returns
+// its disposition.
+//
+// upstream: .upstream/v0.99.1/packages/coding-agent/src/modes/rpc/rpc-client.ts:210-213 (steer)
+func (c *RpcClient) Steer(message string, images []ImageContent) (QueuedInputDisposition, error) {
+	disposition, err := c.sendForDisposition(command("steer", append([]commandField{field("message", message)}, imagesField(images)...)...))
+	return QueuedInputDisposition(disposition), err
 }
 
-// FollowUp queues a follow-up message for after the agent finishes.
-func (c *RpcClient) FollowUp(message string, images []ImageContent) error {
-	return c.sendOnly(command("follow_up", append([]commandField{field("message", message)}, imagesField(images)...)...))
+// FollowUp queues a follow-up message for after the agent finishes and returns
+// its disposition.
+//
+// upstream: .upstream/v0.99.1/packages/coding-agent/src/modes/rpc/rpc-client.ts:218-221 (followUp)
+func (c *RpcClient) FollowUp(message string, images []ImageContent) (QueuedInputDisposition, error) {
+	disposition, err := c.sendForDisposition(command("follow_up", append([]commandField{field("message", message)}, imagesField(images)...)...))
+	return QueuedInputDisposition(disposition), err
+}
+
+// sendForDisposition sends a prompting command and reads `data.disposition` of
+// its response. A success response without a data object cannot be read: upstream's
+// `getData(response).disposition` throws a TypeError (rpc-client.ts:203,212,220).
+func (c *RpcClient) sendForDisposition(cmd rpcCommand) (string, error) {
+	response, err := c.send(cmd)
+	if err != nil {
+		return "", err
+	}
+	if response.Success {
+		switch string(response.Data) {
+		case "":
+			return "", errors.New("Cannot read properties of undefined (reading 'disposition')")
+		case "null":
+			return "", errors.New("Cannot read properties of null (reading 'disposition')")
+		}
+	}
+	data, err := getData[struct {
+		Disposition string `json:"disposition"`
+	}](response)
+	return data.Disposition, err
 }
 
 // Abort aborts the current operation.
@@ -288,7 +326,7 @@ func (c *RpcClient) CollectEvents(timeout time.Duration) ([]JsonAgentSessionEven
 // Collection starts before the prompt is sent, as upstream's does.
 func (c *RpcClient) PromptAndWait(message string, images []ImageContent, timeout time.Duration) ([]JsonAgentSessionEvent, error) {
 	collected := c.startCollecting(true)
-	if err := c.Prompt(message, images); err != nil {
+	if _, err := c.Prompt(message, images, nil); err != nil {
 		collected.unsubscribe()
 		return nil, err
 	}

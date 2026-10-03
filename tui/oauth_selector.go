@@ -20,6 +20,8 @@ type OAuthProvider struct {
 	AuthType   string // "oauth" or "api_key"
 	MethodName string
 	LoginLabel string
+	// Subscription reports whether the provider's OAuth sign-in is backed by a subscription. False labels it as an account; nil keeps the "subscription" label (oauth-selector.ts:20-24).
+	Subscription *bool
 
 	// Stored indicates auth.json contains a stored credential for this provider.
 	Stored bool
@@ -50,12 +52,25 @@ type OAuthSelector struct {
 // upstream: coding-agent/src/modes/interactive/components/oauth-selector.ts:maxVisible
 const authSelectorMaxVisible = 8
 
-// FormatAuthSelectorProviderType mirrors upstream formatAuthSelectorProviderType.
-func FormatAuthSelectorProviderType(authType string) string {
-	if authType == "oauth" {
-		return "subscription"
+// FormatAuthSelectorProviderType mirrors upstream formatAuthSelectorProviderType(authType, subscription?)
+// (oauth-selector.ts:27-33): an OAuth sign-in is a "subscription" unless subscription is false, which makes it an
+// "account". Omitting subscription is Pi's undefined.
+func FormatAuthSelectorProviderType(authType string, subscription ...bool) string {
+	if authType == "api_key" {
+		return "API key"
 	}
-	return "API key"
+	if len(subscription) > 0 && !subscription[0] {
+		return "account"
+	}
+	return "subscription"
+}
+
+// subscriptionArg passes an option's subscription flag as Pi's optional argument: nil is undefined.
+func subscriptionArg(subscription *bool) []bool {
+	if subscription == nil {
+		return nil
+	}
+	return []bool{*subscription}
 }
 
 // NewOAuthSelector constructs the picker.
@@ -117,13 +132,14 @@ func (s *OAuthSelector) applyFilter() {
 	}
 }
 
+// FormatAuthSelectorProviderStatus mirrors upstream formatAuthSelectorProviderStatus: the themed suffix describing
+// whether and how a login option is configured, for example " ✓ configured".
+func FormatAuthSelectorProviderStatus(p OAuthProvider) string { return authSelectorIndicator(p) }
+
 func authSelectorIndicator(p OAuthProvider) string {
 	th := ActiveTheme()
 	configuredOtherLabel := func(kind string) string {
-		if kind == "oauth" {
-			return "subscription configured"
-		}
-		return "API key configured"
+		return FormatAuthSelectorProviderType(kind, subscriptionArg(p.Subscription)...) + " configured"
 	}
 	if p.Stored {
 		if p.StoredType == p.AuthType {
@@ -138,9 +154,9 @@ func authSelectorIndicator(p OAuthProvider) string {
 	}
 	if p.AuthType != "api_key" {
 		if p.AuthStatusSource != "" {
-			return th.Muted + " • " + th.Reset + th.Warning + "API key configured" + th.Reset
+			return th.Muted + " • " + th.Reset + th.Warning + configuredOtherLabel("api_key") + th.Reset
 		}
-		return th.Muted + " • unconfigured" + th.Reset
+		return th.Muted + " • not configured" + th.Reset
 	}
 	switch p.AuthStatusSource {
 	case "environment":
@@ -158,7 +174,7 @@ func authSelectorIndicator(p OAuthProvider) string {
 	case "models_json_command":
 		return th.Success + " ✓ command in models.json" + th.Reset
 	default:
-		return th.Muted + " • unconfigured" + th.Reset
+		return th.Muted + " • not configured" + th.Reset
 	}
 }
 
@@ -193,7 +209,7 @@ func (s *OAuthSelector) Render(width int) []string {
 		p := s.filtered[i]
 		authTypeLabel := ""
 		if s.showAuthTypeLabels {
-			authTypeLabel = t.Muted + " [" + FormatAuthSelectorProviderType(p.AuthType) + "]" + t.Reset
+			authTypeLabel = t.Muted + " [" + FormatAuthSelectorProviderType(p.AuthType, subscriptionArg(p.Subscription)...) + "]" + t.Reset
 		}
 		var line string
 		if i == s.cursor {

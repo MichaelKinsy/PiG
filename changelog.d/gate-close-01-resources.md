@@ -1,3 +1,0 @@
-- Preserve explicitly empty system-prompt and append-prompt selections and empty file-backed append entries.
-- Resolve automatic extension exclusions relative to the config root, as Pi does.
-- Load physical extension aliases once while retaining the first selected path and distinct native factories in one module.

@@ -14,14 +14,6 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
-// TestMain lets the test binary stand in for the shell and report how it was
-// started or what environment it received.
-func TestMain(m *testing.M) {
-	testenv.ReportStartupIfRequested()
-	testenv.ReportEnvironIfRequested()
-	os.Exit(m.Run())
-}
-
 // Pi's createLocalShellOperations (core/tools/bash.ts) spawns the shell with
 // windowsHide: true and stdio that inherits nothing, so libuv starts it with
 // SW_HIDE and CREATE_NO_WINDOW. The test binary stands in for the shell under

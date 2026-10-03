@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 )
@@ -20,7 +19,7 @@ var thinkingDescriptions = map[ai.ThinkingLevel]string{
 
 // BuiltInSlashCommandsOptions supplies the presentation generation reload. It waits for replacement and retired-generation disposal before returning.
 type BuiltInSlashCommandsOptions struct {
-	ReloadPresentationPlugins func(context.Context, pico3.JsonValue) error
+	ReloadPresentationPlugins func(context.Context, chord.JsonValue) error
 }
 
 // CreateBuiltInSlashCommandsFacet installs model, thinking, compact and reload contributions, in that order. Activation and disposal run on the command registry's owner executor; command bodies may block and must run off the TUI input loop.

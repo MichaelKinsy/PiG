@@ -15,13 +15,33 @@ import (
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
+// QueuedInputDisposition is how Steer and FollowUp dealt with their input: an input handler consumed it (`handled`) or it was queued (`queued`).
+//
+// upstream: agent-session.ts:289 (QueuedInputDisposition)
+type QueuedInputDisposition string
+
+// PromptDisposition is how Prompt dealt with an accepted input: an extension command or input handler consumed it (`handled`), it was queued behind a running turn (`queued`), or a turn started (`started`).
+//
+// upstream: agent-session.ts:290 (PromptDisposition)
+type PromptDisposition = QueuedInputDisposition
+
+// The dispositions of upstream's PromptDisposition union.
+const (
+	DispositionHandled QueuedInputDisposition = "handled"
+	DispositionQueued  QueuedInputDisposition = "queued"
+	DispositionStarted PromptDisposition      = "started"
+)
+
 // PromptOptions controls one invocation, independently of the Session's system-prompt construction inputs.
 type PromptOptions struct {
 	ExpandPromptTemplates *bool
 	Images                []ai.ImageContent
 	StreamingBehavior     extension.DeliverAs
 	Source                extension.InputSource
-	PreflightResult       func(bool)
+	// PreflightResult observes how an accepted prompt was dispatched. It is not called when the prompt is rejected.
+	//
+	// upstream: agent-session.ts:302-303 (PromptOptions.preflightResult)
+	PreflightResult func(PromptDisposition)
 }
 
 // QueueInputOptions supplies the input source for a direct queue operation.
@@ -30,21 +50,21 @@ type QueueInputOptions struct {
 }
 
 // Steer awaits input handlers and skill/template expansion, rejects extension commands, and queues the result before the next model call.
-func (s *Session) Steer(ctx context.Context, text string, images []ai.ImageContent, options *QueueInputOptions) error {
+func (s *Session) Steer(ctx context.Context, text string, images []ai.ImageContent, options *QueueInputOptions) (QueuedInputDisposition, error) {
 	return s.queueUserInput(ctx, text, images, extension.DeliverAsSteer, options)
 }
 
 // FollowUp awaits input handlers and skill/template expansion, rejects extension commands, and queues the result after the current turn's tools and steering finish.
-func (s *Session) FollowUp(ctx context.Context, text string, images []ai.ImageContent, options *QueueInputOptions) error {
+func (s *Session) FollowUp(ctx context.Context, text string, images []ai.ImageContent, options *QueueInputOptions) (QueuedInputDisposition, error) {
 	return s.queueUserInput(ctx, text, images, extension.DeliverAsFollowUp, options)
 }
 
-func (s *Session) queueUserInput(ctx context.Context, text string, images []ai.ImageContent, behavior extension.DeliverAs, options *QueueInputOptions) error {
+func (s *Session) queueUserInput(ctx context.Context, text string, images []ai.ImageContent, behavior extension.DeliverAs, options *QueueInputOptions) (QueuedInputDisposition, error) {
 	if strings.HasPrefix(text, "/") {
 		name, _, _ := strings.Cut(text[1:], " ")
 		if runner := s.currentRunner(); runner != nil {
 			if _, exists := runner.Command(name); exists {
-				return fmt.Errorf("Extension command %q cannot be queued. Use prompt() or execute the command when not streaming.", "/"+name)
+				return "", fmt.Errorf("Extension command %q cannot be queued. Use prompt() or execute the command when not streaming.", "/"+name)
 			}
 		}
 	}
@@ -53,8 +73,12 @@ func (s *Session) queueUserInput(ctx context.Context, text string, images []ai.I
 		source = options.Source
 	}
 	text, images, handled, err := s.RunInputHandlers(ctx, text, images, source, string(behavior))
-	if err != nil || handled {
-		return err
+	if err != nil {
+		return "", err
+	}
+	// upstream: agent-session.ts:2104 (`if (!processedInput) return "handled"`), 2114 (`return "queued"`).
+	if handled {
+		return DispositionHandled, nil
 	}
 	text = s.expandPromptText(text)
 	if behavior == extension.DeliverAsSteer {
@@ -62,7 +86,7 @@ func (s *Session) queueUserInput(ctx context.Context, text string, images []ai.I
 	} else {
 		s.QueueFollowUp(text, images)
 	}
-	return nil
+	return DispositionQueued, nil
 }
 
 // GetSystemPromptOptions returns the live base prompt inputs used by command contexts. Mutations apply to this options object, not the Agent's active tool registry. Rebuilding the tool prompt replaces the object; previously borrowed options remain unchanged.
@@ -148,19 +172,15 @@ func (s *Session) Prompt(ctx context.Context, text string, options ...*PromptOpt
 	return run.Run()
 }
 
-func (s *Session) preparePromptInvocation(ctx context.Context, text string, options PromptOptions) (run *PreparedPromptRun, err error) {
+func (s *Session) preparePromptInvocation(ctx context.Context, text string, options PromptOptions) (*PreparedPromptRun, error) {
+	// A rejected prompt reports nothing: upstream calls `preflightResult` only when the prompt is accepted (agent-session.ts:1894-1962).
 	accepted := false
-	notify := func(success bool) {
+	notify := func(disposition PromptDisposition) {
 		if options.PreflightResult != nil && !accepted {
-			options.PreflightResult(success)
+			options.PreflightResult(disposition)
 		}
 		accepted = true
 	}
-	defer func() {
-		if err != nil {
-			notify(false)
-		}
-	}()
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -168,7 +188,7 @@ func (s *Session) preparePromptInvocation(ctx context.Context, text string, opti
 	if expand && strings.HasPrefix(text, "/") {
 		name, args, _ := strings.Cut(strings.TrimPrefix(text, "/"), " ")
 		if runner := s.currentRunner(); runner != nil && runner.ExecuteCommand(ctx, name, args) {
-			notify(true)
+			notify(DispositionHandled)
 			return nil, nil
 		}
 	}
@@ -184,7 +204,7 @@ func (s *Session) preparePromptInvocation(ctx context.Context, text string, opti
 		return nil, err
 	}
 	if handled {
-		notify(true)
+		notify(DispositionHandled)
 		return nil, nil
 	}
 	if expand {
@@ -199,13 +219,13 @@ func (s *Session) preparePromptInvocation(ctx context.Context, text string, opti
 		default:
 			return nil, errAgentAlreadyProcessing
 		}
-		notify(true)
+		notify(DispositionQueued)
 		return nil, nil
 	}
 	if err := s.ValidatePromptModelAuth(ctx); err != nil {
 		return nil, err
 	}
-	return s.prepareContentRun(ctx, BuildUserContent(text, images), func() { notify(true) })
+	return s.prepareContentRun(ctx, BuildUserContent(text, images), func() { notify(DispositionStarted) })
 }
 
 // ValidatePromptModelAuth rejects a new prompt before compaction and before_agent_start when no model is selected or its provider has no usable auth, as agent-session.ts:1673-1691 does. Interactive mode runs the same check before it starts a turn.

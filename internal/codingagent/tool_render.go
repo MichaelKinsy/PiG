@@ -6,11 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
-
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -32,7 +31,7 @@ func toolBodyRendererForCall(call ai.ToolCall, result agent.AgentToolResult) fun
 		result.Details = &tools.WriteDetails{Path: path, Content: content}
 	case "read":
 		var details tools.ReadDetails
-		switch d := result.Details.(type) {
+		switch d := detailsObject(result.Details).(type) {
 		case *tools.ReadDetails:
 			if d != nil {
 				details = *d
@@ -135,7 +134,7 @@ func toolBodyRenderer(toolName string, result agent.AgentToolResult, took *time.
 // returned by extension-provided tools. Extensions serialize details as
 // JSON which arrives in Go as map[string]any after detailsToAny.
 func extractDiffString(details any) string {
-	m, ok := details.(map[string]any)
+	m, ok := orderedjson.Map(details)
 	if !ok {
 		return ""
 	}
@@ -146,90 +145,10 @@ func extractDiffString(details any) string {
 	return s
 }
 
-// renderDiffString renders a pre-generated diff string (from
-// generateDiffString / upstream edit-diff.ts) with colored lines and
-// intra-line word-level change highlighting. Mirrors upstream
-// components/diff.ts::renderDiff.
+// renderDiffString renders a pre-generated diff string (from generateDiffString / upstream edit-diff.ts) the way
+// upstream renders renderDiff output: tui.RenderDiff colors the rows and a Text wraps them to width.
 func renderDiffString(diffText string, width int) []string {
-	lines := strings.Split(diffText, "\n")
-	var out []string
-
-	i := 0
-	for i < len(lines) {
-		line := lines[i]
-		prefix, lineNum, content, ok := parseDiffLine(line)
-		if !ok {
-			out = append(out, dimWrap(line, width))
-			i++
-			continue
-		}
-
-		type diffEntry struct {
-			lineNum string
-			content string
-		}
-
-		switch prefix {
-		case '-':
-			var removed []diffEntry
-			for i < len(lines) {
-				p, ln, c, ok2 := parseDiffLine(lines[i])
-				if !ok2 || p != '-' {
-					break
-				}
-				removed = append(removed, diffEntry{ln, c})
-				i++
-			}
-			var added []diffEntry
-			for i < len(lines) {
-				p, ln, c, ok2 := parseDiffLine(lines[i])
-				if !ok2 || p != '+' {
-					break
-				}
-				added = append(added, diffEntry{ln, c})
-				i++
-			}
-			if len(removed) == 1 && len(added) == 1 {
-				removedHL, addedHL := tui.RenderIntraLineDiff(
-					replaceTabs(removed[0].content),
-					replaceTabs(added[0].content),
-				)
-				out = append(out, redWrap("-"+removed[0].lineNum+" "+removedHL, width))
-				out = append(out, greenWrap("+"+added[0].lineNum+" "+addedHL, width))
-			} else {
-				for _, r := range removed {
-					out = append(out, redWrap("-"+r.lineNum+" "+replaceTabs(r.content), width))
-				}
-				for _, a := range added {
-					out = append(out, greenWrap("+"+a.lineNum+" "+replaceTabs(a.content), width))
-				}
-			}
-		case '+':
-			out = append(out, greenWrap("+"+lineNum+" "+replaceTabs(content), width))
-			i++
-		default:
-			out = append(out, dimWrap(" "+lineNum+" "+replaceTabs(content), width))
-			i++
-		}
-	}
-	return out
-}
-
-// diffLineRe parses a generateDiffString output line. Faithful port of
-// upstream components/diff.ts parseDiffLine regex /^([+-\s])(\s*\d*)\s(.*)$/:
-// group 1 is the prefix, group 2 is the padded line number (leading spaces +
-// digits, no trailing space), then a single separator space, then content.
-// The `-` is escaped so RE2 does not read `+-\s` as a range.
-var diffLineRe = lazyregexp.New(`^([-+\s])(\s*\d*)\s(.*)$`)
-
-// parseDiffLine extracts the prefix (+/-/space), line number, and content
-// from a generateDiffString output line.
-func parseDiffLine(line string) (prefix byte, lineNum string, content string, ok bool) {
-	m := diffLineRe.FindStringSubmatch(line)
-	if m == nil {
-		return 0, "", "", false
-	}
-	return m[1][0], m[2], m[3], true
+	return tui.NewDiffComponent(diffText, "").Render(width)
 }
 
 func replaceTabs(s string) string {
@@ -335,11 +254,6 @@ func renderReadError(content string, width int, expanded bool) []string {
 	return out
 }
 
-// The wrap helpers preserve complete tool content across rows.
-func dimWrap(s string, width int) string {
-	return strings.Join(styleWrapRows(s, "\033[2m", tui.SGRBoldDimReset, width), "\n")
-}
-
 func mutedWrap(s string, width int) []string {
 	th := tui.ActiveTheme()
 	color := th.Muted
@@ -396,45 +310,6 @@ func toolOutputWrap(s string, width int) []string {
 		out[i] = c + l + tui.SGRFgReset
 	}
 	return out
-}
-
-func redWrap(s string, width int) string {
-	th := tui.ActiveTheme()
-	c := th.ToolDiffRemoved
-	if c == "" {
-		c = th.Error
-	}
-	if c == "" {
-		c = "\033[31m"
-	}
-	return styleAndWrap(s, c, width)
-}
-func greenWrap(s string, width int) string {
-	th := tui.ActiveTheme()
-	c := th.ToolDiffAdded
-	if c == "" {
-		c = th.Success
-	}
-	if c == "" {
-		c = "\033[32m"
-	}
-	return styleAndWrap(s, c, width)
-}
-
-// styleAndWrap colors each wrapped row and closes it with the foreground
-// reset, as upstream theme.fg does, so an enclosing background continues.
-func styleAndWrap(s, ansi string, width int) string {
-	wrapped := widthx.WrapTextWithAnsi(s, width)
-	var out strings.Builder
-	for i, line := range wrapped {
-		if i > 0 {
-			out.WriteByte('\n')
-		}
-		out.WriteString(ansi)
-		out.WriteString(line)
-		out.WriteString(tui.SGRFgReset)
-	}
-	return out.String()
 }
 
 func styleAndTrunc(s, ansi string, width int) string {

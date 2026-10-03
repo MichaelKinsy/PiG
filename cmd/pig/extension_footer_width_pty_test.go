@@ -233,9 +233,10 @@ func runFooterProbe(t *testing.T, binary string, tc footerProbeCase) {
 	if tc.widget {
 		widget = "1"
 	}
-	cmd := exec.Command(binary, "--no-extensions", "-e", extension, "--model", "test-faux/faux-1")
+	// The probe observes the regular renderer's resize redraw ("\x1b[3J"), so it selects the regular mode; fullscreen is the default since Pi 1.0.0 (settings-manager.ts:1348-1350).
+	cmd := exec.Command(binary, "--no-extensions", "-e", extension, "--model", "test-faux/faux-1", "--tui-mode", "regular")
 	cmd.Dir = t.TempDir()
-	cmd.Env = append(os.Environ(), "PIG_HOME="+pigHome, "PIG_CODING_AGENT_DIR="+t.TempDir(), "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "F104_MODE="+tc.mode, "F104_WIDGET="+widget, "TERM=xterm-256color")
+	cmd.Env = append(os.Environ(), "PIG_HOME="+pigHome, "PIG_CODING_AGENT_DIR="+seededAgentDir(t), "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "F104_MODE="+tc.mode, "F104_WIDGET="+widget, "TERM=xterm-256color")
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = slave, slave, slave
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true, Setctty: true}
 	if err := cmd.Start(); err != nil {
@@ -276,7 +277,7 @@ func runFooterProbe(t *testing.T, binary string, tc footerProbeCase) {
 				t.Fatalf("the TUI stopped %s; last output: %q", stage, tail())
 			}
 			if bytes.Contains(output.since(mark), []byte(marker)) {
-				output.waitQuiet(mark, []byte(marker), 300*time.Millisecond, 10*time.Second)
+				output.waitQuiet(mark, []byte(marker), 300*time.Millisecond, budget)
 				return
 			}
 			time.Sleep(20 * time.Millisecond)

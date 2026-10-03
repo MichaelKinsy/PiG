@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 )
@@ -61,6 +62,8 @@ func (m *InteractiveMode) rebindCurrentSession(ctx context.Context, renderBefore
 		if _, err := runner.Emit(ctx, event); err != nil {
 			return err
 		}
+		// upstream: agent-session.ts:3207 (bindExtensions)
+		runner.ReportUnhandledMcpServers()
 		if runner.HasHandlers(EventResourcesDiscover) && !runner.IsStale() {
 			var err error
 			resources, err = runner.EmitResourcesDiscover(ctx, cwd, ResourcesDiscoverReason(event.Reason))
@@ -90,12 +93,29 @@ func (m *InteractiveMode) rebindCurrentSession(ctx context.Context, renderBefore
 	})
 }
 
+// runSignalNotifier is what the extension host's UI bridge offers the owner of the agent's run: a report that a run began or ended.
+type runSignalNotifier interface{ RunSignalChanged() }
+
+// setAgent makes next the Session's agent loop. The main loop reads m.agent; the extension host reads ctx.signal from its own goroutines through extensionAgent, which Session replacement republishes here. Run changes of next are reported to the extension host's UI bridge, as Pi's ctx.signal getter (`() => this.agent.signal`, agent-session.ts:3368) is live at every read, and the retired agent's are no longer reported.
+func (m *InteractiveMode) setAgent(next *agent.Agent) {
+	m.agent = next
+	m.extensionAgent.Store(next)
+	if m.stopRunSignalReports != nil {
+		m.stopRunSignalReports()
+		m.stopRunSignalReports = nil
+	}
+	if notifier, ok := m.opts.SubprocessUIBridge.(runSignalNotifier); ok && next != nil {
+		m.stopRunSignalReports = next.ObserveRunSignal(notifier.RunSignalChanged)
+	}
+}
+
 func (m *InteractiveMode) subscribeToAgent() {
 	m.eventCh = m.opts.SessionHandle.Events()
 }
 
 func (m *InteractiveMode) applyRuntimeSettings() {
-	m.agent = m.opts.SessionHandle.Agent()
+	m.setAgent(m.opts.SessionHandle.Agent())
+	m.installRunPromptTurnRefresh()
 	m.opts.Model = m.agent.Model()
 	m.hideThinking = m.opts.Settings.GetHideThinkingBlock()
 	m.outputPad = m.opts.Settings.GetOutputPad()

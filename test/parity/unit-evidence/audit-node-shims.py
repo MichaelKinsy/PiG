@@ -13,7 +13,8 @@ parser.add_argument("--output", type=Path, required=True)
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[3]
 shims = "coding/extension/host/subprocess/runtime-node/shims"
-inv = json.loads((root / "test/parity/interfaces/upstream-v0.87.1.json").read_text())["interfaces"]
+pi_version = re.search(r'^const UpstreamVersion = "([^"]+)"', (root / "internal/coding/pigversion/pigversion.go").read_text(), re.M).group(1)
+inv = json.loads((root / f"test/parity/interfaces/upstream-v{pi_version}.json").read_text())["interfaces"]
 extra = {
     "pi-coding-agent": ["createAgentSession", "compact", "copyToClipboard", "BorderedLoader", "DynamicBorder", "initTheme", "getPackageDir", "KeybindingsManager"],
     "pi-tui": ["Component", "Focusable", "SelectItem", "TUI", "OverlayHandle", "EditorTheme"],
@@ -26,14 +27,14 @@ for module in extra:
     for name in sorted(set(names + extra[module])):
         entrypoint = "./compat" if module == "pi-ai" else "."
         entries = [i for i in inv if i["package"] == "@earendil-works/" + module and i["entrypoint"] == entrypoint and i["name"] == name]
-        reference = "No runtime export in pinned Pi 0.87.1; stale shim-only value"
+        reference = f"No runtime export in pinned Pi {pi_version}; stale shim-only value"
         disposition = "removed stale value"
         if entries:
             entry = entries[0]
             package = "tui" if module == "pi-tui" else "ai" if module == "pi-ai" else "coding-agent"
             source_path = entry["source"]["path"].split("dist/", 1)[-1]
             path = f"packages/{package}/src/" + source_path.replace(".d.ts", ".ts")
-            lines = (root / ".upstream/v0.87.1" / path).read_text().splitlines()
+            lines = (root / ".upstream/current" / path).read_text().splitlines()
             line = next((n for n, text in enumerate(lines, 1) if re.search(r"(?:class|function|interface|type|const)\s+" + re.escape(name) + r"\b", text)), entry["source"]["line"])
             reference = f"{path}:{line}"
             disposition = "exact Pi module"
@@ -66,7 +67,7 @@ for package_file in (args.corpus / "homes").glob("*/pi/.pi/agent/npm/node_module
                     if use not in by_name[name]["corpus"]:
                         by_name[name]["corpus"].append(use)
 
-out = ["# Node shim stand-in audit", "", f"Baseline: `{args.baseline}`. Reference: Pi 0.87.1. Regenerate with `python3 test/parity/unit-evidence/audit-node-shims.py --baseline {args.baseline} --corpus <locked-corpus-root> --output test/parity/unit-evidence/node-shim-audit.md`.", "", "The table lists every throwing or empty stand-in in the three package shims, plus the partial helpers identified by inspection. Corpus names are static production imports from the locked corpus, not feature-pass claims. Tests and nested dependency installations are excluded. Real package execution is recorded separately in `fix-node-createagentsession.md`.", "", "| Module / export | Pi source | Disposition | Published corpus imports |", "|---|---|---|---|"]
+out = ["# Node shim stand-in audit", "", f"Baseline: `{args.baseline}`. Reference: Pi {pi_version}. Regenerate with `python3 test/parity/unit-evidence/audit-node-shims.py --baseline {args.baseline} --corpus <locked-corpus-root> --output test/parity/unit-evidence/node-shim-audit.md`.", "", "The table lists every throwing or empty stand-in in the three package shims, plus the partial helpers identified by inspection. Corpus names are static production imports from the locked corpus, not feature-pass claims. Tests and nested dependency installations are excluded. Real package execution is recorded separately in `fix-node-createagentsession.md`.", "", "| Module / export | Pi source | Disposition | Published corpus imports |", "|---|---|---|---|"]
 for row in rows:
     out.append(f"| `{row['module']}.{row['name']}` | `{row['source']}` | {row['disposition']} | " + "<br>".join(f"`{use}`" for use in sorted(row["corpus"])) + " |")
 out += ["", "## Other shim modules", "", "- `builtin-tools.mjs`: all tool factories/definitions, truncation helpers and the file-mutation queue now re-export `packages/coding-agent/src/core/tools/index.ts` and `truncate.ts`. The baseline substituted text-only `renderCall`/`renderResult` components and partially reimplemented file/image/tool behavior. The actual tool modules replace that implementation, including PowerShell and the image worker.", "- `proper-lockfile.mjs`: the baseline supplied only a partial `lockSync`, removed regular files, and omitted async `lock`. It now uses the exact locked `proper-lockfile@4.1.2`, including its transitive dependency versions. Pi callers are `packages/coding-agent/src/core/auth-storage.ts:52-189` and `core/settings-manager.ts:214-299`. Go auth, model, settings and trust stores use the same directory-lock protocol.", "- `pi-ai-bridge.mjs`: missing-key and pre-abort error streams implement normal API failures. Built-in API execution remains D74's Go-host bridge. `bridgeImages` remains D74's explicit unsupported image-generation result; the corpus audit found no production import of that capability. Provider-specific option/result gaps in D74 are not retired here.", "- `pig-config.mjs`: D2's separate configuration root is intentional, not a stand-in. Independent stores use this root.", "- `pi-agent-core.mjs`: the complete Pi module graph and default stream function are real implementations. There is no throwing Agent stand-in.", "- `pi-ai-oauth.mjs`: Pi's OAuth entry is type-only; its empty runtime namespace is correct.", "- `typebox*.mjs` and `jiti/*.mjs`: these are locked dependency modules. Their validation/resolution exceptions are ordinary library errors, not fabricated exports.", "", "An imported independent UI class is not the live Go Main Screen. Prototype patches or arbitrary main-process component references remain D73's identity boundary. Providing real imported constructors does not claim that every private main-screen patch in `pi-cc-extensions` affects PiG's Go objects."]

@@ -1,6 +1,6 @@
 {
-  "piVersion": "0.87.1",
-  "openaiVersion": "6.40.0",
+  "piVersion": "1.0.0",
+  "openaiVersion": "7.19.0",
   "bodies": {
     "tool": "event: response.created\ndata: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_1\"}}\n\nevent: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{\"type\":\"function_call\",\"id\":\"fc_1\",\"call_id\":\"call_1\",\"name\":\"read\",\"arguments\":\"\"}}\n\nevent: response.function_call_arguments.delta\ndata: {\"type\":\"response.function_call_arguments.delta\",\"output_index\":0,\"delta\":\"{\\\"path\\\":\\\"parity-read-target.txt\\\"}\"}\n\nevent: response.output_item.done\ndata: {\"type\":\"response.output_item.done\",\"output_index\":0,\"item\":{\"type\":\"function_call\",\"id\":\"fc_1\",\"call_id\":\"call_1\",\"name\":\"read\",\"arguments\":\"{\\\"path\\\":\\\"parity-read-target.txt\\\"}\",\"status\":\"completed\"}}\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_1\",\"status\":\"completed\",\"output\":[{\"type\":\"function_call\",\"id\":\"fc_1\",\"call_id\":\"call_1\",\"name\":\"read\",\"arguments\":\"{\\\"path\\\":\\\"parity-read-target.txt\\\"}\",\"status\":\"completed\"}],\"usage\":{\"input_tokens\":10,\"output_tokens\":3,\"total_tokens\":13}}}\n\n",
     "text": "event: response.created\ndata: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_1\"}}\n\nevent: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{\"type\":\"message\",\"id\":\"msg_1\",\"role\":\"assistant\",\"status\":\"in_progress\",\"content\":[]}}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"output_index\":0,\"delta\":\"one\"}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"output_index\":0,\"delta\":\" two\"}\n\nevent: response.output_item.done\ndata: {\"type\":\"response.output_item.done\",\"output_index\":0,\"item\":{\"type\":\"message\",\"id\":\"msg_1\",\"role\":\"assistant\",\"status\":\"completed\",\"content\":[{\"type\":\"output_text\",\"text\":\"one two\",\"annotations\":[]}]}}\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_1\",\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"id\":\"msg_1\",\"role\":\"assistant\",\"status\":\"completed\",\"content\":[{\"type\":\"output_text\",\"text\":\"one two\",\"annotations\":[]}]}],\"usage\":{\"input_tokens\":10,\"output_tokens\":3,\"total_tokens\":13}}}\n\n",
@@ -36,8 +36,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 0,
-            "responseId": "resp_1"
+            "timestamp": 0
           }
         },
         {
@@ -152,7 +151,8 @@
             "stopReason": "toolUse",
             "timestamp": 0,
             "responseId": "resp_1",
-            "rawStopReason": "completed"
+            "rawStopReason": "completed",
+            "thinkingLevel": "off"
           }
         }
       ]
@@ -300,7 +300,8 @@
             "stopReason": "toolUse",
             "timestamp": 0,
             "responseId": "resp_1",
-            "rawStopReason": "completed"
+            "rawStopReason": "completed",
+            "thinkingLevel": "off"
           }
         }
       ]
@@ -334,8 +335,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 0,
-            "responseId": "resp_1"
+            "timestamp": 0
           }
         },
         {
@@ -461,7 +461,8 @@
             "stopReason": "stop",
             "timestamp": 0,
             "responseId": "resp_1",
-            "rawStopReason": "completed"
+            "rawStopReason": "completed",
+            "thinkingLevel": "off"
           }
         }
       ]
@@ -620,7 +621,8 @@
             "stopReason": "stop",
             "timestamp": 0,
             "responseId": "resp_1",
-            "rawStopReason": "completed"
+            "rawStopReason": "completed",
+            "thinkingLevel": "off"
           }
         }
       ]

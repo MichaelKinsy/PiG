@@ -34,6 +34,11 @@ func preserveKeyboardProtocolState(t *testing.T) {
 	})
 }
 
+// expectKeyboardProtocolReply marks the DA1 reply a keyboard protocol query would have written to this terminal as owed. Only that reply is negotiation; later DA1 replies answer other queries and are forwarded (terminal.ts:262,272).
+func expectKeyboardProtocolReply(terminal *ProcessTerminal) {
+	terminal.pendingKeyboardProtocolDeviceAttributes.Add(1)
+}
+
 // interactiveTestInput is the input a test reads through the production
 // reader: the file the reader owns, send to type into it, and release to end
 // a read that is still blocked when the test finishes.
@@ -41,6 +46,15 @@ type interactiveTestInput struct {
 	file    *os.File
 	send    func(t *testing.T, keys string)
 	release func()
+	// queryReplyOwed marks input that carries the DA1 reply to the keyboard protocol query the test process itself wrote when it entered raw mode: the Windows pseudo console answers that query on the console input the terminal under test reads.
+	queryReplyOwed bool
+}
+
+// ownQueryReply records on terminal the reply the input owes it, so the terminal consumes that DA1 reply as negotiation and forwards later ones (terminal.ts:262,272).
+func (in interactiveTestInput) ownQueryReply(terminal *ProcessTerminal) {
+	if in.queryReplyOwed {
+		expectKeyboardProtocolReply(terminal)
+	}
 }
 
 // Pi terminal.ts:setupStdinBuffer consumes negotiation in its data callback and
@@ -59,6 +73,7 @@ func stopAfterNegotiationOnlyInput(t *testing.T, reply string, in interactiveTes
 	preserveKeyboardProtocolState(t)
 	output := &negotiationWriter{seen: make(chan struct{})}
 	terminal := NewProcessTerminalWithOutput(in.file, nil, output)
+	expectKeyboardProtocolReply(terminal)
 	ctx, cancel := context.WithCancel(t.Context())
 	terminal.stopReader = cancel
 	terminal.readerDone = make(chan struct{})
@@ -107,6 +122,7 @@ func stopAfterNegotiationOnlyInput(t *testing.T, reply string, in interactiveTes
 func TestReadInputWaitsPastNegotiationOnlyRead(t *testing.T) {
 	preserveKeyboardProtocolState(t)
 	terminal := NewProcessTerminalWithOutput(nil, nil, &negotiationWriter{seen: make(chan struct{})})
+	expectKeyboardProtocolReply(terminal)
 	r := &separateInputReads{chunks: []string{"\x1b[?0u", "\x1b[?62;22c", "x"}}
 	got, err := readTestTerminalInput(terminal, r)
 	if err != nil || string(got) != "x" || len(r.chunks) != 0 {

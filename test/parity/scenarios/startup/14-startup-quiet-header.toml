@@ -1,0 +1,76 @@
+# Behavior family: startup
+# Upstream evidence (Pi 1.0.0): settings-manager.ts:111-112 adds
+# quietStartup "header", and interactive-mode.ts:1409-1417 splits the startup
+# gate: shouldShowStartupHeader hides the header only for true, while
+# shouldShowStartupDetails hides the model scope line and the loaded-resource
+# listing for true and "header". With details hidden, the compact onboarding
+# line drops " and loaded resources" (interactive-mode.ts:1044-1048).
+# Probe the pinned Pi with --model test-faux/faux-1 at 100x40 and an agent
+# directory whose settings.json sets quietStartup "header" and holds one user
+# skill: the compact header shows, ending "Press ctrl+o to show full startup
+# help.", and no [Skills] section follows it. Before the port PiG read
+# "header" as an undecodable value, so it printed "... help and loaded
+# resources." and listed the skill.
+# Crop from the first hint through the editor's top border, so the crop holds
+# the whole region where the listing would follow the header; the logo and
+# version are D2/D63 and are covered by 00-startup-banner.
+name = "14-startup-quiet-header"
+description = "quietStartup \"header\" keeps the compact startup header, drops the loaded-resources hint and hides the resource listing."
+covers = [
+  "packages/coding-agent/src/core/settings-manager.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_OFFLINE=1", "PIG_CODING_AGENT_DIR=testdata/quiet-header/pig-agent"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1", "PI_CODING_AGENT_DIR=testdata/quiet-header/pi-agent"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions"]
+
+[tmux]
+# 110 columns: the onboarding line fits beside the head (D2), so every line wraps as
+# in Pi.
+width = 110
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "escape"
+capture_end_regex = '─{20}'
+
+[assert]
+both_reach_ready = true
+both_contain = ["interrupt", "clear/exit", "commands", "bash", "more", "to show full startup help."]
+both_not_contain = ["and loaded resources", "[Skills]", "header-skill"]
+escaped_output_equal = true
+runs = 3
+
+# normalize-rationale: D2 substitutes the product name only; key labels,
+# descriptions, ANSI styling and all whitespace remain byte-faithful.
+[[assert.normalize_replace]]
+pattern = 'extend PiG\.'
+with = "extend Pi."
+reason = "D2: the onboarding sentence names the host product. Match only that sentence fragment, not arbitrary PiG text."
+
+[[assert.normalize_replace]]
+pattern = 'PiG can explain its own features'
+with = 'Pi can explain its own features'
+reason = "D2: the same onboarding sentence starts with the host product name; all remaining words, ANSI and spaces stay literal."
+
+# D2: PiG's 16-cell pig head takes Pi's logo slot, 7 lines tall where Pi's logo is 2, so its later lines sit
+# beside the lines Pi draws below its logo. These rules remove exactly those 16 head cells (the one-cell padding,
+# 16 half-block or transparent cells and their colors) and the cell that separates them from the text; every hint,
+# its ANSI styling and spacing stay compared byte for byte. The head's pixels are pinned by
+# coding/piglogin/testdata/head-*.golden and internal/codingagent/pi_logo_upstream_test.go.
+[[assert.normalize_replace]]
+pattern = '(?m)^ (?:(?:\x1b\[[0-9;]*m)*[▀▄ ]){1,16}(?:\x1b\[[0-9;]*m)*[ ]*$'
+with = ""
+reason = "D2: a head line with no text beside it (tmux trims its trailing transparent cells) is the blank line Pi draws below its 2-line logo."
+
+[[assert.normalize_replace]]
+pattern = '(?m)^ (?:(?:\x1b\[[0-9;]*m)*[▀▄ ]){16}(?:\x1b\[[0-9;]*m)* '
+with = " "
+reason = "D2: a head line with text beside it carries the line Pi draws at the padded margin below its 2-line logo."

@@ -14,7 +14,6 @@ type UserMessageBlock struct {
 	invalidatable
 	content   string
 	inner     *Markdown
-	box       *Box
 	outputPad int
 }
 
@@ -25,12 +24,15 @@ func NewUserMessageBlock(text string) *UserMessageBlock {
 	return block
 }
 
+// rebuild applies the output padding. The Markdown pads and colors its own background, so no Box keeps a second full-width copy of every line (user-message.ts:38-59).
 func (u *UserMessageBlock) rebuild() {
 	if u.inner == nil {
-		u.inner = NewMarkdownWithOptions(u.content, 0, 0, nil, nil, &MarkdownOptions{PreserveOrderedListMarkers: true, PreserveBackslashEscapes: true})
+		background := &DefaultTextStyle{BgColor: func(text string) string { return UserMessageBgOpen() + text + BgClose() }}
+		u.inner = NewMarkdownWithOptions(u.content, u.outputPad, 1, nil, background, &MarkdownOptions{PreserveOrderedListMarkers: true, PreserveBackslashEscapes: true})
+	} else {
+		u.inner.paddingX = u.outputPad
+		u.inner.cachedLines = nil
 	}
-	u.box = NewPaddedBox(u.outputPad, 1, func(text string) string { return UserMessageBgOpen() + text + BgClose() })
-	u.box.AddChild(u.inner)
 	u.invalidatable.Invalidate()
 }
 
@@ -41,7 +43,7 @@ func (u *UserMessageBlock) SetMarkdownTransform(transform func(string, int) stri
 }
 
 // Invalidate also invalidates the child Markdown transform state so display transformers run again.
-func (u *UserMessageBlock) Invalidate() { u.invalidatable.Invalidate(); u.box.Invalidate() }
+func (u *UserMessageBlock) Invalidate() { u.invalidatable.Invalidate(); u.inner.Invalidate() }
 
 // SetMarkdownTransformState declares the external state the installed
 // transform reads, for the Markdown render cache key.
@@ -79,7 +81,7 @@ func (u *UserMessageBlock) Dispose() { u.inner.Dispose() }
 
 func (u *UserMessageBlock) Render(width int) []string {
 	u.inner.SetDefaultColor(ActiveTheme().UserMessageText)
-	out := slices.Clone(u.box.Render(width))
+	out := slices.Clone(u.inner.Render(width))
 	if len(out) == 0 {
 		return out
 	}

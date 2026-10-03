@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// .upstream/v0.87.1/packages/coding-agent/test/session-id-readonly.test.ts:160 — the exact-ID helper must not build full transcript listings either.
+// .upstream/v0.99.1/packages/coding-agent/test/session-id-readonly.test.ts:162 — the exact-ID helper must not build full transcript listings either.
 func TestFindByIDDoesNotBuildFullListings(t *testing.T) {
 	manager := NewSessionManagerWithDir(t.TempDir(), t.TempDir())
 	session, err := manager.Create("unrelated-id", "")

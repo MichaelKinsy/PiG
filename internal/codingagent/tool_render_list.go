@@ -36,7 +36,7 @@ func listDetailsFrom(details any) listResultDetails {
 		return tr.Truncated, tr.MaxBytes
 	}
 	var out listResultDetails
-	switch d := details.(type) {
+	switch d := detailsObject(details).(type) {
 	case *tools.GrepDetails:
 		if d != nil {
 			out.Truncated, out.MaxBytes = fromTruncation(d.Truncation)

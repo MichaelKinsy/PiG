@@ -38,8 +38,6 @@ description = "/compact triggers manual compaction and renders [compaction] bloc
 covers = [
   "packages/coding-agent/src/core/compaction/compaction.ts",
   "packages/coding-agent/src/core/compaction/utils.ts",
-  "packages/agent/src/harness/compaction/compaction.ts",
-  "packages/agent/src/harness/compaction/utils.ts",
 ]
 tags = ["hermetic", "tui"]
 driver = "interactive-tmux"

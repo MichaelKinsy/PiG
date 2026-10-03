@@ -12,8 +12,6 @@ import (
 	"sync"
 	"unicode"
 	"unicode/utf8"
-
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 )
 
 // ServiceProviderDefinition registers one service in a provider catalogue.
@@ -24,12 +22,12 @@ type ServiceProviderDefinition struct {
 }
 
 // SingletonService registers def as a singleton catalogue entry.
-func SingletonService[T any](def pico3.ServiceDefinition[T]) ServiceProviderDefinition {
+func SingletonService[T any](def ServiceDefinition[T]) ServiceProviderDefinition {
 	return ServiceProviderDefinition{ServiceId: def.Id(), Local: def.Local(), Mode: ServiceSingleton}
 }
 
 // KeyedService registers def as a keyed (multi-instance) catalogue entry.
-func KeyedService[T any](def pico3.ServiceDefinition[T]) ServiceProviderDefinition {
+func KeyedService[T any](def ServiceDefinition[T]) ServiceProviderDefinition {
 	return ServiceProviderDefinition{ServiceId: def.Id(), Local: def.Local(), Mode: ServiceKeyed}
 }
 
@@ -60,6 +58,7 @@ type providerSubscriber struct {
 	buffer            []bufferedUpdate
 	snapshotSequences map[string]int
 	active            bool
+	draining          bool
 	terminated        bool
 	closed            bool
 }
@@ -86,18 +85,11 @@ type RemoteServiceProvider struct {
 	mu            sync.Mutex
 	catalogue     []ServiceCatalogueEntry
 	registrations map[string]*serviceRegistration
-	queue         []deliveryJob
-	delivering    bool
-	drainer       uint64 // goroutine currently draining queue
 	disposed      bool
 }
 
-type deliveryJob struct {
-	subscriber *providerSubscriber
-	update     ServiceProviderUpdate
-	ctx        context.Context
-	message    string
-}
+// maxPendingUpdates is the number of provider updates one subscription buffers before it is rebaselined with a "reset" update.
+const maxPendingUpdates = 100
 
 // NewRemoteServiceProvider creates a provider for exactly the given services.
 // Local services and duplicate IDs are rejected.
@@ -130,7 +122,7 @@ func (provider *RemoteServiceProvider) Catalogue() []ServiceCatalogueEntry {
 }
 
 // Provide installs the singleton implementation of def.
-func Provide[T any](provider *RemoteServiceProvider, def pico3.ServiceDefinition[T], implementation T) error {
+func Provide[T any](provider *RemoteServiceProvider, def ServiceDefinition[T], implementation T) error {
 	classified, err := classifyImplementation[T](def.Id(), implementation)
 	if err != nil {
 		return err
@@ -158,7 +150,7 @@ func Provide[T any](provider *RemoteServiceProvider, def pico3.ServiceDefinition
 
 // Withdraw disconnects a singleton while preserving subscriptions; subscribers
 // receive "unavailable".
-func Withdraw[T any](provider *RemoteServiceProvider, def pico3.ServiceDefinition[T]) error {
+func Withdraw[T any](provider *RemoteServiceProvider, def ServiceDefinition[T]) error {
 	provider.mu.Lock()
 	registration, err := provider.singletonRegistrationLocked(def.Id(), def.Local())
 	if err != nil {
@@ -177,7 +169,7 @@ func Withdraw[T any](provider *RemoteServiceProvider, def pico3.ServiceDefinitio
 
 // ValidateReplacement checks a singleton replacement without changing the
 // active provider.
-func ValidateReplacement[T any](provider *RemoteServiceProvider, def pico3.ServiceDefinition[T], implementation T) error {
+func ValidateReplacement[T any](provider *RemoteServiceProvider, def ServiceDefinition[T], implementation T) error {
 	classified, err := classifyImplementation[T](def.Id(), implementation)
 	if err != nil {
 		return err
@@ -193,7 +185,7 @@ func ValidateReplacement[T any](provider *RemoteServiceProvider, def pico3.Servi
 
 // Replace swaps a singleton implementation without making the stable remote
 // facade unavailable; subscribers receive "replaced" with a new snapshot.
-func Replace[T any](provider *RemoteServiceProvider, def pico3.ServiceDefinition[T], implementation T) error {
+func Replace[T any](provider *RemoteServiceProvider, def ServiceDefinition[T], implementation T) error {
 	classified, err := classifyImplementation[T](def.Id(), implementation)
 	if err != nil {
 		return err
@@ -220,7 +212,7 @@ func Replace[T any](provider *RemoteServiceProvider, def pico3.ServiceDefinition
 }
 
 // Use returns the local singleton implementation of def.
-func Use[T any](provider *RemoteServiceProvider, def pico3.ServiceDefinition[T]) (T, error) {
+func Use[T any](provider *RemoteServiceProvider, def ServiceDefinition[T]) (T, error) {
 	var zero T
 	provider.mu.Lock()
 	defer provider.mu.Unlock()
@@ -235,7 +227,7 @@ func Use[T any](provider *RemoteServiceProvider, def pico3.ServiceDefinition[T])
 }
 
 // Spawn publishes one keyed instance at the next generation for key. The returned close function is idempotent, including from a lifecycle listener, and closes only this generation.
-func Spawn[T any](provider *RemoteServiceProvider, def pico3.ServiceDefinition[T], key string, implementation T) (func() error, error) {
+func Spawn[T any](provider *RemoteServiceProvider, def ServiceDefinition[T], key string, implementation T) (func() error, error) {
 	provider.mu.Lock()
 	if err := provider.assertAccessLocked(def.Id(), def.Local()); err != nil {
 		provider.mu.Unlock()
@@ -403,7 +395,7 @@ func (subscription *providerSubscription) Snapshot() ServiceSubscriptionSnapshot
 	return subscription.snapshot
 }
 
-// Activate delivers buffered updates in order and then streams live updates.
+// Activate delivers buffered updates in order and then streams live updates. A reentrant publication from a listener appends to the same FIFO.
 func (subscription *providerSubscription) Activate() error {
 	provider, subscriber := subscription.provider, subscription.subscriber
 	provider.mu.Lock()
@@ -412,15 +404,8 @@ func (subscription *providerSubscription) Activate() error {
 		return nil
 	}
 	subscriber.active = true
-	var jobs []deliveryJob
-	for _, entry := range subscriber.buffer {
-		jobs = append(jobs, deliveryJob{subscriber: subscriber, update: entry.update, ctx: entry.ctx, message: "Failed to activate remote service subscription"})
-	}
-	subscriber.buffer = nil
-	if subscriber.terminated {
-		jobs = append(jobs, deliveryJob{subscriber: subscriber, message: "close"})
-	}
-	return provider.deliverUnlocking(jobs)
+	provider.mu.Unlock()
+	return collected(provider.drainSubscriber(subscriber), "Failed to activate remote service subscription")
 }
 
 // Close stops delivery and discards buffered updates; it is idempotent.
@@ -504,7 +489,7 @@ func (provider *RemoteServiceProvider) Dispose() error {
 			provider.mu.Lock()
 		}
 		for _, subscriber := range registration.subscribers {
-			if subscriber.active {
+			if subscriber.active && !subscriber.draining {
 				subscriber.closed = true
 				subscriber.buffer = nil
 			} else {
@@ -562,7 +547,7 @@ func (provider *RemoteServiceProvider) createInstanceLocked(registration *servic
 		if member.kind != MemberState {
 			continue
 		}
-		instance.removeSources = append(instance.removeSources, member.state.subscribeOps(func(ctx context.Context, ops []pico3.Op, sequence int) {
+		instance.removeSources = append(instance.removeSources, member.state.subscribeOps(func(ctx context.Context, ops []Op, sequence int) {
 			provider.mu.Lock()
 			if !instance.active {
 				provider.mu.Unlock()
@@ -581,97 +566,57 @@ func (provider *RemoteServiceProvider) createInstanceLocked(registration *servic
 	return instance
 }
 
-// emitUnlocking is entered with mu held and returns with it released. It
-// delivers the update to each subscriber outside mu (see deliverUnlocking).
+// emitUnlocking is entered with mu held and returns with it released. It queues the update for every subscriber before invoking any listener, so a publication made by a listener joins the same queues, then drains each subscriber outside mu. A subscriber with maxPendingUpdates updates waiting gets one "reset" carrying a full snapshot instead.
 func (provider *RemoteServiceProvider) emitUnlocking(registration *serviceRegistration, update ServiceProviderUpdate, ctx context.Context) error {
 	if ctx == nil {
 		ctx = deliveryContext()
 	}
-	message := fmt.Sprintf("Failed to publish remote service %s update", registration.serviceId)
-	var jobs []deliveryJob
-	for _, subscriber := range registration.subscribers {
+	subscribers := append([]*providerSubscriber(nil), registration.subscribers...)
+	for _, subscriber := range subscribers {
 		if subscriber.closed || updateCoveredBySnapshot(subscriber.snapshotSequences, update) {
 			continue
 		}
-		if !subscriber.active {
-			subscriber.buffer = append(subscriber.buffer, bufferedUpdate{update: update, ctx: ctx})
+		if len(subscriber.buffer) == maxPendingUpdates {
+			snapshot := snapshotRegistration(registration)
+			clear(subscriber.snapshotSequences)
+			recordSnapshotSequences(subscriber.snapshotSequences, snapshot.Instances)
+			subscriber.buffer = []bufferedUpdate{{update: ServiceProviderUpdate{Type: UpdateReset, Reset: &snapshot}, ctx: ctx}}
 			continue
 		}
-		jobs = append(jobs, deliveryJob{subscriber: subscriber, update: update, ctx: ctx, message: message})
+		subscriber.buffer = append(subscriber.buffer, bufferedUpdate{update: update, ctx: ctx})
 	}
-	return provider.deliverUnlocking(jobs)
+	provider.mu.Unlock()
+	var errs []error
+	for _, subscriber := range subscribers {
+		errs = append(errs, provider.drainSubscriber(subscriber)...)
+	}
+	return collected(errs, fmt.Sprintf("Failed to publish remote service %s update", registration.serviceId))
 }
 
-// deliverUnlocking is entered with mu held and returns with it released.
-// Upstream delivers provider updates synchronously, so an update emitted from
-// inside a listener (for example a reentrant Dispose) reaches every
-// subscriber before the outer delivery continues. When the calling goroutine
-// is already draining, jobs are therefore delivered inline (nested); when
-// another goroutine is draining they join its ordered queue; otherwise this
-// call drains.
-func (provider *RemoteServiceProvider) deliverUnlocking(jobs []deliveryJob) error {
-	if provider.delivering {
-		if provider.drainer == currentGoroutine() {
-			return provider.runJobsUnlocking(jobs)
-		}
-		provider.queue = append(provider.queue, jobs...)
+// drainSubscriber delivers one subscriber's queue in order, outside mu. A subscriber that is already draining, inactive or closed is left alone: the running drain delivers whatever was queued behind it.
+func (provider *RemoteServiceProvider) drainSubscriber(subscriber *providerSubscriber) []error {
+	provider.mu.Lock()
+	if !subscriber.active || subscriber.closed || subscriber.draining {
 		provider.mu.Unlock()
 		return nil
 	}
-	provider.queue = append(provider.queue, jobs...)
-	provider.delivering = true
-	provider.drainer = currentGoroutine()
+	subscriber.draining = true
 	var errs []error
-	message := ""
-	for len(provider.queue) > 0 {
-		job := provider.queue[0]
-		provider.queue = provider.queue[1:]
-		if err := provider.runJobLocked(job); err != nil {
+	for !subscriber.closed && len(subscriber.buffer) > 0 {
+		entry := subscriber.buffer[0]
+		subscriber.buffer = subscriber.buffer[1:]
+		provider.mu.Unlock()
+		if err := callUpdate(subscriber.listener, entry.ctx, entry.update); err != nil {
 			errs = append(errs, err)
-			message = job.message
 		}
+		provider.mu.Lock()
 	}
-	provider.delivering = false
-	provider.drainer = 0
-	provider.mu.Unlock()
-	if len(errs) > 1 {
-		return NewAggregateError(message, errs)
-	}
-	return joinErrors(errs)
-}
-
-// runJobsUnlocking delivers jobs inline; entered with mu held, returns with
-// it released.
-func (provider *RemoteServiceProvider) runJobsUnlocking(jobs []deliveryJob) error {
-	var errs []error
-	message := ""
-	for _, job := range jobs {
-		if err := provider.runJobLocked(job); err != nil {
-			errs = append(errs, err)
-			message = job.message
-		}
+	subscriber.draining = false
+	if subscriber.terminated {
+		subscriber.closed = true
 	}
 	provider.mu.Unlock()
-	if len(errs) > 1 {
-		return NewAggregateError(message, errs)
-	}
-	return joinErrors(errs)
-}
-
-// runJobLocked runs one job with mu held across bookkeeping and released
-// across the listener call.
-func (provider *RemoteServiceProvider) runJobLocked(job deliveryJob) error {
-	if job.message == "close" {
-		job.subscriber.closed = true
-		return nil
-	}
-	if job.subscriber.closed {
-		return nil
-	}
-	provider.mu.Unlock()
-	err := callUpdate(job.subscriber.listener, job.ctx, job.update)
-	provider.mu.Lock()
-	return err
+	return errs
 }
 
 func callUpdate(listener UpdateListener, ctx context.Context, update ServiceProviderUpdate) (err error) {
@@ -750,7 +695,7 @@ func snapshotInstance(instance *providerInstance) ServiceInstanceSnapshot {
 			continue
 		}
 		sequence, value := member.state.snapshot()
-		snapshot.Members = append(snapshot.Members, ServiceMemberSnapshot{Name: name, Kind: MemberState, Sequence: sequence, Ops: []pico3.Op{{"r", value}}})
+		snapshot.Members = append(snapshot.Members, ServiceMemberSnapshot{Name: name, Kind: MemberState, Sequence: sequence, Ops: []Op{{"r", value}}})
 	}
 	return snapshot
 }
@@ -784,6 +729,9 @@ func updateCoveredBySnapshot(sequences map[string]int, update ServiceProviderUpd
 			return true
 		}
 		delete(sequences, key)
+	case UpdateReset:
+		clear(sequences)
+		recordSnapshotSequences(sequences, update.Reset.Instances)
 	case UpdateReplaced:
 		clear(sequences)
 		recordSnapshotSequences(sequences, []ServiceInstanceSnapshot{*update.Snapshot})

@@ -27,7 +27,7 @@ func (m *InteractiveMode) addCompactionCostNotice(kind string, usage *ai.Usage) 
 	}
 	tokens := usage.Input + usage.Output + usage.CacheRead + usage.CacheWrite
 	m.chatContainer.Add(tui.NewSpacer(1))
-	m.chatContainer.Add(tui.NewPaddedText(tui.ActiveTheme().FgText("warning", fmt.Sprintf("%s: %s tokens billed%s", label, formatTokens(tokens), cost)), 1, 0, nil))
+	m.chatContainer.Add(themedNotice("warning", fmt.Sprintf("%s: %s tokens billed%s", label, formatTokens(tokens), cost), 1))
 }
 
 func (m *InteractiveMode) addCompactionSummary(summary string, tokensBefore int, usage *ai.Usage) {

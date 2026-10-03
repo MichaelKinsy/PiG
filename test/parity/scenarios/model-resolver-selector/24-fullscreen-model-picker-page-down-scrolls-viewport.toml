@@ -1,0 +1,72 @@
+# Behavior family: model-resolver-selector
+# Surface: in fullscreen, PageDown belongs to the transcript viewport, not the open model picker.
+#
+# Upstream evidence (Pi 1.0.0 tui-alt-screen.ts handleViewportInput:740-751):
+# the alternate-screen renderer registers an input listener that consumes
+# tui.altScreen.pageDown (default PageDown) and scrolls the transcript unless
+# an overlay has focus. The model picker replaces the editor, not an overlay,
+# so the key never reaches model-selector.ts handleInput and the query is not
+# reapplied. Pi 1.0.0 probe (2026-10-02) with the local two-model fixture:
+#   /model Enter, "model", Down -> "Model Name: Model One"
+#   PageDown                    -> still "Model Name: Model One"
+# Pig's selector loops delivered PageDown to the picker, which refiltered and
+# moved the selection back to model-two.
+# The first step waits for the background refresh, the settled state that
+# re-anchors the selection on both sides (see 11-model-picker-arrow-wrap).
+
+name = "24-fullscreen-model-picker-page-down-scrolls-viewport"
+description = "Fullscreen PageDown scrolls the viewport and leaves the model picker selection alone."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/model-selector.ts",
+  "packages/tui/src/tui-alt-screen.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 15
+capture_start = "Only showing models"
+capture_end = "Model Name: Model One"
+
+[[tmux.steps]]
+keys = ["/model", "Enter"]
+wait_visible_contains = ["Model Name: Model Two", "Model catalogs refreshed."]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["model"]
+wait_visible_contains = ["> model"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["Down"]
+wait_visible_contains = ["Model Name: Model One"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["PgDn"]
+wait_visible_contains = ["→   model-one [fixture]", "Model Name: Model One"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../model-resolver-selector/testdata/pig-agent-local"]
+pi = ["PI_CODING_AGENT_DIR=../model-resolver-selector/testdata/pi-agent-local"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = [
+  "> model",
+  "→   model-one [fixture]",
+  "Model Name: Model One",
+]
+both_not_contain = ["panic:", "goroutine ", "Could not refresh", "→ ✓ model-two"]
+output_equal = true
+escaped_output_equal = true
+runs = 3

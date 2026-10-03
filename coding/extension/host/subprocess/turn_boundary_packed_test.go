@@ -2,7 +2,6 @@ package subprocess
 
 import (
 	"encoding/json"
-	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
@@ -10,14 +9,12 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 // Both realizations execute the same factories and compare their complete returned turn event, including chained drafts, context snapshots and errors.
 func TestTurnBoundaryPackedFactoriesMatchIsolated(t *testing.T) {
-	root := findModuleRoot(t)
-	t.Setenv("PIG_SDK_GO_ROOT", filepath.Join(root, "extensions", "sdk"))
-	t.Setenv("PIG_SDK_PY_ROOT", filepath.Join(root, "extensions", "sdk-py"))
-	t.Setenv("PIG_SDK_RS_ROOT", filepath.Join(root, "extensions", "sdk-rs"))
+	t.Parallel()
 	for _, language := range []string{"go", "python", "rust"} {
 		t.Run(language, func(t *testing.T) {
 			configs := []ExtConfig{}
@@ -98,7 +95,7 @@ func TestTurnBoundaryPackedFactoriesMatchIsolated(t *testing.T) {
 					if err := json.Unmarshal(raw, &actual); err != nil {
 						t.Fatal(err)
 					}
-					data := result.Entries[0].Data.(map[string]any)
+					data, _ := orderedjson.Map(result.Entries[0].Data)
 					if data["outcome"] != "error" || data["messageEntryId"] != "boundary-assistant" || data["turnIndex"] != float64(7) || data["continue"] != true || len(data["entries"].([]any)) != 2 || len(data["context"].(map[string]any)["contextEntries"].([]any)) != 2 {
 						t.Fatalf("chained turn snapshot=%v", data)
 					}

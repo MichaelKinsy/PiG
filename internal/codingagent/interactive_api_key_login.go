@@ -40,7 +40,14 @@ func (m *InteractiveMode) runAPIKeyLogin(provider tui.OAuthProvider) error {
 		dialog = m.newLoginDialog(provider.Name, func() { cancel(errLoginAborted) }, provider.Name+" setup")
 		dialog.ShowInfo(method.Name+" is configured outside pig.", nil, true)
 		go func() { <-ctx.Done(); done <- nil }()
-		return m.runAuthDialog(ctx, cancel, dialog, nil, nil, done)
+		if err := m.runAuthDialog(ctx, cancel, dialog, nil, nil, done); err != nil {
+			return err
+		}
+		// Closing the setup note reopens the menu the login was started from (interactive-mode.ts:6094-6101).
+		if dialog.Cancelled() {
+			return errLoginCancelled
+		}
+		return nil
 	}
 	// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:showApiKeyLoginDialog
 	if provider.ID == "amazon-bedrock" {
@@ -102,9 +109,11 @@ func (m *InteractiveMode) runAPIKeyLogin(provider tui.OAuthProvider) error {
 	}()
 	loginErr := m.runAuthDialog(ctx, cancel, dialog, requests, notifications, done)
 	if loginErr != nil {
-		if loginErr.Error() != errLoginCancelled.Error() {
-			m.showError(dialog.Redact(fmt.Sprintf("Failed to save API key for %s: %v", provider.Name, loginErr)))
+		// A cancelled login prompt reopens the menu the login was started from (interactive-mode.ts:6160-6162).
+		if loginErr.Error() == errLoginCancelled.Error() {
+			return errLoginCancelled
 		}
+		m.showError(dialog.Redact(fmt.Sprintf("Failed to save API key for %s: %v", provider.Name, loginErr)))
 		return nil
 	}
 	m.completeProviderAuthentication(provider.ID, provider.Name, ai.CredentialAPIKey, previousModel, authPath, dialog.Redact)

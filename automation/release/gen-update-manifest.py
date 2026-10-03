@@ -11,7 +11,7 @@ matches what pig's self-update reads (internal/codingagent D39):
      "binaries": {"<goos>/<goarch>": {"url": "<base>/<file>", "sha256": "<hex>"}}}
 
 With --dir, binaries are matched by the naming pig-<goos>-<goarch> (and
-pig-<goos>-<goarch>.exe on Windows). With --sha256sums, each macOS and Linux
+pig-<goos>-<goarch>.exe on Windows). With --sha256sums, each macOS, Linux and Android
 entry points at the release archive pig-<version>-<goos>-<goarch>.tar.gz and
 takes its digest from the release SHA256SUMS; pig verifies the archive and
 installs the pig executable inside it. Windows is omitted: a standalone
@@ -39,6 +39,7 @@ import pig_package
 
 # GOOS/GOARCH releases produced for stock Pig.
 PLATFORMS = [
+    ("android", "arm64"),
     ("linux", "amd64"),
     ("linux", "arm64"),
     ("darwin", "amd64"),
@@ -85,6 +86,7 @@ def _valid_base_url(raw: str, *, allow_loopback_http: bool) -> bool:
 
 # Release archives a standalone pig can update itself from.
 ARCHIVE_PLATFORMS = [
+    ("android", "arm64"),
     ("linux", "amd64"),
     ("linux", "arm64"),
     ("darwin", "amd64"),

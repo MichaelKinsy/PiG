@@ -14,6 +14,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/configvalue"
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"github.com/MichaelKinsy/PiG/internal/ownerfile"
 	"github.com/MichaelKinsy/PiG/internal/pilock"
 	"github.com/MichaelKinsy/PiG/internal/text"
@@ -162,8 +163,8 @@ func NewAuthStorage(path string) (*AuthStorage, error) {
 		return nil, errors.New("auth: empty path")
 	}
 	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return nil, fmt.Errorf("auth: ensure dir: %w", err)
+	if err := nodeerrno.MkdirAll(dir, 0o700); err != nil {
+		return nil, err
 	}
 	store := &AuthStorage{path: path, read: authReadStateForPath(path)}
 	store.reloadInitialSnapshot()
@@ -213,7 +214,7 @@ func (a *AuthStorage) loadLocked() (*authStorageData, error) {
 		return newAuthStorageData(nil), nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("auth: read: %w", err)
+		return nil, nodeerrno.FromPathError(err)
 	}
 	if len(data) == 0 {
 		return newAuthStorageData(nil), nil
@@ -361,10 +362,11 @@ func (a *AuthStorage) writeLocked(creds *authStorageData, lock *pilock.Lock) err
 		return err
 	}
 	// Pi applies the mode only at creation; existing modes, ACLs and symlinks remain intact.
-	if err := os.WriteFile(a.path, data, 0o600); err != nil {
-		return fmt.Errorf("auth: write: %w", err)
+	if err := writeAuthFile(a.path, data, 0o600); err != nil {
+		return nodeerrno.FromPathError(err)
 	}
-	if err := lock.Check(); err != nil {
+	// After the write Pi checks only for a compromise, not the caller's abort (auth-storage.ts:189).
+	if err := lock.Compromised(); err != nil {
 		return err
 	}
 	a.read.mu.Lock()
@@ -373,9 +375,15 @@ func (a *AuthStorage) writeLocked(creds *authStorageData, lock *pilock.Lock) err
 	return nil
 }
 
+// ensureFileExists is FileAuthStorageBackend's ensureParentDir and ensureFileExists (auth-storage.ts:55-68): it creates the directory and then the store as "{}" when existsSync finds neither, and returns Node's fs errors.
 func (a *AuthStorage) ensureFileExists() error {
-	if err := os.MkdirAll(filepath.Dir(a.path), 0o700); err != nil {
-		return fmt.Errorf("auth: ensure dir: %w", err)
+	if dir := filepath.Dir(a.path); !pathExists(dir) {
+		if err := nodeerrno.MkdirAll(dir, 0o700); err != nil {
+			return err
+		}
+	}
+	if pathExists(a.path) {
+		return nil
 	}
 	// Exclusive creation preserves existing bytes, modes, ACLs and symlinks, including when another process creates the file concurrently.
 	file, err := ownerfile.CreateNew(a.path)
@@ -383,22 +391,29 @@ func (a *AuthStorage) ensureFileExists() error {
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("auth: create: %w", err)
+		return nodeerrno.FromPathError(err)
 	}
 	_, writeErr := file.WriteString("{}")
 	if err := errors.Join(writeErr, file.Close()); err != nil {
-		return fmt.Errorf("auth: initialize: %w", err)
+		return nodeerrno.FromPathError(err)
 	}
 	return nil
 }
 
-// File operations share acquisition and release boundaries; one coalesced reload owns one lease.
+// pathExists is Node's fs.existsSync: whether the path, followed through links, can be read at all.
+func pathExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+// File operations share acquisition, write and release boundaries; one coalesced reload owns one lease.
 var (
 	acquireAuthFileLock = pilock.Acquire
 	releaseAuthFileLock = (*pilock.Lock).Release
+	writeAuthFile       = os.WriteFile
 )
 
-// withFileLock serializes reads and writes with Pi's synchronous or cancellable auth lock contract.
+// withFileLock serializes reads and writes with Pi's synchronous or cancellable auth lock contract. A failure to release the lock is ignored on the cancellable path, as withLockAsync ignores unlock errors (auth-storage.ts:191-198); on the synchronous path it replaces the result, as withLock's finally block rethrows it (auth-storage.ts:109-113).
 func (a *AuthStorage) withFileLock(ctx context.Context, asynchronous bool, fn func(*pilock.Lock) error) (err error) {
 	if err := context.Cause(ctx); err != nil {
 		return err
@@ -414,9 +429,14 @@ func (a *AuthStorage) withFileLock(ctx context.Context, asynchronous bool, fn fu
 		lock, err = pilock.AcquireSync(a.path)
 	}
 	if err != nil {
-		return fmt.Errorf("auth: acquire lock: %w", err)
+		// FileAuthStorageBackend rethrows proper-lockfile's error unchanged (auth-storage.ts:82,141).
+		return err
 	}
-	defer func() { err = errors.Join(err, releaseAuthFileLock(lock)) }()
+	defer func() {
+		if releaseErr := releaseAuthFileLock(lock); releaseErr != nil && !asynchronous {
+			err = releaseErr
+		}
+	}()
 	if err := lock.Check(); err != nil {
 		return err
 	}

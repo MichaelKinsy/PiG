@@ -1,0 +1,116 @@
+diff --git i/README.md w/README.md
+index df98de03d..d5838f7b7 100644
+--- i/README.md
++++ w/README.md
+@@ -27,7 +27,7 @@ PiG is [Pi](https://github.com/earendil-works/pi), the minimal and extensible co
+ 
+ PiG is a pre-stable 0.x release. Core paths are ported and checked against Pi 1.0.0 with paired parity scenarios; edge cases are still hardening. See the [port status](test/parity/coverage.md) and [file map](docs/parity/PORT_MAP.md) for current scope and evidence.
+ 
+-If PiG behaves differently from Pi, that is either a bug or a documented divergence. Windows support is a preview.
++If PiG behaves differently from Pi, that is either a bug or a documented divergence. Windows support is a preview; [Windows setup](docs/site/docs/windows.md) lists what is not yet covered.
+ 
+ ## Install
+ 
+diff --git i/docs/site/docs/index.md w/docs/site/docs/index.md
+index 173ba4a82..49325f004 100644
+--- i/docs/site/docs/index.md
++++ w/docs/site/docs/index.md
+@@ -2,7 +2,7 @@
+ 
+ PiG is a faithful Go implementation of [Pi](https://github.com/earendil-works/pi), the reference terminal coding agent. PiG follows observable Pi behavior unless a documented divergence explains a necessary difference.
+ 
+-PiG is under active development. Install it on macOS or Linux with `curl -fsSL https://pi-in-go.dev/install.sh | sh`, on any supported platform with `npm install -g @pi-in-go/pig` or `go install github.com/MichaelKinsy/PiG/cmd/pig@latest`, or download an archive from [GitHub Releases](https://github.com/MichaelKinsy/PiG/releases). Windows support is a preview.
++PiG is under active development. Install it on macOS or Linux with `curl -fsSL https://pi-in-go.dev/install.sh | sh`, on any supported platform with `npm install -g @pi-in-go/pig` or `go install github.com/MichaelKinsy/PiG/cmd/pig@latest`, or download an archive from [GitHub Releases](https://github.com/MichaelKinsy/PiG/releases). Windows support is a preview; see [Windows setup](/docs/latest/windows).
+ 
+ ## Start here
+ 
+diff --git i/docs/site/docs/quickstart.md w/docs/site/docs/quickstart.md
+index d1e71c4f6..374e41e12 100644
+--- i/docs/site/docs/quickstart.md
++++ w/docs/site/docs/quickstart.md
+@@ -1,6 +1,6 @@
+ # Quickstart
+ 
+-PiG is under active development. Install it on macOS or Linux with `curl -fsSL https://pi-in-go.dev/install.sh | sh`, on any supported platform with `npm install -g @pi-in-go/pig` or `go install github.com/MichaelKinsy/PiG/cmd/pig@latest`, or download an archive from [GitHub Releases](https://github.com/MichaelKinsy/PiG/releases). Windows support is a preview. To build from source instead, follow the steps below.
++PiG is under active development. Install it on macOS or Linux with `curl -fsSL https://pi-in-go.dev/install.sh | sh`, on any supported platform with `npm install -g @pi-in-go/pig` or `go install github.com/MichaelKinsy/PiG/cmd/pig@latest`, or download an archive from [GitHub Releases](https://github.com/MichaelKinsy/PiG/releases). Windows support is a preview; see [Windows setup](/docs/latest/windows). To build from source instead, follow the steps below.
+ 
+ ## Requirements
+ 
+diff --git i/docs/site/docs/windows.md w/docs/site/docs/windows.md
+index 1e371ab4d..3c707514b 100644
+--- i/docs/site/docs/windows.md
++++ w/docs/site/docs/windows.md
+@@ -1,6 +1,35 @@
+ # Windows setup
+ 
+-PiG supports source builds on Windows. Do not treat Windows as release-supported until native release verification passes for the published artifact.
++Windows support is a preview. PiG is tested natively on Windows with less real-world use than on macOS and Linux. What is not yet covered:
++
++- A standalone `pig.exe` does not replace itself (D39). Run the installer again, or download the new zip.
++- windows/arm64 archives and npm packages are published without a native smoke test.
++- The native Windows CI job runs a fixed list of packages and the extension suites. Windows-only tests in packages outside that list, such as `internal/codingagent` and `internal/nodespawn`, run only when someone runs them on Windows.
++- Legacy conhost and the VS Code terminal have no recorded native pass.
++
++If PiG behaves differently from Pi on Windows, that is a bug or a documented divergence. [Differences from Pi on Windows](#differences-from-pi-on-windows) lists the documented ones.
++
++## Install
++
++In PowerShell:
++
++```powershell
++irm https://pi-in-go.dev/install.ps1 | iex
++```
++
++With npm:
++
++```powershell
++npm install -g @pi-in-go/pig
++```
++
++With Go:
++
++```powershell
++go install github.com/MichaelKinsy/PiG/cmd/pig@latest
++```
++
++You can also download the `windows-amd64` or `windows-arm64` zip from [GitHub Releases](https://github.com/MichaelKinsy/PiG/releases). The `install.sh` installer supports macOS and Linux only. If SmartScreen or `PATH` gets in the way, see [install troubleshooting](/docs/latest/install-troubleshooting).
+ 
+ ## Build from source
+ 
+@@ -13,8 +42,6 @@ go build -o bin\pig.exe .\cmd\pig
+ .\bin\pig.exe --version
+ ```
+ 
+-Windows support is a preview. Instead of building from source, install with `npm install -g @pi-in-go/pig` or `go install github.com/MichaelKinsy/PiG/cmd/pig@latest`, or download the `windows-amd64` or `windows-arm64` zip from [GitHub Releases](https://github.com/MichaelKinsy/PiG/releases). The `install.sh` installer supports macOS and Linux only.
+-
+ ## Configuration paths
+ 
+ PiG stores configuration below the user profile by default:
+@@ -43,6 +70,10 @@ PiG selects an editor in this order:
+ 
+ Use Ctrl+G to open the current editor buffer.
+ 
++## Shell
++
++The `bash` tool needs a bash. PiG looks for Git for Windows at `%ProgramFiles%\Git\bin\bash.exe` and `%ProgramFiles(x86)%\Git\bin\bash.exe`, then for `bash.exe` on `PATH`. Set `shellPath` in `settings.json` to use another one. The `powershell` tool runs `pwsh.exe` when it is on `PATH`, and otherwise `powershell.exe`.
++
+ ## Extensions
+ 
+ A source extension requires its implementation toolchain. A Go extension needs Go. A Rust extension needs Cargo and Rust. A Python extension needs Python. A Node extension needs Node.
+@@ -55,9 +86,14 @@ Use a prebuilt Piglet Binary when you do not want a target-side Go or Rust build
+ 
+ PiG does not replace a standalone `pig.exe` in place (D39). Download the new release and replace the file.
+ 
+-## Verification
++## Differences from Pi on Windows
+ 
+-Run the Windows-native unit and integration gates before claiming support for an artifact. A Linux cross-build alone does not prove Windows terminal, process, filesystem, update, or extension behavior.
++- A standalone `pig.exe` does not replace itself (D39). Run the installer again, or download the new zip. npm and pnpm installations update through their package manager, as in Pi.
++- Pi's suspend key reports "Suspend to background is not supported on Windows". PiG does the same.
++- A Node extension connects to the host over a named pipe that only the current user can open. Go, Python and Rust extensions use AF_UNIX. Extension code does not see the difference.
++- Files that must be readable only by their owner, such as Piglet secrets, are protected with a Windows ACL instead of POSIX mode bits (D68).
++- Container builds of a Piglet do not pass `--user`. The image's default user runs the build (D67).
++- `pig piglet build --format script` writes a `.cmd` launcher on Windows (D69).
+ 
+ ## Upstream Pi
+ 

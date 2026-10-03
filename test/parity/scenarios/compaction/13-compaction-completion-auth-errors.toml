@@ -1,4 +1,4 @@
-# Derived from Pi 0.87.1 suite/agent-session-compaction.test.ts:238-439.
+# Derived from Pi 0.99.2 suite/agent-session-compaction.test.ts:238-439.
 # Compare exact preflight diagnostics, completion/listener ordering, native
 # bearer-auth resolution, a caller-owned stream without registry credentials,
 # and a thrown custom stream error without normalization.

@@ -21,6 +21,10 @@ import (
 // and builds it with coding.BuildModelFromEntry, the constructor /model uses.
 func buildModelFromRef(ctx context.Context, providerID, modelID string, services *coding.Services) (*ai.Model, error) {
 	registry := services.Registry().ModelRegistry
+	// A virtual model is a catalog entry of the model runtime, not of the registry (model-runtime.ts:285-293).
+	if model := services.ModelRuntime().GetModel(providerID, modelID); coding.IsVirtualModel(model) {
+		return model, nil
+	}
 	if model := coding.BuildNativeModel(registry, providerID, modelID); model != nil {
 		return model, nil
 	}

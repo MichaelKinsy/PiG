@@ -60,9 +60,11 @@ func TestSelfUpdateOnWindowsRefusesReceiptedStandalone(t *testing.T) {
 // Upstream self-updates an npm install on Windows (package-manager-cli.ts)
 // after quarantining the native images it loaded from the package directory
 // (prepareWindowsNpmSelfUpdate), because Windows refuses to delete a running
-// image. pig's running image there is pig.exe itself: without the quarantine
-// npm cannot remove the package directory pig runs from. The next start on
-// Windows clears the quarantine.
+// image. pig's running image there is pig.exe itself, in the platform package
+// npm nests inside the launcher: without the quarantine npm cannot remove the
+// launcher tree pig runs from. The quarantine sits in the global node_modules
+// beside the launcher, outside that tree, as upstream's sits beside its
+// installed package. The next start on Windows clears it.
 func TestWindowsNpmSelfUpdateReplacesTheRunningInstallation(t *testing.T) {
 	manifest := `{"version":"9.9.9","packageName":"@pi-in-go/pig","binaries":{}}`
 	srv := signedManifestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -73,7 +75,7 @@ func TestWindowsNpmSelfUpdateReplacesTheRunningInstallation(t *testing.T) {
 	t.Setenv("PIG_INSTALL_TIER", "")
 
 	root := filepath.Join(t.TempDir(), "node_modules")
-	pigExe := filepath.Join(root, "pig", "bin", "pig.exe")
+	pigExe := filepath.Join(npmNestedPlatformPackageDir(root), "pig.exe")
 	tools := t.TempDir()
 	copyTestBinary(t, pigExe)
 	copyTestBinary(t, filepath.Join(tools, "npm.exe"))

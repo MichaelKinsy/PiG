@@ -92,6 +92,34 @@ func TestOpenAIResponsesTerminalEventUpstream(t *testing.T) {
 			}
 		})
 	}
+	// The agent runs every tool call in the final message, so a completed stream must not hand over a call whose output_item.done never arrived.
+	for _, tc := range []struct {
+		name, sse, want string
+	}{
+		// .upstream/v0.99.1/packages/ai/test/openai-responses-terminal-event.test.ts:254
+		{"rejects completed streams whose tool call never received output_item.done",
+			`data: {"type":"response.output_item.added","sequence_number":0,"output_index":0,"item":{"type":"function_call","id":"fc_1","call_id":"call_1","name":"bash","arguments":""}}` + "\n\n" +
+				`data: {"type":"response.function_call_arguments.delta","sequence_number":1,"output_index":0,"item_id":"fc_1","delta":"{\"command\":\"rm -rf /tmp/build"}` + "\n\n" +
+				`data: {"type":"response.completed","sequence_number":2,"response":{"id":"resp_unfinished","status":"completed"}}` + "\n\n",
+			"OpenAI Responses stream completed with an unfinished tool call: bash (call_1|fc_1)"},
+		// .upstream/v0.99.1/packages/ai/test/openai-responses-terminal-event.test.ts:268 (https://github.com/earendil-works/pi/issues/9974; llama.cpp omits output_index from every event)
+		{"rejects parallel tool calls without output_index instead of running mixed-up calls",
+			`data: {"type":"response.output_item.added","item":{"type":"function_call","id":"fc_a","call_id":"call_a","name":"bash","arguments":""}}` + "\n\n" +
+				`data: {"type":"response.function_call_arguments.delta","item_id":"fc_a","delta":"{\"command\":\"echo a\"}"}` + "\n\n" +
+				`data: {"type":"response.output_item.added","item":{"type":"function_call","id":"fc_b","call_id":"call_b","name":"bash","arguments":""}}` + "\n\n" +
+				`data: {"type":"response.function_call_arguments.delta","item_id":"fc_b","delta":"{\"command\":\"echo b\"}"}` + "\n\n" +
+				`data: {"type":"response.output_item.done","item":{"type":"function_call","id":"fc_a","call_id":"call_a","name":"bash","arguments":"{\"command\":\"echo a\"}"}}` + "\n\n" +
+				`data: {"type":"response.output_item.done","item":{"type":"function_call","id":"fc_b","call_id":"call_b","name":"bash","arguments":"{\"command\":\"echo b\"}"}}` + "\n\n" +
+				`data: {"type":"response.completed","response":{"id":"resp_no_output_index","status":"completed"}}` + "\n\n",
+			"OpenAI Responses stream completed with an unfinished tool call: bash (call_a|fc_a)"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			result, _ := terminalEventsUpstream(t, tc.sse, false)
+			if result.StopReason != StopReasonError || result.ErrorMessage != tc.want {
+				t.Fatalf("stopReason=%q error=%q, want error %q", result.StopReason, result.ErrorMessage, tc.want)
+			}
+		})
+	}
 	for _, tc := range []struct {
 		initial, final string
 		incomplete     bool

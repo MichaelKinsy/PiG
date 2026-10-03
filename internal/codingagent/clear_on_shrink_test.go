@@ -29,7 +29,7 @@ func TestInteractiveRendererClearOnShrinkComesFromSettings(t *testing.T) {
 			t.Setenv("PI_CLEAR_ON_SHRINK", tc.env)
 			m := newSwitchTuiProbe(t)
 			m.opts.Settings.ClearOnShrink = tc.setting
-			if !m.switchTuiMode("fullscreen", false) || !m.switchTuiMode("regular", false) {
+			if !m.switchTuiMode("fullscreen", false, true) || !m.switchTuiMode("regular", false, true) {
 				t.Fatal("renderer swap refused")
 			}
 			regular, ok := m.tuiInst.(*tui.TUI)

@@ -3,7 +3,6 @@ package subprocess
 import (
 	"context"
 	"encoding/json"
-	"path/filepath"
 	"testing"
 	"time"
 )
@@ -11,10 +10,7 @@ import (
 // Packing is supported for Go, Rust and Python factories; Node is isolated,
 // and Go's fused realization is covered by TestUserMessageContentAcrossSDKs.
 func TestPackedUserMessageContentAcrossSDKs(t *testing.T) {
-	root := findModuleRoot(t)
-	t.Setenv("PIG_SDK_GO_ROOT", filepath.Join(root, "extensions", "sdk"))
-	t.Setenv("PIG_SDK_PY_ROOT", filepath.Join(root, "extensions", "sdk-py"))
-	t.Setenv("PIG_SDK_RS_ROOT", filepath.Join(root, "extensions", "sdk-rs"))
+	t.Parallel()
 	cases := []struct {
 		name    string
 		configs func(*testing.T) []ExtConfig

@@ -3,7 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import ts from "typescript";
 
-const TRACKED_PACKAGES = ["agent", "ai", "coding-agent", "tui"];
+// mcp and codemode exist from upstream 0.99.0; a source directory is skipped when the mirror has none.
+const TRACKED_PACKAGES = ["agent", "ai", "codemode", "coding-agent", "mcp", "tui"];
 const RENDER_PRIMITIVES = new Set([
   "visibleWidth",
   "truncateToWidth",
@@ -94,6 +95,33 @@ function ownerName(node, sourceFile) {
     if (ts.isClassDeclaration(parent) || ts.isClassExpression(parent)) return parent.name?.text ?? "<anonymous-class>";
   }
   return "<module>";
+}
+
+// The name of the nearest named function that contains node (an anonymous callback such as a Promise executor
+// is skipped), else the nearest anonymous one, or "" for a module-level or class-member function.
+function enclosingFunctionName(node, sourceFile) {
+  let anonymous = "";
+  for (let parent = node.parent; parent; parent = parent.parent) {
+    if (!ts.isFunctionLike(parent)) continue;
+    const name = propertyName(parent, sourceFile);
+    if (!name.startsWith("<anonymous@")) return name;
+    anonymous ||= name;
+  }
+  return anonymous;
+}
+
+// Renderer ids are owner and name, so a local function can collide with a class method of the same name
+// (mcp/ui.ts: McpManagerView.menu declares `const render` beside McpManagerView.render). Only a colliding
+// local function is qualified by its enclosing function, which keeps every id that was already unique.
+function qualifyCollidingRenderers(renderers) {
+  const counts = new Map();
+  for (const renderer of renderers) counts.set(renderer.id, (counts.get(renderer.id) ?? 0) + 1);
+  for (const renderer of renderers) {
+    if (counts.get(renderer.id) > 1 && renderer.enclosing) {
+      renderer.method = `${renderer.enclosing}.${renderer.method}`;
+      renderer.id = `render:${renderer.path}#${renderer.owner}.${renderer.method}`;
+    }
+  }
 }
 
 function behaviorMethodName(method) {
@@ -368,6 +396,7 @@ function inspectRenderer(node, sourceFile, relativePath, constants) {
   const method = propertyName(node, sourceFile);
   const source = node.getText(sourceFile);
   return {
+    enclosing: enclosingFunctionName(node, sourceFile),
     id: `render:${relativePath}#${owner}.${method}`,
     path: relativePath,
     owner,
@@ -409,11 +438,13 @@ export function extractBehaviorInputInventory({ sourceRoot, upstreamVersion }) {
     visit(sourceFile);
   }
   handlers.sort((left, right) => left.id.localeCompare(right.id));
+  qualifyCollidingRenderers(renderers);
   renderers.sort((left, right) => left.id.localeCompare(right.id));
   const duplicates = handlers.filter((handler, index) => index > 0 && handler.id === handlers[index - 1].id);
   if (duplicates.length > 0) throw new Error(`duplicate input handler id ${duplicates[0].id}`);
   const duplicateRenderers = renderers.filter((renderer, index) => index > 0 && renderer.id === renderers[index - 1].id);
   if (duplicateRenderers.length > 0) throw new Error(`duplicate renderer id ${duplicateRenderers[0].id}`);
+  for (const renderer of renderers) delete renderer.enclosing;
   const keybindings = [...definitions.values()].map(({ definitionSet: _definitionSet, ...entry }) => entry).sort((left, right) => left.id.localeCompare(right.id));
   const declared = [...declarations].sort();
   const defined = keybindings.map((entry) => entry.id);

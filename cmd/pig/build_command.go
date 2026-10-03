@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/buildprogress"
+	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
 const pigModulePath = "github.com/MichaelKinsy/PiG"
@@ -69,8 +70,13 @@ Use --verbose to stream toolchain output. Progress is written to stderr.
 	ldflags := fmt.Sprintf("-s -w -X main.Build=%s", build)
 	buildprogress.Phase(ctx, "Compiling and linking Go binary", "PiG → "+target+" (includes module resolution)")
 	buildArgs := buildprogress.ToolArgs(ctx, "go", []string{"build", "-buildvcs=false", "-trimpath", "-ldflags", ldflags, "-o", target, "./cmd/pig"})
-	cmd := exec.CommandContext(ctx, "go", buildArgs...)
+	goToolchain, err := toolchain.ResolveGo()
+	if err != nil {
+		return fail(err)
+	}
+	cmd := exec.CommandContext(ctx, goToolchain.Command, buildArgs...)
 	cmd.Dir = root
+	cmd.Env = goToolchain.Environ(os.Environ())
 	if err := buildprogress.Run(buildprogress.Member(ctx, "pig"), cmd); err != nil {
 		return fail(fmt.Errorf("go build: %w", err))
 	}

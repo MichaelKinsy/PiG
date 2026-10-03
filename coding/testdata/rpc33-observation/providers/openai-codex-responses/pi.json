@@ -1,5 +1,5 @@
 {
-  "piVersion": "0.87.1",
+  "piVersion": "1.0.0",
   "api": "openai-codex-responses",
   "node": "v24.19.0",
   "runs": 8,
@@ -46,7 +46,7 @@
         "at": "push",
         "type": "toolcall_start",
         "segment": 1,
-        "tick": 20,
+        "tick": 24,
         "state": {
           "content": [
             {
@@ -67,7 +67,7 @@
         "at": "deliver",
         "type": "toolcall_start",
         "segment": 1,
-        "tick": 23,
+        "tick": 27,
         "state": {
           "content": [
             {
@@ -88,7 +88,7 @@
         "at": "push",
         "type": "toolcall_delta",
         "segment": 1,
-        "tick": 24,
+        "tick": 30,
         "state": {
           "content": [
             {
@@ -111,7 +111,7 @@
         "at": "deliver",
         "type": "toolcall_delta",
         "segment": 1,
-        "tick": 27,
+        "tick": 33,
         "state": {
           "content": [
             {
@@ -134,7 +134,7 @@
         "at": "push",
         "type": "toolcall_end",
         "segment": 1,
-        "tick": 28,
+        "tick": 36,
         "state": {
           "content": [
             {
@@ -156,7 +156,7 @@
         "at": "deliver",
         "type": "toolcall_end",
         "segment": 1,
-        "tick": 31,
+        "tick": 39,
         "state": {
           "content": [
             {
@@ -178,7 +178,7 @@
         "at": "push",
         "type": "done",
         "segment": 1,
-        "tick": 39,
+        "tick": 49,
         "state": {
           "content": [
             {
@@ -200,7 +200,7 @@
         "at": "deliver",
         "type": "done",
         "segment": 1,
-        "tick": 42,
+        "tick": 52,
         "state": {
           "content": [
             {
@@ -255,7 +255,7 @@
         "at": "push",
         "type": "text_start",
         "segment": 1,
-        "tick": 20,
+        "tick": 24,
         "state": {
           "content": [
             {
@@ -273,7 +273,7 @@
         "at": "deliver",
         "type": "text_start",
         "segment": 1,
-        "tick": 23,
+        "tick": 27,
         "state": {
           "content": [
             {
@@ -291,7 +291,7 @@
         "at": "push",
         "type": "text_delta",
         "segment": 1,
-        "tick": 24,
+        "tick": 30,
         "state": {
           "content": [
             {
@@ -309,7 +309,7 @@
         "at": "deliver",
         "type": "text_delta",
         "segment": 1,
-        "tick": 27,
+        "tick": 33,
         "state": {
           "content": [
             {
@@ -327,7 +327,7 @@
         "at": "push",
         "type": "text_delta",
         "segment": 1,
-        "tick": 28,
+        "tick": 36,
         "state": {
           "content": [
             {
@@ -345,7 +345,7 @@
         "at": "deliver",
         "type": "text_delta",
         "segment": 1,
-        "tick": 31,
+        "tick": 39,
         "state": {
           "content": [
             {
@@ -363,7 +363,7 @@
         "at": "push",
         "type": "text_end",
         "segment": 1,
-        "tick": 32,
+        "tick": 42,
         "state": {
           "content": [
             {
@@ -382,7 +382,7 @@
         "at": "deliver",
         "type": "text_end",
         "segment": 1,
-        "tick": 35,
+        "tick": 45,
         "state": {
           "content": [
             {
@@ -401,7 +401,7 @@
         "at": "push",
         "type": "done",
         "segment": 1,
-        "tick": 43,
+        "tick": 55,
         "state": {
           "content": [
             {
@@ -420,7 +420,7 @@
         "at": "deliver",
         "type": "done",
         "segment": 1,
-        "tick": 46,
+        "tick": 58,
         "state": {
           "content": [
             {
@@ -472,7 +472,7 @@
         "at": "push",
         "type": "toolcall_start",
         "segment": 1,
-        "tick": 20,
+        "tick": 24,
         "state": {
           "content": [
             {
@@ -493,7 +493,7 @@
         "at": "deliver",
         "type": "toolcall_start",
         "segment": 1,
-        "tick": 23,
+        "tick": 27,
         "state": {
           "content": [
             {
@@ -514,7 +514,7 @@
         "at": "push",
         "type": "error",
         "segment": 1,
-        "tick": 26,
+        "tick": 30,
         "state": {
           "content": [
             {
@@ -534,7 +534,7 @@
         "at": "deliver",
         "type": "error",
         "segment": 1,
-        "tick": 29,
+        "tick": 33,
         "state": {
           "content": [
             {
@@ -587,7 +587,7 @@
         "at": "push",
         "type": "toolcall_start",
         "segment": 1,
-        "tick": 20,
+        "tick": 24,
         "state": {
           "content": [
             {
@@ -608,7 +608,7 @@
         "at": "deliver",
         "type": "toolcall_start",
         "segment": 1,
-        "tick": 23,
+        "tick": 27,
         "state": {
           "content": [
             {
@@ -629,7 +629,7 @@
         "at": "push",
         "type": "error",
         "segment": 1,
-        "tick": 29,
+        "tick": 34,
         "state": {
           "content": [
             {
@@ -649,7 +649,7 @@
         "at": "deliver",
         "type": "error",
         "segment": 1,
-        "tick": 32,
+        "tick": 37,
         "state": {
           "content": [
             {
@@ -707,7 +707,7 @@
         "at": "push",
         "type": "toolcall_start",
         "segment": 2,
-        "tick": 12,
+        "tick": 16,
         "state": {
           "content": [
             {
@@ -728,7 +728,7 @@
         "at": "deliver",
         "type": "toolcall_start",
         "segment": 2,
-        "tick": 15,
+        "tick": 19,
         "state": {
           "content": [
             {
@@ -749,7 +749,7 @@
         "at": "push",
         "type": "toolcall_delta",
         "segment": 2,
-        "tick": 16,
+        "tick": 22,
         "state": {
           "content": [
             {
@@ -772,7 +772,7 @@
         "at": "deliver",
         "type": "toolcall_delta",
         "segment": 2,
-        "tick": 19,
+        "tick": 25,
         "state": {
           "content": [
             {
@@ -795,7 +795,7 @@
         "at": "push",
         "type": "toolcall_end",
         "segment": 2,
-        "tick": 20,
+        "tick": 28,
         "state": {
           "content": [
             {
@@ -817,7 +817,7 @@
         "at": "deliver",
         "type": "toolcall_end",
         "segment": 2,
-        "tick": 23,
+        "tick": 31,
         "state": {
           "content": [
             {
@@ -839,7 +839,7 @@
         "at": "push",
         "type": "done",
         "segment": 2,
-        "tick": 31,
+        "tick": 41,
         "state": {
           "content": [
             {
@@ -861,7 +861,7 @@
         "at": "deliver",
         "type": "done",
         "segment": 2,
-        "tick": 34,
+        "tick": 44,
         "state": {
           "content": [
             {
@@ -921,7 +921,7 @@
         "at": "push",
         "type": "text_start",
         "segment": 2,
-        "tick": 12,
+        "tick": 16,
         "state": {
           "content": [
             {
@@ -939,7 +939,7 @@
         "at": "deliver",
         "type": "text_start",
         "segment": 2,
-        "tick": 15,
+        "tick": 19,
         "state": {
           "content": [
             {
@@ -957,7 +957,7 @@
         "at": "push",
         "type": "text_delta",
         "segment": 2,
-        "tick": 16,
+        "tick": 22,
         "state": {
           "content": [
             {
@@ -975,7 +975,7 @@
         "at": "deliver",
         "type": "text_delta",
         "segment": 2,
-        "tick": 19,
+        "tick": 25,
         "state": {
           "content": [
             {
@@ -993,7 +993,7 @@
         "at": "push",
         "type": "text_delta",
         "segment": 2,
-        "tick": 20,
+        "tick": 28,
         "state": {
           "content": [
             {
@@ -1011,7 +1011,7 @@
         "at": "deliver",
         "type": "text_delta",
         "segment": 2,
-        "tick": 23,
+        "tick": 31,
         "state": {
           "content": [
             {
@@ -1029,7 +1029,7 @@
         "at": "push",
         "type": "text_end",
         "segment": 2,
-        "tick": 24,
+        "tick": 34,
         "state": {
           "content": [
             {
@@ -1048,7 +1048,7 @@
         "at": "deliver",
         "type": "text_end",
         "segment": 2,
-        "tick": 27,
+        "tick": 37,
         "state": {
           "content": [
             {
@@ -1067,7 +1067,7 @@
         "at": "push",
         "type": "done",
         "segment": 2,
-        "tick": 35,
+        "tick": 47,
         "state": {
           "content": [
             {
@@ -1086,7 +1086,7 @@
         "at": "deliver",
         "type": "done",
         "segment": 2,
-        "tick": 38,
+        "tick": 50,
         "state": {
           "content": [
             {
@@ -1143,7 +1143,7 @@
         "at": "push",
         "type": "toolcall_start",
         "segment": 2,
-        "tick": 12,
+        "tick": 16,
         "state": {
           "content": [
             {
@@ -1164,7 +1164,7 @@
         "at": "deliver",
         "type": "toolcall_start",
         "segment": 2,
-        "tick": 15,
+        "tick": 19,
         "state": {
           "content": [
             {
@@ -1185,7 +1185,7 @@
         "at": "push",
         "type": "error",
         "segment": 2,
-        "tick": 18,
+        "tick": 22,
         "state": {
           "content": [
             {
@@ -1205,7 +1205,7 @@
         "at": "deliver",
         "type": "error",
         "segment": 2,
-        "tick": 21,
+        "tick": 25,
         "state": {
           "content": [
             {
@@ -1263,7 +1263,7 @@
         "at": "push",
         "type": "toolcall_start",
         "segment": 2,
-        "tick": 12,
+        "tick": 16,
         "state": {
           "content": [
             {
@@ -1284,7 +1284,7 @@
         "at": "deliver",
         "type": "toolcall_start",
         "segment": 2,
-        "tick": 15,
+        "tick": 19,
         "state": {
           "content": [
             {
@@ -1305,7 +1305,7 @@
         "at": "push",
         "type": "error",
         "segment": 2,
-        "tick": 21,
+        "tick": 26,
         "state": {
           "content": [
             {
@@ -1325,7 +1325,7 @@
         "at": "deliver",
         "type": "error",
         "segment": 2,
-        "tick": 24,
+        "tick": 29,
         "state": {
           "content": [
             {
@@ -1388,7 +1388,7 @@
         "at": "push",
         "type": "toolcall_start",
         "segment": 3,
-        "tick": 8,
+        "tick": 10,
         "state": {
           "content": [
             {
@@ -1409,7 +1409,7 @@
         "at": "deliver",
         "type": "toolcall_start",
         "segment": 3,
-        "tick": 11,
+        "tick": 13,
         "state": {
           "content": [
             {
@@ -1435,7 +1435,7 @@
         "at": "push",
         "type": "toolcall_delta",
         "segment": 4,
-        "tick": 8,
+        "tick": 10,
         "state": {
           "content": [
             {
@@ -1458,7 +1458,7 @@
         "at": "deliver",
         "type": "toolcall_delta",
         "segment": 4,
-        "tick": 11,
+        "tick": 13,
         "state": {
           "content": [
             {
@@ -1486,7 +1486,7 @@
         "at": "push",
         "type": "toolcall_end",
         "segment": 5,
-        "tick": 8,
+        "tick": 10,
         "state": {
           "content": [
             {
@@ -1508,7 +1508,7 @@
         "at": "deliver",
         "type": "toolcall_end",
         "segment": 5,
-        "tick": 11,
+        "tick": 13,
         "state": {
           "content": [
             {
@@ -1535,7 +1535,7 @@
         "at": "push",
         "type": "done",
         "segment": 6,
-        "tick": 15,
+        "tick": 17,
         "state": {
           "content": [
             {
@@ -1557,7 +1557,7 @@
         "at": "deliver",
         "type": "done",
         "segment": 6,
-        "tick": 18,
+        "tick": 20,
         "state": {
           "content": [
             {
@@ -1622,7 +1622,7 @@
         "at": "push",
         "type": "text_start",
         "segment": 3,
-        "tick": 8,
+        "tick": 10,
         "state": {
           "content": [
             {
@@ -1640,7 +1640,7 @@
         "at": "deliver",
         "type": "text_start",
         "segment": 3,
-        "tick": 11,
+        "tick": 13,
         "state": {
           "content": [
             {
@@ -1663,7 +1663,7 @@
         "at": "push",
         "type": "text_delta",
         "segment": 4,
-        "tick": 8,
+        "tick": 10,
         "state": {
           "content": [
             {
@@ -1681,7 +1681,7 @@
         "at": "deliver",
         "type": "text_delta",
         "segment": 4,
-        "tick": 11,
+        "tick": 13,
         "state": {
           "content": [
             {
@@ -1704,7 +1704,7 @@
         "at": "push",
         "type": "text_delta",
         "segment": 5,
-        "tick": 8,
+        "tick": 10,
         "state": {
           "content": [
             {
@@ -1722,7 +1722,7 @@
         "at": "deliver",
         "type": "text_delta",
         "segment": 5,
-        "tick": 11,
+        "tick": 13,
         "state": {
           "content": [
             {
@@ -1745,7 +1745,7 @@
         "at": "push",
         "type": "text_end",
         "segment": 6,
-        "tick": 8,
+        "tick": 10,
         "state": {
           "content": [
             {
@@ -1764,7 +1764,7 @@
         "at": "deliver",
         "type": "text_end",
         "segment": 6,
-        "tick": 11,
+        "tick": 13,
         "state": {
           "content": [
             {
@@ -1788,7 +1788,7 @@
         "at": "push",
         "type": "done",
         "segment": 7,
-        "tick": 15,
+        "tick": 17,
         "state": {
           "content": [
             {
@@ -1807,7 +1807,7 @@
         "at": "deliver",
         "type": "done",
         "segment": 7,
-        "tick": 18,
+        "tick": 20,
         "state": {
           "content": [
             {
@@ -1869,7 +1869,7 @@
         "at": "push",
         "type": "toolcall_start",
         "segment": 3,
-        "tick": 8,
+        "tick": 10,
         "state": {
           "content": [
             {
@@ -1890,7 +1890,7 @@
         "at": "deliver",
         "type": "toolcall_start",
         "segment": 3,
-        "tick": 11,
+        "tick": 13,
         "state": {
           "content": [
             {
@@ -1999,7 +1999,7 @@
         "at": "push",
         "type": "toolcall_start",
         "segment": 3,
-        "tick": 8,
+        "tick": 10,
         "state": {
           "content": [
             {
@@ -2020,7 +2020,7 @@
         "at": "deliver",
         "type": "toolcall_start",
         "segment": 3,
-        "tick": 11,
+        "tick": 13,
         "state": {
           "content": [
             {
@@ -2046,7 +2046,7 @@
         "at": "push",
         "type": "error",
         "segment": 4,
-        "tick": 13,
+        "tick": 14,
         "state": {
           "content": [
             {
@@ -2066,7 +2066,7 @@
         "at": "deliver",
         "type": "error",
         "segment": 4,
-        "tick": 16,
+        "tick": 17,
         "state": {
           "content": [
             {
@@ -2086,15 +2086,7 @@
   },
   "rpc": {
     "buffered/tool": {
-      "content": [
-        {
-          "type": "toolCall",
-          "id": "call_1|fc_1",
-          "name": "read",
-          "arguments": {},
-          "partialJson": ""
-        }
-      ],
+      "content": [],
       "stopReason": "pending",
       "responseId": "resp_1",
       "usage": 0,

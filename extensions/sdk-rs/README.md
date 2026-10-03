@@ -10,6 +10,16 @@ The Rust SDK targets Pi's extension API through PiG's subprocess host. See [Exte
 
 Host-backed `Context` getters return `io::Result` and never an empty value or default; Pi's `undefined` is `Option::None` (`get_session_name`, `get_session_file`, `get_leaf_id`, `get_flag`, `get_context_usage`, `get_model_info`). `get_branch` and `get_entries` return the session-log subscription failure. `ExecOptions.timeout` and `DialogOptions.timeout` are `Option<f64>`, and `ToolDefinition.constrained_sampling` is `Option<ToolConstrainedSampling>`. See the migration tables in `docs/site/docs/extensions.md`.
 
+## Upstream 0.99.1 extension API
+
+- Tool fields: `ToolDefinition` carries `output_schema`, `exposure` (`ToolExposure`), `namespace`, `annotations`, `default_active` and `prepare_loadout`. A tool result gains `with_structured_content`, `with_details` and `with_is_error`; `is_error` reports a failure without throwing and keeps the details.
+- MCP servers: `Extension::register_mcp_server` while loading, `Context::register_mcp_server` and `unregister_mcp_server` afterwards. The host validates the config; its message is the error. `Context::get_mcp_servers` is answered from the replicated state: the host refreshes it before each tool call, command and event, and each registration reply replaces it.
+- Virtual models: `VirtualModel::new(provider, id, name, route)` with `Extension::register_virtual_model` or `Context::register_virtual_model`. `route` runs in the extension for each request; the `Context` it receives is cancelled with the request.
+- `Context::get_settings` returns a copy of the effective settings and fails until the host has sent them. `Context::tools` lists the tools `execute_tool` can call and, like `execute_tool`, fails outside a tool call.
+- `Context::signal()` is Pi's `ctx.signal`: the `ProviderSignal` of the run in progress, one for the whole run and cancelled when the run aborts even while a handler is in flight, or `None` while no run is active. `Context::is_cancelled()` reports the handler's own request.
+- `Context::execute_tool(name, args, ExecuteToolOptions)` runs another tool for the calling tool call and returns its outcome. A tool failure is an outcome with `is_error`, never an `Err`. `on_update` receives partial results in order before the call returns; `signal` cancels the nested call, which by default is cancelled with the calling request.
+- `EVENT_PROVIDER_STREAM_EVENT` and `EVENT_MCP_SERVERS_CHANGE` subscribe to `provider_stream_event` and `mcp_servers_change`. The extension that handles `mcp_servers_change` is the one that connects registered servers.
+
 ## Terminal input
 
 JavaScript strings contain UTF-16 units, not only Unicode scalar values. Pi can deliver a non-BMP character as two separate terminal-input chunks. Either chunk can be consumed or rewritten before the next arrives.

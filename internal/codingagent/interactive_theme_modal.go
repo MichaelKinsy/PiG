@@ -18,7 +18,18 @@ func (m *InteractiveMode) modalStopped() bool {
 // readModalInput services owner-loop tasks while a selector owns focus and releases that focus on shutdown or input failure.
 // Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (shutdown remains independent of selector focus).
 func (m *InteractiveMode) readModalInput(input <-chan []byte) ([]byte, bool) {
-	return waitModalValue(m, input, func(buf []byte) bool { return m.consumeTerminalThemeInput(string(buf)) })
+	return waitModalValue(m, input, func(buf []byte) bool { return m.consumeModalHostInput(string(buf)) })
+}
+
+// consumeModalHostInput runs the input stages that precede a selector's own handler: terminal theme replies, then, in fullscreen, the alternate screen's viewport listener and the focused transcript search. Upstream TUI runs input listeners, including the alternate screen's handleViewportInput, before the focused component (tui-alt-screen.ts handleViewportInput; tui.ts handleInput), so PageUp, PageDown, Home, End, the wheel and ctrl+shift+f move the viewport while an editor-slot selector has focus.
+func (m *InteractiveMode) consumeModalHostInput(data string) bool {
+	if m.consumeTerminalThemeInput(data) {
+		return true
+	}
+	if m.altScreen == nil {
+		return false
+	}
+	return m.altScreen.HandleViewportInput(data) || m.altScreen.HandleFocusedSearchInput(data)
 }
 
 // Ports packages/coding-agent/src/modes/interactive/components/session-selector.ts (confirmRename await).
@@ -62,7 +73,7 @@ func waitModalValue[T any](m *InteractiveMode, input <-chan T, consume func(T) b
 func (m *InteractiveMode) modalInputChunks(component tui.Component, chunks []string) []string {
 	filtered := chunks[:0]
 	for _, chunk := range chunks {
-		if !m.consumeTerminalThemeInput(chunk) {
+		if !m.consumeModalHostInput(chunk) {
 			filtered = append(filtered, chunk)
 		}
 	}
@@ -75,7 +86,7 @@ func (m *InteractiveMode) dispatchModalInput(component tui.Component, chunks []s
 
 func (m *InteractiveMode) drainModalInput(component tui.Component, input <-chan []byte, handle func(string) bool) {
 	drainModalInput(component, input, func(chunk string) bool {
-		if m.consumeTerminalThemeInput(chunk) {
+		if m.consumeModalHostInput(chunk) {
 			return false
 		}
 		return handle(chunk)

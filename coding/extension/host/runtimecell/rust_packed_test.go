@@ -16,6 +16,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 func TestBuildRustPackedCellBuildsCachedRunner(t *testing.T) {
@@ -129,16 +130,14 @@ func unixListenerRust(t *testing.T) (net.Listener, func()) {
 	t.Helper()
 	// A private directory per listener: time-derived names can repeat on
 	// hosts with a coarse clock (Windows), and two listeners then collide.
-	dir, err := os.MkdirTemp("", "pig-rust-packed-")
-	if err != nil {
-		t.Fatal(err)
-	}
+	// ShortTempDir keeps the socket path within sun_path at any TEMP length.
+	dir := testenv.ShortTempDir(t, "pig-rust-packed-")
 	path := filepath.Join(dir, "cell.sock")
 	ln, err := net.Listen("unix", path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return ln, func() { _ = ln.Close(); _ = os.RemoveAll(dir) }
+	return ln, func() { _ = ln.Close() }
 }
 
 func acceptRegisterRust(t *testing.T, ln net.Listener) *subprocess.RegisterPayload {

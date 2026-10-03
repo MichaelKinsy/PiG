@@ -15,17 +15,22 @@ function parseOscHexChannel(channel) {
     }
     return Math.round((parseInt(channel, 16) / max) * 255);
 }
-const OSC11_BACKGROUND_COLOR_RESPONSE_PATTERN = /^\x1b\]11;([^\x07\x1b]*)(?:\x07|\x1b\\)$/i;
+const OSC_COLOR_RESPONSE_PATTERN = /^\x1b\](?:(1[01])|4;(\d{1,3}));([^\x07\x1b]*)(?:\x07|\x1b\\)$/i;
 const COLOR_SCHEME_REPORT_PATTERN = /^(?:\x1b\[\?997;(1|2)n)+$/;
-export function isOsc11BackgroundColorResponse(data) {
-    return OSC11_BACKGROUND_COLOR_RESPONSE_PATTERN.test(data);
-}
-export function parseOsc11BackgroundColor(data) {
-    const match = data.match(OSC11_BACKGROUND_COLOR_RESPONSE_PATTERN);
+/**
+ * Parse an OSC 10, 11, or 4 color reply. Returns undefined when `data` is not such a reply;
+ * `rgb` is undefined when it is a reply with an unparseable color.
+ */
+export function parseOscColorResponse(data) {
+    const match = data.match(OSC_COLOR_RESPONSE_PATTERN);
     if (!match) {
         return undefined;
     }
-    const value = match[1].trim();
+    const target = match[1] === "10" ? "foreground" : match[1] === "11" ? "background" : Number.parseInt(match[2], 10);
+    return { target, rgb: parseOscColorValue(match[3]) };
+}
+function parseOscColorValue(rawValue) {
+    const value = rawValue.trim();
     if (value.startsWith("#")) {
         const hex = value.slice(1);
         if (/^[0-9a-f]{6}$/i.test(hex)) {

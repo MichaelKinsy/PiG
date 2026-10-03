@@ -49,6 +49,7 @@ func (m *InteractiveMode) buildChatViewport() ChatViewport {
 		Status:              m.statusContainer,
 		WidgetsAbove:        m.widgetContainer,
 		Editor:              m.editorContainer,
+		WidgetsBelow:        m.widgetContainerBelow,
 		Footer:              tui.NewContainer(m.extFooter, m.statusLine),
 		Scrollbar:           (&SettingsManager{merged: m.opts.Settings}).GetFullscreenScrollbar(),
 		ScrollbarTrackStyle: themedScrollbarTrackStyle,
@@ -64,9 +65,12 @@ func (m *InteractiveMode) ensureLoadedResourcesContainer() {
 	}
 }
 
-// mountInteractiveTui builds and paints the mode-appropriate layout from the shared component tree. Fullscreen arranges the transcript scroll view over the dock and enters the alt screen; regular adds the flat layout to the main screen. The initial paint does not depend on a welcome header or input. Run and live tui-mode switching reuse the same containers across renderer mounts.
-func (m *InteractiveMode) mountInteractiveTui() {
+// mountInteractiveTui builds the mode-appropriate layout from the shared component tree and, when start is set, starts and paints the renderer. Fullscreen arranges the transcript scroll view over the dock and enters the alt screen; regular adds the flat layout to the main screen. The initial paint does not depend on a welcome header or input. Run and live tui-mode switching reuse the same containers across renderer mounts.
+func (m *InteractiveMode) mountInteractiveTui(start bool) {
 	m.ensureLoadedResourcesContainer()
+	if m.widgetContainerBelow == nil {
+		m.widgetContainerBelow = tui.NewContainer()
+	}
 	layoutChildren := []tui.Component{
 		m.headerContainer(),
 		m.loadedResourcesContainer,
@@ -75,12 +79,16 @@ func (m *InteractiveMode) mountInteractiveTui() {
 		m.statusContainer,
 		m.widgetContainer,
 		m.editorContainer,
+		m.widgetContainerBelow,
 		m.extFooter,
 		m.statusLine,
 	}
 	m.layout = tui.NewContainer(layoutChildren...)
 	if m.altScreen == nil {
 		m.tuiInst.Add(m.layout)
+		if !start {
+			return
+		}
 		m.tuiInst.QueryCellSize()
 		// Pi's TUI.start paints even when quietStartup omits the header.
 		m.tuiInst.Render()
@@ -92,12 +100,14 @@ func (m *InteractiveMode) mountInteractiveTui() {
 	viewport := m.buildChatViewport()
 	m.transcriptScrollView = viewport.Transcript
 	m.altScreen.SetLayoutRoot(viewport.Root)
-	m.altScreen.Start()
+	if start {
+		m.altScreen.Start()
+	}
 }
 
-// switchTuiMode swaps the renderer on the owner loop while preserving the component tree and main-screen render state. The current mode is a no-op; an active overlay refuses a change. Renderer references resolve dynamically under rendererMu, and only a successful swap changes the run's mode.
+// switchTuiMode swaps the renderer on the owner loop while preserving the component tree and main-screen render state. The current mode is a no-op; an active overlay refuses a change. Renderer references resolve dynamically under rendererMu, and only a successful swap changes the run's mode. Without startRenderer the new renderer is mounted but neither started nor painted, as the exit path needs.
 // upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:switchTuiMode
-func (m *InteractiveMode) switchTuiMode(mode string, restoreProgress bool) bool {
+func (m *InteractiveMode) switchTuiMode(mode string, restoreProgress, startRenderer bool) bool {
 	current := "regular"
 	if m.altScreen != nil {
 		current = "fullscreen"
@@ -174,7 +184,11 @@ func (m *InteractiveMode) switchTuiMode(mode string, restoreProgress bool) bool 
 
 	// Remount the complete shared component tree into the new renderer, mirroring
 	// upstream remounting every previous child.
-	m.mountInteractiveTui()
+	m.mountInteractiveTui(startRenderer)
+	if !startRenderer {
+		m.tuiInst.Invalidate()
+		return true
+	}
 	if m.themeState.autoSyncEnabled.Load() {
 		m.writeThemeNotifications(true)
 	}
@@ -274,10 +288,11 @@ func (m *InteractiveMode) createInteractiveTui(ctx context.Context) interactiveT
 		m.currentTuiCleanup = func() { cancelUI(); reads.Wait() }
 		return interactiveTuiHandle{cleanup: m.currentTuiCleanup}
 	}
-	copyOnSelect := (&SettingsManager{merged: m.opts.Settings}).GetFullscreenCopyOnSelect()
+	settings := &SettingsManager{merged: m.opts.Settings}
+	copyOnSelect, wheelScrollLines := settings.GetFullscreenCopyOnSelect(), tuiWheelScrollLines(settings.GetFullscreenWheelScrollLines())
 	m.tuiInst = CreateInteractiveTui(InteractiveTuiOptions{
 		TuiMode: "fullscreen", Output: m.rendererOut, LogDirectory: m.opts.AgentDir,
-		FullscreenCopyOnSelect: &copyOnSelect, CopySelection: m.effectiveCopyClipboard(),
+		FullscreenCopyOnSelect: &copyOnSelect, FullscreenWheelScrollLines: &wheelScrollLines, CopySelection: m.effectiveCopyClipboard(),
 		OpenURL: func(url string) error { return m.effectiveOpenURL()(url) }, OnRightClickPaste: m.handleRightClickPaste,
 	})
 	m.altScreen = m.tuiInst.(*tui.TuiAltScreen)
@@ -333,15 +348,17 @@ func (m *InteractiveMode) stopInteractiveTui() {
 		// upstream: packages/tui/src/terminal.ts:drainInput
 		_ = m.inputReader.terminal.DrainInput(time.Second, 50*time.Millisecond)
 	}
-	if m.altScreen != nil {
-		if (&SettingsManager{merged: m.opts.Settings}).GetFullscreenExitOutput() == "resume-hint" {
-			m.altScreen.StopWithOptions(tui.StopOptions{PreserveScreen: true})
-		} else {
-			if m.layout != nil {
-				m.altScreen.SetLayoutRoot(m.layout)
-			}
-			m.altScreen.Stop()
+	// A fullscreen exit that prints the transcript switches to the main-screen renderer without starting it, renders there, and stops it as a regular run stops: parked below the last line, then CRLF. The resume hint keeps the alternate screen's own preserve-screen exit.
+	// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:stopInteractiveTui
+	if m.altScreen != nil && (&SettingsManager{merged: m.opts.Settings}).GetFullscreenExitOutput() == "transcript" {
+		for m.altScreen.HasOverlay() {
+			m.altScreen.HideOverlay()
 		}
+		m.switchTuiMode("regular", false, false)
+		m.renderNow()
+	}
+	if m.altScreen != nil {
+		m.altScreen.StopWithOptions(tui.StopOptions{PreserveScreen: true})
 	} else if m.tuiInst != nil {
 		m.tuiInst.Stop()
 	}

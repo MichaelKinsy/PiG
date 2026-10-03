@@ -31,7 +31,7 @@ func (s modelsRuntimeCatalogStore) Delete(ctx context.Context, id string) error 
 
 func modelsRuntimeStored(t *testing.T, models ...*Model) ModelsStoreEntry {
 	t.Helper()
-	raw, err := encodeModelsCatalog(models)
+	raw, err := encodeModelsCatalog(AnyModels(models))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,8 +50,8 @@ func modelsRuntimeStoredID(t *testing.T, entry *ModelsStoreEntry) string {
 	}
 	return value.ID
 }
-func modelsRuntimeFactory(id string, auth ProviderAuth, fetch func(RefreshModelsContext) ([]*Model, error)) *ModelsProvider {
-	return CreateProvider(CreateProviderOptions{ID: id, Auth: auth, Models: []*Model{}, FetchModels: fetch, API: &ProviderStreams{Stream: func(context.Context, *Model, TranscriptContext, StreamOptions) (*AssistantMessageEventStream, error) {
+func modelsRuntimeFactory(id string, auth ProviderAuth, fetch func(RefreshModelsContext) ([]AnyModel, error)) *ModelsProvider {
+	return CreateProvider(CreateProviderOptions{ID: id, Auth: auth, Models: []AnyModel{}, FetchModels: fetch, API: &ProviderStreams{Stream: func(context.Context, *Model, TranscriptContext, StreamOptions) (*AssistantMessageEventStream, error) {
 		return NewAssistantMessageEventStream(), nil
 	}, StreamSimple: func(context.Context, *Model, TranscriptContext, StreamOptions) (*AssistantMessageEventStream, error) {
 		return NewAssistantMessageEventStream(), nil
@@ -123,7 +123,7 @@ func TestModelsRuntimeRefreshUpstream(t *testing.T) {
 				close(started)
 				<-finish
 				return &AuthResult{Auth: ModelAuth{APIKey: "key"}}, nil
-			}}}, func(RefreshModelsContext) ([]*Model, error) {
+			}}}, func(RefreshModelsContext) ([]AnyModel, error) {
 				t.Error("must not fetch")
 				return nil, errors.New("must not fetch")
 			})
@@ -175,14 +175,14 @@ func TestModelsRuntimeRefreshUpstream(t *testing.T) {
 		store := NewInMemoryModelsStore()
 		modelsRuntimePut(t, credentials, "dynamic", Credential{Type: CredentialAPIKey, Key: "key"})
 		online := CreateModels(CreateModelsOptions{Credentials: credentials, ModelsStore: store})
-		online.SetProvider(modelsRuntimeFactory("dynamic", ProviderAuth{APIKey: modelsRuntimeEnvKey("")}, func(RefreshModelsContext) ([]*Model, error) {
-			return []*Model{modelsRuntimeModel("dynamic", "fetched")}, nil
+		online.SetProvider(modelsRuntimeFactory("dynamic", ProviderAuth{APIKey: modelsRuntimeEnvKey("")}, func(RefreshModelsContext) ([]AnyModel, error) {
+			return []AnyModel{modelsRuntimeModel("dynamic", "fetched")}, nil
 		}))
 		if result := online.Refresh(t.Context()); len(result.Errors) != 0 || online.GetModel("dynamic", "fetched") == nil {
 			t.Fatalf("online=%+v", result)
 		}
 		offline := CreateModels(CreateModelsOptions{Credentials: credentials, ModelsStore: store})
-		offline.SetProvider(modelsRuntimeFactory("dynamic", ProviderAuth{APIKey: modelsRuntimeEnvKey("")}, func(RefreshModelsContext) ([]*Model, error) {
+		offline.SetProvider(modelsRuntimeFactory("dynamic", ProviderAuth{APIKey: modelsRuntimeEnvKey("")}, func(RefreshModelsContext) ([]AnyModel, error) {
 			t.Error("must not fetch")
 			return nil, errors.New("must not fetch")
 		}))

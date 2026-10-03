@@ -53,6 +53,7 @@ func TestRPCPreflightRejectionYieldsToStateResponse(t *testing.T) {
 
 // Pi agent-session.ts:1634-1667 samples streaming after the input await, not when the prompt arrives. _runAgentPrompt (1468-1473) alone marks the Session active.
 func TestRPCPreflightAdmission(t *testing.T) {
+	t.Parallel()
 	for _, command := range []string{"steer", "follow_up"} {
 		t.Run(command+" input suspension", func(t *testing.T) {
 			f := preflightRPC(t)
@@ -107,7 +108,7 @@ func TestRPCPreflightAdmission(t *testing.T) {
 		f.response("first")
 		f.await("resumed first settles", func(r rpcRecord) bool { return r["type"] == "agent_settled" })
 		f.finish()
-		assertPromptResponses(t, f.seen, "first", true)
+		assertPromptDisposition(t, f.seen, "first", "started")
 	})
 	t.Run("streaming is rechecked after input await", func(t *testing.T) {
 		f := preflightRPC(t, true)

@@ -82,7 +82,7 @@ func TestInteractiveModeThinkingTogglePreservesPartialBashOutputUpstream(t *test
 					m.chatContainer.Add(component)
 				} else {
 					m.handleAgentEvent(agent.ToolExecutionStartEvent{ToolCallID: "tool-8611", ToolName: "bash", Args: args})
-					m.handleAgentEvent(agent.ToolExecutionUpdateEvent{ToolCallID: "tool-8611", ToolName: "bash", Content: "first"})
+					m.handleAgentEvent(agent.ToolExecutionUpdateEvent{ToolCallID: "tool-8611", ToolName: "bash", PartialResult: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "first"}}}})
 					component = m.toolByID["tool-8611"]
 				}
 				before := m.chatContainer.Render(120)

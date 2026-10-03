@@ -1156,6 +1156,9 @@ func validateUniqueMemberNames(resources Resources, kind Kind) error {
 	case AgentEnvironments:
 		paths = resources.AgentEnvironments
 	}
+	if kind == Extensions {
+		paths = collapseExtensionDirEntries(paths)
+	}
 	seen := make(map[string]string, len(paths))
 	for _, resourcePath := range paths {
 		if kind == Skills && !definesSkill(resourcePath) {
@@ -1301,6 +1304,9 @@ func FindMember(resources Resources, kind Kind, name string) (string, error) {
 	default:
 		return "", fmt.Errorf("unsupported package member kind %q", kind)
 	}
+	if kind == Extensions {
+		paths = collapseExtensionDirEntries(paths)
+	}
 	matches := make([]string, 0, 1)
 	for _, resourcePath := range paths {
 		if kind == Skills && !definesSkill(resourcePath) {
@@ -1328,6 +1334,31 @@ func FindMember(resources Resources, kind Kind, name string) (string, error) {
 // PackageName supplies the fallback identity for a root Dev Container.
 func PublicName(kind Kind, resourcePath, packageName string) (string, error) {
 	return memberName(kind, resourcePath, packageName)
+}
+
+// collapseExtensionDirEntries treats an extension directory and that
+// directory's own index/main/extension entry file as one extension (as Pi
+// does), dropping the directory and keeping the file entry.
+func collapseExtensionDirEntries(paths []string) []string {
+	drop := make(map[string]struct{})
+	for _, p := range paths {
+		ext := strings.ToLower(filepath.Ext(p))
+		name := strings.TrimSuffix(filepath.Base(p), filepath.Ext(p))
+		if (ext == ".ts" || ext == ".js" || ext == ".mjs" || ext == ".cjs") && (name == "index" || name == "main" || name == "extension") {
+			drop[filepath.Clean(filepath.Dir(p))] = struct{}{}
+		}
+	}
+	if len(drop) == 0 {
+		return paths
+	}
+	out := make([]string, 0, len(paths))
+	for _, p := range paths {
+		if _, ok := drop[filepath.Clean(p)]; ok {
+			continue
+		}
+		out = append(out, p)
+	}
+	return out
 }
 
 func memberName(kind Kind, resourcePath, packageName string) (string, error) {
@@ -2283,6 +2314,8 @@ func discoverExtensionEntries(dir string) []string {
 }
 
 // resolveExtensionEntries follows Pi's manifest entries, index.ts, then index.js rule. A manifest that declares only missing entries, with no index, contributes nothing. Go and Rust build roots load as one extension for source.Resolve to classify.
+//
+// A directory holding go.work without go.mod is ambiguous: source.Resolve loads it as one extension that selects the modules it uses, but it is also the usual development workspace over sibling extension modules. It is one extension only when none of its children is an extension entry, so a workspace over extensions/a and extensions/b still yields both.
 func resolveExtensionEntries(dir string) []string {
 	if dir == "" {
 		return nil
@@ -2296,7 +2329,39 @@ func resolveExtensionEntries(dir string) []string {
 	if hasBuildFile(dir) {
 		return []string{dir}
 	}
+	if fileExists(filepath.Join(dir, "go.work")) && !hasChildExtensionEntry(dir) {
+		return []string{dir}
+	}
 	return nil
+}
+
+// hasChildExtensionEntry reports whether discoverExtensionEntries would find an entry among the children of dir. A child directory counts when it carries an index, a manifest entry, or a native build marker; go.work in a child is not searched further, which bounds the check to one level.
+func hasChildExtensionEntry(dir string) bool {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return false
+	}
+	rules := ignorerules.Append(nil, dir, dir)
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), ".") || entry.Name() == "node_modules" {
+			continue
+		}
+		full := filepath.Join(dir, entry.Name())
+		info, err := os.Stat(full)
+		if err != nil || ignorerules.Ignored(full, info.IsDir(), dir, rules) {
+			continue
+		}
+		if info.IsDir() {
+			if len(extsource.NodeRootEntries(full)) > 0 || hasBuildFile(full) || fileExists(filepath.Join(full, "go.work")) {
+				return true
+			}
+			continue
+		}
+		if info.Mode().IsRegular() && (strings.HasSuffix(entry.Name(), ".ts") || strings.HasSuffix(entry.Name(), ".js")) {
+			return true
+		}
+	}
+	return false
 }
 
 func walkAgentFiles(root string) []string {
@@ -2410,6 +2475,7 @@ func mustRel(baseDir, target string) string {
 	return relative
 }
 
+// hasBuildFile reports whether dir is a Go module or Rust crate root. A go.work-only root is decided by resolveExtensionEntries.
 func hasBuildFile(dir string) bool {
 	for _, name := range []string{"go.mod", "Cargo.toml"} {
 		if _, err := os.Stat(filepath.Join(dir, name)); err == nil {

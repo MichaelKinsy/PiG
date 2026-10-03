@@ -75,7 +75,10 @@ func TestAddMonorepoPinnedClosure(t *testing.T) {
 		if len(errs) != 0 || len(skills) != 1 {
 			t.Fatalf("skills=%v errs=%v", skills, errs)
 		}
-		if !strings.HasPrefix(skills[0].Path, home+string(filepath.Separator)) {
+		// Windows temp dirs may be 8.3 short names; compare resolved paths.
+		realHome, homeErr := filepath.EvalSymlinks(home)
+		realSkill, skillErr := filepath.EvalSymlinks(skills[0].Path)
+		if homeErr != nil || skillErr != nil || !strings.HasPrefix(realSkill, realHome+string(filepath.Separator)) {
 			t.Fatalf("source-bound skill: %s", skills[0].Path)
 		}
 		origin, err := readPigletOrigin(path)

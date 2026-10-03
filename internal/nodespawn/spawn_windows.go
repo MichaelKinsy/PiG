@@ -3,6 +3,8 @@
 package nodespawn
 
 import (
+	"bytes"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -23,6 +25,101 @@ func SetCommandLine(cmd *exec.Cmd) {
 		cmd.SysProcAttr = &syscall.SysProcAttr{}
 	}
 	cmd.SysProcAttr.CmdLine = CommandLine(cmd.Args)
+}
+
+// start is cmd.Start, or startProcess when os/exec would drop an entry of
+// cmd.Env. Either way it first gives cmd.Env the order os/exec writes the
+// block in (createEnvBlockOrder).
+func start(cmd *exec.Cmd) error {
+	cmd.Env = createEnvBlockOrder(cmd.Env)
+	if !sharesEnvKey(cmd.Env) {
+		return cmd.Start()
+	}
+	return startProcess(cmd)
+}
+
+// createEnvBlockOrder is env in the order in which os/exec writes it into the
+// child's block, where the order of entries that os/exec compares equal is
+// their order in env. syscall.createEnvBlock (envSorted) compares the text
+// before each entry's first "=", with ASCII letters uppercased, byte by byte,
+// and sorts a block that is not in that order with an unstable sort, which
+// would shuffle the entries of libuv's block that share a name, such as
+// "A=one" and "A=B=two", whenever a name outside ASCII puts the block out of
+// os/exec's order. A block that is in os/exec's order goes to the child as it
+// is.
+func createEnvBlockOrder(env []string) []string {
+	key := func(entry string) []byte {
+		before, _, ok := strings.Cut(entry, "=")
+		if !ok {
+			return nil
+		}
+		name := []byte(before)
+		for j, c := range name {
+			if 'a' <= c && c <= 'z' {
+				name[j] = c - ('a' - 'A')
+			}
+		}
+		return name
+	}
+	compare := func(a, b string) int { return bytes.Compare(key(a), key(b)) }
+	if slices.IsSortedFunc(env, compare) {
+		return env
+	}
+	env = slices.Clone(env)
+	slices.SortStableFunc(env, compare)
+	return env
+}
+
+// startProcess starts cmd as cmd.Start does, with os.StartProcess, but with
+// cmd.Env as the environment block: os/exec's Cmd.environ would drop entries
+// from it. It starts cmd.Path, the program libuv finds (SetProgram), without
+// the PATHEXT lookup cmd.Start adds (lookExtensions). A nil Stdin, Stdout, or
+// Stderr is the NUL device, which it opens for the start as cmd.Start does.
+// cmd.Wait then waits for the child, since cmd has no copying goroutine and no
+// context to watch (Start).
+func startProcess(cmd *exec.Cmd) error {
+	if cmd.Process != nil {
+		return errors.New("exec: already started")
+	}
+	if cmd.Path == "" && cmd.Err == nil {
+		cmd.Err = errors.New("exec: no command")
+	}
+	if cmd.Err != nil {
+		return cmd.Err
+	}
+	var devNull []*os.File
+	defer func() {
+		for _, file := range devNull {
+			_ = file.Close()
+		}
+	}()
+	files := make([]*os.File, 0, 3+len(cmd.ExtraFiles))
+	for i, stdio := range childStdio(cmd) {
+		file, _ := stdio.(*os.File)
+		if file == nil {
+			flag := os.O_WRONLY
+			if i == 0 {
+				flag = os.O_RDONLY
+			}
+			var err error
+			if file, err = os.OpenFile(os.DevNull, flag, 0); err != nil {
+				return err
+			}
+			devNull = append(devNull, file)
+		}
+		files = append(files, file)
+	}
+	files = append(files, cmd.ExtraFiles...)
+	argv := cmd.Args
+	if len(argv) == 0 {
+		argv = []string{cmd.Path}
+	}
+	process, err := os.StartProcess(cmd.Path, argv, &os.ProcAttr{Dir: cmd.Dir, Env: cmd.Env, Files: files, Sys: cmd.SysProcAttr})
+	if err != nil {
+		return err
+	}
+	cmd.Process = process
+	return nil
 }
 
 // HideWindow gives cmd the window flags of Node's spawn with windowsHide:
@@ -173,11 +270,13 @@ func spawnDirectory(file, cwd string) (string, error) {
 	return windows.UTF16ToString(short[:n]), nil
 }
 
-// pathOf is the PATH libuv reads for a spawn with env: the child's PATH,
-// which os/exec takes from the last entry whose name matches regardless of
-// case, or PiG's PATH when env has no PATH.
+// pathOf is the PATH libuv reads for a spawn with env, the block that
+// SetEnvProperties builds: libuv's find_path takes the value of the first
+// entry that starts with "PATH=" regardless of case, which is also the
+// child's PATH, and the entry of a name such as "PATH=Z" starts so. When env
+// has no such entry, libuv reads PiG's PATH.
 func pathOf(env []string) string {
-	for _, e := range slices.Backward(env) {
+	for _, e := range env {
 		if name, value, ok := strings.Cut(e, "="); ok && strings.EqualFold(name, "PATH") {
 			return value
 		}

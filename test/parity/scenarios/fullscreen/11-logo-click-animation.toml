@@ -1,0 +1,52 @@
+# Behavior family: fullscreen
+# Surface: clicking the header logo plays the fullscreen logo animation (interactive-mode.ts:256-262 BuiltInHeader.handleMouse,
+#          :1058 onLogoClick; pi-logo-animation.lazy.ts; pi-logo-animation.ts).
+#
+# Upstream evidence (pi 1.0.0, probed in tmux at 100x30 with tuiMode fullscreen): a click on the logo (column 3, row 2)
+# dissolves the screen into braille dust, the logo flies to the center and spins, "escape to return" fades in centered on
+# the second-to-last row after 1.4 s, and a sparse braille starfield fades in from 2.5 s. The starfield is a hash of the
+# cell index, so its glyphs sit on the same cells in pig and pi; only their colors flicker. Everything outside the 3D
+# object is the same cell for cell: 18 of 30 rows were byte-identical in plain capture during the probe.
+#
+# pig divergence (D87): the 3D object is the pig of the PiG mark (D2), and a running pig takes its place during Pi's puzzle, so the
+# rows it covers differ. The crop is the hint row and the last row, below the object, after the stars are fully in:
+# plain-text equal (output_equal). Star colors flicker with time, so the escaped capture is not compared.
+# runs = 3: the animation is timer-driven.
+
+name = "11-logo-click-animation"
+description = "A click on the header logo plays the fullscreen dissolve, starfield and return hint in the same cells as pi."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/pi-logo-animation.ts",
+  "packages/coding-agent/src/modes/interactive/components/pi-logo-animation.lazy.ts",
+]
+tags = ["hermetic", "tui", "fullscreen"]
+driver = "interactive-tmux"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 30
+ready_pattern_pig = "can explain its own features"
+ready_pattern_pi = "can explain its own features"
+ready_timeout_seconds = 30
+capture_start = "escape to return"
+
+# Press and release on the logo: SGR mouse reports for column 3, row 2.
+[[tmux.steps]]
+keys = ["hex:1b 5b 3c 30 3b 33 3b 32 4d 1b 5b 3c 30 3b 33 3b 32 6d"]
+wait_visible_contains = ["escape to return"]
+wait_timeout_seconds = 10
+# The stars are fully in 4.5 s after the click; the hint appeared at 1.4 s.
+settle_seconds = 4
+
+[assert]
+both_reach_ready = true
+both_contain = ["escape to return"]
+both_not_contain = ["panic:", "goroutine "]
+output_equal = true
+runs = 3

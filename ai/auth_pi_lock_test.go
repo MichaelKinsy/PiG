@@ -41,7 +41,7 @@ func TestAuthStorageUsesPiLockDirectory(t *testing.T) {
 // loses administrator modes/ACLs and breaks a shared symlink target.
 func TestAuthStoragePreservesExistingMode(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("POSIX mode assertion; Windows ACL preservation follows the same in-place write")
+		t.Skip("POSIX mode assertion; TestAuthStoragePreservesExistingACL covers the Windows DACL")
 	}
 	path := filepath.Join(t.TempDir(), "auth.json")
 	if err := os.WriteFile(path, []byte(`{}`), 0o660); err != nil {

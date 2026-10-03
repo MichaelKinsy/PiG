@@ -4,7 +4,6 @@ package services
 import (
 	"context"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 )
@@ -49,7 +48,7 @@ type ModelsState struct {
 
 // Models is the model-selection service. Each call waits for its publications and propagates errors to the caller.
 type Models interface {
-	State() pico3.ReplicatedStateOf[*ModelsState]
+	State() chord.ReplicatedStateOf[*ModelsState]
 	CycleThinking(context.Context) error
 	GetThinkingLevels(context.Context) ([]ai.ThinkingLevel, error)
 	Refresh(context.Context) error
@@ -58,7 +57,7 @@ type Models interface {
 }
 
 // ModelsDefinition is the pi.models token; Go types and values share a namespace.
-var ModelsDefinition = pico3.DefineService[Models]("pi.models")
+var ModelsDefinition = chord.DefineService[Models]("pi.models")
 
 func init() {
 	chord.RegisterServiceView(ModelsDefinition, func(resolve func() (Models, error)) Models { return modelsView{resolve: resolve} })

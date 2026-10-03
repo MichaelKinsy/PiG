@@ -10,23 +10,27 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"go/format"
-	"io"
 	"maps"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 )
 
 type modelRow struct {
+	Type             string
 	ID               string
 	Provider         string
 	Name             string
@@ -47,6 +51,7 @@ type modelRow struct {
 	Tiers            []jsonCostTier
 	Reasoning        bool
 	Inputs           []string // text/image/audio/video
+	Output           []string // image models: the modalities the model returns
 	Enabled          *bool
 	Lab              string
 	Providers        []jsonCatalogProvider
@@ -96,36 +101,24 @@ type ModelCompat struct {
 }
 
 var (
-	// Patterns use \t for indentation depth. The parser normalizes
-	// leading spaces to tabs before matching so both tab-indented TS
-	// source and 4-space-indented JS dist files are accepted.
-	reProvider = regexp.MustCompile(`^\t"([^"]+)": \{$`)
-	reModel    = regexp.MustCompile(`^\t\t"([^"]+)": \{$`)
-	reEndModel = regexp.MustCompile(`^\t\t\}(?: satisfies Model<"[^"]+">)?,?$`)
-	reCostOpen = regexp.MustCompile(`^\t\t\tcost: \{$`)
-	reKVStr    = regexp.MustCompile(`^\t\t\t([A-Za-z_]+): "([^"]*)",?$`)
-	reKVNum    = regexp.MustCompile(`^\t\t\t([A-Za-z_]+): ([0-9.]+),?$`)
-	reKVBool   = regexp.MustCompile(`^\t\t\t([A-Za-z_]+): (true|false),?$`)
-	reKVArr    = regexp.MustCompile(`^\t\t\t([A-Za-z_]+): \[([^\]]*)\],?$`)
-	reKVObj    = regexp.MustCompile(`^\t\t\t([A-Za-z_]+): (\{.*\}),?$`)
-	reCostKV   = regexp.MustCompile(`^\t\t\t\t([A-Za-z_]+): ([0-9.]+),?$`)
-
-	// reBarrelImport matches a per-provider import in the 0.80+ catalog
-	// barrel (models.generated.ts/.js), e.g.
-	//   import { ANTHROPIC_MODELS } from "./providers/anthropic.models.ts";
+	// reBarrelImport matches a per-provider import in the catalog barrel
+	// (models.generated.ts/.js), e.g.
+	//   import { ANTHROPIC_CLASSIFIER_MODELS, ANTHROPIC_IMAGE_MODELS, ANTHROPIC_MODELS } from "./providers/anthropic.models.ts";
 	// The captured path keeps the extension so the same code resolves the
 	// .ts git-tag mirror and the .js npm dist.
 	reBarrelImport = regexp.MustCompile(`^import \{[^}]*\} from "(\./providers/[^"]+\.models\.(?:ts|js))";`)
 
-	// reDataImport matches the 0.81 provider module, which re-exports a
-	// data/<provider>.json file instead of inlining model literals, e.g.
+	// reDataImport matches the provider shard's import of its data file, e.g.
 	//   import values from "./data/anthropic.json" with { type: "json" };
 	reDataImport = regexp.MustCompile(`import\s+values\s+from\s+"(\./data/[^"]+\.json)"`)
 )
 
 func main() {
-	src := flag.String("src", "", "path to upstream models.generated.ts")
-	out := flag.String("out", "ai/models_generated.go", "output Go file")
+	src := flag.String("src", "", "path to upstream models.generated.ts or .js")
+	out := flag.String("out", "ai/models_generated.go", "output Go file for chat models")
+	imageOut := flag.String("image-out", "", "output Go file for image models (default image_models_generated.go beside -out)")
+	classifierOut := flag.String("classifier-out", "", "output Go file for classifier models (default classifier_models_generated.go beside -out)")
+	providerOut := flag.String("provider-out", "", "output Go file for the barrel's provider ids (default providers_generated.go beside -out)")
 	modelsDev := flag.String("models-dev", "", "raw models.dev API JSON snapshot for verified reasoning controls")
 	openRouter := flag.String("openrouter", "", "raw OpenRouter models API JSON snapshot for reasoning controls")
 	strict := flag.Bool("strict", false, "validate models.dev Individual model membership before publication")
@@ -148,84 +141,141 @@ func main() {
 		fmt.Fprintln(os.Stderr, "gen-models: -src is required")
 		os.Exit(2)
 	}
+	if *imageOut == "" {
+		*imageOut = filepath.Join(filepath.Dir(*out), "image_models_generated.go")
+	}
+	if *classifierOut == "" {
+		*classifierOut = filepath.Join(filepath.Dir(*out), "classifier_models_generated.go")
+	}
 
-	rows, err := collectRows(*src)
+	if *providerOut == "" {
+		*providerOut = filepath.Join(filepath.Dir(*out), "providers_generated.go")
+	}
+
+	catalog, err := collectCatalog(*src)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "load:", err)
 		os.Exit(1)
 	}
-	if len(rows) == 0 {
+	if len(catalog.Chat) == 0 {
 		fmt.Fprintln(os.Stderr, "gen-models: parsed 0 models: refusing to clobber output")
 		os.Exit(1)
 	}
-	if err := applyVendorReasoning(rows, *modelsDev, *openRouter); err != nil {
+	if err := applyVendorReasoning(catalog.Chat, *modelsDev, *openRouter); err != nil {
 		fmt.Fprintln(os.Stderr, "reasoning:", err)
 		os.Exit(1)
 	}
-	if err := emit(*out, *src, rows); err != nil {
+	if err := emit(*out, *src, catalog.Chat); err != nil {
 		fmt.Fprintln(os.Stderr, "emit:", err)
 		os.Exit(1)
 	}
-	fmt.Fprintf(os.Stderr, "gen-models: wrote %d models to %s\n", len(rows), *out)
+	if err := emitImages(*imageOut, *src, catalog.Image); err != nil {
+		fmt.Fprintln(os.Stderr, "emit images:", err)
+		os.Exit(1)
+	}
+	if err := emitClassifiers(*classifierOut, *src, catalog.Classifier); err != nil {
+		fmt.Fprintln(os.Stderr, "emit classifiers:", err)
+		os.Exit(1)
+	}
+	if err := emitProviders(*providerOut, *src, catalog.Providers); err != nil {
+		fmt.Fprintln(os.Stderr, "emit providers:", err)
+		os.Exit(1)
+	}
+	fmt.Fprintf(os.Stderr, "gen-models: wrote %d chat models to %s, %d image models to %s and %d classifier models to %s\n", len(catalog.Chat), *out, len(catalog.Image), *imageOut, len(catalog.Classifier), *classifierOut)
 }
 
-// collectRows returns model rows from the catalog at src. It handles three
-// layouts across pi tags: (1) a single inline models.generated file (older
-// tags); (2) the 0.80 barrel that imports per-provider *.models.ts/js files
-// with inline model literals; (3) the 0.81 flat JSON provider catalogs; and
-// (4) the 0.82+ API-grouped JSON catalogs. Source insertion order is retained
-// because upstream exposes catalog order to callers.
-func collectRows(src string) ([]modelRow, error) {
+// modelCatalog holds the flattened catalog of every provider shard, each list in barrel order. Providers holds the barrel's
+// provider ids.
+type modelCatalog struct {
+	Chat, Image, Classifier []modelRow
+	Providers               []string
+}
+
+// collectCatalog reads the catalog barrel at src (models.generated.ts or .js) and, for every provider shard it imports,
+// the shard's data/<provider>.json. The rows of each type keep the barrel's provider order and the data's insertion order
+// because upstream exposes catalog order to callers (models.generated.ts, providers/<provider>.models.ts,
+// model-catalog.ts flattenChatModelCatalog, flattenImageModelCatalog and flattenClassifierModelCatalog).
+func collectCatalog(src string) (modelCatalog, error) {
 	data, err := os.ReadFile(src)
 	if err != nil {
-		return nil, err
-	}
-	if !bytes.Contains(data, []byte(`from "./providers/`)) {
-		return parse(bytes.NewReader(data))
+		return modelCatalog{}, err
 	}
 	dir := filepath.Dir(src)
-	var rows []modelRow
+	var catalog modelCatalog
 	sc := bufio.NewScanner(bytes.NewReader(data))
 	for sc.Scan() {
 		m := reBarrelImport.FindStringSubmatch(sc.Text())
 		if m == nil {
 			continue
 		}
-		provPath := filepath.Join(dir, filepath.FromSlash(m[1]))
-		provData, err := os.ReadFile(provPath)
+		shardPath := filepath.Join(dir, filepath.FromSlash(m[1]))
+		provider := strings.TrimSuffix(filepath.Base(shardPath), filepath.Ext(shardPath))
+		provider = strings.TrimSuffix(provider, ".models")
+		shard, err := os.ReadFile(shardPath)
 		if err != nil {
-			return nil, err
+			return modelCatalog{}, err
 		}
-		if dm := reDataImport.FindSubmatch(provData); dm != nil {
-			jsonPath := filepath.Join(filepath.Dir(provPath), filepath.FromSlash(string(dm[1])))
-			jrows, err := parseDataJSON(jsonPath)
-			if err != nil {
-				return nil, fmt.Errorf("provider %s: %w", provPath, err)
+		dm := reDataImport.FindSubmatch(shard)
+		if dm == nil {
+			return modelCatalog{}, fmt.Errorf("provider %s: no data/<provider>.json import", shardPath)
+		}
+		rows, err := parseDataJSON(filepath.Join(filepath.Dir(shardPath), filepath.FromSlash(string(dm[1]))))
+		if err != nil {
+			return modelCatalog{}, fmt.Errorf("provider %s: %w", shardPath, err)
+		}
+		for _, row := range rows {
+			if row.Provider != provider {
+				return modelCatalog{}, fmt.Errorf("provider %s: model %s:%s has provider %q, expected %q", shardPath, row.Type, row.ID, row.Provider, provider)
 			}
-			rows = append(rows, jrows...)
-			continue
+			if fields := unsupportedFields(row); len(fields) > 0 {
+				return modelCatalog{}, fmt.Errorf("provider %s: %s model %s has fields the Go %s model cannot carry: %s", shardPath, row.Type, row.ID, row.Type, strings.Join(fields, ", "))
+			}
 		}
-		// Inline provider module (0.80 layout): reuse the line parser.
-		var buf bytes.Buffer
-		if err := appendIndented(&buf, provPath); err != nil {
-			return nil, err
-		}
-		prows, err := parse(&buf)
-		if err != nil {
-			return nil, err
-		}
-		rows = append(rows, prows...)
+		catalog.Providers = append(catalog.Providers, provider)
+		catalog.Chat = append(catalog.Chat, flattenModelCatalog(rows, "chat")...)
+		catalog.Image = append(catalog.Image, flattenModelCatalog(rows, "image")...)
+		catalog.Classifier = append(catalog.Classifier, flattenModelCatalog(rows, "classifier")...)
 	}
 	if err := sc.Err(); err != nil {
-		return nil, err
+		return modelCatalog{}, err
 	}
-	return rows, nil
+	return catalog, nil
+}
+
+// flattenModelCatalog selects the models of one type (model-catalog.ts flattenModelCatalog). Object.fromEntries
+// enumerates canonical array-index ids before every other id, so a numeric model id moves to the front in ascending order.
+func flattenModelCatalog(rows []modelRow, modelType string) []modelRow {
+	var out []modelRow
+	for _, row := range rows {
+		if row.Type == modelType {
+			out = append(out, row)
+		}
+	}
+	indexID := func(row modelRow) (uint64, bool) {
+		n, err := strconv.ParseUint(row.ID, 10, 32)
+		return n, err == nil && n < math.MaxUint32 && strconv.FormatUint(n, 10) == row.ID
+	}
+	slices.SortStableFunc(out, func(a, b modelRow) int {
+		x, xok := indexID(a)
+		y, yok := indexID(b)
+		switch {
+		case xok && yok:
+			return cmp.Compare(x, y)
+		case xok:
+			return -1
+		case yok:
+			return 1
+		}
+		return 0
+	})
+	return out
 }
 
 // jsonModel mirrors every current field of a data/<provider>.json model entry.
 // JSON decoding rejects unknown fields so a future upstream capability cannot
 // silently disappear from the generated Go catalog.
 type jsonModel struct {
+	Type             string                `json:"type"`
 	ID               string                `json:"id"`
 	Name             string                `json:"name"`
 	API              string                `json:"api"`
@@ -233,6 +283,7 @@ type jsonModel struct {
 	BaseURL          string                `json:"baseUrl"`
 	Reasoning        bool                  `json:"reasoning"`
 	Input            []string              `json:"input"`
+	Output           []string              `json:"output"`
 	Cost             *jsonCost             `json:"cost"`
 	PromptCache      map[string]int        `json:"promptCache"`
 	InputLimits      *jsonModelInputLimits `json:"inputLimits"`
@@ -291,6 +342,24 @@ type jsonCost struct {
 	Tiers      []jsonCostTier `json:"tiers,omitempty"`
 }
 
+// jsNumber marshals like JSON.stringify: a number that is not finite is null, and negative zero is 0.
+type jsNumber float64
+
+func (n jsNumber) MarshalJSON() ([]byte, error) {
+	return jsnumber.JSON(float64(n)), nil
+}
+
+// MarshalJSON writes the cost the way JSON.stringify writes it, so a NaN price (an unparsable OpenRouter price string) is null.
+func (c jsonCost) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Input      jsNumber       `json:"input"`
+		Output     jsNumber       `json:"output"`
+		CacheRead  jsNumber       `json:"cacheRead"`
+		CacheWrite jsNumber       `json:"cacheWrite"`
+		Tiers      []jsonCostTier `json:"tiers,omitempty"`
+	}{jsNumber(c.Input), jsNumber(c.Output), jsNumber(c.CacheRead), jsNumber(c.CacheWrite), c.Tiers})
+}
+
 type jsonCostTier struct {
 	InputTokensAbove int     `json:"inputTokensAbove"`
 	Input            float64 `json:"input"`
@@ -312,9 +381,10 @@ type jsonCatalogProvider struct {
 	Source     string `json:"source"`
 }
 
-// parseDataJSON reads both the flat model-id map used through 0.81 and the
-// API-grouped map introduced in 0.82. Every model object is decoded strictly so
-// new catalog fields fail generation instead of disappearing from Pig.
+// parseDataJSON reads one data/<provider>.json: API groups of "<type>:<id>" keyed models. Every model object is decoded
+// strictly so new catalog fields fail generation instead of disappearing from Pig. Identity follows
+// packages/ai/scripts/model-data.ts validateModelValue and validateModelDataDirectory: a known type, a key that is
+// "<type>:<id>", and no key repeated across API groups.
 func parseDataJSON(path string) ([]modelRow, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -329,34 +399,23 @@ func parseDataJSON(path string) ([]modelRow, error) {
 		return nil, fmt.Errorf("catalog root is %v, want object", token)
 	}
 	var models []jsonModel
+	seen := make(map[string]string)
 	for decoder.More() {
 		keyToken, err := decoder.Token()
 		if err != nil {
 			return nil, err
 		}
-		key, ok := keyToken.(string)
+		api, ok := keyToken.(string)
 		if !ok {
 			return nil, fmt.Errorf("catalog key is %T, want string", keyToken)
 		}
 		var encoded json.RawMessage
 		if err := decoder.Decode(&encoded); err != nil {
-			return nil, fmt.Errorf("%s: %w", key, err)
+			return nil, fmt.Errorf("%s: %w", api, err)
 		}
-		var shape map[string]json.RawMessage
-		if err := json.Unmarshal(encoded, &shape); err != nil {
-			return nil, fmt.Errorf("%s: %w", key, err)
-		}
-		if _, isModel := shape["id"]; isModel {
-			model, err := decodeJSONModel(encoded)
-			if err != nil {
-				return nil, fmt.Errorf("%s: %w", key, err)
-			}
-			models = append(models, model)
-			continue
-		}
-		group, err := decodeJSONModelGroup(encoded)
+		group, err := decodeJSONModelGroup(encoded, seen)
 		if err != nil {
-			return nil, fmt.Errorf("%s: %w", key, err)
+			return nil, fmt.Errorf("%s: %w", api, err)
 		}
 		models = append(models, group...)
 	}
@@ -366,6 +425,7 @@ func parseDataJSON(path string) ([]modelRow, error) {
 	rows := make([]modelRow, 0, len(models))
 	for _, jm := range models {
 		row := modelRow{
+			Type:             jm.Type,
 			ID:               jm.ID,
 			Provider:         jm.Provider,
 			Name:             jm.Name,
@@ -381,6 +441,7 @@ func parseDataJSON(path string) ([]modelRow, error) {
 			MaxTokens:        jm.MaxTokens,
 			Reasoning:        jm.Reasoning,
 			Inputs:           jm.Input,
+			Output:           jm.Output,
 			Enabled:          jm.Enabled,
 			Lab:              jm.Lab,
 			Providers:        jm.Providers,
@@ -397,7 +458,8 @@ func parseDataJSON(path string) ([]modelRow, error) {
 	return rows, nil
 }
 
-func decodeJSONModelGroup(data []byte) ([]jsonModel, error) {
+// decodeJSONModelGroup decodes one API group. seen maps every "<type>:<id>" key of the file to its API group.
+func decodeJSONModelGroup(data []byte, seen map[string]string) ([]jsonModel, error) {
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	token, err := decoder.Token()
 	if err != nil {
@@ -408,22 +470,29 @@ func decodeJSONModelGroup(data []byte) ([]jsonModel, error) {
 	}
 	var models []jsonModel
 	for decoder.More() {
-		idToken, err := decoder.Token()
+		keyToken, err := decoder.Token()
 		if err != nil {
 			return nil, err
 		}
-		modelID, ok := idToken.(string)
+		key, ok := keyToken.(string)
 		if !ok {
-			return nil, fmt.Errorf("model key is %T, want string", idToken)
+			return nil, fmt.Errorf("model key is %T, want string", keyToken)
 		}
 		var encoded json.RawMessage
 		if err := decoder.Decode(&encoded); err != nil {
-			return nil, fmt.Errorf("%s: %w", modelID, err)
+			return nil, fmt.Errorf("%s: %w", key, err)
 		}
 		model, err := decodeJSONModel(encoded)
 		if err != nil {
-			return nil, fmt.Errorf("%s: %w", modelID, err)
+			return nil, fmt.Errorf("%s: %w", key, err)
 		}
+		if key != model.Type+":"+model.ID {
+			return nil, fmt.Errorf("%s: mismatched type/id identity (model is %s:%s)", key, model.Type, model.ID)
+		}
+		if _, exists := seen[key]; exists {
+			return nil, fmt.Errorf("%s appears in more than one API group", key)
+		}
+		seen[key] = model.API
 		models = append(models, model)
 	}
 	if _, err := decoder.Token(); err != nil {
@@ -441,6 +510,11 @@ func decodeJSONModel(data []byte) (jsonModel, error) {
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&model); err != nil {
 		return model, err
+	}
+	switch model.Type {
+	case "chat", "image", "classifier":
+	default:
+		return model, fmt.Errorf("model has type %q, expected \"chat\", \"image\", or \"classifier\"", model.Type)
 	}
 	if model.ID == "" || model.Provider == "" || model.API == "" {
 		return model, errors.New("model requires id, provider, and api")
@@ -568,195 +642,6 @@ func normalizeCompat(c *ModelCompat) *ModelCompat {
 	return c
 }
 
-// appendIndented writes every line of a per-provider model file to buf,
-// first normalizing leading 4-space groups to tabs (npm .js dist) then
-// prepending one tab so model keys land at two-tab depth.
-func appendIndented(buf *bytes.Buffer, path string) error {
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = f.Close() }()
-	sc := bufio.NewScanner(f)
-	sc.Buffer(make([]byte, 0, 256*1024), 4*1024*1024)
-	for sc.Scan() {
-		buf.WriteByte('\t')
-		buf.WriteString(normalizeIndent(sc.Text()))
-		buf.WriteByte('\n')
-	}
-	return sc.Err()
-}
-
-func parse(r io.Reader) ([]modelRow, error) {
-	sc := bufio.NewScanner(r)
-	sc.Buffer(make([]byte, 0, 256*1024), 4*1024*1024)
-
-	var (
-		rows     []modelRow
-		provider string
-		cur      *modelRow
-		inCost   bool
-	)
-
-	for sc.Scan() {
-		line := normalizeIndent(sc.Text())
-		if m := reProvider.FindStringSubmatch(line); m != nil {
-			provider = m[1]
-			continue
-		}
-		if m := reModel.FindStringSubmatch(line); m != nil && cur == nil {
-			cur = &modelRow{ID: m[1], Provider: provider}
-			continue
-		}
-		if cur == nil {
-			continue
-		}
-		if reEndModel.MatchString(line) {
-			rows = append(rows, *cur)
-			cur = nil
-			inCost = false
-			continue
-		}
-		if reCostOpen.MatchString(line) {
-			inCost = true
-			continue
-		}
-		if inCost {
-			if strings.HasPrefix(strings.TrimSpace(line), "}") {
-				inCost = false
-				continue
-			}
-			if m := reCostKV.FindStringSubmatch(line); m != nil {
-				v, _ := strconv.ParseFloat(m[2], 64)
-				switch m[1] {
-				case "input":
-					cur.InputCost = v
-				case "output":
-					cur.OutputCost = v
-				case "cacheRead":
-					cur.CacheRead = v
-				case "cacheWrite":
-					cur.CacheWrite = v
-				}
-			}
-			continue
-		}
-		if m := reKVStr.FindStringSubmatch(line); m != nil {
-			switch m[1] {
-			case "id":
-				cur.ID = m[2]
-			case "name":
-				cur.Name = m[2]
-			case "api":
-				cur.API = m[2]
-			case "provider":
-				cur.Provider = m[2]
-			case "baseUrl":
-				cur.BaseURL = m[2]
-			}
-			continue
-		}
-		if m := reKVNum.FindStringSubmatch(line); m != nil {
-			v, _ := strconv.ParseFloat(m[2], 64)
-			switch m[1] {
-			case "contextWindow":
-				cur.ContextWindow = int(v)
-			case "maxTokens":
-				cur.MaxTokens = int(v)
-			}
-			continue
-		}
-		if m := reKVBool.FindStringSubmatch(line); m != nil {
-			if m[1] == "reasoning" {
-				cur.Reasoning = m[2] == "true"
-			}
-			continue
-		}
-		if m := reKVArr.FindStringSubmatch(line); m != nil {
-			if m[1] == "input" {
-				cur.Inputs = parseStringArray(m[2])
-			}
-			continue
-		}
-		if m := reKVObj.FindStringSubmatch(line); m != nil {
-			switch m[1] {
-			case "headers":
-				cur.Headers = parseStringMap(m[2])
-			case "compat":
-				cur.Compat = parseCompat(m[2])
-			case "thinkingLevelMap":
-				cur.ThinkingLevelMap = parseThinkingLevelMap(m[2])
-			}
-			continue
-		}
-	}
-	return rows, sc.Err()
-}
-
-func parseStringArray(s string) []string {
-	var out []string
-	for raw := range strings.SplitSeq(s, ",") {
-		t := strings.TrimSpace(raw)
-		t = strings.Trim(t, "\"")
-		if t != "" {
-			out = append(out, t)
-		}
-	}
-	return out
-}
-
-func parseStringMap(s string) map[string]string {
-	var out map[string]string
-	if err := json.Unmarshal([]byte(s), &out); err != nil || len(out) == 0 {
-		return nil
-	}
-	return out
-}
-
-func parseCompat(s string) *ModelCompat {
-	var compat ModelCompat
-	if err := json.Unmarshal([]byte(s), &compat); err != nil {
-		return nil
-	}
-	compatJSON, err := json.Marshal(compat)
-	if err != nil || string(compatJSON) == "{}" {
-		return nil
-	}
-	return &compat
-}
-
-func parseThinkingLevelMap(s string) map[string]*string {
-	var out map[string]*string
-	if err := json.Unmarshal([]byte(s), &out); err != nil || len(out) == 0 {
-		return nil
-	}
-	return out
-}
-
-// normalizeIndent converts leading 4-space groups to tabs so the
-// tab-based regexps work on both TS source (tab-indented) and JS
-// dist files (4-space-indented).
-func normalizeIndent(line string) string {
-	i := 0
-	for i < len(line) && line[i] == ' ' {
-		i++
-	}
-	if i == 0 {
-		return line // already tab-indented or no indent
-	}
-	tabs := i / 4
-	if tabs == 0 {
-		return line // fewer than 4 spaces, keep as-is
-	}
-	var sb strings.Builder
-	sb.Grow(tabs + len(line) - i)
-	for range tabs {
-		_ = sb.WriteByte('\t')
-	}
-	sb.WriteString(line[tabs*4:])
-	return sb.String()
-}
-
 func emit(path, src string, rows []modelRow) error {
 	var b strings.Builder
 	fmt.Fprintf(&b, "// Code generated by cmd/gen-models. DO NOT EDIT.\n")
@@ -859,6 +744,133 @@ func emit(path, src string, rows []modelRow) error {
 	}
 	b.WriteString("}\n")
 	formatted, err := format.Source([]byte(b.String()))
+	if err != nil {
+		return fmt.Errorf("format generated source: %w", err)
+	}
+	return os.WriteFile(path, formatted, 0o644)
+}
+
+// unsupportedFields names the model fields a row of its type cannot carry. ImageModel and ClassifierModel hold the base
+// model fields plus output (image) or contextWindow (classifier), and chat models carry no output (model-data.ts:170-172);
+// a field beyond that would disappear from the Go catalog.
+func unsupportedFields(row modelRow) []string {
+	var fields []string
+	add := func(present bool, name string) {
+		if present {
+			fields = append(fields, name)
+		}
+	}
+	if row.Type != "image" {
+		add(len(row.Output) > 0, "output")
+	}
+	if row.Type == "chat" {
+		return fields
+	}
+	add(row.Compat != nil, "compat")
+	add(len(row.ThinkingLevelMap) > 0, "thinkingLevelMap")
+	add(len(row.SamplingParams) > 0, "samplingParams")
+	add(len(row.PromptCache) > 0, "promptCache")
+	add(row.MaxTokens != 0, "maxTokens")
+	add(row.Reasoning, "reasoning")
+	add(row.Enabled != nil, "enabled")
+	add(row.Lab != "", "lab")
+	add(len(row.Providers) > 0, "providers")
+	if row.Type == "image" {
+		add(row.ContextWindow != 0, "contextWindow")
+	}
+	return fields
+}
+
+func emitImages(path, src string, rows []modelRow) error {
+	var b strings.Builder
+	writeCatalogHeader(&b, src, len(rows))
+	fmt.Fprintf(&b, "// GeneratedImageModels is the static image model catalog (%d entries).\n", len(rows))
+	b.WriteString("var GeneratedImageModels = []ImageModel{\n")
+	for _, row := range rows {
+		fmt.Fprintf(&b, "\t{ID: %q, Name: %q, API: ImageAPI(%q), Provider: %q, BaseURL: %q,", row.ID, row.Name, row.API, row.Provider, row.BaseURL)
+		writeBaseModelFields(&b, row)
+		fmt.Fprintf(&b, " Output: %s, Cost: %s},\n", stringSliceLiteral(row.Output), modelCostLiteral(row))
+	}
+	b.WriteString("}\n")
+	return writeGoSource(path, b.String())
+}
+
+// emitProviders writes the catalog barrel's provider ids in barrel order. Object.keys(MODELS) is getBuiltinProviders
+// (providers/all.ts:94-96), and a provider whose shard holds only image or classifier models is still one of its keys.
+func emitProviders(path, src string, providers []string) error {
+	var b strings.Builder
+	b.WriteString("// Code generated by cmd/gen-models. DO NOT EDIT.\n")
+	fmt.Fprintf(&b, "// Source: %s\n", basename(src))
+	fmt.Fprintf(&b, "// Providers: %d\n\n", len(providers))
+	b.WriteString("package ai\n\n")
+	b.WriteString("// GeneratedProviders lists the catalog barrel's providers in barrel order (providers/all.ts getBuiltinProviders).\n")
+	b.WriteString("var GeneratedProviders = []string{\n")
+	for _, provider := range providers {
+		fmt.Fprintf(&b, "\t%q,\n", provider)
+	}
+	b.WriteString("}\n")
+	return writeGoSource(path, b.String())
+}
+
+func emitClassifiers(path, src string, rows []modelRow) error {
+	var b strings.Builder
+	writeCatalogHeader(&b, src, len(rows))
+	fmt.Fprintf(&b, "// GeneratedClassifierModels is the static classifier model catalog (%d entries).\n", len(rows))
+	b.WriteString("var GeneratedClassifierModels = []ClassifierModel{\n")
+	for _, row := range rows {
+		fmt.Fprintf(&b, "\t{ID: %q, Name: %q, API: ClassifierAPI(%q), Provider: %q, BaseURL: %q,", row.ID, row.Name, row.API, row.Provider, row.BaseURL)
+		writeBaseModelFields(&b, row)
+		fmt.Fprintf(&b, " Cost: %s, ContextWindow: %d},\n", modelCostLiteral(row), row.ContextWindow)
+	}
+	b.WriteString("}\n")
+	return writeGoSource(path, b.String())
+}
+
+// writeCatalogHeader writes the header shared by every generated catalog file. The source is recorded as its basename so
+// re-runs from different working directories are byte-identical.
+func writeCatalogHeader(b *strings.Builder, src string, models int) {
+	b.WriteString("// Code generated by cmd/gen-models. DO NOT EDIT.\n")
+	fmt.Fprintf(b, "// Source: %s\n", basename(src))
+	fmt.Fprintf(b, "// Models: %d\n\n", models)
+	b.WriteString("package ai\n\n")
+}
+
+// writeBaseModelFields writes the BaseModel fields image and classifier models share after baseUrl: headers, input, inputLimits.
+func writeBaseModelFields(b *strings.Builder, row modelRow) {
+	if len(row.Headers) > 0 {
+		b.WriteString(" Headers: map[string]string{")
+		for i, key := range slices.Sorted(maps.Keys(row.Headers)) {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			fmt.Fprintf(b, "%q: %q", key, row.Headers[key])
+		}
+		b.WriteString("},")
+	}
+	fmt.Fprintf(b, " Input: %s,", stringSliceLiteral(row.Inputs))
+	if row.InputLimits != nil {
+		fmt.Fprintf(b, " InputLimits: %s,", inputLimitsLiteral(row.InputLimits))
+	}
+}
+
+func stringSliceLiteral(values []string) string {
+	quoted := make([]string, len(values))
+	for i, value := range values {
+		quoted[i] = strconv.Quote(value)
+	}
+	return "[]string{" + strings.Join(quoted, ", ") + "}"
+}
+
+func modelCostLiteral(row modelRow) string {
+	literal := fmt.Sprintf("ModelCost{Input: %s, Output: %s, CacheRead: %s, CacheWrite: %s", floatLit(row.InputCost), floatLit(row.OutputCost), floatLit(row.CacheRead), floatLit(row.CacheWrite))
+	if len(row.Tiers) > 0 {
+		literal += ", Tiers: " + tiersLiteral(row.Tiers)
+	}
+	return literal + "}"
+}
+
+func writeGoSource(path, source string) error {
+	formatted, err := format.Source([]byte(source))
 	if err != nil {
 		return fmt.Errorf("format generated source: %w", err)
 	}

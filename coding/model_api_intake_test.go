@@ -98,12 +98,26 @@ func TestIntakeProviderCallbacksRetainSourceSimpleOptions(t *testing.T) {
 	}
 }
 
+// recordingSummaryProvider records every request and answers "summary" with a fixed usage.
+type recordingSummaryProvider struct {
+	options []ai.StreamOptions
+}
+
+func (*recordingSummaryProvider) ID() string   { return "recording-summary" }
+func (*recordingSummaryProvider) Close() error { return nil }
+func (p *recordingSummaryProvider) Stream(_ context.Context, _ ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+	p.options = append(p.options, options)
+	message := sessionTestMessage(p.ID(), "summary", ai.StopReasonStop, "")
+	message.Usage = ai.Usage{Input: 21, Output: 5, TotalTokens: 26}
+	return newSessionTestStream(ai.StartEvent{Partial: message}, ai.DoneEvent{Reason: ai.StopReasonStop, Message: message}), nil
+}
+
 // models.ts:Models.streamSimple forwards source options to the provider callback. Only a stock API leaf lowers its budget and omitted reasoning.
 func TestCallerOwnedProviderRetainsSimpleOptions(t *testing.T) {
 	for _, maxTokens := range []int{0, 98765} {
 		t.Run(fmt.Sprint(maxTokens), func(t *testing.T) {
 			services := newTestServices(t)
-			provider := &harnessSummaryProvider{}
+			provider := &recordingSummaryProvider{}
 			model := fakeModelWithProvider(provider)
 			model.Capabilities.ContextWindow = 128
 			model.Capabilities.MaxOutputTokens = 16

@@ -132,7 +132,7 @@ func TestAgentLoop_HandlesToolCallsAndResults(t *testing.T) {
 		t.Fatalf("events %v lack tool execution events", types)
 	}
 	for _, ev := range events {
-		if end, ok := ev.(ToolExecutionEndEvent); ok && end.Result.IsError {
+		if end, ok := ev.(ToolExecutionEndEvent); ok && end.IsError {
 			t.Fatalf("tool_execution_end isError = true: %+v", end)
 		}
 	}
@@ -228,7 +228,8 @@ func TestAgentLoop_DoesNotExecuteToolCallsFromLengthTruncatedMessage(t *testing.
 			break
 		}
 	}
-	if end == nil || !end.Result.IsError || !strings.Contains(end.Result.Text(), "output token limit") {
+	// .upstream/v0.99.1/packages/agent/test/agent-loop.test.ts:476 asserts the event's own isError (`toolEnd.isError`); a failure the loop reports has no result.isError (agent-loop.ts:906-910).
+	if end == nil || !end.IsError || !strings.Contains(end.Result.Text(), "output token limit") {
 		t.Fatalf("tool_execution_end = %+v, want an output-token-limit error", end)
 	}
 	if provider.calls() != 2 {
@@ -413,7 +414,7 @@ func TestAgentLoop_InjectsQueuedMessagesAfterAllToolCallsComplete(t *testing.T) 
 		switch ev := ev.(type) {
 		case ToolExecutionEndEvent:
 			ends++
-			if ev.Result.IsError {
+			if ev.IsError {
 				t.Fatalf("tool_execution_end isError: %+v", ev)
 			}
 		case MessageStartEvent:
@@ -1151,5 +1152,126 @@ func TestAgentLoopContinue_AllowsCustomMessageAsLastMessage(t *testing.T) {
 	}
 	if got := userTexts(provider.request(1).transcript); !reflect.DeepEqual(got, []string{"Hook content"}) {
 		t.Fatalf("request users = %v, want the custom message as user text", got)
+	}
+}
+
+// structuredEchoTool is upstream's runToolCall "echo" tool: it declares an
+// output schema, streams one update, and returns structured content.
+type structuredEchoTool struct{ scriptTool }
+
+func (structuredEchoTool) OutputSchema() json.RawMessage {
+	return json.RawMessage(`{"type":"object","properties":{"value":{"type":"string"}},"required":["value"]}`)
+}
+
+func newStructuredEchoTool() *structuredEchoTool {
+	return &structuredEchoTool{scriptTool{name: "echo", label: "Echo", description: "Echo tool", params: valueSchema,
+		execute: func(_ context.Context, _ string, args json.RawMessage, onUpdate ToolUpdateCallback) (AgentToolResult, error) {
+			onUpdate(AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "partial"}}, Details: map[string]any{}})
+			value := argValue(args)
+			structured, _ := json.Marshal(map[string]string{"value": value})
+			return AgentToolResult{
+				Content:           []ai.ToolResultMessageContent{ai.TextContent{Text: value}},
+				Details:           map[string]any{},
+				StructuredContent: structured,
+			}, nil
+		}}}
+}
+
+// .upstream/v0.99.1/packages/agent/test/agent-loop.test.ts:2126
+// upstream: runToolCall "validates, runs the hooks, and reports failures as error outcomes".
+// The upstream assistantMessage and context options feed the hooks' context
+// argument, which Go's hook signatures do not carry (see RunToolCallOptions).
+func TestRunToolCall_ValidatesRunsTheHooksAndReportsFailuresAsErrorOutcomes(t *testing.T) {
+	failing := &scriptTool{name: "failing", label: "Failing", description: "Returns an error result", params: map[string]any{"type": "object", "properties": map[string]any{}},
+		execute: func(context.Context, string, json.RawMessage, ToolUpdateCallback) (AgentToolResult, error) {
+			return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "bad"}}, Details: map[string]any{"partial": true}, IsError: true}, nil
+		}}
+	var hookCalls []string
+	type update struct {
+		content string
+		details any
+	}
+	var updates []update
+	options := RunToolCallOptions{
+		Tools: []AgentTool{newStructuredEchoTool(), failing},
+		ToolCallHooks: ToolCallHooks{
+			BeforeToolCall: []BeforeToolCallHook{func(_ context.Context, id, _ string, args json.RawMessage) ToolCallHookResult {
+				hookCalls = append(hookCalls, "before "+id)
+				if argValue(args) == "blocked" {
+					return ToolCallHookResult{Block: true, Reason: "nope"}
+				}
+				return ToolCallHookResult{}
+			}},
+			AfterToolCall: []AfterToolCallHook{func(_ context.Context, id, _ string, _ json.RawMessage, _ AgentToolResult) AfterToolCallResult {
+				hookCalls = append(hookCalls, "after "+id)
+				return AfterToolCallResult{}
+			}},
+		},
+		OnUpdate: func(partial AgentToolResult) error {
+			updates = append(updates, update{partial.Text(), partial.Details})
+			return nil
+		},
+	}
+	call := func(id, name string, args ai.JsonObject) AgentToolCall {
+		return AgentToolCall{ID: id, Name: name, Arguments: args}
+	}
+
+	a, _ := RunToolCall(context.Background(), call("a", "echo", ai.JsonObject{"value": "a"}), options)
+	if a.ToolCall.ID != "a" || string(a.Result.StructuredContent) != `{"value":"a"}` || a.IsError {
+		t.Fatalf("a = %+v", a)
+	}
+	if b, _ := RunToolCall(context.Background(), call("b", "echo", ai.JsonObject{"value": map[string]any{"nested": true}}), options); !b.IsError {
+		t.Fatalf("b = %+v, want an error outcome", b)
+	}
+	c, _ := RunToolCall(context.Background(), call("c", "echo", ai.JsonObject{"value": "blocked"}), options)
+	if !c.IsError || c.Result.Text() != "nope" {
+		t.Fatalf("c = %+v", c)
+	}
+	d, _ := RunToolCall(context.Background(), call("d", "missing", ai.JsonObject{}), options)
+	if !d.IsError || d.Result.Text() != "Tool missing not found" {
+		t.Fatalf("d = %+v", d)
+	}
+	// Error results keep their details.
+	e, _ := RunToolCall(context.Background(), call("e", "failing", ai.JsonObject{}), options)
+	if !e.IsError || !reflect.DeepEqual(e.Result.Details, map[string]any{"partial": true}) {
+		t.Fatalf("e = %+v", e)
+	}
+	if want := []update{{"partial", map[string]any{}}}; !reflect.DeepEqual(updates, want) {
+		t.Fatalf("updates = %v, want %v", updates, want)
+	}
+	// Validation failures and unknown tools never reach the hooks; blocked calls skip afterToolCall.
+	if want := []string{"before a", "after a", "before c", "before e", "after e"}; !reflect.DeepEqual(hookCalls, want) {
+		t.Fatalf("hook calls = %v, want %v", hookCalls, want)
+	}
+}
+
+// .upstream/v0.99.1/packages/agent/test/agent-loop.test.ts:2173
+// upstream: runToolCall "lets afterToolCall replace structured content and drops it when only content is replaced".
+func TestRunToolCall_LetsAfterToolCallReplaceStructuredContentAndDropsItWhenOnlyContentIsReplaced(t *testing.T) {
+	redacted := []ai.ToolResultMessageContent{ai.TextContent{Text: "redacted"}}
+	results := []AfterToolCallResult{
+		{Content: redacted},
+		{StructuredContent: json.RawMessage(`{"value":"replaced"}`)},
+		{Content: redacted, StructuredContent: json.RawMessage(`{"value":"both"}`)},
+		{Details: map[string]any{"note": "kept"}},
+	}
+	var seen []string
+	for _, afterResult := range results {
+		outcome, _ := RunToolCall(context.Background(), AgentToolCall{ID: "x", Name: "echo", Arguments: ai.JsonObject{"value": "original"}}, RunToolCallOptions{
+			Tools: []AgentTool{newStructuredEchoTool()},
+			ToolCallHooks: ToolCallHooks{AfterToolCall: []AfterToolCallHook{
+				func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
+					return afterResult
+				},
+			}},
+		})
+		if outcome.Result.StructuredContent == nil {
+			seen = append(seen, "undefined")
+		} else {
+			seen = append(seen, string(outcome.Result.StructuredContent))
+		}
+	}
+	if want := []string{"undefined", `{"value":"replaced"}`, `{"value":"both"}`, `{"value":"original"}`}; !reflect.DeepEqual(seen, want) {
+		t.Fatalf("structured content = %v, want %v", seen, want)
 	}
 }

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 const root = process.env.PI_PACKAGE_ROOT ?? resolve('extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent');
-assert.equal(JSON.parse(readFileSync(join(root,'package.json'),'utf8')).version, '0.87.1');
+assert.equal(JSON.parse(readFileSync(join(root,'package.json'),'utf8')).version, '1.0.0');
 const pi = await import(pathToFileURL(join(root,'dist/index.js')).href);
 const cwd = mkdtempSync(join(tmpdir(), 'tool-wire-'));
 const sorted = value => Array.isArray(value) ? value.map(sorted) : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, sorted(value[key])])) : value;
@@ -27,6 +27,11 @@ try {
       statSync(path); unlinkSync(path);
       for (const block of result.content) if (block.type === 'text') block.text = block.text.replaceAll(path,'OUTPUT_FILE');
       result.details.fullOutputPath = 'OUTPUT_FILE';
+    }
+    if (result.structuredContent) {
+      // bash.ts:392 measures the wall clock; the probe keeps only its type on both sides.
+      assert.equal(typeof result.structuredContent.wall_time_seconds, 'number');
+      result.structuredContent.wall_time_seconds = 'NUMBER';
     }
     console.log('TOOL_WIRE ' + JSON.stringify(sorted({case:name,result})));
     if (name === 'bash') { assert(update); console.log('TOOL_WIRE ' + JSON.stringify(sorted({case:'bash output update',result:update}))); }

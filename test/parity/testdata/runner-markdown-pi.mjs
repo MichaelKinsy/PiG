@@ -4,7 +4,7 @@ import { resolve, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const packageRoot = resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-if (JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")).version !== "0.87.1") throw new Error("unexpected Pi version");
+if (JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")).version !== "1.0.0") throw new Error("unexpected Pi version");
 const { discoverAndLoadExtensions, loadExtensions } = await import(pathToFileURL(join(packageRoot, "dist/core/extensions/loader.js")));
 const { ExtensionRunner } = await import(pathToFileURL(join(packageRoot, "dist/core/extensions/runner.js")));
 const fixture = resolve("test/parity/scenarios/extensions-runtime/testdata/runner-markdown");

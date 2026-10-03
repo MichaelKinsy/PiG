@@ -6,7 +6,7 @@
 #
 # npm can require a package to exist before a trusted publisher (OIDC) can be
 # configured for it. Run this once, after `npm login` as an owner of the
-# @pi-in-go npm org, to publish the seven packages for an already PUBLISHED
+# @pi-in-go npm org, to publish the eight packages for an already PUBLISHED
 # GitHub Release. npm prompts for your one-time password (2FA) as usual.
 # Afterwards, configure the trusted publisher printed at the end on each
 # package; every later release publishes from .github/workflows/npm-publish.yml.

@@ -1,0 +1,588 @@
+[
+	{
+		"source": "\\bkey\\b",
+		"ignoreCase": true,
+		"input": [
+			8490,
+			101,
+			121,
+			32,
+			107,
+			101,
+			121
+		],
+		"match": {
+			"index": 4,
+			"length": 3
+		}
+	},
+	{
+		"source": "k",
+		"ignoreCase": true,
+		"input": [
+			8490,
+			32,
+			75,
+			32,
+			107
+		],
+		"match": {
+			"index": 2,
+			"length": 1
+		}
+	},
+	{
+		"source": "[a-z]+",
+		"ignoreCase": true,
+		"input": [
+			8490,
+			383,
+			115
+		],
+		"match": {
+			"index": 2,
+			"length": 1
+		}
+	},
+	{
+		"source": "\\b\\d+",
+		"ignoreCase": false,
+		"input": [
+			1055,
+			1072,
+			1088,
+			1072,
+			1084,
+			1077,
+			1090,
+			1088,
+			49
+		],
+		"match": {
+			"index": 8,
+			"length": 1
+		}
+	},
+	{
+		"source": "\\B\\d",
+		"ignoreCase": false,
+		"input": [
+			1055,
+			1072,
+			1088,
+			1072,
+			1084,
+			1077,
+			1090,
+			1088,
+			49,
+			32,
+			120,
+			49
+		],
+		"match": {
+			"index": 11,
+			"length": 1
+		}
+	},
+	{
+		"source": "a.b",
+		"ignoreCase": false,
+		"input": [
+			97,
+			8232,
+			98,
+			32,
+			97,
+			13,
+			98,
+			32,
+			97,
+			120,
+			98
+		],
+		"match": {
+			"index": 8,
+			"length": 3
+		}
+	},
+	{
+		"source": "x$",
+		"ignoreCase": false,
+		"input": [
+			120,
+			8233,
+			121
+		],
+		"match": {
+			"index": 0,
+			"length": 1
+		}
+	},
+	{
+		"source": "^y",
+		"ignoreCase": false,
+		"input": [
+			120,
+			8232,
+			121
+		],
+		"match": {
+			"index": 2,
+			"length": 1
+		}
+	},
+	{
+		"source": "[^]",
+		"ignoreCase": false,
+		"input": [
+			10
+		],
+		"match": {
+			"index": 0,
+			"length": 1
+		}
+	},
+	{
+		"source": "a[]|b",
+		"ignoreCase": false,
+		"input": [
+			97,
+			98
+		],
+		"match": {
+			"index": 1,
+			"length": 1
+		}
+	},
+	{
+		"source": "\\cJ",
+		"ignoreCase": false,
+		"input": [
+			97,
+			10,
+			98
+		],
+		"match": {
+			"index": 1,
+			"length": 1
+		}
+	},
+	{
+		"source": "\\c1",
+		"ignoreCase": false,
+		"input": [
+			92,
+			99,
+			49
+		],
+		"match": {
+			"index": 0,
+			"length": 3
+		}
+	},
+	{
+		"source": "[\\c1]",
+		"ignoreCase": false,
+		"input": [
+			17
+		],
+		"match": {
+			"index": 0,
+			"length": 1
+		}
+	},
+	{
+		"source": "\\101\\0",
+		"ignoreCase": false,
+		"input": [
+			65,
+			0
+		],
+		"match": {
+			"index": 0,
+			"length": 2
+		}
+	},
+	{
+		"source": "\\8",
+		"ignoreCase": false,
+		"input": [
+			56
+		],
+		"match": {
+			"index": 0,
+			"length": 1
+		}
+	},
+	{
+		"source": "\\1010",
+		"ignoreCase": false,
+		"input": [
+			65,
+			48
+		],
+		"match": {
+			"index": 0,
+			"length": 2
+		}
+	},
+	{
+		"source": "\\477",
+		"ignoreCase": false,
+		"input": [
+			39,
+			55
+		],
+		"match": {
+			"index": 0,
+			"length": 2
+		}
+	},
+	{
+		"source": "\\400",
+		"ignoreCase": false,
+		"input": [
+			32,
+			48
+		],
+		"match": {
+			"index": 0,
+			"length": 2
+		}
+	},
+	{
+		"source": "\\08",
+		"ignoreCase": false,
+		"input": [
+			0,
+			56
+		],
+		"match": {
+			"index": 0,
+			"length": 2
+		}
+	},
+	{
+		"source": "\\377",
+		"ignoreCase": false,
+		"input": [
+			255
+		],
+		"match": {
+			"index": 0,
+			"length": 1
+		}
+	},
+	{
+		"source": "[\\4-\\60]+",
+		"ignoreCase": false,
+		"input": [
+			4,
+			16,
+			48
+		],
+		"match": {
+			"index": 0,
+			"length": 3
+		}
+	},
+	{
+		"source": "x{2",
+		"ignoreCase": false,
+		"input": [
+			120,
+			123,
+			50
+		],
+		"match": {
+			"index": 0,
+			"length": 3
+		}
+	},
+	{
+		"source": "x{2}",
+		"ignoreCase": false,
+		"input": [
+			120,
+			120,
+			120
+		],
+		"match": {
+			"index": 0,
+			"length": 2
+		}
+	},
+	{
+		"source": "\\u{2}",
+		"ignoreCase": false,
+		"input": [
+			117,
+			117
+		],
+		"match": {
+			"index": 0,
+			"length": 2
+		}
+	},
+	{
+		"source": "(?<q>['\"]).*?\\k<q>",
+		"ignoreCase": false,
+		"input": [
+			115,
+			97,
+			121,
+			32,
+			39,
+			104,
+			105,
+			39,
+			32,
+			34,
+			121,
+			111,
+			34
+		],
+		"match": {
+			"index": 4,
+			"length": 4
+		}
+	},
+	{
+		"source": "(?<q>a)(b)\\2",
+		"ignoreCase": false,
+		"input": [
+			97,
+			98,
+			98
+		],
+		"match": {
+			"index": 0,
+			"length": 3
+		}
+	},
+	{
+		"source": "\\k<q>",
+		"ignoreCase": false,
+		"input": [
+			107,
+			60,
+			113,
+			62
+		],
+		"match": {
+			"index": 0,
+			"length": 4
+		}
+	},
+	{
+		"source": "(a)|\\1b",
+		"ignoreCase": false,
+		"input": [
+			98
+		],
+		"match": {
+			"index": 0,
+			"length": 1
+		}
+	},
+	{
+		"source": "[\\d-z]+",
+		"ignoreCase": false,
+		"input": [
+			49,
+			45,
+			122
+		],
+		"match": {
+			"index": 0,
+			"length": 3
+		}
+	},
+	{
+		"source": "\\p{L}",
+		"ignoreCase": false,
+		"input": [
+			112,
+			123,
+			76,
+			125
+		],
+		"match": {
+			"index": 0,
+			"length": 4
+		}
+	},
+	{
+		"source": "[\\uD800-\\uDBFF]",
+		"ignoreCase": false,
+		"input": [
+			97,
+			55357,
+			56832
+		],
+		"match": {
+			"index": 1,
+			"length": 1
+		}
+	},
+	{
+		"source": ".",
+		"ignoreCase": false,
+		"input": [
+			55357,
+			56832
+		],
+		"match": {
+			"index": 0,
+			"length": 1
+		}
+	},
+	{
+		"source": "\\s+",
+		"ignoreCase": false,
+		"input": [
+			97,
+			160,
+			65279,
+			133,
+			98
+		],
+		"match": {
+			"index": 1,
+			"length": 2
+		}
+	},
+	{
+		"source": "[^\\s]+",
+		"ignoreCase": false,
+		"input": [
+			133,
+			120
+		],
+		"match": {
+			"index": 0,
+			"length": 2
+		}
+	},
+	{
+		"source": "\\w+",
+		"ignoreCase": true,
+		"input": [
+			383,
+			120
+		],
+		"match": {
+			"index": 1,
+			"length": 1
+		}
+	},
+	{
+		"source": "[^a]",
+		"ignoreCase": true,
+		"input": [
+			65
+		],
+		"match": null
+	},
+	{
+		"source": "é",
+		"ignoreCase": true,
+		"input": [
+			201
+		],
+		"match": {
+			"index": 0,
+			"length": 1
+		}
+	},
+	{
+		"source": "σ",
+		"ignoreCase": true,
+		"input": [
+			962,
+			931
+		],
+		"match": {
+			"index": 0,
+			"length": 1
+		}
+	},
+	{
+		"source": "(?<=\\$)\\w+",
+		"ignoreCase": false,
+		"input": [
+			36,
+			118,
+			97,
+			114
+		],
+		"match": {
+			"index": 1,
+			"length": 3
+		}
+	},
+	{
+		"source": "\\]\\}",
+		"ignoreCase": false,
+		"input": [
+			93,
+			125
+		],
+		"match": {
+			"index": 0,
+			"length": 2
+		}
+	},
+	{
+		"source": "]}",
+		"ignoreCase": false,
+		"input": [
+			93,
+			125
+		],
+		"match": {
+			"index": 0,
+			"length": 2
+		}
+	},
+	{
+		"source": "[\\b]",
+		"ignoreCase": false,
+		"input": [
+			97,
+			8,
+			98
+		],
+		"match": {
+			"index": 1,
+			"length": 1
+		}
+	},
+	{
+		"source": "\\x4",
+		"ignoreCase": false,
+		"input": [
+			120,
+			52
+		],
+		"match": {
+			"index": 0,
+			"length": 2
+		}
+	},
+	{
+		"source": "\\u004",
+		"ignoreCase": false,
+		"input": [
+			117,
+			48,
+			48,
+			52
+		],
+		"match": {
+			"index": 0,
+			"length": 4
+		}
+	}
+]

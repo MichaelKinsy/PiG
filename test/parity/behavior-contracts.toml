@@ -1,4 +1,4 @@
-upstream_version = "0.87.1"
+upstream_version = "1.0.0"
 
 [[contract]]
 id = "coding-agent/extension-input/remapped-confirm"
@@ -155,7 +155,7 @@ path = "packages/tui/src/utils.ts"
 start = "function splitIntoTokensWithAnsi(text: string): string[] {"
 end = """/**
  * Wrap text with ANSI codes preserved."""
-sha256 = "196c495c6915372f9d6f107a3594301c4d0f15369a91f2957356e102ac5ae74b"
+sha256 = "58faa065b19ea520b22ebd82ab01ea880482872d1db1428533ecf2255d7af1de"
 keybindings = []
 
 [[contract]]
@@ -352,7 +352,7 @@ start = "export function detectCapabilities("
 end = """
 
 /** Override the cached capabilities."""
-sha256 = "198fe503369adbf6a0eaced14156ef782d4bbfd8e5f0a1416dbd09ce6ffc09e8"
+sha256 = "4f9ae5dc142a45c8f688e31ad4ca4e13c6c944813c8e61f2bf838c71f653f2c6"
 keybindings = []
 
 [[contract]]

@@ -2,140 +2,56 @@ package routing_test
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
-	"net"
 	"runtime"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/experimental/protocol"
 	"github.com/MichaelKinsy/PiG/internal/experimental/routing"
+	"github.com/MichaelKinsy/PiG/internal/experimental/routing/routingtest"
 )
 
 const testServerID = "00000000-0000-4000-8000-000000000001"
 
-// testServerServices is upstream createTestServerServices (packages/server/src/testing/host.ts): it supports only the attach and detach members and releases nothing.
-type testServerServices struct{}
-
-func (testServerServices) AttachClient(_ context.Context, presentation routing.RoutedServerPresentation) (routing.RoutedServerServiceAttachment, error) {
-	return testServerAttachment{presentation: presentation}, nil
+// waitContext bounds one test's protocol waits, as the upstream test timeout does.
+func waitContext(t *testing.T) context.Context {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	t.Cleanup(cancel)
+	return ctx
 }
 
-type testServerAttachment struct {
-	presentation routing.RoutedServerPresentation
-}
-
-func (attachment testServerAttachment) InvokeService(ctx context.Context, call chord.ServiceCall, _ chord.ServiceUpdatePublisher) (json.RawMessage, error) {
-	switch {
-	case call.Instance == nil && call.ServiceId == "pi.session-management" && call.Member == "attach" && len(call.Args) == 1:
-		var id string
-		if err := json.Unmarshal(call.Args[0], &id); err != nil {
-			break
-		}
-		return json.RawMessage("null"), attachment.presentation.AttachSession(ctx, id)
-	case call.Instance == nil && call.ServiceId == "pi.session-management" && call.Member == "detach" && len(call.Args) == 0:
-		return json.RawMessage("null"), attachment.presentation.DetachSession(ctx)
-	}
-	return nil, errors.New("Unsupported test server service " + call.ServiceId + "." + call.Member)
-}
-
-func (testServerAttachment) Release(context.Context) error { return nil }
-
-// newTestServerHost is upstream TestServerHost without Session storage: the cases in this package never attach a Session.
+// newTestServerHost is upstream new TestServerHost() for cases that need no seeded Session.
 func newTestServerHost() routing.ServerHost {
-	return routing.ServerHost{ServerServices: testServerServices{}}
+	return routingtest.NewTestServerHost().ServerHost()
 }
 
-// unixTestClient is upstream ProtocolTestClient over connectUnixTestClient (packages/server/src/testing/client.ts).
+// unixTestClient is upstream connectUnixTestClient's ProtocolTestClient with the test's wait bound.
 type unixTestClient struct {
-	conn     net.Conn
-	mu       sync.Mutex
-	messages []protocol.ServerMessage
-	changed  chan struct{}
-	closed   chan struct{}
+	*routingtest.ProtocolTestClient
+	ctx context.Context
 }
 
 func connectUnixTestClient(t *testing.T, path string) *unixTestClient {
 	t.Helper()
-	conn, err := net.Dial("unix", path)
+	ctx := waitContext(t)
+	client, err := routingtest.ConnectUnixTestClient(ctx, path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	client := &unixTestClient{conn: conn, changed: make(chan struct{}, 1), closed: make(chan struct{})}
-	decoder, err := protocol.NewServerMessageDecoder(protocol.FrameDecoderOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	go func() {
-		defer close(client.closed)
-		buffer := make([]byte, 64*1024)
-		for {
-			n, err := conn.Read(buffer)
-			if n > 0 {
-				messages, decodeErr := decoder.Push(buffer[:n])
-				client.mu.Lock()
-				client.messages = append(client.messages, messages...)
-				client.mu.Unlock()
-				select {
-				case client.changed <- struct{}{}:
-				default:
-				}
-				if decodeErr != nil {
-					return
-				}
-			}
-			if err != nil {
-				return
-			}
-		}
-	}()
-	t.Cleanup(client.close)
-	return client
-}
-
-func (client *unixTestClient) close() {
-	_ = client.conn.Close()
-	<-client.closed
-}
-
-func (client *unixTestClient) send(t *testing.T, message protocol.ClientMessage) {
-	t.Helper()
-	frame, err := protocol.EncodeClientMessage(message, protocol.FrameDecoderOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := client.conn.Write(frame); err != nil {
-		t.Fatal(err)
-	}
+	t.Cleanup(func() { _ = client.Close() })
+	return &unixTestClient{ProtocolTestClient: client, ctx: ctx}
 }
 
 // hello sends the current protocol hello and returns the first hello or hello_error reply.
 func (client *unixTestClient) hello(t *testing.T) protocol.ServerMessage {
 	t.Helper()
-	client.send(t, protocol.ClientHello{Version: protocol.ProtocolVersion})
-	deadline := time.After(30 * time.Second)
-	for {
-		client.mu.Lock()
-		for _, message := range client.messages {
-			switch message.(type) {
-			case protocol.ServerHello, protocol.ServerHelloError:
-				client.mu.Unlock()
-				return message
-			}
-		}
-		client.mu.Unlock()
-		select {
-		case <-client.changed:
-		case <-client.closed:
-			t.Fatal("wire connection closed before hello")
-		case <-deadline:
-			t.Fatal("no hello reply")
-		}
+	message, err := client.Hello(client.ctx, nil)
+	if err != nil {
+		t.Fatal(err)
 	}
+	return message
 }
 
 // pollUntil is upstream expect.poll: it re-evaluates a condition on a short interval until it holds or the test's bound expires.

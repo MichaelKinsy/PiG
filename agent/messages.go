@@ -28,8 +28,8 @@ func ConvertToLLM(msgs []AgentMessage, model *ai.Model) []ai.Message {
 		case m.ToolResult != nil:
 			out = append(out, ai.ToolResultMessage{
 				ToolCallID: m.ToolResult.ToolCallID, ToolName: m.ToolResult.ToolName,
-				Content: m.ToolResult.Content, Details: m.ToolResult.Details,
-				Usage: m.ToolResult.Usage, IsError: m.ToolResult.IsError,
+				Content: m.ToolResult.Content, Details: m.ToolResult.Details, DetailsNull: m.ToolResult.DetailsNull,
+				Usage: m.ToolResult.Usage, NestedCalls: m.ToolResult.NestedCalls, IsError: m.ToolResult.IsError,
 				Timestamp: m.ToolResult.Timestamp,
 			})
 		case m.Custom != nil:
@@ -176,7 +176,7 @@ func (m *AssistantMessage) LLMMessage() ai.AssistantMessage {
 	return ai.AssistantMessage{
 		Content: m.Content, API: m.API, Provider: m.Provider,
 		Model: m.ModelID, ResponseModel: m.ResponseModel,
-		ResponseID: m.ResponseID, ProviderThinkingLevel: m.ProviderThinkingLevel,
+		ResponseID: m.ResponseID, ProviderThinkingLevel: m.ProviderThinkingLevel, ThinkingLevel: m.ThinkingLevel,
 		Diagnostics: m.Diagnostics,
 		Usage:       usage, StopReason: m.StopReason, Deferred: m.Deferred,
 		ErrorMessage: m.ErrorMessage, RawStopReason: m.RawStopReason,

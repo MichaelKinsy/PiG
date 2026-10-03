@@ -89,6 +89,7 @@ func codexRPCServer(t *testing.T, mode, fixture string, release <-chan struct{})
 }
 
 func TestRPCCodexSSEStartMatchesPi(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile(codexRPCOraclePath)
 	if err != nil {
 		t.Fatal(err)

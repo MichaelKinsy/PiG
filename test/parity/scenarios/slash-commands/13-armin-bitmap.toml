@@ -1,15 +1,20 @@
-# Upstream evidence: Pi 0.87.1 armin.ts chooses one of seven effects. Compare the settled bitmap,
-# not nondeterministic intermediate frame timing; armin-oracle.mjs compares every
-# intermediate frame under the same random stream, including non-terminating rain.
-# Completion barrier: every bitmap row visible together (wait_visible_contains searches only the
-# current pane, so rows from different frames cannot satisfy it) and the pane unchanged for 500 ms.
-# armin.ts tickRain has no completion signal: after a column's last pixel settles, its drop still
-# falls through the whole column drawing "▓" over settled cells, starting up to 5 frames (167 ms at
-# 30 fps) after it settles. A quiet window longer than that entry gap means no drop remains.
-# Cumulative history (wait_contains) matched rows from earlier frames and let a slow Pi capture "▓".
-# The crop retains the spacer, all 18 image rows and the label, excluding startup/footer identity.
+# Upstream evidence: Pi 0.87.1 through 1.0.0 armin.ts chooses one of seven effects and draws Armin's 31 by 36 XBM labeled
+# "ARMIN SAYS HI". Compare the settled bitmap, not nondeterministic intermediate frame timing; armin-oracle.mjs runs the
+# pinned armin.ts with PiG's image and compares every intermediate frame under the same random stream, including
+# non-terminating rain.
+# pig divergence (D87, owner decision 2026-10-01): PiG draws a 31 by 34 pig head labeled "pigsayhi" with the same effects,
+# so each binary waits for its own settled image (wait_visible_contains_pig / _pi) and the image rows are asserted per
+# binary instead of compared with each other. Both show it on the exact command, in the accent color, after a spacer.
+# Completion barrier: every bitmap row visible together (wait_visible_contains searches only the current pane, so rows
+# from different frames cannot satisfy it) and the pane unchanged for 500 ms.
+# armin.ts tickRain has no completion signal: after a column's last pixel settles, its drop still falls through the whole
+# column drawing "▓" over settled cells, starting up to 5 frames (167 ms at 30 fps) after it settles. A quiet window
+# longer than that entry gap means no drop remains.
+# lint-known-gap: D87 replaces the whole crop (Armin's image and label) with PiG's pig head and label, so no equality
+# comparator applies; the [diverge] rows assert each binary's settled image instead.
+# The crop retains the spacer, all image rows and the label, excluding startup/footer identity.
 name = "13-armin-bitmap"
-description = "Hidden Armin command converges to Pi's complete accent-colored 31 by 36 half-block bitmap"
+description = "Hidden Armin command converges to the complete accent-colored half-block bitmap: Pi's Armin, PiG's pig head (D87)"
 covers = ["packages/coding-agent/src/modes/interactive/components/armin.ts"]
 tags = ["hermetic", "tui"]
 driver = "interactive-tmux"
@@ -29,7 +34,7 @@ wait_contains = ["Session name set: armin-anchor"]
 
 [[tmux.steps]]
 keys = ["/arminsayshi", "Enter"]
-wait_visible_contains = [
+wait_visible_contains_pi = [
  "         ▄▄▄▄", "          ▀▄ ▀▄", "            █  ▀▄▄",
  "      ▄▀▀▀▀▀     █", "      █▄   ▄▄▄▄▀▀▀▀▄", "    ▄▀  ▀▀▀  ▄▄▄▄▀▀ █",
  "    █              ▄█▄", "    ▀▄   ▄▄▄▀▀▀▀▀▀▀▀▄█  ▄▄▄▄▄",
@@ -38,6 +43,14 @@ wait_visible_contains = [
  "        ▀██████▀▀▀▀   ▀▄▄▄▄▄▀", "          ▀████████▀  ▄▄ ▄▄▄",
  "            ▀█████▀  ██▀ ██▄", "                     ██  ▄▄▄",
  "                      █  ▀█▀", "                       ▀▀▀", " ARMIN SAYS HI",
+]
+wait_visible_contains_pig = [
+ "  ▄▄                         ▄▄", "  █ ▀▀▄▄                 ▄▄▀▀ █", "  █     ▀▀▄▄         ▄▄▀▀     █",
+ "  █         ▀▀▀▀▀▀▀▀▀         █", "  █                           █", " █                             █",
+ " █      ▄██▄         ▄██▄      █", " █      ▀██▀         ▀██▀      █", " █                             █",
+ " █       ▄▄▀▀▀▀▀▀▀▀▀▀▀▄▄       █", " █      █    ▄▄   ▄▄    █      █", " █      █   ▀██▀ ▀██▀   █      █",
+ " █       ▀▄▄         ▄▄▀       █", "  █         ▀▀▀▀▀▀▀▀▀         █", "   █           ▄ ▄           █",
+ "    ▀▀▄▄        ▀        ▄▄▀▀", "        ▀▀▀▄▄▄▄▄▄▄▄▄▄▄▀▀▀", " pigsayhi",
 ]
 wait_stable_milliseconds = 500
 wait_timeout_seconds = 30
@@ -54,7 +67,13 @@ pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
 
 [assert]
 both_reach_ready = true
-both_contain = ["ARMIN SAYS HI"]
-output_equal = true
-escaped_output_equal = true
+both_not_contain = ["panic:", "goroutine "]
 runs = 3
+
+[diverge]
+pig_contains = [
+ "  ▄▄                         ▄▄", " █      ▄██▄         ▄██▄      █", " █      █   ▀██▀ ▀██▀   █      █",
+ "        ▀▀▀▄▄▄▄▄▄▄▄▄▄▄▀▀▀", " pigsayhi",
+]
+pi_contains = ["         ▄▄▄▄", "  ▄▄▄▀▀▀▀▄▄▄▄▄▄▄▄▄▄█▄ ▄▀   ▄ ▀▄", " ARMIN SAYS HI"]
+reason = "D87: PiG's /arminsayshi draws a pig head labeled pigsayhi with Pi's effects; Pi draws Armin."

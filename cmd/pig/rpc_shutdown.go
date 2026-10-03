@@ -32,6 +32,8 @@ type rpcShutdown struct {
 	// before the process exits.
 	flush func()
 	exit  func(code int)
+	// settle runs before stdin end starts shutdown: Pi reads stdin's end in an event-loop iteration of its own, after the microtasks of every earlier line and of a published agent_end (rpc-mode.ts:355-360,802-805). It returns false when the mode ended meanwhile, which abandons the shutdown. It may be nil.
+	settle func() bool
 	// die ends the process with a termination signal's default action.
 	die func(sig os.Signal)
 
@@ -53,6 +55,9 @@ func (s *rpcShutdown) Started() <-chan struct{} { return s.startedCh }
 
 // inputEnd handles stdin end.
 func (s *rpcShutdown) inputEnd() {
+	if s.settle != nil && !s.settle() {
+		return
+	}
 	if s.begin() {
 		s.flush()
 		s.exit(0)

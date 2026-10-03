@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/piglogin"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -38,6 +39,8 @@ type specialLinesComponent struct {
 	lines      []string
 	linesWidth int
 	render     func(width int) []string
+	// mouse handles mouse events for the built-in header; installing other lines or another renderer removes it.
+	mouse      func(event tui.TuiMouseEvent) *tui.TuiMouseDispatchResult
 	invalidate func()
 }
 
@@ -66,7 +69,11 @@ func (c *specialLinesComponent) Render(width int) []string {
 	return widthx.FrameAt(out, c.linesWidth, width)
 }
 
-func (c *specialLinesComponent) Invalidate() {
+// Invalidate is a no-op: the component keeps no derived state, and the container invalidates every child while it renders after a theme change (tui.ts invalidate), so requesting a render here would re-enter the renderer.
+func (c *specialLinesComponent) Invalidate() {}
+
+// repaint asks the host to draw the component again, as installing new content does.
+func (c *specialLinesComponent) repaint() {
 	if c.invalidate != nil {
 		c.invalidate()
 	}
@@ -78,6 +85,7 @@ func (c *specialLinesComponent) SetLines(lines []string) { c.SetLinesAt(lines, 0
 func (c *specialLinesComponent) SetLinesAt(lines []string, width int) {
 	c.mu.Lock()
 	c.render = nil
+	c.mouse = nil
 	c.linesWidth = width
 	if len(lines) == 0 {
 		c.lines = nil
@@ -98,13 +106,30 @@ func (c *specialLinesComponent) HasContent() bool {
 }
 
 func (c *specialLinesComponent) SetRenderer(render func(width int) []string) {
+	c.SetRendererWithMouse(render, nil)
+}
+
+// SetRendererWithMouse installs a renderer and the mouse handler of the component it draws.
+func (c *specialLinesComponent) SetRendererWithMouse(render func(width int) []string, mouse func(event tui.TuiMouseEvent) *tui.TuiMouseDispatchResult) {
 	c.mu.Lock()
 	c.lines = nil
 	c.render = render
+	c.mouse = mouse
 	c.mu.Unlock()
 	if c.invalidate != nil {
 		c.invalidate()
 	}
+}
+
+// HandleMouse forwards an event to the installed mouse handler, if any.
+func (c *specialLinesComponent) HandleMouse(event tui.TuiMouseEvent) *tui.TuiMouseDispatchResult {
+	c.mu.RLock()
+	mouse := c.mouse
+	c.mu.RUnlock()
+	if mouse == nil {
+		return nil
+	}
+	return mouse(event)
 }
 
 var _ extension.UIContext = (*ExtUIContext)(nil)
@@ -429,6 +454,58 @@ func (u *ExtUIContext) SetLogin(definition extension.LoginDefinition) error {
 	return nil
 }
 
+var _ extension.SpriteRegistrar = (*ExtUIContext)(nil)
+
+// RegisterSprite adds an extension's sprite to /sprite (D2). The header redraws, since it may be the saved sprite, drawn
+// as the default until now.
+func (u *ExtUIContext) RegisterSprite(owner string, definition extension.ValidatedSpriteDefinition) error {
+	u.m.spriteOwnersMu.Lock()
+	err := piglogin.Register(owner, definition)
+	if err == nil {
+		if u.m.spriteOwners == nil {
+			u.m.spriteOwners = map[string]struct{}{}
+		}
+		u.m.spriteOwners[owner] = struct{}{}
+	}
+	u.m.spriteOwnersMu.Unlock()
+	if err != nil {
+		return err
+	}
+	u.m.invalidateBuiltInHeader()
+	return nil
+}
+
+// UnregisterSprites removes the sprites of an extension that unloaded; the header redraws in case it showed one.
+func (u *ExtUIContext) UnregisterSprites(owner string) {
+	u.m.spriteOwnersMu.Lock()
+	piglogin.Unregister(owner)
+	delete(u.m.spriteOwners, owner)
+	u.m.spriteOwnersMu.Unlock()
+	u.m.invalidateBuiltInHeader()
+}
+
+// dropBoundSprites removes the sprites of the build whose bridge was bound, before another build's bridge replays its own,
+// and reports whether it removed any. The outgoing bridge is detached by then, so its host's shutdown no longer reaches the
+// UI to remove them.
+// pig divergence (D2): extension sprites leave /sprite with the build that registered them; Pi has no sprites.
+func (m *InteractiveMode) dropBoundSprites() bool {
+	m.spriteOwnersMu.Lock()
+	defer m.spriteOwnersMu.Unlock()
+	for owner := range m.spriteOwners {
+		piglogin.Unregister(owner)
+	}
+	dropped := len(m.spriteOwners) > 0
+	m.spriteOwners = nil
+	return dropped
+}
+
+// invalidateBuiltInHeader redraws the header slot, which draws the active sprite while it shows the built-in header.
+func (m *InteractiveMode) invalidateBuiltInHeader() {
+	if m.extHeader != nil {
+		m.extHeader.repaint()
+	}
+}
+
 func (m *InteractiveMode) restoreBuiltInHeader() {
 	m.toolMu.Lock()
 	expanded := m.toolsExpanded
@@ -448,26 +525,24 @@ func (m *InteractiveMode) setBuiltInHeader(expanded bool) {
 		m.extHeader.SetLines(m.opts.BuiltInHeaderLines)
 		return
 	}
+	showDetails := m.shouldShowStartupDetails()
 	m.toolMu.Lock()
 	m.builtInHeaderExpanded = expanded
+	if !m.builtInHeaderBuilt {
+		m.builtInHeaderShowDetails, m.builtInHeaderBuilt = showDetails, true
+	}
 	m.toolMu.Unlock()
-	m.extHeader.SetRenderer(m.renderBuiltInHeader)
+	// pig divergence (D2): the built-in header draws the saved PiG sprite. Reading it here, off the render loop, picks up a
+	// selection a game or another PiG wrote since startup (/reload restores the built-in header).
+	piglogin.Refresh()
+	piglogin.Active()
+	m.extHeader.SetRendererWithMouse(m.renderBuiltInHeader, m.handleBuiltInHeaderMouse)
 }
 
 func (u *ExtUIContext) SetTitle(title string) {
 	if u.m.tuiInst != nil {
 		_, _ = fmt.Fprintf(os.Stdout, "\033]0;%s\007", title)
 	}
-}
-
-func (u *ExtUIContext) Custom(_ context.Context, _ any, _ any) (any, error) {
-	// In-process Custom() requires a real factory closure capturing
-	// TUI references. Subprocess extensions instead use
-	// RunRemoteOverlay() below, which serialises lines/input across
-	// the bridge. In-process Go/Rust extensions that want a real
-	// overlay should build their own component and call
-	// RunRemoteOverlay directly.
-	return nil, fmt.Errorf("custom extension components require subprocess RunRemoteOverlay or in-process implementation")
 }
 
 // RunRemoteOverlay mounts remote custom UI as an overlay or editor-slot replacement and waits for its result. The owner loop mounts the component and transfers renderer focus; this caller drains its modal input lease off-loop. Normal completion restores the editor slot and focus before returning.
@@ -549,17 +624,16 @@ func (u *ExtUIContext) RunRemoteOverlay(opts extension.RemoteOverlayOptions, hos
 			return nil, false
 		case buf := <-inputCh:
 			data := string(buf)
-			if tui.ParseTerminalColorSchemeReport(data) != "" || tui.IsOsc11BackgroundColorResponse(data) {
-				consumed := make(chan bool, 1)
-				runOnOwner(ctx, func() { consumed <- u.m.consumeTerminalThemeInput(data) })
-				select {
-				case handled := <-consumed:
-					if handled {
-						continue
-					}
-				case <-ctx.Done():
-					return nil, false
+			// Theme replies and fullscreen viewport keys precede the component, as for every selector; both run on the owner loop.
+			consumed := make(chan bool, 1)
+			runOnOwner(ctx, func() { consumed <- u.m.consumeModalHostInput(data) })
+			select {
+			case handled := <-consumed:
+				if handled {
+					continue
 				}
+			case <-ctx.Done():
+				return nil, false
 			}
 			dispatchModalInput(overlay, []string{data}, overlay.HandleInput, overlay.Done)
 		case <-overlay.Closed():
@@ -639,15 +713,6 @@ func (u *ExtUIContext) GetEditorComponent() any {
 
 func (u *ExtUIContext) Theme() extension.Theme { return ActiveExtensionTheme() }
 
-// themeColorMode is upstream's ColorMode for the terminal: "truecolor" when
-// it draws 24-bit colors, else "256color".
-func themeColorMode() string {
-	if tui.GetCapabilities().TrueColor {
-		return "truecolor"
-	}
-	return "256color"
-}
-
 // ActiveExtensionTheme is the active theme as extensions see it
 // (ctx.ui.theme): upstream hands every mode's UI context the global theme.
 func ActiveExtensionTheme() extension.Theme {
@@ -655,10 +720,11 @@ func ActiveExtensionTheme() extension.Theme {
 	if theme == nil {
 		return nil
 	}
-	return extensionThemePalette(theme)
+	return ExtensionThemePalette(theme)
 }
 
-func extensionThemePalette(theme *tui.Theme) extension.Theme {
+// ExtensionThemePalette is the palette extensions receive for theme (ctx.ui.theme): its resolved escape sequences, and the host-resolved appearance and concrete colors.
+func ExtensionThemePalette(theme *tui.Theme) extension.Theme {
 	foregrounds, backgrounds := theme.ANSIPalette()
 	palette := map[string]any{
 		"name":        theme.Name,
@@ -667,8 +733,11 @@ func extensionThemePalette(theme *tui.Theme) extension.Theme {
 		// modifiers is whether theme.bold and the other chalk styles draw,
 		// as upstream's chalk decides from its own stdout.
 		"modifiers": chalkModifiersEnabled(),
-		// mode is upstream Theme.getColorMode().
-		"mode": themeColorMode(),
+		// mode is upstream Theme.getColorMode(): the mode the theme's own escape sequences are built for, which style draws a concrete color in.
+		"mode": string(theme.ColorMode()),
+		// appearance and colors are upstream Theme.appearance and Theme.colors (theme.ts:311-336). The host resolves them: they depend on the terminal's reported colors, which the extension process cannot see.
+		"appearance": string(theme.Appearance()),
+		"colors":     extensionThemeColors(theme.ColorValues()),
 	}
 	// sourcePath is upstream Theme.sourcePath: the file a custom theme was
 	// loaded from, absent for built-in themes.
@@ -678,6 +747,35 @@ func extensionThemePalette(theme *tui.Theme) extension.Theme {
 		}
 	}
 	return palette
+}
+
+// extensionThemeColors is the wire form of Theme.colors: each token's pi-tui Color as {kind: "indexed", index}, {kind: "rgb", r, g, b} or {kind: "oklch", l, c, h}.
+// A color with a non-finite channel is left out: Pi's rgbColor and oklchColor reject one (colors.ts:58-88), and JSON cannot carry it. A terminal reply can produce one (terminal-colors.ts:27-36 divides Infinity by Infinity for a very long channel).
+func extensionThemeColors(values map[string]tui.Color) map[string]any {
+	finite := func(channels ...float64) bool {
+		for _, channel := range channels {
+			if math.IsNaN(channel) || math.IsInf(channel, 0) {
+				return false
+			}
+		}
+		return true
+	}
+	colors := make(map[string]any, len(values))
+	for token, color := range values {
+		switch color := color.(type) {
+		case tui.IndexedColor:
+			colors[token] = map[string]any{"kind": "indexed", "index": color.Index}
+		case tui.RgbColorValue:
+			if finite(color.R, color.G, color.B) {
+				colors[token] = map[string]any{"kind": "rgb", "r": color.R, "g": color.G, "b": color.B}
+			}
+		case tui.OklchColorValue:
+			if finite(color.L, color.C, color.H) {
+				colors[token] = map[string]any{"kind": "oklch", "l": color.L, "c": color.C, "h": color.H}
+			}
+		}
+	}
+	return colors
 }
 
 // GetAllThemes lists the themes the user can switch to, mirroring upstream's
@@ -696,7 +794,7 @@ func (u *ExtUIContext) GetAllThemes() []extension.ThemeMeta {
 	return metas
 }
 
-// GetTheme loads a theme's portable palette without selecting it. Missing names return absence, as Pi's getThemeByName does.
+// GetTheme loads a theme's portable palette without selecting it. Missing names return absence, as Pi's getThemeByName does. The theme is in the terminal's color mode, as Pi's createTheme defaults it (theme.ts:599-600).
 func (u *ExtUIContext) GetTheme(name string) (extension.Theme, error) {
 	reg := tui.ActiveThemeRegistry()
 	if reg == nil {
@@ -706,11 +804,11 @@ func (u *ExtUIContext) GetTheme(name string) (extension.Theme, error) {
 	if theme == nil {
 		return nil, nil
 	}
-	return extensionThemePalette(theme), nil
+	return ExtensionThemePalette(theme.WithColorMode(tui.GetTerminalColorMode())), nil
 }
 
 // SetTheme disables automatic switching, applies a named theme, and persists a successful choice.
-// An unknown name falls back to dark and returns failure without changing the stored selection.
+// An unknown name falls back to the system theme and returns failure without changing the stored selection (theme.ts setTheme).
 func (u *ExtUIContext) SetTheme(theme any) extension.SetThemeResult {
 	name, ok := theme.(string)
 	if !ok {
@@ -719,25 +817,13 @@ func (u *ExtUIContext) SetTheme(theme any) extension.SetThemeResult {
 	if u.m == nil {
 		return extension.SetThemeResult{Success: false, Error: "no interactive UI is active"}
 	}
-	u.m.setAutoSync(false)
-	reg := tui.ActiveThemeRegistry()
-	found := reg != nil && reg.Get(name) != nil
-	tui.SetThemeByName(name, true)
-	activeName := tui.ActiveTheme().Name
-	u.m.themeState.activeThemeName.Store(&activeName)
-	if u.m.tuiInst != nil {
-		invalidate := func() { u.m.tuiInst.Invalidate(); u.m.tuiInst.RequestRender() }
-		if u.m.runCtx == nil {
-			invalidate()
-		} else {
-			u.m.runOnMain(u.m.runCtx, invalidate)
-		}
+	// upstream 0.99.1 interactive-mode.ts:2575-2586 extension setTheme: select by name, and persist only a theme that loaded.
+	core := u.m.theme()
+	// An extension calls off the owner loop, which alone may touch the renderer.
+	core.renderer = func() tui.Renderer { return ownerInvalidatingRenderer{Renderer: u.m.tuiInst, m: u.m} }
+	if err := core.setThemeName(name, false); err != nil {
+		return extension.SetThemeResult{Success: false, Error: err.Error()}
 	}
-	if !found {
-		return extension.SetThemeResult{Success: false, Error: "Theme not found: " + name}
-	}
-	u.m.themeState.currentThemeSetting.Store(&name)
-
 	if u.m.opts.SettingsManager != nil && u.m.opts.Settings.Theme != name {
 		if err := u.m.opts.SettingsManager.UpdateGlobal(func(gs *Settings) {
 			gs.Theme = name
@@ -769,4 +855,24 @@ func (u *ExtUIContext) SetToolsExpanded(expanded bool) {
 		return
 	}
 	u.m.runOnMain(u.m.runCtx, apply)
+}
+
+// ownerInvalidatingRenderer runs Invalidate on the owner loop and requests the render an extension's theme change needs.
+type ownerInvalidatingRenderer struct {
+	tui.Renderer
+	m *InteractiveMode
+}
+
+func (r ownerInvalidatingRenderer) Invalidate() {
+	if r.Renderer == nil {
+		return
+	}
+	// The embedded renderer, not this wrapper: the wrapper's own Invalidate would recurse.
+	base := r.Renderer
+	invalidate := func() { base.Invalidate(); base.RequestRender() }
+	if r.m.runCtx == nil {
+		invalidate()
+		return
+	}
+	r.m.runOnMain(r.m.runCtx, invalidate)
 }

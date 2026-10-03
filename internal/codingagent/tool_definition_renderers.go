@@ -13,18 +13,6 @@ import (
 
 var toolCardSeq atomic.Uint64
 
-// usesToolDefinitionRenderers reports whether a registered tool definition
-// draws its own card, as upstream ToolExecutionComponent does for a
-// definition with renderers. An extension override of a built-in tool name
-// always does: upstream withBuiltInRenderers gives it the built-in renderers
-// it does not define.
-func usesToolDefinitionRenderers(name string, definition extension.ToolDefinition) bool {
-	if tui.HasBuiltInToolRenderers(name) || tui.HasBuiltInToolRenderers(definition.BuiltInRenderers) {
-		return true
-	}
-	return definition.RenderCall != nil || definition.RenderResult != nil || definition.RenderShell == extension.ToolRenderShellSelf
-}
-
 // applyToolPresentation binds definition renderers and their retained call arguments. Core read/write cards use the same built-in definitions as extension overrides, so presentation never depends on private tool-result metadata.
 func (m *InteractiveMode) applyToolPresentation(comp *tui.ToolExecutionComponent, toolCallID, name string, args json.RawMessage) {
 	if comp == nil {
@@ -42,16 +30,16 @@ func (m *InteractiveMode) applyToolPresentation(comp *tui.ToolExecutionComponent
 	if !ok && (name == "read" || name == "write") {
 		definition, ok = extension.ToolDefinition{Name: name}, true
 	}
-	if ok && usesToolDefinitionRenderers(name, definition) {
+	// A registered definition draws its own card, with fallbacks for the renderers it lacks; only a tool with no
+	// definition uses the plain card (upstream ToolExecutionComponent hasRendererDefinition).
+	if ok {
 		builtIn := name
 		if definition.BuiltInRenderers != "" {
 			builtIn = definition.BuiltInRenderers
 		}
 		definition = withBuiltInRenderers(builtIn, definition)
 		comp.SetDefinition(m.toolDefinitionRenderers(definition, comp, toolCallID), args)
-		return
 	}
-	m.setGenericToolArgs(comp, name, args)
 }
 
 // toolDefinitionRenderers adapts a registered tool definition to a card the

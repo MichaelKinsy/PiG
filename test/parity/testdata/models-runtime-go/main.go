@@ -46,16 +46,16 @@ func run() error {
 		}
 		return stream, nil
 	}
-	provider := ai.CreateProvider(ai.CreateProviderOptions{ID: "p1", Models: []*ai.Model{model("baseline")}, Auth: ai.ProviderAuth{APIKey: &ai.APIKeyAuth{Name: "Key", Resolve: func(_ context.Context, input ai.APIKeyAuthInput) (*ai.AuthResult, error) {
+	provider := ai.CreateProvider(ai.CreateProviderOptions{ID: "p1", Models: []ai.AnyModel{model("baseline")}, Auth: ai.ProviderAuth{APIKey: &ai.APIKeyAuth{Name: "Key", Resolve: func(_ context.Context, input ai.APIKeyAuthInput) (*ai.AuthResult, error) {
 		key := "ambient-key"
 		if input.Credential != nil {
 			key = input.Credential.Key
 		}
 		return &ai.AuthResult{Auth: ai.ModelAuth{APIKey: key, BaseURL: "https://auth.test/v1", Headers: ai.ProviderHeaders{"X-Shared": new("auth"), "x-provider": new("provider")}}, Env: map[string]string{"PROVIDER": "provider", "SHARED": "provider"}, Source: "stored"}, nil
-	}}}, FetchModels: func(refresh ai.RefreshModelsContext) ([]*ai.Model, error) {
+	}}}, FetchModels: func(refresh ai.RefreshModelsContext) ([]ai.AnyModel, error) {
 		fetchedCredential = refresh.Credential
 		force = refresh.Force
-		return []*ai.Model{model("dynamic")}, nil
+		return []ai.AnyModel{model("dynamic")}, nil
 	}, API: &ai.ProviderStreams{Stream: respond, StreamSimple: respond}})
 	models.SetProvider(provider)
 	refresh := models.Refresh(ctx, ai.ModelsRefreshOptions{Force: new(true)})

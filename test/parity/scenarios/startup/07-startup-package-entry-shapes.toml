@@ -5,7 +5,7 @@
 # skills.ts loadSkillFromFile skips root-level Markdown with no description;
 # the extension path "./" stays the package directory, labelled by its
 # git-relative path, and jiti imports that directory's index.ts; Pi never
-# reads .claude-plugin/plugin.json. Probed on Pi 0.87.1 at
+# reads .claude-plugin/plugin.json. Probed on upstream 0.99.1 (which lists no [Themes] section) at
 # 100x45 with a git Package declaring a SKILL.md file entry, a skills
 # directory with root-level Markdown, a prompts directory with a dot file and
 # an ignored file, a theme in a dot directory, "./" as its extension, and a
@@ -16,8 +16,6 @@
 #     /visible
 #   [Extensions]
 #     pig-parity/entry-shapes:entry-shapes
-#   [Themes]
-#     shapes-theme
 # PiG failed the Package: it read <file>/SKILL.md for the file entry, parsed
 # the Claude manifest's mcpServers object as a path list, and imported the
 # "./" directory, which Node refuses; it also listed no Package theme, and
@@ -46,14 +44,14 @@ ready_pattern_pig = "(auto)"
 ready_pattern_pi = "(auto)"
 ready_timeout_seconds = 30
 capture_start = "[Skills]"
-capture_end = "shapes-theme"
+capture_end = "pig-parity/entry-shapes:entry-shapes"
 
 [[tmux.steps]]
-wait_visible_contains = ["shapes-theme"]
+wait_visible_contains = ["pig-parity/entry-shapes:entry-shapes"]
 
 [assert]
 both_reach_ready = true
-both_contain = ["listed, nested, planner", "/visible", "pig-parity/entry-shapes:entry-shapes", "[Themes]", "shapes-theme"]
+both_contain = ["listed, nested, planner", "/visible", "pig-parity/entry-shapes:entry-shapes"]
 both_not_contain = ["claude-only", "/ignored", "/.hidden", "SUITE", "Failed to load"]
 escaped_output_equal = true
 runs = 3

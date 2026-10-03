@@ -35,7 +35,7 @@ func TestThinkingBlock_HiddenLabel(t *testing.T) {
 
 // TestThinkingBlock_VisibleContent: non-empty + visible → content lines with SGR.
 func TestThinkingBlock_VisibleContent(t *testing.T) {
-	// Pi 0.87.1 dark thinkingText (#808080) in truecolor; the table in
+	// Upstream 0.99.2 dark thinkingText (150;160;164) in truecolor; the table in
 	// TestThemeTokenSitesMatchPiOracle pins the other theme/color-mode pairs.
 	withTrueColor(t, true)
 	SetTheme("dark")
@@ -46,7 +46,7 @@ func TestThinkingBlock_VisibleContent(t *testing.T) {
 		t.Fatalf("visible: got %d lines, want >=2", len(lines))
 	}
 	for _, l := range lines {
-		if !strings.HasPrefix(l, "\x1b[38;2;128;128;128m") {
+		if !strings.HasPrefix(l, "\x1b[38;2;150;160;164m") {
 			t.Errorf("visible line %q missing thinkingText fg SGR", l)
 		}
 		if !strings.Contains(l, "\033[3m") {

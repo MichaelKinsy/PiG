@@ -48,7 +48,7 @@ Options:
   --format <script|binary|image>  Select one output format; image is reserved and currently fails
   --out <path|->                 Write the selected output; script accepts - for stdout
   --targets <os/arch,...>        Select Binary build targets
-  --builder <auto|native|name>   Select a registered Binary builder
+  --builder <name>               Select auto, native, container, or a configured Binary builder
   --verification <basic>         Select the registered verification policy
   --workspace <path>             Resolve workspace-bound Piglet inputs from this path
   --locked                       Reserved for Binary and Image artifact locking; currently fails

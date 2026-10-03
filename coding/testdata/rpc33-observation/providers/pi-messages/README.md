@@ -1,6 +1,6 @@
 # pi-messages oracle (D82 W5)
 
-`probe.mjs` drives Pi 0.87.1's real pipeline for the `pi-messages` API (`packages/ai/src/api/pi-messages.ts`) and writes `pi.json`. Do not replace `pi.json` with Go output.
+`probe.mjs` drives Pi 1.0.0's real pipeline for the `pi-messages` API (`packages/ai/src/api/pi-messages.ts`) and writes `pi.json`. Do not replace `pi.json` with Go output.
 
 Fixtures: `tool` (the RPC33 tool call), `mixed` (thinking, text, and a tool call whose arguments split across two deltas), `error` (a terminal error event), `truncated` (end of body with no terminal event), `malformed` and `notjson` (a record `JSON.parse` rejects). Deliveries: `buffered` (headers and body in one write), `pending` (headers first, whole body after the first body read is pending), `chunked` (one SSE record per write), `split` (40-byte writes, so records span reads), `tail` (two records, then the rest). `cancels` aborts the request while the first body read is pending and while a read is pending after the start event. Paths: `direct` (pi-ai `stream()`), `runtime` (`ModelRuntime.streamSimple`, the lazy layers), `agent` (`runAgentLoop`), plus `rpc`, the assistant records of the first turn of the real `pi --mode rpc` binary.
 

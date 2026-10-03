@@ -10,7 +10,8 @@ import (
 )
 
 // Upstream createExtensionRuntime makes action methods throw while the factory
-// runs, so a load-time call fails visibly instead of doing nothing.
+// runs, so a load-time call fails visibly instead of doing nothing. The probe commands define a handler, which Pi requires
+// of every command (loader.ts:308-310).
 func TestNodeActionsThrowDuringFactory(t *testing.T) {
 	if _, err := exec.LookPath("node"); err != nil {
 		t.Fatalf("node is required for the load-time action fixture: %v", err)
@@ -18,11 +19,11 @@ func TestNodeActionsThrowDuringFactory(t *testing.T) {
 	dir := t.TempDir()
 	source := `export default async function (pi) {
   const failure = (call) => { try { call(); return "no error"; } catch (err) { return err.message; } };
-  pi.registerCommand("send", { description: failure(() => pi.sendMessage({ customType: "x", content: "y" })) });
-  pi.registerCommand("tools", { description: failure(() => pi.getActiveTools()) });
+  pi.registerCommand("send", { description: failure(() => pi.sendMessage({ customType: "x", content: "y" })), handler: async () => {} });
+  pi.registerCommand("tools", { description: failure(() => pi.getActiveTools()), handler: async () => {} });
   let model = "no rejection";
   await Promise.resolve().then(() => pi.setModel("any")).catch((err) => { model = err.message; });
-  pi.registerCommand("model", { description: model });
+  pi.registerCommand("model", { description: model, handler: async () => {} });
 }
 `
 	if err := os.WriteFile(filepath.Join(dir, "index.mjs"), []byte(source), 0o644); err != nil {

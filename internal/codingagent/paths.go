@@ -51,14 +51,20 @@ const APP_TITLE = "PiG"
 
 // AgentDir returns the writable agent directory. Shared mode uses Pi's environment override; otherwise it uses PiG's. Both expand a leading tilde.
 func AgentDir() string {
-	envName := ENV_AGENT_DIR
-	if UsePiDirs() {
-		envName = "PI_CODING_AGENT_DIR"
-	}
-	if configured := os.Getenv(envName); configured != "" {
+	if configured := os.Getenv(agentDirEnvName()); configured != "" {
 		return ExpandTildePath(configured)
 	}
 	return DefaultAgentDir()
+}
+
+// AgentDirConfigured reports whether the agent directory comes from its environment variable rather than the default.
+func AgentDirConfigured() bool { return os.Getenv(agentDirEnvName()) != "" }
+
+func agentDirEnvName() string {
+	if UsePiDirs() {
+		return "PI_CODING_AGENT_DIR"
+	}
+	return ENV_AGENT_DIR
 }
 
 // ProjectConfigDir returns the selected workspace-local configuration root.
@@ -267,11 +273,11 @@ func CanonicalizePath(path string) string {
 	return canonical
 }
 
-// IsLocalPath reports whether value is a local path rather than a package source or remote URL. Bare names, relative paths, and file URLs are local.
-// Ports packages/coding-agent/src/utils/paths.ts:50-64.
+// IsLocalPath reports whether value is a local path rather than a package source, a built-in extension or a remote URL. Bare names, relative paths, and file URLs are local.
+// Ports .upstream/v0.99.1/packages/coding-agent/src/utils/paths.ts:45-64 (a `builtin:` value names a built-in extension).
 func IsLocalPath(value string) bool {
 	trimmed := jsTrim(value)
-	for _, prefix := range []string{"npm:", "git:", "github:", "http:", "https:", "ssh:"} {
+	for _, prefix := range []string{"npm:", "git:", "github:", "http:", "https:", "ssh:", BuiltinPathPrefix} {
 		if strings.HasPrefix(trimmed, prefix) {
 			return false
 		}

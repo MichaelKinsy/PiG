@@ -11,7 +11,6 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/session"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/experimental/services"
 )
@@ -62,11 +61,11 @@ func (c *gatedCoordinator) sentTypes() []string {
 	return types
 }
 
-func livenessMetadata(directory string) session.SessionMetadata {
-	return session.SessionMetadata{ID: "session-1", CreatedAt: 1, StorageVersion: 1, Cwd: directory, Path: filepath.Join(directory, "session-1.jsonl"), ModifiedAt: 1}
+func livenessMetadata(directory string) SessionCatalogMetadata {
+	return SessionCatalogMetadata{ID: "session-1", CreatedAt: 1, Cwd: directory, Path: filepath.Join(directory, "session-1.jsonl")}
 }
 
-func newGatedManager(t *testing.T, gated ...string) (*gatedCoordinator, *SessionWorkerManager, session.SessionMetadata) {
+func newGatedManager(t *testing.T, gated ...string) (*gatedCoordinator, *SessionWorkerManager, SessionCatalogMetadata) {
 	t.Helper()
 	directory := t.TempDir()
 	metadata := livenessMetadata(directory)
@@ -77,7 +76,7 @@ func newGatedManager(t *testing.T, gated ...string) (*gatedCoordinator, *Session
 	return coordinator, NewSessionWorkerManager(coordinator, directory, nil, nil), metadata
 }
 
-func attachedWorker(t *testing.T, coordinator *gatedCoordinator, manager *SessionWorkerManager, metadata session.SessionMetadata) *RoutedSessionAttachment {
+func attachedWorker(t *testing.T, coordinator *gatedCoordinator, manager *SessionWorkerManager, metadata SessionCatalogMetadata) *RoutedSessionAttachment {
 	t.Helper()
 	if err := manager.Discover([]string{"worker-1"}); err != nil {
 		t.Fatal(err)

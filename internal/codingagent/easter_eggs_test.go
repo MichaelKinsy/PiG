@@ -18,7 +18,8 @@ func TestHiddenEasterEggsSubmitDuringCompaction(t *testing.T) {
 	m.isCompacting = true
 	m.setupEditorSubmitHandler(t.Context())
 	for _, tc := range []struct{ command, text string }{
-		{"/arminsayshi", "ARMIN SAYS HI"},
+		{"/arminsayshi", "pigsayhi"},
+		{"/pigsayhi", "pigsayhi"},
 		{"/dementedelves", "pi has joined Earendil"},
 	} {
 		m.editor.SetText(tc.command)
@@ -35,7 +36,7 @@ func TestHiddenEasterEggsSubmitDuringCompaction(t *testing.T) {
 		t.Errorf("hidden commands were queued as model prompts: %+v", m.compactionQueue)
 	}
 	for _, cmd := range BuiltinSlashCommands() {
-		if cmd.Name == "arminsayshi" || cmd.Name == "dementedelves" {
+		if cmd.Name == "arminsayshi" || cmd.Name == "pigsayhi" || cmd.Name == "dementedelves" {
 			t.Errorf("hidden inline command leaked into registry: %s", cmd.Name)
 		}
 	}
@@ -46,7 +47,7 @@ func TestHiddenEasterEggsStreamingInputAndExactMatch(t *testing.T) {
 	t.Cleanup(func() { onLoop(m, ctx, m.disposeArminComponents) })
 	onLoop(m, ctx, func() {
 		m.setupEditorSubmitHandler(ctx)
-		for _, command := range []string{"/arminsayshi", "/dementedelves", "/arminsayshi extra", "/dementedelves extra", "/ARMINsayshi"} {
+		for _, command := range []string{"/arminsayshi", "/pigsayhi", "/dementedelves", "/arminsayshi extra", "/pigsayhi extra", "/dementedelves extra", "/ARMINsayshi", "/PIGsayhi"} {
 			m.editor.SetText(command)
 			if err := m.dispatchKey(ctx, "\r"); err != nil {
 				t.Error(err)
@@ -54,7 +55,7 @@ func TestHiddenEasterEggsStreamingInputAndExactMatch(t *testing.T) {
 			}
 		}
 		steering, followUp := m.agent.PendingMessages()
-		want := []string{"/arminsayshi extra", "/dementedelves extra", "/ARMINsayshi"}
+		want := []string{"/arminsayshi extra", "/pigsayhi extra", "/dementedelves extra", "/ARMINsayshi", "/PIGsayhi"}
 		if len(steering) != len(want) || len(followUp) != 0 {
 			t.Errorf("commands entered model queues: steering=%v followUp=%v", steering, followUp)
 			return
@@ -65,7 +66,7 @@ func TestHiddenEasterEggsStreamingInputAndExactMatch(t *testing.T) {
 			}
 		}
 		chat := widthx.StripAnsi(strings.Join(m.chatContainer.Render(80), "\n"))
-		for _, text := range []string{"ARMIN SAYS HI", "pi has joined Earendil"} {
+		for _, text := range []string{"pigsayhi", "pi has joined Earendil"} {
 			if !strings.Contains(chat, text) {
 				t.Errorf("missing inline output %q", text)
 			}
@@ -123,7 +124,8 @@ func TestHiddenEasterEggsEditorSubmitSkipsHistoryAndPromptLoop(t *testing.T) {
 	t.Cleanup(m.disposeArminComponents)
 	m.setupEditorSubmitHandler(t.Context())
 	for _, tc := range []struct{ command, text string }{
-		{" /arminsayshi\t", "ARMIN SAYS HI"},
+		{" /arminsayshi\t", "pigsayhi"},
+		{"/pigsayhi", "pigsayhi"},
 		{"/dementedelves ", "pi has joined Earendil"},
 	} {
 		m.editor.OnSubmit(tc.command)
@@ -150,9 +152,10 @@ func TestHiddenEasterEggsNonEditorSubmitPathsReachModel(t *testing.T) {
 	t.Cleanup(func() { onLoop(m, ctx, m.disposeArminComponents) })
 	onLoop(m, ctx, func() {
 		m.handleSubmit(ctx, "/arminsayshi")
+		m.handleSubmit(ctx, "/pigsayhi")
 		m.handleSubmit(ctx, "/dementedelves")
 		steering, _ := m.agent.PendingMessages()
-		want := []string{"/arminsayshi", "/dementedelves"}
+		want := []string{"/arminsayshi", "/pigsayhi", "/dementedelves"}
 		if len(steering) != len(want) {
 			t.Errorf("steering=%v, want %q", steering, want)
 			return

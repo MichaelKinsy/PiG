@@ -37,7 +37,7 @@ json_output_equal = true
 stderr_equal = true
 exit_code = 0
 both_contain = [
-  '"id":"prompt","type":"response","command":"prompt","success":true',
+  '"id":"prompt","type":"response","command":"prompt","success":true,"data":{"disposition":"started"}',
   '"type":"auto_retry_start"',
   '"attempt":1',
   '"type":"auto_retry_end"',

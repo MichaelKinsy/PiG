@@ -30,11 +30,13 @@ func TestSessionQueueUpdatePrecedesAgentAdmission(t *testing.T) {
 				})
 				done := make(chan error, 1)
 				go func() {
+					var err error
 					if followUp {
-						done <- h.session.FollowUp(t.Context(), "queued", nil, nil)
+						_, err = h.session.FollowUp(t.Context(), "queued", nil, nil)
 					} else {
-						done <- h.session.Steer(t.Context(), "queued", nil, nil)
+						_, err = h.session.Steer(t.Context(), "queued", nil, nil)
 					}
+					done <- err
 				}()
 				synctest.Wait()
 				select {
@@ -90,7 +92,7 @@ func TestSessionQueueRemovalPrecedesExtensionMessageStart(t *testing.T) {
 			}
 		}
 	})
-	if err := h.session.Steer(t.Context(), "queued", nil, nil); err != nil {
+	if _, err := h.session.Steer(t.Context(), "queued", nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := h.session.Send(t.Context(), "start"); err != nil {
@@ -106,7 +108,7 @@ func TestSessionQueueRemovalPrecedesExtensionMessageStart(t *testing.T) {
 // upstream: packages/coding-agent/src/core/agent-session.ts:896-909 — the truthy contentText guard deliberately retains an empty queued string in pending metadata.
 func TestSessionEmptyQueuedTextRetainsUpstreamPendingState(t *testing.T) {
 	h := newRecoveryHarness(t, harnessOptions{emptySessionManager: true}, fauxReply("done", ai.StopReasonStop, 0))
-	if err := h.session.Steer(t.Context(), "", nil, nil); err != nil {
+	if _, err := h.session.Steer(t.Context(), "", nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := h.session.Send(t.Context(), "start"); err != nil {

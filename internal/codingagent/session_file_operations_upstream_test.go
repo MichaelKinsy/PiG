@@ -39,17 +39,17 @@ func TestLoadEntriesFromFileUpstream(t *testing.T) {
 		missing       bool
 		want          int
 	}{
-		// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:35
+		// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:47
 		{"returns empty array for non-existent file", "", true, 0},
-		// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:40
+		// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:52
 		{"returns empty array for empty file", "", false, 0},
-		// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:46
+		// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:58
 		{"returns empty array for file without valid session header", "{\"type\":\"message\",\"id\":\"1\"}\n", false, 0},
-		// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:52
+		// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:64
 		{"returns empty array for malformed JSON", "not json\n", false, 0},
-		// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:58
+		// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:70
 		{"loads valid session file", fileOperationLegacyHeader + fileOperationUser + "\n", false, 2},
-		// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:71
+		// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:83
 		{"skips malformed lines but keeps valid ones", fileOperationLegacyHeader + "not valid json\n" + fileOperationUser + "\n", false, 2},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -80,11 +80,11 @@ func TestLoadEntriesFromFileUpstream(t *testing.T) {
 		want          int
 		newline       bool
 	}{
-		// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:83
+		// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:95
 		{"adds a newline after an unterminated valid record", fileOperationLegacyHeader + fileOperationUser, 2, true},
-		// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:94
+		// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:106
 		{"adds a newline after an unterminated malformed final fragment", fileOperationLegacyHeader + `{"type":"message"`, 1, true},
-		// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:104
+		// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:116
 		{"does not modify an unterminated non-session file", `{"type":"message","id":"1"}`, 0, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -106,7 +106,7 @@ func TestLoadEntriesFromFileUpstream(t *testing.T) {
 			}
 		})
 	}
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:113 (all three table rows)
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:125 (all three table rows)
 	for _, tc := range []struct{ name, prefix, id string }{{"leading blank lines", "\n  \n", "leading-blank"}, {"leading malformed lines", "not json\n{broken json\n", "leading-malformed"}, {"a multi-buffer header", "", strings.Repeat("a", 8192)}} {
 		t.Run("reads cwd from a session with "+tc.name, func(t *testing.T) {
 			dir := t.TempDir()
@@ -121,7 +121,7 @@ func TestLoadEntriesFromFileUpstream(t *testing.T) {
 			}
 		})
 	}
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:127 (both header/prefix cases and both override states)
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:139 (both header/prefix cases and both override states)
 	t.Run("opens compatible sessions beyond the discovery scan limit", func(t *testing.T) {
 		for _, tc := range []struct{ name, id, prefix string }{{"large-header", strings.Repeat("a", 1024*1024+1), ""}, {"large-prefix", "large-prefix", strings.Repeat("x", 1024*1024+1) + "\n"}} {
 			dir := t.TempDir()
@@ -144,7 +144,7 @@ func TestLoadEntriesFromFileUpstream(t *testing.T) {
 			}
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:150
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:162
 	t.Run("opens session files larger than Node's max string length", func(t *testing.T) {
 		output, err := exec.CommandContext(t.Context(), "node", "-e", "process.stdout.write(String(require('node:buffer').constants.MAX_STRING_LENGTH))").Output()
 		if err != nil {
@@ -196,21 +196,21 @@ func TestLoadEntriesFromFileUpstream(t *testing.T) {
 }
 
 func TestFindMostRecentSessionUpstream(t *testing.T) {
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:192
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:204
 	t.Run("returns null for empty directory", func(t *testing.T) {
 		dir := t.TempDir()
 		if got := NewSessionManagerWithDir(dir, dir).FindMostRecent(); got != "" {
 			t.Fatal(got)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:196
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:208
 	t.Run("returns null for non-existent directory", func(t *testing.T) {
 		dir := t.TempDir()
 		if got := NewSessionManagerWithDir(dir, filepath.Join(dir, "nonexistent")).FindMostRecent(); got != "" {
 			t.Fatal(got)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:200
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:212
 	t.Run("ignores non-jsonl files", func(t *testing.T) {
 		dir := t.TempDir()
 		fileOperationWrite(t, dir, "file.txt", "hello")
@@ -219,7 +219,7 @@ func TestFindMostRecentSessionUpstream(t *testing.T) {
 			t.Fatal(got)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:206
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:218
 	t.Run("ignores jsonl files without valid session header", func(t *testing.T) {
 		dir := t.TempDir()
 		fileOperationWrite(t, dir, "invalid.jsonl", "{\"type\":\"message\"}\n")
@@ -227,7 +227,7 @@ func TestFindMostRecentSessionUpstream(t *testing.T) {
 			t.Fatal(got)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:211
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:223
 	t.Run("returns single valid session file", func(t *testing.T) {
 		dir := t.TempDir()
 		path := fileOperationWrite(t, dir, "session.jsonl", fileOperationHeader("/tmp", "abc"))
@@ -235,7 +235,7 @@ func TestFindMostRecentSessionUpstream(t *testing.T) {
 			t.Fatal(got)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:217
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:229
 	t.Run("returns most recently modified session", func(t *testing.T) {
 		dir := t.TempDir()
 		old := fileOperationWrite(t, dir, "older.jsonl", fileOperationHeader("/tmp", "old"))
@@ -250,7 +250,7 @@ func TestFindMostRecentSessionUpstream(t *testing.T) {
 			t.Fatal(got)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:229
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:241
 	t.Run("skips invalid files and returns valid one", func(t *testing.T) {
 		dir := t.TempDir()
 		fileOperationWrite(t, dir, "invalid.jsonl", "{\"type\":\"not-session\"}\n")
@@ -259,7 +259,7 @@ func TestFindMostRecentSessionUpstream(t *testing.T) {
 			t.Fatal(got)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:240
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:252
 	t.Run("skips oversized corrupt files and returns valid session", func(t *testing.T) {
 		dir := t.TempDir()
 		fileOperationWrite(t, dir, "oversized.jsonl", strings.Repeat("x", 1024*1024+1))
@@ -268,7 +268,7 @@ func TestFindMostRecentSessionUpstream(t *testing.T) {
 			t.Fatal(got)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:249
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:261
 	t.Run("filters most recent session by cwd", func(t *testing.T) {
 		dir := t.TempDir()
 		a, b := filepath.Join(dir, "project-a"), filepath.Join(dir, "project-b")
@@ -290,7 +290,7 @@ func TestFindMostRecentSessionUpstream(t *testing.T) {
 }
 
 func TestSessionFileOperationsUpstream(t *testing.T) {
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:314
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:326
 	t.Run("scopes current-folder APIs by cwd while listing all flat sessions", func(t *testing.T) {
 		dir := t.TempDir()
 		a, b := t.TempDir(), t.TempDir()
@@ -319,7 +319,7 @@ func TestSessionFileOperationsUpstream(t *testing.T) {
 			t.Fatal(got)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:358
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:370
 	t.Run("truncates and rewrites empty file with valid header", func(t *testing.T) {
 		dir := t.TempDir()
 		path := fileOperationWrite(t, dir, "empty.jsonl", "")
@@ -335,7 +335,7 @@ func TestSessionFileOperationsUpstream(t *testing.T) {
 			t.Fatal(records)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:378
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:390
 	t.Run("throws and preserves non-empty file without valid header", func(t *testing.T) {
 		dir := t.TempDir()
 		original := `{"type":"message","id":"abc","parentId":"orphaned","timestamp":"2025-01-01T00:00:00Z","message":{"role":"assistant","content":"test"}}` + "\n"
@@ -349,7 +349,7 @@ func TestSessionFileOperationsUpstream(t *testing.T) {
 			t.Fatal("file changed", err)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:390
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:402
 	t.Run("throws and preserves non-session JSONL files", func(t *testing.T) {
 		dir := t.TempDir()
 		original := "{\"type\":\"event\",\"data\":\"not a session\"}\n"
@@ -363,7 +363,7 @@ func TestSessionFileOperationsUpstream(t *testing.T) {
 			t.Fatal("file changed", err)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:401
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:413
 	t.Run("preserves explicit session file path when recovering from corrupted file", func(t *testing.T) {
 		dir := t.TempDir()
 		path := fileOperationWrite(t, dir, "my-session.jsonl", "")
@@ -375,7 +375,7 @@ func TestSessionFileOperationsUpstream(t *testing.T) {
 			t.Fatal(s.Path())
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:411
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:423
 	t.Run("subsequent loads of initialized empty file work correctly", func(t *testing.T) {
 		dir := t.TempDir()
 		path := fileOperationWrite(t, dir, "empty.jsonl", "")
@@ -390,6 +390,79 @@ func TestSessionFileOperationsUpstream(t *testing.T) {
 		}
 		if one.ID() != two.ID() || two.Header().Type != "session" {
 			t.Fatal("identity changed")
+		}
+	})
+}
+
+// readSessionFileRoles mirrors upstream utilities.ts readSessionFileRoles (.upstream/v0.99.1/packages/coding-agent/test/utilities.ts:159): the role of each message entry, otherwise the entry type.
+func readSessionFileRoles(t *testing.T, path string) []string {
+	t.Helper()
+	var roles []string
+	for _, record := range readJSONLLines(t, path) {
+		if message, ok := record["message"].(map[string]any); ok {
+			if role, ok := message["role"].(string); ok {
+				roles = append(roles, role)
+				continue
+			}
+		}
+		roles = append(roles, record["type"].(string))
+	}
+	return roles
+}
+
+func TestSessionFileCreationUpstream(t *testing.T) {
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:447
+	t.Run("does not create a file for a session with only setup entries", func(t *testing.T) {
+		s, err := tempSessionMgr(t).Create("", "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := s.AppendModelSwitch("anthropic", "claude-sonnet-4-5", ""); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.AppendThinkingLevelChange("off"); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := os.Stat(s.Path()); !os.IsNotExist(err) {
+			t.Fatalf("setup entries alone created %s: %v", s.Path(), err)
+		}
+	})
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:456 (#10000: the first prompt must survive a first turn that never produces an assistant message)
+	t.Run("creates the file when the first user message is appended", func(t *testing.T) {
+		dir := t.TempDir()
+		manager := NewSessionManagerWithDir(dir, dir)
+		s, err := manager.Create("", "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := s.AppendModelSwitch("anthropic", "claude-sonnet-4-5", ""); err != nil {
+			t.Fatal(err)
+		}
+		upstreamSessionUser(t, s, "first question")
+
+		if got := readSessionFileRoles(t, s.Path()); !slices.Equal(got, []string{"session", "model_change", "user"}) {
+			t.Fatalf("roles = %v", got)
+		}
+		opened, err := NewSessionManagerWithDir(dir, dir).Open(s.Path())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := len(opened.BuildContext(nil)); got != 1 {
+			t.Fatalf("resumed context has %d messages, want 1", got)
+		}
+	})
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:466
+	t.Run("appends later entries to the file without rewriting earlier ones", func(t *testing.T) {
+		s, err := tempSessionMgr(t).Create("", "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		upstreamSessionUser(t, s, "first question")
+		upstreamCustom(t, s, "preset-state", map[string]any{"name": "plan"})
+		upstreamSessionAssistant(t, s, "first answer")
+
+		if got := readSessionFileRoles(t, s.Path()); !slices.Equal(got, []string{"session", "user", "custom", "assistant"}) {
+			t.Fatalf("roles = %v", got)
 		}
 	})
 }

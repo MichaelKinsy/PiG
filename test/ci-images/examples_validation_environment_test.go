@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -12,6 +13,9 @@ import (
 
 // This exercises the maintained Make recipe, not a separately wrapped invocation. Compiler and validator probes isolate the recipe's environment/argument contract from language builds.
 func TestExampleValidationRecipeIgnoresCallerConfiguration(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the recipe's probes are POSIX shebang scripts; Windows cannot execute the sh cargo/rustc shims")
+	}
 	makeBin, err := exec.LookPath("make")
 	if err != nil {
 		t.Skip("make is not on PATH")

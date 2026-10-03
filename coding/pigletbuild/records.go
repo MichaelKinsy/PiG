@@ -21,6 +21,7 @@ import (
 	"golang.org/x/mod/modfile"
 
 	"github.com/MichaelKinsy/PiG/coding"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	piglet "github.com/MichaelKinsy/PiG/coding/piglet"
 	pigletartifact "github.com/MichaelKinsy/PiG/coding/piglet/artifact"
@@ -28,6 +29,7 @@ import (
 	sourceref "github.com/MichaelKinsy/PiG/coding/source"
 	"github.com/MichaelKinsy/PiG/internal/buildprogress"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
 var artifactNamePattern = lazyregexp.New(`^[A-Za-z0-9][A-Za-z0-9._+\-]*$`)
@@ -90,7 +92,7 @@ func nativeArtifactPath(outPath, name string, target Target) (string, error) {
 	return artifactPath, nil
 }
 
-func buildNativeWithRecords(ctx context.Context, p *piglet.Piglet, cells []subprocess.CellSpec, opts Options, outPath string, stdout, stderr io.Writer) (string, string, error) {
+func buildNativeWithRecords(ctx context.Context, resolveSource func(context.Context) (pigSource, error), p *piglet.Piglet, cells []subprocess.CellSpec, opts Options, outPath string, stdout, stderr io.Writer) (string, string, error) {
 	if err := validateNativeTargets(opts.Targets); err != nil {
 		return "", "", err
 	}
@@ -109,12 +111,16 @@ func buildNativeWithRecords(ctx context.Context, p *piglet.Piglet, cells []subpr
 	if err := os.MkdirAll(filepath.Dir(artifactPath), 0o755); err != nil {
 		return "", "", err
 	}
-	buildprogress.Phase(ctx, "Locking build inputs", "Hashing source, extensions, and toolchain identities")
-	lock, err := buildNativeLock(p, cells, opts)
+	source, err := resolveSource(ctx)
 	if err != nil {
 		return "", "", err
 	}
-	embedded, err := buildNativeArtifact(ctx, p, cells, lock.ComponentPlan, &lock.ResolutionRecord, opts, artifactPath, stdout, stderr)
+	buildprogress.Phase(ctx, "Locking build inputs", "Hashing source, extensions, and toolchain identities")
+	lock, err := buildNativeLock(p, cells, opts, source)
+	if err != nil {
+		return "", "", err
+	}
+	embedded, err := buildNativeArtifact(ctx, source, p, cells, lock.ComponentPlan, &lock.ResolutionRecord, opts, artifactPath, stdout, stderr)
 	if err != nil {
 		return "", "", err
 	}
@@ -203,7 +209,7 @@ func buildBinaryRecords(lock buildLock, p *piglet.Piglet, artifactPath string) (
 	return binaryBuildRecords{Resolution: lock.ResolutionRecord, Binary: binaryRecord}, nil
 }
 
-func buildNativeLock(p *piglet.Piglet, cells []subprocess.CellSpec, opts Options) (buildLock, error) {
+func buildNativeLock(p *piglet.Piglet, cells []subprocess.CellSpec, opts Options, source pigSource) (buildLock, error) {
 	lock, err := buildPortableLock(p, cells, opts)
 	if err != nil {
 		return buildLock{}, err
@@ -212,7 +218,7 @@ func buildNativeLock(p *piglet.Piglet, cells []subprocess.CellSpec, opts Options
 	if err != nil {
 		return buildLock{}, err
 	}
-	revision, sourceDigest, err := pigSourceIdentity()
+	revision, sourceDigest, err := pigSourceIdentity(source)
 	if err != nil {
 		return buildLock{}, err
 	}
@@ -318,7 +324,7 @@ func buildInputs(p *piglet.Piglet, cells []subprocess.CellSpec) ([]buildInput, e
 				return nil, fmt.Errorf("lock extension %q local Go replacements: %w", config.Name, err)
 			}
 			for i, replacement := range replacements {
-				replacementDigest, err := hashTree(replacement)
+				replacementDigest, err := goModuleDigest(replacement)
 				if err != nil {
 					return nil, fmt.Errorf("lock extension %q local Go replacement %s: %w", config.Name, replacement, err)
 				}
@@ -463,6 +469,15 @@ func localGoReplacementDirs(root string) ([]string, error) {
 	return paths, nil
 }
 
+// goModuleDigest is the lock digest of a local Go replacement: the module's Go source set, which excludes build output and documentation another process may create or delete under a checkout.
+func goModuleDigest(root string) (string, error) {
+	digest, err := runtimecell.GoModuleSourceDigest(root)
+	if err != nil {
+		return "", err
+	}
+	return "sha256:" + digest, nil
+}
+
 func hashTree(root string) (string, error) {
 	info, err := os.Stat(root)
 	if err != nil {
@@ -555,28 +570,16 @@ func smokeArtifact(path string) error {
 	return nil
 }
 
-func pigSourceIdentity() (string, string, error) {
-	root, err := pigSourceRoot()
+func pigSourceIdentity(source pigSource) (string, string, error) {
+	root := source.Root
+	revision, err := source.revision()
 	if err != nil {
 		return "", "", err
 	}
-	command := exec.Command("git", "rev-parse", "HEAD")
-	command.Dir = root
-	output, err := command.Output()
+	paths, err := source.sourceFiles()
 	if err != nil {
-		return "", "", fmt.Errorf("resolve Pig source revision: %w", err)
+		return "", "", err
 	}
-	revision := strings.TrimSpace(string(output))
-	if revision == "" {
-		return "", "", fmt.Errorf("resolve Pig source revision: git returned an empty revision")
-	}
-	command = exec.Command("git", "ls-files", "--cached", "--others", "--exclude-standard", "-z")
-	command.Dir = root
-	output, err = command.Output()
-	if err != nil {
-		return "", "", fmt.Errorf("enumerate Pig build sources: %w", err)
-	}
-	paths := strings.Split(strings.TrimSuffix(string(output), "\x00"), "\x00")
 	slices.Sort(paths)
 	hash := sha256.New()
 	for _, relative := range paths {
@@ -618,7 +621,11 @@ func pigSourceIdentity() (string, string, error) {
 }
 
 func toolchainVersions(cells []subprocess.CellSpec) (map[string]string, error) {
-	commands := map[string][]string{"go": {"go", "version"}}
+	goCommand, err := toolchain.Go()
+	if err != nil {
+		return nil, fmt.Errorf("resolve go toolchain identity: %w", err)
+	}
+	commands := map[string][]string{"go": {goCommand, "version"}}
 	for _, cell := range cells {
 		switch cell.Language {
 		case "rust":

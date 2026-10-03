@@ -68,6 +68,3 @@ func unlinkSessionFile(path string) error {
 	}
 	return nil
 }
-
-// nodeErrno returns err unchanged: Unix errno values are the ones Node names.
-func nodeErrno(err error) error { return err }

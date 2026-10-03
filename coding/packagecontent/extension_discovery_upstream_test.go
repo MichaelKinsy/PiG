@@ -40,7 +40,7 @@ func TestNodeConventionalExtensionDiscovery(t *testing.T) {
 }
 
 func TestNativeBuildDirectoriesRemainExtensionEntries(t *testing.T) {
-	for _, marker := range []string{"go.mod", "Cargo.toml"} {
+	for _, marker := range []string{"go.mod", "go.work", "Cargo.toml"} {
 		t.Run(marker, func(t *testing.T) {
 			root := t.TempDir()
 			writeTestFile(t, filepath.Join(root, marker), "")
@@ -49,4 +49,42 @@ func TestNativeBuildDirectoriesRemainExtensionEntries(t *testing.T) {
 			}
 		})
 	}
+}
+
+// A go.work-only directory is one extension when it selects modules elsewhere, and a development workspace when its children are extensions. The workspace case yielded each child before go.work was a build marker and must keep doing so.
+func TestGoWorkspaceDirectoryDiscovery(t *testing.T) {
+	t.Run("workspace over child modules", func(t *testing.T) {
+		root := t.TempDir()
+		writeTestFile(t, filepath.Join(root, "go.work"), "go 1.26\n\nuse (\n\t./a\n\t./b\n)\n")
+		for _, name := range []string{"a", "b"} {
+			writeTestFile(t, filepath.Join(root, name, "go.mod"), "module example.com/"+name+"\n\ngo 1.26\n")
+		}
+		want := []string{filepath.Join(root, "a"), filepath.Join(root, "b")}
+		if got := DiscoverAutomatic(root, Extensions); !slices.Equal(got, want) {
+			t.Fatalf("entries=%q, want each child module %q", got, want)
+		}
+	})
+	t.Run("workspace beside Node entries", func(t *testing.T) {
+		root := t.TempDir()
+		writeTestFile(t, filepath.Join(root, "go.work"), "go 1.26\n")
+		writeTestFile(t, filepath.Join(root, "tool.ts"), "export default function() {}")
+		if got, want := DiscoverAutomatic(root, Extensions), []string{filepath.Join(root, "tool.ts")}; !slices.Equal(got, want) {
+			t.Fatalf("entries=%q, want %q", got, want)
+		}
+	})
+	t.Run("child selector workspace", func(t *testing.T) {
+		root := t.TempDir()
+		writeTestFile(t, filepath.Join(root, "named", "go.work"), "go 1.26\n\nuse ../../elsewhere\n")
+		if got, want := DiscoverAutomatic(root, Extensions), []string{filepath.Join(root, "named")}; !slices.Equal(got, want) {
+			t.Fatalf("entries=%q, want %q", got, want)
+		}
+	})
+	t.Run("child development workspace", func(t *testing.T) {
+		root := t.TempDir()
+		writeTestFile(t, filepath.Join(root, "group", "go.work"), "go 1.26\n\nuse ./a\n")
+		writeTestFile(t, filepath.Join(root, "group", "a", "go.mod"), "module example.com/a\n\ngo 1.26\n")
+		if got := DiscoverAutomatic(root, Extensions); len(got) != 0 {
+			t.Fatalf("entries=%q, want none: discovery reads one level, as for any directory without an entry marker", got)
+		}
+	})
 }

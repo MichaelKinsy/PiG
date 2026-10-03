@@ -5,17 +5,24 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"slices"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/internal/chord"
 )
 
-// SessionWorkerServiceLane supplies the command, configuration, and watch capabilities consumed by worker services.
-type SessionWorkerServiceLane interface {
-	AgentLane
-	ModelsServiceLane
-	TranscriptWatchLane
+// TaskGraphActivity reports whether the durable Harness has a live task. Subscribe delivers the current activity and then every change, and returns its unsubscribe function; Dispose detaches the observation.
+type TaskGraphActivity interface {
+	Subscribe(func(active bool)) func()
+	Dispose()
+}
+
+// SessionWorkerConversation is the root conversation the worker services expose: the command, configuration and view capabilities their providers consume.
+type SessionWorkerConversation interface {
+	AgentConversation
+	ModelsServiceConversation
+	TranscriptConversation
 }
 
 // WorkerServiceScope binds one endpoint to an attachment on a server connection.
@@ -24,9 +31,10 @@ type WorkerServiceScope struct {
 	AttachmentId       string
 }
 
-// SessionWorkerServicesOptions selects a worker's built-in and plugin facets. Publish sends a subscription update to its original attachment.
+// SessionWorkerServicesOptions selects a worker's built-in and plugin facets. Harness and Conversation are the Session's durable Harness and its root conversation. Publish sends a subscription update to its original attachment.
 type SessionWorkerServicesOptions struct {
-	Lane            SessionWorkerServiceLane
+	Harness         AgentHarness
+	Conversation    SessionWorkerConversation
 	ModelRuntime    ModelsServiceModelRuntime
 	SettingsManager ModelsServiceSettingsManager
 	FacetLoader     chord.FacetLoader
@@ -60,15 +68,23 @@ func CreateSessionWorkerServices(options SessionWorkerServicesOptions) (*Session
 	services := &SessionWorkerServices{publish: options.Publish}
 	reloadPlugins := func() error { return errors.New("Session plugins are not ready") }
 	controllerFacet := chord.Facet{Id: "@pi/agent-controller-runtime", Setup: func(env *chord.FacetEnvironment) error {
-		return chord.ProvideService[AgentController](env, AgentControllerDefinition, CreateAgentController(options.Lane))
+		return chord.ProvideService[AgentController](env, AgentControllerDefinition, CreateAgentController(options.Harness, options.Conversation))
 	}}
 	pluginFacet := chord.Facet{Id: "@pi/session-plugins-runtime", Setup: func(env *chord.FacetEnvironment) error {
 		return chord.ProvideService[SessionPlugins](env, SessionPluginsDefinition, workerSessionPlugins{reload: func() error { return reloadPlugins() }})
 	}}
+	modelsFacet, err := createWorkerModelsFacet(ctx, options)
+	if err != nil {
+		return nil, err
+	}
+	transcriptFacet, err := CreateTranscriptServiceFacet(ctx, options.Conversation)
+	if err != nil {
+		return nil, err
+	}
 	builtins, err := chord.CreateStaticFacetLoader([]chord.Facet{
 		controllerFacet, pluginFacet,
-		CreateModelsServiceFacet(ModelsServiceFacetOptions{Lane: options.Lane, ModelRuntime: options.ModelRuntime, SettingsManager: options.SettingsManager}),
-		CreateTranscriptServiceFacet(options.Lane),
+		modelsFacet,
+		transcriptFacet,
 	}).Load(ctx)
 	if err != nil {
 		return nil, err
@@ -93,6 +109,18 @@ func CreateSessionWorkerServices(options SessionWorkerServicesOptions) (*Session
 	services.host, services.builtins, services.loadedPlugins, services.pluginLoader = host, builtins, loaded, loader
 	reloadPlugins = services.reload
 	return services, nil
+}
+
+// createWorkerModelsFacet acquires the conversation's agent document, then builds the facet that owns it.
+func createWorkerModelsFacet(ctx context.Context, options SessionWorkerServicesOptions) (chord.Facet, error) {
+	agent, err := options.Harness.AgentDocument(ctx, options.Conversation.ID())
+	if err != nil {
+		return chord.Facet{}, err
+	}
+	if agent == nil {
+		return chord.Facet{}, fmt.Errorf("Conversation %d has no agent document", options.Conversation.ID())
+	}
+	return CreateModelsServiceFacet(ModelsServiceFacetOptions{Conversation: options.Conversation, Agent: agent, ModelRuntime: options.ModelRuntime, SettingsManager: options.SettingsManager}), nil
 }
 
 func (services *SessionWorkerServices) reload() error {

@@ -11,6 +11,7 @@ import (
 )
 
 func TestNodeSDKBundleRegeneratesExactly(t *testing.T) {
+	t.Parallel()
 	shims, err := filepath.Abs(filepath.Join("runtime-node", "shims"))
 	if err != nil {
 		t.Fatal(err)
@@ -33,6 +34,7 @@ func TestNodeSDKBundleRegeneratesExactly(t *testing.T) {
 }
 
 func TestNodeLibraryBundlesRegenerateExactly(t *testing.T) {
+	t.Parallel()
 	shims, err := filepath.Abs(filepath.Join("runtime-node", "shims"))
 	if err != nil {
 		t.Fatal(err)

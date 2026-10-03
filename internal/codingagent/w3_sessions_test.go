@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-const unsavedForkMessage = "This session has not been saved yet. Wait for the first assistant response before cloning or forking it."
+const unsavedForkMessage = "This session has not been saved yet. Send a message before cloning or forking it."
 
 // Pi agent-session-runtime.ts:312-316 refuses a persisted but unflushed source before any replacement or write.
 func TestInteractiveCloneUnsavedRefusesWithoutWriting(t *testing.T) {
@@ -129,7 +129,7 @@ func TestInteractiveCompactionErrorPadding(t *testing.T) {
 	}
 }
 
-// Pi preserves the source Session and manager when a non-root fork has not been saved, but allows the root-message fresh-session case (agent-session-runtime.ts:296-316).
+// Pi refuses to fork a persisted Session whose file does not exist and leaves the source untouched (agent-session-runtime.ts:296-316). Upstream 0.99.1 creates the file at the first user message (session-manager.ts:1166-1185), so only a Session with setup entries alone is unsaved; a non-root fork of a Session that has a user message succeeds. The root-message fresh-session case is unchanged.
 func TestForkUnsavedRefusalPreservesSource(t *testing.T) {
 	sm := NewSessionManagerWithDir(t.TempDir(), t.TempDir())
 	sess, err := sm.Create("unsaved-fork", "")
@@ -139,19 +139,23 @@ func TestForkUnsavedRefusalPreservesSource(t *testing.T) {
 	if err := sess.AppendThinkingLevelChange("off"); err != nil {
 		t.Fatal(err)
 	}
-	id, err := sess.AppendMessage(userMsg("first"))
-	if err != nil {
-		t.Fatal(err)
+	leaf := *sess.LeafID()
+	if err := sess.CheckSavedForFork(); err == nil || err.Error() != unsavedForkMessage {
+		t.Fatalf("setup-only session: err=%v", err)
 	}
-	if next, _, err := sm.ForkToNewSession(sess, id); next != nil || err == nil || err.Error() != unsavedForkMessage {
-		t.Fatalf("fork=%p err=%v", next, err)
-	}
-	if sm.Current() != sess || *sess.LeafID() != id {
-		t.Fatal("failed fork mutated source")
+	if sm.Current() != sess || *sess.LeafID() != leaf {
+		t.Fatal("failed check mutated source")
 	}
 	files, err := os.ReadDir(sm.SessionDir())
 	if err != nil || len(files) != 0 {
 		t.Fatalf("files=%v err=%v", files, err)
+	}
+	id, err := sess.AppendMessage(userMsg("first"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if next, text, err := sm.ForkToNewSession(sess, id); err != nil || next == nil || text != "first" {
+		t.Fatalf("fork after the first user message=%p text=%q err=%v", next, text, err)
 	}
 	root, err := sm.Create("root-user", "")
 	if err != nil {

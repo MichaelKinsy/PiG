@@ -82,7 +82,14 @@ func TestDocumentedSlashCommandsExist(t *testing.T) {
 		"/runner":     "Stock Pig has no runner command",
 		"/pig-runner": "Stock Pig has no runner alias",
 	}
+	hidden := map[string]string{
+		"/arminsayshi":   "hidden easter egg the editor submit handler recognizes (interactive-mode.ts:3266; D87)",
+		"/pigsayhi":      "PiG's name for /arminsayshi (D87)",
+		"/dementedelves": "hidden easter egg the editor submit handler recognizes (interactive-mode.ts:3271)",
+	}
 	fromExtensions := map[string]string{
+		"/llama":     "built-in llama.cpp extension (extensions/index.ts builtInExtensions)",
+		"/mcp":       "built-in mcp extension (mcp.md)",
 		"/piglet":    "generic Piglet runtime extension",
 		"/sprite":    "PiG Standard piglogin extension",
 		"/review":    "example prompt template a user creates (prompt-templates.md)",
@@ -91,7 +98,7 @@ func TestDocumentedSlashCommandsExist(t *testing.T) {
 	for name, body := range docFiles(t) {
 		for _, match := range backtickedSlash.FindAllStringSubmatch(body, -1) {
 			cmd := match[1]
-			if known[cmd] || fromExtensions[cmd] != "" || documentedAsAbsent[cmd] != "" {
+			if known[cmd] || fromExtensions[cmd] != "" || documentedAsAbsent[cmd] != "" || hidden[cmd] != "" {
 				continue
 			}
 			t.Errorf("%s documents %s, which is not a builtin command and has no "+

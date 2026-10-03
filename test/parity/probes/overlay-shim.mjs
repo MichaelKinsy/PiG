@@ -15,10 +15,10 @@ const runtimeRoot = fromRoot("coding/extension/host/subprocess/runtime-node/").h
 const { Runtime } = await import(new URL("runtime.mjs", runtimeRoot));
 const { importExtension } = await import(new URL("jiti-loader.mjs", runtimeRoot));
 const piRoot = fromRoot("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/").href + "/";
-assert.equal(JSON.parse(readFileSync(new URL("package.json", piRoot), "utf8")).version, "0.87.1");
+assert.equal(JSON.parse(readFileSync(new URL("package.json", piRoot), "utf8")).version, "1.0.0");
 const { InteractiveMode } = await import(new URL("dist/modes/interactive/interactive-mode.js", piRoot));
 const { TuiMainScreen } = await import(new URL("node_modules/@earendil-works/pi-tui/dist/index.js", piRoot));
-const entry = resolve(".upstream/v0.87.1/packages/coding-agent/examples/extensions/overlay-qa-tests.ts");
+const entry = resolve(".upstream/current/packages/coding-agent/examples/extensions/overlay-qa-tests.ts");
 const install = await importExtension(entry);
 const runtime = new Runtime(entry);
 runtime.ready = { width: 120, height: 40 };

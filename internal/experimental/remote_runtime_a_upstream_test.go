@@ -12,7 +12,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/experimental/client"
 	"github.com/MichaelKinsy/PiG/internal/experimental/protocol"
@@ -20,6 +19,7 @@ import (
 )
 
 func TestExperimentalDurableServerCompositionA(t *testing.T) {
+	requirePOSIXServerDirectory(t)
 	cases := []struct {
 		name string
 		run  func(*testing.T, string)
@@ -475,10 +475,10 @@ func TestExperimentalDurableServerCompositionA(t *testing.T) {
 				}
 				changes := watchExperimentalChanges(t,
 					func(notify func()) (func(), error) {
-						return firstDirectory.State().Subscribe(func(*services.SessionDirectoryState, context.Context, pico3.ReplicatedStateDelivery) { notify() })
+						return firstDirectory.State().Subscribe(func(*services.SessionDirectoryState, context.Context, chord.ReplicatedStateDelivery) { notify() })
 					},
 					func(notify func()) (func(), error) {
-						return secondDirectory.State().Subscribe(func(*services.SessionDirectoryState, context.Context, pico3.ReplicatedStateDelivery) { notify() })
+						return secondDirectory.State().Subscribe(func(*services.SessionDirectoryState, context.Context, chord.ReplicatedStateDelivery) { notify() })
 					},
 					func(notify func()) (func(), error) {
 						return peers[0].OnAttachmentChange(client.NewAttachmentChangeListener(func(*protocol.SessionTarget) { notify() }))
@@ -586,10 +586,10 @@ func TestExperimentalDurableServerCompositionA(t *testing.T) {
 				previousThinking := state.Configuration.ThinkingLevel
 				changes := watchExperimentalChanges(t,
 					func(notify func()) (func(), error) {
-						return firstModels.State().Subscribe(func(*services.ModelsState, context.Context, pico3.ReplicatedStateDelivery) { notify() })
+						return firstModels.State().Subscribe(func(*services.ModelsState, context.Context, chord.ReplicatedStateDelivery) { notify() })
 					},
 					func(notify func()) (func(), error) {
-						return secondModels.State().Subscribe(func(*services.ModelsState, context.Context, pico3.ReplicatedStateDelivery) { notify() })
+						return secondModels.State().Subscribe(func(*services.ModelsState, context.Context, chord.ReplicatedStateDelivery) { notify() })
 					},
 				)
 				if err := firstModels.CycleThinking(t.Context()); err != nil {

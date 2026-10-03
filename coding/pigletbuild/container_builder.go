@@ -49,6 +49,8 @@ type containerBuilder struct {
 	config   ContainerBuilderConfig
 	lookPath executableLookup
 	run      containerCommandRunner
+	// bootstrap is set for the built-in builder, whose image installs the running release.
+	bootstrap *containerBootstrap
 }
 
 func (b containerBuilder) Name() string { return b.config.Name }
@@ -72,6 +74,14 @@ func (b containerBuilder) Probe(ctx context.Context, request BuilderRequest) Bui
 		result.Remedy = "select one linux/<arch> target or use another builder"
 		return result
 	}
+	if b.bootstrap != nil {
+		if _, ok := b.bootstrap.release(); !ok {
+			result.Code = "source-unavailable"
+			result.Message = "this PiG build is not a tagged release that the container can install"
+			result.Remedy = "build with --builder native from a Pig checkout, or configure a container builder whose image contains Pig"
+			return result
+		}
+	}
 	engine, err := b.resolveEngine()
 	if err != nil {
 		result.Code = "engine-unavailable"
@@ -83,6 +93,11 @@ func (b containerBuilder) Probe(ctx context.Context, request BuilderRequest) Bui
 		result.Code = "engine-unavailable"
 		result.Message = strings.TrimSpace(err.Error())
 		result.Remedy = "start the configured container engine"
+		return result
+	}
+	if b.bootstrap != nil {
+		// The public default image is pulled by Build; Probe neither pulls nor authenticates.
+		result.Ready = true
 		return result
 	}
 	imageMetadata, err := b.runCommand(ctx, engine, "image", "inspect", "--format", `{{.Os}}/{{.Architecture}}`, b.config.Image)
@@ -120,6 +135,17 @@ func (b containerBuilder) Build(ctx context.Context, request BuilderRequest) (Bu
 	}
 	target := request.Options.Targets[0]
 	request.Options.Sandbox.Native = target
+	bootstrapVersion := ""
+	if b.bootstrap != nil {
+		version, ok := b.bootstrap.release()
+		if !ok {
+			return BuilderResult{}, fmt.Errorf("source-unavailable: this PiG build is not a tagged release that the container can install")
+		}
+		bootstrapVersion = version
+		if err := os.MkdirAll(b.bootstrap.cacheDir, 0o755); err != nil {
+			return BuilderResult{}, err
+		}
+	}
 	artifactPath, err := containerArtifactPath(request)
 	if err != nil {
 		return BuilderResult{}, err
@@ -159,7 +185,11 @@ func (b containerBuilder) Build(ctx context.Context, request BuilderRequest) (Bu
 		return BuilderResult{}, err
 	}
 	containerArtifact := filepath.Join(outputDir, filepath.Base(artifactPath))
-	args := append([]string{"run", "--rm", "--pull=never", "--platform", target.String()}, userArgs...)
+	pull := "--pull=never"
+	if b.bootstrap != nil {
+		pull = "--pull=missing"
+	}
+	args := append([]string{"run", "--rm", pull, "--platform", target.String()}, userArgs...)
 	args = append(args,
 		"--mount", containerMount(outputDir, "/out", false),
 		"--mount", containerMount(inputDir, "/input", true),
@@ -167,12 +197,24 @@ func (b containerBuilder) Build(ctx context.Context, request BuilderRequest) (Bu
 		"--env", "HOME=/records-home", "--env", "PIG_HOME=/records-home", "--env", "PIG_CODING_AGENT_DIR=/records-home/agent",
 		"--env", "GIT_CONFIG_COUNT=1", "--env", "GIT_CONFIG_KEY_0=safe.directory", "--env", "GIT_CONFIG_VALUE_0=*",
 	)
+	if err := createContainerMountpoints(inputDir, mounts); err != nil {
+		return BuilderResult{}, err
+	}
 	for _, mount := range mounts {
 		args = append(args, "--mount", containerMount(mount.Source, mount.Target, true))
 	}
-	args = append(args, "--entrypoint", "pig", b.config.Image, "piglet", "build", "/input/piglet.yaml", "--format", "binary", "--builder", "native", "--verification", "basic", "--no-input", "--out", "/out/"+filepath.Base(artifactPath), "--targets", target.String())
+	innerArgs := []string{"piglet", "build", "/input/piglet.yaml", "--format", "binary", "--builder", "native", "--verification", "basic", "--no-input", "--out", "/out/" + filepath.Base(artifactPath), "--targets", target.String()}
 	if buildprogress.Verbose(ctx) {
-		args = append(args, "--verbose")
+		innerArgs = append(innerArgs, "--verbose")
+	}
+	if b.bootstrap != nil {
+		runOptions, command := b.bootstrap.bootstrapRunArgs(bootstrapVersion, innerArgs)
+		args = append(args, runOptions...)
+		args = append(args, b.config.Image)
+		args = append(args, command...)
+	} else {
+		args = append(args, "--entrypoint", "pig", b.config.Image)
+		args = append(args, innerArgs...)
 	}
 	buildprogress.Phase(ctx, "Building in container", b.Name()+" · "+target.String())
 	if _, err := b.runCommandWithStreams(buildprogress.Member(ctx, b.Name()), engine, request.Stdout, request.Stderr, args...); err != nil {
@@ -280,6 +322,9 @@ func readBuiltRecords(root string) (binaryBuildRecords, error) {
 }
 
 func (b containerBuilder) resolveEngine() (string, error) {
+	if b.bootstrap != nil {
+		return resolveDefaultEngine(b.lookPath)
+	}
 	lookPath := b.lookPath
 	if lookPath == nil {
 		lookPath = exec.LookPath
@@ -475,6 +520,39 @@ func localizeContainerPiglet(p *piglet.Piglet) ([]byte, []containerPigletMount, 
 	return localizedData, mounts, err
 }
 
+// createContainerMountpoints creates each nested input mountpoint in the host input directory.
+// The engine cannot create a mountpoint inside the read-only /input bind mount.
+func createContainerMountpoints(inputDir string, mounts []containerPigletMount) error {
+	for _, mount := range mounts {
+		relative, ok := strings.CutPrefix(mount.Target, "/input/")
+		if !ok {
+			return fmt.Errorf("container build input %s is outside /input", mount.Target)
+		}
+		mountpoint := filepath.Join(inputDir, filepath.FromSlash(relative))
+		info, err := os.Stat(mount.Source)
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			if err := os.MkdirAll(mountpoint, 0o755); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := os.MkdirAll(filepath.Dir(mountpoint), 0o755); err != nil {
+			return err
+		}
+		file, err := os.OpenFile(mountpoint, os.O_WRONLY|os.O_CREATE, 0o644)
+		if err != nil {
+			return err
+		}
+		if err := file.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // containerJoin joins path elements inside the Linux build container, whose
 // separator is / on every host.
 func containerJoin(elem ...string) string { return path.Join(elem...) }
@@ -603,7 +681,7 @@ func configuredBuilders() ([]BuilderBackend, error) {
 	for _, config := range configs {
 		builders = append(builders, containerBuilder{config: config})
 	}
-	return append(builders, nativeBuilder{}), nil
+	return append(builders, nativeBuilder{}, defaultContainerBuilder()), nil
 }
 
 func loadContainerBuilderConfigs() ([]ContainerBuilderConfig, error) {
@@ -630,7 +708,7 @@ func loadContainerBuilderConfigs() ([]ContainerBuilderConfig, error) {
 	seen := make(map[string]struct{}, len(file.Builders))
 	for i := range file.Builders {
 		config := &file.Builders[i]
-		if !containerBuilderNamePattern.MatchString(config.Name) || config.Name == "native" || config.Name == "auto" {
+		if !containerBuilderNamePattern.MatchString(config.Name) || config.Name == "native" || config.Name == "auto" || config.Name == defaultContainerBuilderName {
 			return nil, fmt.Errorf("builders[%d].name %q is invalid or reserved", i, config.Name)
 		}
 		if _, exists := seen[config.Name]; exists {

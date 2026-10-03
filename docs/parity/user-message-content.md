@@ -19,9 +19,7 @@ The wire has no new fields or compatibility format. SDKs already transport strin
 - `coding/session_lax_content_upstream_test.go` ports all six upstream test sites, including direct `SendCustomMessage` with null content and all three malformed message-entry rows.
 - `agent/user_content_test.go` checks exact JSON and provider variants for empty, ordinary, whitespace, Unicode, image-array, and large string inputs. It checks clone independence and omitted Go content after provider normalization.
 - `coding/session_user_content_union_test.go` drives persistence, resume, model selection, and the next prompt with stopped, errored, and aborted old assistant messages, including empty prior content and orphaned tool results.
-- `agent/harness/session/types_json_test.go:TestWritesMatchUpstreamJSONMembers` compares the entry write directly with the upstream fixture. It no longer decodes that fixture through PiG and normalizes away the string-or-array difference.
 - `cmd/pig/rpc_user_content_union_test.go` checks RPC against the Session message shape for both variants.
-- `agent/harness/runtime/user_content_union_test.go` checks queue variant retention, image addition, and caller immutability.
 - `internal/codingagent/compaction/user_content_union_test.go` checks ordinary and custom message conversion separately.
 - `test/parity/scenarios/session/17-session-lax-message-content.toml` compares extension and projection results with published Pi 0.87.1 in three exact-output pairs. The Go command also runs resumed-Session and RPC guards.
 - `BenchmarkUserContentUnion` covers decode, clone, JSON encoding, and provider conversion at 0, 64, and 65,536 string bytes. CPU and allocation profiles belong with the lane evidence. No speed improvement is claimed.

@@ -39,11 +39,13 @@ class ReleaseEvidenceTests(unittest.TestCase):
             root = Path(tmp)
             expected = self.fixture(root / 'candidates')
             assembler.assemble(root / 'candidates', root / 'release', '0.2.0')
-            self.assertEqual(len(expected), 49)
+            # Each target keeps its archive, its signing bundle and five evidence files.
+            self.assertEqual(len(expected), 7 * len(assembler.TARGETS))
+            self.assertIn('pig-0.2.0-android-arm64.tar.gz', expected)
             actual = {p.name: p.read_bytes() for p in (root / 'release').iterdir() if p.name != 'EVIDENCE-SHA256SUMS'}
             self.assertEqual(actual, expected)
             manifest = (root / 'release/EVIDENCE-SHA256SUMS').read_text().splitlines()
-            self.assertEqual(len(manifest), 49)
+            self.assertEqual(len(manifest), len(expected))
             for line in manifest:
                 digest, name = line.split('  ', 1)
                 self.assertEqual(digest, hashlib.sha256(expected[name]).hexdigest())

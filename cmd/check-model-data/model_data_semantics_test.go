@@ -34,13 +34,13 @@ func TestModelDataDateParseGrammar(t *testing.T) {
 
 func BenchmarkModelDataValidation(b *testing.B) {
 	f := newModelDataFixture(b)
-	template := f.values["model-a"].(map[string]any)
+	template := f.values["chat:model-a"].(map[string]any)
 	for i := range 512 {
 		id := "generated-model-" + strconv.Itoa(i)
 		model := maps.Clone(template)
 		model["id"] = id
-		f.values[id] = model
-		f.structure["test-provider"][id] = "openai-completions"
+		f.values["chat:"+id] = model
+		f.structure["test-provider"]["chat:"+id] = "openai-completions"
 	}
 	f.write(b, ModelDataSchemaVersion, "openai-completions")
 	b.ReportAllocs()

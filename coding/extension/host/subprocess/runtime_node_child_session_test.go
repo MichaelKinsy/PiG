@@ -5,6 +5,7 @@ import "testing"
 // Pi core/sdk.ts:175-439 constructs an independent AgentSession and restores its
 // manager's transcript; it does not prompt or mutate the enclosing Session.
 func TestNodeCreateAgentSessionMatchesPi(t *testing.T) {
+	t.Parallel()
 	runPinnedComparison(t, []string{"dist", "index.js"}, "pi-coding-agent.mjs", `
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -58,6 +59,7 @@ assert.deepEqual(await scene(pig), want);
 // with path.sep, the system prompt's <cwd> uses forward slashes
 // (system-prompt.ts), and Git Bash's pwd -W prints a Windows path.
 func TestNodeSDKSessionDefaultsAndSkillsMatchPi(t *testing.T) {
+	t.Parallel()
 	runPinnedComparison(t, []string{"dist", "index.js"}, "pi-coding-agent.mjs", `
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
@@ -126,6 +128,7 @@ for (const m of [pi, pig]) {
 }
 
 func TestNodeCodingAgentTypeOnlyExportsMatchPi(t *testing.T) {
+	t.Parallel()
 	runPinnedComparison(t, []string{"dist", "index.js"}, "pi-coding-agent.mjs", `
 import assert from "node:assert/strict";
 for (const url of process.argv.slice(1)) {

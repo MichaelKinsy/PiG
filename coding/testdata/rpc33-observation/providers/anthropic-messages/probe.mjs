@@ -1,5 +1,5 @@
 // Oracle for the anthropic-messages row of the D82 multi-provider observation matrix.
-// Pins Pi 0.87.1 and drives its real pipeline (packages/ai/src/api/anthropic-messages.ts, utils/event-stream.ts,
+// Pins Pi 1.0.0 and drives its real pipeline (packages/ai/src/api/anthropic-messages.ts, utils/event-stream.ts,
 // api/lazy.ts, coding-agent/src/core/model-runtime.ts) against a loopback server.
 //
 // Two measurements per fixture:
@@ -23,7 +23,7 @@ import { createInterface } from 'node:readline';
 
 const root = process.env.PI_PACKAGE_ROOT;
 const base = root + '/node_modules/@earendil-works/';
-for (const [path, version] of [[root, '0.87.1'], [base + 'pi-ai', '0.87.1'], [base + 'pi-agent-core', '0.87.1']]) {
+for (const [path, version] of [[root, '1.0.0'], [base + 'pi-ai', '1.0.0'], [base + 'pi-agent-core', '1.0.0']]) {
   assert.equal(JSON.parse(await readFile(path + '/package.json', 'utf8')).version, version);
 }
 const anthropicVersion = JSON.parse(await readFile(root + '/node_modules/@anthropic-ai/sdk/package.json', 'utf8')).version;
@@ -307,9 +307,9 @@ function persistPlan(plan) {
   }) };
 }
 if (inputsPath) {
-  await writeFile(inputsPath, JSON.stringify({ piVersion: '0.87.1', anthropicSdkVersion: anthropicVersion, nodeVersion: process.version, axes, bodies: Object.fromEntries(shapes.map(shape => [shape, Buffer.from(bodyOf(shape), 'latin1').toString('utf8')])), replyBody: Buffer.from(replyBody, 'latin1').toString('utf8'), plans: Object.fromEntries(shapes.map(shape => [shape, Object.fromEntries(Object.keys(deliveries).map(name => [name, persistPlan(deliveries[name](bodyOf(shape)))]))])) }, null, 2) + '\n');
+  await writeFile(inputsPath, JSON.stringify({ piVersion: '1.0.0', anthropicSdkVersion: anthropicVersion, nodeVersion: process.version, axes, bodies: Object.fromEntries(shapes.map(shape => [shape, Buffer.from(bodyOf(shape), 'latin1').toString('utf8')])), replyBody: Buffer.from(replyBody, 'latin1').toString('utf8'), plans: Object.fromEntries(shapes.map(shape => [shape, Object.fromEntries(Object.keys(deliveries).map(name => [name, persistPlan(deliveries[name](bodyOf(shape)))]))])) }, null, 2) + '\n');
 }
-const output = { piVersion: '0.87.1', anthropicSdkVersion: anthropicVersion, nodeVersion: process.version, axes };
+const output = { piVersion: '1.0.0', anthropicSdkVersion: anthropicVersion, nodeVersion: process.version, axes };
 output.cases = [];
 if (!process.env.PROBE_RPC_ONLY) for (const shape of shapes) for (const layers of layersFor(shape)) for (const delivery of Object.keys(deliveries)) {
   output.cases.push(await traceCase(shape, delivery, layers));

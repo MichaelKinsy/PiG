@@ -24,7 +24,7 @@ func useTUIBindings(t *testing.T, bindings map[string][]string) {
 func newFullscreenProbe(t *testing.T) *InteractiveMode {
 	t.Helper()
 	m := newSwitchTuiProbe(t)
-	if !m.switchTuiMode("fullscreen", false) || m.altScreen == nil {
+	if !m.switchTuiMode("fullscreen", false, true) || m.altScreen == nil {
 		t.Fatal("probe did not switch to fullscreen")
 	}
 	t.Cleanup(func() {

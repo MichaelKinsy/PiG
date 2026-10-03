@@ -7,7 +7,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -150,6 +152,19 @@ func TestLegacyUpgradePreservesOtherPaths(t *testing.T) {
 				t.Fatal(err)
 			}
 			lease, err := AcquireSync(path)
+			if kind == "symlink-directory" && runtime.GOOS == "windows" {
+				// Pi's protocol, not the legacy path: proper-lockfile 4.1.2 acquireLock stats the lock path with fs.stat, which follows the link (lib/lockfile.js:56), finds the target stale (lib/lockfile.js:67-69,84-86), and removes the link itself with rmdir (lib/lockfile.js:71-79, removeLock at 88-96). On Windows that removes the directory link, and the retried mkdir takes the lock (lib/lockfile.js:78). The oracle row is TestProperLockfileOnLinkLockPathUpstream/stale-directory/{sync,async}, which runs Pi's pinned proper-lockfile on a directory link to a stale target. The target stays. Unix rmdir(2) of the link fails with ENOTDIR, so the link is kept below.
+				if err != nil {
+					t.Fatalf("stale directory link: %v, want proper-lockfile's takeover", err)
+				}
+				if err := lease.Release(); err != nil {
+					t.Fatal(err)
+				}
+				if info, err := os.Stat(target); err != nil || !info.IsDir() {
+					t.Fatalf("link target after takeover: %v, %v", info, err)
+				}
+				return
+			}
 			if lease != nil {
 				_ = lease.Release()
 			}
@@ -161,6 +176,64 @@ func TestLegacyUpgradePreservesOtherPaths(t *testing.T) {
 				t.Fatalf("replaced protected path: %v", err)
 			}
 		})
+	}
+}
+
+// A regular file with content at the lock path is never a PiG legacy sidecar (D73 covers only an empty one), so it follows proper-lockfile 4.1.2: mkdir reports EEXIST, fs.stat reads the file (lib/lockfile.js:56), and a fresh file is ELOCKED (lib/lockfile.js:67-69). A stale file goes to removeLock's rmdir (lib/lockfile.js:71-79,88-96): libuv on Windows reports rmdir of a file as ENOENT (src/win/fs.c fs__unlink_rmdir), which proper-lockfile ignores before the repeated mkdir reports EEXIST, so the result is ELOCKED again; Unix rmdir(2) fails with ENOTDIR, which is thrown. The file is never removed. Each row runs Pi's pinned proper-lockfile on the file first, then PiG on the same path.
+func TestAcquireOnNonEmptyFileFollowsProperLockfileUpstream(t *testing.T) {
+	for _, stale := range []bool{false, true} {
+		for i, api := range []string{"sync", "async"} {
+			name := "fresh/" + api
+			if stale {
+				name = "stale/" + api
+			}
+			t.Run(name, func(t *testing.T) {
+				path := filepath.Join(t.TempDir(), "auth.json")
+				if err := os.WriteFile(path+".lock", []byte("keep"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				if stale {
+					old := time.Now().Add(-time.Hour)
+					if err := os.Chtimes(path+".lock", old, old); err != nil {
+						t.Fatal(err)
+					}
+				}
+				want := "ELOCKED"
+				if stale && runtime.GOOS != "windows" {
+					want = "ENOTDIR"
+				}
+				pi := runProperLockfile(t, path, api)
+				message, ok := strings.CutPrefix(pi, "code="+want+" message=")
+				if !ok {
+					t.Fatalf("proper-lockfile %s on a %s non-empty file: %q, want %s", api, name, pi, want)
+				}
+				if data, err := os.ReadFile(path + ".lock"); err != nil || string(data) != "keep" {
+					t.Fatalf("proper-lockfile changed the file: %q, %v", data, err)
+				}
+
+				lock, err := linkAcquirers[i].run(path)
+				if lock != nil {
+					_ = lock.Release()
+					t.Fatal("acquired a lock path holding a non-empty file")
+				}
+				switch want {
+				case "ELOCKED":
+					if !errors.Is(err, ErrLocked) || errors.Is(err, ErrLegacyLocked) {
+						t.Fatalf("err = %v, want ErrLocked", err)
+					}
+				case "ENOTDIR":
+					if !errors.Is(err, syscall.ENOTDIR) || errors.Is(err, ErrLocked) {
+						t.Fatalf("err = %v, want rmdir's ENOTDIR", err)
+					}
+				}
+				if err.Error() != message {
+					t.Fatalf("message = %q, want proper-lockfile's %q", err.Error(), message)
+				}
+				if data, err := os.ReadFile(path + ".lock"); err != nil || string(data) != "keep" {
+					t.Fatalf("PiG changed the file: %q, %v", data, err)
+				}
+			})
+		}
 	}
 }
 

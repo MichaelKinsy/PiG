@@ -1,11 +1,11 @@
-# Pi's published ImagesModels drives the real OpenRouter image API against a local HTTP server.
+# Pi's published Models (builtinModels(), whose OpenRouter provider owns image generation since 0.99.0) drives the real OpenRouter image API against a local HTTP server.
 # Go drives the same production path. The input URL is invalid unless auth replaces it.
 # Env and parsed request JSON objects use canonical key order; no values are removed or replaced.
 # Results retain the complete image output and request payload; only the nondeterministic timestamp is not projected.
 # The Go wrapper removes test-runner framing, not request or result data.
 name = "18-images-runtime-auth"
 description = "Image runtime auth, explicit headers/env, undefined-header removal and API dispatch match Pi."
-covers = ["packages/ai/src/images-models.ts", "packages/ai/src/providers/openrouter-images.ts", "packages/ai/src/api/openrouter-images.ts"]
+covers = ["packages/ai/src/api/openrouter-images.ts"]
 tags = ["fast", "hermetic"]
 driver = "cli-mode"
 

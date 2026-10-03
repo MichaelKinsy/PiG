@@ -66,10 +66,11 @@
     "upstream": "packages/coding-agent/src/modes/interactive/theme/theme-controller.ts",
     "package": "./internal/codingagent",
     "tests": [
-      "TestInteractiveStockThemeDetection",
-      "TestInteractiveThemeDetectionCancellationAndErrors"
+      "TestThemeControllerNativeUpstream",
+      "TestThemeControllerQueriesWithTheUpstreamTimeout",
+      "TestInteractiveThemeLateRepliesAndShutdown"
     ],
-    "upstream_reference": "packages/coding-agent/src/modes/interactive/theme/theme-controller.ts:58-83 InteractiveThemeController.applyFromSettings and interactive-mode.ts:954 await before session_start",
-    "mutation": "internal/codingagent/interactive_theme.go: replace the setting passed to newStartupThemeDetection with fixed dark. Compiling tests fail on missing OSC query, incorrect appearance/persistence and swallowed errors; all five OSC tmux scenarios fail escaped_output_equal. See test/parity/probes/fix-color-detection.md."
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/theme/theme-controller.ts applyFromSettings, requestTerminalColors (TERMINAL_QUERY_TIMEOUT_MS = 100) and applyTerminalColors, upstream 0.99.1",
+    "mutation": "internal/codingagent/presentation_theme.go: (1) terminalColorQueryTimeout 100ms -> 1000ms; TestThemeControllerQueriesWithTheUpstreamTimeout FAIL. (2) drop OnLateReply from the QueryTerminalColors options; TestThemeControllerNativeUpstream and TestInteractiveThemeLateRepliesAndShutdown FAIL. (3) delete the sameTerminalColors early return in applyTerminalColors; TestThemeControllerNativeUpstream/re-renders_only_when_the_reported_colors_change FAIL."
   }
 ]

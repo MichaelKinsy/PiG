@@ -867,11 +867,15 @@ func uninstallManagedNPM(cwd string, sm *codingagent.SettingsManager, source str
 	}
 	command := packagemanager.DefaultNpmCommand(sm)
 	args := append([]string{}, command[1:]...)
-	if packagemanager.NpmCommandName(command) == "bun" {
+	manager, err := packagemanager.PackageManagerName(command)
+	if err != nil {
+		return err
+	}
+	if manager == "bun" {
 		args = append(args, "uninstall", ref.NPMName, "--cwd", installRoot)
 	} else {
 		args = append(args, "uninstall", ref.NPMName, "--prefix", installRoot)
-		if packagemanager.NpmCommandName(command) != "pnpm" {
+		if manager != "pnpm" {
 			args = append(args, "--legacy-peer-deps")
 		}
 	}

@@ -28,11 +28,12 @@ func (s *Session) bindExtensionCore(runner *inproc.Runner) {
 	}, extension.ContextActions{
 		SessionManager: s.inner, ModelRegistry: s.services.Registry(),
 		GetModel: func() extension.Model { return s.Model() },
-		IsIdle:   s.IsIdle, HasPendingMessages: s.HasPendingMessages,
+		IsIdle:   s.IsIdle, HasPendingMessages: s.HasPendingMessages, GetSignal: s.Signal,
 		IsProjectTrusted: s.services.SettingsManager().IsProjectTrusted,
 		Abort:            s.RequestAbort, GetSystemPrompt: s.systemPrompt,
 		GetSystemPromptOptions: s.GetSystemPromptOptions,
 		GetAllTools:            s.GetAllTools, GetActiveTools: s.ActiveToolNames,
-		SetActiveTools: s.SetActiveToolsByName, GetScopedModels: s.ScopedModels,
+		SetActiveTools: s.SetActiveToolsByName, RefreshTools: s.RefreshTools, GetScopedModels: s.ScopedModels,
+		ToolActions: s.ToolActions(),
 	}, nil)
 }

@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { compareInventories, extractInventory, stableSourcePath, verifyPublishedSources } from "../src/inventory.mjs";
+import { scratchDir } from "./scratch.mjs";
 
 const VERSION = fs.readFileSync(new URL("../../../../internal/coding/pigversion/pigversion.go", import.meta.url), "utf8").match(/const UpstreamVersion = "([^"]+)"/)[1];
 
@@ -18,7 +19,7 @@ function manifest(name, extra = {}) {
 }
 
 function buildFixture() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pig-interface-inventory-"));
+  const root = scratchDir("pig-interface-inventory-");
   const source = path.join(root, "source");
   const published = path.join(root, "published", "coding-agent");
 
@@ -154,6 +155,36 @@ for (const origin of ["source", "published"]) {
   });
 }
 
+test("the optional mcp and codemode packages join the inventory when a release has them and are skipped otherwise", (t) => {
+  const fixture = buildFixture();
+  t.after(() => fs.rmSync(fixture.root, { recursive: true, force: true }));
+  const keys = (inventory) => [...new Set(inventory.interfaces.map((entry) => entry.package))].sort();
+  const base = ["@earendil-works/pi-agent-core", "@earendil-works/pi-ai", "@earendil-works/pi-coding-agent", "@earendil-works/pi-tui"];
+  for (const origin of ["source", "published"]) {
+    const root = fixture[origin];
+    assert.deepEqual(keys(extractInventory({ origin, root, upstreamVersion: VERSION })), base);
+  }
+  const exportsIndex = { exports: { ".": { types: "./dist/index.d.ts", import: "./dist/index.js" } } };
+  write(fixture.source, "packages/mcp/package.json", manifest("@earendil-works/pi-mcp", exportsIndex));
+  write(fixture.source, "packages/mcp/src/index.ts", `export class McpClient {\n  connect(name: string): Promise<void> { return Promise.resolve(); }\n}\n`);
+  const publishedMcp = path.join(fixture.published, "node_modules", "@earendil-works", "pi-mcp");
+  write(publishedMcp, "package.json", manifest("@earendil-works/pi-mcp", exportsIndex));
+  write(publishedMcp, "dist/index.d.ts", `export declare class McpClient {\n  connect(name: string): Promise<void>;\n}\n`);
+  for (const origin of ["source", "published"]) {
+    const root = fixture[origin];
+    assert.deepEqual(keys(extractInventory({ origin, root, upstreamVersion: VERSION })), [...base, "@earendil-works/pi-mcp"].sort());
+  }
+  write(fixture.source, "packages/codemode/package.json", manifest("@earendil-works/pi-codemode", exportsIndex));
+  write(fixture.source, "packages/codemode/src/index.ts", `export function runCode(source: string): Promise<string> { return Promise.resolve(source); }\n`);
+  const publishedCodemode = path.join(fixture.published, "node_modules", "@earendil-works", "pi-codemode");
+  write(publishedCodemode, "package.json", manifest("@earendil-works/pi-codemode", exportsIndex));
+  write(publishedCodemode, "dist/index.d.ts", `export declare function runCode(source: string): Promise<string>;\n`);
+  for (const origin of ["source", "published"]) {
+    const root = fixture[origin];
+    assert.deepEqual(keys(extractInventory({ origin, root, upstreamVersion: VERSION })), [...base, "@earendil-works/pi-codemode", "@earendil-works/pi-mcp"].sort());
+  }
+});
+
 test("normalizes compiler dependency source paths", () => {
   const root = path.join(os.tmpdir(), "pig-interface-root");
   assert.equal(stableSourcePath(root, path.join(root, "packages", "agent", "src", "index.ts")), "packages/agent/src/index.ts");
@@ -238,6 +269,23 @@ test("published declaration maps prove byte-identical pinned source provenance",
     verifyPublishedSources({ publishedRoot: fixture.published, sourceRoot: fixture.source, upstreamVersion: VERSION }),
     { checked: 1, problems: [] },
   );
+});
+
+test("published sources come from the sibling script map when the declaration map has no sourcesContent", () => {
+  const fixture = buildFixture();
+  const mapFile = path.join(fixture.publishedAI, "dist/public.d.ts.map");
+  const declarationMap = JSON.parse(fs.readFileSync(mapFile, "utf8"));
+  const { sourcesContent, ...bare } = declarationMap;
+  fs.writeFileSync(mapFile, JSON.stringify(bare));
+  const check = () => verifyPublishedSources({ publishedRoot: fixture.published, sourceRoot: fixture.source, upstreamVersion: VERSION });
+  assert.ok(check().problems.some((problem) => problem.endsWith("public.d.ts.map: sourcesContent is incomplete")));
+  const scriptMap = (overrides) => fs.writeFileSync(path.join(fixture.publishedAI, "dist/public.js.map"), JSON.stringify({ version: 3, file: "public.js", sourceRoot: "", sources: ["../src/public.ts"], sourcesContent: sourcesContent, names: [], mappings: "", ...overrides }));
+  scriptMap({});
+  assert.deepEqual(check(), { checked: 1, problems: [] });
+  scriptMap({ sources: ["../src/other.ts"] });
+  assert.ok(check().problems.some((problem) => problem.endsWith("public.d.ts.map: sourcesContent is incomplete")));
+  scriptMap({ sourcesContent: ["export const drift = true;\n"] });
+  assert.deepEqual(check().problems, ["@earendil-works/pi-ai: declaration source differs from mirror: src/public.ts"]);
 });
 
 test("published declaration provenance fails when the pinned source differs", () => {

@@ -22,7 +22,7 @@ func (p cancellableLoginProvider) LoginContext(ctx context.Context, callbacks ai
 	return ai.OAuthCredentials{}, err
 }
 
-// Pi login-dialog.ts:83-90 cancels its pending prompt. No credentials or model selection survive cancellation, and a later login owns a fresh dialog.
+// Pi login-dialog.ts:83-90 cancels its pending prompt and aborts the login signal, so the login fails with "Failed to login to <name>: This operation was aborted" (probed against Pi 1.0.0). No credentials or model selection survive cancellation, and a later login owns a fresh dialog.
 func TestOAuthLoginCancellationDoesNotCompleteAuthentication(t *testing.T) {
 	for _, key := range []string{"\x1b", "\x03"} {
 		t.Run(key, func(t *testing.T) {
@@ -35,8 +35,8 @@ func TestOAuthLoginCancellationDoesNotCompleteAuthentication(t *testing.T) {
 			deliverModalInput(t, m, []byte(key))
 			select {
 			case err := <-done:
-				if err != nil {
-					t.Fatal(err)
+				if err == nil || err.Error() != "Failed to login to Anthropic: This operation was aborted" {
+					t.Fatalf("cancelled login err=%v", err)
 				}
 			case <-time.After(5 * time.Second):
 				t.Fatal("cancelled login did not return")

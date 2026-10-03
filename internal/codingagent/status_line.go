@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -51,6 +52,8 @@ type StatusLine struct {
 	// usageTotals reads the session's all-entry usage totals on each render,
 	// as upstream footer.ts sums every session entry's stored usage.
 	usageTotals func() footerUsageTotals
+	// routedModel reads, under a virtual model selection, the physical model of the latest response on each render (footer.ts reads session.routedModel).
+	routedModel func() *RoutedModelSelection
 	// subscriptionFor decides the "(sub)" marker for a newly bound model.
 	subscriptionFor func(*ai.Model) bool
 
@@ -386,11 +389,15 @@ func (s *StatusLine) SetSuppressedByExtFooter(v bool) {
 // Render returns the footer lines (normally 2 plus keyed statuses).
 func (s *StatusLine) Render(width int) []string {
 	s.mu.RLock()
-	source := s.usageTotals
+	source, routedSource := s.usageTotals, s.routedModel
 	s.mu.RUnlock()
 	var totals footerUsageTotals
 	if source != nil {
 		totals = source()
+	}
+	var routed *RoutedModelSelection
+	if routedSource != nil {
+		routed = routedSource()
 	}
 
 	s.mu.RLock()
@@ -407,6 +414,7 @@ func (s *StatusLine) Render(width int) []string {
 		cwd:                    s.cwd,
 		gitBranch:              s.gitBranch,
 		usage:                  totals,
+		routed:                 routed,
 		contextTokens:          s.contextTokens,
 		contextUnknown:         s.contextUnknown,
 		projectedContextWindow: s.projectedContextWindow,
@@ -429,6 +437,7 @@ type footerData struct {
 	cwd                    string
 	gitBranch              string
 	usage                  footerUsageTotals
+	routed                 *RoutedModelSelection
 	contextTokens          int // last turn's total tokens for context% (not cumulative)
 	contextUnknown         bool
 	projectedContextWindow int
@@ -553,9 +562,17 @@ func renderFooter(d footerData, width int) []string {
 	// LAST turn's token count (not cumulative). This reflects actual current
 	// context window pressure. d.contextTokens is set per-turn in AddUsage.
 	contextWindow := 0
-	if d.model != nil {
+	// The window is getContextUsage's: the limits model's, which under a virtual selection is the physical model that answered last, then the selected model's (footer.ts:162, agent-session.ts:4139-4144 _limitsModel).
+	limits := d.model
+	if d.routed != nil && d.routed.Model != nil {
+		limits = d.routed.Model
+	}
+	switch {
+	case limits != nil && limits.Capabilities.ContextWindow > 0:
+		contextWindow = limits.Capabilities.ContextWindow
+	case d.model != nil:
 		contextWindow = d.model.Capabilities.ContextWindow
-	} else if d.projectedContextWindow > 0 {
+	case d.projectedContextWindow > 0:
 		contextWindow = d.projectedContextWindow
 	}
 	tokens := d.contextTokens
@@ -616,6 +633,15 @@ func renderFooter(d footerData, width int) []string {
 		} else {
 			rightSide = modelName + " \u2022 " + level
 		}
+	}
+
+	// A virtual model routes each request; show where the latest response went (footer.ts:237-243).
+	if d.routed != nil && d.routed.Model != nil {
+		level := ""
+		if d.routed.ThinkingLevel != "" {
+			level = " \u2022 " + string(d.routed.ThinkingLevel)
+		}
+		rightSide += " \u2192 " + d.routed.Model.ID + level
 	}
 
 	// Prepend provider in parentheses when multiple providers are active.
@@ -726,20 +752,22 @@ func applyContextColor(pct float64, body string) string {
 	}
 }
 
-// formatTokens renders an int token count as "1.2k", "230", "8.4M".
-// Mirrors upstream footer.ts:21-26.
+// FormatTokens is footer.ts formatTokens for presentations outside the interactive footer.
+func FormatTokens(n int) string { return formatTokens(n) }
+
+// formatTokens renders an int token count as "1.2k", "230", "8.4M", as footer.ts formatTokens does: toFixed(1) below ten thousand and ten million, Math.round (half up) elsewhere.
 func formatTokens(n int) string {
 	switch {
 	case n < 1000:
-		return fmt.Sprintf("%d", n)
+		return strconv.Itoa(n)
 	case n < 10_000:
-		return fmt.Sprintf("%.1fk", float64(n)/1_000)
+		return tui.JSToFixed(float64(n)/1_000, 1) + "k"
 	case n < 1_000_000:
-		return fmt.Sprintf("%dk", n/1_000)
+		return strconv.Itoa(int(math.Floor(float64(n)/1_000+0.5))) + "k"
 	case n < 10_000_000:
-		return fmt.Sprintf("%.1fM", float64(n)/1_000_000)
+		return tui.JSToFixed(float64(n)/1_000_000, 1) + "M"
 	default:
-		return fmt.Sprintf("%dM", n/1_000_000)
+		return strconv.Itoa(int(math.Floor(float64(n)/1_000_000+0.5))) + "M"
 	}
 }
 
@@ -753,14 +781,13 @@ func formatDuration(d time.Duration) string {
 	return fmt.Sprintf("%dm%02ds", mins, secs)
 }
 
-// dim wraps text in the theme's dim foreground color and fg-only reset.
-// Mirrors upstream footer.ts: theme.fg("dim", text) which emits the
-// theme's resolved dim hex color (e.g. \x1b[38;2;102;102;102m for dark)
-// followed by \x1b[39m (fg-only reset). Using theme colors instead of
-// SGR dim (\x1b[2m) ensures byte-identical ANSI output with upstream.
+// dim wraps text in the theme's dim foreground. Mirrors upstream footer.ts:
+// theme.fg("dim", text), the token's resolved color (e.g.
+// \x1b[38;2;102;102;102m for dark) and an fg-only reset. The system theme's
+// dim token is faint text in the terminal's default color, closed with
+// \x1b[22;39m (theme.ts fg of a dim token).
 func dim(s string) string {
-	th := tui.ActiveTheme()
-	return th.Dim + s + "\x1b[39m"
+	return tui.ActiveTheme().FgText("dim", s)
 }
 
 // boldWarning renders text in bold with the theme's warning foreground,
@@ -830,6 +857,20 @@ func (s *StatusLine) SetContextUsage(tokens *int, contextWindow int) {
 	if tokens != nil {
 		s.contextTokens = *tokens
 	}
+	s.mu.Unlock()
+	s.Invalidate()
+}
+
+// RoutedModelSelection is the physical model and thinking level a virtual model selection currently resolves to (AgentSession.routedModel).
+type RoutedModelSelection struct {
+	Model         *ai.Model
+	ThinkingLevel ai.ThinkingLevel
+}
+
+// SetRoutedModelSource installs the routed model read on each render.
+func (s *StatusLine) SetRoutedModelSource(source func() *RoutedModelSelection) {
+	s.mu.Lock()
+	s.routedModel = source
 	s.mu.Unlock()
 	s.Invalidate()
 }

@@ -8,11 +8,11 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/session"
 	"github.com/MichaelKinsy/PiG/internal/chord"
+	"github.com/MichaelKinsy/PiG/internal/experimental/durabletest"
 )
 
-// This checks the fixture boundary, not another copy of the remote-runtime cases: a real child must persist the faux model and empty tool selection, publish the keyed fixture facet, and expose an OS-owned exit handle.
+// This checks the fixture boundary, not another copy of the remote-runtime cases: a real child must persist the faux model, publish the keyed fixture facet, and expose an OS-owned exit handle.
 func TestExperimentalFauxWorkerFixtureUsesNativeProcessAndHarness(t *testing.T) {
 	agentDir := setupExperimentalRemoteTest(t)
 	installFauxSessionWorker(t)
@@ -23,9 +23,9 @@ func TestExperimentalFauxWorkerFixtureUsesNativeProcessAndHarness(t *testing.T) 
 		t.Fatalf("fixture worker PID = %d, present = %v; want a live child", pid, found)
 	}
 	state := readExperimentalSessionState(t, filepath.Join(agentDir, "experimental", "sessions"), "demo-1")
-	wantModel := session.ModelRef{Provider: "faux", ModelID: "faux-1"}
-	if state.Model == nil || *state.Model != wantModel || len(state.ActiveTools) != 0 {
-		t.Fatalf("fixture configuration = %#v, tools = %v; want %#v and empty tools", state.Model, state.ActiveTools, wantModel)
+	wantModel := durabletest.ModelRef
+	if state.Model == nil || *state.Model != wantModel {
+		t.Fatalf("fixture configuration = %#v; want %#v", state.Model, wantModel)
 	}
 	source, err := NewClientSessionServiceSource(peer, ClientServiceSourceOptions{})
 	if err != nil {

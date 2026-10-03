@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
@@ -528,18 +527,24 @@ func clonePastes(m map[int]string) map[int]string {
 	return c
 }
 
-// thinkingBorderSGR maps a thinking level string to the active theme's
-// foreground SGR prefix for the editor's top divider. "off" (and unknown
-// levels) return "" so the caller falls back to borderMuted.
+// thinkingBorderSGR maps a thinking level string to the foreground SGR prefix of the editor's top divider: the level's theme token, as upstream theme.getThinkingBorderColor does. It returns "" for a level that has no token so the caller falls back to borderMuted.
 func thinkingBorderSGR(level string) string {
-	t := ActiveTheme()
+	theme := ActiveTheme()
 	switch level {
+	case "off":
+		return theme.Fg("thinkingOff")
+	case "minimal":
+		return theme.Fg("thinkingMinimal")
 	case "low":
-		return t.ThinkingLow
+		return theme.Fg("thinkingLow")
 	case "medium":
-		return t.ThinkingMedium
+		return theme.Fg("thinkingMedium")
 	case "high":
-		return t.ThinkingHigh
+		return theme.Fg("thinkingHigh")
+	case "xhigh":
+		return theme.Fg("thinkingXhigh")
+	case "max":
+		return theme.Fg("thinkingMax")
 	}
 	return ""
 }
@@ -744,7 +749,7 @@ func (e *Editor) colorEditorBorder(text string) string {
 	if e.BorderColor != nil {
 		return e.BorderColor(text)
 	}
-	reset := SGRFgReset
+	reset := FgClose(e.borderSGR())
 	if e.IsBashMode() || thinkingBorderSGR(e.ThinkingLevel) != "" {
 		reset = "\x1b[0m"
 	}
@@ -1219,26 +1224,20 @@ func (e *Editor) naturalAutocompleteContext() bool {
 	if e.cursor[0] == 0 && strings.HasPrefix(widthx.JSTrim(before), "/") {
 		return true
 	}
+	previousBoundary := true
 	for index := 0; index < len(before); {
-		start := index
 		r, size := jsstring.DecodeRuneInString(before[index:])
 		index += size
-		if !slices.Contains(e.autocompleteTriggerCharacters, r) {
-			continue
-		}
-		if start > 0 {
-			previous, _ := utf8.DecodeLastRuneInString(before[:start])
-			if !autocompleteSeparator(previous) {
-				continue
+		if previousBoundary && slices.Contains(e.autocompleteTriggerCharacters, r) {
+			rest := before[index:]
+			if r == '@' && strings.HasPrefix(rest, `"`) && !strings.Contains(rest[1:], `"`) {
+				return true
+			}
+			if !strings.ContainsFunc(rest, autocompleteSeparator) {
+				return true
 			}
 		}
-		rest := before[index:]
-		if r == '@' && strings.HasPrefix(rest, `"`) && !strings.Contains(rest[1:], `"`) {
-			return true
-		}
-		if !strings.ContainsFunc(rest, autocompleteSeparator) {
-			return true
-		}
+		previousBoundary = nextAutocompleteBoundary(previousBoundary, r)
 	}
 	return false
 }

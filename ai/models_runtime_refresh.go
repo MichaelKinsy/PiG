@@ -76,7 +76,7 @@ func (m *Models) runProviderRefreshPhase(provider *ModelsProvider, credential *C
 		return err
 	}
 	if stored != nil {
-		stored = new(stored.Clone())
+		stored = withKnownModelTypes(new(stored.Clone()))
 	}
 	return provider.RefreshModels(RefreshModelsContext{Credential: credential, Stored: stored, AllowNetwork: allowNetwork, Force: force, Signal: signal, Publish: func(publication ModelsPublication) (bool, error) {
 		return m.publishProviderModels(provider.ID, generation, signal, publication)

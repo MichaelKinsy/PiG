@@ -39,7 +39,7 @@ See [Keybindings](/docs/latest/keybindings) for the complete binding list.
 
 ## Modes
 
-PiG supports regular and fullscreen terminal modes. Configure `tuiMode` in settings or use the corresponding interactive setting.
+PiG supports fullscreen and regular terminal modes. Fullscreen is the default. Set `tuiMode` to `regular`, choose **TUI mode** in `/settings`, or pass `--tui-mode regular` to keep the terminal's normal scrollback.
 
 The TUI responds to terminal resize. It calculates width in terminal cells and preserves Unicode and ANSI rendering boundaries. Markdown horizontal rules use at most 80 content columns, including in expanded compaction summaries. Changing output padding retains user-message Markdown transforms and their pending work.
 
@@ -89,9 +89,15 @@ PiG Standard uses this public contract for PiG Runner. The Runner is an ordinary
 
 ## Login and header identity
 
-Stock PiG uses a product-neutral text header. An extension can set a validated native login definition through the shared header slot.
+The startup header shows PiG's pig head where Pi shows its logo (D2): the active sprite's 16-by-14 pixel pig, 16 cells by 7 lines, with the version beside its first line and the key hints, the `Press` line, the blank line and the onboarding line beside the next ones, as Pi lays its first lines beside its 2-line logo. Lines beside the head wrap in the cells right of it; the rest of the header wraps at the full width. The compact header is 2 lines taller than Pi's. The head needs truecolor, a terminal that aligns half blocks and 31 columns; otherwise, in 256-color terminals and narrow panes, a one-line bold `PiG.` mark takes the 4 cells of Pi's logo and the hints keep Pi's layout. Apple Terminal gets Pi's own Apple Terminal layout with the `PiG.` mark in place of Pi's wordmark. `quietStartup` hides the header as in Pi, and non-interactive modes have none.
 
-PiG Standard's `piglogin` extension uses this contract. It owns the Standard artwork and `/sprite` command. Stock PiG does not import that Resource.
+In fullscreen mode (`tuiMode: fullscreen`), clicking the pig head in the header (or the `PiG.` mark) plays PiG's version of Pi's logo animation (D87): the screen dissolves into braille dust, the pig flies to the center, grows and spins, then turns into a big side-view pig in the sprite's colors that runs in place, and Escape or Ctrl+C sends it back to the header (press again to skip). Pi plays the same animation with its own logo. `/arminsayshi`, and its PiG alias `/pigsayhi`, draws a pig head labeled `pigsayhi` with Pi's Armin effects (D87).
+
+`/sprite` chooses the pig from fifteen built-in sprites: `pig-default` (the default), the color variants `pink`, `green`, `mint`, `sandy`, `grey`, `blush`, `lavender` and `cloud`, and the characters `pigrogu`, `darth-vader`, `kratos`, `piglet`, `spider-ham` and `sheriff`. The color sprites are the standard pig recolored; the characters are their original pixel art. `/sprite list` lists them, `/sprite set <id>` chooses one, `/sprite` alone opens a picker, and `/sprite preview [id]` shows a sprite's full art, the `PiG.` wordmark and the pig, with its name and tagline, in an overlay that any key closes. The choice is saved in `$PIG_HOME/state/pig-standard/login.json`, where the Pigpen games read it. The command comes from the built-in `pig-login` extension, so `--no-extensions` and `-builtin:pig-login` leave it out. The saved sprite still shows in the header.
+
+An extension or Piglet adds sprites with `ctx.ui.registerSprite({ id, name, tagline, mascot, palette })` (D2): `mascot` is the 16-by-14 pig the header draws and `/sprite preview` shows beside the wordmark, each row a string of palette symbols, `.` transparent, and `palette` maps each symbol to a `#RRGGBB` color. The id is a lowercase slug of at most 32 characters and must not be a built-in id. A registered sprite appears after the built-in ones in `/sprite list` and the picker and is saved like any other. When the extension is not loaded, the header draws `pig-default` and the saved choice stays. Pi has no sprites.
+
+An extension replaces the header with `ctx.ui.setHeader` as in Pi, and `setHeader(undefined)` and `/reload` restore the PiG header. An extension or Piglet can also replace it with its own native login through `ctx.ui.setLogin`, a validated login definition drawn in the same header slot. PiG Standard's `piglogin` extension uses that contract with its own artwork and `/sprite` command, and replaces the built-in one.
 
 Preview one login extension without starting a model Session:
 

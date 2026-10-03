@@ -59,6 +59,14 @@ func (c *ToolExecutionComponent) SetDefinition(definition *ToolDefinitionRendere
 	c.Invalidate()
 }
 
+// SetStructuredArgs draws the card as a registered tool definition without renderers, whose fallback call header shows
+// args.
+//
+// Deprecated: use SetDefinition(&ToolDefinitionRenderers{}, args).
+func (c *ToolExecutionComponent) SetStructuredArgs(args json.RawMessage) {
+	c.SetDefinition(&ToolDefinitionRenderers{}, args)
+}
+
 // SetDefinitionArgs replaces the arguments the definition's renderers
 // receive, as upstream updateArgs does.
 func (c *ToolExecutionComponent) SetDefinitionArgs(args json.RawMessage) {
@@ -140,9 +148,10 @@ func (c *ToolExecutionComponent) updateDefinition() {
 	}
 }
 
-// callFallback is upstream createCallFallback: the tool name in toolTitle.
+// callFallback is upstream createCallFallback: the tool name in toolTitle followed by its arguments, on the title line
+// while collapsed and one per line when expanded (tool-execution.ts:155-157).
 func (c *ToolExecutionComponent) callFallback() Component {
-	return NewPaddedText(toolTitleText(c.Name), 0, 0, nil)
+	return NewPaddedText(FormatToolCallWithArgs(c.Name, c.definitionArgs, ActiveTheme(), !c.Collapsed), 0, 0, nil)
 }
 
 // resultFallback is upstream createResultFallback: the first ten output

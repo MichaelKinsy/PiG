@@ -138,7 +138,12 @@ func (r *ModelRegistry) RegisterNativeModelsProvider(provider *ai.ModelsProvider
 	collection.SetProvider(composed)
 	r.nativeMu.Unlock()
 	r.mu.Unlock()
-	r.syncRegistration(provider.ID, nil)
+	// upstream: packages/coding-agent/src/core/model-runtime.ts:885-917 (markProvisionallyConfigured)
+	provisional := &ai.AuthCheck{Type: ai.CredentialAPIKey, Source: "configured provider"}
+	if provider.Auth.OAuth != nil && provider.Auth.APIKey == nil {
+		provisional.Type = ai.CredentialOAuth
+	}
+	r.syncRegistration(provider.ID, provisional)
 	r.publishNativeChange()
 	return nil
 }
@@ -169,6 +174,12 @@ func mergeProviderConfigInput(previous *ProviderConfigInput, input ProviderConfi
 	if input.Models != nil {
 		merged.Models = input.Models
 	}
+	if input.Images != nil {
+		merged.Images = input.Images
+	}
+	if input.Classifiers != nil {
+		merged.Classifiers = input.Classifiers
+	}
 	if input.OAuth != nil {
 		merged.OAuth = input.OAuth
 	}
@@ -187,16 +198,11 @@ func (r *ModelRegistry) RegisterProviderInput(id string, input ProviderConfigInp
 		return fmt.Errorf(`Provider %s: "api" is required when registering streamSimple.`, id)
 	}
 	collection := r.NativeModels()
-	auth, _ := ai.BuiltinProviderAuth(id)
-	base := &ai.ModelsProvider{ID: id, Name: builtInProviderDisplayNames[id], Auth: auth, GetModels: func() ([]*ai.Model, error) {
-		var models []*ai.Model
-		for _, generated := range ai.ListModels(id) {
-			model := generated.ToModel()
-			model.Capabilities = generated.ToCapabilities()
-			models = append(models, model)
-		}
-		return models, nil
-	}, Stream: fallback, StreamSimple: fallback}
+	base := r.builtinBase(id, fallback)
+	if base == nil {
+		auth, _ := ai.BuiltinProviderAuth(id)
+		base = &ai.ModelsProvider{ID: id, Name: catalogProviderName(id), Auth: auth, GetModels: func() ([]*ai.Model, error) { return nil, nil }, Stream: fallback, StreamSimple: fallback}
+	}
 	if _, err := r.composeNativeProvider(base, &input); err != nil {
 		return err
 	}

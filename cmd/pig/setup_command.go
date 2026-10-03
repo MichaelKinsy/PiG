@@ -146,7 +146,7 @@ func setupGo(args []string, stdout, stderr io.Writer) int {
 }
 
 func containerGuide(goos string) string {
-	const image = "The container builder also needs a digest-pinned builder image in PIG_BUILDERS_FILE; see `pig docs show piglet-binaries`.\n"
+	const image = "The built-in container builder (--builder container) pulls a pinned public Go image and installs this PiG release in it. PIG_CONTAINER_ENGINE selects docker or podman. To use your own image, configure a digest-pinned builder image in PIG_BUILDERS_FILE; see `pig docs show piglet-binaries`.\n"
 	switch goos {
 	case "darwin":
 		return "Install one container runtime:\n" +

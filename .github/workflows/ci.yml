@@ -118,13 +118,19 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
+      # An unresponsive package mirror fails this step within its timeout instead of holding the job.
+      - name: Install native test packages
+        shell: bash
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update
+          # The native clipboard fixtures compile C11 code and exercise a real X11 selection server.
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install --yes tmux fd-find ripgrep build-essential xvfb xclip pkg-config libxcb1-dev
       - name: Install parity toolchains
         shell: bash
         run: |
           set -euo pipefail
-          sudo apt-get update
-          # The native clipboard fixtures compile C11 code and exercise a real X11 selection server.
-          sudo apt-get install --yes tmux fd-find ripgrep build-essential xvfb xclip pkg-config libxcb1-dev
           rustup toolchain install "$RUST_VERSION" --profile minimal
           rustup default "$RUST_VERSION"
       - name: Install pinned npm
@@ -180,12 +186,17 @@ jobs:
           node-version-file: .node-version
           cache: npm
           cache-dependency-path: extensions/sdk-ts/package-lock.json
-      - name: Prepare the Pi oracle and native test tools
+      # An unresponsive package mirror fails this step within its timeout instead of holding the job.
+      - name: Install native test packages
+        timeout-minutes: 10
         run: |
           set -euo pipefail
-          sudo apt-get update
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update
           # ci-node-runtime runs the native clipboard upstream tests on each Node version.
-          sudo apt-get install --yes tmux fd-find ripgrep build-essential xvfb xclip pkg-config libxcb1-dev
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install --yes tmux fd-find ripgrep build-essential xvfb xclip pkg-config libxcb1-dev
+      - name: Prepare the Pi oracle
+        run: |
+          set -euo pipefail
           npm ci --prefix automation/ci/npm-toolchain --ignore-scripts --no-audit --no-fund
           export PATH="$PWD/automation/ci/npm-toolchain/node_modules/.bin:$PATH"
           make upstream-mirror
@@ -254,11 +265,21 @@ jobs:
         run: test "$RESULT" = success || { test "$CHANGES" = success && test "$PRODUCT" = false && test "$RESULT" = skipped; }
 
   windows:
-    name: Windows extensions and native paths
+    name: Windows ${{ matrix.shard }}
     needs: [changes]
     if: needs.changes.outputs.product == 'true'
     runs-on: windows-latest
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        # extension-host: the extension host packages (runtimecell and
+        # subprocess). extension-conformance: every SDK against the in-process
+        # reference. native: the smoke run and every other package that carries
+        # Windows tests. cli: cmd/pig in its five shards. The two extension
+        # shards were one shard whose extension step took 49 of the job's 60
+        # minutes, and native with cmd/pig reached the 60-minute limit.
+        shard: [native, cli, extension-host, extension-conformance]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -271,7 +292,9 @@ jobs:
         with:
           node-version-file: .node-version
           cache: npm
-          cache-dependency-path: extensions/sdk-ts/package-lock.json
+          cache-dependency-path: |
+            extensions/sdk-ts/package-lock.json
+            test/parity/interface-extractor/package-lock.json
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
@@ -310,6 +333,8 @@ jobs:
           export PATH="$bin:$PATH"
           test "$(npm --version)" = "$NPM_VERSION"
           npm ci --prefix extensions/sdk-ts --ignore-scripts --no-audit --no-fund
+          # internal/experimental's pinned Radius probe transpiles Pi's source with this TypeScript.
+          npm ci --prefix test/parity/interface-extractor --ignore-scripts --no-audit --no-fund
       - name: Mirror the pinned Pi source
         # The extension host's parity tests read Pi's source from
         # .upstream/current, as on Linux (make upstream-mirror).
@@ -317,10 +342,9 @@ jobs:
         env:
           MSYS: winsymlinks:nativestrict
         run: ./automation/gen/mirror-upstream.sh
-      - name: Build and test native Windows paths
+      - name: Build and smoke-test native Windows paths
+        if: matrix.shard == 'native'
         shell: pwsh
-        env:
-          PI_TEST_NATIVE_CLIPBOARD: '1'
         run: |
           $acceptanceRoot = Join-Path $env:RUNNER_TEMP 'pig native acceptance'
           New-Item -ItemType Directory -Force -Path $acceptanceRoot | Out-Null
@@ -338,9 +362,98 @@ jobs:
           '{"id":"state","type":"get_state"}' | & .\bin\pig.exe --mode rpc --model test-faux/faux-1 --no-session --no-extensions | Out-File -Encoding utf8 (Join-Path $acceptanceRoot 'rpc.jsonl')
           if ($LASTEXITCODE -ne 0) { throw "Windows RPC smoke failed" }
           if ((Get-Content -Raw (Join-Path $acceptanceRoot 'rpc.jsonl')) -notmatch '"type":"response"') { throw "Windows RPC response missing" }
-          go test ./ai ./internal/codingagent/tools ./internal/nativeplatform ./tui
-          if ($LASTEXITCODE -ne 0) { throw "Windows tests failed" }
-      - name: Test Windows extension hosting and every SDK
+      - name: Test every package with Windows tests
+        # The extension-host shard runs the extension host packages, and the
+        # steps after this one run cmd/pig in shards. The package
+        # list comes from the toolchain, so a new Windows test file is run
+        # without editing this workflow. The list holds packages with a
+        # Windows-only test file; tests that branch on runtime.GOOS in a
+        # file every platform builds are not selected by it.
+        if: matrix.shard == 'native'
+        shell: bash
+        env:
+          PI_TEST_NATIVE_CLIPBOARD: '1'
+        run: |
+          set -euo pipefail
+          acceptance="$RUNNER_TEMP/pig native acceptance"
+          mkdir -p "$acceptance"
+          export PIG_HOME="$acceptance/config with spaces"
+          export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
+          packages=$(automation/ci/windows-test-packages.sh | grep -v -e '/coding/extension/host/runtimecell$' -e '/coding/extension/host/subprocess$' -e '/cmd/pig$')
+          echo "$packages"
+          go test -timeout 30m $packages
+      - name: Test cmd/pig, shard 1 of 5
+        # cmd/pig runs as make test-cli runs it on Linux: in the shards of automation/ci/test-shard-pattern.sh, each in its own go test process and timeout.
+        if: matrix.shard == 'cli'
+        shell: bash
+        env:
+          PI_TEST_NATIVE_CLIPBOARD: '1'
+        run: |
+          set -euo pipefail
+          acceptance="$RUNNER_TEMP/pig native acceptance"
+          mkdir -p "$acceptance"
+          export PIG_HOME="$acceptance/config with spaces"
+          export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
+          run=$(automation/ci/test-shard-pattern.sh 1 5 ./cmd/pig)
+          go test -timeout 30m -run "$run" ./cmd/pig
+      - name: Test cmd/pig, shard 2 of 5
+        # cmd/pig runs as make test-cli runs it on Linux: in the shards of automation/ci/test-shard-pattern.sh, each in its own go test process and timeout.
+        if: matrix.shard == 'cli'
+        shell: bash
+        env:
+          PI_TEST_NATIVE_CLIPBOARD: '1'
+        run: |
+          set -euo pipefail
+          acceptance="$RUNNER_TEMP/pig native acceptance"
+          mkdir -p "$acceptance"
+          export PIG_HOME="$acceptance/config with spaces"
+          export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
+          run=$(automation/ci/test-shard-pattern.sh 2 5 ./cmd/pig)
+          go test -timeout 30m -run "$run" ./cmd/pig
+      - name: Test cmd/pig, shard 3 of 5
+        # cmd/pig runs as make test-cli runs it on Linux: in the shards of automation/ci/test-shard-pattern.sh, each in its own go test process and timeout.
+        if: matrix.shard == 'cli'
+        shell: bash
+        env:
+          PI_TEST_NATIVE_CLIPBOARD: '1'
+        run: |
+          set -euo pipefail
+          acceptance="$RUNNER_TEMP/pig native acceptance"
+          mkdir -p "$acceptance"
+          export PIG_HOME="$acceptance/config with spaces"
+          export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
+          run=$(automation/ci/test-shard-pattern.sh 3 5 ./cmd/pig)
+          go test -timeout 30m -run "$run" ./cmd/pig
+      - name: Test cmd/pig, shard 4 of 5
+        # cmd/pig runs as make test-cli runs it on Linux: in the shards of automation/ci/test-shard-pattern.sh, each in its own go test process and timeout.
+        if: matrix.shard == 'cli'
+        shell: bash
+        env:
+          PI_TEST_NATIVE_CLIPBOARD: '1'
+        run: |
+          set -euo pipefail
+          acceptance="$RUNNER_TEMP/pig native acceptance"
+          mkdir -p "$acceptance"
+          export PIG_HOME="$acceptance/config with spaces"
+          export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
+          run=$(automation/ci/test-shard-pattern.sh 4 5 ./cmd/pig)
+          go test -timeout 30m -run "$run" ./cmd/pig
+      - name: Test cmd/pig, shard 5 of 5
+        # cmd/pig runs as make test-cli runs it on Linux: in the shards of automation/ci/test-shard-pattern.sh, each in its own go test process and timeout.
+        if: matrix.shard == 'cli'
+        shell: bash
+        env:
+          PI_TEST_NATIVE_CLIPBOARD: '1'
+        run: |
+          set -euo pipefail
+          acceptance="$RUNNER_TEMP/pig native acceptance"
+          mkdir -p "$acceptance"
+          export PIG_HOME="$acceptance/config with spaces"
+          export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
+          run=$(automation/ci/test-shard-pattern.sh 5 5 ./cmd/pig)
+          go test -timeout 30m -run "$run" ./cmd/pig
+      - name: Test Windows extension host packages
+        if: matrix.shard == 'extension-host'
         shell: pwsh
         env:
           CARGO_BUILD_JOBS: '2'
@@ -354,6 +467,19 @@ jobs:
           $env:PIG_HOME = Join-Path $acceptanceRoot 'config with spaces'
           go test -v -timeout 30m ./coding/extension/host/runtimecell ./coding/extension/host/subprocess
           if ($LASTEXITCODE -ne 0) { throw "Windows extension host tests failed" }
+      - name: Test Windows extension conformance for every SDK
+        if: matrix.shard == 'extension-conformance'
+        shell: pwsh
+        env:
+          CARGO_BUILD_JOBS: '2'
+          PIG_REQUIRE_EXTENSION_TOOLCHAINS: '1'
+        run: |
+          $acceptanceRoot = Join-Path $env:RUNNER_TEMP 'pig extension acceptance'
+          New-Item -ItemType Directory -Force -Path $acceptanceRoot | Out-Null
+          $env:TEMP = $acceptanceRoot
+          $env:TMP = $acceptanceRoot
+          $env:TMPDIR = $acceptanceRoot
+          $env:PIG_HOME = Join-Path $acceptanceRoot 'config with spaces'
           go test -v -timeout 30m ./test/extension-conformance
           if ($LASTEXITCODE -ne 0) { throw "Windows Go, Node, Rust, Python, or fused-Go extension conformance failed" }
 
@@ -399,12 +525,38 @@ jobs:
           ./bin/pig --version
           go test ./ai ./internal/codingagent/tools ./internal/nativeplatform ./tui
 
+  android:
+    name: Android build
+    needs: [changes]
+    if: needs.changes.outputs.product == 'true'
+    # Termux runs this binary. The runner image provides the NDK; no hosted
+    # runner executes the result, so this builds it with cgo and checks its ELF
+    # headers (PIE, /system/bin/linker64, bionic libc) as the release does.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Build and check the Android binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          automation/release/android-binary.sh build -trimpath -o "$RUNNER_TEMP/pig-android" ./cmd/pig
+          automation/release/android-binary.sh check "$RUNNER_TEMP/pig-android"
+      - name: Vet the Android packages
+        run: CGO_ENABLED=0 GOOS=android GOARCH=arm64 go vet ./...
+
   result:
     name: CI result
     # The one required check for this workflow. It runs even when a job it
     # needs failed, because a skipped job would otherwise count as passing.
     # A job may be skipped only where its own condition skips it.
-    needs: [changes, docs, dco, verify, node-runtime, windows, macos, node-loader]
+    needs: [changes, docs, dco, verify, node-runtime, windows, macos, android, node-loader]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -421,6 +573,7 @@ jobs:
           NODE_RUNTIME: ${{ needs.node-runtime.result }}
           WINDOWS: ${{ needs.windows.result }}
           MACOS: ${{ needs.macos.result }}
+          ANDROID: ${{ needs.android.result }}
           NODE_LOADER: ${{ needs.node-loader.result }}
         shell: bash
         run: |
@@ -445,5 +598,6 @@ jobs:
           expect "Node runtime matrix" "$NODE_RUNTIME" "$product_skip"
           expect "Windows" "$WINDOWS" "$product_skip"
           expect "macOS" "$MACOS" "$product_skip"
+          expect "Android" "$ANDROID" "$product_skip"
           expect "Node loader" "$NODE_LOADER" "$product_skip"
           exit "$status"

@@ -51,7 +51,7 @@ func newControllerAdmission(t *testing.T) (AgentController, *controllerAdmission
 			t.Error(err)
 		}
 	})
-	if err := chord.Provide[AgentController](provider, AgentControllerDefinition, CreateAgentController(&controllerLane{})); err != nil {
+	if err := chord.Provide[AgentController](provider, AgentControllerDefinition, CreateAgentController(nil, nil)); err != nil {
 		t.Fatal(err)
 	}
 	transport := &controllerAdmissionTransport{RemoteServiceTransport: chord.NewLoopbackTransport(provider)}
@@ -81,7 +81,7 @@ func waitControllerResult[T any](ctx context.Context, operation *chord.ServiceRe
 	return operation.Wait(ctx)
 }
 
-// upstream: packages/coding-agent/src/experimental/services/agent-controller.ts:39-52. Every Promise-bearing method keeps its wire name/argument list; the native begin/wait split is not a second published service.
+// upstream: packages/coding-agent/src/experimental/services/agent-controller.ts:34-55. Every Promise-bearing method keeps its wire name/argument list; the native begin/wait split is not a second published service.
 func TestAgentControllerInitiationPreservesWireMethodsAndValues(t *testing.T) {
 	t.Parallel()
 	controller, transport := newControllerAdmission(t)
@@ -100,8 +100,8 @@ func TestAgentControllerInitiationPreservesWireMethodsAndValues(t *testing.T) {
 			op, err := initiator.BeginPrompt(ctx, prompt)
 			return waitControllerResult(ctx, op, err)
 		}},
-		{"requestAbort", `["op"]`, "", json.RawMessage(nil), func(ctx context.Context) (any, error) {
-			op, err := initiator.BeginRequestAbort(ctx, "op")
+		{"abort", `[]`, "", json.RawMessage(nil), func(ctx context.Context) (any, error) {
+			op, err := initiator.BeginAbort(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -115,24 +115,16 @@ func TestAgentControllerInitiationPreservesWireMethodsAndValues(t *testing.T) {
 			op, err := initiator.BeginFollowUp(ctx, prompt)
 			return waitControllerResult(ctx, op, err)
 		}},
-		{"nextRun", `[{"message":"hello","images":[]}]`, `{"accepted":true,"entryId":"entry","error":null}`, queueResponse, func(ctx context.Context) (any, error) {
-			op, err := initiator.BeginNextRun(ctx, prompt)
-			return waitControllerResult(ctx, op, err)
-		}},
 		{"cancelQueued", `[""]`, `{"outcome":"already_consumed"}`, AgentCancelQueuedResponse{Outcome: "already_consumed"}, func(ctx context.Context) (any, error) {
 			op, err := initiator.BeginCancelQueued(ctx, "")
-			return waitControllerResult(ctx, op, err)
-		}},
-		{"resume", `[]`, `{"accepted":true,"operationId":"op","error":null}`, operationResponse, func(ctx context.Context) (any, error) {
-			op, err := initiator.BeginResume(ctx)
 			return waitControllerResult(ctx, op, err)
 		}},
 		{"compact", `[{"customInstructions":""}]`, `{"accepted":true,"operationId":"op","error":null}`, operationResponse, func(ctx context.Context) (any, error) {
 			op, err := initiator.BeginCompact(ctx, AgentCompactionRequest{CustomInstructions: new("")})
 			return waitControllerResult(ctx, op, err)
 		}},
-		{"navigate", `[{"targetId":null,"summarize":true,"label":"","customInstructions":null}]`, `{"accepted":true,"operationId":"op","error":null}`, operationResponse, func(ctx context.Context) (any, error) {
-			op, err := initiator.BeginNavigate(ctx, AgentNavigationRequest{Summarize: true, Label: new("")})
+		{"waitForPrompt", `["op"]`, `{"status":"done","text":"answer","reason":null}`, AgentPromptResult{Status: "done", Text: new("answer")}, func(ctx context.Context) (any, error) {
+			op, err := initiator.BeginWaitForPrompt(ctx, "op")
 			return waitControllerResult(ctx, op, err)
 		}},
 	} {
@@ -191,12 +183,12 @@ func TestAgentControllerInitiationSeparatesAdmissionCompletionAndObservation(t *
 		t.Fatalf("late response=%+v, %v", response, err)
 	}
 	transport.admissionError = errors.New("send rejected")
-	if op, err := initiator.BeginResume(t.Context()); op != nil || !errors.Is(err, transport.admissionError) {
+	if op, err := initiator.BeginCompact(t.Context(), AgentCompactionRequest{}); op != nil || !errors.Is(err, transport.admissionError) {
 		t.Fatalf("admission=%v, %v", op, err)
 	}
 	transport.admissionError = nil
 	transport.failure = errors.New("remote response rejected")
-	op, err = initiator.BeginResume(t.Context())
+	op, err = initiator.BeginCompact(t.Context(), AgentCompactionRequest{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +198,7 @@ func TestAgentControllerInitiationSeparatesAdmissionCompletionAndObservation(t *
 	transport.failure = nil
 	for _, raw := range []json.RawMessage{nil, json.RawMessage(`{"accepted":`)} {
 		transport.result = raw
-		op, err := initiator.BeginResume(t.Context())
+		op, err := initiator.BeginCompact(t.Context(), AgentCompactionRequest{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -267,8 +259,8 @@ func TestAgentControllerInitiationUsesSelectedFacetAndRetainedView(t *testing.T)
 		}
 		methods = append(methods, member.Name)
 	}
-	// The exact nine declarations in agent-controller.ts:39-52 are the denominator, not the concrete Go method set.
-	wantMethods := []string{"cancelQueued", "compact", "followUp", "navigate", "nextRun", "prompt", "requestAbort", "resume", "steer"}
+	// The exact seven declarations in agent-controller.ts:34-55 are the denominator, not the concrete Go method set.
+	wantMethods := []string{"abort", "cancelQueued", "compact", "followUp", "prompt", "steer", "waitForPrompt"}
 	if !reflect.DeepEqual(methods, wantMethods) {
 		t.Fatalf("wire methods=%v, want %v", methods, wantMethods)
 	}
@@ -291,7 +283,7 @@ func TestAgentControllerInitiationUsesSelectedFacetAndRetainedView(t *testing.T)
 	if len(firstTransport.calls) != 1 || len(secondTransport.calls) != 1 {
 		t.Fatalf("admission bypassed replacement: %d/%d", len(firstTransport.calls), len(secondTransport.calls))
 	}
-	if err := host.Reload(t.Context(), []chord.Facet{provider(CreateAgentController(&controllerLane{}))}); err != nil {
+	if err := host.Reload(t.Context(), []chord.Facet{provider(CreateAgentController(nil, nil))}); err != nil {
 		t.Fatal(err)
 	}
 	if op, err := begin(t.Context(), AgentPromptRequest{}); op != nil || err == nil || err.Error() != "Selected AgentController does not expose invocation admission" {

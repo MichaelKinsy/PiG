@@ -1,4 +1,4 @@
-// Pi 0.87.1 loader.ts:490-501 supplies shared virtual modules to dynamic imports too.
+// Pi 0.99.2 loader.ts:55-59,565-567 supplies shared virtual modules to dynamic imports too.
 export default function (pi: any) {
   const order = ["factory"];
   pi.registerCommand("lazy-imports", {

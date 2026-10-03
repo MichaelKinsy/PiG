@@ -54,7 +54,7 @@ tables.
 
 | Action | Default key | Effect |
 |---|---|---|
-| `app.clipboard.pasteImage` | `ctrl+v` | Paste image from clipboard (text fallback) |
+| `app.clipboard.pasteImage` | `ctrl+v` | Paste files on macOS, images, or text from clipboard |
 | `app.editor.external` | `ctrl+g` | Open external editor |
 | `app.message.copy` | `ctrl+x` | Copy selection or last assistant message |
 | `app.message.dequeue` | `alt+up` | Restore queued messages |
@@ -83,7 +83,7 @@ Clipboard image helper commands reject stdout larger than 50 MiB. PiG cancels an
 |---|---|---|
 | `app.thinking.cycle` | `shift+tab` | Cycle thinking level |
 | `app.thinking.toggle` | `ctrl+t` | Toggle thinking blocks |
-| `app.tools.expand` | `ctrl+o` | Toggle tool details |
+| `app.tools.expand` | `ctrl+o` | Toggle tool output |
 
 ### Session tree
 

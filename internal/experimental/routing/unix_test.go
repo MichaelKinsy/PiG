@@ -61,7 +61,9 @@ func TestUnixServerDerivesItsExplicitSocketPathAndRestartsOnIt(t *testing.T) {
 	}
 	firstClient := connectUnixTestClient(t, path)
 	expectHello(t, firstClient, testServerID)
-	firstClient.close()
+	if err := firstClient.Close(); err != nil {
+		t.Fatal(err)
+	}
 	if err := first.Close(); err != nil {
 		t.Fatal(err)
 	}

@@ -40,7 +40,11 @@ func resolveCLIExtensionSource(cwd, agentDir string, sm *codingagent.SettingsMan
 		}
 		command := packagemanager.DefaultNpmCommand(sm)
 		args := append([]string{}, command[1:]...)
-		args = append(args, packagemanager.NpmInstallArgs(packagemanager.NpmCommandName(command), ref.Locator, root, ref.NPMRegistry)...)
+		manager, err := packagemanager.PackageManagerName(command)
+		if err != nil {
+			return "", err
+		}
+		args = append(args, packagemanager.NpmInstallArgs(manager, ref.Locator, root, ref.NPMRegistry)...)
 		if err := packagemanager.RunPackageProcess("", command[0], args...); err != nil {
 			return "", err
 		}

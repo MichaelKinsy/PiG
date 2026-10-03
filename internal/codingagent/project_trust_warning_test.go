@@ -12,13 +12,14 @@ import (
 // Pi 0.87.1 interactive-mode.ts:4073-4091 gates on trust and resources, not quietStartup or loaded extensions.
 func TestProjectTrustWarningRendering(t *testing.T) {
 	for _, tc := range []struct {
-		name                               string
-		trusted, resources, history, quiet bool
+		name                        string
+		trusted, resources, history bool
+		quiet                       QuietStartup
 	}{
 		{name: "empty project", trusted: false},
 		{name: "trusted resources", trusted: true, resources: true},
 		{name: "denied fresh", resources: true},
-		{name: "denied quiet", resources: true, quiet: true},
+		{name: "denied quiet", resources: true, quiet: QuietStartupTrue},
 		{name: "denied resumed", resources: true, history: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

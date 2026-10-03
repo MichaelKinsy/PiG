@@ -7,8 +7,6 @@ import (
 	"runtime"
 	"testing"
 	"time"
-
-	"github.com/MichaelKinsy/PiG/agent/harness/session"
 )
 
 type launchedExitWorker struct {
@@ -18,7 +16,7 @@ type launchedExitWorker struct {
 	command     *exec.Cmd
 	exited      chan struct{}
 	peer, token string
-	metadata    session.SessionMetadata
+	metadata    SessionCatalogMetadata
 }
 
 // launchExitWorker registers a real child process as a ready Session worker behind the fake coordinator.
@@ -28,7 +26,7 @@ func launchExitWorker(t *testing.T) *launchedExitWorker {
 		t.Skip("the child is killed with SIGKILL and reported by its Unix signal name")
 	}
 	directory := t.TempDir()
-	metadata := session.SessionMetadata{ID: "session-1", CreatedAt: 1, StorageVersion: 1, Cwd: directory, Path: filepath.Join(directory, "session-1.jsonl"), ModifiedAt: 1}
+	metadata := SessionCatalogMetadata{ID: "session-1", CreatedAt: 1, Cwd: directory, Path: filepath.Join(directory, "session-1.jsonl")}
 	coordinator := &workerManagerCoordinator{metadata: metadata}
 	manager := NewSessionWorkerManager(coordinator, directory, nil, nil)
 	t.Cleanup(func() { manager.Detach(); coordinator.callbacks.Wait(); manager.work.Wait(); manager.background.Wait() })

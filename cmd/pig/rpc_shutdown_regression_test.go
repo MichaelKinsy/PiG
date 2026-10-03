@@ -52,7 +52,7 @@ func TestRPCShutdownAfterSynchronousUIEffectKeepsPiOrder(t *testing.T) {
 			want := []rpcRecord{
 				{"type": "extension_ui_request", "method": "setTitle", "title": "quitting"},
 				rpcShutdownStartedNotify,
-				{"id": "quit", "type": "response", "command": "prompt", "success": true},
+				handledPromptResponse("quit"),
 			}
 			if !reflect.DeepEqual(records, want) {
 				t.Fatalf("stdout=%v, want %v", records, want)

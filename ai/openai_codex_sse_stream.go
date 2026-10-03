@@ -263,6 +263,14 @@ func (decoder *codexSSEDecoder) mapNext() bool {
 			decoder.mapDone = true
 			return false
 		}
+		// mapCodexEvents awaits the observer before it reads the event; a failing observer must not reach WebSocket recovery (ProviderStreamEventCallbackError).
+		if err := decoder.builder.observeProviderEvent(record.raw); err != nil {
+			decoder.mapDone = true
+			decoder.err = err
+			decoder.parseReturn()
+			decoder.suspend()
+			return false
+		}
 		if record.value == nil {
 			// `null.type` throws a TypeError inside the for-await body, which closes parseSSE.
 			decoder.mapDone = true
@@ -404,6 +412,9 @@ func (p *openAIResponsesProvider) finishCodexSSE(ctx context.Context, builder *a
 	err := decoder.Err()
 	if err == nil && !sawTerminal {
 		err = errors.New("OpenAI Responses stream ended before a terminal response event") // openai-responses-shared.ts:758-760
+	}
+	if err == nil {
+		err = unfinishedToolCallError(builder)
 	}
 	if err != nil {
 		reason := StopReasonError

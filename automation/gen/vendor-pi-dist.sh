@@ -22,8 +22,8 @@ marked="$agent/node_modules/marked"
 hljs="$agent/node_modules/highlight.js"
 jiti="$agent/node_modules/jiti"
 core="$agent/node_modules/@earendil-works/pi-agent-core"
-chord="$agent/node_modules/@earendil-works/chord"
-telemetry="$agent/node_modules/@earendil-works/pi-telemetry"
+codemode="$agent/node_modules/@earendil-works/pi-codemode"
+mcp="$agent/node_modules/@earendil-works/pi-mcp"
 ignore="$agent/node_modules/ignore"
 jsdiff="$agent/node_modules/diff"
 shims="$root/coding/extension/host/subprocess/runtime-node/shims"
@@ -86,12 +86,12 @@ sed 's#^import { Type } from "typebox";$#import { Type } from "../../../typebox.
 # pi-coding-agent and pi-agent-core use their complete public module graphs.
 node "$root/automation/gen/vendor-pi-closure.mjs" "$shims" "$(cat <<JSON
 {
-  "entries": ["$core/dist/index.js", "$agent/dist/index.js", "$agent/dist/core/sdk.js", "$agent/dist/utils/image-resize-worker.js"],
+  "entries": ["$core/dist/index.js", "$agent/dist/index.js", "$agent/dist/core/sdk.js", "$agent/dist/utils/image-resize-worker.js", "$agent/dist/extensions/codemode/worker.js"],
   "packages": {
     "@earendil-works/pi-coding-agent": { "root": "$agent", "to": "pi-dist/pi-coding-agent" },
     "@earendil-works/pi-agent-core": { "root": "$core", "to": "pi-dist/pi-agent-core" },
-    "@earendil-works/chord": { "root": "$chord", "to": "pi-dist/chord" },
-    "@earendil-works/pi-telemetry": { "root": "$telemetry", "to": "pi-dist/pi-telemetry" },
+    "@earendil-works/pi-codemode": { "root": "$codemode", "to": "pi-dist/pi-codemode" },
+    "@earendil-works/pi-mcp": { "root": "$mcp", "to": "pi-dist/pi-mcp" },
     "@earendil-works/pi-ai": { "root": "$ai", "to": "pi-dist/pi-ai", "vendored": true }
   },
   "overrides": {
@@ -117,14 +117,15 @@ node "$root/automation/gen/vendor-pi-closure.mjs" "$shims" "$(cat <<JSON
     "yaml": "yaml/index.js",
     "ignore": "ignore/index.js",
     "diff": "diff/libesm/index.js",
-    "cross-spawn": "cross-spawn/index.js"
+    "cross-spawn": "cross-spawn/index.js",
+    "quickjs-wasi": "quickjs-wasi/dist/index.js"
   }
 }
 JSON
 )"
 
 # Third-party packages the vendored modules import.
-for dependency in chalk undici semver minimatch hosted-git-info grok-mermaid proper-lockfile; do
+for dependency in chalk undici semver minimatch hosted-git-info grok-mermaid proper-lockfile quickjs-wasi; do
   rm -rf "${shims:?}/$dependency"
   node "$root/automation/gen/vendor-node-dependencies.mjs" "$agent/node_modules/$dependency/package.json" "$shims/$dependency"
 done

@@ -9,8 +9,10 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/MichaelKinsy/PiG/test/parity/correspondence"
 	"github.com/MichaelKinsy/PiG/test/parity/internal/gitsnapshot"
@@ -27,7 +29,11 @@ func submitBundle(root, packetInput, bundleInput, outputDirectory string, stdout
 }
 
 func main() {
-	if err := run(context.Background(), os.Args[1:], os.Stdout, os.Stderr); err != nil {
+	// A signal cancels ctx so run's deferred cleanup removes the snapshot directory before the process exits.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	err := run(ctx, os.Args[1:], os.Stdout, os.Stderr)
+	stop()
+	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

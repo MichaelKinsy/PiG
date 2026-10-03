@@ -9,7 +9,6 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 )
 
@@ -107,7 +106,7 @@ func TestServerServicesMatchPinnedUpstream(t *testing.T) {
 			}
 			return PreparedSessionPlugins{PackagePaths: paths, PresentationPlugins: map[string]any{"prepared": id}}, nil
 		},
-		ReloadPresentationPlugins: func(_ context.Context, paths []string) (pico3.JsonValue, error) { return slices.Clone(paths), nil },
+		ReloadPresentationPlugins: func(_ context.Context, paths []string) (chord.JsonValue, error) { return slices.Clone(paths), nil },
 	})
 	requireModelsOK(t, err)
 	t.Cleanup(func() { requireModelsOK(t, services.Dispose()) })
@@ -137,7 +136,7 @@ func TestServerServicesMatchPinnedUpstream(t *testing.T) {
 	replica, err := directory.State("state")
 	requireModelsOK(t, err)
 	snapshots := []*SessionDirectoryState{}
-	unsubscribe, err := chord.TypedReplica[*SessionDirectoryState](replica).Subscribe(func(value *SessionDirectoryState, _ context.Context, _ pico3.ReplicatedStateDelivery) {
+	unsubscribe, err := chord.TypedReplica[*SessionDirectoryState](replica).Subscribe(func(value *SessionDirectoryState, _ context.Context, _ chord.ReplicatedStateDelivery) {
 		snapshots = append(snapshots, value)
 	})
 	requireModelsOK(t, err)

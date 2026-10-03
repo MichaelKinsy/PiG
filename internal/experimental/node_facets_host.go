@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/experimental/services"
 )
@@ -29,7 +28,7 @@ type nodeFacetHostRequest struct {
 	Method      string          `json:"method"`
 	Args        json.RawMessage `json:"args"`
 	Sequence    int             `json:"sequence"`
-	Ops         []pico3.Op      `json:"ops"`
+	Ops         []chord.Op      `json:"ops"`
 	Origin      string          `json:"origin"`
 	Cancellable bool            `json:"cancellable"`
 	Context     nodeFacetValue  `json:"context"`
@@ -202,10 +201,10 @@ func (generation *nodeFacetGeneration) environmentCall(ctx context.Context, requ
 		if err != nil {
 			return nodeFacetValue{}, err
 		}
-		definition := pico3.DefineServiceWithOptions[any](args.Service.Id, pico3.ServiceOptions{Local: args.Service.Local})
+		definition := chord.DefineServiceWithOptions[any](args.Service.Id, chord.ServiceOptions{Local: args.Service.Local})
 		return undefined, chord.ProvideService(env, definition, implementation)
 	case "provideMany":
-		definition := pico3.DefineServiceWithOptions[any](args.Service.Id, pico3.ServiceOptions{Local: args.Service.Local})
+		definition := chord.DefineServiceWithOptions[any](args.Service.Id, chord.ServiceOptions{Local: args.Service.Local})
 		spawner, err := chord.ProvideMany(env, definition)
 		if err != nil {
 			return nodeFacetValue{}, err
@@ -476,7 +475,7 @@ func (generation *nodeFacetGeneration) remoteMember(ref *chord.FacetService, nam
 
 func (generation *nodeFacetGeneration) subscribeReplica(state *chord.ReplicatedStateReplica, callback nodeFacetValue) (nodeFacetValue, error) {
 	key := nodeFacetReplicaKey{state.FacetIdentity(), callback.Kind + ":" + callback.Id}
-	deliver := func(value pico3.JsonValue, ctx context.Context, delivery pico3.ReplicatedStateDelivery) error {
+	deliver := func(value chord.JsonValue, ctx context.Context, delivery chord.ReplicatedStateDelivery) error {
 		encoded, err := nodeFacetJSON(value)
 		if err != nil {
 			return err
@@ -496,7 +495,7 @@ func (generation *nodeFacetGeneration) subscribeReplica(state *chord.ReplicatedS
 		value, sequence, hydrated := existing.latest, existing.sequence, existing.hydrated
 		existing.mu.Unlock()
 		if hydrated {
-			if err := deliver(value, context.Background(), pico3.ReplicatedStateDelivery{Kind: "hydrate", Sequence: sequence}); err != nil {
+			if err := deliver(value, context.Background(), chord.ReplicatedStateDelivery{Kind: "hydrate", Sequence: sequence}); err != nil {
 				return nodeFacetValue{}, err
 			}
 		}
@@ -520,7 +519,7 @@ func (generation *nodeFacetGeneration) subscribeReplica(state *chord.ReplicatedS
 	generation.mu.Lock()
 	generation.stateSubscriptions[key] = subscription
 	generation.mu.Unlock()
-	remove, err := state.Subscribe(func(value pico3.JsonValue, ctx context.Context, delivery pico3.ReplicatedStateDelivery) error {
+	remove, err := state.Subscribe(func(value chord.JsonValue, ctx context.Context, delivery chord.ReplicatedStateDelivery) error {
 		subscription.mu.Lock()
 		subscription.latest, subscription.sequence, subscription.hydrated = value, delivery.Sequence, true
 		subscription.mu.Unlock()

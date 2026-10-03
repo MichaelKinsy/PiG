@@ -9,7 +9,7 @@ import test from "node:test";
 const validator = fileURLToPath(new URL("./check-upstream-pin.mjs", import.meta.url));
 const version = "9.8.7";
 
-async function fixture(t, { mismatch, source, legacyVersion, onlyLegacy = false } = {}) {
+async function fixture(t, { mismatch, source, legacyVersion, onlyLegacy = false, readme } = {}) {
   const root = await mkdtemp(join(tmpdir(), "pig-sdk-pin-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const sdk = join(root, "extensions", "sdk-ts");
@@ -25,6 +25,7 @@ async function fixture(t, { mismatch, source, legacyVersion, onlyLegacy = false 
   await writeFile(join(sdk, "package-lock.json"), JSON.stringify({
     packages: { "node_modules/@earendil-works/pi-coding-agent": { version: versions.locked } },
   }));
+  await writeFile(join(sdk, "README.md"), readme ?? `Exact Pi ${version} declarations.\n\nnpm install --save-dev @earendil-works/pi-coding-agent@${version}\n`);
   if (!onlyLegacy) {
     const pin = join(root, "internal", "coding", "pigversion", "pigversion.go");
     await mkdir(dirname(pin), { recursive: true });
@@ -74,4 +75,25 @@ test("does not fall back to a legacy-only repository layout", async (t) => {
   assert.notEqual(result.status, 0);
   assert.ok(result.stderr.includes("ENOENT"), result.stderr);
   assert.ok(result.stderr.includes(join("internal", "coding", "pigversion", "pigversion.go")), result.stderr);
+});
+
+test("rejects a README that names a different Pi version", async (t) => {
+  const run = await fixture(t, { readme: `Exact Pi ${version} declarations.\n\nnpm install @earendil-works/pi-coding-agent@9.8.6\n` });
+  const result = run();
+  assert.notEqual(result.status, 0);
+  assert.ok(result.stderr.includes(`README Pi version "9.8.6" does not match ${version}`), result.stderr);
+});
+
+test("rejects a README whose Pi version follows a line break", async (t) => {
+  const run = await fixture(t, { readme: `Exact declarations from Pi\n9.8.6.\n\nnpm install @earendil-works/pi-coding-agent@${version}\n` });
+  const result = run();
+  assert.notEqual(result.status, 0);
+  assert.ok(result.stderr.includes(`README Pi version "9.8.6" does not match ${version}`), result.stderr);
+});
+
+test("rejects a README that does not name the Pi version", async (t) => {
+  const run = await fixture(t, { readme: "Declarations only.\n" });
+  const result = run();
+  assert.notEqual(result.status, 0);
+  assert.ok(result.stderr.includes(`README does not name Pi version ${version}`), result.stderr);
 });

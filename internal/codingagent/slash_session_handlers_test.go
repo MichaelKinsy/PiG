@@ -418,6 +418,7 @@ func TestSettingsItems_UpstreamCoreRosterPresentAndOrdered(t *testing.T) {
 		"fullscreen-exit-output",
 		"fullscreen-scrollbar",
 		"fullscreen-copy-on-select",
+		"fullscreen-wheel-scroll-lines",
 		"theme",
 	} {
 		if !slices.Contains(ids, id) {
@@ -425,7 +426,7 @@ func TestSettingsItems_UpstreamCoreRosterPresentAndOrdered(t *testing.T) {
 		}
 	}
 
-	wantSuffix := []string{"warnings", "model-thinking", "tui-mode", "fullscreen-exit-output", "fullscreen-scrollbar", "fullscreen-copy-on-select", "theme"}
+	wantSuffix := []string{"warnings", "model-thinking", "tui-mode", "fullscreen-exit-output", "fullscreen-scrollbar", "fullscreen-copy-on-select", "fullscreen-wheel-scroll-lines", "theme"}
 	if len(ids) < len(wantSuffix) || !slices.Equal(ids[len(ids)-len(wantSuffix):], wantSuffix) {
 		t.Fatalf("settingsItems suffix = %v, want %v", ids, wantSuffix)
 	}
@@ -441,8 +442,8 @@ func TestSettingsItems_UpstreamDefaults(t *testing.T) {
 	if got := lookup["mermaid-rendering"].get(s); got != "streaming" {
 		t.Fatalf("mermaid-rendering default = %q, want streaming", got)
 	}
-	if got := lookup["tui-mode"].get(s); got != "regular" {
-		t.Fatalf("tui-mode default = %q, want regular", got)
+	if got := lookup["tui-mode"].get(s); got != "fullscreen" {
+		t.Fatalf("tui-mode default = %q, want fullscreen", got)
 	}
 	if got := lookup["fullscreen-exit-output"].get(s); got != "transcript" {
 		t.Fatalf("fullscreen-exit-output default = %q, want transcript", got)

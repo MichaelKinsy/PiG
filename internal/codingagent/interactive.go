@@ -156,6 +156,9 @@ type InteractiveMode struct {
 	runEnded atomic.Bool
 	extCtx   *ExtensionContext // shared state for slash commands
 	agent    *agent.Agent
+	// extensionAgent is the agent the extension host reads from its own goroutines; setAgent publishes it with agent. stopRunSignalReports ends the report of its runs to the host and belongs to the main loop.
+	extensionAgent       atomic.Pointer[agent.Agent]
+	stopRunSignalReports func()
 	// The live session is owned by the SessionHandle (coding.Session.inner) and
 	// is the single source of truth. Read it via m.currentSession() so display
 	// (/session, /tree, /compact) and persistence (the agent's OnMessagePersist
@@ -168,14 +171,15 @@ type InteractiveMode struct {
 	resourceSourceInfo map[string]ResourceSourceInfo
 
 	// UI components
-	chatContainer       *tui.Container
-	extHeader           *specialLinesComponent
-	extFooter           *specialLinesComponent
-	widgetContainer     *tui.Container
-	editor              *tui.Editor
-	editorSnapshotOwner *tui.Editor
-	editorSnapshot      atomic.Pointer[string]
-	statusLine          *StatusLine
+	chatContainer        *tui.Container
+	extHeader            *specialLinesComponent
+	extFooter            *specialLinesComponent
+	widgetContainer      *tui.Container
+	widgetContainerBelow *tui.Container
+	editor               *tui.Editor
+	editorSnapshotOwner  *tui.Editor
+	editorSnapshot       atomic.Pointer[string]
+	statusLine           *StatusLine
 
 	// loadedResourcesContainer holds the loaded-resources listing between the
 	// header and the transcript, so clearing the transcript keeps it.
@@ -325,7 +329,9 @@ type InteractiveMode struct {
 	// Last assistant message text (for /copy).
 	lastAssistantText string
 	lastStatusSpacer  *tui.Spacer
-	lastStatusText    *tui.Text
+	lastStatusText    *tui.ThemedText
+	// lastStatusMessage is the text lastStatusText renders (interactive-mode.ts lastStatusMessage).
+	lastStatusMessage string
 
 	// Countdown goroutine cancel function for auto-retry.
 	// Called on AutoRetryEndEvent or when a new retry starts.
@@ -349,6 +355,20 @@ type InteractiveMode struct {
 	toolsExpanded bool
 	// builtInHeaderExpanded starts from verbose || toolsExpanded, then follows explicit expansion and restoration. Guarded by toolMu.
 	builtInHeaderExpanded bool
+	// builtInHeaderLogo is the clickable logo of the built-in header as last rendered; the render loop writes it and the
+	// owner loop's mouse dispatch reads it.
+	builtInHeaderLogo atomic.Pointer[builtInHeaderLogoArea]
+	// builtInHeaderShowDetails is shouldShowStartupDetails when the built-in header was first built; the compact onboarding line keeps it for the run, as Pi's header captures showDetails once at init (interactive-mode.ts:997). builtInHeaderBuilt records the capture. Guarded by toolMu.
+	builtInHeaderShowDetails, builtInHeaderBuilt bool
+	// spriteOwners names the extensions whose sprites the bound build registered in piglogin's catalogue (D2). Binding
+	// another build's bridge removes them first, since the outgoing bridge no longer reaches the UI when its host shuts
+	// down. Guarded by spriteOwnersMu.
+	spriteOwners   map[string]struct{}
+	spriteOwnersMu sync.Mutex
+	// logoAnimationPlaying is Pi's module-level `playing` flag of the logo easter egg; logoAnimation is the one shown.
+	// Owner loop only.
+	logoAnimationPlaying bool
+	logoAnimation        *pigLogoAnimation
 
 	// pendingArgs accumulates ToolCallDelta fragments keyed by index.
 	// Used to build progressive args preview during streaming.
@@ -447,6 +467,8 @@ type InteractiveMode struct {
 	// runPrompt holds the active run's before_agent_start inputs, as Pi's _runSystemPromptOptions; nil outside a run. runPromptMu serializes installing, re-rendering and clearing it with the prompt forced on the agent.
 	runPromptMu sync.Mutex
 	runPrompt   *interactiveRunPrompt
+	// runPromptTurnAgent is the agent whose next-turn hook refreshes runPrompt.
+	runPromptTurnAgent *agent.Agent
 
 	// rawDrain consumes late protocol input before renderer teardown; temporary handoffs restore without draining.
 	rawDrain             func()
@@ -534,6 +556,19 @@ type InteractiveMode struct {
 	pendingUserInputs       []string
 	onInputCallback         func(string)
 	initialMessagesDone     <-chan struct{}
+}
+
+// loadRemainingHighlightLanguages loads every syntax grammar on a task the mode owns, then repaints on the owner loop, so code highlighted with the startup grammars picks up the rest. A mode that has stopped repaints nothing.
+// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:init
+func (m *InteractiveMode) loadRemainingHighlightLanguages() {
+	ctx := m.backgroundCtx
+	m.backgroundTasks.Go(func() {
+		tui.LoadAllHighlightLanguages()
+		_ = m.postToMain(ctx, func() {
+			m.tuiInst.Invalidate()
+			m.tuiInst.RequestRender()
+		})
+	})
 }
 
 // postUITask hands a closure to the main input loop to run
@@ -863,6 +898,10 @@ type InteractiveOptions struct {
 	// ModelLookup resolves a provider/model identity through the Session-owned runtime.
 	ModelLookup  func(providerID, modelID string) *ai.Model
 	ModelCatalog func() []*ai.Model
+	// ModelClassify is the Session-owned runtime classify an extension's ctx.modelRegistry.classify reaches.
+	ModelClassify func(context.Context, *ai.ClassifierModel, ai.ClassifierContext, ...ai.ModelsClassifierOptions) ai.ClassifierResult
+	// ModelGenerateImages is the Session-owned runtime generateImages an extension's ctx.modelRegistry.generateImages reaches.
+	ModelGenerateImages func(context.Context, *ai.ImageModel, ai.ImagesContext, ...ai.ModelsImagesOptions) ai.AssistantImages
 
 	// RequestAuthRuntime is the composed checkAuth/getAuth surface used by
 	// warning-only auth checks. Wired by main.go from the same credential and
@@ -1057,7 +1096,7 @@ func (m *InteractiveMode) rebuildToolSystemPrompt() {
 	}
 	if m.newRunner != nil {
 		options := prompts.WithToolDefinitions(prompts.FromExtensionOptions(*opts), m.newRunner.Tools())
-		opts.ToolSnippets, opts.ToolGuidelines = options.ToolHints, options.ToolGuidelines
+		opts.ToolSnippets, opts.ToolGuidelines = WithoutHiddenSnippets(options.ToolHints, m.hiddenDeclarations()), options.ToolGuidelines
 	}
 	m.baseSystemPromptOptions.Store(opts)
 	if m.structuredSystemPrompt() {
@@ -1247,6 +1286,7 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 	defer func() {
 		m.backgroundCancel()
 		m.disposeArminComponents()
+		m.disposeLogoAnimation()
 		m.disposeMarkdownBlocks()
 		m.backgroundTasks.Wait()
 		m.userBashTasks = nil
@@ -1256,13 +1296,7 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 	if mark == nil {
 		mark = func(string) {} // no-op
 	}
-	// Resolve the environment fallback before the terminal can answer OSC 11.
-	tui.SetThemeSettingPresence(m.getThemeSelection())
-	m.loadThemes()
-	// Re-apply theme in case it was a custom theme name.
-	if setting := m.getThemeSelection(); setting != nil {
-		tui.SetThemeSettingPresence(setting)
-	}
+	m.initStartupTheme()
 	mark("theme-detected")
 
 	// Set up TUI. Fullscreen mode uses the alternate-screen renderer; both
@@ -1337,7 +1371,8 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 		}
 	}()
 	m.beginStartupSubmitWindow()
-	if err := m.initializeTerminalTheme(ctx, os.Stdout); err != nil {
+	m.applyThemeFromSettings(ctx)
+	if err := m.waitForTerminalColors(ctx); err != nil {
 		return err
 	}
 	// Run the @-file fd search off the input thread so a deep tree walk
@@ -1371,7 +1406,7 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 	m.statusContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.widgetContainer = tui.NewContainer(tui.NewSpacer(1))
-	m.mountInteractiveTui()
+	m.mountInteractiveTui(true)
 	// Pi sets up managed tools after the startup header and before extensions, still under handleStartupSubmit; setupEditorSubmitHandler follows (interactive-mode.ts:1017-1028).
 	m.ensureManagedTools(ctx, tools.NewToolsManager(m.opts.AgentDir))
 	m.endStartupSubmitWindow()
@@ -1448,7 +1483,8 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 	if m.opts.SessionHandle == nil {
 		return fmt.Errorf("interactive: SessionHandle is required: construct via coding.NewSession")
 	}
-	m.agent = m.opts.SessionHandle.Agent()
+	m.setAgent(m.opts.SessionHandle.Agent())
+	m.installRunPromptTurnRefresh()
 	m.rebuildToolSystemPrompt()
 	m.eventCh = m.opts.SessionHandle.Events()
 	extCtx.Session = m.currentSession()
@@ -1523,6 +1559,7 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 	}
 	m.renderProjectTrustWarningIfNeeded()
 	m.tuiInst.Render()
+	m.loadRemainingHighlightLanguages()
 
 	// Show "what's new" on fresh sessions (no prior messages) when the
 	// binary version differs from the last recorded version, and send the
@@ -1666,7 +1703,7 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 
 // LoadThemePaths adds theme files and directories in upstream precedence order, the first theme of a name winning. Report receives each unreadable or invalid path.
 func LoadThemePaths(registry *tui.ThemeRegistry, paths []string, report func(error)) {
-	_, diagnostics := loadThemeResources(registry, paths)
+	_, diagnostics := loadThemeResources(registry, paths, tui.GetTerminalColorMode())
 	if report == nil {
 		return
 	}

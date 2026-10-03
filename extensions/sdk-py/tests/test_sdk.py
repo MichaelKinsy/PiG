@@ -349,6 +349,18 @@ def _width_notify(width):
     return {"type": "notify", "notify": {"method": "width_change", "args": {"width": width}}}
 
 
+def _drain_width_handlers(ext):
+    """Wait for the width deliveries queued so far: handlers run on a worker thread, in order, off the reader."""
+    while True:
+        with ext._request_threads_lock:
+            workers = [t for t in ext._request_threads if t.name == "pig-width-change"]
+        if not workers:
+            return
+        for worker in workers:
+            worker.join(timeout=5)
+            assert not worker.is_alive(), "a width handler did not finish"
+
+
 def test_on_width_change_delivers_new_width():
     ext = pig_sdk.Extension("py-width")
     ctx = pig_sdk.Context(ext, None, None)
@@ -358,7 +370,9 @@ def test_on_width_change_delivers_new_width():
     ctx.on_width_change(lambda w: (seen.append(w), width_during_call.append(ctx.width)))
 
     ext._handle_notify(_width_notify(100))
+    _drain_width_handlers(ext)
     ext._handle_notify(_width_notify(42))
+    _drain_width_handlers(ext)
 
     assert seen == [100, 42]
     # The handler must observe the updated width, or a re-push would rebuild the
@@ -374,9 +388,11 @@ def test_on_width_change_unsubscribe_is_idempotent():
     unsubscribe = ctx.on_width_change(calls.append)
 
     ext._handle_notify(_width_notify(80))
+    _drain_width_handlers(ext)
     unsubscribe()
     unsubscribe()  # must not raise or remove another subscriber
     ext._handle_notify(_width_notify(90))
+    _drain_width_handlers(ext)
 
     assert calls == [80]
 
@@ -388,6 +404,7 @@ def test_on_width_change_ignores_non_positive_width():
     calls = []
     ctx.on_width_change(calls.append)
     ext._handle_notify(_width_notify(0))
+    _drain_width_handlers(ext)
 
     assert calls == []
 
@@ -499,6 +516,34 @@ def test_set_login_sends_canonical_definition_as_call_args() -> None:
     )]
 
 
+def test_register_sprite_sends_the_definition_as_call_args() -> None:
+    ext = pig_sdk.Extension("py-sprite")
+    ctx = pig_sdk.Context(ext)
+    calls: list[tuple[str, object]] = []
+    ext._call = lambda method, args=None, request_id="": calls.append((method, args)) or {}  # type: ignore[method-assign]
+
+    ctx.register_sprite(
+        pig_sdk.SpriteDefinition(
+            id="blue-pig",
+            name="Blue PiG",
+            tagline="From an extension.",
+            mascot=["mascot"],
+            palette={"P": "#5B8DEF"},
+        )
+    )
+
+    assert calls == [(
+        "ui.registerSprite",
+        {
+            "id": "blue-pig",
+            "name": "Blue PiG",
+            "tagline": "From an extension.",
+            "mascot": ["mascot"],
+            "palette": {"P": "#5B8DEF"},
+        },
+    )]
+
+
 def test_set_login_does_not_wrap_definition_or_replace_clear_header() -> None:
     ext = pig_sdk.Extension("py-login-clear")
     ctx = pig_sdk.Context(ext)
@@ -555,6 +600,22 @@ def test_set_label_raises_host_error() -> None:
         conn.close()
         listener.close()
         t.join(timeout=2)
+
+
+def test_get_all_tools_reports_exposure_namespace_and_annotations() -> None:
+    """types.ts:2063 (ToolInfo.exposure, namespace, annotations): getAllTools returns each tool's exposure fields as the host sent them."""
+    tools = [
+        {"name": "search", "description": "d", "parameters": {"type": "object"}, "exposure": "codemode", "namespace": {"name": "mcp__docs", "description": "Docs server"}, "annotations": {"readOnlyHint": True}, "sourceInfo": {"path": "/x/search.py", "source": "cli", "scope": "temporary", "origin": "top-level"}},
+        {"name": "grep", "description": "d", "parameters": {"type": "object"}, "exposure": "direct", "sourceInfo": {"path": "<builtin:grep>", "source": "builtin", "scope": "temporary", "origin": "top-level"}},
+    ]
+    ext = pig_sdk.Extension("py-exposure")
+    ext._call = lambda method, args=None, request_id="": {"result": {"tools": tools}}  # type: ignore[method-assign]
+    got = pig_sdk.Context(extension=ext).get_all_tools()
+    assert got == tools
+    assert [t["exposure"] for t in got] == ["codemode", "direct"]
+    assert got[0]["namespace"] == {"name": "mcp__docs", "description": "Docs server"}
+    assert got[0]["annotations"] == {"readOnlyHint": True}
+    assert "namespace" not in got[1] and "annotations" not in got[1]
 
 
 def test_get_all_tools_and_commands_return_upstream_info() -> None:

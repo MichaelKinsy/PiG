@@ -6,8 +6,11 @@ package tools
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"io"
 	"os"
 	"path/filepath"
+	"slices"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -318,4 +321,66 @@ func (d *utf8StreamDecoder) decode(data []byte, stream bool) string {
 func (d *utf8StreamDecoder) reset() {
 	d.codePoint, d.bytesSeen, d.bytesNeeded = 0, 0, 0
 	d.lower, d.upper = 0x80, 0xBF
+}
+
+// FullOutput mirrors upstream FullOutput (output-accumulator.ts): the complete
+// output for callers that can take more than the display snapshot.
+type FullOutput struct {
+	Content string
+	// Truncated reports whether Content omits part of the output.
+	Truncated bool
+}
+
+// ReadFullOutput mirrors upstream readFullOutput: the complete output, for
+// callers that can take more than the display snapshot. Call it after Finish
+// and CloseTempFile. Output longer than maxBytes raw bytes keeps its first and
+// last maxBytes/2 bytes around an omission marker. Both halves are cut at
+// character boundaries: the head drops an incomplete trailing sequence and the
+// tail skips leading continuation bytes. A full-output file that cannot be
+// opened or read returns that error, as upstream's promise rejects.
+func (a *OutputAccumulator) ReadFullOutput(maxBytes int) (FullOutput, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.tempFilePath == "" {
+		decoder := utf8StreamDecoder{stripBOM: true}
+		return FullOutput{Content: decoder.decode(slices.Concat(a.rawChunks...), false)}, nil
+	}
+	file, err := os.Open(a.tempFilePath)
+	if err != nil {
+		return FullOutput{}, err
+	}
+	defer func() { _ = file.Close() }()
+	info, err := file.Stat()
+	if err != nil {
+		return FullOutput{}, err
+	}
+	size := info.Size()
+	if size <= int64(maxBytes) {
+		data, err := io.ReadAll(file)
+		if err != nil {
+			return FullOutput{}, err
+		}
+		decoder := utf8StreamDecoder{stripBOM: true}
+		return FullOutput{Content: decoder.decode(data, false)}, nil
+	}
+	headBytes := maxBytes / 2
+	tailBytes := maxBytes - headBytes
+	head := make([]byte, headBytes)
+	tail := make([]byte, tailBytes)
+	if _, err := file.ReadAt(head, 0); err != nil {
+		return FullOutput{}, err
+	}
+	if _, err := file.ReadAt(tail, size-int64(tailBytes)); err != nil {
+		return FullOutput{}, err
+	}
+	headDecoder := utf8StreamDecoder{stripBOM: true}
+	headText := headDecoder.decode(head, true)
+	tailStart := 0
+	for tailStart < len(tail) && tail[tailStart]&0xc0 == 0x80 {
+		tailStart++
+	}
+	tailDecoder := utf8StreamDecoder{stripBOM: true}
+	tailText := tailDecoder.decode(tail[tailStart:], false)
+	omitted := size - int64(headBytes) - int64(tailBytes)
+	return FullOutput{Content: headText + "\n\n[... " + strconv.FormatInt(omitted, 10) + " bytes omitted ...]\n\n" + tailText, Truncated: true}, nil
 }

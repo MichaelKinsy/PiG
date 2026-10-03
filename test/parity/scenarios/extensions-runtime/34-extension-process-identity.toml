@@ -10,14 +10,14 @@
 # re-launch the harness. The results are the description of
 # /process-identity.
 #
-# Upstream evidence (Pi 0.87.1, probed 2026-09-26):
+# Upstream evidence (Pi 0.99.2, re-probed 2026-10-01; the shape is unchanged since 0.87.1):
 #   PI_OFFLINE=1 PI_CODING_AGENT_DIR=<empty> pi --no-extensions \
 #     -e testdata/process-identity/identity.ts --mode rpc --no-session
 #   stdin: {"id":"cmds","type":"get_commands"}
 # describes /process-identity as {"title":"pi","piCodingAgent":"true",
 # "aiAgent":"pi","warned":false,"entryIsScript":true,"harness":{"name":
 # "@earendil-works/pi-coding-agent","binIsEntry":true},"relaunch":{"status":0,
-# "stdout":"0.87.1"}}. PiG's extension process was titled "node", its
+# "stdout":"0.99.2"}}. PiG's extension process was titled "node", its
 # argv[1] was the runtime's cell.mjs, and the re-launch ran that script.
 #
 # D26: Pi exports AI_AGENT=pi so tools can name the launching agent; PiG
@@ -53,9 +53,10 @@ exit_code = 0
 runs = 3
 both_not_contain = ["Failed to load extension", "panic:"]
 # The re-launched harness prints its own version: Pi's release, or PiG's
-# composite version ending in the Pi release it ports (D63).
+# composite version ending in the Pi release it ports (D63). The pin comes from
+# the {{UPSTREAM_VERSION}} token, so a version leap needs no edit here.
 both_match_regex = [
-  '"name":"process-identity","description":"\{\\"title\\":\\"pi\\",\\"piCodingAgent\\":\\"true\\",\\"aiAgent\\":\\"(pig|pi)\\",\\"warned\\":false,\\"entryIsScript\\":true,\\"harness\\":\{\\"name\\":\\"@earendil-works/pi-coding-agent\\",\\"binIsEntry\\":true\},\\"relaunch\\":\{\\"status\\":0,\\"stdout\\":\\"([0-9.]+\+)?0\.87\.1\\"\}\}"',
+  '"name":"process-identity","description":"\{\\"title\\":\\"pi\\",\\"piCodingAgent\\":\\"true\\",\\"aiAgent\\":\\"(pig|pi)\\",\\"warned\\":false,\\"entryIsScript\\":true,\\"harness\\":\{\\"name\\":\\"@earendil-works/pi-coding-agent\\",\\"binIsEntry\\":true\},\\"relaunch\\":\{\\"status\\":0,\\"stdout\\":\\"([0-9.]+\+)?{{UPSTREAM_VERSION}}\\"\}\}"',
 ]
 
 [diverge]

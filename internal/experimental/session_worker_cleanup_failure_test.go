@@ -14,57 +14,56 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/agent/harness"
-	"github.com/MichaelKinsy/PiG/agent/harness/agentharness"
-	envpkg "github.com/MichaelKinsy/PiG/agent/harness/env"
-	hruntime "github.com/MichaelKinsy/PiG/agent/harness/runtime"
-	"github.com/MichaelKinsy/PiG/agent/harness/session"
-	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/experimental/durableadapter"
+	"github.com/MichaelKinsy/PiG/internal/experimental/durabletest"
 	"github.com/MichaelKinsy/PiG/internal/experimental/services"
 )
 
 type failingCloseWorkerHarness struct {
-	*codingWorkerHarness
-	laneError error
+	*durableadapter.Session
+	startupError error
 }
 
 var errWorkerCloseFailure = errors.New("harness close failed")
 
-func (worker *failingCloseWorkerHarness) Lane(ctx context.Context, name string) (services.SessionWorkerServiceLane, error) {
-	if worker.laneError != nil {
-		return nil, worker.laneError
+// TaskGraph is the first step after the Harness opened; session-worker.ts:535 fails startup there.
+func (worker *failingCloseWorkerHarness) TaskGraph(ctx context.Context) (services.TaskGraphActivity, error) {
+	if worker.startupError != nil {
+		return nil, worker.startupError
 	}
-	return worker.codingWorkerHarness.Lane(ctx, name)
+	return worker.Session.TaskGraph(ctx)
 }
 
 func (worker *failingCloseWorkerHarness) Close(ctx context.Context) error {
-	return errors.Join(worker.codingWorkerHarness.Close(ctx), errWorkerCloseFailure)
+	return errors.Join(worker.Session.Close(ctx), errWorkerCloseFailure)
 }
 
-// runWorkerWithFailingClose runs the real worker entry against a fake coordinator control socket and returns the entry's result, every payload the worker sent, and what it wrote to stderr.
-func runWorkerWithFailingClose(t *testing.T, laneError error, stopAfterReady bool) ([]map[string]any, string, error) {
+// runWorkerWithFailingClose runs the worker with a Harness whose close fails, and whose task graph fails when startupError is set.
+func runWorkerWithFailingClose(t *testing.T, startupError error, stopAfterReady bool) ([]map[string]any, string, error) {
+	t.Helper()
+	return runWorkerAgainstFakeCoordinator(t, func(_ context.Context, databasePath string, _ SessionWorkerOptions) (SessionWorkerRuntime, error) {
+		durable, err := durabletest.OpenFile(databasePath)
+		if err != nil {
+			return SessionWorkerRuntime{}, err
+		}
+		return SessionWorkerRuntime{Harness: &failingCloseWorkerHarness{Session: durable.Harness, startupError: startupError}, Conversation: durable.Conversation}, nil
+	}, stopAfterReady, nil)
+}
+
+// runWorkerAgainstFakeCoordinator runs the real worker entry (returned, when not nil, receives its result the moment it returns, before the helper waits for late payloads) over a new Session against a fake coordinator control socket and returns the entry's result, every payload the worker sent, and what it wrote to stderr.
+func runWorkerAgainstFakeCoordinator(t *testing.T, createHarness CreateSessionWorkerHarness, stopAfterReady bool, returned chan<- error) ([]map[string]any, string, error) {
 	t.Helper()
 	root := t.TempDir()
-	executionEnv := envpkg.NewNodeExecutionEnv(envpkg.NodeExecutionEnvOptions{Cwd: root})
-	t.Cleanup(func() { executionEnv.Cleanup(context.Background()) })
 	sessionDir := filepath.Join(root, "sessions")
-	repo := session.NewJsonlSessionRepo(session.JsonlSessionRepoOptions{FileSystem: executionEnv, SessionsRoot: sessionDir})
-	created, err := repo.Create(t.Context(), session.SessionCreateOptions{ID: "cleanup-failure", Cwd: root})
+	metadata, err := CreateSession(sessionDir, CreateSessionOptions{ID: new("cleanup-failure"), Cwd: root})
 	if err != nil {
 		t.Fatal(err)
 	}
-	metadata := created.Metadata()
 	lockPath, err := filepath.EvalSymlinks(metadata.Path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	lockPath += ".lock"
-	if err := created.Close(context.Background()); err != nil {
-		t.Fatal(err)
-	}
-	if err := repo.Close(context.Background()); err != nil {
-		t.Fatal(err)
-	}
 	// isolateExperimentalTest points TMPDIR/TEMP at a short directory, so this stays under sun_path on Unix and needs no /tmp on Windows.
 	socketDirectory, err := os.MkdirTemp("", "pw")
 	if err != nil {
@@ -132,21 +131,18 @@ func runWorkerWithFailingClose(t *testing.T, laneError error, stopAfterReady boo
 		stderrText <- string(text)
 	}()
 	previousStderr := os.Stderr
+	// The worker holds a real Session ownership lock (2 s stale threshold) while os.Stderr is the pipe above. Its default compromise policy is os.Exit(1), which would end the whole test binary with the inspected error lost in the pipe: only an unrelated line and FAIL with no --- FAIL. Report a compromise as this test's failure instead, on the real stderr.
+	previousTerminate := terminateOnLockCompromise
+	terminateOnLockCompromise = func(err error) {
+		t.Errorf("%s: Session ownership lock compromised while the in-process worker held it: %v", t.Name(), err)
+	}
 	os.Stderr = stderrWriter
-	result := RunSessionWorkerWithHarness(t.Context(), []string{string(options)}, func(ctx context.Context, stored session.Session, _ SessionWorkerOptions, _ *envpkg.NodeExecutionEnv) (SessionWorkerRuntime, error) {
-		faux := ai.NewFauxProvider(ai.FauxConfig{})
-		t.Cleanup(func() { _ = faux.Close() })
-		models := ai.CreateModels()
-		models.SetProvider(faux.Provider())
-		harnessInstance, err := hruntime.CreateAgentHarness(ctx, hruntime.AgentHarnessOptions{
-			Session: stored, Models: models, Model: faux.GetModel(),
-			Tools: []harness.AgentHarnessTool{}, Resources: agentharness.Resources{},
-		})
-		if err != nil {
-			return SessionWorkerRuntime{}, err
-		}
-		return SessionWorkerRuntime{Harness: &failingCloseWorkerHarness{codingWorkerHarness: &codingWorkerHarness{harness: harnessInstance.Harness}, laneError: laneError}}, nil
-	})
+	result := RunSessionWorkerWithHarness(t.Context(), []string{string(options)}, createHarness)
+	// RunSessionWorkerWithHarness released the lock and joined its heartbeat before returning, so no compromise callback can run after the restore.
+	terminateOnLockCompromise = previousTerminate
+	if returned != nil {
+		returned <- result
+	}
 	os.Stderr = previousStderr
 	if _, err := os.Lstat(lockPath); !errors.Is(err, os.ErrNotExist) {
 		t.Errorf("session ownership lock after the worker returned: %v, want removed", err)
@@ -189,9 +185,9 @@ func TestSessionWorkerCleanupFailureAfterStartupSendsNoWorkerFailed(t *testing.T
 // session-worker.ts:562-572,790-800. A startup failure whose cleanup also fails reports AggregateError("Session worker startup and cleanup failed") through worker_failed.
 func TestSessionWorkerStartupCleanupFailureReportsAggregateMessage(t *testing.T) {
 	isolateExperimentalTest(t)
-	laneError := errors.New("lane unavailable")
-	sent, stderr, result := runWorkerWithFailingClose(t, laneError, false)
-	if !errors.Is(result, laneError) || !errors.Is(result, errWorkerCloseFailure) {
+	startupError := errors.New("task graph unavailable")
+	sent, stderr, result := runWorkerWithFailingClose(t, startupError, false)
+	if !errors.Is(result, startupError) || !errors.Is(result, errWorkerCloseFailure) {
 		t.Fatalf("result = %v, want both startup and cleanup failures", result)
 	}
 	// session-worker.ts:883 exits 1 without printing a failure the worker reported through worker_failed.

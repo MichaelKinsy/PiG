@@ -30,6 +30,7 @@ type CommandOptions struct {
 // RegisterCommand registers a slash command with upstream's options, as
 // pi.registerCommand(name, options) does.
 func (e *Extension) RegisterCommand(name string, options CommandOptions) {
+	e.validateCommand(name, options.Handler != nil)
 	e.commands = append(e.commands, cmdDef{
 		Name:                name,
 		Description:         options.Description,
@@ -57,4 +58,15 @@ func (e *Extension) commandArgumentCompletions(name string, rawPrefix json.RawMe
 		return nil, err
 	}
 	return items, nil
+}
+
+// validateCommand rejects a command without a name or a handler before it registers, so the extension fails to load instead of crashing the host when `/` lists its commands.
+// upstream: packages/coding-agent/src/core/extensions/loader.ts:302-311
+func (e *Extension) validateCommand(name string, hasHandler bool) {
+	if name == "" {
+		panic(fmt.Errorf(`Command registered by extension "%s" must have a non-empty string name. Use pi.registerCommand("name", { description, handler }).`, e.name))
+	}
+	if !hasHandler {
+		panic(fmt.Errorf(`Command "/%s" registered by extension "%s" must define handler().`, name, e.name))
+	}
 }

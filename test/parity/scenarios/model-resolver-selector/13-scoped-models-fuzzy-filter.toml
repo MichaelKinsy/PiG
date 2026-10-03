@@ -7,6 +7,10 @@
 # and publishes `Model catalogs refreshed.` before the footer. Pig previously
 # returned `No matching models` because it implemented token substrings, then
 # lacked the 0.84 refresh transaction and status publication.
+#
+# Pi 1.0.0 draws fullscreen by default, so the waits read the visible screen. The wait_contains form counts
+# new occurrences, and the lines this step waits for (model-two, Model Name) are already on screen, so
+# that count never rises. The filtered frame is the one that shows "> mtw" without model-one.
 
 name = "13-scoped-models-fuzzy-filter"
 description = "Scoped-model search matches ordered fuzzy subsequences identically"
@@ -30,12 +34,13 @@ capture_end = "all enabled"
 
 [[tmux.steps]]
 keys = ["/scoped-models", "Enter"]
-wait_contains = ["Model Configuration"]
+wait_visible_contains = ["Model Configuration"]
 wait_timeout_seconds = 15
 
 [[tmux.steps]]
 keys = ["mtw"]
-wait_contains = ["> mtw", "model-two", "Model Name: Model Two"]
+wait_visible_contains = ["> mtw", "model-two", "Model Name: Model Two"]
+wait_not_contains = ["model-one"]
 wait_timeout_seconds = 15
 
 [env]

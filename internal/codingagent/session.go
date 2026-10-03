@@ -9,13 +9,14 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
-	harnesssession "github.com/MichaelKinsy/PiG/agent/harness/session"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 // CurrentSessionVersion mirrors upstream `CURRENT_SESSION_VERSION = 3`.
@@ -115,6 +116,18 @@ type CustomMessageEntry struct {
 	Content    any    `json:"content"` // string | []ContentBlock
 	Display    bool   `json:"display"`
 	Details    any    `json:"details,omitempty"`
+}
+
+// UnmarshalJSON keeps the member order of `data`, the object an extension wrote (session-manager.ts appendCustomEntry).
+func (e *CustomEntry) UnmarshalJSON(data []byte) error {
+	type plain CustomEntry
+	return orderedjson.UnmarshalFields(data, (*plain)(e), "data")
+}
+
+// UnmarshalJSON keeps the member order of `details`, the object an extension wrote (session-manager.ts appendCustomMessageEntry).
+func (e *CustomMessageEntry) UnmarshalJSON(data []byte) error {
+	type plain CustomMessageEntry
+	return orderedjson.UnmarshalFields(data, (*plain)(e), "details")
 }
 
 // LabelEntry is upstream's "user-renamed this branch" marker. Carries
@@ -345,6 +358,8 @@ func (s *Session) UndecodableCount() int {
 // become orphaned subtrees in the same file).
 type Session struct {
 	mu sync.RWMutex
+	// projectionCalls counts BuildSessionProjection calls.
+	projectionCalls atomic.Int64
 	// leafAppendMu makes reading the leaf and appending its child one step,
 	// so a background appender (cache warming) cannot fork the active chain.
 	leafAppendMu sync.Mutex
@@ -359,14 +374,14 @@ type Session struct {
 	leafID     *string
 	// flushed reports whether the session file on disk holds the
 	// header + buffered entries. Mirrors upstream SessionManager.flushed:
-	// a fresh session is not written to disk until the first assistant
-	// message arrives, so abandoned sessions (opened, never answered)
-	// leave no empty .jsonl file. Loaded/forked sessions start flushed.
+	// a fresh session is not written to disk until it holds a user or
+	// assistant message, so opening and closing without chatting leaves no
+	// file. Loaded sessions start flushed.
 	flushed bool
-	// hasAssistant tracks whether any assistant message has been
-	// appended; the gate that triggers the first flush (upstream
-	// _persist hasAssistant check).
-	hasAssistant bool
+	// hasConversation reports whether a user or assistant message entry has
+	// been appended or loaded: the condition that creates the file
+	// (upstream SessionManager._hasConversation).
+	hasConversation bool
 
 	// msgCache memoizes AsMessage by entry id. Entries are immutable and
 	// append-only, so a parse never goes stale and needs no invalidation.
@@ -445,6 +460,14 @@ func (s *Session) Entries() []SessionEntry {
 	out := make([]SessionEntry, len(s.entries))
 	copy(out, s.entries)
 	return out
+}
+
+// EntryCount returns the number of distinct session entry IDs, excluding the header, without copying entries like Entries.
+// A loaded file that repeats an ID counts it once. Mirrors upstream getEntryCount, which returns byId.size (session-manager.ts:1511-1513).
+func (s *Session) EntryCount() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return len(s.byID)
 }
 
 // LatestCompactionTimestampMs returns the epoch-millisecond timestamp of the
@@ -527,25 +550,25 @@ func (s *Session) AppendEntry(entry any) error {
 	s.byID[base.ID] = se
 	id := base.ID
 	s.leafID = &id
-	// Detect the first assistant message: the gate that flushes the
-	// buffered session to disk (upstream _persist hasAssistant check).
-	if base.Type == "message" && !s.hasAssistant {
+	// A user or assistant message opens the gate that creates the file
+	// (upstream _hasConversation, session-manager.ts:1166).
+	if base.Type == "message" && !s.hasConversation {
 		var probe struct {
 			Message struct {
 				Role string `json:"role"`
 			} `json:"message"`
 		}
-		if json.Unmarshal(raw, &probe) == nil && probe.Message.Role == "assistant" {
-			s.hasAssistant = true
+		if json.Unmarshal(raw, &probe) == nil && (probe.Message.Role == "user" || probe.Message.Role == "assistant") {
+			s.hasConversation = true
 		}
 	}
 	path := s.path
-	hasAssistant := s.hasAssistant
+	hasConversation := s.hasConversation
 	flushed := s.flushed
-	// When the assistant gate just opened on an unflushed session,
+	// When the conversation gate just opened on an unflushed session,
 	// snapshot header + all buffered entries for a single fresh write.
 	var fullFlush [][]byte
-	if path != "" && hasAssistant && !flushed {
+	if path != "" && hasConversation && !flushed {
 		hdr, _ := marshalSessionLine(s.header)
 		fullFlush = make([][]byte, 0, len(s.entries)+1)
 		fullFlush = append(fullFlush, hdr)
@@ -559,18 +582,15 @@ func (s *Session) AppendEntry(entry any) error {
 		return nil
 	}
 
-	// Mirror upstream SessionManager._persist: a fresh session is not
-	// written until an assistant message exists, so abandoned sessions
-	// leave no empty file. Once an assistant arrives, flush header +
+	// Mirror upstream SessionManager._persist (session-manager.ts:1172): an
+	// unflushed session is not written until it holds a user or assistant
+	// message, so setup entries alone leave no file. Then flush header +
 	// buffered entries; thereafter append each entry.
-	if !hasAssistant {
-		if !flushed {
-			return nil // buffered only: nothing on disk yet
-		}
-		return appendSessionLine(path, raw) // resumed session, pre-assistant
+	if !flushed && !hasConversation {
+		return nil
 	}
 	if !flushed {
-		if err := writeSessionLines(path, fullFlush); err != nil {
+		if err := createSessionFile(path, fullFlush); err != nil {
 			return err
 		}
 		s.mu.Lock()
@@ -591,7 +611,7 @@ func (e sessionFileError) Error() string { return e.message }
 func (e sessionFileError) Unwrap() error { return e.cause }
 
 func sessionPersistenceError(err error, operation, path string) error {
-	return sessionFileError{cause: err, message: tools.NodeFSError(nodeErrno(err), operation, path)}
+	return sessionFileError{cause: err, message: tools.NodeFSError(err, operation, path)}
 }
 
 // appendSessionLine appends a single JSONL record, creating the file if
@@ -608,11 +628,22 @@ func appendSessionLine(path string, raw []byte) error {
 	return nil
 }
 
-// writeSessionLines writes header + all buffered entries as a fresh file.
-// Mirrors upstream's openSync(file, "wx") flush on the first assistant
-// message.
+// writeSessionLines writes header + all entries to the file, replacing its
+// content. Mirrors upstream's openSync(file, "w") in _rewriteFile.
 func writeSessionLines(path string, lines [][]byte) error {
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
+	return writeSessionFile(path, lines, os.O_TRUNC)
+}
+
+// createSessionFile writes header + all buffered entries as a new file and
+// fails, leaving an existing file untouched, when the path exists. Mirrors
+// upstream's openSync(file, "wx") flush on the first user or assistant
+// message (session-manager.ts:1175).
+func createSessionFile(path string, lines [][]byte) error {
+	return writeSessionFile(path, lines, os.O_EXCL)
+}
+
+func writeSessionFile(path string, lines [][]byte, mode int) error {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|mode, 0o644)
 	if err != nil {
 		return sessionPersistenceError(err, "open", path)
 	}
@@ -1066,6 +1097,7 @@ func (s *Session) BuildContext(leafID *string) []agent.AgentMessage {
 // BuildSessionProjection returns the provenance-preserving projection of the
 // current branch (session-manager.ts SessionManager.buildSessionProjection).
 func (s *Session) BuildSessionProjection() SessionProjection {
+	s.projectionCalls.Add(1)
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if s.leafID == nil {
@@ -1213,7 +1245,7 @@ func generateUniqueEntryID(has func(string) bool) (string, error) {
 
 // generateSessionID returns a time-ordered UUIDv7 using Pi's shared generator.
 func generateSessionID() (string, error) {
-	return harnesssession.UUIDv7(nil)
+	return ai.UUIDv7(nil)
 }
 
 // GenerateSessionID returns a time-ordered UUIDv7 for a new session.

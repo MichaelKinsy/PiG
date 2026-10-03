@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/pigsdklock"
+	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
 // PythonExtension describes one factory-style Python SDK extension that can be
@@ -127,7 +129,7 @@ func pythonPackedCellHash(cacheRoot, key string, extensions []PythonExtension, s
 	_, _ = h.Write([]byte(key))
 	_, _ = h.Write([]byte("\x00"))
 	hashBuildInput(h, "sdk", sdkHash)
-	hashBuildInput(h, "runtime", commandVersion(cacheRoot, pythonExecutableName(runtime.GOOS), "--version"))
+	hashBuildInput(h, "runtime", commandVersion(cacheRoot, toolchain.PythonExecutable(runtime.GOOS, exec.LookPath), "--version"))
 	hashBuildInput(h, "template", renderPythonRunner(extensions, sdkRoot))
 	for _, ext := range extensions {
 		for _, part := range []string{ext.Name, ext.Package, ext.Factory, ext.Hash} {

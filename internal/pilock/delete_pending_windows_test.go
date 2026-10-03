@@ -1,6 +1,7 @@
 package pilock
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
 	"os"
@@ -111,6 +112,9 @@ func TestAcquireSurfacesLockBeingRemovedAtMkdir(t *testing.T) {
 			if errors.Is(err, ErrLocked) || !errors.Is(err, windows.ERROR_ACCESS_DENIED) {
 				t.Fatalf("err = %v, want ERROR_ACCESS_DENIED and not ErrLocked", err)
 			}
+			if want := "EPERM: operation not permitted, mkdir '" + path + ".lock'"; err.Error() != want {
+				t.Fatalf("message = %q, want proper-lockfile's %q", err.Error(), want)
+			}
 			if got := calls.Load(); got != 1 {
 				t.Fatalf("mkdir calls = %d, want 1", got)
 			}
@@ -175,6 +179,10 @@ func TestAcquireSurfacesLockBeingRemovedAtStatThatIsStaleOrALink(t *testing.T) {
 				if errors.Is(err, ErrLocked) || !errors.Is(err, windows.ERROR_ACCESS_DENIED) {
 					t.Fatalf("err = %v, want ERROR_ACCESS_DENIED and not ErrLocked", err)
 				}
+				call := map[string]string{"stale": "rmdir", "link": "stat"}[kind]
+				if want := "EPERM: operation not permitted, " + call + " '" + path + ".lock'"; err.Error() != want {
+					t.Fatalf("message = %q, want proper-lockfile's %q", err.Error(), want)
+				}
 				if got := calls.Load(); got != 1 {
 					t.Fatalf("mkdir calls = %d, want 1", got)
 				}
@@ -205,21 +213,22 @@ const hooked = { ...fs,
   mkdir(p, callback) { fs.mkdir(p, (err) => { pause(err); callback(err); }); },
   mkdirSync(p) { try { return fs.mkdirSync(p); } catch (err) { pause(err); throw err; } },
 };
-const report = (err) => console.log(err ? 'code=' + err.code : 'acquired');
+const report = (err) => console.log(err ? 'code=' + err.code + (err.code === 'ELOCKED' ? '' : ' message=' + err.message) : 'acquired');
 if (api === 'sync') {
   try { lockfile.lockSync(file, { realpath: false, fs: hooked }); report(); } catch (err) { report(err); }
 } else {
   lockfile.lock(file, { realpath: false, fs: hooked }).then(() => report(), report);
 }
 `
+	// want is the report; %s stands for the lock path in Node's fs error message.
 	for _, test := range []struct {
 		step, kind string
 		want       string
 	}{
-		{"mkdir", "fresh", "code=EPERM"},
+		{"mkdir", "fresh", "code=EPERM message=EPERM: operation not permitted, mkdir '%s'"},
 		{"stat", "fresh", "code=ELOCKED"},
-		{"stat", "stale", "code=EPERM"},
-		{"stat", "link", "code=EPERM"},
+		{"stat", "stale", "code=EPERM message=EPERM: operation not permitted, rmdir '%s'"},
+		{"stat", "link", "code=EPERM message=EPERM: operation not permitted, stat '%s'"},
 	} {
 		for _, api := range []string{"sync", "async"} {
 			t.Run(test.step+"/"+test.kind+"/"+api, func(t *testing.T) {
@@ -260,10 +269,306 @@ if (api === 'sync') {
 				if err := cmd.Wait(); err != nil {
 					t.Fatalf("node: %v\n%s", err, out.String())
 				}
-				if got := strings.TrimSpace(out.String()); got != test.want {
-					t.Fatalf("proper-lockfile %s with the removal of a %s lock path in flight at %s: %q, want %q", api, test.kind, test.step, got, test.want)
+				want := strings.ReplaceAll(test.want, "%s", path+".lock")
+				if got := strings.TrimSpace(out.String()); got != want {
+					t.Fatalf("proper-lockfile %s with the removal of a %s lock path in flight at %s: %q, want %q", api, test.kind, test.step, got, want)
 				}
 			})
 		}
 	}
+}
+
+// A link whose target directory is being removed: fs.stat follows the link, the target is delete-pending, and libuv's fs__stat_directory reads the link's own entry, a reparse point, so it keeps ERROR_ACCESS_DENIED (src/win/fs.c fs__stat_impl_from_path; the do_lstat=0 branch of fs__stat_directory). proper-lockfile passes the stat error through (lib/lockfile.js:56-65) as EPERM, and PiG surfaces ERROR_ACCESS_DENIED.
+func TestAcquireSurfacesLinkToDirectoryBeingRemovedUpstream(t *testing.T) {
+	for _, api := range []string{"sync", "async"} {
+		t.Run(api, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "auth.json")
+			target := linkLockPath(t, path, "fresh-directory")
+			markBeingRemoved(t, target)
+			message := "EPERM: operation not permitted, stat '" + path + ".lock'"
+			if got := runProperLockfile(t, path, api); got != "code=EPERM message="+message {
+				t.Fatalf("proper-lockfile %s: %q, want EPERM with %q", api, got, message)
+			}
+			run := AcquireSync
+			if api == "async" {
+				run = func(path string) (*Lock, error) { return Acquire(t.Context(), path) }
+			}
+			lock, err := run(path)
+			if err == nil {
+				_ = lock.Release()
+				t.Fatal("acquired through a link whose target is being removed")
+			}
+			if errors.Is(err, ErrLocked) || !errors.Is(err, windows.ERROR_ACCESS_DENIED) {
+				t.Fatalf("err = %v, want ERROR_ACCESS_DENIED and not ErrLocked", err)
+			}
+			if err.Error() != message {
+				t.Fatalf("message = %q, want proper-lockfile's %q", err.Error(), message)
+			}
+		})
+	}
+}
+
+// runProperLockfileAfterMkdir runs proper-lockfile's lockSync or lock on file with an fs whose mkdir, once it has created the lock directory, calls whileMade in this process before proper-lockfile continues. It returns "acquired" or the rejection's "code=<code> message=<message>".
+func runProperLockfileAfterMkdir(t *testing.T, file, api string, whileMade func(lock string)) string {
+	t.Helper()
+	const script = `
+const fs = require('fs');
+const path = require('path');
+const [module, file, api, markers] = process.argv.slice(1);
+const lockfile = require(module);
+const sleeper = new Int32Array(new SharedArrayBuffer(4));
+const handshake = (lock) => {
+  fs.writeFileSync(path.join(markers, 'made.tmp'), lock); fs.renameSync(path.join(markers, 'made.tmp'), path.join(markers, 'made'));
+  while (!fs.existsSync(path.join(markers, 'go'))) Atomics.wait(sleeper, 0, 0, 1);
+};
+const custom = {
+  ...fs,
+  mkdirSync: (lock, ...rest) => { const made = fs.mkdirSync(lock, ...rest); handshake(lock); return made; },
+  mkdir: (lock, ...rest) => {
+    const callback = rest.pop();
+    fs.mkdir(lock, ...rest, (err) => { if (!err) handshake(lock); callback(err); });
+  },
+};
+const report = (err) => console.log(err ? 'code=' + err.code + ' message=' + err.message : 'acquired');
+if (api === 'sync') {
+  try { lockfile.lockSync(file, { realpath: false, fs: custom })(); report(); } catch (err) { report(err); }
+} else {
+  lockfile.lock(file, { realpath: false, fs: custom }).then((release) => release().then(() => report()), report);
+}
+`
+	markers := filepath.Join(t.TempDir(), "markers")
+	if err := os.Mkdir(markers, 0o777); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.CommandContext(t.Context(), "node", "-e", script, properLockfileModule(t), file, api, markers)
+	var out strings.Builder
+	cmd.Stdout, cmd.Stderr = &out, &out
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(30 * time.Second)
+	for {
+		if lock, err := os.ReadFile(filepath.Join(markers, "made")); err == nil {
+			whileMade(string(lock))
+			break
+		}
+		if time.Now().After(deadline) {
+			_ = cmd.Process.Kill()
+			t.Fatalf("proper-lockfile did not create its lock: %s", out.String())
+		}
+		time.Sleep(time.Millisecond)
+	}
+	if err := os.WriteFile(filepath.Join(markers, "go"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.Wait(); err != nil {
+		t.Fatalf("node: %v\n%s", err, out.String())
+	}
+	return strings.TrimSpace(out.String())
+}
+
+// When the mtime probe fails right after mkdir, proper-lockfile removes the new directory with rmdir, ignores that rmdir's result, and rejects with the probe's error (lib/lockfile.js:29-43, lib/mtime-precision.js). A directory that another process starts removing then makes both the utime and the rmdir fail with EPERM. Pi reports only the utime error; so does PiG. Each row runs Pi's pinned proper-lockfile on the same state first.
+func TestAcquireIgnoresRmdirAfterFailedProbeUpstream(t *testing.T) {
+	for i, api := range []string{"sync", "async"} {
+		t.Run(api, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "auth.json")
+			var finish func()
+			pi := runProperLockfileAfterMkdir(t, path, api, func(lock string) { finish = markBeingRemoved(t, lock) })
+			message, ok := strings.CutPrefix(pi, "code=EPERM message=")
+			if !ok {
+				t.Fatalf("proper-lockfile %s with its new lock being removed: %q, want the EPERM utime error", api, pi)
+			}
+			finish()
+			if _, err := os.Lstat(path + ".lock"); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("lock directory after Pi's run: %v", err)
+			}
+
+			// Pi ran in a fresh process, whose fs has not probed the mtime precision yet.
+			freshMtimeProbe(t)
+			stubMkdir(t, func(_ int, real func() error) error {
+				if err := real(); err != nil {
+					return err
+				}
+				markBeingRemoved(t, path+".lock")
+				return nil
+			})
+			lock, err := linkAcquirers[i].run(path)
+			if lock != nil {
+				_ = lock.Release()
+				t.Fatal("acquired a lock whose directory is being removed")
+			}
+			if !errors.Is(err, windows.ERROR_ACCESS_DENIED) || errors.Is(err, ErrLocked) {
+				t.Fatalf("err = %v, want the utime's ERROR_ACCESS_DENIED", err)
+			}
+			if err.Error() != message {
+				t.Fatalf("message = %q, want proper-lockfile's %q", err.Error(), message)
+			}
+		})
+	}
+}
+
+// When the release of a lock taken after the abort fails, Pi's acquireLockAsync throws the release's error in place of the abort (auth-storage.ts:149-152: await release() rejects before signal.throwIfAborted()). A lock directory that another process starts removing makes that rmdir fail with EPERM. PiG's Acquire and AcquireWithOptions return the release error alone, not joined with the cancellation.
+func TestAcquireAbortedAfterAcquisitionReturnsAFailedReleaseUpstream(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "auth.json")
+	if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var finish func()
+	pi := runPiAcquireThenAbort(t, path, func(lock string) { finish = markBeingRemoved(t, lock) })
+	message, ok := strings.CutPrefix(pi, "Error: ")
+	if !ok || !strings.HasPrefix(message, "EPERM: operation not permitted, rmdir ") {
+		t.Fatalf("Pi withLockAsync aborted after acquisition with a failing release: %q, want the EPERM rmdir error", pi)
+	}
+	finish()
+	for _, acquire := range []struct {
+		name string
+		run  func(context.Context, string) (*Lock, error)
+	}{
+		{"Acquire", Acquire},
+		{"AcquireWithOptions", func(ctx context.Context, path string) (*Lock, error) {
+			return AcquireWithOptions(ctx, path, AcquireOptions{Stale: asyncStale, Update: asyncStale / 2, Retry: time.Millisecond})
+		}},
+	} {
+		t.Run(acquire.name, func(t *testing.T) {
+			var finish func()
+			ctx := &abortOnSecondCheck{Context: context.Background(), onAbort: func() { finish = markBeingRemoved(t, path+".lock") }}
+			lock, err := acquire.run(ctx, path)
+			if lock != nil {
+				_ = lock.Release()
+				t.Fatal("returned a lock to a cancelled caller")
+			}
+			if !errors.Is(err, windows.ERROR_ACCESS_DENIED) || errors.Is(err, context.Canceled) {
+				t.Fatalf("err = %v, want the release's ERROR_ACCESS_DENIED alone", err)
+			}
+			if err.Error() != message {
+				t.Fatalf("message = %q, want Pi's %q", err.Error(), message)
+			}
+			finish()
+		})
+	}
+}
+
+// runProperLockfileTwiceAfterMkdir runs two proper-lockfile lock calls on file in one Node process, sharing one fs as every lock call shares graceful-fs. The second call's mkdir hands the new lock directory to whileMade before proper-lockfile continues. It returns what each call did: "acquired" or "released: <code>" when its release rejects, or "code=<code> message=<message>".
+func runProperLockfileTwiceAfterMkdir(t *testing.T, file string, whileMade func(lock string)) string {
+	t.Helper()
+	const script = `
+const fs = require('fs');
+const path = require('path');
+const [module, file, markers] = process.argv.slice(1);
+const lockfile = require(module);
+const sleeper = new Int32Array(new SharedArrayBuffer(4));
+let second = false;
+const custom = {
+  ...fs,
+  mkdir: (lock, ...rest) => {
+    const callback = rest.pop();
+    fs.mkdir(lock, ...rest, (err) => {
+      if (!err && second) {
+        fs.writeFileSync(path.join(markers, 'made.tmp'), lock); fs.renameSync(path.join(markers, 'made.tmp'), path.join(markers, 'made'));
+        while (!fs.existsSync(path.join(markers, 'go'))) Atomics.wait(sleeper, 0, 0, 1);
+      }
+      callback(err);
+    });
+  },
+};
+const attempt = () => lockfile.lock(file, { realpath: false, fs: custom }).then(
+  (release) => release().then(() => 'acquired', (err) => 'acquired, release ' + err.code),
+  (err) => 'code=' + err.code + ' message=' + err.message);
+(async () => {
+  const first = await attempt();
+  second = true;
+  console.log(JSON.stringify([first, await attempt()]));
+})();
+`
+	markers := filepath.Join(t.TempDir(), "markers")
+	if err := os.Mkdir(markers, 0o777); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.CommandContext(t.Context(), "node", "-e", script, properLockfileModule(t), file, markers)
+	var out strings.Builder
+	cmd.Stdout, cmd.Stderr = &out, &out
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(30 * time.Second)
+	for {
+		if lock, err := os.ReadFile(filepath.Join(markers, "made")); err == nil {
+			whileMade(string(lock))
+			break
+		}
+		if time.Now().After(deadline) {
+			_ = cmd.Process.Kill()
+			t.Fatalf("proper-lockfile did not create its second lock: %s", out.String())
+		}
+		time.Sleep(time.Millisecond)
+	}
+	if err := os.WriteFile(filepath.Join(markers, "go"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.Wait(); err != nil {
+		t.Fatalf("node: %v\n%s", err, out.String())
+	}
+	return strings.TrimSpace(out.String())
+}
+
+// proper-lockfile caches the mtime precision on the fs object after its first successful probe (lib/mtime-precision.js:6-17), and every lock call shares graceful-fs, so later acquisitions in the process only stat their new directory. A directory that another process starts removing right after mkdir then still stats (libuv reads its parent entry), so the lock is taken, and its release fails with EPERM. PiG's cancellable acquisitions share one probe the same way. lockSync builds a new fs for each call (lib/adapter.js:5-25,63-68), so AcquireSync always probes (TestAcquireIgnoresRmdirAfterFailedProbeUpstream/sync).
+func TestAcquireAfterTheFirstProbeOnlyStatsUpstream(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "auth.json")
+	var finish func()
+	pi := runProperLockfileTwiceAfterMkdir(t, path, func(lock string) { finish = markBeingRemoved(t, lock) })
+	if pi != `["acquired","acquired, release EPERM"]` {
+		t.Fatalf("proper-lockfile's second lock with its new directory being removed: %s, want it acquired and its release EPERM", pi)
+	}
+	finish()
+	if _, err := os.Lstat(path + ".lock"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("lock directory after Pi's run: %v", err)
+	}
+
+	freshMtimeProbe(t)
+	first, err := Acquire(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := first.Release(); err != nil {
+		t.Fatal(err)
+	}
+	stubMkdir(t, func(_ int, real func() error) error {
+		if err := real(); err != nil {
+			return err
+		}
+		markBeingRemoved(t, path+".lock")
+		return nil
+	})
+	second, err := Acquire(t.Context(), path)
+	if err != nil {
+		t.Fatalf("second acquisition = %v, want the lock after a stat-only probe", err)
+	}
+	if err := second.Release(); !errors.Is(err, windows.ERROR_ACCESS_DENIED) {
+		t.Fatalf("release = %v, want rmdir's ERROR_ACCESS_DENIED", err)
+	}
+}
+
+// abortOnSecondCheck is a caller context that is live when Acquire starts and cancelled when Acquire checks it again after taking the lock; onAbort runs at that second check.
+type abortOnSecondCheck struct {
+	context.Context
+	calls   int
+	onAbort func()
+}
+
+func (c *abortOnSecondCheck) Err() error {
+	c.calls++
+	if c.calls == 1 {
+		return nil
+	}
+	if c.calls == 2 && c.onAbort != nil {
+		c.onAbort()
+	}
+	return context.Canceled
+}
+
+// freshMtimeProbe makes the next cancellable acquisition probe the mtime as a new Node process's first lock call does, until the test ends.
+func freshMtimeProbe(t *testing.T) {
+	t.Helper()
+	previous := cachedPrecision.Swap(int32(precisionUnknown))
+	t.Cleanup(func() { cachedPrecision.Store(previous) })
 }

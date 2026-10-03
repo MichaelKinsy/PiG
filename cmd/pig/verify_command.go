@@ -19,6 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/piglet/signature"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 )
 
 // defaultVerifyRepo is the repository whose release workflow signs PiG's
@@ -128,7 +129,7 @@ func runVerifyCommand(args []string, stdout, stderr io.Writer) int {
 			opts.paths = append(opts.paths, arg)
 		}
 	}
-	self, err := os.Executable()
+	self, err := linkerexec.Executable()
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "pig verify: locate this binary: %v\n", err)
 		return 1

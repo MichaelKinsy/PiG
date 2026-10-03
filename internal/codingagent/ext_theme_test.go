@@ -11,8 +11,7 @@ import (
 // "not yet implemented", and SetTheme refused every name, so the themes a user
 // has installed were invisible and unreachable from any extension.
 func TestExtensionThemeAPIsAreWired(t *testing.T) {
-	restore := tui.ActiveThemeRegistry()
-	t.Cleanup(func() { tui.SetThemeRegistry(restore) })
+	restoreStartupTheme(t)
 	tui.SetThemeRegistry(tui.NewThemeRegistry())
 
 	ui := &ExtUIContext{m: newThemeTestMode(t)}
@@ -48,13 +47,13 @@ func TestExtensionThemeAPIsAreWired(t *testing.T) {
 		t.Errorf("active theme = %q after SetTheme(light), want light", got)
 	}
 
-	// Pi theme.ts setTheme catches a missing name, falls back to dark, and returns failure.
+	// upstream 0.99.1 theme.ts setTheme catches a missing name, falls back to the system theme, and returns failure.
 	// The controller disables automatic sync before attempting the load.
 	if got := ui.SetTheme("no-such-theme"); got.Success || got.Error != "Theme not found: no-such-theme" {
 		t.Errorf("SetTheme(no-such-theme) = %+v", got)
 	}
-	if after := tui.ActiveTheme().Name; after != "dark" {
-		t.Errorf("refused SetTheme fallback = %q, want dark", after)
+	if after := tui.ActiveTheme().Name; after != tui.SystemThemeName {
+		t.Errorf("refused SetTheme fallback = %q, want system", after)
 	}
 
 	if got := ui.SetTheme(42); got.Success {

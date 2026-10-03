@@ -161,6 +161,7 @@ func TestAnthropicRequestAuthShapes(t *testing.T) {
 		cfg           AnthropicConfig
 		env           map[string]string
 		headers       ProviderHeaders
+		viaModels     bool
 		apiKey        string
 		authorization string
 		userAgent     string
@@ -189,15 +190,19 @@ func TestAnthropicRequestAuthShapes(t *testing.T) {
 			system: []string{claudeCodeSystemPrompt, "System prompt."}, tools: []string{"Read", "TodoWrite"},
 		},
 		{
-			// anthropic-auth-token.test.ts: resolves ANTHROPIC_AUTH_TOKEN as a bearer Authorization header.
+			// anthropic-auth-token.test.ts: resolves ANTHROPIC_AUTH_TOKEN as a bearer Authorization header. Only the auth
+			// resolver reads the variable, so the request goes through Models as upstream's authContext tests do
+			// (anthropic-messages.ts:331-341 gives a direct stream no credential of its own).
 			name:          "ANTHROPIC_AUTH_TOKEN",
 			env:           map[string]string{"ANTHROPIC_AUTH_TOKEN": "auth-token"},
+			viaModels:     true,
 			authorization: "Bearer auth-token", system: []string{"System prompt."}, tools: []string{"read", "todowrite"},
 		},
 		{
 			// anthropic-auth-token.test.ts: threads authContext ANTHROPIC_AUTH_TOKEN through request headers.
 			name:          "ANTHROPIC_AUTH_TOKEN from provider env",
-			cfg:           AnthropicConfig{Env: ProviderEnv{"ANTHROPIC_AUTH_TOKEN": "ctx-token"}},
+			env:           map[string]string{"ANTHROPIC_AUTH_TOKEN": "ctx-token"},
+			viaModels:     true,
 			authorization: "Bearer ctx-token", system: []string{"System prompt."}, tools: []string{"read", "todowrite"},
 		},
 		{
@@ -205,6 +210,7 @@ func TestAnthropicRequestAuthShapes(t *testing.T) {
 			name:          "request Authorization overrides ANTHROPIC_AUTH_TOKEN",
 			env:           map[string]string{"ANTHROPIC_AUTH_TOKEN": "ctx-token"},
 			headers:       ProviderHeaders{"Authorization": new("Bearer explicit-token")},
+			viaModels:     true,
 			authorization: "Bearer explicit-token", system: []string{"System prompt."}, tools: []string{"read", "todowrite"},
 		},
 		{
@@ -238,8 +244,25 @@ func TestAnthropicRequestAuthShapes(t *testing.T) {
 			for name, value := range tc.env {
 				t.Setenv(name, value)
 			}
-			captured, events := runAnthropicWire(t, tc.cfg, anthropicAuthContext, StreamOptions{Headers: tc.headers}, endTurn)
-			if message := anthropicTerminal(t, events); message.StopReason != StopReasonStop {
+			var captured anthropicWireCapture
+			var message *AssistantMessage
+			if tc.viaModels {
+				wire, baseURL := serveAnthropicWire(t, endTurn, nil)
+				models := CreateModels(CreateModelsOptions{AuthContext: &AuthContext{
+					Env:        func(name string) (string, bool) { value := tc.env[name]; return value, value != "" },
+					FileExists: func(string) bool { return false },
+				}})
+				models.SetProvider(builtinProvider("anthropic"))
+				model := &Model{ID: "claude-test", ProviderMeta: ProviderMetadata{ProviderID: "anthropic", API: APIAnthropicMessages, BaseURL: baseURL}, Input: []string{"text"},
+					Capabilities: ModelCapabilities{ContextWindow: 100000, MaxOutputTokens: 4096}}
+				message = models.CompleteSimple(t.Context(), model, anthropicAuthContext, StreamOptions{Headers: tc.headers})
+				captured = *wire
+			} else {
+				var events []AssistantMessageEvent
+				captured, events = runAnthropicWire(t, tc.cfg, anthropicAuthContext, StreamOptions{Headers: tc.headers}, endTurn)
+				message = anthropicTerminal(t, events)
+			}
+			if message.StopReason != StopReasonStop {
 				t.Fatalf("stop reason = %q (%s)", message.StopReason, message.ErrorMessage)
 			}
 			header := captured.header

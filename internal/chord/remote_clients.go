@@ -2,12 +2,10 @@ package chord
 
 import (
 	"fmt"
-
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 )
 
 // AdaptRemoteClient applies the same registered typed facade used by a FacetHost to an explicitly opened remote service. Go cannot synthesize TypeScript's generic service proxy from a type parameter.
-func AdaptRemoteClient[T any](definition pico3.ServiceDefinition[T], service *RemoteService) (T, error) {
+func AdaptRemoteClient[T any](definition ServiceDefinition[T], service *RemoteService) (T, error) {
 	var zero T
 	factory, ok := remoteClients.Load(definition.Id())
 	if !ok {
@@ -22,7 +20,7 @@ func AdaptRemoteClient[T any](definition pico3.ServiceDefinition[T], service *Re
 }
 
 // UseRemoteClient acquires a singleton and returns its registered typed client view without bypassing binding access/readiness checks.
-func UseRemoteClient[T any](binding RemoteServices, definition pico3.ServiceDefinition[T]) (T, error) {
+func UseRemoteClient[T any](binding RemoteServices, definition ServiceDefinition[T]) (T, error) {
 	var zero T
 	if definition.Local() {
 		return zero, remoteError(ErrServiceNotAllowed, "Service %s is process-local", definition.Id())

@@ -53,21 +53,21 @@ func TestFake_RecordsOnHandlers(t *testing.T) {
 func TestMemBus_PubSub(t *testing.T) {
 	bus := extensiontest.NewMemBus()
 	got := []string{}
-	cancel1 := bus.Subscribe("topic", func(p any) {
+	cancel1 := bus.On("topic", func(p any) {
 		got = append(got, "h1:"+p.(string))
 	})
-	cancel2 := bus.Subscribe("topic", func(p any) {
+	cancel2 := bus.On("topic", func(p any) {
 		got = append(got, "h2:"+p.(string))
 	})
 	defer cancel2()
 
-	bus.Publish("topic", "hello")
+	bus.Emit("topic", "hello")
 	if len(got) != 2 || got[0] != "h1:hello" || got[1] != "h2:hello" {
 		t.Fatalf("after publish: got %v", got)
 	}
 
 	cancel1()
-	bus.Publish("topic", "world")
+	bus.Emit("topic", "world")
 	if len(got) != 3 || got[2] != "h2:world" {
 		t.Fatalf("after cancel: got %v", got)
 	}

@@ -10,6 +10,7 @@ import (
 )
 
 func TestRPCUserBashFailurePort(t *testing.T) {
+	t.Parallel()
 	shell := filepath.Join(t.TempDir(), "bash-spy.exe")
 	build := exec.CommandContext(t.Context(), "go", "build", "-o", shell, "./testdata/user-bash-shell-spy.go")
 	if output, err := build.CombinedOutput(); err != nil {

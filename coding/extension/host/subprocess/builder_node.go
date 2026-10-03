@@ -17,6 +17,7 @@ import (
 	"golang.org/x/mod/semver"
 
 	extsource "github.com/MichaelKinsy/PiG/coding/extension/source"
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 )
 
 const nodeRuntimeVersion = "v2"
@@ -181,7 +182,7 @@ func ensureNodeRuntime(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("%s; node was not found on PATH", requirement)
 	}
-	output, err := exec.CommandContext(ctx, nodePath, "--version").CombinedOutput()
+	output, err := linkerexec.CommandContext(ctx, nodePath, "--version").CombinedOutput()
 	if err != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return "", ctxErr
@@ -220,7 +221,7 @@ func nodeLauncherCommand(ctx context.Context, binPath string) (*exec.Cmd, bool) 
 	runtimeDir := binPath + ".runtime"
 	loaderPath := filepath.Join(runtimeDir, "register-loader.mjs")
 	loaderURL, urlErr := nodeFileURL(loaderPath)
-	cmd := exec.CommandContext(ctx, "node", "--import", loaderURL, filepath.Join(runtimeDir, "cli.mjs"), entry)
+	cmd := linkerexec.CommandContext(ctx, "node", "--import", loaderURL, filepath.Join(runtimeDir, "cli.mjs"), entry)
 	if urlErr != nil && cmd.Err == nil {
 		cmd.Err = fmt.Errorf("node extension loader %s: %w", loaderPath, urlErr)
 	}

@@ -242,6 +242,12 @@ func (c *Container) renderBorrowedLocked(width int) []string {
 	if c.cacheWidth != width || c.cacheTheme != ActiveTheme() {
 		c.childCache = nil
 		c.cacheWidth = width
+		if c.cacheTheme != nil && c.cacheTheme != ActiveTheme() {
+			// Upstream's UI invalidates every component when the theme changes (container.ts invalidate forwards to its children); components that bake theme colors into their strings, like ThemedText, rebuild on the next render.
+			for _, child := range c.children {
+				child.Invalidate()
+			}
+		}
 		c.cacheTheme = ActiveTheme()
 		c.renderedValid = false
 	}
@@ -847,9 +853,9 @@ func (t *tuiBase) overlaySnapshot() overlayStateSnapshot {
 	return snapshot
 }
 
-// hideOverlay permanently removes the most recently appended mounted entry.
-// Focus and visual order do not affect this target.
-func (t *tuiBase) hideOverlay() {
+// HideOverlay permanently removes the most recently appended mounted entry.
+// Focus and visual order do not affect this target. Mirrors upstream hideOverlay.
+func (t *tuiBase) HideOverlay() {
 	t.refreshOverlayVisibility(t.width, t.height)
 	result := t.applyOverlayCommand(overlayCommand{kind: overlayRemoveAppendTail})
 	if result.changed {
@@ -1090,16 +1096,14 @@ func (t *TUI) RenderSnapshot(width int) []string {
 	return t.Container.Render(width)
 }
 
-// SetOnWidthChange registers a callback that fires whenever the terminal
-// width changes between render frames. Thread-safe.
+// SetOnWidthChange registers a terminal-width callback. Fullscreen coalesces pending changes while a callback runs. Thread-safe.
 func (t *tuiBase) SetOnWidthChange(fn func(width int)) {
 	t.mu.Lock()
 	t.onWidthChange = fn
 	t.mu.Unlock()
 }
 
-// SetOnHeightChange registers a callback that fires whenever the terminal
-// height changes between render frames. Thread-safe.
+// SetOnHeightChange registers a terminal-height callback. Fullscreen coalesces pending changes while a callback runs. Thread-safe.
 func (t *tuiBase) SetOnHeightChange(fn func(height int)) {
 	t.mu.Lock()
 	t.onHeightChange = fn

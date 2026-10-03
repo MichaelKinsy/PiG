@@ -16,13 +16,14 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // ── Protocol framing tests ───────────────────────────────────────────────────
 
 func TestConn_SendAndReceive(t *testing.T) {
 	// Create a Unix socket pair.
-	sockDir := t.TempDir()
+	sockDir := testenv.ShortTempDir(t, "pig-conn-")
 	sockPath := filepath.Join(sockDir, "test.sock")
 
 	listener, err := net.Listen("unix", sockPath)
@@ -105,7 +106,7 @@ func TestHostReload_UsesConfigLoader(t *testing.T) {
 }
 
 func TestConn_RequestResponse(t *testing.T) {
-	sockDir := t.TempDir()
+	sockDir := testenv.ShortTempDir(t, "pig-conn-")
 	sockPath := filepath.Join(sockDir, "test.sock")
 
 	listener, err := net.Listen("unix", sockPath)
@@ -207,7 +208,7 @@ func TestConn_RequestResponse(t *testing.T) {
 }
 
 func TestConn_IncomingCallMessages(t *testing.T) {
-	sockDir := t.TempDir()
+	sockDir := testenv.ShortTempDir(t, "pig-conn-")
 	sockPath := filepath.Join(sockDir, "test.sock")
 
 	listener, err := net.Listen("unix", sockPath)
@@ -476,6 +477,22 @@ func TestResolveSocketDir_TMPDIRFallback(t *testing.T) {
 	dir := resolveSocketDirForGOOS("darwin", "", "/var/folders/xx/T", os.TempDir(), 501)
 	if want := filepath.Join("/var/folders/xx/T", "pig-501"); dir != want {
 		t.Errorf("dir = %q, want %q", dir, want)
+	}
+}
+
+// Termux (the linux build) has no /tmp and no XDG_RUNTIME_DIR: sockets live under $TMPDIR, and the worst-case socket path fits the Unix
+// socket limit, so socketRuntimeBase keeps the directory instead of falling back to /tmp.
+func TestResolveSocketDir_TermuxUsesTMPDIRAndKeepsItWithinTheSocketLimit(t *testing.T) {
+	const termuxTmp = "/data/data/com.termux/files/usr/tmp"
+	dir := resolveSocketDirForGOOS("linux", "", termuxTmp, "/tmp", 10234)
+	if want := filepath.Join(termuxTmp, "pig-10234"); dir != want {
+		t.Fatalf("dir = %q, want %q", dir, want)
+	}
+	if got := socketRuntimeBase("linux", dir, 10234, ""); got != dir {
+		t.Fatalf("socketRuntimeBase = %q, want %q kept", got, dir)
+	}
+	if err := validateUnixSocketPath("linux", filepath.Join(dir, "h4294967295", "e-9999.sock")); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -767,7 +784,8 @@ func TestValidateRegisterPayloadRejectsInvalidRegistration(t *testing.T) {
 		{
 			name: "empty command",
 			reg:  &RegisterPayload{Name: "bad", Commands: []CommandDecl{{Name: ""}}},
-			want: "command name is required",
+			// loader.ts:302-305 (#10054)
+			want: `Command registered by extension "bad" must have a non-empty string name.`,
 		},
 	}
 	for _, tc := range tests {

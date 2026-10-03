@@ -139,35 +139,6 @@ func TestMistralStrictToolSchema(t *testing.T) {
 	}
 }
 
-func TestUsesMistralReasoningEffort(t *testing.T) {
-	cases := []struct {
-		model string
-		want  bool
-	}{
-		{"mistral-small-2603", true},
-		{"mistral-small-latest", true},
-		{"mistral-medium-3.5", true},
-		{"devstral-medium-latest", false},
-	}
-	for _, tc := range cases {
-		if got := usesMistralReasoningEffort(tc.model); got != tc.want {
-			t.Errorf("usesMistralReasoningEffort(%q) = %v, want %v", tc.model, got, tc.want)
-		}
-	}
-}
-
-func TestUsesMistralPromptModeReasoning(t *testing.T) {
-	if usesMistralPromptModeReasoning("mistral-medium-3.5", true) {
-		t.Fatal("mistral-medium-3.5 should not use prompt_mode reasoning")
-	}
-	if !usesMistralPromptModeReasoning("devstral-medium-latest", true) {
-		t.Fatal("devstral-medium-latest reasoning model should use prompt_mode reasoning")
-	}
-	if usesMistralPromptModeReasoning("devstral-medium-latest", false) {
-		t.Fatal("non-reasoning model should not use prompt_mode reasoning")
-	}
-}
-
 func TestNewMistralProvider(t *testing.T) {
 	p := NewMistralProvider(MistralConfig{
 		APIKey: "test-key",

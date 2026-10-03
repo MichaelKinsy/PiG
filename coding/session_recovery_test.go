@@ -33,6 +33,8 @@ type scriptedProvider struct {
 	estimateUsage func(ai.TranscriptContext, ai.StreamOptions, *ai.AssistantMessage)
 	// streamDeltas replays each scripted message through the real faux provider so subscribers see block and delta events.
 	streamDeltas bool
+	// wrap cycles through responses when more calls arrive than responses were scripted (the upstream faux stream function's modulo).
+	wrap bool
 }
 
 func (p *scriptedProvider) ID() string   { return "faux" }
@@ -44,6 +46,9 @@ func (p *scriptedProvider) Stream(ctx context.Context, request ai.TranscriptCont
 	raw, _ := json.Marshal(messages)
 	p.requests = append(p.requests, string(raw))
 	index := len(p.requests) - 1
+	if p.wrap && len(p.responses) > 0 {
+		index %= len(p.responses)
+	}
 	p.mu.Unlock()
 	message := &ai.AssistantMessage{Provider: "faux", Model: "faux-1", StopReason: ai.StopReasonStop, ErrorMessage: "no scripted response", Timestamp: time.Now().UnixMilli()}
 	if index < len(p.responses) {
@@ -101,7 +106,13 @@ type harnessOptions struct {
 	maxTokens           int
 	tools               []agent.AgentTool
 	extension           extension.Extension
-	resources           *SystemPromptResources
+	// extensions are loaded after extension, in order.
+	extensions []extension.Extension
+	resources  *SystemPromptResources
+	// runtime is the extension runtime the extension loader shares with the runner (loader.ts createExtensionRuntime); nil creates the runner's own.
+	runtime *extension.ExtensionRuntime
+	// sessionManager is the in-memory session an emptySessionManager harness opens instead of a new one (the suite harness's options.sessionManager), so a second harness resumes the first one's transcript.
+	sessionManager *icodingagent.Session
 }
 
 type recoveryHarness struct {
@@ -136,6 +147,8 @@ func newRecoveryHarness(t *testing.T, opts harnessOptions, responses ...scripted
 			t.Fatal(err)
 		}
 	}
+	// Services owns the model background work that reads and writes the agent dir; Cleanup runs it after the Session closes.
+	t.Cleanup(services.Close)
 	provider := &scriptedProvider{responses: responses}
 	contextWindow := opts.contextWindow
 	if contextWindow == 0 {
@@ -143,12 +156,19 @@ func newRecoveryHarness(t *testing.T, opts harnessOptions, responses ...scripted
 	}
 	model := &ai.Model{ID: "faux-1", DisplayName: "faux-1", Provider: provider, Capabilities: ai.ModelCapabilities{ContextWindow: contextWindow, MaxOutputTokens: opts.maxTokens}}
 	var runner *inproc.Runner
-	if opts.extension.Handlers != nil {
-		runner = inproc.NewRunner([]extension.Extension{opts.extension}, t.TempDir())
+	if opts.extension.Handlers != nil || len(opts.extensions) > 0 {
+		loaded := opts.extensions
+		if opts.extension.Handlers != nil {
+			loaded = append([]extension.Extension{opts.extension}, loaded...)
+		}
+		runner = inproc.NewRunner(loaded, t.TempDir(), opts.runtime)
 	}
 	options := SessionOptions{Model: model, SkipBuiltinTools: !opts.defaultTools, Tools: opts.tools, Runner: runner, SystemPromptResources: opts.resources}
 	if opts.emptySessionManager {
-		options.existing = icodingagent.NewSession("suite-session", services.CWD())
+		options.existing = opts.sessionManager
+		if options.existing == nil {
+			options.existing = icodingagent.NewSession("suite-session", services.CWD())
+		}
 	}
 	session, err := NewSession(services, options)
 	if err != nil {

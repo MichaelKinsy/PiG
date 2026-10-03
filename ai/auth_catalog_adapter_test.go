@@ -65,7 +65,7 @@ func TestOAuthAdapterPreservesCatalogFilterAndProviderFields(t *testing.T) {
 					if operation == "refresh" {
 						got, err = oauthRefresh(provider)(t.Context(), credential)
 					} else {
-						got, err = oauthNativeLogin(provider)(t.Context(), AuthInteraction{})
+						got, err = oauthNativeLogin(provider)(t.Context(), AuthInteraction{}, LoginOptions{})
 					}
 					if err != nil {
 						t.Fatal(err)

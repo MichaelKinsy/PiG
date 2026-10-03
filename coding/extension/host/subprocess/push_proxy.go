@@ -12,13 +12,7 @@ import (
 // upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:MAX_WIDGET_LINES
 const maxWidgetLines = 10
 
-// PushProxy implements the Component interface (Render + Invalidate) backed by
-// a cached []string that the extension pushes asynchronously. Render() NEVER
-// touches the socket: it reads from the cache in O(1). Width-change events
-// flow back to the extension via a notification so it can re-render.
-//
-// Performance contract: Render() returns in <1μs (slice copy from cache).
-// All socket I/O happens on the connection's read goroutine.
+// PushProxy renders cached extension frames or host-laid-out string lists without extension I/O.
 //
 // pig-specific: no upstream equivalent.
 type PushProxy struct {
@@ -26,6 +20,8 @@ type PushProxy struct {
 	lines []string
 	// linesWidth is the width the extension rendered lines at (0 = unknown).
 	linesWidth int
+	placement  string
+	order      uint64
 
 	// text holds the widget's Text components when the extension set a string
 	// list: content the host lays out at the width it renders, as Pi does for
@@ -50,9 +46,17 @@ type PushProxy struct {
 // of the new terminal width.
 func NewPushProxy(invalidate func(), onWidthChange func(width int)) *PushProxy {
 	return &PushProxy{
+		placement:     "aboveEditor",
 		invalidate:    invalidate,
 		onWidthChange: onWidthChange,
 	}
+}
+
+// WidgetLayout returns the dock placement and insertion order of this widget.
+func (p *PushProxy) WidgetLayout() (placement string, order uint64) {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.placement, p.order
 }
 
 // Render returns the cached lines, or lays a string list widget out at width.
@@ -88,15 +92,10 @@ func (p *PushProxy) Render(width int) []string {
 }
 
 // Invalidate marks the component for re-render. Called by the TUI framework.
-// For PushProxy this is a no-op: re-renders are triggered by UpdateLines.
-func (p *PushProxy) Invalidate() {
-	// No-op: the push model means we update when the extension pushes,
-	// not when the TUI framework asks us to.
-}
+// Proxy updates request rendering directly, so this is a no-op.
+func (p *PushProxy) Invalidate() {}
 
 // UpdateLines replaces the cached lines and triggers a TUI re-render.
-// Called from the connection's read goroutine when a widget_push arrives.
-// Thread-safe: can be called from any goroutine.
 func (p *PushProxy) UpdateLines(lines []string) { p.UpdateLinesAt(lines, 0) }
 
 // UpdateLinesAt replaces the cached lines with a frame rendered at width

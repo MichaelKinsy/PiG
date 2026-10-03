@@ -58,7 +58,9 @@ func TestModelRuntimeStartBeforeBodyData(t *testing.T) {
 					defer cancel()
 					streamFn := services.ModelRuntime().Stream
 					if simple {
-						streamFn = services.ModelRuntime().StreamSimple
+						streamFn = func(ctx context.Context, model *ai.Model, request ai.Context, options ai.StreamOptions) *ai.AssistantMessageEventStream {
+							return services.ModelRuntime().StreamSimple(ctx, model, request, options)
+						}
 					}
 					stream := streamFn(ctx, model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("probe")}}}, ai.StreamOptions{})
 					observation, stop := context.WithTimeout(t.Context(), time.Second)

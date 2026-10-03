@@ -24,8 +24,6 @@ description = "Tool output passes through truncation pipeline identically in bot
 covers = [
   "packages/coding-agent/src/core/tools/truncate.ts",
   "packages/coding-agent/src/core/tools/render-utils.ts",
-  "packages/agent/src/harness/utils/shell-output.ts",
-  "packages/agent/src/harness/utils/truncate.ts",
   "packages/coding-agent/src/core/tools/output-accumulator.ts",
 ]
 tags = ["hermetic", "fast"]

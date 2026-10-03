@@ -65,7 +65,8 @@ func assertServedTextResult(t *testing.T, result any, want string) {
 	if !ok {
 		t.Fatalf("served tool result type = %T, want agent.AgentToolResult", result)
 	}
-	expected := agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: want}}}
+	// The wire object the SDK wrote holds only its content, and the host records the members the tool wrote (agent-loop.ts:778-786).
+	expected := agent.AgentToolResult{MemberOrder: []string{"content"}, Content: []ai.ToolResultMessageContent{ai.TextContent{Text: want}}}
 	if !reflect.DeepEqual(got, expected) {
 		t.Fatalf("served tool result = %#v, want %#v", got, expected)
 	}

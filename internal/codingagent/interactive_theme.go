@@ -7,7 +7,6 @@ import (
 	"context"
 	"io"
 	"os"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -17,16 +16,12 @@ func (m *InteractiveMode) theme() presentationTheme {
 	return presentationTheme{
 		state:      &m.themeState,
 		getSetting: m.settingsThemeSelection,
-		persist: func(name string) {
-			if sm := m.opts.SettingsManager; sm != nil {
-				// upstream: packages/coding-agent/src/core/settings-manager.ts:enqueueWrite
-				_ = sm.SetTheme(name)
-			}
-			m.opts.Settings.Theme = name
-		},
-		output:    m.themeOutput,
-		renderer:  func() tui.Renderer { return m.tuiInst },
-		showError: m.showError,
+		output:     m.themeOutput,
+		renderer:   func() tui.Renderer { return m.tuiInst },
+		showError:  m.showError,
+		post:       m.postToMain,
+		spawn:      func(task func()) { m.backgroundTasks.Go(task) },
+		ctx:        func() context.Context { return m.backgroundCtx },
 	}
 }
 
@@ -39,7 +34,7 @@ func (m *InteractiveMode) settingsThemeSelection() *string {
 	return m.opts.Settings.themeSetting()
 }
 
-// getThemeSelection preserves an initial or explicit selection; otherwise it reads the current manager. nil means no selection; an empty name is a selection.
+// getThemeSelection preserves an initial or explicit selection; otherwise it reads the current manager, then the active theme. nil means no selection; an empty name is a selection.
 func (m *InteractiveMode) getThemeSelection() *string { return m.theme().getThemeSelection() }
 
 func (m *InteractiveMode) themeOutput() io.Writer {
@@ -52,46 +47,45 @@ func (m *InteractiveMode) themeOutput() io.Writer {
 	return os.Stdout
 }
 
-func (m *InteractiveMode) setAutoSync(enabled bool) { m.theme().setAutoSync(enabled) }
-
 func (m *InteractiveMode) writeThemeNotifications(enabled bool) {
 	m.theme().writeThemeNotifications(enabled)
 }
 
 func (m *InteractiveMode) previewTheme(setting string) { m.theme().previewTheme(setting) }
 
-func (m *InteractiveMode) beginThemeDetection(output io.Writer) *interactiveThemeQuery {
-	return m.theme().beginThemeDetection(output)
-}
-
-func (m *InteractiveMode) finishThemeDetection(q *interactiveThemeQuery) {
-	m.theme().finishThemeDetection(q)
-}
-
 // consumeTerminalThemeInput precedes extension listeners, viewport input, and focused components.
 func (m *InteractiveMode) consumeTerminalThemeInput(data string) bool {
 	return m.theme().consumeInput(data)
 }
 
-// initializeTerminalTheme awaits initial appearance before session_start, using the same decoder as the main loop.
-func (m *InteractiveMode) initializeTerminalTheme(ctx context.Context, output io.Writer) error {
-	q := m.beginThemeDetection(output)
-	if q == nil {
+// applyThemeFromSettings applies the theme setting now and starts the terminal color query without waiting for it (theme-controller.ts applyFromSettings). Its replies apply on the owner loop.
+func (m *InteractiveMode) applyThemeFromSettings(context.Context) { m.theme().applyFromSettings() }
+
+func (m *InteractiveMode) disposeTheme() { m.theme().dispose() }
+
+// initTheme applies the initial theme selection, as the theme controller's constructor does.
+func (m *InteractiveMode) initTheme() { m.theme().initTheme() }
+
+// initStartupTheme registers the resource themes and then applies the initial theme, as the InteractiveMode constructor calls setRegisteredThemes before constructing the theme controller (interactive-mode.ts:631-637). The system theme renders in grayscale until the terminal reports its colors.
+func (m *InteractiveMode) initStartupTheme() {
+	m.loadThemes()
+	m.initTheme()
+}
+
+// waitForTerminalColors serves the owner loop until the latest terminal color query completed and its colors applied. Content that bakes theme colors into strings, such as the startup header, is built after this. Terminals answer the DA1 request right after the color replies, so this only takes the full timeout when a terminal answers nothing.
+func (m *InteractiveMode) waitForTerminalColors(ctx context.Context) error {
+	done := m.themeState.colorQuery
+	if done == nil {
 		return nil
 	}
-	timer := time.NewTimer(startupThemeQueryTimeout)
-	defer timer.Stop()
 	for {
 		select {
-		case <-q.done:
+		case <-done:
 			return nil
 		case <-ctx.Done():
 			return ctx.Err()
 		case err := <-m.inputErrCh:
 			return err
-		case <-timer.C:
-			q.detection.timeout()
-			m.finishThemeDetection(q)
 		case input, ok := <-m.inputReadCh:
 			if !ok {
 				return io.EOF
@@ -103,33 +97,3 @@ func (m *InteractiveMode) initializeTerminalTheme(ctx context.Context, output io
 		}
 	}
 }
-
-// applyThemeFromSettings leaves the input loop free while the terminal answers.
-// The Run lifetime owns and joins the deadline worker; all theme mutation runs on the owner loop.
-func (m *InteractiveMode) applyThemeFromSettings(ctx context.Context) {
-	q := m.beginThemeDetection(m.themeOutput())
-	if q == nil {
-		return
-	}
-	if m.backgroundCtx != nil {
-		ctx = m.backgroundCtx
-	}
-	m.backgroundTasks.Go(func() {
-		timer := time.NewTimer(startupThemeQueryTimeout)
-		defer timer.Stop()
-		select {
-		case <-q.done:
-		case <-ctx.Done():
-		case <-timer.C:
-			m.runOnMain(ctx, func() {
-				if m.tuiTornDown {
-					return
-				}
-				q.detection.timeout()
-				m.finishThemeDetection(q)
-			})
-		}
-	})
-}
-
-func (m *InteractiveMode) disposeTheme() { m.theme().dispose() }

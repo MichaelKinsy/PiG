@@ -63,7 +63,7 @@ func deleteSessionFile(sessionPath string) sessionDeleteResult {
 		return sessionDeleteResult{ok: true, method: sessionDeleteTrash}
 	}
 	if err := unlinkSessionFile(sessionPath); err != nil {
-		unlinkError := tools.NodeFSError(nodeErrno(err), "unlink", sessionPath)
+		unlinkError := tools.NodeFSError(err, "unlink", sessionPath)
 		if hint := getTrashErrorHint(); hint != "" {
 			unlinkError += " (" + hint + ")"
 		}

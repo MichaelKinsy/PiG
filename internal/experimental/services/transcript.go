@@ -3,25 +3,15 @@ package services
 // Ports packages/coding-agent/src/experimental/services/transcript.ts
 
 import (
-	"encoding/json"
-
-	"github.com/MichaelKinsy/PiG/agent/harness/agentharness"
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 )
 
-// TranscriptState publishes a coherent lane snapshot and the source event. Hydration and rebases have a null event; event JSON preserves the closed upstream LaneWatchEvent wire shape.
-type TranscriptState struct {
-	Snapshot *agentharness.LaneSnapshot `json:"snapshot"`
-	Event    json.RawMessage            `json:"event"`
-}
-
-// Transcript is the main-lane state replicated through Chord's operation stream.
+// Transcript is the root conversation's durable view, replicated through Chord's operation stream: the active entries and its live, inbox, agent and usage documents.
 type Transcript interface {
-	State() pico3.ReplicatedStateOf[*TranscriptState]
+	State() chord.ReplicatedStateOf[ConversationView]
 }
 
-var TranscriptDefinition = pico3.DefineService[Transcript]("pi.transcript")
+var TranscriptDefinition = chord.DefineService[Transcript]("pi.transcript")
 
 func init() {
 	chord.RegisterServiceView(TranscriptDefinition, func(resolve func() (Transcript, error)) Transcript { return transcriptView{resolve: resolve} })
@@ -30,8 +20,8 @@ func init() {
 
 type transcriptView struct{ resolve func() (Transcript, error) }
 
-func (view transcriptView) State() pico3.ReplicatedStateOf[*TranscriptState] {
-	return chord.StateView(func() (pico3.ReplicatedStateOf[*TranscriptState], error) {
+func (view transcriptView) State() chord.ReplicatedStateOf[ConversationView] {
+	return chord.StateView(func() (chord.ReplicatedStateOf[ConversationView], error) {
 		target, err := view.resolve()
 		if err != nil {
 			return nil, err
@@ -42,10 +32,10 @@ func (view transcriptView) State() pico3.ReplicatedStateOf[*TranscriptState] {
 
 type remoteTranscript struct{ service *chord.RemoteService }
 
-func (remote remoteTranscript) State() pico3.ReplicatedStateOf[*TranscriptState] {
+func (remote remoteTranscript) State() chord.ReplicatedStateOf[ConversationView] {
 	replica, err := remote.service.State("state")
 	if err != nil {
 		panic(err)
 	}
-	return chord.TypedReplica[*TranscriptState](replica)
+	return chord.TypedReplica[ConversationView](replica)
 }

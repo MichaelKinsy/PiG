@@ -1,0 +1,25 @@
+# port-99-f6f-rs red run (Rust SDK, Pi 0.99.1 extension API additions)
+
+Base: 6D contract commit 906c8fe28 plus a merge of staging porter/pi-0.99.1 (family 4: `agent.AgentToolResult.StructuredContent`, needed by the conformance rows).
+Stubs in this commit: `Extension::register_mcp_server`, `Extension::register_virtual_model`, `Context::{get_settings,get_mcp_servers,register_mcp_server,unregister_mcp_server,register_virtual_model,unregister_virtual_model,tools,execute_tool}`, `ToolResult::{with_structured_content,with_details,with_is_error}`, `ApiState::apply_state` (all `unimplemented!`), plus data declarations (types, wire fields). `Extension::register_tool` ignores the new tool fields.
+
+## `cargo test --offline --test extension_api_wire` (fake host, `extensions/sdk-rs/tests/extension_api_wire.rs`)
+test register_frame_carries_the_tool_definition_fields_and_load_time_registrations ... FAILED
+test virtual_model_route_request_runs_the_extensions_router ... FAILED
+test execute_tool_signal_cancels_the_nested_call ... FAILED
+test execute_tool_failure_is_an_outcome_not_an_error ... FAILED
+test execute_tool_runs_a_nested_call_and_delivers_updates_in_order ... FAILED
+test getters_answer_from_the_replicated_state ... FAILED
+test post_load_mcp_registration_is_a_host_call_and_refreshes_the_replica ... FAILED
+test execute_tool_outside_a_tool_call_is_an_error ... FAILED
+test tool_result_carries_structured_content_and_is_error ... FAILED
+test prepare_loadout_request_runs_the_tools_hook ... FAILED
+test post_load_virtual_model_registration_and_unregistration ... FAILED
+test mcp_servers_change_and_provider_stream_event_reach_handlers ... ok
+test get_all_tools_reports_exposure_namespace_and_annotations ... ok
+test result: FAILED. 2 passed; 11 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+Passed in red (already faithful because the declaration is the implementation): `mcp_servers_change_and_provider_stream_event_reach_handlers` (events are `serde_json::Value` pass-through; the two event-name constants are declarations), `get_all_tools_reports_exposure_namespace_and_annotations` (`ToolInfo` gained serde fields). Everything else fails on the stub (`handler_panic` from `unimplemented!`, or a register frame without the new fields).
+
+## `go test ./test/extension-conformance/ -run TestRustSDK` (real host, isolated and packed, `extension_api_rust_test.go`, fixture `testdata/extapi-rust`)
+Every row fails at load: `extapi: extension panicked (register handshake: connection closed before register ...)`, because the fixture's factory reaches `Extension::register_mcp_server`, the first stub. On this base the host's own behavior (`handleMcpServerCall`, `handleVirtualModelCall`, `handleExecuteToolCall`, `StatePayload` fill) is still the 6D contract stub, so the rows can only turn green with lane 6D's host merged; the green run is on an integration tree (base + staging port-99-f6d), recorded in `port-99-f6f-rs-green.txt`.

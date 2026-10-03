@@ -21,7 +21,7 @@ func (r *ModelRegistry) RuntimeModels() []RuntimeModel {
 }
 
 func (r *ModelRegistry) hasModelDataOverlay(id string) bool {
-	if r.GetProvider(id) != nil {
+	if r.GetProvider(id) != nil || len(r.remoteOverlayModels(id)) > 0 {
 		return true
 	}
 	r.mu.RLock()

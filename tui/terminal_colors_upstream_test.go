@@ -8,7 +8,7 @@ import (
 func TestUpstreamOsc11BackgroundColorParser(t *testing.T) {
 	// .upstream/v0.87.1/packages/tui/test/terminal-colors.test.ts:94.
 	t.Run("parses 16-bit OSC 11 rgb responses", func(t *testing.T) {
-		if got := ParseOsc11BackgroundColor("\x1b]11;rgb:0000/8000/ffff\x07"); !reflect.DeepEqual(got, &RgbColor{0, 128, 255}) {
+		if got := parseOsc11BackgroundColor("\x1b]11;rgb:0000/8000/ffff\x07"); !reflect.DeepEqual(got, &RgbColor{0, 128, 255}) {
 			t.Fatalf("color=%v", got)
 		}
 	})
@@ -18,7 +18,7 @@ func TestUpstreamOsc11BackgroundColorParser(t *testing.T) {
 			input string
 			want  RgbColor
 		}{{"\x1b]11;#ffffff\x1b\\", RgbColor{255, 255, 255}}, {"\x1b]11;#000000\x07", RgbColor{0, 0, 0}}} {
-			if got := ParseOsc11BackgroundColor(tc.input); !reflect.DeepEqual(got, &tc.want) {
+			if got := parseOsc11BackgroundColor(tc.input); !reflect.DeepEqual(got, &tc.want) {
 				t.Fatalf("input=%q color=%v, want %v", tc.input, got, tc.want)
 			}
 		}
@@ -26,7 +26,7 @@ func TestUpstreamOsc11BackgroundColorParser(t *testing.T) {
 	// .upstream/v0.87.1/packages/tui/test/terminal-colors.test.ts:107.
 	t.Run("rejects non-strict OSC 11 responses", func(t *testing.T) {
 		for _, input := range []string{"x\x1b]11;#ffffff\x07", "\x1b]10;#ffffff\x07", "\x1b]11;#ffffff\x07x"} {
-			if got := ParseOsc11BackgroundColor(input); got != nil {
+			if got := parseOsc11BackgroundColor(input); got != nil {
 				t.Fatalf("input=%q color=%v", input, got)
 			}
 		}

@@ -9,13 +9,11 @@ import (
 	"fmt"
 	"path/filepath"
 	"slices"
-	"strings"
 	"sync"
 
 	"golang.org/x/text/collate"
 	"golang.org/x/text/language"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	"github.com/MichaelKinsy/PiG/internal/experimental/services"
 )
 
@@ -70,15 +68,14 @@ func (result ClientPromptedResult) MarshalJSON() ([]byte, error) {
 	}{result.Kind(), result.ServerId, result.SessionId, result.Text})
 }
 
-// RunClientOptions selects discovery and snapshot-ordered event delivery. OnEvent receives the exact LaneWatchEvent JSON already carried by TranscriptState, without reconstructing a separate event union. Each callback is awaited before the next; its error propagates from RunClient.
+// RunClientOptions selects discovery. Directory defaults to PI_SERVER_DIR or ~/.pi/server.
 type RunClientOptions struct {
 	Directory *string
-	OnEvent   func(context.Context, json.RawMessage) error
 }
 
-// RunClient discovers servers, then lists, attaches or creates a Session and runs a one-shot prompt. ctx owns initial opening; service operations retain upstream's Background Context. Prompt completion waits independently for the terminal transcript event and drains ordered callback delivery before disposing the runtime.
+// RunClient discovers servers, then lists, attaches or creates a Session and runs a one-shot prompt. ctx owns initial opening; service operations retain upstream's Background Context. A prompt returns the answer's text once AgentController.WaitForPrompt settles.
 func RunClient(ctx context.Context, command ClientCommand, options RunClientOptions) (result ClientResult, err error) {
-	runtime, err := OpenClientRuntime(ctx, command, OpenClientRuntimeOptions{Directory: options.Directory})
+	runtime, err := OpenClientRuntime(ctx, command, OpenClientRuntimeOptions(options))
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +141,7 @@ func RunClient(ctx context.Context, command ClientCommand, options RunClientOpti
 	if command.Prompt == nil {
 		return ClientAttachedResult{ServerId: match.Route.ServerId, SessionId: sessionId}, nil
 	}
-	text, err := promptClientSession(match, *command.Prompt, options.OnEvent)
+	text, err := promptClientSession(match, *command.Prompt)
 	if err != nil {
 		return nil, err
 	}
@@ -179,192 +176,34 @@ func selectClientSession(command ClientCommand, discovered []*ActivatedClientRun
 	return discovered[0], id, err
 }
 
-func promptClientSession(server *ActivatedClientRuntimeServer, prompt string, onEvent func(context.Context, json.RawMessage) error) (text string, err error) {
-	delivery := newClientEventDelivery(onEvent)
-	remove, err := server.Transcript.State().Subscribe(func(value *services.TranscriptState, _ context.Context, update pico3.ReplicatedStateDelivery) {
-		if update.Kind == "update" && value != nil && len(value.Event) != 0 && string(value.Event) != "null" {
-			delivery.enqueue(value.Event)
-		}
-	})
-	if err != nil {
-		_ = delivery.close()
-		return "", err
-	}
-	defer func() {
-		remove()
-		if failure := delivery.close(); failure != nil {
-			text, err = "", failure
-		}
-	}()
-	if state := server.Transcript.State().Value(); state == nil || state.Snapshot == nil {
-		return "", errors.New("Transcript has no initialized snapshot")
-	}
+// promptClientSession starts a prompt and returns its answer's text. The AgentController response and the answer arrive as independent protocol results, so the wait is by operation ID.
+func promptClientSession(server *ActivatedClientRuntimeServer, prompt string) (string, error) {
 	response, err := server.Agent.Prompt(context.Background(), services.AgentPromptRequest{Message: prompt, Images: nil})
 	if err != nil {
 		return "", err
 	}
-	if response.Accepted {
-		if response.OperationID == nil {
-			return "", errors.New("Accepted AgentController operation has no operation ID")
-		}
-		if err := delivery.waitBoundary(*response.OperationID); err != nil {
-			return "", err
-		}
-	}
-	remove()
-	if err := delivery.close(); err != nil {
-		return "", err
-	}
-	if !response.Accepted || response.Error != nil {
+	if !response.Accepted {
 		if response.Error == nil {
 			return "", errors.New("Rejected AgentController operation has no error")
 		}
 		return "", errors.New(response.Error.Message)
 	}
-	return delivery.completedText[*response.OperationID], nil
-}
-
-// clientEventDelivery mirrors the upstream deliveryTail Promise chain: protocol events may arrive ahead of an awaited callback. One owned worker drains those events without blocking the protocol reader, and close joins its completion.
-type clientEventDelivery struct {
-	mu              sync.Mutex
-	ready           *sync.Cond
-	queue           []json.RawMessage
-	closed          bool
-	done            chan struct{}
-	failure         error
-	boundaryError   error
-	completedText   map[string]string
-	boundaries      map[string]bool
-	boundaryChanged chan struct{}
-	onEvent         func(context.Context, json.RawMessage) error
-}
-
-func newClientEventDelivery(onEvent func(context.Context, json.RawMessage) error) *clientEventDelivery {
-	delivery := &clientEventDelivery{done: make(chan struct{}), completedText: map[string]string{}, boundaries: map[string]bool{}, boundaryChanged: make(chan struct{}), onEvent: onEvent}
-	delivery.ready = sync.NewCond(&delivery.mu)
-	go delivery.run()
-	return delivery
-}
-
-func (delivery *clientEventDelivery) enqueue(raw json.RawMessage) {
-	var envelope struct {
-		Type  string `json:"type"`
-		RunId string `json:"runId"`
+	if response.OperationID == nil {
+		return "", errors.New("Accepted AgentController operation has no operation ID")
 	}
-	err := json.Unmarshal(raw, &envelope)
-	delivery.mu.Lock()
-	defer delivery.mu.Unlock()
-	if delivery.closed {
-		return
-	}
+	result, err := server.Agent.WaitForPrompt(context.Background(), *response.OperationID)
 	if err != nil {
-		delivery.boundaryError = err
-		if delivery.failure == nil {
-			delivery.failure = err
-		}
-	} else {
-		delivery.queue = append(delivery.queue, slices.Clone(raw))
-		if envelope.Type == "run_end" || envelope.Type == "run_suspend" {
-			delivery.boundaries[envelope.RunId] = true
-		}
+		return "", err
 	}
-	close(delivery.boundaryChanged)
-	delivery.boundaryChanged = make(chan struct{})
-	delivery.ready.Signal()
-}
-
-func (delivery *clientEventDelivery) waitBoundary(id string) error {
-	for {
-		delivery.mu.Lock()
-		ended, failure, changed := delivery.boundaries[id], delivery.boundaryError, delivery.boundaryChanged
-		delivery.mu.Unlock()
-		if failure != nil {
-			return failure
+	if result.Status == "unanswered" {
+		reason := ""
+		if result.Reason != nil {
+			reason = *result.Reason
 		}
-		if ended {
-			return nil
-		}
-		<-changed
+		return "", errors.New("Prompt was not answered: " + reason)
 	}
-}
-
-func (delivery *clientEventDelivery) close() error {
-	delivery.mu.Lock()
-	delivery.closed = true
-	delivery.ready.Broadcast()
-	delivery.mu.Unlock()
-	<-delivery.done
-	return delivery.failure
-}
-
-func (delivery *clientEventDelivery) run() {
-	defer close(delivery.done)
-	for {
-		delivery.mu.Lock()
-		for len(delivery.queue) == 0 && !delivery.closed {
-			delivery.ready.Wait()
-		}
-		if len(delivery.queue) == 0 {
-			delivery.mu.Unlock()
-			return
-		}
-		raw := delivery.queue[0]
-		delivery.queue[0] = nil
-		delivery.queue = delivery.queue[1:]
-		failed := delivery.failure != nil
-		delivery.mu.Unlock()
-		if failed {
-			continue
-		}
-		if err := delivery.deliver(raw); err != nil {
-			delivery.mu.Lock()
-			if delivery.failure == nil {
-				delivery.failure = err
-			}
-			close(delivery.boundaryChanged)
-			delivery.boundaryChanged = make(chan struct{})
-			delivery.mu.Unlock()
-		}
+	if result.Text == nil {
+		return "", errors.New("Answered prompt has no text")
 	}
-}
-
-func (delivery *clientEventDelivery) deliver(raw json.RawMessage) (err error) {
-	defer recoverSourceError(&err)
-	var event struct {
-		Type    string          `json:"type"`
-		RunId   *string         `json:"runId"`
-		Message json.RawMessage `json:"message"`
-	}
-	if err := json.Unmarshal(raw, &event); err != nil {
-		return err
-	}
-	if event.Type == "message_end" && event.RunId != nil {
-		var message struct {
-			Role    string          `json:"role"`
-			Content json.RawMessage `json:"content"`
-		}
-		if err := json.Unmarshal(event.Message, &message); err != nil {
-			return err
-		}
-		if message.Role == "assistant" {
-			var content []struct {
-				Type string `json:"type"`
-				Text string `json:"text"`
-			}
-			if err := json.Unmarshal(message.Content, &content); err != nil {
-				return err
-			}
-			var text strings.Builder
-			for _, part := range content {
-				if part.Type == "text" {
-					text.WriteString(part.Text)
-				}
-			}
-			delivery.completedText[*event.RunId] = text.String()
-		}
-	}
-	if delivery.onEvent != nil {
-		return delivery.onEvent(context.Background(), raw)
-	}
-	return nil
+	return *result.Text, nil
 }

@@ -25,7 +25,7 @@ func TestOpenRouterImagesHeaderUndefinedOverride(t *testing.T) {
 	}
 }
 
-func TestImagesModelsAuthThroughOpenRouter(t *testing.T) {
+func TestModelsGenerateImagesAuthThroughOpenRouter(t *testing.T) {
 	type wire struct {
 		Authorization  string         `json:"authorization"`
 		Body           map[string]any `json:"body"`
@@ -48,19 +48,20 @@ func TestImagesModelsAuthThroughOpenRouter(t *testing.T) {
 		_, _ = w.Write([]byte(`{"id":"image-response","choices":[{"message":{"images":[{"image_url":{"url":"data:image/png;base64,aGk="}}]}}]}`))
 	}))
 	defer server.Close()
-	models := BuiltinImagesModels(CreateModelsOptions{AuthContext: imageRuntimeAuthContext(nil)})
-	provider := models.GetProvider("openrouter")
+	oauth, _ := OAuthProviderAuth("openrouter")
+	var seenEnv map[string]string
+	provider := CreateProvider(CreateProviderOptions{ID: "openrouter", Name: new("OpenRouter"), Auth: ProviderAuth{APIKey: EnvAPIKeyAuth("OpenRouter API key", "OPENROUTER_API_KEY"), OAuth: oauth},
+		Models: []AnyModel{}, Images: ProviderImageAPIMap{APIImagesOpenRouter: {GenerateImages: func(ctx context.Context, m *ImageModel, request ImagesContext, options ImagesOptions) (AssistantImages, error) {
+			seenEnv = options.Env
+			return GenerateImagesOpenRouter(ctx, *m, request, options), nil
+		}}}})
 	provider.Auth.APIKey.Resolve = func(context.Context, APIKeyAuthInput) (*AuthResult, error) {
 		return &AuthResult{Auth: ModelAuth{APIKey: "provider-key", BaseURL: server.URL, Headers: ProviderHeaders{"X-Provider": new("provider"), "X-Shared": new("provider")}}, Env: map[string]string{"PROVIDER_ONLY": "provider", "SHARED": "provider"}}, nil
 	}
-	var seenEnv map[string]string
-	generate := provider.GenerateImages
-	provider.GenerateImages = func(ctx context.Context, m ImagesModel, request ImagesContext, options ImagesOptions) (AssistantImages, error) {
-		seenEnv = options.Env
-		return generate(ctx, m, request, options)
-	}
-	model := ImagesModel{ID: "fixture-image", Name: "Fixture image", API: APIImagesOpenRouter, Provider: ProviderImagesOpenRouter, BaseURL: "http://[invalid", Headers: map[string]string{"X-Model": "model", "X-Removed": "remove-me"}, Input: []string{"text"}, Output: []string{"image"}}
-	result := models.GenerateImages(t.Context(), model, ImagesContext{Input: []ContentBlock{TextContent{Text: "a red circle"}}}, ImagesOptions{APIKey: "request-key", Headers: ProviderHeaders{"X-Shared": new("request"), "X-Removed": nil}, Env: map[string]string{"REQUEST_ONLY": "request", "SHARED": "request"}})
+	models := CreateModels(CreateModelsOptions{AuthContext: typedAuthContext(nil)})
+	models.SetProvider(provider)
+	model := &ImageModel{ID: "fixture-image", Name: "Fixture image", API: APIImagesOpenRouter, Provider: ProviderImagesOpenRouter, BaseURL: "http://[invalid", Headers: map[string]string{"X-Model": "model", "X-Removed": "remove-me"}, Input: []string{"text"}, Output: []string{"image"}}
+	result := models.GenerateImages(t.Context(), model, ImagesContext{Input: []ContentBlock{TextContent{Text: "a red circle"}}}, ModelsImagesOptions{ImagesOptions: ImagesOptions{APIKey: "request-key", Headers: ProviderHeaders{"X-Shared": new("request"), "X-Removed": nil}, Env: map[string]string{"REQUEST_ONLY": "request", "SHARED": "request"}}})
 	if result.StopReason != ImagesStopReasonStop || result.ResponseID != "image-response" || !reflect.DeepEqual(result.Output, []ContentBlock{ImageContent{Data: "aGk=", MimeType: "image/png"}}) {
 		t.Fatalf("result=%+v", result)
 	}
@@ -90,37 +91,16 @@ func TestImagesModelsAuthThroughOpenRouter(t *testing.T) {
 	}
 }
 
-func TestImagesModelsRetainsCatalogAndProviderOrder(t *testing.T) {
-	models := CreateImagesModels()
-	first := imageRuntimeTestProvider("first", "", nil, nil)
-	second := imageRuntimeTestProvider("second", "", nil, nil)
-	models.SetProvider(first)
-	models.SetProvider(second)
-	replacement := imageRuntimeTestProvider("first", "", []ImagesModel{imageRuntimeTestModel("first", "replacement")}, nil)
-	models.SetProvider(replacement)
-	if list := models.GetProviders(); len(list) != 2 || list[0] != replacement || list[1] != second {
-		t.Fatalf("providers=%v", list)
-	}
-	second.GetModels = func() ([]ImagesModel, error) { return nil, fmt.Errorf("source failure") }
-	if len(models.GetModels("second")) != 0 || len(models.GetModels()) != 1 {
-		t.Fatal("failed source was not isolated")
-	}
-	models.ClearProviders()
-	if len(models.GetProviders()) != 0 || len(models.GetModels()) != 0 {
-		t.Fatal("clear retained providers")
-	}
-}
-
-func BenchmarkImagesModelsAuthDispatch(b *testing.B) {
-	models := CreateImagesModels()
-	provider := imageRuntimeTestProvider("p1", "", nil, nil)
+func BenchmarkModelsGenerateImagesAuthDispatch(b *testing.B) {
+	models := CreateModels()
+	provider := typedTestProvider(typedProviderInput{id: "p1"})
 	provider.Auth.APIKey.Resolve = func(context.Context, APIKeyAuthInput) (*AuthResult, error) {
 		return &AuthResult{Auth: ModelAuth{APIKey: "resolved", Headers: ProviderHeaders{"X-Provider": new("value")}}, Env: map[string]string{"PROVIDER": "value"}}, nil
 	}
 	models.SetProvider(provider)
-	model := *models.GetModel("p1", "model-a")
+	model := imageModelOf(b, models, "p1", "model-a")
 	request := ImagesContext{Input: []ContentBlock{TextContent{Text: "a red circle"}}}
-	options := ImagesOptions{Headers: ProviderHeaders{"X-Request": new("request")}, Env: map[string]string{"REQUEST": "request"}}
+	options := ModelsImagesOptions{ImagesOptions: ImagesOptions{Headers: ProviderHeaders{"X-Request": new("request")}, Env: map[string]string{"REQUEST": "request"}}}
 	b.ReportAllocs()
 	for b.Loop() {
 		result := models.GenerateImages(b.Context(), model, request, options)

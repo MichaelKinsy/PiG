@@ -32,7 +32,8 @@ The dispatcher is exhaustive - every command here is a parity-mirrored upstream 
 | `/hotkeys` | List keyboard shortcuts. |
 | `/quit` | Exit PiG. |
 | `/trust` | Set the trust decision for the current project. |
-| `/llama` | Manage a local llama.cpp server. |
+| `/sprite [list\|set <id>\|preview [id]\|create]` | Choose the pig the startup header shows, preview a sprite's full art, or design your own with the model (`create`; the picker's last item, "Create your own...", shows how). Registered by the built-in `pig-login` extension, so it is absent with `--no-extensions` or `-builtin:pig-login`. [pig] |
+| `/llama` | Manage a local llama.cpp server. Registered by the built-in `llama.cpp` extension, so it is absent with `--no-extensions` or `-builtin:llama.cpp`. |
 
 There is no `/exit` or `/clear` command. Pi has neither, and PiG matches Pi. To
 leave, use `/quit`. To clear the editor, press the `app.clear` key (`ctrl+c` by
@@ -45,8 +46,8 @@ default). `/hotkeys` lists the current bindings.
 | `/piglet` | Inspect the Piglet active in this process. |
 
 PiG Standard and other Piglets can add commands through selected extension
-Resources. Stock PiG does not register `/runner`, `/pig-runner`, `/sprite`, or
-other product commands.
+Resources. Stock PiG does not register `/runner`, `/pig-runner`, or other
+product commands.
 
 ## Parity harness (only when `PIG_PARITY_HARNESS=1`)
 

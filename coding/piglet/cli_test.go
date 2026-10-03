@@ -44,7 +44,7 @@ func TestPigletHelpListsCurrentSurface(t *testing.T) {
 		}
 	}
 	got := slices.Sorted(maps.Keys(commands))
-	want := []string{"add", "build", "keygen", "list", "publish", "pull", "remove", "schema", "show", "trust", "update", "validate", "verify"}
+	want := []string{"add", "build", "keygen", "list", "prune", "publish", "pull", "remove", "schema", "show", "trust", "update", "validate", "verify"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("Piglet help commands = %v, want %v\n%s", got, want, stdout.String())
 	}
@@ -216,6 +216,98 @@ func TestRunCommandAddRejectsRelativeLocalResourceOrigins(t *testing.T) {
 				t.Fatalf("Piglet was partially added: %v", err)
 			}
 		})
+	}
+}
+
+// A Pigpen-shaped Piglet selects extensions through package: aliases whose Package is a local source relative to
+// the Piglet. Add copies only the Piglet file, so the installed copy cannot resolve that Package: the loader anchors
+// local sources to the Piglet directory and rejects absolute ones.
+func TestRunCommandAddRejectsRelativeLocalPackageSource(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("PIG_HOME", home)
+	root := t.TempDir()
+	extensionDir := filepath.Join(root, "packages", "games", "extensions", "runner")
+	if err := os.MkdirAll(extensionDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(extensionDir, "index.js"), []byte("export default function extension(pi) {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "packages", "games", "package.json"), []byte(`{"name":"games"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	source := filepath.Join(root, "piglet.yaml")
+	if err := os.WriteFile(source, []byte("name: games\npackages:\n  games: local:./packages/games\nextensions:\n  - name: runner\n    origins: [package:games]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	installresolver.SetMaterializer(func(_, source, _ string, _, _ io.Writer) (string, error) { return source, nil })
+	t.Cleanup(func() { installresolver.SetMaterializer(nil) })
+
+	var stdout, stderr strings.Builder
+	code := RunCommand([]string{"piglet", "add", source, "--no-input"}, &stdout, &stderr)
+	if code != 1 || !strings.Contains(stderr.String(), "FAIL: package games (local:./packages/games)") || !strings.Contains(stderr.String(), "Run the Piglet from its source path") {
+		t.Fatalf("add code=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+	}
+	if _, err := os.Stat(filepath.Join(home, "piglets", "games.yaml")); !os.IsNotExist(err) {
+		t.Fatalf("Piglet was partially added: %v", err)
+	}
+
+	// The guidance is truthful: from its source path the same Piglet resolves.
+	stdout.Reset()
+	stderr.Reset()
+	if code := RunCommand([]string{"piglet", "validate", source, "--workspace", root}, &stdout, &stderr); code != 0 {
+		t.Fatalf("validate from source code=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+	}
+}
+
+func TestRunCommandAddRejectsAbsoluteLocalPackageSource(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("PIG_HOME", home)
+	root := t.TempDir()
+	packageRoot := filepath.Join(root, "games")
+	if err := os.MkdirAll(filepath.Join(packageRoot, "extensions", "runner"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(packageRoot, "extensions", "runner", "index.js"), []byte("export default function extension(pi) {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(packageRoot, "package.json"), []byte(`{"name":"games"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	source := filepath.Join(root, "piglet.yaml")
+	document := fmt.Sprintf("name: games\npackages:\n  games: %q\nextensions:\n  - name: runner\n    origins: [package:games]\n", "local:"+packageRoot)
+	if err := os.WriteFile(source, []byte(document), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// The loader rejects the absolute Package source, so the source itself does not validate.
+	installresolver.SetMaterializer(func(_, source, _ string, _, _ io.Writer) (string, error) { return source, nil })
+	t.Cleanup(func() { installresolver.SetMaterializer(nil) })
+	var stdout, stderr strings.Builder
+	if code := RunCommand([]string{"piglet", "validate", source}, &stdout, &stderr); code == 0 || !strings.Contains(stdout.String()+stderr.String(), "must be a relative piglet: path") {
+		t.Fatalf("validate code=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+	}
+	stdout.Reset()
+	stderr.Reset()
+	code := RunCommand([]string{"piglet", "add", source, "--no-input"}, &stdout, &stderr)
+	if code != 1 || !strings.Contains(stderr.String(), `packages["games"]`) || !strings.Contains(stderr.String(), "must be a relative piglet: path") {
+		t.Fatalf("add code=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+	}
+	if _, err := os.Stat(filepath.Join(home, "piglets", "games.yaml")); !os.IsNotExist(err) {
+		t.Fatalf("unloadable Piglet was added: %v", err)
+	}
+}
+
+func TestValidatePigletAddOriginsChecksPackageSources(t *testing.T) {
+	absolute := "local:" + t.TempDir()
+	p := &Piglet{Packages: map[string]string{"games": "local:./packages/games", "abs": absolute, "npm": "npm:@acme/base@1.0.0"}}
+	err := validatePigletAddOrigins(p)
+	if err == nil || !strings.Contains(err.Error(), "FAIL: package games (local:./packages/games)") || strings.Contains(err.Error(), "FAIL: package abs") || strings.Contains(err.Error(), "FAIL: package npm") {
+		t.Fatalf("error = %v", err)
+	}
+	delete(p.Packages, "games")
+	if err := validatePigletAddOrigins(p); err != nil {
+		t.Fatalf("absolute and npm Package sources rejected: %v", err)
 	}
 }
 

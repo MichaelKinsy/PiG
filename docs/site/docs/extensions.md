@@ -115,6 +115,12 @@ extensions:
 
 Use a Package when you need to distribute the extension to other applications. Installing the Package does not activate a Piglet.
 
+## MCP servers, virtual models and tool exposure
+
+An extension in any supported language can register MCP servers (`registerMcpServer`), virtual models (`registerVirtualModel`) and tools with `exposure`, `namespace`, `annotations`, `outputSchema`, `defaultActive` and `prepareLoadout`, and a tool can call other tools through `ctx.executeTool()`. See [MCP servers](mcp.md#extensions), [virtual models](virtual-models.md) and [codemode](codemode.md).
+
+`namespace: { name, description, instructions }` groups related tools, as MCP servers do. Codemode lists a namespace under one heading with its `description`. `instructions` holds longer usage guidance, such as MCP server instructions. It is not listed, and codemode scripts read it with `describeNamespace(name)`. A server config given to `registerMcpServer` accepts the same `description` as an `mcpServers` entry in `mcp.json`.
+
 ## Markdown transformers
 
 Register a display-only Markdown transformer with `pi.registerMarkdownTransformer` in Node, `MarkdownTransformer` in Go, or `markdown_transformer` in Rust and Python. Transformers receive the message type, streaming state, and current content width. They change the displayed user, assistant, and visible-thinking text, not the stored message or provider input. A string replaces the current Markdown, including an empty string. Node Promise results and other non-string results are ignored, as in Pi.
@@ -193,6 +199,11 @@ PiG persists a successful result before it emits `session_compact`. The event
 contains the persisted compaction entry, reason, retry state, and
 `fromExtension` value. Isolated, packed, and fused extensions receive the same
 events.
+
+PiG emits `session_compact_failed` after a compaction fails or is aborted, once
+the `compaction_end` listeners have returned. The event contains the reason,
+`errorMessage` (absent when the compaction was aborted), `aborted`, retry state,
+and `fromExtension` value.
 
 PiG Standard requires every selected extension to fuse:
 
@@ -354,7 +365,7 @@ Before you install an extension:
 
 ## Breaking changes / Go SDK migration to 0.3.0
 
-Pi 0.87.1 represents unknown context usage as null, not zero. Go therefore keeps `ContextUsage.Tokens` as `*int` and `Percent` as `*float64`. `GetContextUsage()` returns nil when there is no usable model window, and a host failure as an error in every SDK (Go `error`, Rust `io::Result`, Python `HostCallError`). After compaction, a non-nil usage can contain nil counts. Rust uses `Option`; Python uses `None` for the same states.
+Pi 1.0.0 represents unknown context usage as null, not zero. Go therefore keeps `ContextUsage.Tokens` as `*int` and `Percent` as `*float64`. `GetContextUsage()` returns nil when there is no usable model window, and a host failure as an error in every SDK (Go `error`, Rust `io::Result`, Python `HostCallError`). After compaction, a non-nil usage can contain nil counts. Rust uses `Option`; Python uses `None` for the same states.
 
 Before:
 

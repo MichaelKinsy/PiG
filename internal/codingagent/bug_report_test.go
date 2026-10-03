@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bufio"
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"go/parser"
@@ -428,5 +429,29 @@ func TestBugReportOmitsTrackingID(t *testing.T) {
 	}
 	if !strings.Contains(string(encoded), `"enableAnalytics": true`) && !strings.Contains(string(encoded), `"enableAnalytics":true`) {
 		t.Fatalf("bug report dropped enableAnalytics:\n%s", encoded)
+	}
+}
+
+// upstream: packages/coding-agent/src/core/bug-report.ts: id: options.id ?? uuidv7()
+// The report id comes from the shared process-wide generator, so its sequence follows the previous shared id.
+func TestBugReportIDUsesTheSharedUUIDv7Generator(t *testing.T) {
+	sequenceOf := func(id string) uint64 {
+		t.Helper()
+		raw, err := hex.DecodeString(strings.ReplaceAll(id, "-", ""))
+		if err != nil || len(raw) != 16 || raw[6]>>4 != 7 {
+			t.Fatalf("%q is not a UUIDv7 (%v)", id, err)
+		}
+		return uint64(raw[6]&0x0f)<<37 | uint64(raw[7])<<29 | uint64(raw[8]&0x3f)<<23 | uint64(raw[9])<<15 | uint64(raw[10])<<7 | uint64(raw[11]>>1)
+	}
+	before, err := ai.UUIDv7(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	metadata, err := CollectBugReportMetadata(BugReportInputs{}, BugReportOptions{}, false, fixedBugReportTime())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if step := sequenceOf(metadata.ID) - sequenceOf(before); step == 0 || step > 1<<16 {
+		t.Fatalf("report id %q does not follow the shared generator's %q (sequence step %d)", metadata.ID, before, step)
 	}
 }

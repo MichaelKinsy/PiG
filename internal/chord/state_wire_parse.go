@@ -143,6 +143,26 @@ func assertServiceUpdate(value any, assertOp opAssertion) error {
 				return err
 			}
 		}
+	case UpdateReset:
+		if err := serviceKeys(update, []string{"type", "snapshot"}, nil, "reset update"); err != nil {
+			return err
+		}
+		if err := assertServiceSubscription(update["snapshot"], assertOp); err != nil {
+			return err
+		}
+		for _, instance := range update["snapshot"].(map[string]any)["instances"].([]any) {
+			for _, member := range instance.(map[string]any)["members"].([]any) {
+				fields := member.(map[string]any)
+				if fields["kind"] != MemberState {
+					continue
+				}
+				ops := fields["ops"].([]any)
+				if len(ops) != 1 || !isRootReplacement(ops[0]) {
+					return fmt.Errorf("Service reset must contain full root replacements")
+				}
+			}
+		}
+		return nil
 	case UpdateUnavailable:
 		return serviceKeys(update, []string{"type"}, nil, "unavailable update")
 	case UpdateReplaced:
@@ -232,4 +252,10 @@ func ParseServiceProviderUpdate(raw json.RawMessage) (ServiceProviderUpdate, err
 }
 func ParseWireServiceProviderUpdate(raw json.RawMessage) (WireServiceProviderUpdate, error) {
 	return parseServiceValue[WireServiceProviderUpdate](raw, func(value any) error { return assertServiceUpdate(value, AssertValidWireOp) })
+}
+
+// isRootReplacement reports whether a decoded or wire operation is an "r" tuple.
+func isRootReplacement(op any) bool {
+	tuple, ok := deltaTuple(op)
+	return ok && len(tuple) > 0 && tuple[0] == "r"
 }

@@ -5,7 +5,6 @@ package experimental
 import (
 	"context"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/experimental/client"
 	"github.com/MichaelKinsy/PiG/internal/experimental/services"
@@ -14,14 +13,14 @@ import (
 // ServerServiceSource supplies server services and their replicated connection state. Both network and loopback presentations use this contract.
 type ServerServiceSource interface {
 	chord.RemoteServiceSource
-	Connection() pico3.ReplicatedStateOf[*services.ServerConnectionState]
+	Connection() chord.ReplicatedStateOf[*services.ServerConnectionState]
 	Dispose(context.Context) error
 }
 
 // SessionServiceSource supplies the selected attachment's services. Readiness waits are fenced to the requested Session generation by the source implementation.
 type SessionServiceSource interface {
 	chord.RemoteServiceSource
-	Attachment() pico3.ReplicatedStateOf[*services.SessionAttachmentState]
+	Attachment() chord.ReplicatedStateOf[*services.SessionAttachmentState]
 	WhenAttached(context.Context, string) error
 	WhenDetached(context.Context) error
 	Dispose(context.Context) error

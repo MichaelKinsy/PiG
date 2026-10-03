@@ -83,7 +83,7 @@ func TestConstrainedSamplingUnsupportedSchemasUpstream(t *testing.T) {
 			if _, err := makeStrictJSONSchema(parameters); err == nil || !strings.Contains(err.Error(), tc.message) {
 				t.Fatalf("strict schema=%v", err)
 			}
-			strict, err := resolveJSONSchemaStrictSampling(tool, true)
+			strict, err := resolveJSONSchemaStrictSampling(tool, true, nil)
 			if err != nil || strict != nil {
 				t.Fatalf("prefer=%v/%v", strict, err)
 			}
@@ -93,7 +93,7 @@ func TestConstrainedSamplingUnsupportedSchemasUpstream(t *testing.T) {
 				t.Fatalf("fallback=%#v error=%v", converted, err)
 			}
 			tool.ConstrainedSampling.Strict = "require"
-			if _, err := resolveJSONSchemaStrictSampling(tool, true); err == nil || !strings.Contains(err.Error(), tc.message) {
+			if _, err := resolveJSONSchemaStrictSampling(tool, true, nil); err == nil || !strings.Contains(err.Error(), tc.message) {
 				t.Fatalf("require=%v", err)
 			}
 		})
@@ -127,6 +127,44 @@ func TestConstrainedSamplingGrammarReplayUpstream(t *testing.T) {
 		if !reflect.DeepEqual(got, want) {
 			t.Fatalf("replay=%s", raw)
 		}
+	}
+}
+
+// .upstream/v1.0.0/packages/ai/test/constrained-sampling.test.ts:260 — drops foreign item ids when replaying grammar calls as custom Responses items.
+// earendil-works/radius#115: a gateway forwards another model's history as a foreign provider.
+func TestConstrainedSamplingGrammarReplayDropsForeignItemIDsUpstream(t *testing.T) {
+	provider := &openAIResponsesProvider{cfg: OpenAIResponsesConfig{ProviderID: "openai", Model: "gpt-test"}}
+	messages := []Message{
+		AssistantMessage{API: APIPiMessages, Provider: "radius", Model: "gpt-other", StopReason: StopReasonToolUse, Content: []AssistantContentBlock{ToolCall{ID: "call_1|ctc_1", Name: "sample_tool", Arguments: JsonObject{"payload": "abc"}}}},
+		ToolResultMessage{ToolCallID: "call_1|ctc_1", ToolName: "sample_tool", Content: []ToolResultMessageContent{TextContent{Text: "done"}}},
+	}
+	items, err := provider.convertMessages(messages, map[string]string{"sample_tool": "payload"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := json.Marshal(items)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []map[string]any
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatal(err)
+	}
+	var call map[string]any
+	for _, item := range got {
+		if item["type"] == "custom_tool_call" {
+			call = item
+			break
+		}
+	}
+	if call == nil {
+		t.Fatalf("no custom_tool_call item: %s", raw)
+	}
+	if call["call_id"] != "call_1" || call["input"] != "abc" {
+		t.Fatalf("custom_tool_call=%v, want call_id call_1 and input abc", call)
+	}
+	if id, ok := call["id"]; ok {
+		t.Fatalf("custom_tool_call id=%v, want it omitted", id)
 	}
 }
 

@@ -301,3 +301,21 @@ func TestThemeWatcherErrorClosesNotificationsAndBuiltinsDoNotWatch(t *testing.T)
 		t.Fatal("Close did not join its worker")
 	}
 }
+
+// upstream 0.99.1 theme.ts:812-818 startThemeWatcher: the system theme is built-in, so a same-named file in the custom directory is not watched.
+func TestThemeWatcherSkipsTheSystemTheme(t *testing.T) {
+	dir := t.TempDir()
+	writeWatchedTheme(t, dir, SystemThemeName, "")
+	writeWatchedTheme(t, dir, "custom-test", "")
+	for name, watched := range map[string]bool{SystemThemeName: false, "custom-test": true} {
+		watcher := StartThemeWatcher(t.Context(), dir, nil)
+		watcher.selectTheme(name)
+		watcher.mu.Lock()
+		native := watcher.watcher
+		watcher.mu.Unlock()
+		if (native != nil) != watched {
+			t.Errorf("theme %q watched = %v, want %v", name, native != nil, watched)
+		}
+		watcher.Close()
+	}
+}

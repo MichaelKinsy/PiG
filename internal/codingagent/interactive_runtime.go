@@ -75,6 +75,8 @@ type InteractiveReplacement struct {
 	SubprocessHost          SubprocessHost
 	ModelLookup             func(providerID, modelID string) *ai.Model
 	ModelCatalog            func() []*ai.Model
+	ModelClassify           func(context.Context, *ai.ClassifierModel, ai.ClassifierContext, ...ai.ModelsClassifierOptions) ai.ClassifierResult
+	ModelGenerateImages     func(context.Context, *ai.ImageModel, ai.ImagesContext, ...ai.ModelsImagesOptions) ai.AssistantImages
 	RequestAuthRuntime      *RequestAuthRuntime
 }
 
@@ -165,6 +167,8 @@ func (m *InteractiveMode) applyReplacement(session InteractiveSessionHandle, r I
 	m.opts.SubprocessHost = r.SubprocessHost
 	m.opts.ModelLookup = r.ModelLookup
 	m.opts.ModelCatalog = r.ModelCatalog
+	m.opts.ModelClassify = r.ModelClassify
+	m.opts.ModelGenerateImages = r.ModelGenerateImages
 	m.opts.RequestAuthRuntime = r.RequestAuthRuntime
 	if m.extCtx != nil {
 		m.extCtx.CWD = r.CWD
@@ -194,6 +198,10 @@ func (m *InteractiveMode) applyReplacement(session InteractiveSessionHandle, r I
 func (m *InteractiveMode) attachSubprocess() {
 	if m.tuiInst == nil {
 		return
+	}
+	// The sprite catalogue holds exactly the bound build's extension sprites; the bridge replays its own below.
+	if m.dropBoundSprites() {
+		defer m.invalidateBuiltInHeader()
 	}
 	if bridge := m.opts.SubprocessUIBridge; bridge != nil {
 		extUI := &ExtUIContext{m: m}

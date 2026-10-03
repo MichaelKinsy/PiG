@@ -30,7 +30,7 @@ const piAIRoot = (() => {
 })();
 
 const loadPKCE = () => import(pathToFileURL(join(piAIRoot, "dist/auth/oauth/pkce.js")).href);
-const loadOAuthPage = () => import(pathToFileURL(join(piAIRoot, "dist/auth/oauth/oauth-page.js")).href);
+const loadOAuthPage = () => import(pathToFileURL(join(piAIRoot, "dist/utils/oauth-page.js")).href);
 const loadCopilotOAuth = () => import(pathToFileURL(join(piAIRoot, "dist/auth/oauth/github-copilot.js")).href);
 const loadAnthropicOAuth = () => import(pathToFileURL(join(piAIRoot, "dist/auth/oauth/anthropic.js")).href);
 const loadCodexOAuth = () => import(pathToFileURL(join(piAIRoot, "dist/auth/oauth/openai-codex.js")).href);
@@ -206,7 +206,9 @@ export default function (pi: any) {
         throw new Error(`unexpected anthropic request ${url.toString()}`);
       }, async () => anthropicOAuth.login({
         signal: new AbortController().signal,
-        prompt: async (prompt: any) => prompt.type === "manual_code" ? "anth-code" : "",
+        // Pi 1.0.0 anthropic.ts:273-291 first asks for the login method; answer browser login as
+        // .upstream/v1.0.0/packages/ai/test/anthropic-oauth.test.ts:65 does.
+        prompt: async (prompt: any) => prompt.type === "select" ? "browser" : prompt.type === "manual_code" ? "anth-code" : "",
         notify: () => {},
       }));
       ctx.ui.notify(`anthropic-oauth:name=${anthropicOAuth.name}:refresh=${cred.refresh}:access=${cred.access}:grant=${body.includes('"grant_type":"authorization_code"')}:pkce=${body.includes('"code_verifier":"')}:exp=${cred.expires > Date.now()}`, "info");

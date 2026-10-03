@@ -15,7 +15,7 @@ func TestDependencyRecipeContracts(t *testing.T) {
 					t.Skip("make is not on PATH")
 				}
 			}
-			command := exec.Command("python3", filepath.Join(repoRoot(t), "automation", "ci", script))
+			command := exec.Command(hostPython(), filepath.Join(repoRoot(t), "automation", "ci", script))
 			if output, err := command.CombinedOutput(); err != nil {
 				t.Fatalf("recipe tests: %v\n%s", err, output)
 			}

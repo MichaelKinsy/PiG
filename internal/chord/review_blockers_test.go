@@ -5,19 +5,17 @@ import (
 	"reflect"
 	"sync"
 	"testing"
-
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 )
 
 func TestReviewReentrantSubscribeHydratesSynchronously(t *testing.T) {
 	counter := newCounter(t)
 	var events []string
-	_, err := counter.state.Subscribe(func(_ *counterState, _ context.Context, info pico3.ReplicatedStateDelivery) {
+	_, err := counter.state.Subscribe(func(_ *counterState, _ context.Context, info ReplicatedStateDelivery) {
 		if info.Kind != DeliveryUpdate {
 			return
 		}
 		events = append(events, "first update")
-		_, err := counter.state.Subscribe(func(_ *counterState, _ context.Context, info pico3.ReplicatedStateDelivery) {
+		_, err := counter.state.Subscribe(func(_ *counterState, _ context.Context, info ReplicatedStateDelivery) {
 			events = append(events, "late "+info.Kind)
 		})
 		if err != nil {
@@ -28,7 +26,7 @@ func TestReviewReentrantSubscribeHydratesSynchronously(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = counter.state.Subscribe(func(_ *counterState, _ context.Context, info pico3.ReplicatedStateDelivery) {
+	_, err = counter.state.Subscribe(func(_ *counterState, _ context.Context, info ReplicatedStateDelivery) {
 		if info.Kind == DeliveryUpdate {
 			events = append(events, "second update")
 		}
@@ -81,8 +79,10 @@ func TestReviewReentrantProviderDisposeDeliversUnavailable(t *testing.T) {
 	if _, err := counter.Add(context.Background(), 1, "x"); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(first, []string{UpdateState, UpdateUnavailable}) || !reflect.DeepEqual(second, []string{UpdateUnavailable}) {
-		t.Fatalf("first=%v second=%v; upstream first=[state unavailable] second=[unavailable]", first, second)
+	// upstream 1.0.0 provider.ts #publish queues the update for every subscriber before invoking any listener (service-delivery.test.ts "preserves lifecycle ordering across subscribers during reentrant publication"), so both subscribers see the state update and then the terminal update.
+	want := []string{UpdateState, UpdateUnavailable}
+	if !reflect.DeepEqual(first, want) || !reflect.DeepEqual(second, want) {
+		t.Fatalf("first=%v second=%v; upstream first=second=%v", first, second, want)
 	}
 }
 

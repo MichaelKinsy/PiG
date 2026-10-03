@@ -11,8 +11,10 @@ import (
 // NativeClipboard carries the native helper's callable capabilities. An unavailable read returns available=false; an available read with a nil value means an empty clipboard. SetText is absent on Linux, where command tools retain selection ownership. Go strings preserve lone UTF-16 surrogate units as WTF-8; OS byte APIs encode them as UTF-8 replacement characters.
 // The additional optional functions belong to the same platform helper object, preserving its identity when accessed through either upstream getter.
 type NativeClipboard struct {
-	GetText                    func(context.Context) (value *string, available bool, err error)
-	GetImage                   func(context.Context) (value []byte, available bool, err error)
+	GetText  func(context.Context) (value *string, available bool, err error)
+	GetImage func(context.Context) (value []byte, available bool, err error)
+	// GetFilePaths returns the POSIX paths of file URLs on the clipboard, such as Finder file copies. available=false means unsupported (upstream undefined); a nil value with available=true means no files (upstream null).
+	GetFilePaths               func(context.Context) (paths []string, available bool, err error)
 	SetText                    func(context.Context, string) error
 	EnableVirtualTerminalInput func() bool
 	IsModifierPressed          func(string) bool

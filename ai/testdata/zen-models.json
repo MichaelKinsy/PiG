@@ -53,6 +53,10 @@
   },
   {
     "provider": "opencode",
+    "id": "claude-sonnet-5-5"
+  },
+  {
+    "provider": "opencode",
     "id": "qwen3.5-plus"
   },
   {
@@ -113,6 +117,10 @@
   },
   {
     "provider": "opencode",
+    "id": "fledge-alpha-free"
+  },
+  {
+    "provider": "opencode",
     "id": "glm-5"
   },
   {
@@ -153,6 +161,10 @@
   },
   {
     "provider": "opencode",
+    "id": "longcat-2.5-preview-free"
+  },
+  {
+    "provider": "opencode",
     "id": "mimo-v2.6-flash-free"
   },
   {
@@ -174,6 +186,14 @@
   {
     "provider": "opencode",
     "id": "nemotron-3.5-lightning-free"
+  },
+  {
+    "provider": "opencode",
+    "id": "qwen3.8-max"
+  },
+  {
+    "provider": "opencode",
+    "id": "space-bunny-free"
   },
   {
     "provider": "opencode",
@@ -265,6 +285,10 @@
   },
   {
     "provider": "opencode",
+    "id": "gpt-6.1-sol"
+  },
+  {
+    "provider": "opencode",
     "id": "grok-4.5"
   },
   {
@@ -273,15 +297,15 @@
   },
   {
     "provider": "opencode",
+    "id": "grok-4.7"
+  },
+  {
+    "provider": "opencode",
     "id": "grok-build-0.1"
   },
   {
     "provider": "opencode",
     "id": "muse-spark-1.2"
-  },
-  {
-    "provider": "opencode",
-    "id": "muse-spark-1.2-contributor-free"
   },
   {
     "provider": "opencode",
@@ -317,10 +341,6 @@
   },
   {
     "provider": "opencode-go",
-    "id": "glm-5.1"
-  },
-  {
-    "provider": "opencode-go",
     "id": "glm-5.2"
   },
   {
@@ -341,10 +361,6 @@
   },
   {
     "provider": "opencode-go",
-    "id": "kimi-k2.6"
-  },
-  {
-    "provider": "opencode-go",
     "id": "kimi-k2.7-code"
   },
   {
@@ -354,6 +370,10 @@
   {
     "provider": "opencode-go",
     "id": "longcat-2.0"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "longcat-2.5-preview-free"
   },
   {
     "provider": "opencode-go",
@@ -377,14 +397,6 @@
   },
   {
     "provider": "opencode-go",
-    "id": "qwen3.6-plus"
-  },
-  {
-    "provider": "opencode-go",
-    "id": "qwen3.7-max"
-  },
-  {
-    "provider": "opencode-go",
     "id": "qwen3.7-plus"
   },
   {
@@ -393,7 +405,15 @@
   },
   {
     "provider": "opencode-go",
+    "id": "space-bunny-free"
+  },
+  {
+    "provider": "opencode-go",
     "id": "gpt-5.6-luna"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "gpt-6-luna"
   },
   {
     "provider": "opencode-go",

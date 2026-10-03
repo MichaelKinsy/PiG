@@ -108,7 +108,7 @@ jobs:
         run: |
           set -euo pipefail
           npm_version=${VERSION%%+*}
-          # publish-order.txt lists the six platform packages first and the
+          # publish-order.txt lists the seven platform packages first and the
           # launcher last, so the launcher never points at missing packages.
           while read -r name tarball; do
             if npm view "${name}@${npm_version}" version >/dev/null 2>&1; then

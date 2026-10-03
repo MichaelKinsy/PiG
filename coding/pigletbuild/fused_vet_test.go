@@ -36,8 +36,7 @@ func TestBuildNativeArtifactRejectsFusedProcessHazards(t *testing.T) {
 				Kind: pigletartifact.ComponentKindExtension, Name: "hazard",
 				Realization: pigletartifact.RealizationFused, Materialization: pigletartifact.MaterializationBinary,
 			}}}
-			t.Setenv("PIG_SOURCE_ROOT", t.TempDir())
-			_, err := buildNativeArtifact(context.Background(), &piglet.Piglet{Name: "hazard"}, []subprocess.CellSpec{cell}, plan, nil, Options{}, filepath.Join(t.TempDir(), "pig-hazard"), &bytes.Buffer{}, &bytes.Buffer{})
+			_, err := buildNativeArtifact(context.Background(), pigSource{Root: t.TempDir()}, &piglet.Piglet{Name: "hazard"}, []subprocess.CellSpec{cell}, plan, nil, Options{}, filepath.Join(t.TempDir(), "pig-hazard"), &bytes.Buffer{}, &bytes.Buffer{})
 			if err == nil || !strings.Contains(err.Error(), fusedProcessHazardDiagnostic) || !strings.Contains(err.Error(), test.symbol) {
 				t.Fatalf("build error = %v, want %s naming %s", err, fusedProcessHazardDiagnostic, test.symbol)
 			}

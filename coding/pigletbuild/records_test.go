@@ -80,7 +80,7 @@ func TestBuildBinaryRecordsContainsNoPigletContents(t *testing.T) {
 	}
 	artifactPath := writeFakePigArtifact(t, root, "pig-release")
 	host := Target{OS: runtime.GOOS, Arch: runtime.GOARCH}
-	lock, err := buildNativeLock(p, nil, Options{Targets: []Target{host}, Sandbox: Sandbox{Native: host}, Version: "1.2.0", BakedSettings: []byte("name: release\n")})
+	lock, err := buildNativeLock(p, nil, Options{Targets: []Target{host}, Sandbox: Sandbox{Native: host}, Version: "1.2.0", BakedSettings: []byte("name: release\n")}, checkoutPigSource(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,13 +227,18 @@ func TestBuildInputsLocksLocalGoReplacements(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// The product records the resolved path (Windows temp dirs may be 8.3 short names).
+	realReplacement, err := filepath.EvalSymlinks(replacement)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var dependency *buildInput
 	for i := range inputs {
 		if inputs[i].Kind == "extension-dependency" {
 			dependency = &inputs[i]
 		}
 	}
-	if dependency == nil || dependency.Digest == "" || !strings.Contains(dependency.Source, filepath.ToSlash(replacement)) {
+	if dependency == nil || dependency.Digest == "" || !strings.Contains(dependency.Source, filepath.ToSlash(realReplacement)) {
 		t.Fatalf("inputs = %#v", inputs)
 	}
 }

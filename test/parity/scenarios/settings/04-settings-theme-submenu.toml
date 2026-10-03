@@ -29,19 +29,19 @@ capture_end = "Enter to select · Esc to go back"
 
 [[tmux.steps]]
 keys = ["/settings", "Enter"]
-wait_contains = [">", "Type to search · Enter/Space to change · Esc to cancel"]
+wait_visible_contains = [">", "Type to search · Enter/Space to change · Esc to cancel"]
 wait_timeout_seconds = 5
 settle_seconds = 1
 
 [[tmux.steps]]
 keys = ["Space", "t", "h", "e", "m", "e"]
-wait_contains = ["> theme", "Type to search · Enter/Space to change · Esc to cancel"]
+wait_visible_contains = ["> theme", "Type to search · Enter/Space to change · Esc to cancel"]
 wait_timeout_seconds = 5
 settle_seconds = 1
 
 [[tmux.steps]]
 keys = ["Enter"]
-wait_contains = ["Theme", "Enter to select · Esc to go back"]
+wait_visible_contains = ["Theme", "Enter to select · Esc to go back"]
 wait_timeout_seconds = 5
 settle_seconds = 1
 

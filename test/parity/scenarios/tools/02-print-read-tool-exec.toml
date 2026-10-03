@@ -21,7 +21,6 @@ name = "02-print-read-tool-exec"
 description = "Faux triggers read(parity-read-target.txt), both produce done in print mode"
 covers = [
   "packages/coding-agent/src/core/tools/read.ts",
-  "packages/agent/src/harness/tools/read.ts",
 ]
 tags = ["hermetic", "fast"]
 driver = "print-mode"

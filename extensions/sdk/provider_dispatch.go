@@ -144,6 +144,34 @@ func (e *Extension) dispatchProviderObject(ctx Context, req *requestMsg) (any, e
 				return providerCallbackValue[bool](ctx, req.Tool, "publish", params)
 			},
 		})
+	case "generateImages", "classify":
+		var operation struct {
+			Params struct {
+				Context json.RawMessage `json:"context"`
+			} `json:"params"`
+		}
+		if err := json.Unmarshal(req.Args, &operation); err != nil {
+			return nil, err
+		}
+		options := ProviderOperationOptions{Signal: ctx.ctx, Values: args.Options}
+		if request.Method == "generateImages" {
+			if provider.GenerateImages == nil {
+				return nil, errors.New("Provider has no generateImages")
+			}
+			var input map[string]any
+			if err := json.Unmarshal(operation.Params.Context, &input); err != nil {
+				return nil, err
+			}
+			return provider.GenerateImages(args.Model, input, options)
+		}
+		if provider.Classify == nil {
+			return nil, errors.New("Provider has no classify")
+		}
+		var input ClassifierContext
+		if err := json.Unmarshal(operation.Params.Context, &input); err != nil {
+			return nil, err
+		}
+		return classifyResult(provider.Classify(args.Model, input, options))
 	case "stream", "streamSimple", "fetchDeferred", "cancelDeferred":
 		options := ProviderStreamOptions{Values: args.Options, Signal: ctx.ctx}
 		if args.Aborted {

@@ -28,7 +28,7 @@ func TestAssistantIgnoresUpdatesBeforeStart(t *testing.T) {
 			ends++
 		}
 	}})
-	message, _, err := a.consumeStream(t.Context(), stream, nil)
+	message, _, err := a.consumeStream(t.Context(), stream, nil, "")
 	if err != nil {
 		t.Fatal(err)
 	}

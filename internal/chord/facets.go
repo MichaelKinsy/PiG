@@ -8,8 +8,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 )
 
 // Facet is one unit of composition (upstream Facet). Setup declares the
@@ -160,9 +158,12 @@ type facetLifecycle struct {
 	state         lifecycleState
 	serviceAccess bool
 	effects       []func(context.Context) error
-	observations  []func() func()
+	observations  []facetObservation
 	activate      []func(context.Context) error
 }
+
+// facetObservation starts one keyed observation at activation. It returns the observation's stop function and, for an in-host remote observation, the loopback subscription start it joined (nil otherwise).
+type facetObservation func() (stop func(), connecting *task)
 
 func (lifecycle *facetLifecycle) assertSettingUp(operation string) error {
 	if lifecycle.state != lifecycleSettingUp {
@@ -214,20 +215,34 @@ func (lifecycle *facetLifecycle) activateNow(ctx context.Context) error {
 	observations := lifecycle.observations
 	callbacks := lifecycle.activate
 	lifecycle.mu.Unlock()
+	var connecting []*task
 	for _, start := range observations {
 		var stop func()
-		if err := safeCall(func() error { stop = start(); return nil }); err != nil {
+		var started *task
+		if err := safeCall(func() error { stop, started = start(); return nil }); err != nil {
 			return err
 		}
 		lifecycle.mu.Lock()
 		lifecycle.effects = append(lifecycle.effects, func(context.Context) error { stop(); return nil })
 		lifecycle.mu.Unlock()
+		if started != nil {
+			connecting = append(connecting, started)
+		}
+	}
+	// upstream: packages/chord/src/facets/host.ts:FacetLifecycle.activate starts each observation synchronously; a loopback KeyedBinding.#start resumes after one microtask, at activate's first await (after the first callback's synchronous prefix, or when activate returns), so the in-host subscription and its snapshot handlers are live before activation proceeds. A start error is reported by the binding, as upstream's unawaited #starting.
+	connect := func() {
+		for _, started := range connecting {
+			_ = started.wait(context.Background())
+		}
+		connecting = nil
 	}
 	for _, callback := range callbacks {
 		if err := safeCall(func() error { return callback(ctx) }); err != nil {
 			return err
 		}
+		connect()
 	}
+	connect()
 	return nil
 }
 
@@ -284,6 +299,8 @@ type facetRuntime struct {
 	provides   []serviceReference
 	lifecycle  *facetLifecycle
 	provisions []*facetProvision
+	// refs holds the one handle a facet receives for each singleton service it uses (upstream FacetEnvironment.use returns the same handle for the same service).
+	refs map[string]any
 }
 
 // FacetEnvironment is passed to Facet.Setup (upstream FacetEnvironment). The
@@ -328,7 +345,7 @@ func recordReference(target *[]serviceReference, serviceId string, local bool, m
 
 // ProvideService declares and installs this facet's singleton implementation
 // of def. Remote (non-local) implementations are classified immediately.
-func ProvideService[T any](env *FacetEnvironment, def pico3.ServiceDefinition[T], implementation T) error {
+func ProvideService[T any](env *FacetEnvironment, def ServiceDefinition[T], implementation T) error {
 	runtime := env.runtime
 	runtime.lifecycle.mu.Lock()
 	err := runtime.lifecycle.assertSettingUp("provide services")
@@ -359,18 +376,20 @@ type ServiceSpawner[T any] struct {
 	validate  func(key string, implementation T) error
 	mu        sync.Mutex
 	instances *orderedMap[string, *stagedInstance[T]]
-	installer func(key string, implementation T) (func(), error)
+	installer func(key string, implementation T) (func() error, error)
+	onError   func(error)
 }
 
 type stagedInstance[T any] struct {
 	key            string
 	implementation T
-	release        func()
+	release        func() error
 }
 
-func (spawner *ServiceSpawner[T]) connect(installer func(string, T) (func(), error)) error {
+func (spawner *ServiceSpawner[T]) connect(onError func(error), installer func(string, T) (func() error, error)) error {
 	spawner.mu.Lock()
 	defer spawner.mu.Unlock()
+	spawner.onError = onError
 	if spawner.installer != nil {
 		return errors.New("Facet service provider is already connected")
 	}
@@ -419,29 +438,40 @@ func (spawner *ServiceSpawner[T]) Spawn(key string, implementation T) (func(), e
 		instance.release = release
 		spawner.mu.Unlock()
 	}
-	closeInstance := func() {
+	// Upstream's close function throws a failed retirement publication; the facet's owned disposal returns it, so a reload or dispose reports it. A caller's own call has no error result, so it goes to the host's error reporter.
+	closeInstance := func() error {
 		spawner.mu.Lock()
 		if current, _ := spawner.instances.Get(key); current != instance {
 			spawner.mu.Unlock()
-			return
+			return nil
 		}
 		spawner.instances.Delete(key)
 		release := instance.release
 		spawner.mu.Unlock()
 		if release != nil {
-			release()
+			return release()
 		}
+		return nil
 	}
-	if err := spawner.lifecycle.own(func(context.Context) error { closeInstance(); return nil }); err != nil {
-		closeInstance()
+	if err := spawner.lifecycle.own(func(context.Context) error { return closeInstance() }); err != nil {
+		_ = closeInstance()
 		return nil, err
 	}
-	return closeInstance, nil
+	return func() {
+		if err := closeInstance(); err != nil {
+			spawner.mu.Lock()
+			onError := spawner.onError
+			spawner.mu.Unlock()
+			if onError != nil {
+				onError(err)
+			}
+		}
+	}, nil
 }
 
 // ProvideMany declares ownership of keyed service def and returns its
 // deferred spawning capability.
-func ProvideMany[T any](env *FacetEnvironment, def pico3.ServiceDefinition[T]) (*ServiceSpawner[T], error) {
+func ProvideMany[T any](env *FacetEnvironment, def ServiceDefinition[T]) (*ServiceSpawner[T], error) {
 	runtime := env.runtime
 	runtime.lifecycle.mu.Lock()
 	err := runtime.lifecycle.assertSettingUp("provide service instances")
@@ -467,24 +497,23 @@ func ProvideMany[T any](env *FacetEnvironment, def pico3.ServiceDefinition[T]) (
 	runtime.provisions = append(runtime.provisions, &facetProvision{
 		kind: ServiceKeyed, serviceId: def.Id(), local: def.Local(),
 		connect: func(kernel *facetKernel) error {
-			return spawner.connect(func(key string, implementation T) (func(), error) {
+			return spawner.connect(kernel.onError, func(key string, implementation T) (func() error, error) {
 				releaseLocal, err := kernel.keyed.spawn(def.Id(), key, implementation)
 				if err != nil {
 					return nil, err
 				}
 				if def.Local() {
-					return releaseLocal, nil
+					return func() error { releaseLocal(); return nil }, nil
 				}
 				closeRemote, err := Spawn(kernel.provider, def, key, implementation)
 				if err != nil {
 					releaseLocal()
 					return nil, err
 				}
-				return func() {
-					if err := closeRemote(); err != nil {
-						kernel.onError(err)
-					}
+				return func() error {
+					err := closeRemote()
 					releaseLocal()
+					return err
 				}, nil
 			})
 		},
@@ -561,7 +590,7 @@ func (slot *serviceSlot) resolve() (any, error) {
 
 // UseService declares a hard dependency on singleton def and returns its
 // stable handle. The handle is usable once the facet activates.
-func UseService[T any](env *FacetEnvironment, def pico3.ServiceDefinition[T]) (*ServiceRef[T], error) {
+func UseService[T any](env *FacetEnvironment, def ServiceDefinition[T]) (*ServiceRef[T], error) {
 	runtime := env.runtime
 	runtime.lifecycle.mu.Lock()
 	err := runtime.lifecycle.assertSettingUp("acquire services")
@@ -569,13 +598,23 @@ func UseService[T any](env *FacetEnvironment, def pico3.ServiceDefinition[T]) (*
 	if err != nil {
 		return nil, err
 	}
+	runtime.lifecycle.mu.Lock()
+	defer runtime.lifecycle.mu.Unlock()
+	if existing, ok := runtime.refs[def.Id()].(*ServiceRef[T]); ok {
+		return existing, nil
+	}
 	recordReference(&runtime.requires, def.Id(), def.Local(), ServiceSingleton)
-	return &ServiceRef[T]{slot: env.kernel.singletonSlot(def.Id()), access: func() error {
-		if err := env.kernel.assertServiceTargetAccess(); err != nil {
+	ref := &ServiceRef[T]{slot: env.kernel.singletonSlot(def.Id()), access: func() error {
+		if err := runtime.lifecycle.assertServiceAccess(); err != nil {
 			return err
 		}
-		return runtime.lifecycle.assertServiceAccess()
-	}}, nil
+		return env.kernel.assertServiceTargetAccess()
+	}}
+	if runtime.refs == nil {
+		runtime.refs = map[string]any{}
+	}
+	runtime.refs[def.Id()] = ref
+	return ref, nil
 }
 
 // ObserveService declares a hard dependency on keyed def. After activation,
@@ -583,7 +622,7 @@ func UseService[T any](env *FacetEnvironment, def pico3.ServiceDefinition[T]) (*
 // instance, with a context cancelled when that instance closes or the facet
 // is disposed. It must not block on that delivery; work that outlives the
 // call runs in a task the handler owns and ties to the context.
-func ObserveService[T any](env *FacetEnvironment, def pico3.ServiceDefinition[T], handler func(context.Context, T) error) error {
+func ObserveService[T any](env *FacetEnvironment, def ServiceDefinition[T], handler func(context.Context, T) error) error {
 	runtime := env.runtime
 	runtime.lifecycle.mu.Lock()
 	defer runtime.lifecycle.mu.Unlock()
@@ -591,16 +630,16 @@ func ObserveService[T any](env *FacetEnvironment, def pico3.ServiceDefinition[T]
 		return err
 	}
 	recordReference(&runtime.requires, def.Id(), def.Local(), ServiceKeyed)
-	runtime.lifecycle.observations = append(runtime.lifecycle.observations, func() func() {
+	runtime.lifecycle.observations = append(runtime.lifecycle.observations, func() (func(), *task) {
 		return env.kernel.observeKeyed(def.Id(), func(ctx context.Context, implementation any) error {
 			if err := runtime.lifecycle.assertServiceAccess(); err != nil {
 				return err
 			}
 			view, err := serviceView(def.Id(), func() (any, error) {
-				if err := env.kernel.assertServiceTargetAccess(); err != nil {
+				if err := runtime.lifecycle.assertServiceAccess(); err != nil {
 					return nil, err
 				}
-				if err := runtime.lifecycle.assertServiceAccess(); err != nil {
+				if err := env.kernel.assertServiceTargetAccess(); err != nil {
 					return nil, err
 				}
 				if ctx.Err() != nil {
@@ -612,7 +651,7 @@ func ObserveService[T any](env *FacetEnvironment, def pico3.ServiceDefinition[T]
 				return err
 			}
 			return handler(ctx, view.(T))
-		})
+		}), nil
 	})
 	return nil
 }
@@ -1563,7 +1602,7 @@ var remoteClients sync.Map // service ID -> func(*RemoteService) any
 // it for remotely exposable services, in-host (through its internal loopback
 // binding, as upstream) and from external sources. FacetOptions.RemoteClients
 // overrides it per host. Registering the same service twice panics.
-func RegisterRemoteClient[T any](def pico3.ServiceDefinition[T], adapter func(*RemoteService) T) {
+func RegisterRemoteClient[T any](def ServiceDefinition[T], adapter func(*RemoteService) T) {
 	if _, loaded := remoteClients.LoadOrStore(def.Id(), func(service *RemoteService) any { return adapter(service) }); loaded {
 		panic(fmt.Sprintf("chord: remote client for %s is already registered", def.Id()))
 	}

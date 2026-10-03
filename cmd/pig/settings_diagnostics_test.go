@@ -14,6 +14,7 @@ import (
 // non-interactive run. Both managers read the same broken file, so the warning
 // must appear exactly once.
 func TestPrintModeReportsInvalidSettingsOnce(t *testing.T) {
+	t.Parallel()
 	bin := buildPigBinaryForDiagnosticsTest(t)
 	agentDir := t.TempDir()
 	settingsPath := filepath.Join(agentDir, "settings.json")

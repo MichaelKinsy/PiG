@@ -15,7 +15,7 @@ func TestHighlightCode_CacheMatchesUncached(t *testing.T) {
 
 	check := func(when string) {
 		for _, s := range samples {
-			want := highlightCodeUncached(s.code, s.lang, ActiveTheme())
+			want := highlightCodeUncached(highlightRegistry(), s.code, s.lang, false, ActiveTheme())
 			// two cached calls to exercise store-then-hit
 			for range 2 {
 				got := HighlightCode(s.code, s.lang)

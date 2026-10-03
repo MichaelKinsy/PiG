@@ -63,6 +63,8 @@ func TestTypeScriptDeclarationsPinUpstreamAndExposePiGLogin(t *testing.T) {
 		`export type * from "@earendil-works/pi-coding-agent"`,
 		`interface PiGLoginDefinition`,
 		`setLogin(definition: PiGLoginDefinition): Promise<void>`,
+		`interface PiGSpriteDefinition`,
+		`registerSprite(definition: PiGSpriteDefinition): Promise<void>`,
 	} {
 		if !strings.Contains(string(declarations), required) {
 			t.Errorf("TypeScript declarations do not contain %q", required)

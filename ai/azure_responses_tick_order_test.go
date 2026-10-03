@@ -49,8 +49,8 @@ func TestAzureResponsesTickOrder(t *testing.T) {
 	if err := json.Unmarshal(data, &oracle); err != nil {
 		t.Fatal(err)
 	}
-	if oracle.PiVersion != "0.87.1" {
-		t.Fatalf("oracle pins Pi %s", oracle.PiVersion)
+	if oracle.PiVersion != UpstreamVersionString() {
+		t.Fatalf("oracle pins Pi %s; current Pi %s requires a fresh oracle", oracle.PiVersion, UpstreamVersionString())
 	}
 	direct := 0
 	barrier := readbarrier.New(t)

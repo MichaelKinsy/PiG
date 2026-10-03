@@ -27,6 +27,19 @@ func bashPort(t *testing.T, tool *BashTool, command string) agent.AgentToolResul
 	t.Helper()
 	return runFileTool(t, tool, t.Context(), map[string]any{"command": command})
 }
+
+// structuredFields decodes the result's structuredContent object.
+func structuredFields(t *testing.T, result agent.AgentToolResult) map[string]any {
+	t.Helper()
+	if result.StructuredContent == nil {
+		t.Fatalf("result has no structuredContent: %+v", result)
+	}
+	var fields map[string]any
+	if err := json.Unmarshal(result.StructuredContent, &fields); err != nil {
+		t.Fatalf("structuredContent %s: %v", result.StructuredContent, err)
+	}
+	return fields
+}
 func assertBashPortError(t *testing.T, result agent.AgentToolResult, pattern string) {
 	t.Helper()
 	if !result.IsError || !regexp.MustCompile(pattern).MatchString(result.Text()) {
@@ -63,9 +76,79 @@ func TestToolsBashPort(t *testing.T) {
 			t.Fatalf("details = %#v", result.Details)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/tools.test.ts:493
-	t.Run("should handle command errors", func(t *testing.T) {
-		assertBashPortError(t, bashPort(t, &BashTool{CWD: t.TempDir()}, "exit 1"), `(Command failed|code 1)`)
+	// .upstream/v0.99.1/packages/coding-agent/test/tools.test.ts:493 (replaces v0.87.1 "should handle command errors")
+	t.Run("should report non-zero exit codes as error results with structured content", func(t *testing.T) {
+		result := bashPort(t, &BashTool{CWD: t.TempDir()}, "echo out; exit 3")
+		if !result.IsError || result.Text() != "out\n\n\nCommand exited with code 3" {
+			t.Fatalf("result = %+v", result)
+		}
+		fields := structuredFields(t, result)
+		if len(fields) != 4 || fields["output"] != "out\n" || fields["truncated"] != false || fields["exit_code"] != float64(3) {
+			t.Fatalf("structuredContent = %v", fields)
+		}
+		if _, ok := fields["wall_time_seconds"].(float64); !ok {
+			t.Fatalf("wall_time_seconds = %#v, want a number", fields["wall_time_seconds"])
+		}
+
+		ok := bashPort(t, &BashTool{CWD: t.TempDir()}, "echo fine")
+		if ok.IsError {
+			t.Fatalf("ok result is an error: %+v", ok)
+		}
+		if fields := structuredFields(t, ok); fields["output"] != "fine\n" || fields["exit_code"] != float64(0) {
+			t.Fatalf("ok structuredContent = %v", fields)
+		}
+
+		empty := bashPort(t, &BashTool{CWD: t.TempDir()}, "true")
+		if empty.Text() != "(no output)" {
+			t.Fatalf("empty text = %q", empty.Text())
+		}
+		if fields := structuredFields(t, empty); fields["output"] != "" || fields["truncated"] != false {
+			t.Fatalf("empty structuredContent = %v", fields)
+		}
+	})
+	// .upstream/v0.99.1/packages/coding-agent/test/tools.test.ts:513
+	t.Run("should return up to 1 MiB of output in structured content", func(t *testing.T) {
+		// 3000 lines exceed the model-facing 2000 line limit but not 1 MiB.
+		medium := bashPort(t, &BashTool{CWD: t.TempDir()}, "seq 1 3000")
+		details, isDetails := medium.Details.(*BashDetails)
+		if strings.Contains(medium.Text(), "\n1\n2\n") || !isDetails || details.Truncation == nil || !details.Truncation.Truncated {
+			t.Fatalf("medium result = %+v", medium)
+		}
+		t.Cleanup(func() { _ = os.Remove(details.FullOutputPath) })
+		fields := structuredFields(t, medium)
+		var want strings.Builder
+		for i := 1; i <= 3000; i++ {
+			fmt.Fprintf(&want, "%d\n", i)
+		}
+		if fields["truncated"] != false || fields["output"] != want.String() {
+			t.Fatalf("medium structured truncated=%v len(output)=%d", fields["truncated"], len(fmt.Sprint(fields["output"])))
+		}
+
+		// About 2 MB: keeps the first and last 512 KiB around an omission marker.
+		large := bashPort(t, &BashTool{CWD: t.TempDir()}, "seq 1 300000")
+		largeDetails, isDetails := large.Details.(*BashDetails)
+		if !isDetails {
+			t.Fatalf("large details = %#v", large.Details)
+		}
+		t.Cleanup(func() { _ = os.Remove(largeDetails.FullOutputPath) })
+		fields = structuredFields(t, large)
+		output, _ := fields["output"].(string)
+		if fields["truncated"] != true || !strings.HasPrefix(output, "1\n2\n3\n") || !strings.HasSuffix(output, "299999\n300000\n") {
+			t.Fatalf("large structured truncated=%v head=%q", fields["truncated"], output[:min(len(output), 12)])
+		}
+		if !regexp.MustCompile(`\n\n\[\.\.\. \d+ bytes omitted \.\.\.\]\n\n`).MatchString(output) {
+			t.Fatal("no omission marker")
+		}
+		if len(output) >= 1024*1024+100 {
+			t.Fatalf("output is %d bytes, want < 1 MiB + 100", len(output))
+		}
+		if fields["full_output_path"] != largeDetails.FullOutputPath {
+			t.Fatalf("full_output_path = %v, want %v", fields["full_output_path"], largeDetails.FullOutputPath)
+		}
+		data, err := os.ReadFile(fields["full_output_path"].(string))
+		if err != nil || !strings.HasSuffix(string(data), "300000\n") {
+			t.Fatalf("full output file: %v", err)
+		}
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/tools.test.ts:531
 	t.Run("should reject a null exit code from custom operations", func(t *testing.T) {
@@ -189,7 +272,7 @@ func TestToolsBashPort(t *testing.T) {
 		})}
 		var mu sync.Mutex
 		var updates []string
-		result, err := tool.Execute(t.Context(), "test-call-chatty-updates", json.RawMessage(`{"command":"chatty"}`), func(content string, _ any) { mu.Lock(); updates = append(updates, content); mu.Unlock() })
+		result, err := tool.Execute(t.Context(), "test-call-chatty-updates", json.RawMessage(`{"command":"chatty"}`), func(partial agent.AgentToolResult) { mu.Lock(); updates = append(updates, partial.Text()); mu.Unlock() })
 		if err != nil {
 			t.Fatal(err)
 		}

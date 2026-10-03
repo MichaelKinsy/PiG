@@ -50,7 +50,7 @@ func TestStdoutQueueWriteDoesNotBlockOnStoppedReader(t *testing.T) {
 	}()
 	select {
 	case <-done:
-	case <-time.After(5 * time.Second):
+	case <-time.After(testbudget.Wait(t)):
 		t.Fatal("Write blocked on a stopped stdout reader")
 	}
 	ctx, cancel := context.WithCancel(t.Context())

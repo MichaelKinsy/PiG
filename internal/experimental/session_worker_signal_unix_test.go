@@ -3,11 +3,35 @@
 package experimental
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"syscall"
 	"testing"
 )
+
+// waitExperimentalWorkerExit waits on the spawned child's own exit authority. Manager removal follows control-socket disconnection, which can precede process exit and reaping.
+func waitExperimentalWorkerExit(t *testing.T, pid int) {
+	t.Helper()
+	resources := experimentalResourcesFor(t)
+	resources.mu.Lock()
+	var exited *InternalProcess
+	for _, child := range resources.children {
+		if child.PID() == pid {
+			exited = child
+			break
+		}
+	}
+	resources.mu.Unlock()
+	if exited == nil {
+		t.Fatalf("worker PID %d was not spawned through the tracked server", pid)
+	}
+	select {
+	case <-exited.Done():
+	case <-t.Context().Done():
+		t.Fatalf("wait for worker %d to exit: %v", pid, context.Cause(t.Context()))
+	}
+}
 
 // upstream: packages/coding-agent/src/experimental/session-worker.ts:579-599,747-748. A running worker closes its Session resources, including the ownership lock, before exiting on SIGTERM.
 func TestSessionWorkerSigtermReleasesSessionOwnership(t *testing.T) {

@@ -267,6 +267,14 @@ func newProviderProxy(ctx Context, decl providerObjectDeclaration) (*Provider, e
 				_, err := providerInvoke[any](ctx, decl, method, map[string]any{"credential": input.Credential, "stored": input.Stored, "allowNetwork": input.AllowNetwork, "force": input.Force}, callbacks, input.Signal)
 				return err
 			}
+		case "generateImages":
+			p.GenerateImages = func(model, request map[string]any, options ProviderOperationOptions) (map[string]any, error) {
+				return providerInvoke[map[string]any](ctx, decl, method, map[string]any{"model": model, "context": request, "options": options.Values}, nil, options.Signal)
+			}
+		case "classify":
+			p.Classify = func(model map[string]any, request ClassifierContext, options ProviderOperationOptions) (ClassifierResult, error) {
+				return providerInvoke[ClassifierResult](ctx, decl, method, map[string]any{"model": model, "context": request, "options": options.Values}, nil, options.Signal)
+			}
 		case "cancelDeferred":
 			p.CancelDeferred = func(model, handle map[string]any, options ProviderStreamOptions) error {
 				_, err := providerInvoke[any](ctx, decl, method, map[string]any{"model": model, "handle": handle, "options": options.Values}, nil, options.Signal)

@@ -57,6 +57,11 @@ type sessionRunState struct {
 // compaction, and queued continuations, is active (upstream isStreaming).
 func (s *Session) IsStreaming() bool { return s.runState.active.Load() }
 
+// Signal returns the active run's cancellation, or nil when no run is active. Extensions read it as ctx.signal.
+//
+// upstream: agent-session.ts:3368 (`getSignal: () => this.agent.signal`)
+func (s *Session) Signal() context.Context { return s.agent.Signal() }
+
 // IsIdle reports whether the session has no active run and no compaction in
 // flight (upstream isIdle).
 func (s *Session) IsIdle() bool { return !s.IsStreaming() && !s.IsCompacting() }
@@ -159,7 +164,12 @@ func (s *Session) ownAgentRun(cancel context.CancelFunc) context.CancelFunc {
 		cancel()
 	default:
 	}
+	// Compaction before the prompt may have scheduled a retry; the new prompt replaces it. upstream: agent-session.ts:1741-1744 (_runAgentPrompt)
+	s.failedResponse.Store(nil)
+	s.recordSelection()
+	s.clearPendingTools()
 	return func() {
+		s.failedResponse.Store(nil)
 		cancel()
 		s.finishAgentRun(generation)
 	}

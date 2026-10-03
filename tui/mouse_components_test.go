@@ -203,6 +203,64 @@ func TestMouseIgnoresHoverAndClicksVisibleRowsAfterScrolling(t *testing.T) {
 	}
 }
 
+// submenuHost is a settings submenu that routes keys to its nested list, like the coding agent's theme submenu (.upstream/v0.99.2/packages/tui/test/mouse-components.test.ts:62). Go embedding has no subclass identity, so it forwards keys itself and reports the nested list's outcome through done.
+type submenuHost struct {
+	*Container
+	list *FilterableList
+}
+
+func newSubmenuHost(done func(*string)) *submenuHost {
+	list := NewFilterableList("", []string{"First", "Second"})
+	list.EnableSearch = false
+	list.MaxVisible = 5
+	values := []string{"first", "second"}
+	list.onSelect = func(index int) { done(&values[index]) }
+	list.onCancel = func() { done(nil) }
+	return &submenuHost{Container: NewContainer(list), list: list}
+}
+
+func (h *submenuHost) HandleInput(data string) { h.list.HandleInput(data) }
+
+// .upstream/v0.99.2/packages/tui/test/mouse-components.test.ts:228. Go's SettingsList reports a value change through ChangedID and has no onChange callback, and a submenu pick is applied by the submenu's own done callback, so the pick is recorded there.
+func TestMouseSettingsListStaysFocusedWhenSubmenuClickClosesIt(t *testing.T) {
+	type change struct{ id, value string }
+	h := newAltHarness(t, 30, 6, TuiAltScreenOptions{})
+	var changes []change
+	list := NewSettingsListWithOptions([]SettingItem{
+		{ID: "theme", Label: "Theme", CurrentValue: "first", Submenu: func(_ string, done func(*string)) Component {
+			return newSubmenuHost(func(value *string) {
+				if value != nil {
+					changes = append(changes, change{"theme", *value})
+				}
+				done(value)
+			})
+		}},
+		{ID: "other", Label: "Other", CurrentValue: "off", Values: []string{"off", "on"}},
+	}, 5, false)
+	h.tui.Add(list)
+	h.tui.SetFocus(list)
+	h.start()
+
+	h.send("\r")
+	// Press and release on the submenu's second row selects it and closes the submenu.
+	h.send("\x1b[<0;3;2M", "\x1b[<0;3;2m")
+	if !slices.Equal(changes, []change{{"theme", "second"}}) {
+		t.Fatalf("changes = %v", changes)
+	}
+	if h.tui.FocusedComponent() != list {
+		t.Fatalf("focused component = %T, want the settings list", h.tui.FocusedComponent())
+	}
+
+	// Keys reach the visible list again instead of the closed submenu.
+	h.send("\x1b[B", "\r")
+	if list.ChangedID != "" {
+		changes = append(changes, change{list.ChangedID, list.ChangedValue})
+	}
+	if want := []change{{"theme", "second"}, {"other", "on"}}; !slices.Equal(changes, want) {
+		t.Fatalf("changes = %v, want %v", changes, want)
+	}
+}
+
 func TestMousePositionsAndFocusesEditorThroughAltScreenDispatch(t *testing.T) {
 	h := newAltHarness(t, 20, 6, TuiAltScreenOptions{})
 	editor := NewEditor()

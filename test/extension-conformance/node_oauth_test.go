@@ -201,6 +201,7 @@ func TestNodeOAuthRefreshSignalFollowsItsCaller(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping node OAuth signal test in short mode (spawns node runtime)")
 	}
+	t.Parallel()
 	modRoot := findModuleRoot(t)
 	fixture := filepath.Join(modRoot, "test", "extension-conformance", "testdata", "node-oauth-fixture", "main.mjs")
 	h := subprocess.NewHost(t.TempDir())

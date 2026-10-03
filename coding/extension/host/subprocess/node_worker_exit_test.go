@@ -10,7 +10,7 @@ import (
 
 // A worker exit may reach the main thread before messages on its transferred port. The socket must deliver all complete frames before its close event.
 func TestNodeProviderSocketDrainsPendingEnvelopesBeforeWorkerExit(t *testing.T) {
-	listener, path, err := ListenExtension(filepath.Join(t.TempDir(), "s"), true)
+	listener, path, err := ListenExtension(filepath.Join(shortSockDir(t), "s"), true)
 	if err != nil {
 		t.Fatal(err)
 	}

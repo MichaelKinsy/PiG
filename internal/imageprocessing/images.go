@@ -413,12 +413,12 @@ const (
 	orientationRotate90   exifOrientation = 8
 )
 
-// decodeAutoOriented decodes an image and applies its EXIF orientation tag,
+// decodeAutoOriented decodes an image with DecodeImage and applies its EXIF orientation tag,
 // mirroring upstream Photon decode plus applyExifOrientation. Only the formats
 // whose decoders this package links are decodable; see
 // DetectSupportedImageMimeType.
 func decodeAutoOriented(data []byte) (image.Image, error) {
-	img, _, err := image.Decode(bytes.NewReader(data))
+	img, err := DecodeImage(data)
 	if err != nil {
 		return nil, err
 	}

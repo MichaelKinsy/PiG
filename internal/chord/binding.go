@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
-
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 )
 
 // RemoteServiceBindingOptions configures CreateRemoteServiceBinding.
@@ -142,7 +140,7 @@ func (binding *RemoteServiceBinding) assertAvailableLocked(serviceId string, loc
 
 // UseRemote returns the stable singleton facade for def and, while bound,
 // starts its subscription. Repeated calls return the same facade.
-func UseRemote[T any](binding *RemoteServiceBinding, def pico3.ServiceDefinition[T]) (*RemoteService, error) {
+func UseRemote[T any](binding *RemoteServiceBinding, def ServiceDefinition[T]) (*RemoteService, error) {
 	if def.Local() {
 		return nil, remoteError(ErrServiceNotAllowed, "Service %s is process-local", def.Id())
 	}
@@ -209,6 +207,14 @@ func (binding *RemoteServiceBinding) startSingleton(serviceId string, single *si
 		}
 		var err error
 		switch {
+		case update.Type == UpdateReset:
+			if err = validateResetSnapshot(*update.Reset, serviceId, ServiceSingleton); err == nil {
+				if len(update.Reset.Instances) == 0 {
+					single.facade.clear()
+				} else {
+					err = single.facade.install(ctx, update.Reset.Instances[0], epoch)
+				}
+			}
 		case update.Type == UpdateUnavailable:
 			single.facade.clear()
 		case update.Type == UpdateReplaced:
@@ -253,7 +259,7 @@ func (binding *RemoteServiceBinding) startSingleton(serviceId string, single *si
 // stops. It must not block on that delivery; work that outlives the call runs
 // in a task the handler owns and ties to the context. The returned stop
 // function is idempotent.
-func ObserveRemote[T any](binding *RemoteServiceBinding, def pico3.ServiceDefinition[T], handler func(context.Context, *RemoteService) error) (func(), error) {
+func ObserveRemote[T any](binding *RemoteServiceBinding, def ServiceDefinition[T], handler func(context.Context, *RemoteService) error) (func(), error) {
 	if def.Local() {
 		return nil, remoteError(ErrServiceNotAllowed, "Service %s is process-local", def.Id())
 	}
@@ -263,10 +269,16 @@ func ObserveRemote[T any](binding *RemoteServiceBinding, def pico3.ServiceDefini
 // Observe is the untyped form of ObserveRemote for a transport-visible
 // service ID.
 func (binding *RemoteServiceBinding) Observe(serviceId string, handler func(context.Context, *RemoteService) error) (func(), error) {
+	stop, _, err := binding.observeConnecting(serviceId, handler)
+	return stop, err
+}
+
+// observeConnecting is Observe that also returns the keyed subscription start the observer joined, or nil when the binding is unbound.
+func (binding *RemoteServiceBinding) observeConnecting(serviceId string, handler func(context.Context, *RemoteService) error) (func(), *task, error) {
 	binding.mu.Lock()
 	if err := binding.assertAvailableLocked(serviceId, false, ServiceKeyed); err != nil {
 		binding.mu.Unlock()
-		return nil, err
+		return nil, nil, err
 	}
 	keyed, ok := binding.keyed[serviceId]
 	if !ok {
@@ -537,7 +549,7 @@ func (facade *serviceFacade) install(ctx context.Context, snapshot ServiceInstan
 	type hydration struct {
 		replica  *replicaCore
 		sequence int
-		ops      []pico3.Op
+		ops      []Op
 	}
 	var hydrations []hydration
 	for _, member := range snapshot.Members {
@@ -567,7 +579,7 @@ func (facade *serviceFacade) install(ctx context.Context, snapshot ServiceInstan
 	return nil
 }
 
-func (facade *serviceFacade) update(ctx context.Context, member string, sequence int, ops []pico3.Op, epoch int64) error {
+func (facade *serviceFacade) update(ctx context.Context, member string, sequence int, ops []Op, epoch int64) error {
 	facade.mu.Lock()
 	if facade.descriptions[member] != MemberState {
 		facade.mu.Unlock()

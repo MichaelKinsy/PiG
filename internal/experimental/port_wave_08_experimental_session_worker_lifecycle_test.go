@@ -40,10 +40,10 @@ func TestPortWave08WorkerLifecycle(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			l, r := create(t)
 			demand(t, l, generation, "attachment-1", true)
-			l.OperationStarted("run", "main", "operation-1")
+			l.SetHarnessActive(true)
 			demand(t, l, generation, "attachment-1", false)
 			calls(t, r, 0)
-			l.OperationStopped("run", "main", "operation-1")
+			l.SetHarnessActive(false)
 			synctest.Wait()
 			calls(t, r, 1)
 			l.Close()
@@ -63,35 +63,30 @@ func TestPortWave08WorkerLifecycle(t *testing.T) {
 		})
 	})
 	// upstream: packages/coding-agent/test/experimental-session-worker-lifecycle.test.ts:48
-	t.Run("tracks a nested compaction independently from its enclosing run", func(t *testing.T) {
+	t.Run("does not retire on repeated activity updates while the Harness stays active", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			l, r := create(t)
 			demand(t, l, generation, "attachment-1", true)
-			l.OperationStarted("run", "main", "operation-1")
-			l.OperationStarted("compaction", "main", "operation-1")
+			l.SetHarnessActive(true)
 			demand(t, l, generation, "attachment-1", false)
-			l.OperationStopped("compaction", "main", "operation-1")
+			l.SetHarnessActive(true)
 			calls(t, r, 0)
-			l.OperationStopped("run", "main", "operation-1")
+			l.SetHarnessActive(false)
 			calls(t, r, 1)
 			l.Close()
 		})
 	})
-	// upstream: packages/coding-agent/test/experimental-session-worker-lifecycle.test.ts:63 (both test.each rows)
-	for _, kind := range []string{"compaction", "navigation"} {
-		t.Run("clears suspended "+kind+" activity", func(t *testing.T) {
-			synctest.Test(t, func(t *testing.T) {
-				l, r := create(t)
-				demand(t, l, generation, "attachment-1", true)
-				l.OperationStarted(kind, "main", "operation-1")
-				demand(t, l, generation, "attachment-1", false)
-				l.OperationStopped(kind, "main", "operation-1")
-				calls(t, r, 1)
-				l.Close()
-			})
+	// upstream: packages/coding-agent/test/experimental-session-worker-lifecycle.test.ts:61
+	t.Run("an idle Harness update does not retire while demand remains", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			l, r := create(t)
+			demand(t, l, generation, "attachment-1", true)
+			l.SetHarnessActive(false)
+			calls(t, r, 0)
+			l.Close()
 		})
-	}
-	// upstream: packages/coding-agent/test/experimental-session-worker-lifecycle.test.ts:75
+	})
+	// upstream: packages/coding-agent/test/experimental-session-worker-lifecycle.test.ts:70
 	t.Run("does not retire while a demand acknowledgement holds reconciliation", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			l, r := create(t)
@@ -104,7 +99,7 @@ func TestPortWave08WorkerLifecycle(t *testing.T) {
 			l.Close()
 		})
 	})
-	// upstream: packages/coding-agent/test/experimental-session-worker-lifecycle.test.ts:87
+	// upstream: packages/coding-agent/test/experimental-session-worker-lifecycle.test.ts:82
 	t.Run("holds retirement only for requests from the active attachment", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			l, r := create(t)
@@ -122,7 +117,7 @@ func TestPortWave08WorkerLifecycle(t *testing.T) {
 			l.Close()
 		})
 	})
-	// upstream: packages/coding-agent/test/experimental-session-worker-lifecycle.test.ts:100
+	// upstream: packages/coding-agent/test/experimental-session-worker-lifecycle.test.ts:95
 	t.Run("rejects requests from stale generations and attachments", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			l, _ := create(t)
@@ -134,7 +129,7 @@ func TestPortWave08WorkerLifecycle(t *testing.T) {
 			l.Close()
 		})
 	})
-	// upstream: packages/coding-agent/test/experimental-session-worker-lifecycle.test.ts:109
+	// upstream: packages/coding-agent/test/experimental-session-worker-lifecycle.test.ts:104
 	t.Run("retains disconnected-generation demand for the orphan grace", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			l, r := create(t)
@@ -149,7 +144,7 @@ func TestPortWave08WorkerLifecycle(t *testing.T) {
 			l.Close()
 		})
 	})
-	// upstream: packages/coding-agent/test/experimental-session-worker-lifecycle.test.ts:123
+	// upstream: packages/coding-agent/test/experimental-session-worker-lifecycle.test.ts:118
 	t.Run("allows a replacement generation to retain the worker", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			l, r := create(t)
@@ -166,7 +161,7 @@ func TestPortWave08WorkerLifecycle(t *testing.T) {
 			l.Close()
 		})
 	})
-	// upstream: packages/coding-agent/test/experimental-session-worker-lifecycle.test.ts:139
+	// upstream: packages/coding-agent/test/experimental-session-worker-lifecycle.test.ts:134
 	t.Run("retires a launched worker that never receives initial demand", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			l, r := create(t)
@@ -176,7 +171,7 @@ func TestPortWave08WorkerLifecycle(t *testing.T) {
 			l.Close()
 		})
 	})
-	// upstream: packages/coding-agent/test/experimental-session-worker-lifecycle.test.ts:148
+	// upstream: packages/coding-agent/test/experimental-session-worker-lifecycle.test.ts:143
 	t.Run("rejects demand after retirement has won the race", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			l, _ := create(t)
@@ -186,7 +181,7 @@ func TestPortWave08WorkerLifecycle(t *testing.T) {
 			l.Close()
 		})
 	})
-	// upstream: packages/coding-agent/test/experimental-session-worker-lifecycle.test.ts:156
+	// upstream: packages/coding-agent/test/experimental-session-worker-lifecycle.test.ts:151
 	t.Run("rejects demand from a stale server generation", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			l, _ := create(t)

@@ -5,21 +5,14 @@
  * load the execution path or its typebox parameter schema. `bash.ts` spreads these into the shell
  * tool definition, so the tool's public shape is unchanged.
  */
-import { Container, Text, truncateToWidth } from "../../../../../pi-tui.mjs";
+import { Container, Spacer, Text } from "../../../../../pi-tui.mjs";
 import { keyHint } from "../../../modes/interactive/components/keybinding-hints.js";
-import { truncateToVisualLines } from "../../../modes/interactive/components/visual-truncate.js";
+import { VisualLinePreview } from "../../../modes/interactive/components/visual-truncate.js";
 import { theme } from "../../../modes/interactive/theme/theme.js";
 import { getTextOutput, invalidArgText, str } from "../render-utils.js";
 import { DEFAULT_MAX_BYTES, formatSize } from "../truncate.js";
 const BASH_PREVIEW_LINES = 5;
 export const BASH_UPDATE_THROTTLE_MS = 100;
-class BashResultRenderComponent extends Container {
-    state = {
-        cachedWidth: undefined,
-        cachedLines: undefined,
-        cachedSkipped: undefined,
-    };
-}
 function formatDuration(ms) {
     const seconds = ms / 1000;
     if (seconds < 60)
@@ -39,7 +32,6 @@ function formatShellCall(args, prompt) {
     return theme.fg("toolTitle", theme.bold(`${prompt} ${commandDisplay}`)) + timeoutSuffix;
 }
 function rebuildBashResultRenderComponent(component, result, options, showImages, startedAt, endedAt) {
-    const state = component.state;
     component.clear();
     let output = getTextOutput(result, showImages).trim();
     const truncation = result.details?.truncation;
@@ -59,27 +51,14 @@ function rebuildBashResultRenderComponent(component, result, options, showImages
             component.addChild(new Text(`\n${styledOutput}`, 0, 0));
         }
         else {
-            component.addChild({
-                render: (width) => {
-                    if (state.cachedLines === undefined || state.cachedWidth !== width) {
-                        const preview = truncateToVisualLines(styledOutput, BASH_PREVIEW_LINES, width);
-                        state.cachedLines = preview.visualLines;
-                        state.cachedSkipped = preview.skippedCount;
-                        state.cachedWidth = width;
-                    }
-                    if (state.cachedSkipped && state.cachedSkipped > 0) {
-                        const hint = theme.fg("muted", `... (${state.cachedSkipped} earlier lines,`) +
-                            ` ${keyHint("app.tools.expand", "to expand")}${theme.fg("muted", ")")}`;
-                        return ["", truncateToWidth(hint, width, "..."), ...(state.cachedLines ?? [])];
-                    }
-                    return ["", ...(state.cachedLines ?? [])];
-                },
-                invalidate: () => {
-                    state.cachedWidth = undefined;
-                    state.cachedLines = undefined;
-                    state.cachedSkipped = undefined;
-                },
-            });
+            component.addChild(new Spacer(1));
+            component.addChild(new VisualLinePreview({
+                text: styledOutput,
+                maxVisualLines: BASH_PREVIEW_LINES,
+                keep: "end",
+                formatHint: (hidden) => theme.fg("muted", `... (${hidden} earlier lines,`) +
+                    ` ${keyHint("app.tools.expand", "to expand")}${theme.fg("muted", ")")}`,
+            }));
         }
     }
     if (truncation?.truncated || fullOutputPath) {
@@ -128,7 +107,7 @@ export function createShellRenderers(prompt) {
                     state.interval = undefined;
                 }
             }
-            const component = context.lastComponent ?? new BashResultRenderComponent();
+            const component = context.lastComponent ?? new Container();
             rebuildBashResultRenderComponent(component, result, options, context.showImages, state.startedAt, state.endedAt);
             component.invalidate();
             return component;

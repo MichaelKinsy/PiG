@@ -6,14 +6,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/agent/harness"
-	"github.com/MichaelKinsy/PiG/agent/harness/agentharness"
-	envpkg "github.com/MichaelKinsy/PiG/agent/harness/env"
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
-	hruntime "github.com/MichaelKinsy/PiG/agent/harness/runtime"
-	"github.com/MichaelKinsy/PiG/agent/harness/session"
-	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/chord"
+	"github.com/MichaelKinsy/PiG/internal/experimental/durabletest"
 )
 
 const experimentalFauxWorkerEnv = "PIG_TEST_FAUX_SESSION_WORKER"
@@ -27,34 +21,19 @@ func installFauxSessionWorker(t *testing.T) {
 	resources.fauxWorker = true
 }
 
-// upstream: packages/coding-agent/test/fixtures/faux-session-worker.ts:13-59. The caller already consumes the internal worker role; RunSessionWorkerWithHarness owns the actual control channel, durable repository and worker service lifetime.
+// upstream: packages/coding-agent/test/fixtures/faux-session-worker.ts:13-59. The caller already consumes the internal worker role; RunSessionWorkerWithHarness owns the actual control channel, the Session lock and the worker service lifetime. The Harness is the stand-in of internal/experimental/durabletest over the Session's storage path.
 func runFauxSessionWorker(ctx context.Context, args []string) (result error) {
-	var closeProvider func() error
-	defer func() {
-		if closeProvider != nil {
-			result = errors.Join(result, closeProvider())
-		}
-	}()
-	return RunSessionWorkerWithHarness(ctx, args, func(ctx context.Context, stored session.Session, options SessionWorkerOptions, _ *envpkg.NodeExecutionEnv) (SessionWorkerRuntime, error) {
+	return RunSessionWorkerWithHarness(ctx, args, func(_ context.Context, databasePath string, options SessionWorkerOptions) (SessionWorkerRuntime, error) {
 		if options.Provider != "anthropic" || options.Model != "claude-sonnet-4-5" {
 			return SessionWorkerRuntime{}, fmt.Errorf("Unexpected faux worker model: %s/%s", options.Provider, options.Model)
 		}
-		faux := ai.NewFauxProvider(ai.FauxConfig{})
-		closeProvider = faux.Close
-		faux.SetResponses([]ai.FauxResponseStep{ai.FauxStaticStep(ai.FauxResponse{
-			Content: []ai.FauxContentBlock{ai.FauxText("deterministic remote answer")}, Timestamp: new(int64(20)),
-		})})
-		models := ai.CreateModels()
-		models.SetProvider(faux.Provider())
-		created, err := hruntime.CreateAgentHarness(ctx, hruntime.AgentHarnessOptions{
-			Session: stored, Models: models, Model: faux.GetModel(),
-			Tools: []harness.AgentHarnessTool{}, Resources: agentharness.Resources{},
-		})
+		// faux.setResponses([answer, answer]): two identical answers.
+		durable, err := durabletest.OpenFile(databasePath, durabletest.Text("deterministic remote answer"), durabletest.Text("deterministic remote answer"))
 		if err != nil {
 			return SessionWorkerRuntime{}, err
 		}
 		return SessionWorkerRuntime{
-			Harness:     &codingWorkerHarness{harness: created.Harness},
+			Harness: durable.Harness, Conversation: durable.Conversation,
 			FacetLoader: chord.CreateStaticFacetLoader([]chord.Facet{keyedProbeFacet()}),
 		}, nil
 	})
@@ -66,19 +45,19 @@ type keyedProbeState struct {
 }
 
 type keyedProbe interface {
-	State() pico3.ReplicatedStateOf[*keyedProbeState]
+	State() chord.ReplicatedStateOf[*keyedProbeState]
 	Replace(context.Context, string) error
 	Wait(context.Context) error
 }
 
-var keyedProbeDefinition = pico3.DefineService[keyedProbe]("test.keyed-probe")
+var keyedProbeDefinition = chord.DefineService[keyedProbe]("test.keyed-probe")
 
 type keyedProbeService struct {
 	state   *chord.MutableReplicatedState[*keyedProbeState]
 	replace func(string) error
 }
 
-func (probe *keyedProbeService) State() pico3.ReplicatedStateOf[*keyedProbeState] {
+func (probe *keyedProbeService) State() chord.ReplicatedStateOf[*keyedProbeState] {
 	return probe.state
 }
 func (probe *keyedProbeService) Replace(_ context.Context, value string) error {
@@ -117,8 +96,8 @@ func keyedProbeFacet() chord.Facet {
 
 type keyedProbeView struct{ resolve func() (keyedProbe, error) }
 
-func (view keyedProbeView) State() pico3.ReplicatedStateOf[*keyedProbeState] {
-	return chord.StateView(func() (pico3.ReplicatedStateOf[*keyedProbeState], error) {
+func (view keyedProbeView) State() chord.ReplicatedStateOf[*keyedProbeState] {
+	return chord.StateView(func() (chord.ReplicatedStateOf[*keyedProbeState], error) {
 		probe, err := view.resolve()
 		if err != nil {
 			return nil, err
@@ -143,7 +122,7 @@ func (view keyedProbeView) Wait(ctx context.Context) error {
 
 type remoteKeyedProbe struct{ service *chord.RemoteService }
 
-func (probe remoteKeyedProbe) State() pico3.ReplicatedStateOf[*keyedProbeState] {
+func (probe remoteKeyedProbe) State() chord.ReplicatedStateOf[*keyedProbeState] {
 	replica, err := probe.service.State("state")
 	if err != nil {
 		panic(err)

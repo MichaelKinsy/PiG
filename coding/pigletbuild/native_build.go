@@ -31,10 +31,10 @@ import (
 // fused factories onto the Pig source and rebuilds Pig without writing the tree. Cells the plan
 // does not materialize in the binary are reported so toolchain-dependence is
 // never hidden. The caller validates resolution first.
-func buildNativeArtifact(ctx context.Context, p *piglet.Piglet, cells []subprocess.CellSpec, componentPlan pigletartifact.Plan, resolution *pigletartifact.Record, opts Options, outPath string, stdout, stderr io.Writer) ([]signature.EmbeddedFile, error) {
-	sourceRoot, err := pigSourceRoot()
-	if err != nil {
-		return nil, err
+func buildNativeArtifact(ctx context.Context, source pigSource, p *piglet.Piglet, cells []subprocess.CellSpec, componentPlan pigletartifact.Plan, resolution *pigletartifact.Record, opts Options, outPath string, stdout, stderr io.Writer) ([]signature.EmbeddedFile, error) {
+	sourceRoot := source.Root
+	if sourceRoot == "" {
+		return nil, fmt.Errorf("source-unavailable: no Pig source tree to build; remedy: %s", sourceUnavailableRemedy)
 	}
 	cacheRoot, err := os.MkdirTemp("", "piglet-binary-build-*")
 	if err != nil {
@@ -127,13 +127,13 @@ func buildNativeArtifact(ctx context.Context, p *piglet.Piglet, cells []subproce
 		_, _ = fmt.Fprintf(stdout, "building Piglet Binary %s (%d embedded cell(s), %d fused, target %s)...\n", p.Name, len(built), len(fused), host)
 	}
 	buildArgs := buildprogress.ToolArgs(ctx, "go", pigletBinaryBuildArgs(abary, opts.Version, overlayPath))
-	goCommand, err := toolchain.Go()
+	goToolchain, err := toolchain.ResolveGo()
 	if err != nil {
 		return nil, err
 	}
-	cmd := exec.CommandContext(ctx, goCommand, buildArgs...)
+	cmd := exec.CommandContext(ctx, goToolchain.Command, buildArgs...)
 	cmd.Dir = sourceRoot
-	cmd.Env = sourceBuildEnv(sourceRoot, os.Environ())
+	cmd.Env = goToolchain.Environ(source.buildEnv(os.Environ()))
 	if err := buildprogress.Run(buildprogress.Member(ctx, p.Name), cmd); err != nil {
 		return nil, fmt.Errorf("build Piglet Binary: %w", err)
 	}

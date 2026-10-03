@@ -1,0 +1,12 @@
+[
+  {
+    "upstream": "packages/ai/src/utils/uuid.ts",
+    "package": "./ai",
+    "tests": [
+      "TestUUIDv7GeneratesOrderedIDsWhilePreservingFollowerTimestamps",
+      "TestUUIDv7MatchesPisIDsByteForByteForAFixedRandomSource"
+    ],
+    "upstream_reference": "packages/ai/test/uuid.test.ts",
+    "mutation": "ai/uuid.go advance: effective = max(requested, generator.lastOrdinaryTimestamp) -> effective = min(requested, generator.lastOrdinaryTimestamp); compiled tests FAIL, baseline PASS"
+  }
+]

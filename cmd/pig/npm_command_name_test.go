@@ -20,15 +20,25 @@ func npmCommandProbe(t *testing.T) string {
 	return log
 }
 
-// Pi package-manager.ts:1760-1764 strips only cmd/exe, preserves case and never executes the command.
-func TestNpmCommandNameIsLexical(t *testing.T) {
+// .upstream/v0.99.1/packages/coding-agent/src/core/package-manager.ts:1793-1815 strips only cmd/exe, preserves case and never executes the command.
+// Rows 1-5 are the 0.87.1 rows that still hold; `bun --` now names bun (the direct command) where 0.87.1 named "", and the
+// last three are package-manager.test.ts:916 ("should prefer the package manager after a separator over the outer executable")
+// and :938 (corepack wrapper without a separator), both regressions for #9863.
+func TestPackageManagerNameIsLexical(t *testing.T) {
 	log := npmCommandProbe(t)
 	var names []string
 	for _, tc := range []struct {
 		parts []string
 		want  string
-	}{{[]string{"npm"}, "npm"}, {[]string{"NPM.EXE"}, "NPM"}, {[]string{"pnpm.sh"}, "pnpm.sh"}, {[]string{"bun", "--"}, ""}, {[]string{"mise", "--", "npm", "--", "pnpm.cmd"}, "pnpm"}} {
-		got := packagemanager.NpmCommandName(tc.parts)
+	}{
+		{[]string{"npm"}, "npm"}, {[]string{"NPM.EXE"}, "NPM"}, {[]string{"pnpm.sh"}, "pnpm.sh"},
+		{[]string{"bun", "--"}, "bun"}, {[]string{"mise", "--", "npm", "--", "pnpm.cmd"}, "pnpm"},
+		{[]string{"npm", "exec", "--", "pnpm"}, "pnpm"}, {[]string{"corepack", "pnpm"}, "pnpm"}, {[]string{"corepack", "pnpm", "pnpm.cmd"}, "pnpm"},
+	} {
+		got, err := packagemanager.PackageManagerName(tc.parts)
+		if err != nil {
+			t.Errorf("name(%q) failed: %v", tc.parts, err)
+		}
 		names = append(names, got)
 		if got != tc.want {
 			t.Errorf("name(%q)=%q want%q", tc.parts, got, tc.want)
@@ -68,30 +78,42 @@ func TestNpmCommandClassificationAtInstallAndRemove(t *testing.T) {
 	}
 }
 
-func TestNpmCommandNameEmptyAndSuffixBoundaries(t *testing.T) {
+// .upstream/v0.99.1/packages/coding-agent/src/core/package-manager.ts:1780-1815: an absent or empty argv is npm, an empty first
+// entry is an error, an empty wrapped command falls back to the direct command, and only npm, pnpm and bun are looked for among
+// the arguments of an unsupported command (two different ones are ambiguous).
+func TestPackageManagerNameEmptyAndSuffixBoundaries(t *testing.T) {
 	for _, tc := range []struct {
 		parts []string
 		want  string
+		err   string
 	}{
-		{nil, ""},
-		{[]string{""}, ""},
-		{[]string{"mise", "--", ""}, ""},
-		{[]string{"/usr/local/bin/bun.CmD"}, "bun"},
-		{[]string{"/usr/local/bin/NPM.ExE"}, "NPM"},
-		{[]string{"npm.js"}, "npm.js"},
+		{nil, "npm", ""},
+		{[]string{}, "npm", ""},
+		{[]string{""}, "", "Invalid npmCommand: first array entry must be a non-empty command"},
+		{[]string{"mise", "--", ""}, "mise", ""},
+		{[]string{"/usr/local/bin/bun.CmD"}, "bun", ""},
+		{[]string{"/usr/local/bin/NPM.ExE"}, "NPM", ""},
+		{[]string{"npm.js"}, "npm.js", ""},
+		{[]string{"mise", "exec"}, "mise", ""},
+		{[]string{"corepack", "yarn"}, "corepack", ""},
+		{[]string{"corepack", "/opt/pnpm.exe", "pnpm"}, "pnpm", ""},
+		{[]string{"corepack", "pnpm", "npm"}, "", "Ambiguous npmCommand package managers: pnpm, npm"},
+		{[]string{"corepack", "bun", "npm", "bun"}, "", "Ambiguous npmCommand package managers: bun, npm"},
+		{[]string{"npm", "run", "--", "yarn"}, "yarn", ""},
 	} {
-		if got := packagemanager.NpmCommandName(tc.parts); got != tc.want {
-			t.Errorf("name(%q)=%q, want %q", tc.parts, got, tc.want)
+		got, err := packagemanager.PackageManagerName(tc.parts)
+		if (err == nil) != (tc.err == "") || (err != nil && err.Error() != tc.err) || got != tc.want {
+			t.Errorf("name(%q)=%q, %v; want %q, %q", tc.parts, got, err, tc.want, tc.err)
 		}
 	}
 }
 
-func BenchmarkNpmCommandClassification(b *testing.B) {
+func BenchmarkPackageManagerName(b *testing.B) {
 	command := []string{"mise", "exec", "node@20", "--", "npm.cmd"}
 	b.ReportAllocs()
 	for b.Loop() {
-		if got := packagemanager.NpmCommandName(command); got != "npm" {
-			b.Fatal(got)
+		if got, err := packagemanager.PackageManagerName(command); err != nil || got != "npm" {
+			b.Fatal(got, err)
 		}
 	}
 }

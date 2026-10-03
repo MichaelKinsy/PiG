@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url);
 const ts=require(require.resolve('typescript',{paths:[process.cwd()+'/extensions/sdk-ts/node_modules']}));
-const path='.upstream/v0.87.1/packages/tui/test/input.test.ts';
+const path='.upstream/current/packages/tui/test/input.test.ts';
 const source=ts.createSourceFile(path,fs.readFileSync(path,'utf8'),ts.ScriptTarget.Latest,true);
 const cases=[];
 function literal(node){if(ts.isStringLiteral(node)||ts.isNoSubstitutionTemplateLiteral(node))return node.text;throw new Error('unsupported literal '+node.getText(source));}

@@ -4,7 +4,6 @@ package services
 import (
 	"context"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 )
 
@@ -44,14 +43,14 @@ type presentationPluginsView struct {
 	resolve func() (PresentationPlugins, error)
 }
 
-func (view presentationPluginsView) PrepareSession(ctx context.Context, request PrepareSessionPluginsRequest) (pico3.JsonValue, error) {
+func (view presentationPluginsView) PrepareSession(ctx context.Context, request PrepareSessionPluginsRequest) (chord.JsonValue, error) {
 	service, err := view.resolve()
 	if err != nil {
 		return nil, err
 	}
 	return service.PrepareSession(ctx, request)
 }
-func (view presentationPluginsView) Reload(ctx context.Context) (pico3.JsonValue, error) {
+func (view presentationPluginsView) Reload(ctx context.Context) (chord.JsonValue, error) {
 	service, err := view.resolve()
 	if err != nil {
 		return nil, err
@@ -61,9 +60,9 @@ func (view presentationPluginsView) Reload(ctx context.Context) (pico3.JsonValue
 
 type remotePresentationPlugins struct{ service *chord.RemoteService }
 
-func (client remotePresentationPlugins) PrepareSession(ctx context.Context, request PrepareSessionPluginsRequest) (pico3.JsonValue, error) {
-	return chord.CallResult[pico3.JsonValue](ctx, client.service, "prepareSession", request)
+func (client remotePresentationPlugins) PrepareSession(ctx context.Context, request PrepareSessionPluginsRequest) (chord.JsonValue, error) {
+	return chord.CallResult[chord.JsonValue](ctx, client.service, "prepareSession", request)
 }
-func (client remotePresentationPlugins) Reload(ctx context.Context) (pico3.JsonValue, error) {
-	return chord.CallResult[pico3.JsonValue](ctx, client.service, "reload")
+func (client remotePresentationPlugins) Reload(ctx context.Context) (chord.JsonValue, error) {
+	return chord.CallResult[chord.JsonValue](ctx, client.service, "reload")
 }

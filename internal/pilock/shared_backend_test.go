@@ -90,7 +90,11 @@ func TestHeartbeatCompromiseAndCallerCancellation(t *testing.T) {
 	}
 	cause := errors.New("caller stopped")
 	cancel(cause)
-	if err := lease.Release(); !errors.Is(err, cause) {
+	if !errors.Is(context.Cause(lease.Context()), cause) {
+		t.Fatalf("lock context cause = %v, want the caller's", context.Cause(lease.Context()))
+	}
+	// proper-lockfile's release knows nothing of the caller's abort; it reports only the removal.
+	if err := lease.Release(); err != nil {
 		t.Fatalf("release = %v", err)
 	}
 	if _, err := os.Stat(path + ".lock"); !errors.Is(err, os.ErrNotExist) {

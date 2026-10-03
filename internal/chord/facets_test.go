@@ -9,8 +9,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 )
 
 type eventLog struct {
@@ -327,7 +325,7 @@ func TestFacetHostValidationAndStartupCleanup(t *testing.T) {
 	if _, err := CreateFacetHost(ctx, FacetOptions{Facets: []Facet{{Id: "a"}, {Id: "a"}}}); err == nil {
 		t.Fatal("duplicate facet IDs accepted")
 	}
-	other := pico3.DefineService[Counter]("test.other")
+	other := DefineService[Counter]("test.other")
 	cycleA := Facet{Id: "a", Setup: func(env *FacetEnvironment) error {
 		if _, err := UseService(env, other); err != nil {
 			return err
@@ -412,7 +410,7 @@ func TestCombineFacetLoadersReleasesInReverseOnce(t *testing.T) {
 // remoteCounter is the kind of typed client adapter a service lane supplies.
 type remoteCounter struct{ service *RemoteService }
 
-func (counter remoteCounter) State() pico3.ReplicatedStateOf[*counterState] {
+func (counter remoteCounter) State() ReplicatedStateOf[*counterState] {
 	replica, err := counter.service.State("state")
 	if err != nil {
 		panic(err)
@@ -603,4 +601,4 @@ func TestFacetHostSourcesRunConcurrentlyAndDisposeIndependently(t *testing.T) {
 	}
 }
 
-var keyedOtherDefinition = pico3.DefineService[Counter]("test.second-counter")
+var keyedOtherDefinition = DefineService[Counter]("test.second-counter")

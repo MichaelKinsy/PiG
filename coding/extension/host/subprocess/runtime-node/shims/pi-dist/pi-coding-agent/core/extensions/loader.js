@@ -10,8 +10,9 @@ import { CONFIG_DIR_NAME, getAgentDir, isBunBinary, isBundledNode } from "../../
 import { resolvePath } from "../../utils/paths.js";
 import { createEventBus } from "../event-bus.js";
 import { execCommand } from "../exec.js";
+import { McpServerRegistry, mcpNamespace, validateMcpServerConfig } from "../mcp-servers.js";
 import { readPiManifest } from "../pi-manifest.js";
-import { createSyntheticSourceInfo } from "../source-info.js";
+import { createSyntheticSourceInfo, getSyntheticPathSource, isSyntheticPath } from "../source-info.js";
 import { time } from "../timings.js";
 const require = createRequire(import.meta.url);
 const isNodeSeaBinary = ("sea" in process.features && process.features.sea === true) ||
@@ -122,6 +123,7 @@ export function createExtensionRuntime() {
         setLabel: notInitialized,
         getActiveTools: notInitialized,
         getAllTools: notInitialized,
+        getSettings: notInitialized,
         setActiveTools: notInitialized,
         // registerTool() is valid during extension load; refresh is only needed post-bind.
         refreshTools: () => { },
@@ -132,6 +134,9 @@ export function createExtensionRuntime() {
         flagValues: new Map(),
         pendingProviderRegistrations: [],
         pendingNativeProviderRegistrations: [],
+        mcpServers: new McpServerRegistry(),
+        pendingVirtualModelRegistrations: [],
+        createContext: notInitialized,
         assertActive,
         invalidate: (message) => {
             if (state.staleMessage)
@@ -166,6 +171,12 @@ export function createExtensionRuntime() {
         unregisterProvider: (name) => {
             runtime.pendingProviderRegistrations = runtime.pendingProviderRegistrations.filter((r) => r.name !== name);
             runtime.pendingNativeProviderRegistrations = runtime.pendingNativeProviderRegistrations.filter((r) => r.provider.id !== name);
+        },
+        registerVirtualModel: (definition, extensionPath = "<unknown>") => {
+            runtime.pendingVirtualModelRegistrations.push({ definition, extensionPath });
+        },
+        unregisterVirtualModel: (provider, id) => {
+            runtime.pendingVirtualModelRegistrations = runtime.pendingVirtualModelRegistrations.filter(({ definition }) => definition.provider !== provider || definition.id !== id);
         },
     };
     return runtime;
@@ -230,6 +241,12 @@ function createExtensionAPI(extension, runtime, cwd, eventBus) {
         },
         registerCommand(name, options) {
             assertActive();
+            if (typeof name !== "string" || name.length === 0) {
+                throw new Error(`Command registered by extension "${extension.path}" must have a non-empty string name. Use pi.registerCommand("name", { description, handler }).`);
+            }
+            if (typeof options?.handler !== "function") {
+                throw new Error(`Command "/${name}" registered by extension "${extension.path}" must define handler().`);
+            }
             extension.commands.set(name, {
                 name,
                 sourceInfo: extension.sourceInfo,
@@ -313,6 +330,10 @@ function createExtensionAPI(extension, runtime, cwd, eventBus) {
             assertActive();
             return runtime.getAllTools();
         },
+        getSettings() {
+            assertActive();
+            return runtime.getSettings();
+        },
         setActiveTools(toolNames) {
             assertActive();
             runtime.setActiveTools(toolNames);
@@ -346,6 +367,47 @@ function createExtensionAPI(extension, runtime, cwd, eventBus) {
         unregisterProvider(name) {
             assertActive();
             applyRuntimeChange(() => runtime.unregisterProvider(name, extension.path));
+        },
+        registerMcpServer(name, config) {
+            assertActive();
+            const validated = validateMcpServerConfig(name, config);
+            if (typeof validated === "string") {
+                throw new Error(`Invalid MCP server registered by extension "${extension.path}": ${validated}`);
+            }
+            const owner = runtime.mcpServers.get(name)?.extensionPath;
+            if (owner !== undefined && owner !== extension.path) {
+                throw new Error(`MCP server "${name}" is already registered by extension "${owner}"`);
+            }
+            // Names that differ only in `-` and `_` would share a namespace.
+            const clash = runtime.mcpServers
+                .list()
+                .find((server) => server.name !== name && mcpNamespace(server.name) === mcpNamespace(name));
+            if (clash)
+                throw new Error(`MCP server "${name}" conflicts with registered server "${clash.name}"`);
+            const server = { name, config: structuredClone(validated), extensionPath: extension.path };
+            applyRuntimeChange(() => runtime.mcpServers.register(server));
+        },
+        unregisterMcpServer(name) {
+            assertActive();
+            applyRuntimeChange(() => runtime.mcpServers.unregister(name, extension.path));
+        },
+        getMcpServers() {
+            assertActive();
+            return runtime.mcpServers.list();
+        },
+        registerVirtualModel(model) {
+            assertActive();
+            // Routing runs after the runner binds, so the context is created per request. The state
+            // comes from the session branch that this router wrote.
+            const definition = {
+                ...model,
+                route: (request) => model.route(request, runtime.createContext()),
+            };
+            applyRuntimeChange(() => runtime.registerVirtualModel(definition, extension.path));
+        },
+        unregisterVirtualModel(provider, id) {
+            assertActive();
+            applyRuntimeChange(() => runtime.unregisterVirtualModel(provider, id));
         },
         events: {
             emit(channel, data) {
@@ -425,10 +487,8 @@ async function loadExtensionModule(extensionPath, cacheToken) {
  * Create an Extension object with empty collections.
  */
 function createExtension(extensionPath, resolvedPath) {
-    const source = extensionPath.startsWith("<") && extensionPath.endsWith(">")
-        ? extensionPath.slice(1, -1).split(":")[0] || "temporary"
-        : "local";
-    const baseDir = extensionPath.startsWith("<") ? undefined : path.dirname(resolvedPath);
+    const source = getSyntheticPathSource(extensionPath) ?? "local";
+    const baseDir = isSyntheticPath(extensionPath) ? undefined : path.dirname(resolvedPath);
     return {
         path: extensionPath,
         resolvedPath,
@@ -485,6 +545,7 @@ export async function loadExtensionFromFactory(factory, cwd, eventBus, runtime, 
 async function loadExtensionsInternal(paths, cwd, eventBus, runtime, useCache = false) {
     const extensions = [];
     const errors = [];
+    const warnings = [];
     const cacheToken = useCache ? useExtensionCacheCwd(cwd) : undefined;
     const resolvedCwd = cacheToken?.cwd ?? resolvePath(cwd);
     const resolvedEventBus = eventBus ?? createEventBus();
@@ -502,6 +563,7 @@ async function loadExtensionsInternal(paths, cwd, eventBus, runtime, useCache = 
     return {
         extensions,
         errors,
+        warnings,
         runtime: resolvedRuntime,
     };
 }

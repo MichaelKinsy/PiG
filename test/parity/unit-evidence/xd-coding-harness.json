@@ -1,0 +1,197 @@
+[
+  {
+    "upstream": "packages/coding-agent/src/experimental/durable/harness-setup.ts",
+    "package": "./internal/experimental/durableagent",
+    "tests": [
+      "TestCreateHarnessSettings",
+      "TestExecutionEnvs",
+      "TestConfigureHarnessHTTP",
+      "TestConfigureHarnessHTTPRejectsAnInvalidIdleTimeout"
+    ],
+    "upstream_reference": "packages/coding-agent/src/experimental/durable/harness-setup.ts:25-47",
+    "mutation": "internal/experimental/durableagent/harness_setup.go: if idle == 0 { -> if idle == 1 {; compiled test FAIL (go test, no -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/experimental/durable/harness-setup.ts",
+    "package": "./internal/experimental",
+    "tests": [
+      "TestFindInitialAgentModelUsesNativeModelsAndSettings",
+      "TestFindInitialAgentModelRejectsAnUnresolvableExplicitModel",
+      "TestCreateCodingAgentHarnessRunsPiToolsAndPromptOverAProvider"
+    ],
+    "upstream_reference": "packages/coding-agent/src/experimental/durable/harness-setup.ts:93-124",
+    "mutation": "internal/experimental/session_worker_factory.go: Models: modelRuntime -> Models: ai.CreateModels(); compiled test FAIL (go test, no -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/experimental/durable/prompt.ts",
+    "package": "./internal/experimental/durableagent",
+    "tests": [
+      "TestCreatePiPromptSections",
+      "TestCreatePiPromptDirectoryPrecedence",
+      "TestCreatePiPromptLoadsResourcesOncePerDirectory",
+      "TestCodingRegistrySystemPromptReachesTheProvider"
+    ],
+    "upstream_reference": "packages/coding-agent/src/experimental/durable/prompt.ts:30-74",
+    "mutation": "internal/experimental/durableagent/prompt.go: if found, ok := resources[cwd]; ok { -> ok && false; compiled test FAIL (go test, no -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/experimental/session-worker.ts",
+    "package": "./internal/experimental",
+    "tests": [
+      "TestCreateCodingAgentHarnessRunsPiToolsAndPromptOverAProvider",
+      "TestCreateCodingAgentHarnessDoesNotResolveTheInitialModelForAnExistingRoot",
+      "TestCreateCodingAgentHarnessFailsStartupOnAnUnresolvableModel",
+      "TestCreateCodingAgentHarnessStartsWithTheSavedDefaultModel"
+    ],
+    "upstream_reference": "packages/coding-agent/src/experimental/session-worker.ts:767-840",
+    "mutation": "internal/experimental/session_worker_factory.go: if existing == nil { -> if existing == nil || true {; and cleanupErr = opened.Close(context.WithoutCancel(ctx)) -> cleanupErr = nil; compiled test FAIL (go test, no -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/experimental/durable/sessions.ts",
+    "package": "./internal/experimental/durableagent",
+    "tests": [
+      "TestSelectSessionCreatesALockedSessionForTheRealPathOfTheDirectory",
+      "TestSelectSessionContinuesTheNewestSession",
+      "TestSelectSessionContinueWithoutASessionFails",
+      "TestSelectSessionRefusesASessionOpenElsewhere",
+      "TestSelectSessionWaitsForTheHolderToRelease"
+    ],
+    "upstream_reference": "packages/coding-agent/src/experimental/durable/sessions.ts:15-56",
+    "mutation": "internal/experimental/durableagent/sessions.go: slices.Max(names) -> slices.Min(names); Wait: sessionLockWait -> Wait: 0; compiled test FAIL (go test, no -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/experimental/durable/subagent.ts",
+    "package": "./internal/experimental/durableagent",
+    "tests": [
+      "TestSubagentRunsTheTaskInAChildConversation",
+      "TestSubagentRerunFindsTheChildAndItsSubmission",
+      "TestSubagentCallInterruptedByAClosedHarnessResumesAfterReopen"
+    ],
+    "upstream_reference": "packages/coding-agent/src/experimental/durable/subagent.ts:24-55",
+    "mutation": "internal/experimental/durableagent/subagent.go: RequestId: new(\"subagent:\"+...) -> RequestId: nil; Replay: durable.ReplaySafe -> durable.ReplayUnsafe; compiled test FAIL (go test, no -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/experimental/durable/runtime.ts",
+    "package": "./internal/experimental/durableagent",
+    "tests": [
+      "TestOpenStartsANewSession",
+      "TestSubmitRunsATurnAndPublishesTheView",
+      "TestAPromptWithoutAnAnswerShowsANoticeUnlessAborted",
+      "TestCommandsRunInOrderAndFailuresBecomeNotices",
+      "TestSetModelClampsThinking",
+      "TestCompactReportsWhenThereIsNothingToCompact",
+      "TestToggleTasksShowsAndHidesTheGraph",
+      "TestSubagentConversationsAppearAndCanBeSwitchedTo",
+      "TestNoticesKeepTheNewestTwenty",
+      "TestCloseReleasesTheSessionAndContinueKeepsItsModel",
+      "TestAnInterruptedTurnResumesAfterContinue"
+    ],
+    "upstream_reference": "packages/coding-agent/src/experimental/durable/runtime.ts:100-366",
+    "mutation": "internal/experimental/durableagent/runtime.go: remove <-previous in command; (settled.Reason == nil || *settled.Reason != \"aborted\") -> true; notices[max(0, len(notices)-20):] -> notices; compiled test FAIL (go test, no -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/experimental/durable/tui.ts",
+    "package": "./internal/experimental",
+    "tests": [
+      "TestDurableTuiShowsTheTranscriptAndFollowsTheStreamingAnswer",
+      "TestDurableTuiRebuildsWhenTheHeadChanges",
+      "TestDurableTuiCollapsesCompactionSummariesUntilExpanded",
+      "TestDurableTuiTaskPanelNestsTasksUnderTheirOwners",
+      "TestDurableTuiShowsTheQueueAndTheNewestNotices",
+      "TestDurableTuiStatusInTheEditorBorder",
+      "TestDurableTuiFooter",
+      "TestContextTokens",
+      "TestDurableTuiFooterColorsAFullContext",
+      "TestDurableTuiEditorBorderFollowsTheThinkingLevel",
+      "TestDurableTuiNewToolCardsFollowTheExpandedState",
+      "TestDurableTuiSubmitRoutesSlashCommands",
+      "TestDurableTuiModelSelector",
+      "TestDurableTuiConversationSelector",
+      "TestDurableTuiKeys",
+      "TestRunDurableTuiOnARealTerminal"
+    ],
+    "upstream_reference": "packages/coding-agent/src/experimental/durable/tui.ts:93-655",
+    "mutation": "internal/experimental/durable_tui.go: items = items[len(items)-4:] -> items[len(items)-3:]; view.editor.ThinkingLevel assignment removed; internal/experimental/durable_tui_run.go: unsubscribe = source.Subscribe(func() { dispatch(apply) }) -> func() {}; compiled test FAIL (go test, no -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/experimental/durable/main.ts",
+    "package": "./internal/experimental/durableagent",
+    "tests": [
+      "TestParseArgs"
+    ],
+    "upstream_reference": "packages/coding-agent/src/experimental/durable/main.ts:5-11",
+    "mutation": "internal/experimental/durableagent/args.go: arg != \"--continue\" && arg != \"-c\" -> arg != \"--continue\"; compiled test FAIL (go test, no -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/experimental/vacation/tui.ts",
+    "package": "./internal/experimental",
+    "tests": [
+      "TestDurableTuiKeys",
+      "TestDurableTuiFooter",
+      "TestRunDurableTuiOnARealTerminal"
+    ],
+    "upstream_reference": "packages/coding-agent/src/experimental/vacation/tui.ts:93-655",
+    "mutation": "internal/experimental/durable_tui_run.go: abort: func() { controller.Abort() } -> func() {}; compiled test FAIL (go test, no -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/experimental/vacation/main.ts",
+    "package": "./internal/experimental/vacation/main",
+    "tests": [
+      "TestRunRejectsAnUnknownArgument"
+    ],
+    "upstream_reference": "packages/coding-agent/src/experimental/vacation/main.ts:5-20",
+    "mutation": "internal/experimental/vacation/main/main.go: options, err := durableagent.ParseArgs(args) -> options, err := durableagent.OpenDurableOptions{}, error(nil); compiled test FAIL (go test, no -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/experimental/durable/main.ts",
+    "package": "./internal/experimental/durableagent/main",
+    "tests": [
+      "TestRunRejectsAnUnknownArgument"
+    ],
+    "upstream_reference": "packages/coding-agent/src/experimental/durable/main.ts:5-20",
+    "mutation": "internal/experimental/durableagent/main/main.go: options, err := durableagent.ParseArgs(args) -> ignores the error; compiled test FAIL (go test, no -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/experimental/vacation/vacation.ts",
+    "package": "./internal/experimental/vacation",
+    "tests": [
+      "TestSearchPrintsItsSourcesThenTheResults",
+      "TestSearchRejectsAnUnknownTopic",
+      "TestResearchRunsInTheBackgroundAndReportsBack",
+      "TestResearchSurvivesARestart",
+      "TestResearchReportQueuesAsAFollowUpWhileThePlannerIsBusy",
+      "TestReportPhasePostsTheReportOnceAndCompletes"
+    ],
+    "upstream_reference": "packages/coding-agent/src/experimental/vacation/vacation.ts:34-142",
+    "mutation": "internal/experimental/vacation/vacation.go: RequestId: new(\"research:\"+...) -> nil; Replay: durable.ReplaySafe removed; Background: true -> false; api.Output(\"- \"+result) removed; compiled test FAIL (go test, no -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/experimental/vacation/harness-setup.ts",
+    "package": "./internal/experimental/vacation",
+    "tests": [
+      "TestCreateVacationRegistry",
+      "TestResearchRunsInTheBackgroundAndReportsBack"
+    ],
+    "upstream_reference": "packages/coding-agent/src/experimental/vacation/harness-setup.ts:49-54",
+    "mutation": "internal/experimental/vacation/harness_setup.go: return registry, registry.Install(Search) -> return registry, nil; compiled test FAIL (go test, no -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/experimental/vacation/runtime.ts",
+    "package": "./internal/experimental/vacation",
+    "tests": [
+      "TestResearchRunsInTheBackgroundAndReportsBack"
+    ],
+    "upstream_reference": "packages/coding-agent/src/experimental/vacation/runtime.ts:120-160",
+    "mutation": "internal/experimental/vacation/harness_setup.go: Exact: true, List: []*durable.Extension{Vacation} -> Exact: false; compiled test FAIL (go test, no -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/experimental/vacation/sessions.ts",
+    "package": "./internal/experimental/durableagent",
+    "tests": [
+      "TestSelectSessionContinueWithoutASessionFails",
+      "TestSelectSessionKindsDoNotShareDirectories"
+    ],
+    "upstream_reference": "packages/coding-agent/src/experimental/vacation/sessions.ts:36-38",
+    "mutation": "internal/experimental/durableagent/sessions.go: \"No %s session exists for %s\", kind, cwd -> a fixed \"durable\"; compiled test FAIL (go test, no -cover), baseline PASS"
+  }
+]

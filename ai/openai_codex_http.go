@@ -42,8 +42,9 @@ func codexRetryDelay(headers http.Header, attempt, maxDelayMs int) (time.Duratio
 		if value := headers.Get("retry-after"); value != "" {
 			if seconds, err := strconv.ParseFloat(strings.TrimSpace(value), 64); err == nil && !math.IsInf(seconds, 0) && !math.IsNaN(seconds) {
 				delay = seconds * 1000
-			} else if date, err := http.ParseTime(value); err == nil {
-				delay = float64(time.Until(date).Milliseconds())
+			} else if date := jsDateParse(value); !math.IsNaN(date) {
+				// openai-codex-responses.ts:158-160: Date.parse(retryAfter) is accepted unless it is NaN.
+				delay = date - float64(time.Now().UnixMilli())
 			}
 		}
 	}

@@ -571,7 +571,7 @@ func TestProjectConfigCyclesInheritedMissingMemberToUnload(t *testing.T) {
 		t.Fatal(err)
 	}
 	global := codingagent.NewSettingsManagerWithProjectTrust(cwd, agentDir, false)
-	selector, err := newScopedConfigSelector(cwd, agentDir, global, settings, true, true)
+	selector, err := newScopedConfigSelector(cwd, agentDir, global, settings, true, true, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

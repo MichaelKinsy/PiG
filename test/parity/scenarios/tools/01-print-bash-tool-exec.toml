@@ -21,7 +21,6 @@ name = "01-print-bash-tool-exec"
 description = "Faux triggers bash(expr 20+22), both produce 42 in print mode"
 covers = [
   "packages/coding-agent/src/core/tools/bash.ts",
-  "packages/agent/src/harness/tools/bash.ts",
   "packages/coding-agent/src/core/bash-executor.ts",
   "packages/coding-agent/src/core/output-guard.ts",
   "packages/coding-agent/src/utils/shell.ts",

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"maps"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -13,7 +12,6 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/session"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 )
 
@@ -27,7 +25,7 @@ type workerManagerCoordinator struct {
 	sent      []workerManagerSend
 	onSend    func(string, map[string]any)
 	callbacks sync.WaitGroup
-	metadata  session.SessionMetadata
+	metadata  SessionCatalogMetadata
 }
 
 func (c *workerManagerCoordinator) ControlPath() string        { return "/tmp/control.sock" }
@@ -107,20 +105,18 @@ func (c *workerManagerCoordinator) sends() []workerManagerSend {
 }
 
 func TestPortWave08WorkerLaunchMetadataProjection(t *testing.T) {
-	// upstream: packages/coding-agent/src/experimental/session-worker-manager.ts:#launch copies only id, createdAt, storageVersion, cwd, path, modifiedAt and a present parentSessionId into the StrictObject SessionWorkerMetadataSchema (session-worker.ts:73-81). Other JsonlSessionMetadata fields, such as legacyParentSessionPath from a migrated v3 header, never reach the worker, and zero-valued required numbers remain present.
+	// upstream: packages/coding-agent/src/experimental/session-worker-manager.ts:461 (#launch) sends exactly id, createdAt, cwd and path, the StrictObject SessionWorkerMetadataSchema (session-worker.ts:69-74). createdAt is Type.Number, so a zero or fractional creation time stays present and the worker accepts it.
 	for _, test := range []struct {
-		name   string
-		mutate func(*session.SessionMetadata)
-		want   map[string]any
+		name      string
+		createdAt float64
 	}{
-		{name: "legacy parent path is not forwarded", mutate: func(m *session.SessionMetadata) { m.LegacyParentSessionPath = "/old/parent.jsonl" }},
-		{name: "parent session id is forwarded", mutate: func(m *session.SessionMetadata) { m.ParentSessionID = "parent-1" }, want: map[string]any{"parentSessionId": "parent-1"}},
-		{name: "zero modification time stays present", mutate: func(m *session.SessionMetadata) { m.ModifiedAt = 0 }, want: map[string]any{"modifiedAt": float64(0)}},
+		{name: "integer creation time", createdAt: 1},
+		{name: "zero creation time stays present", createdAt: 0},
+		{name: "fractional creation time is a number", createdAt: 1712345678901.5},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			directory := t.TempDir()
-			metadata := session.SessionMetadata{ID: "session-1", CreatedAt: 1, StorageVersion: 1, Cwd: directory, Path: filepath.Join(directory, "session-1.jsonl"), ModifiedAt: 1}
-			test.mutate(&metadata)
+			metadata := SessionCatalogMetadata{ID: "session-1", CreatedAt: test.createdAt, Cwd: directory, Path: filepath.Join(directory, "session-1")}
 			coordinator := &workerManagerCoordinator{metadata: metadata}
 			manager := NewSessionWorkerManager(coordinator, directory, nil, nil)
 			defer manager.Detach()
@@ -139,13 +135,16 @@ func TestPortWave08WorkerLaunchMetadataProjection(t *testing.T) {
 			if err := json.Unmarshal([]byte(arguments[0]), &options); err != nil {
 				t.Fatal(err)
 			}
-			want := map[string]any{"id": "session-1", "createdAt": float64(1), "storageVersion": float64(1), "cwd": metadata.Cwd, "path": metadata.Path, "modifiedAt": float64(1)}
-			maps.Copy(want, test.want)
+			want := map[string]any{"id": "session-1", "createdAt": test.createdAt, "cwd": metadata.Cwd, "path": metadata.Path}
 			if !reflect.DeepEqual(options.Metadata, want) {
 				t.Fatalf("worker metadata = %v, want %v", options.Metadata, want)
 			}
-			if _, err := parseSessionWorkerOptions(arguments); err != nil {
+			parsed, err := parseSessionWorkerOptions(arguments)
+			if err != nil {
 				t.Fatalf("worker rejected launch options: %v", err)
+			}
+			if parsed.Metadata != metadata {
+				t.Fatalf("worker metadata = %+v, want %+v", parsed.Metadata, metadata)
 			}
 		})
 	}
@@ -154,7 +153,7 @@ func TestPortWave08WorkerLaunchMetadataProjection(t *testing.T) {
 func TestPortWave08WorkerCountDeliveryOrder(t *testing.T) {
 	// upstream: packages/coding-agent/src/experimental/session-worker-manager.ts:#notifyWorkerCountChanged runs synchronously after each change, so server.ts setWorkerCount always ends with the current count. A slower notification that read an older count must not be delivered after a newer one.
 	directory := t.TempDir()
-	metadata := session.SessionMetadata{ID: "session-1", CreatedAt: 1, StorageVersion: 1, Cwd: directory, Path: filepath.Join(directory, "session-1.jsonl"), ModifiedAt: 1}
+	metadata := SessionCatalogMetadata{ID: "session-1", CreatedAt: 1, Cwd: directory, Path: filepath.Join(directory, "session-1.jsonl")}
 	coordinator := &workerManagerCoordinator{metadata: metadata}
 	var mu sync.Mutex
 	var delivered []int
@@ -220,7 +219,7 @@ func TestPortWave08WorkerLaunchModelPresence(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			directory := t.TempDir()
-			metadata := session.SessionMetadata{ID: "session-1", CreatedAt: 1, StorageVersion: 1, Cwd: directory, Path: filepath.Join(directory, "session-1.jsonl"), ModifiedAt: 1}
+			metadata := SessionCatalogMetadata{ID: "session-1", CreatedAt: 1, Cwd: directory, Path: filepath.Join(directory, "session-1.jsonl")}
 			coordinator := &workerManagerCoordinator{metadata: metadata}
 			manager := NewSessionWorkerManager(coordinator, directory, test.model, nil)
 			defer manager.Detach()
@@ -262,7 +261,7 @@ func TestPortWave08WorkerLaunchModelPresence(t *testing.T) {
 func TestPortWave08WorkerPIDRemoval(t *testing.T) {
 	// Production bookkeeping guard: packages/coding-agent/src/experimental/session-worker-manager.ts:691,781-793.
 	directory := t.TempDir()
-	metadata := session.SessionMetadata{ID: "session-1", CreatedAt: 1, StorageVersion: 1, Cwd: directory, Path: filepath.Join(directory, "session-1.jsonl"), ModifiedAt: 1}
+	metadata := SessionCatalogMetadata{ID: "session-1", CreatedAt: 1, Cwd: directory, Path: filepath.Join(directory, "session-1.jsonl")}
 	coordinator := &workerManagerCoordinator{metadata: metadata}
 	manager := NewSessionWorkerManager(coordinator, directory, nil, nil)
 	defer manager.Detach()
@@ -285,7 +284,8 @@ func TestPortWave08WorkerPIDRemoval(t *testing.T) {
 
 func TestPortWave08WorkerManager(t *testing.T) {
 	directory := t.TempDir()
-	metadata := session.SessionMetadata{ID: "session-1", CreatedAt: 1, StorageVersion: 1, Cwd: directory, Path: filepath.Join(directory, "session-1.jsonl"), ModifiedAt: 1}
+	// upstream: packages/coding-agent/test/experimental-session-worker-manager.test.ts:8-13 (the temporary directory replaces /tmp).
+	metadata := SessionCatalogMetadata{ID: "session-1", CreatedAt: 1, Cwd: directory, Path: filepath.Join(directory, "session-1")}
 	create := func(t *testing.T) (*workerManagerCoordinator, *SessionWorkerManager) {
 		t.Helper()
 		coordinator := &workerManagerCoordinator{metadata: metadata}
@@ -334,7 +334,7 @@ func TestPortWave08WorkerManager(t *testing.T) {
 			}
 		}
 	}
-	// upstream: packages/coding-agent/test/experimental-session-worker-manager.test.ts:100
+	// upstream: packages/coding-agent/test/experimental-session-worker-manager.test.ts:99
 	t.Run("adopts a discovered worker with its existing Session plugin selection", func(t *testing.T) {
 		coordinator, manager := create(t)
 		if err := manager.Discover([]string{"worker-1"}); err != nil {
@@ -349,7 +349,7 @@ func TestPortWave08WorkerManager(t *testing.T) {
 		}
 		manager.Detach()
 	})
-	// upstream: packages/coding-agent/test/experimental-session-worker-manager.test.ts:110
+	// upstream: packages/coding-agent/test/experimental-session-worker-manager.test.ts:109
 	t.Run("rejects a different plugin selection for an active Session without stopping it", func(t *testing.T) {
 		_, manager, _, _ := attached(t)
 		requireError(t, manager.AssertSessionPluginManifestPaths(metadata, []string{filepath.Join(directory, "plugin", "chord-facets.json")}), "active with a different plugin selection")
@@ -358,7 +358,7 @@ func TestPortWave08WorkerManager(t *testing.T) {
 		}
 		manager.Detach()
 	})
-	// upstream: packages/coding-agent/test/experimental-session-worker-manager.test.ts:119
+	// upstream: packages/coding-agent/test/experimental-session-worker-manager.test.ts:118
 	t.Run("compensates a timed-out attachment before rejecting it", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			coordinator, manager := create(t)
@@ -406,7 +406,7 @@ func TestPortWave08WorkerManager(t *testing.T) {
 			manager.Detach()
 		})
 	})
-	// upstream: packages/coding-agent/test/experimental-session-worker-manager.test.ts:161
+	// upstream: packages/coding-agent/test/experimental-session-worker-manager.test.ts:160
 	t.Run("kills a worker when timed-out demand cannot be reconciled", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			coordinator, manager := create(t)
@@ -434,7 +434,7 @@ func TestPortWave08WorkerManager(t *testing.T) {
 			manager.Detach()
 		})
 	})
-	// upstream: packages/coding-agent/test/experimental-session-worker-manager.test.ts:180
+	// upstream: packages/coding-agent/test/experimental-session-worker-manager.test.ts:179
 	t.Run("bounds Harness-driven worker shutdown", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			coordinator, manager, handle, attachment := attached(t)
@@ -467,11 +467,11 @@ func TestPortWave08WorkerManager(t *testing.T) {
 		name, token, expectedError string
 		nullScope                  bool
 	}{
-		// upstream: packages/coding-agent/test/experimental-session-worker-manager.test.ts:199
+		// upstream: packages/coding-agent/test/experimental-session-worker-manager.test.ts:198
 		{name: "correlates service results to the worker generation and attachment", token: "worker-token"},
-		// upstream: packages/coding-agent/test/experimental-session-worker-manager.test.ts:236
+		// upstream: packages/coding-agent/test/experimental-session-worker-manager.test.ts:235
 		{name: "rejects a correlated response with mismatched worker identity", token: "wrong-token", expectedError: "mismatched operation response"},
-		// upstream: packages/coding-agent/test/experimental-session-worker-manager.test.ts:265
+		// upstream: packages/coding-agent/test/experimental-session-worker-manager.test.ts:264
 		{name: "rejects a null request scope", token: "worker-token", nullScope: true, expectedError: "invalid operation response"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -528,7 +528,7 @@ func TestPortWave08WorkerManager(t *testing.T) {
 			}
 		})
 	}
-	// upstream: packages/coding-agent/test/experimental-session-worker-manager.test.ts:294
+	// upstream: packages/coding-agent/test/experimental-session-worker-manager.test.ts:293
 	t.Run("rejects pending service calls on replacement without stopping the worker", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			coordinator, manager, _, attachment := attached(t)

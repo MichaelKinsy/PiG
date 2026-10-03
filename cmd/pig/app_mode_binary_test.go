@@ -1,12 +1,9 @@
-//go:build darwin || linux
-
 package main
 
 import (
 	"bytes"
 	"context"
 	"errors"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,7 +15,7 @@ import (
 
 // runPigForModeTest runs the pig binary with the faux provider and returns its
 // stdout, stderr, and exit code. stdin and stdout are the given files; a nil
-// stdout captures into a pipe.
+// stdout captures into a pipe. A nil stdin is the null device.
 func runPigForModeTest(t *testing.T, bin string, stdin, stdout *os.File, args ...string) (string, string, int) {
 	t.Helper()
 	return runPigForModeTestIn(t, bin, t.TempDir(), stdin, stdout, args...)
@@ -31,19 +28,11 @@ func runPigForModeTestIn(t *testing.T, bin, agentDir string, stdin, stdout *os.F
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), testbudget.Wait(t))
 	defer cancel()
-	workDir := filepath.Join(agentDir, "work")
-	if err := os.MkdirAll(workDir, 0o700); err != nil {
-		t.Fatal(err)
+	cmd := modePigCommand(ctx, t, bin, agentDir, args...)
+	// A nil *os.File stored in cmd.Stdin is not a nil interface: Windows rejects its invalid handle, where a nil interface gets the null device.
+	if stdin != nil {
+		cmd.Stdin = stdin
 	}
-	cmd := exec.CommandContext(ctx, bin, append([]string{"--model", "test-faux/faux-1", "--no-extensions"}, args...)...)
-	cmd.Dir = workDir
-	cmd.Env = append(os.Environ(),
-		"PIG_HOME="+t.TempDir(),
-		"PIG_CODING_AGENT_DIR="+agentDir,
-		"PIG_TEST_FAUX=1",
-		"PIG_TEST_FAUX_SCENARIO=parity-basic",
-	)
-	cmd.Stdin = stdin
 	var outBuf, errBuf bytes.Buffer
 	if stdout != nil {
 		cmd.Stdout = stdout
@@ -64,6 +53,26 @@ func runPigForModeTestIn(t *testing.T, bin, agentDir string, stdin, stdout *os.F
 	return outBuf.String(), errBuf.String(), code
 }
 
+// modePigCommand builds the pig command that runPigForModeTestIn runs: the
+// faux provider, a private PIG_HOME, and the agent directory's work
+// directory as the working directory.
+func modePigCommand(ctx context.Context, t *testing.T, bin, agentDir string, args ...string) *exec.Cmd {
+	t.Helper()
+	workDir := filepath.Join(agentDir, "work")
+	if err := os.MkdirAll(workDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.CommandContext(ctx, bin, append([]string{"--model", "test-faux/faux-1", "--no-extensions"}, args...)...)
+	cmd.Dir = workDir
+	cmd.Env = append(os.Environ(),
+		"PIG_HOME="+t.TempDir(),
+		"PIG_CODING_AGENT_DIR="+agentDir,
+		"PIG_TEST_FAUX=1",
+		"PIG_TEST_FAUX_SCENARIO=parity-basic",
+	)
+	return cmd
+}
+
 // TestAppModeFollowsStandardStreams runs the pig binary the way a shell does
 // and pins upstream main.ts mode selection end to end: a stdout that is not a
 // terminal, or a stdin that is not a terminal, selects print mode even when
@@ -76,17 +85,8 @@ func TestAppModeFollowsStandardStreams(t *testing.T) {
 
 	// `pig "q" > out.txt` from a terminal: stdin is a terminal, stdout a file.
 	t.Run("stdout redirected to a file", func(t *testing.T) {
-		master, slave := openModePTY(t)
-		defer func() { _ = master.Close() }()
-		defer func() { _ = slave.Close() }()
-		go func() { _, _ = io.Copy(io.Discard, master) }()
 		outPath := filepath.Join(t.TempDir(), "out.txt")
-		out, err := os.Create(outPath)
-		if err != nil {
-			t.Fatal(err)
-		}
-		_, stderr, code := runPigForModeTest(t, bin, slave, out, "reply with exactly: redirected-ok")
-		_ = out.Close()
+		stderr, code := runPigOnTerminalStdinToFile(t, bin, outPath, "reply with exactly: redirected-ok")
 		data, err := os.ReadFile(outPath)
 		if err != nil {
 			t.Fatal(err)

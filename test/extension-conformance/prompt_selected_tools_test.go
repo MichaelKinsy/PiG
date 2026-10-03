@@ -19,10 +19,8 @@ import (
 
 // Pi runner.ts:1317-1363 awaits each before_agent_start handler and hands every handler one normalized options object, so a handler's selectedTools edit is visible to the next handler and survives a handler error; agent-session.ts:1702-1714 then makes an edited list the run's tool loadout. Each handler appends or assigns its own extension name, a value no SDK fallback can produce. Subprocess handlers wait before editing, so a runtime that answers before its handler finishes loses the edit.
 func TestPromptSelectedToolsMutationsAcrossSDKs(t *testing.T) {
+	t.Parallel()
 	root := findModuleRoot(t)
-	t.Setenv("PIG_SDK_GO_ROOT", filepath.Join(root, "extensions", "sdk"))
-	t.Setenv("PIG_SDK_PY_ROOT", filepath.Join(root, "extensions", "sdk-py"))
-	t.Setenv("PIG_SDK_RS_ROOT", filepath.Join(root, "extensions", "sdk-rs"))
 	t.Run("inproc", func(t *testing.T) {
 		ext := extension.Extension{Name: "first", Handlers: map[string][]extension.HandlerFn{"before_agent_start": {func(args ...any) (any, error) {
 			event := args[0].(extension.BeforeAgentStartEvent)

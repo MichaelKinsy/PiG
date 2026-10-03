@@ -13,11 +13,11 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
 
-// TestImageCatalogPin0871 counts come from @earendil-works/pi-ai 0.87.1
-// dist/image-models.generated.js.
-func TestImageCatalogPin0871(t *testing.T) {
-	if got := len(GeneratedImageModels); got != 55 {
-		t.Fatalf("image catalog size = %d, want published pi-ai 0.87.1 image-catalog count 55", got)
+// TestImageCatalogPin binds the image catalog to @earendil-works/pi-ai's IMAGE_MODELS at the pinned version.
+func TestImageCatalogPin(t *testing.T) {
+	published := loadPublishedCatalog(t)
+	if got, want := len(GeneratedImageModels), len(published["image"]); got != want {
+		t.Fatalf("image catalog size = %d, want published pi-ai %s image-catalog count %d", got, UpstreamVersionString(), want)
 	}
 	model, ok := GetImageModel("openrouter", "microsoft/mai-image-2.5-pro")
 	if !ok {
@@ -36,22 +36,22 @@ func TestImageCatalogPin0871(t *testing.T) {
 }
 
 func TestRegistryHasModels(t *testing.T) {
-	const want = 1495 // Count of the exact published @earendil-works/pi-ai 0.87.1 MODELS export.
+	want := len(loadPublishedCatalog(t)["chat"]) // Count of the exact published @earendil-works/pi-ai MODELS export.
 	if got := len(GeneratedModels); got != want {
 		t.Fatalf("catalog size = %d want %d", got, want)
 	}
 }
 
-// TestCatalogPin0871 binds the generated catalog to the exact published Pi
-// 0.87.1 package. The expected values come from @earendil-works/pi-ai 0.87.1
-// dist/models.generated.js, not from the Go generator output.
-func TestCatalogPin0871(t *testing.T) {
-	if v := UpstreamVersionString(); v != "0.87.1" {
-		t.Fatalf("pin = %q want 0.87.1", v)
+// TestCatalogPin100 binds the generated catalog to the exact published Pi
+// 1.0.0 package. The expected values come from @earendil-works/pi-ai 1.0.0
+// providers/data, not from the Go generator output.
+func TestCatalogPin100(t *testing.T) {
+	if v := UpstreamVersionString(); v != "1.0.0" {
+		t.Fatalf("pin = %q want 1.0.0", v)
 	}
 	opus, ok := LookupModelExact("anthropic/claude-opus-5-5")
 	if !ok || opus.API != APIAnthropicMessages || opus.ContextWindow != 1000000 {
-		t.Fatalf("0.87.1 Claude Opus 5.5 model = %+v, %t", opus, ok)
+		t.Fatalf("1.0.0 Claude Opus 5.5 model = %+v, %t", opus, ok)
 	}
 	want := &ModelInputLimits{
 		MaxRequestBytes: 33554432,
@@ -61,15 +61,15 @@ func TestCatalogPin0871(t *testing.T) {
 		},
 	}
 	if !reflect.DeepEqual(opus.InputLimits, want) {
-		t.Fatalf("0.87.1 Claude Opus 5.5 inputLimits = %#v, want %#v", opus.InputLimits, want)
+		t.Fatalf("1.0.0 Claude Opus 5.5 inputLimits = %#v, want %#v", opus.InputLimits, want)
 	}
 	for _, id := range []string{"xai/grok-4.7", "openai/gpt-6-sol", "openai/gpt-6-luna"} {
 		if _, ok := LookupModelExact(id); !ok {
-			t.Fatalf("0.87.1 catalog is missing %s", id)
+			t.Fatalf("1.0.0 catalog is missing %s", id)
 		}
 	}
 	if _, ok := LookupModelExact("anthropic/anthropic/claude-3.5-haiku"); ok {
-		t.Fatal(`retired model "anthropic/claude-3.5-haiku" is still in the 0.87.1 catalog`)
+		t.Fatal(`retired model "anthropic/claude-3.5-haiku" is still in the 1.0.0 catalog`)
 	}
 }
 
@@ -96,8 +96,14 @@ func TestRuntimeDiscoveryIncludesRadiusCatalog(t *testing.T) {
 			generatedRadius++
 		}
 	}
-	if generatedRadius != 30 {
-		t.Fatalf("generated pi-messages models = %d, want published pi-ai 0.87.1 count 30", generatedRadius)
+	publishedRadius := 0
+	for _, model := range loadPublishedCatalog(t)["chat"] {
+		if model["api"] == "pi-messages" {
+			publishedRadius++
+		}
+	}
+	if generatedRadius != publishedRadius || publishedRadius == 0 {
+		t.Fatalf("generated pi-messages models = %d, want published pi-ai %s count %d", generatedRadius, UpstreamVersionString(), publishedRadius)
 	}
 	if providers := ListProviders(); !slices.Contains(providers, "radius") {
 		t.Fatalf("ListProviders() omits radius: %v", providers)
@@ -115,7 +121,7 @@ func TestRuntimeDiscoveryIncludesRadiusCatalog(t *testing.T) {
 		}
 	}
 	balanced, ok := LookupModelExact("radius/balanced")
-	if !ok || balanced.Enabled == nil || !*balanced.Enabled || balanced.Lab != "Moonshot AI" || len(balanced.Providers) != 3 {
+	if !ok || balanced.Enabled == nil || !*balanced.Enabled || balanced.Lab != "Moonshot AI" || len(balanced.Providers) != 4 {
 		t.Fatalf("Radius generated evidence = %+v, %t", balanced, ok)
 	}
 }
@@ -565,11 +571,10 @@ func TestGeneratedCatalogUpgradeSpotChecks(t *testing.T) {
 	}
 }
 
-// TestCodegenByteIdentical re-runs both model catalog generators against temp
-// paths and checks the outputs match the committed files byte-for-byte.
-// Uses the same source resolution as the upgrade script: prefer the
-// installed pi binary's model file (parity ground truth), fall back to
-// the git-tag mirror.
+// TestCodegenByteIdentical re-runs the catalog generator against temp paths and
+// checks the chat, image and classifier outputs match the committed files
+// byte-for-byte. It reads the same source as `make model-catalogs`: the
+// published pi-ai barrel when installed, otherwise the pinned upstream mirror.
 func TestCodegenByteIdentical(t *testing.T) {
 	repoRoot, err := findRepoRoot()
 	if err != nil {
@@ -577,58 +582,43 @@ func TestCodegenByteIdentical(t *testing.T) {
 	}
 	src := resolveModelSource(repoRoot)
 	if src == "" {
-		t.Skip("no model source found (upstream mirror not present and pi binary not installed)")
+		t.Skip("no model source found (published pi-ai and upstream mirror not present)")
 	}
-	committed, err := os.ReadFile(filepath.Join(repoRoot, "ai/models_generated.go"))
-	if err != nil {
-		t.Fatal(err)
+	dir := t.TempDir()
+	outputs := map[string]string{
+		"ai/models_generated.go":            filepath.Join(dir, "models_generated.go"),
+		"ai/image_models_generated.go":      filepath.Join(dir, "image_models_generated.go"),
+		"ai/classifier_models_generated.go": filepath.Join(dir, "classifier_models_generated.go"),
+		"ai/providers_generated.go":         filepath.Join(dir, "providers_generated.go"),
 	}
-	tmp := filepath.Join(t.TempDir(), "models_generated.go")
-	cmd := exec.Command("go", "run", "./cmd/gen-models", "-src", src, "-out", tmp)
+	cmd := exec.Command("go", "run", "./cmd/gen-models", "-src", src, "-out", outputs["ai/models_generated.go"], "-image-out", outputs["ai/image_models_generated.go"], "-classifier-out", outputs["ai/classifier_models_generated.go"], "-provider-out", outputs["ai/providers_generated.go"])
 	cmd.Dir = repoRoot
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("gen-models failed: %v\n%s", err, out)
 	}
-	regenerated, err := os.ReadFile(tmp)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(normalizeSourceComment(committed), normalizeSourceComment(regenerated)) {
-		t.Fatalf("models_generated.go drift\ncommitted=%d bytes regenerated=%d bytes: re-run `go generate ./ai/...`",
-			len(committed), len(regenerated))
-	}
-	imageSource := filepath.Join(filepath.Dir(src), "image-models.generated.js")
-	if _, err := os.Stat(imageSource); err != nil {
-		t.Fatalf("published image catalog: %v", err)
-	}
-	committedImages, err := os.ReadFile(filepath.Join(repoRoot, "ai/image_models_generated.go"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	tmpImages := filepath.Join(t.TempDir(), "image_models_generated.go")
-	cmd = exec.Command("go", "run", "./cmd/gen-image-models", "-src", imageSource, "-out", tmpImages)
-	cmd.Dir = repoRoot
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("gen-image-models failed: %v\n%s", err, out)
-	}
-	regeneratedImages, err := os.ReadFile(tmpImages)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(committedImages, regeneratedImages) {
-		t.Fatalf("image_models_generated.go drift: re-run `go generate ./ai/...`")
+	for committedPath, regeneratedPath := range outputs {
+		committed, err := os.ReadFile(filepath.Join(repoRoot, committedPath))
+		if err != nil {
+			t.Fatal(err)
+		}
+		regenerated, err := os.ReadFile(regeneratedPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(normalizeSourceComment(committed), normalizeSourceComment(regenerated)) {
+			t.Errorf("%s drift\ncommitted=%d bytes regenerated=%d bytes: re-run `go generate ./ai/...`", committedPath, len(committed), len(regenerated))
+		}
 	}
 }
 
 // sourceCommentRE matches the generated header's `// Source: models.generated.<ext>`
 // line. cmd/gen-models embeds basename(src), which keeps the file extension:
-// `go generate` (doc.go) feeds the .upstream mirror's models.generated.ts, while
-// this test feeds the installed pi binary's compiled models.generated.js as the
-// parity ground truth. The extension is metadata, not model data; the 979-model
-// catalog below must still match byte-for-byte. Normalizing only this line keeps
-// the comparison a true drift check on model data while tolerating the two
-// equivalent upstream sources' differing extensions.
+// `go generate` (doc.go) feeds the published package's compiled models.generated.js,
+// while a mirror-only checkout feeds the mirror's models.generated.ts. The extension
+// is metadata, not model data; the catalogs must still match byte-for-byte.
+// Normalizing only this line keeps the comparison a true drift check on model data
+// while tolerating the two equivalent upstream sources' differing extensions.
 var sourceCommentRE = regexp.MustCompile(`(?m)^// Source: models\.generated\.(?:ts|js)$`)
 
 func normalizeSourceComment(b []byte) []byte {
@@ -657,6 +647,10 @@ func findRepoRoot() (string, error) {
 // `make parity` compares against) over the git-tag mirror, since npm
 // publishes can include model spec updates after the tag is cut.
 func resolveModelSource(repoRoot string) string {
+	published := filepath.Join(repoRoot, "extensions", "sdk-ts", "node_modules", "@earendil-works", "pi-coding-agent", "node_modules", "@earendil-works", "pi-ai", "dist", "models.generated.js")
+	if _, err := os.Stat(published); err == nil {
+		return published
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return resolveGitTagSource(repoRoot)
@@ -682,7 +676,7 @@ func resolveModelSource(repoRoot string) string {
 }
 
 func resolveGitTagSource(repoRoot string) string {
-	p := filepath.Join(repoRoot, ".upstream", "current", "packages", "ai", "src", "models.generated.ts")
+	p := filepath.Join(repoRoot, ".upstream", "v"+UpstreamVersionString(), "packages", "ai", "src", "models.generated.ts")
 	if _, err := os.Stat(p); err == nil {
 		return p
 	}

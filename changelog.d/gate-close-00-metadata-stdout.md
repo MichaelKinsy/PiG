@@ -1,1 +1,0 @@
-Non-interactive startup reserves stdout for explicit JSON/RPC/text and print-mode metadata, including `--list-models`; plain help and model listings retain stdout. Empty model-list filters and repeated `--list-models` flags preserve the last requested value.

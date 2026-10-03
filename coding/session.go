@@ -47,13 +47,17 @@ type Session struct {
 	tools                    []agent.AgentTool
 	toolRegistryMu           sync.RWMutex
 	toolRegistry             sessionToolRegistry
-	modelRuntime             *ModelRuntime
-	modelRegistry            *ModelRegistry
-	sessionDir               string
-	noSession                bool
-	scopedModels             sessionScopedModels
-	runnerMu                 sync.RWMutex
-	runner                   *inproc.Runner // extension runner for event dispatch
+	// pendingToolNames are tools of the restored or reloaded loadout that are not registered yet, such as tools of MCP servers that are still connecting, in insertion order. They are activated when they are registered, and dropped when SetActiveToolsByName deactivates a tool or the next agent run starts. toolRegistryMu guards them.
+	//
+	// upstream: agent-session.ts _pendingToolNames
+	pendingToolNames []string
+	modelRuntime     *ModelRuntime
+	modelRegistry    *ModelRegistry
+	sessionDir       string
+	noSession        bool
+	scopedModels     sessionScopedModels
+	runnerMu         sync.RWMutex
+	runner           *inproc.Runner // extension runner for event dispatch
 	// sharedRunner is the Runtime- or Clone-source-owned runner this Session borrowed; its owner invalidates it.
 	sharedRunner *inproc.Runner
 	// extCurrentMessage tracks the in-flight message across message_start →
@@ -91,7 +95,7 @@ type Session struct {
 	baseSystemPromptOptions atomic.Pointer[extension.BuildSystemPromptOptions]
 	systemPromptResources   atomic.Pointer[SystemPromptResources]
 	baseSystemSections      ai.OrderedSections
-	runSystemSections       atomic.Pointer[ai.OrderedSections]
+	runPrompt               atomic.Pointer[icodingagent.BeforeAgentStartRun]
 	structuredSystemPrompt  bool
 	// defaultSystemPrompt reports that the Session built its own prompt,
 	// which it rebuilds when the active tools change.
@@ -128,6 +132,8 @@ type Session struct {
 	// overflow emits a CompactionEndEvent with an error instead of retrying.
 	// Mirrors upstream _overflowRecoveryAttempted (agent-session.ts).
 	overflowRecoveryAttempted atomic.Bool
+	// failedResponse is the response a retry or overflow recovery replays; the next request routes as a retry. upstream: agent-session.ts:396 (_failedResponse).
+	failedResponse atomic.Pointer[agent.AssistantMessage]
 
 	// retryAttempt counts committed automatic retries of the current retry
 	// sequence (agent-session.ts _retryAttempt).
@@ -166,6 +172,9 @@ type Session struct {
 	// before_agent_start dispatch returned, waiting for the prompt they join.
 	agentStartMu       sync.Mutex
 	agentStartMessages []agent.AgentMessage
+
+	// loadout is the state of tool exposure, nested calls and hidden declarations (session_loadout.go).
+	loadout sessionLoadoutState
 
 	// callerHooks keeps the caller's construction choices so Clone builds an
 	// equivalent Session through NewSession.
@@ -233,9 +242,13 @@ type SessionOptions struct {
 
 	// ActiveBuiltinTools, when non-nil, restricts which built-in coding
 	// tools are active. Unlike AllowedTools it does NOT gate caller/
-	// extension tools (opts.Tools). nil uses the defaultTools setting or
-	// upstream's default [read, bash, edit, write]. grep/find/ls remain
-	// registered but inactive unless requested.
+	// extension tools (opts.Tools). A name that is not a built-in activates
+	// the registered extension or SDK tool of that name, as the names of
+	// the defaultTools setting do (sdk.ts:264-269). Names the resolved
+	// defaultTools setting lists start active in its order; the others
+	// follow in registry order, then by name. nil uses the defaultTools
+	// setting or upstream's default [read, bash, edit, write]. grep/find/ls
+	// remain registered but inactive unless requested.
 	ActiveBuiltinTools map[string]struct{}
 
 	// ExcludedTools, when non-empty, is a denylist removed from the final
@@ -313,6 +326,7 @@ func NewSession(svcs *Services, opts SessionOptions) (*Session, error) {
 	if svcs == nil {
 		return nil, ErrNoServices
 	}
+	svcs.ensureSettings()
 	if opts.SessionManager != nil {
 		opts.NoSession = !opts.SessionManager.IsPersisted()
 		if dir := opts.SessionManager.GetSessionDir(); dir != "" {
@@ -415,11 +429,13 @@ func NewSession(svcs *Services, opts SessionOptions) (*Session, error) {
 			return sess.prepareNextTurn(ctx, turn)
 		},
 		PrepareRequest: func(ctx context.Context, request agent.PrepareRequestContext) (*agent.AgentRequestUpdate, error) {
-			return sess.prepareRequest(ctx, request), nil
+			return sess.prepareRequest(ctx, request)
 		},
 		// Read per request so a mid-session change applies (sdk.ts
 		// convertToLlmWithBlockImages).
 		TransformLLMMessages: func(messages []ai.Message) []ai.Message {
+			// upstream: agent-session.ts:1683-1706 (_installHiddenDeclarationsProjection) runs before convertToLlm.
+			messages = sess.hideDeclarations(messages)
 			if !svcs.SettingsManager().GetBlockImages() {
 				return messages
 			}
@@ -558,6 +574,10 @@ func NewSession(svcs *Services, opts SessionOptions) (*Session, error) {
 		initialToolNames = append(initialToolNames, tool.Name())
 	}
 	sess.SetActiveToolsByName(initialToolNames)
+	// upstream: agent-session.ts constructor restores the transcript's tools when no initial loadout is given. A Session over a caller-supplied session manager that is not a clone is that case; the CLI, like sdk.ts, always gives one.
+	if opts.existing != nil && opts.toolRegistry == nil {
+		sess.restoreToolsFromTranscript()
+	}
 	sess.detachModelObserver = svcs.Registry().ObserveChanges(sess.refreshCurrentModelFromRegistry)
 	// Initial rebinding follows backend ownership; declared metadata alone does not own a caller-supplied transport.
 	if opts.Model != nil && opts.Model.Provider != nil && svcs.Registry().HasRegisteredProvider(opts.Model.Provider.ID()) {
@@ -568,6 +588,10 @@ func NewSession(svcs *Services, opts SessionOptions) (*Session, error) {
 	sess.installExtensionHooks()
 	if opts.existing == nil {
 		// A clone shares its source's runner; the source keeps the binding.
+		// The core binding flushes the virtual models and MCP registrations extensions made while loading into this session's registry, before any model is selected. upstream: agent-session.ts _buildRuntime -> _applyExtensionBindings.
+		if opts.Runner != nil {
+			sess.bindExtensionCore(opts.Runner)
+		}
 		sess.bindExtensionCommandActions(opts.Runner)
 	}
 	sess.initSystemPrompt(opts)
@@ -621,9 +645,12 @@ func restoreSessionRuntimeState(inner *icodingagent.Session, services *Services,
 	model := fallbackModel
 	thinking := fallbackThinking
 	branch := inner.GetBranch()
-	thinkingLevel, selectedModel := icodingagent.GetSessionContextSettings(branch)
-	if restoreModel && selectedModel != nil && selectedModel.Provider != "" && selectedModel.ModelID != "" {
-		if restored, err := BuildModel(selectedModel.Provider+"/"+selectedModel.ModelID, services); err == nil {
+	thinkingLevel, _ := icodingagent.GetSessionContextSettings(branch)
+	// Assistant messages name the physical model that answered, so a virtual selection is only in model_change entries. upstream: sdk.ts:201-205
+	if selected := GetBranchSelection(branch, services.ModelRuntime().GetModel); restoreModel && selected != nil && selected.Provider != "" && selected.ModelID != "" {
+		if restored := services.ModelRuntime().GetModel(selected.Provider, selected.ModelID); IsVirtualModel(restored) {
+			model = restored
+		} else if restored, err := BuildModel(selected.Provider+"/"+selected.ModelID, services); err == nil {
 			model = restored
 		}
 	}
@@ -1079,6 +1106,10 @@ func (s *Session) ReplaceInner(sess *icodingagent.Session) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.inner = sess
+	// upstream: runner.ts:889-891. Extensions see the log the Session now owns, and nothing keeps the replaced one alive.
+	if runner := s.currentRunner(); runner != nil {
+		runner.BindSessionManager(sess)
+	}
 	s.noSession = sess.Path() == ""
 	s.agent.SetSessionID(sess.ID())
 	s.refreshReplacementContext()
@@ -1101,14 +1132,18 @@ func (s *Session) EmitSessionStart(reason string) {
 // Session's previous file when a runtime host changes Sessions.
 func (s *Session) EmitSessionStartTransition(reason, previousSessionFile string) {
 	runner := s.currentRunner()
-	if runner == nil || !runner.HasHandlers(icodingagent.EventSessionStart) {
+	if runner == nil {
 		return
 	}
-	_, _ = runner.Emit(context.Background(), extension.SessionStartEvent{
-		Type:                icodingagent.EventSessionStart,
-		Reason:              reason,
-		PreviousSessionFile: previousSessionFile,
-	})
+	if runner.HasHandlers(icodingagent.EventSessionStart) {
+		_, _ = runner.Emit(context.Background(), extension.SessionStartEvent{
+			Type:                icodingagent.EventSessionStart,
+			Reason:              reason,
+			PreviousSessionFile: previousSessionFile,
+		})
+	}
+	// upstream: agent-session.ts:3207 (bindExtensions)
+	runner.ReportUnhandledMcpServers()
 }
 
 // EmitSessionShutdown dispatches a session_shutdown event to extension handlers.
@@ -1352,7 +1387,7 @@ func (s *Session) GetSessionStats() SessionStats {
 // until an assistant response after the latest compaction reports valid usage
 // and still contributes to the projection.
 func (s *Session) ContextUsage() *SessionContextUsage {
-	model := s.Model()
+	model := s.limitsModel()
 	if model == nil || model.Capabilities.ContextWindow <= 0 {
 		return nil
 	}
@@ -2234,7 +2269,7 @@ func (s *Session) willRetryAfterAgentEnd(message *agent.AssistantMessage) bool {
 	if !retryCfg.Enabled || int(s.retryAttempt.Load()) >= retryCfg.MaxRetries {
 		return false
 	}
-	return icodingagent.IsRetryableError(message, s.contextWindow())
+	return icodingagent.IsRetryableError(message, s.contextWindowFor(message))
 }
 
 // CompactionResult is the result returned by manual compaction.
@@ -2343,14 +2378,6 @@ func (s *Session) compact(ctx context.Context, customInstructions string) (*Comp
 	if compactCtx.Err() != nil {
 		return fail(errCompactionCancelled, true)
 	}
-	request, authErr := s.prepareSummarizationRequest(compactCtx, model)
-	if authErr != nil {
-		return fail(authErr, compactCtx.Err() != nil)
-	}
-	if compactCtx.Err() != nil {
-		return fail(errCompactionCancelled, true)
-	}
-
 	prep := compaction.PrepareCompaction(entries, settings)
 	if prep == nil {
 		reasonMsg := "Nothing to compact (session too small)"
@@ -2364,7 +2391,8 @@ func (s *Session) compact(ctx context.Context, customInstructions string) (*Comp
 	fromExtension = fromExt
 	cancelledByExtension := isCompactionCancelled(err)
 	if err == nil && result == nil {
-		generated, compactErr := compaction.Compact(compactCtx, *prep, request.model, request.completer, request.streamFn, customInstructions, s.ThinkingLevel(), s.summarizationRetryOptions("compaction", "manual"), "")
+		// upstream: agent-session.ts:2633-2645 (_runDefaultCompaction resolves the request only when Pi summarizes itself: routing may call models or fail).
+		generated, compactErr := s.runDefaultCompaction(compactCtx, *prep, model, customInstructions, "manual")
 		err = compactErr
 		if compactErr == nil {
 			result = generatedCompactionData(generated)
@@ -2741,15 +2769,18 @@ func (s *Session) checkCompactionDecision(ctx context.Context, assistantMsg *age
 	if skipAbortedCheck && assistantMsg.StopReason == ai.StopReasonAborted {
 		return false, nil
 	}
-	contextWindow := 0
-	if model != nil {
-		contextWindow = model.Capabilities.ContextWindow
-	}
 	// An overflow from another model (the user switched to a larger window)
-	// does not apply to the current model.
-	sameModel := model != nil && model.Provider != nil &&
-		assistantMsg.Provider == model.Provider.ID() &&
-		assistantMsg.ModelID == model.ID
+	// does not apply to the current model. Under a virtual selection, the
+	// physical model that produced the message supplies the limits.
+	messageModel := s.modelForMessage(assistantMsg)
+	sameModel := messageModel != nil
+	if messageModel == nil {
+		messageModel = model
+	}
+	contextWindow := 0
+	if messageModel != nil {
+		contextWindow = messageModel.Capabilities.ContextWindow
+	}
 
 	branch := s.currentBranch()
 	// A message from before the latest compaction carries stale usage.
@@ -2764,7 +2795,7 @@ func (s *Session) checkCompactionDecision(ctx context.Context, assistantMsg *age
 	explicitOverflow := assistantMsg.StopReason == ai.StopReasonError && icodingagent.IsContextOverflow(assistantMsg, 0)
 	contextOverflow := sameModel && ((explicitOverflow && recovery.retainedForExplicitRecovery) ||
 		(recovery.usageMatchesProjection && icodingagent.IsContextOverflow(assistantMsg, contextWindow)))
-	recoverableLength := sameModel && recovery.projected && icodingagent.IsRecoverableLength(assistantMsg, model.Capabilities.MaxOutputTokens)
+	recoverableLength := sameModel && recovery.projected && icodingagent.IsRecoverableLength(assistantMsg, messageModel.Capabilities.MaxOutputTokens)
 	if contextOverflow || recoverableLength {
 		willRetry := assistantMsg.StopReason != ai.StopReasonStop
 		if !willRetry {
@@ -2783,7 +2814,11 @@ func (s *Session) checkCompactionDecision(ctx context.Context, assistantMsg *age
 		if err := s.omitRecoveryAttempt(assistantMsg, toolResults); err != nil {
 			return false, err
 		}
-		return compact(ctx, "overflow", willRetry)
+		retry, err := compact(ctx, "overflow", willRetry)
+		if retry && err == nil {
+			s.failedResponse.Store(assistantMsg)
+		}
+		return retry, err
 	}
 
 	var contextTokens int
@@ -2923,15 +2958,13 @@ func (s *Session) runAutoCompaction(ctx context.Context, reason string, willRetr
 		return false, nil
 	}
 
-	request, err := s.prepareSummarizationRequest(compactCtx, model)
 	var result *sessionCompactionData
 	fromExtension := false
-	if err == nil {
-		result, fromExtension, err = s.extensionCompaction(compactCtx, prep, entries, "", reason, willRetry)
-	}
+	result, fromExtension, err = s.extensionCompaction(compactCtx, prep, entries, "", reason, willRetry)
 	cancelledByExtension := isCompactionCancelled(err)
 	if err == nil && result == nil {
-		generated, compactErr := compaction.Compact(compactCtx, *prep, request.model, request.completer, request.streamFn, "", s.ThinkingLevel(), s.summarizationRetryOptions("compaction", reason), "")
+		// upstream: agent-session.ts:3034-3080 (_runDefaultCompaction after the session_before_compact hook).
+		generated, compactErr := s.runDefaultCompaction(compactCtx, *prep, model, "", reason)
 		err = compactErr
 		if compactErr == nil {
 			result = generatedCompactionData(generated)

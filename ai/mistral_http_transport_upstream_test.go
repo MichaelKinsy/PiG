@@ -7,6 +7,7 @@ import (
 	"maps"
 	"net/http"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -17,6 +18,15 @@ import (
 
 func mistralUpstreamSSE(body string) *http.Response {
 	return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": {"text/event-stream"}}, Body: io.NopCloser(strings.NewReader(body))}
+}
+
+// mistralCreateSSEBody is the body of createSseResponse at .upstream/v0.99.1/packages/ai/test/mistral-http-transport.test.ts:10.
+func mistralCreateSSEBody(events ...string) string {
+	frames := make([]string, len(events))
+	for i, event := range events {
+		frames[i] = "data: " + event
+	}
+	return strings.Join(frames, "\r\n\r\n") + "\r\n\r\ndata: [DONE]\r\n\r\n"
 }
 
 type mistralObservedResponseBody struct {
@@ -288,4 +298,53 @@ func TestMistralHTTPTransportUpstream(t *testing.T) {
 			t.Fatalf("stream=%v err=%v", stream, err)
 		}
 	})
+}
+
+// .upstream/v0.99.1/packages/ai/test/mistral-http-transport.test.ts:327 (#9674): GLM models on Mistral send empty content deltas at the start, around tool calls,
+// and sometimes mid-thinking. They must not open blocks or split thinking.
+func TestMistralIgnoresEmptyContentDeltasUpstream(t *testing.T) {
+	model := mustGeneratedModel(t, "mistral", "zai-glm-5-3").ToModel()
+	thinking := func(text string) string {
+		return `{"type":"thinking","thinking":[{"type":"text","text":` + strconv.Quote(text) + `}]}`
+	}
+	toolCall := func(args string, first bool) string {
+		if first {
+			return `{"index":0,"id":"abc123456","function":{"name":"read","arguments":` + strconv.Quote(args) + `}}`
+		}
+		return `{"index":0,"function":{"name":"","arguments":` + strconv.Quote(args) + `}}`
+	}
+	deltas := []string{
+		`{"content":""}`,
+		`{"content":[` + thinking("first part,") + `]}`,
+		`{"content":""}`,
+		`{"content":[{"type":"text","text":""}]}`,
+		`{"content":[` + thinking(" second part.") + `,{"type":"text","text":"Reading."}]}`,
+		`{"content":"","tool_calls":[` + toolCall("", true) + `]}`,
+		`{"content":"","tool_calls":[` + toolCall(`{"path":`, false) + `]}`,
+		`{"content":"","tool_calls":[` + toolCall(`"a.txt"}`, false) + `]}`,
+		`{"content":""}`,
+	}
+	events := make([]string, len(deltas))
+	for i, delta := range deltas {
+		finish := "null"
+		if i == len(deltas)-1 {
+			finish = `"tool_calls"`
+		}
+		events[i] = `{"id":"response-1","model":` + strconv.Quote(model.ID) + `,"choices":[{"index":0,"finish_reason":` + finish + `,"delta":` + delta + `}]}`
+	}
+	stream, err := StreamSimple(t.Context(), model, mistralUpstreamContext(), StreamOptions{APIKey: "test", Fetch: &http.Client{Transport: FetchFunction(func(*http.Request) (*http.Response, error) {
+		return mistralUpstreamSSE(mistralCreateSSEBody(events...)), nil
+	})}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	message := stream.Result()
+	want := []AssistantContentBlock{
+		ThinkingContent{Thinking: "first part, second part."},
+		TextContent{Text: "Reading."},
+		ToolCall{ID: "abc123456", Name: "read", Arguments: JsonObject{"path": "a.txt"}},
+	}
+	if !reflect.DeepEqual(message.Content, want) {
+		t.Fatalf("stopReason=%q content=%#v error=%q", message.StopReason, message.Content, message.ErrorMessage)
+	}
 }

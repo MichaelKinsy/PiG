@@ -188,7 +188,7 @@ func (t *GrepTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 }
 
 func grepError(message string) agent.AgentToolResult {
-	return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: message}}, Details: map[string]any{}, IsError: true}
+	return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: message}}, Details: map[string]any{}, IsError: true, Thrown: true}
 }
 
 // ripgrepRun is the outcome of one rg process.

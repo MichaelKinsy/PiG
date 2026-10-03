@@ -45,7 +45,7 @@ func TestRegistryNamespaceReplacementAcrossEntryPoints(t *testing.T) {
 					case "native":
 						return runtime.RegisterNativeProvider(namespaceProvider(id, modelID, true))
 					case "runtime":
-						return runtime.RegisterProvider(id, ProviderConfigInput{API: ai.APIOpenAICompletions, APIKey: "configured", BaseURL: "https://example.invalid/v1", Models: []*ai.Model{nativeCompatModel(modelID, id, "https://example.invalid/v1")}})
+						return runtime.RegisterProvider(id, ProviderConfigInput{API: ai.APIOpenAICompletions, APIKey: "configured", BaseURL: "https://example.invalid/v1", Models: []ai.AnyModel{nativeCompatModel(modelID, id, "https://example.invalid/v1")}})
 					default:
 						return services.Registry().RegisterProvider(id, namespaceExtensionConfig(modelID))
 					}
@@ -83,7 +83,7 @@ func TestRegistryNativeReplacementDropsLegacyConfiguredAuth(t *testing.T) {
 			const id = "namespace-auth"
 			var err error
 			if from == "runtime" {
-				err = runtime.RegisterProvider(id, ProviderConfigInput{API: ai.APIOpenAICompletions, APIKey: "old-key", BaseURL: "https://example.invalid/v1", Models: []*ai.Model{nativeCompatModel("old", id, "https://example.invalid/v1")}})
+				err = runtime.RegisterProvider(id, ProviderConfigInput{API: ai.APIOpenAICompletions, APIKey: "old-key", BaseURL: "https://example.invalid/v1", Models: []ai.AnyModel{nativeCompatModel("old", id, "https://example.invalid/v1")}})
 			} else {
 				err = services.Registry().RegisterProvider(id, namespaceExtensionConfig("old"))
 			}
@@ -111,9 +111,9 @@ func TestRegistryLegacyMetadataUpdateRetainsRuntimeCallbacks(t *testing.T) {
 	runtime := services.ModelRuntime()
 	const id = "namespace-callbacks"
 	var refreshes int
-	input := ProviderConfigInput{API: ai.APIOpenAICompletions, APIKey: "configured", BaseURL: "https://example.invalid/v1", Models: []*ai.Model{nativeCompatModel("old", id, "https://example.invalid/v1")}, StreamSimple: nativeUnusedStream, RefreshModels: func(ai.RefreshModelsContext) ([]*ai.Model, error) {
+	input := ProviderConfigInput{API: ai.APIOpenAICompletions, APIKey: "configured", BaseURL: "https://example.invalid/v1", Models: []ai.AnyModel{nativeCompatModel("old", id, "https://example.invalid/v1")}, StreamSimple: nativeUnusedStream, RefreshModels: func(ai.RefreshModelsContext) ([]ai.AnyModel, error) {
 		refreshes++
-		return []*ai.Model{nativeCompatModel("refreshed", id, "https://example.invalid/v1")}, nil
+		return []ai.AnyModel{nativeCompatModel("refreshed", id, "https://example.invalid/v1")}, nil
 	}}
 	if err := runtime.RegisterProvider(id, input); err != nil {
 		t.Fatal(err)

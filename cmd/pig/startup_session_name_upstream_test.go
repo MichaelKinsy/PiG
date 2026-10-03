@@ -12,6 +12,8 @@ import (
 	"slices"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 func startupNameSessionFixture(t *testing.T, projectDir, sessionFile string) {
@@ -101,7 +103,7 @@ func TestRPCStartupNameIsInitialMetadata(t *testing.T) {
 	if err := os.Mkdir(agentDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), testbudget.Wait(t))
 	defer cancel()
 	cmd := exec.CommandContext(ctx, binary, "--mode", "rpc", "--no-session", "--name", "  CLI Named Session  ", "--model", "test-faux/faux-1")
 	cmd.Dir = root
@@ -139,7 +141,10 @@ func TestRPCStartupNameIsInitialMetadata(t *testing.T) {
 	}
 }
 
-// .upstream/v0.87.1/packages/coding-agent/test/startup-session-name.test.ts:111 — sets --name on the selected session before runtime model validation.
+// Upstream 0.99.1 changes only how its harness starts the CLI: `--import` receives the source resolver as a file URL (pathToFileURL) instead of a path
+// (.upstream/v0.99.1/packages/coding-agent/test/startup-session-name.test.ts:10-11). The Go test starts the compiled binary and has no Node loader flag, so that substitution has no Go
+// counterpart: the inputs and expectations of every case are unchanged.
+// .upstream/v0.99.1/packages/coding-agent/test/startup-session-name.test.ts:113 — sets --name on the selected session before runtime model validation.
 func TestUpstreamStartupSessionName(t *testing.T) {
 	binary := buildPigBinaryForSignalTest(t)
 	root := t.TempDir()
@@ -150,7 +155,7 @@ func TestUpstreamStartupSessionName(t *testing.T) {
 		}
 	}
 	startupNameSessionFixture(t, projectDir, sessionFile)
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), testbudget.Wait(t))
 	defer cancel()
 	cmd := exec.CommandContext(ctx, binary, "--session", sessionFile, "--name", "  CLI Named Session  ", "--model", "missing-model", "-p", "hi")
 	cmd.Dir = projectDir

@@ -1,1 +1,0 @@
-- Expire Session-selector load errors after four seconds and restore navigation hints without waiting for input. Status replacement and selector exit cancel the timer. Deletion notices use Pi's two/three-second deadlines; rename completion preserves the header, and rename failures propagate to the owner.

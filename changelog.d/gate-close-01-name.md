@@ -1,1 +1,0 @@
-- Normalize CLI Session names with JavaScript whitespace rules and validate them after Session selection, preserving missing-session diagnostics and BOM/NEL behavior.

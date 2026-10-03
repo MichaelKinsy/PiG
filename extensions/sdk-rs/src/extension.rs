@@ -12,7 +12,7 @@ use crate::tool_render::{
 };
 use crate::transport::UnixStream;
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::io;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
@@ -39,6 +39,36 @@ impl ToolResult {
     }
     pub fn error(s: impl Into<String>) -> Self {
         Self::Error(s.into())
+    }
+
+    /// Sets upstream `AgentToolResult.structuredContent` (`agent/src/types.ts:433`): the machine-readable result of a tool that declares an `output_schema`. Not sent to the model; the content remains the model-facing result.
+    pub fn with_structured_content(self, structured_content: Value) -> Self {
+        self.with_field("structured_content", structured_content)
+    }
+
+    /// Sets upstream `AgentToolResult.details` (`agent/src/types.ts:428`).
+    pub fn with_details(self, details: Value) -> Self {
+        self.with_field("details", details)
+    }
+
+    /// Sets upstream `AgentToolResult.isError` (`agent/src/types.ts:440`): the failure is reported without throwing, so the model sees the content as an error result while the details and structured content stay for the UI and programmatic callers.
+    pub fn with_is_error(self, is_error: bool) -> Self {
+        self.with_field("is_error", Value::Bool(is_error))
+    }
+
+    /// The wire result object with one more field. `Text` is its content, `Error` its content with `is_error`, and a JSON value that is not an object is the content.
+    fn with_field(self, key: &str, value: Value) -> Self {
+        let mut object = match self {
+            Self::Text(content) => serde_json::Map::from_iter([("content".to_string(), Value::String(content))]),
+            Self::Error(content) => serde_json::Map::from_iter([
+                ("content".to_string(), Value::String(content)),
+                ("is_error".to_string(), Value::Bool(true)),
+            ]),
+            Self::Json(Value::Object(object)) => object,
+            Self::Json(content) => serde_json::Map::from_iter([("content".to_string(), content)]),
+        };
+        object.insert(key.to_string(), value);
+        Self::Json(Value::Object(object))
     }
 }
 
@@ -82,6 +112,18 @@ pub struct ToolDefinition {
     pub execute: ToolHandler,
     pub render_call: Option<ToolRenderCallHandler>,
     pub render_result: Option<ToolRenderResultHandler>,
+    /// JSON Schema of `structured_content` in successful results (upstream `outputSchema`, `types.ts:582`).
+    pub output_schema: Option<Value>,
+    /// How the model reaches the tool; `None` is `direct` (upstream `exposure`, `types.ts:588`).
+    pub exposure: Option<crate::ToolExposure>,
+    /// Group the tool belongs to (upstream `namespace`, `types.ts:591`).
+    pub namespace: Option<crate::ToolNamespace>,
+    /// Hints about what the tool does (upstream `annotations`, `types.ts:594`).
+    pub annotations: Option<crate::ToolAnnotations>,
+    /// Whether registering the tool activates it; `None` is the exposure's default (upstream `defaultActive`, `types.ts:600`).
+    pub default_active: Option<bool>,
+    /// Adjusts how the loadout is presented to the model while this tool is active (upstream `prepareLoadout`, `types.ts:607`).
+    pub prepare_loadout: Option<crate::ToolPrepareLoadout>,
 }
 
 impl ToolDefinition {
@@ -108,6 +150,12 @@ impl ToolDefinition {
             execute: Box::new(execute),
             render_call: None,
             render_result: None,
+            output_schema: None,
+            exposure: None,
+            namespace: None,
+            annotations: None,
+            default_active: None,
+            prepare_loadout: None,
         }
     }
 }
@@ -293,6 +341,82 @@ impl RequestThreads {
     }
 }
 
+/// Width deliveries wait here for their worker thread. A width handler may block on a host call, whose reply only the main loop reads, so handlers never run on the main loop. One worker runs the queued deliveries in the order the host sent the widths and exits when the queue is empty.
+#[derive(Default)]
+struct WidthDeliveries {
+    state: Mutex<WidthDeliveryState>,
+}
+
+#[derive(Default)]
+struct WidthDeliveryState {
+    queue: VecDeque<(u32, Vec<Arc<crate::context::WidthChangeHandler>>)>,
+    running: bool,
+    stopped: bool,
+}
+
+impl WidthDeliveries {
+    /// Queue one delivery for the handlers subscribed now; an unsubscribe after this call changes only the next delivery.
+    fn submit(
+        self: &Arc<Self>,
+        width: u32,
+        handlers: Vec<Arc<crate::context::WidthChangeHandler>>,
+        threads: &Arc<RequestThreads>,
+    ) {
+        {
+            let mut state = self.state.lock().unwrap();
+            if state.stopped {
+                return;
+            }
+            state.queue.push_back((width, handlers));
+            if state.running {
+                return;
+            }
+            state.running = true;
+        }
+        threads.start();
+        let (deliveries, finished) = (self.clone(), threads.clone());
+        let spawned = thread::Builder::new()
+            .name("pig-width-change".to_string())
+            .spawn(move || {
+                deliveries.run();
+                finished.finish();
+            });
+        if spawned.is_err() {
+            let mut state = self.state.lock().unwrap();
+            state.running = false;
+            state.queue.clear();
+            drop(state);
+            threads.finish();
+        }
+    }
+
+    fn run(&self) {
+        loop {
+            let (width, handlers) = {
+                let mut state = self.state.lock().unwrap();
+                match state.queue.pop_front() {
+                    Some(delivery) if !state.stopped => delivery,
+                    _ => {
+                        state.queue.clear();
+                        state.running = false;
+                        return;
+                    }
+                }
+            };
+            for handler in handlers {
+                // One handler's panic must not stop the others, as a thrown handler error rejects one call upstream.
+                let _ = catch_unwind(AssertUnwindSafe(|| handler(width)));
+            }
+        }
+    }
+
+    fn stop(&self) {
+        let mut state = self.state.lock().unwrap();
+        state.stopped = true;
+        state.queue.clear();
+    }
+}
+
 impl Context {
     fn clone_for_request(
         &self,
@@ -327,7 +451,9 @@ impl Context {
             model_streams: self.model_streams.clone(),
             model_stream_seq: self.model_stream_seq.clone(),
             shared_ui: self.shared_ui.clone(),
+            bus: self.bus.clone(),
             surfaces: self.surfaces.clone(),
+            replacement: self.replacement,
         }
     }
 }
@@ -342,14 +468,7 @@ pub struct Extension {
     flags: Vec<FlagDef>,
     providers: Vec<ProviderDef>,
     provider_objects: Arc<crate::provider::ProviderObjects>,
-    provider_streams: HashMap<
-        String,
-        Box<
-            dyn Fn(&Context, Value, Value, Value) -> Result<Arc<ModelEventStream>, String>
-                + Send
-                + Sync,
-        >,
-    >,
+    provider_callbacks: Arc<crate::provider::ProviderCallbacks>,
     renderers: Vec<RendererDef>,
     entry_renderers: Vec<RendererDef>,
 
@@ -366,6 +485,11 @@ pub struct Extension {
     oauth_fns: HashMap<String, OAuthProvider>,
     tool_renderers: ToolRenderers,
     command_completion_fns: HashMap<String, CommandCompletionHandler>,
+    tool_prepare_loadout_fns: HashMap<String, crate::ToolPrepareLoadout>,
+    mcp_servers: Vec<McpServerDecl>,
+    virtual_models: Vec<Arc<crate::VirtualModel>>,
+    virtual_model_unregistrations: Vec<crate::protocol::VirtualModelRef>,
+    bus: Arc<crate::event_bus::BusRegistry>,
 }
 
 impl Extension {
@@ -380,7 +504,7 @@ impl Extension {
             flags: Vec::new(),
             providers: Vec::new(),
             provider_objects: Arc::new(crate::provider::ProviderObjects::default()),
-            provider_streams: HashMap::new(),
+            provider_callbacks: Arc::new(crate::provider::ProviderCallbacks::default()),
             renderers: Vec::new(),
             entry_renderers: Vec::new(),
             tool_fns: HashMap::new(),
@@ -394,7 +518,17 @@ impl Extension {
             oauth_fns: HashMap::new(),
             tool_renderers: ToolRenderers::default(),
             command_completion_fns: HashMap::new(),
+            tool_prepare_loadout_fns: HashMap::new(),
+            mcp_servers: Vec::new(),
+            virtual_models: Vec::new(),
+            virtual_model_unregistrations: Vec::new(),
+            bus: Arc::new(crate::event_bus::BusRegistry::default()),
         }
+    }
+
+    /// Upstream's `pi.events`, shared with every other realm of the session. A listener subscribed before the extension runs is registered with the Host before the extension registers.
+    pub fn events(&self) -> crate::EventBus {
+        crate::EventBus::new(self.bus.clone(), None)
     }
 
     /// Set the render shell of the registered tool `name` (upstream
@@ -508,6 +642,12 @@ impl Extension {
             execute,
             render_call,
             render_result,
+            output_schema,
+            exposure,
+            namespace,
+            annotations,
+            default_active,
+            prepare_loadout,
         } = definition;
         let decl = ToolDef {
             name: name.clone(),
@@ -522,6 +662,13 @@ impl Extension {
             render_shell: (render_shell == ToolRenderShell::SelfShell).then(|| "self".to_string()),
             renders_call: render_call.is_some(),
             renders_result: render_result.is_some(),
+            output_schema,
+            exposure,
+            namespace,
+            annotations,
+            default_active,
+            prepares_loadout: prepare_loadout.is_some(),
+            prepares_arguments: prepare_arguments.is_some(),
         };
         match self.tools.iter_mut().find(|tool| tool.name == name) {
             Some(existing) => *existing = decl,
@@ -537,8 +684,12 @@ impl Extension {
             None => self.tool_renderers.call.remove(&name),
         };
         match render_result {
-            Some(render) => self.tool_renderers.result.insert(name, render),
+            Some(render) => self.tool_renderers.result.insert(name.clone(), render),
             None => self.tool_renderers.result.remove(&name),
+        };
+        match prepare_loadout {
+            Some(prepare) => self.tool_prepare_loadout_fns.insert(name, prepare),
+            None => self.tool_prepare_loadout_fns.remove(&name),
         };
     }
 
@@ -553,6 +704,9 @@ impl Extension {
     ) {
         let name = name.into();
         self.tool(name.clone(), description, schema, handler);
+        if let Some(declaration) = self.tools.iter_mut().rev().find(|tool| tool.name == name) {
+            declaration.prepares_arguments = true;
+        }
         self.tool_prepare_fns.insert(name, Box::new(prepare));
     }
 
@@ -644,6 +798,42 @@ impl Extension {
         self.tool_fns.insert(n, Box::new(handler));
     }
 
+    /// Upstream `pi.registerMcpServer(name, config)` during load (`types.ts:1833`): registers an MCP server for the session, with the same config as an `mcpServers` entry in `mcp.json`.
+    ///
+    /// The host validates the config when the extension registers, as upstream validates in the call (`loader.ts:456`); an invalid config or a name another extension registered fails the load, as the factory's throw does. Registering a name again replaces this extension's earlier registration. After load, use [`Context::register_mcp_server`].
+    pub fn register_mcp_server(&mut self, name: impl Into<String>, config: Value) {
+        let name = name.into();
+        match self.mcp_servers.iter_mut().find(|server| server.name == name) {
+            Some(existing) => existing.config = config,
+            None => self.mcp_servers.push(McpServerDecl { name, config }),
+        }
+    }
+
+    /// Upstream `pi.unregisterMcpServer(name)` during load (`loader.ts:468-471`). Removes the server this extension queued with [`Extension::register_mcp_server`]. After load, use [`Context::unregister_mcp_server`].
+    pub fn unregister_mcp_server(&mut self, name: &str) {
+        self.mcp_servers.retain(|server| server.name != name);
+    }
+
+    /// Upstream `pi.registerVirtualModel(model)` during load (`types.ts:1852`). Registering the same provider and id again replaces the virtual model. After load, use [`Context::register_virtual_model`].
+    pub fn register_virtual_model(&mut self, model: crate::VirtualModel) {
+        let model = Arc::new(model);
+        match self
+            .virtual_models
+            .iter_mut()
+            .find(|existing| existing.provider == model.provider && existing.id == model.id)
+        {
+            Some(existing) => *existing = model,
+            None => self.virtual_models.push(model),
+        }
+    }
+
+    /// Upstream `pi.unregisterVirtualModel(provider, id)` during load (`loader.ts:492-495`). After load, use [`Context::unregister_virtual_model`].
+    pub fn unregister_virtual_model(&mut self, provider: &str, id: &str) {
+        self.virtual_models.retain(|model| model.provider != provider || model.id != id);
+        // Upstream filters the runtime-wide queue (`loader.ts:228-232`), so the host removes another extension's queued model too.
+        self.virtual_model_unregistrations.push(crate::protocol::VirtualModelRef { provider: provider.to_string(), id: id.to_string() });
+    }
+
     /// Register a slash command.
     pub fn command(
         &mut self,
@@ -652,6 +842,9 @@ impl Extension {
         handler: impl Fn(&Context, &str) -> CommandResult + Send + Sync + 'static,
     ) {
         let n = name.into();
+        // upstream: packages/coding-agent/src/core/extensions/loader.ts:302-311. The handler is a required closure,
+        // so only the name can be invalid.
+        assert!(!n.is_empty(), "Command registered by extension \"{}\" must have a non-empty string name. Use pi.registerCommand(\"name\", {{ description, handler }}).", self.name);
         self.commands.push(CmdDef {
             name: n.clone(),
             description: description.into(),
@@ -711,14 +904,37 @@ impl Extension {
         Ok(())
     }
 
-    /// Register or override a model provider.
+    /// Queue a provider registration for the register payload, as Pi queues `pi.registerProvider` while the factory runs (loader.ts:213-218).
+    ///
+    /// The queue methods (`register_provider`, `register_provider_operations`, `register_provider_stream`, `register_oauth_provider`, `register_native_provider` and `unregister_provider`) take `&mut self`, and [`Extension::run`] consumes the extension, so no handler can reach the queue once the extension is loaded: a registration after load is a compile error, never a silent no-op. Pi's `pi.registerProvider` and `pi.unregisterProvider` after load take effect at once (types.ts:1766-1819, runner.ts:517-523); in this SDK a handler makes them through [`crate::Context::model_registry`] with `register_provider_operations`, `register_provider` and `unregister_provider`, which keep the same callbacks.
+    ///
+    /// ```no_run
+    /// let mut ext = pig_sdk::Extension::new("late");
+    /// ext.register_provider("queued", serde_json::json!({"baseUrl": "https://queued.test"}));
+    /// ext.command("late", "register a provider after load", |ctx, _args| {
+    ///     match ctx.model_registry().register_provider("late", serde_json::json!({"baseUrl": "https://late.test"})) {
+    ///         Ok(()) => pig_sdk::CommandResult::Ok,
+    ///         Err(error) => pig_sdk::CommandResult::Error(error.to_string()),
+    ///     }
+    /// });
+    /// ext.run().unwrap();
+    /// ```
+    ///
+    /// The same queue call after `run` does not compile:
+    ///
+    /// ```compile_fail
+    /// let mut ext = pig_sdk::Extension::new("late");
+    /// ext.run().unwrap();
+    /// ext.register_provider("late", serde_json::json!({"baseUrl": "https://late.test"}));
+    /// ```
     pub fn register_provider(&mut self, name: impl Into<String>, config: Value) {
-        self.providers.push(ProviderDef {
-            name: name.into(),
-            config,
-            native: None,
-            stream_simple: false,
-        });
+        self.register_provider_operations(name, config, crate::ProviderOperations::new());
+    }
+
+    /// Registers a provider whose image and classifier implementations and `streamSimple` (upstream `ProviderConfig.images`, `classifiers` and `streamSimple`) run in this extension. The config names the models; `operations` implements their APIs.
+    pub fn register_provider_operations(&mut self, name: impl Into<String>, config: Value, operations: crate::ProviderOperations) {
+        let declaration = self.provider_callbacks.declare(name.into(), config, operations);
+        self.providers.push(declaration);
     }
 
     /// Register an extension-owned provider stream with request cancellation and ordered events.
@@ -731,21 +947,13 @@ impl Extension {
         + Sync
         + 'static,
     ) {
-        let name = name.into();
-        self.provider_streams
-            .insert(name.clone(), Box::new(handler));
-        self.providers.push(ProviderDef {
-            name,
-            config,
-            native: None,
-            stream_simple: true,
-        });
+        self.register_provider_operations(name, config, crate::ProviderOperations::new().stream_simple(handler));
     }
 
-    /// Remove a previously queued provider registration.
+    /// Remove a previously queued provider registration. After load a handler removes a provider with [`crate::ModelRegistry::unregister_provider`]; see [`Extension::register_provider`].
     pub fn unregister_provider(&mut self, name: &str) {
         self.providers.retain(|provider| provider.name != name);
-        self.provider_streams.remove(name);
+        self.provider_callbacks.restore(name, None);
     }
 
     /// Register a model provider that also contributes an OAuth capability.
@@ -769,6 +977,8 @@ impl Extension {
             config,
             native: None,
             stream_simple: false,
+            image_apis: Vec::new(),
+            classifier_apis: Vec::new(),
         });
         self.oauth_fns.insert(name, provider);
     }
@@ -867,6 +1077,17 @@ impl Extension {
         );
     }
 
+    fn pong(conn: &Connection, env: crate::protocol::Envelope<Box<serde_json::value::RawValue>>) -> io::Result<()> {
+        if let Some(ping) = env.ping {
+            conn.write_envelope(&crate::protocol::Envelope {
+                msg_type: "pong".to_string(),
+                pong: Some(crate::protocol::PongMsg { nonce: ping.nonce }),
+                ..Default::default()
+            })?;
+        }
+        Ok(())
+    }
+
     /// Connect to the host and run until shutdown.
     /// Reads PIG_EXT_SOCKET from environment. GOPI_EXT_SOCKET is accepted as a
     /// legacy fallback for older local launchers built before the rename.
@@ -880,6 +1101,28 @@ impl Extension {
         let stream = UnixStream::connect(sock_path)?;
         let conn = Arc::new(Connection::new(stream));
         let _=conn.provider_objects.set(self.provider_objects.clone());
+        let _=conn.provider_callbacks.set(self.provider_callbacks.clone());
+        let bus = self.bus.clone();
+        // A node factory's pi.events.on runs before its runtime registers; a native listener subscribed before run does the same.
+        let mut early_dispatches: std::collections::VecDeque<crate::protocol::Envelope<Box<serde_json::value::RawValue>>> = std::collections::VecDeque::new();
+        for (handler_id, channel) in bus.go_live(&conn) {
+            let call = conn.begin_call_for(None, "events.on", Some(serde_json::json!({"channel": channel, "handlerId": handler_id, "value": true})))?;
+            loop {
+                let env = conn.read_envelope()?;
+                if conn.complete_call(&env) {
+                    break;
+                }
+                match env.msg_type.as_str() {
+                    "ping" => Self::pong(&conn, env)?,
+                    "request" if env.request.as_ref().is_some_and(|req| req.method == "events.dispatch") => early_dispatches.push_back(env),
+                    other => return Err(io::Error::new(io::ErrorKind::InvalidData, format!("expected an events.on result, got {other}"))),
+                }
+            }
+            let result = conn.wait_call(call)?;
+            if let Some(err) = result.error {
+                return Err(io::Error::other(format!("pi.events.on {channel:?}: {}", crate::context::host_error_message(err))));
+            }
+        }
 
         // Send register.
         conn.write_envelope(&Envelope {
@@ -895,12 +1138,23 @@ impl Extension {
                 renderers: self.renderers.clone(),
                 entry_renderers: self.entry_renderers.clone(),
                 markdown_transformer: self.markdown_transformer.is_some(),
+                mcp_servers: self.mcp_servers.clone(),
+                virtual_models: self.virtual_models.iter().map(|model| model.declaration()).collect(),
+                unregister_virtual_models: self.virtual_model_unregistrations.clone(),
             }),
             ..Default::default()
         })?;
 
-        // Wait for ready.
-        let env = conn.read_envelope()?;
+        // Wait for ready. A listener the Host dispatches to while the extension loads runs once the extension is ready, in dispatch order.
+        let mut env = conn.read_envelope()?;
+        loop {
+            match env.msg_type.as_str() {
+                "ping" => Self::pong(&conn, env)?,
+                "request" if env.request.as_ref().is_some_and(|req| req.method == "events.dispatch") => early_dispatches.push_back(env),
+                _ => break,
+            }
+            env = conn.read_envelope()?;
+        }
         if env.msg_type != "ready" {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -925,6 +1179,13 @@ impl Extension {
         let shared_ui = Arc::new(Mutex::new(UiState::default()));
         if let Some(state) = ready.state.as_ref().and_then(|state| state.as_object()) {
             shared_ui.lock().unwrap().apply_state(state);
+            conn.api_state.lock().unwrap().apply_state(state);
+        }
+        {
+            let mut models = conn.virtual_models.lock().unwrap();
+            for model in &self.virtual_models {
+                models.insert((model.provider.clone(), model.id.clone()), model.clone());
+            }
         }
         let overlay_seq = Arc::new(AtomicU64::new(0));
         let overlays: RemoteComponents = Arc::new(Mutex::new(HashMap::new()));
@@ -965,19 +1226,25 @@ impl Extension {
             model_stream_seq,
             overlays,
             shared_ui,
+            bus: bus.clone(),
             surfaces: Arc::new(Mutex::new(HashMap::new())),
+            replacement: false,
         };
         let ext = Arc::new(self);
         let active_requests: Arc<Mutex<HashMap<String, RequestCancel>>> =
             Arc::new(Mutex::new(HashMap::new()));
         let request_threads = ext.provider_objects.workers.clone();
+        let width_deliveries = Arc::new(WidthDeliveries::default());
+        let tool_starts = crate::tool_start_order::ToolStartOrder::default();
         let stop_requests = |reason: &str| -> io::Result<()> {
+            width_deliveries.stop();
             for cancel in active_requests.lock().unwrap().values() {
                 cancel.cancel(reason);
             }
             conn.cancel_pending_calls();
             let drained=request_threads.wait(Duration::from_secs(2));
             conn.registered_tools.lock().unwrap().clear();
+            ext.bus.reset();
             ext.provider_objects.clear();
             conn.autocomplete.clear();
             conn.close_transport();
@@ -993,9 +1260,12 @@ impl Extension {
 
         // Main loop.
         loop {
-            let env = match conn.read_envelope() {
-                Ok(e) => e,
-                Err(_) => return stop_requests("connection closed"),
+            let env = match early_dispatches.pop_front() {
+                Some(env) => env,
+                None => match conn.read_envelope() {
+                    Ok(e) => e,
+                    Err(_) => return stop_requests("connection closed"),
+                },
             };
             if conn.complete_call(&env) {
                 continue;
@@ -1023,6 +1293,9 @@ impl Extension {
                         let base = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
                         let conn = conn.clone();
                         let ext = ext.clone();
+                        // agent-loop.ts:619-647: the handlers of a batch start in source order.
+                        let start = (req.method == "tool_call").then(|| tool_starts.reserve());
+                        let failed_start = start.clone();
                         request_threads.start();
                         let threads = request_threads.clone();
                         let failed_id = id.clone();
@@ -1033,8 +1306,11 @@ impl Extension {
                             .name(format!("pig-request-{id}"))
                             .spawn(move || {
                                 let handled = catch_unwind(AssertUnwindSafe(|| {
-                                    ext.handle_request(&base, &conn, &id, &req, cancel)
+                                    ext.handle_request(&base, &conn, &id, &req, cancel, start.as_deref())
                                 }));
+                                if let Some(start) = &start {
+                                    start.end();
+                                }
                                 if handled.is_err() {
                                     let _ = conn.respond(
                                         &id,
@@ -1051,6 +1327,9 @@ impl Extension {
                         {
                             failed_active.lock().unwrap().remove(&failed_id);
                             failed_threads.finish();
+                            if let Some(start) = &failed_start {
+                                start.release();
+                            }
                             let _ = failed_conn.respond(
                                 &failed_id,
                                 None,
@@ -1083,6 +1362,7 @@ impl Extension {
                 "notify" => {
                     if let Some(notify) = env.notify {
                         match notify.method.as_str() {
+                            "events.release" => ext.bus.release(notify.args.as_ref()),
                             "tool_render_release" => {
                                 ext.tool_renderers.release(notify.args.as_ref());
                             }
@@ -1110,12 +1390,18 @@ impl Extension {
                                     }
                                 }
                             }
+                            "run_signal" => {
+                                if let Some(args) = &notify.args {
+                                    conn.apply_run_signal(args);
+                                }
+                            }
                             "state_update" => {
                                 if let Some(args) = &notify.args {
                                     if let Some(state) =
                                         args.get("state").and_then(|s| s.as_object())
                                     {
                                         base_ctx.shared_ui.lock().unwrap().apply_state(state);
+                                        conn.api_state.lock().unwrap().apply_state(state);
                                         // Session replication: apply incremental entries.
                                         if let Some(session) = state.get("session") {
                                             let _ = base_ctx
@@ -1162,8 +1448,8 @@ impl Extension {
                                                     subs.iter().map(|(_, h)| h.clone()).collect()
                                                 })
                                                 .unwrap_or_default();
-                                            for handler in width_subs {
-                                                handler(w as u32);
+                                            if !width_subs.is_empty() {
+                                                width_deliveries.submit(w as u32, width_subs, &request_threads);
                                             }
                                             base_ctx.refresh_surfaces();
                                             let overlays: Vec<_> = base_ctx
@@ -1350,6 +1636,7 @@ impl Extension {
         id: &str,
         req: &RequestMsg,
         cancel: RequestCancel,
+        start: Option<&crate::tool_start_order::ToolStart>,
     ) {
         match req.method.as_str() {
             "autocomplete.sync" | "autocomplete.suggest" => {
@@ -1363,12 +1650,140 @@ impl Extension {
                 let(value,error)=match result{Ok(value)=>(Some(value),None),Err(message)=>(None,Some(ErrorInfo{code:None,message}))};
                 let _=conn.respond(id,value,error);
             }
+            "provider_operation" => {
+                // upstream: types.ts:1896-1898, an error the callback returns is the request's error.
+                let result = (|| -> Result<Value, String> {
+                    let args = req.args.clone().unwrap_or(Value::Null);
+                    let provider = req.tool.as_deref().unwrap_or("");
+                    let api = args["api"].as_str().unwrap_or("");
+                    let kind = args["kind"].as_str().unwrap_or("");
+                    let (images, label) = match kind {
+                        "images" => (true, "image"),
+                        "classifiers" => (false, "classifier"),
+                        other => return Err(format!("Unknown provider operation {other:?}")),
+                    };
+                    let callback = self
+                        .provider_callbacks
+                        .operation(provider, images, api)
+                        .ok_or_else(|| format!("Provider {provider} has no {label} implementation for {api:?}"))?;
+                    let options = crate::ProviderOperationOptions { signal: cancel.signal.clone(), values: args["options"].clone() };
+                    catch_unwind(AssertUnwindSafe(|| callback(Arc::new(args["model"].clone()), args["context"].clone(), options)))
+                        .map_err(|_| format!("provider {provider} {label} implementation panicked"))?
+                })();
+                match result {
+                    Ok(value) => {
+                        let _ = conn.respond(id, Some(value), None);
+                    }
+                    Err(message) => {
+                        let _ = conn.respond(id, None, Some(ErrorInfo { code: None, message }));
+                    }
+                }
+            }
+            "execute_tool_update" => {
+                // The host waits for this answer before it sends the next partial result or the call's outcome. A panic in on_update is the callback's throw and is the answer (`nested-tool-calls.ts:219-231`).
+                let args = req.args.clone().unwrap_or(Value::Null);
+                let id_of_call = args.get("executeId").and_then(Value::as_str).unwrap_or("").to_string();
+                let update = args.get("result").and_then(|result| serde_json::from_value::<crate::AgentToolResult>(result.clone()).ok());
+                let dispatcher = conn.execute_updates.lock().unwrap().get(&id_of_call).cloned();
+                let failure = match (update, dispatcher) {
+                    (Some(update), Some(dispatcher)) => {
+                        let (answer, answered) = std::sync::mpsc::channel();
+                        // A dispatcher that ended with its call has no one left to answer.
+                        if dispatcher.send((update, answer)).is_ok() { answered.recv().ok().flatten() } else { None }
+                    }
+                    _ => None,
+                };
+                let error = failure.map(|message| ErrorInfo { code: None, message });
+                let _ = conn.respond(id, None, error);
+            }
+            "virtual_model_route" => {
+                // upstream: loader.ts:485-487, the router runs with a context created per request; its signal is the request's cancellation.
+                let outcome = (|| -> Result<Value, String> {
+                    let args: crate::extension_api::VirtualModelRouteArgs =
+                        serde_json::from_value(req.args.clone().unwrap_or(Value::Null)).map_err(|err| format!("decode virtual_model_route: {err}"))?;
+                    let model = conn
+                        .virtual_models
+                        .lock()
+                        .unwrap()
+                        .get(&(args.provider.clone(), args.id.clone()))
+                        .cloned()
+                        .ok_or_else(|| format!("unknown virtual model {}/{}", args.provider, args.id))?;
+                    let ctx = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
+                    let route = catch_unwind(AssertUnwindSafe(|| (model.route)(&ctx, args.request)))
+                        .map_err(|_| "virtual model router panicked".to_string())??;
+                    serde_json::to_value(route).map_err(|err| err.to_string())
+                })();
+                match outcome {
+                    Ok(route) => {
+                        let _ = conn.respond(id, Some(route), None);
+                    }
+                    Err(message) => {
+                        let _ = conn.respond(id, None, Some(ErrorInfo { code: None, message }));
+                    }
+                }
+            }
+            "tool_prepare_arguments" => {
+                // upstream: agent-loop.ts:707-716, prepareToolCall runs the hook on the model's arguments and validates what it returns.
+                let name = req.tool.as_deref().unwrap_or("");
+                let registered = conn.registered_tools.lock().unwrap().get(name).cloned();
+                let hook = match &registered {
+                    Some(tool) => tool.prepare_arguments.as_ref(),
+                    None => self.tool_prepare_fns.get(name),
+                };
+                let args = req.args.clone().unwrap_or(Value::Object(Default::default()));
+                let outcome = match hook {
+                    None => Err(format!("tool {name} has no prepareArguments")),
+                    Some(hook) => catch_unwind(AssertUnwindSafe(|| hook(args)))
+                        .map_err(|_| format!("prepareArguments of {name} panicked"))
+                        .and_then(|prepared| prepared),
+                };
+                match outcome {
+                    Ok(prepared) => {
+                        let _ = conn.respond(id, Some(prepared), None);
+                    }
+                    Err(message) => {
+                        let _ = conn.respond(id, None, Some(ErrorInfo { code: None, message }));
+                    }
+                }
+            }
+            "tool_prepare_loadout" => {
+                // upstream: agent-session.ts:1523, a hook that throws is reported and changes nothing.
+                let name = req.tool.as_deref().unwrap_or("");
+                let registered = conn.registered_tools.lock().unwrap().get(name).cloned();
+                let hook = match &registered {
+                    Some(tool) => tool.prepare_loadout.as_ref(),
+                    None => self.tool_prepare_loadout_fns.get(name),
+                };
+                let outcome = match hook {
+                    None => Err(format!("tool {name} has no prepareLoadout")),
+                    Some(hook) => serde_json::from_value::<crate::extension_api::ToolLoadoutPayload>(req.args.clone().unwrap_or(Value::Null))
+                        .map_err(|err| format!("decode tool_prepare_loadout: {err}"))
+                        .and_then(|payload| {
+                            let loadout = crate::ToolLoadout::from(payload);
+                            catch_unwind(AssertUnwindSafe(|| hook(&loadout))).map_err(|_| format!("prepareLoadout of {name} panicked"))
+                        })
+                        .and_then(|changes| serde_json::to_value(changes).map_err(|err| err.to_string())),
+                };
+                match outcome {
+                    Ok(changes) => {
+                        let _ = conn.respond(id, Some(changes), None);
+                    }
+                    Err(message) => {
+                        let _ = conn.respond(id, None, Some(ErrorInfo { code: None, message }));
+                    }
+                }
+            }
+            "events.dispatch" => {
+                let ctx = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
+                let error = self.bus.dispatch(&ctx, req.args.as_ref().unwrap_or(&Value::Null)).err().map(|message| ErrorInfo { code: None, message });
+                let _ = conn.respond(id, None, error);
+            }
             "provider_stream_simple" => {
                 let ctx = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
                 let result = (|| -> Result<Value, String> {
                     let handler = self
-                        .provider_streams
-                        .get(req.tool.as_deref().unwrap_or(""))
+                        .provider_callbacks
+                        .stream_simple(req.tool.as_deref().unwrap_or(""))
                         .ok_or("unknown provider stream")?;
                     let args = req.args.clone().unwrap_or(Value::Null);
                     let stream = handler(
@@ -1460,10 +1875,6 @@ impl Extension {
                 let tool_name = req.tool.as_deref().unwrap_or("");
                 let registered = conn.registered_tools.lock().unwrap().get(tool_name).cloned();
                 let handler = registered.as_ref().map(|tool| &tool.execute).or_else(|| self.tool_fns.get(tool_name));
-                let prepare = match &registered {
-                    Some(tool) => tool.prepare_arguments.as_ref(),
-                    None => self.tool_prepare_fns.get(tool_name),
-                };
                 if let Some(handler) = handler {
                     let ctx = base_ctx.clone_for_request(
                         cancel.clone(),
@@ -1474,24 +1885,9 @@ impl Extension {
                         .args
                         .clone()
                         .unwrap_or(Value::Object(Default::default()));
-                    let args = if let Some(prepare) = prepare {
-                        match prepare(args) {
-                            Ok(prepared) => prepared,
-                            Err(message) => {
-                                let _ = conn.respond(
-                                    id,
-                                    None,
-                                    Some(ErrorInfo {
-                                        code: None,
-                                        message,
-                                    }),
-                                );
-                                return;
-                            }
-                        }
-                    } else {
-                        args
-                    };
+                    if let Some(start) = start {
+                        start.begin();
+                    }
                     let result = handler(&ctx, args);
                     match result {
                         ToolResult::Text(s) => {
@@ -1521,6 +1917,11 @@ impl Extension {
                         }),
                     );
                 }
+            }
+            "with_session" => {
+                let ctx = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
+                let error = crate::replaced_session::dispatch(&ctx, conn, req.args.as_ref()).err();
+                let _ = conn.respond(id, None, error);
             }
             "command" => {
                 let cmd_name = req.tool.as_deref().unwrap_or("");
@@ -1560,14 +1961,17 @@ impl Extension {
                     .clone()
                     .unwrap_or(Value::Object(Default::default()));
                 if req.event.as_deref() == Some("before_agent_start") {
-                    // Pi's normalized options always carry a selectedTools array; the host omits an empty one.
+                    // Pi's normalized options always carry every collection; the host omits an empty one.
                     if let Some(options) = data
                         .get_mut("systemPromptOptions")
                         .and_then(Value::as_object_mut)
                     {
-                        options
-                            .entry("selectedTools")
-                            .or_insert_with(|| Value::Array(Vec::new()));
+                        for name in ["selectedTools", "promptGuidelines", "contextFiles", "skills"] {
+                            options.entry(name).or_insert_with(|| Value::Array(Vec::new()));
+                        }
+                        for name in ["toolSnippets", "toolGuidelines"] {
+                            options.entry(name).or_insert_with(|| Value::Object(Default::default()));
+                        }
                     }
                 }
                 let result = if let Some(handler) = self.event_fns.get(&handler_id) {
@@ -1617,6 +2021,7 @@ impl Extension {
                     value = Some(serde_json::json!({
                         "_pigPromptSections": data.get("systemPromptOptions").and_then(|options| options.get("sections")),
                         "_pigPromptSelectedTools": data.get("systemPromptOptions").and_then(|options| options.get("selectedTools")),
+                        "_pigPromptOptions": data.get("systemPromptOptions"),
                         "_pigPromptResult": value,
                     }));
                 }
@@ -1902,6 +2307,25 @@ mod tests {
                 assert_eq!(ext.tool_fns.len(), 1);
             }
         }
+    }
+
+    // .upstream/v0.99.2/packages/coding-agent/src/core/extensions/loader.ts:302-311 (#10054): a command without a
+    // non-empty name fails before it registers, so the extension fails to load instead of crashing pi when `/` lists
+    // its commands. A Rust handler is a required closure, so the handler check is enforced by the type.
+    #[test]
+    fn command_name_validation_precedes_registration() {
+        let mut ext = Extension::new("commands");
+        let failed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            ext.command("", "d", |_, _| CommandResult::Ok);
+        }));
+        let failure = failed.expect_err("an empty command name must fail synchronously");
+        let message = failure.downcast_ref::<String>().map(String::as_str).or_else(|| failure.downcast_ref::<&str>().copied());
+        assert_eq!(message, Some("Command registered by extension \"commands\" must have a non-empty string name. Use pi.registerCommand(\"name\", { description, handler })."));
+        assert!(ext.commands.is_empty());
+        assert!(ext.command_fns.is_empty());
+        ext.command("noop", "d", |_, _| CommandResult::Ok);
+        assert_eq!(ext.commands.len(), 1);
+        assert_eq!(ext.command_fns.len(), 1);
     }
 
     fn env_lock() -> &'static Mutex<()> {
@@ -2864,7 +3288,8 @@ mod tests {
                 "prompt_snippet": "greet: say hello",
                 "execution_mode": "sequential",
                 "render_shell": "self",
-                "renders_call": true
+                "renders_call": true,
+                "prepares_arguments": true
             })
         );
 
@@ -2897,7 +3322,8 @@ mod tests {
         let response = read_env(&mut stream);
         assert_eq!(
             response.response.unwrap().result.unwrap(),
-            json!({"content": "hello prepared"})
+            // agent-loop.ts:707-716: the host ran prepareArguments (tool_prepare_arguments) before it validated, so tool_call does not run it again.
+            json!({"content": "hello raw"})
         );
 
         write_env(&mut stream, &request("r2", "command", "ui", None));
@@ -2949,3 +3375,7 @@ mod tests {
         let _ = std::fs::remove_file(sock);
     }
 }
+
+#[cfg(test)]
+#[path = "handler_dispatch_tests.rs"]
+mod handler_dispatch_tests;

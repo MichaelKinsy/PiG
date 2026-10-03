@@ -94,6 +94,16 @@ def conformance_login_definition() -> pig_sdk.LoginDefinition:
     )
 
 
+def conformance_sprite_definition() -> pig_sdk.SpriteDefinition:
+    return pig_sdk.SpriteDefinition(
+        id="conformance-pig",
+        name="Conformance Pig",
+        tagline="One canonical sprite across every SDK",
+        mascot=["A" * 16 for _ in range(14)],
+        palette={"A": "#123ABC"},
+    )
+
+
 def new_extension() -> pig_sdk.Extension:
     prompt_lock = threading.Lock()
     prompt_sequence = 0
@@ -134,6 +144,16 @@ def new_extension() -> pig_sdk.Extension:
             "missingKey": r.get_api_key_for_provider("missing"), "refresh": r.refresh({"allowNetwork": False}),
         }
         ctx.notify(json.dumps(out), "info")
+    def session_order(ctx, _args):
+        s = ctx.session_manager
+        out = {
+            "getEntries": s.get_entries(), "getEntry": s.get_entry("a4"), "getLeafEntry": s.get_leaf_entry(),
+            "getBranch": s.get_branch("a4"), "getChildren": s.get_children("a1"), "getTree": s.get_tree(),
+            "buildContextEntries": s.build_context_entries(), "buildSessionProjection": s.build_session_projection(),
+            "buildSessionContext": s.build_session_context(),
+        }
+        ctx.notify(json.dumps(out, separators=(",", ":"), ensure_ascii=False), "info")
+    ext.command("session-order", "Read the session as Pi returns it", session_order)
     def timeout_probe(ctx, _args):
         for timeout in (0.5, 4294967296.5, 1e21):
             ctx.exec("timeout-command", [], timeout=timeout)
@@ -200,6 +220,14 @@ def new_extension() -> pig_sdk.Extension:
         ctx.on_update({"content": [{"type": "text", "text": "step 2"}]})
         return {"content": [{"type": "text", "text": "done"}]}
 
+    def ordered_details(ctx, _params):
+        ctx.on_update({"content": [{"type": "text", "text": "partial"}], "details": {"zeta": 1.0, "alpha": {"yy": 2, "bb": 3}, "mid": [{"qq": 1, "aa": 2}]}})
+        return {"content": [{"type": "text", "text": "done"}], "details": {"zeta": 1.0, "alpha": {"yy": 2, "bb": 3}, "mid": [{"qq": 1, "aa": 2}]}}
+
+    def ordered_result(ctx, _params):
+        ctx.on_update({"details": {"k": 1}, "content": [{"type": "text", "text": "partial"}]})
+        return {"details": {"k": 1}, "is_error": True, "content": [{"type": "text", "text": "done"}]}
+
     def abort_tool(ctx, _params):
         ctx.on_update({"content": [{"type": "text", "text": "waiting"}]})
         while not ctx.is_cancelled():
@@ -208,6 +236,8 @@ def new_extension() -> pig_sdk.Extension:
         return {"content": "aborted"}
 
     ext.tool("update_tool", "Stream two partial results", {"type": "object", "properties": {}}, update_tool)
+    ext.tool("ordered_details", "Return details whose members are not in alphabetical order", {"type": "object", "properties": {}}, ordered_details)
+    ext.tool("ordered_result", "Return a result whose members are not in the declared order", {"type": "object", "properties": {}}, ordered_result)
     ext.tool("abort_tool", "Wait for the abort signal", {"type": "object", "properties": {}}, abort_tool)
     ext.command(
         "abort_probe",
@@ -234,6 +264,17 @@ def new_extension() -> pig_sdk.Extension:
         lambda _ctx, params: {"content": "prepared:" + str(params.get("text", ""))},
         prepare_arguments=lambda params: {"text": params.get("legacy")},
     )
+    # Reports the order in which calls start: the number of calls that started before it, plus its own argument.
+    started_calls = [0]
+    started_lock = threading.Lock()
+
+    def start_order(_ctx, params):
+        with started_lock:
+            started_calls[0] += 1
+            number = started_calls[0]
+        return {"content": f"start#{number} n={params.get('n')}"}
+
+    ext.tool("start_order", "Report the order in which calls start", {"type": "object", "properties": {"n": {"type": "number"}}}, start_order)
     ext.tool("tool_error", "Return a thrown tool error", {"type": "object"}, tool_error)
     ext.tool("tool_is_error", "Return a structured tool error result", {"type": "object"}, tool_is_error)
     ext.tool(
@@ -368,6 +409,19 @@ def new_extension() -> pig_sdk.Extension:
         lambda ctx, args: ctx.notify(f"geometry:{ctx.width}x{ctx.height}", "info"),
     )
 
+    width_probe: list = []
+
+    def arm_width_probe(ctx, args):
+        # A width handler makes a host call the way any other handler does; the host's reply must reach it (conformance TestConformance_WidthHandlerHostCall).
+        if not width_probe:
+            def on_width(width):
+                ctx.notify(f"width-probe:{width}", "info")
+                ctx.notify(f"width-probe-returned:{width}", "info")
+
+            width_probe.append(ctx.on_width_change(on_width))
+
+    ext.command("arm_width_probe", "Notify from a width handler", arm_width_probe)
+
     ext.command("surface_footer", "Install a footer renderer", lambda ctx, args: ctx.set_footer_renderer(lambda width: [f"footer@{width}"]))
     ext.command("surface_header", "Install a header renderer", lambda ctx, args: ctx.set_header_renderer(lambda width: [f"header@{width}"]))
     ext.command("surface_static_footer", "Push static footer rows", lambda ctx, args: ctx.set_footer([f"static@{ctx.width}"]))
@@ -468,6 +522,31 @@ def new_extension() -> pig_sdk.Extension:
             ctx.notify("registered:" + tag, "info")
 
     ext.command("autocomplete-register", "Register retained provider wrappers", autocomplete_register)
+    def signal_probe(ctx: pig_sdk.Context, args: str) -> None:
+        signal = ctx.signal
+        ctx.notify("signal:" + ("none" if signal is None else "aborted" if signal.is_set() else "live"), "info")
+
+    def signal_wait(ctx: pig_sdk.Context, args: str) -> None:
+        signal = ctx.signal
+        if signal is None:
+            ctx.notify("wait:none", "info")
+            return
+        ctx.notify("wait:start", "info")
+        ctx.notify("wait:" + ("aborted" if signal.wait(10) else "timeout"), "info")
+
+    def signal_poll(ctx: pig_sdk.Context, args: str) -> None:
+        ctx.notify("poll:start", "info")
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            if (ctx.signal is not None) == (args == "live"):
+                ctx.notify("poll:" + args, "info")
+                return
+            time.sleep(0.005)
+        ctx.notify("poll:timeout", "info")
+
+    ext.command("signal-poll", "Poll ctx.signal until it is live or none", signal_poll)
+    ext.command("signal-probe", "Report ctx.signal", signal_probe)
+    ext.command("signal-wait", "Wait for ctx.signal to abort", signal_wait)
     ext.command("usage-probe", "Report context usage", lambda ctx, args: ctx.notify(json.dumps(ctx.get_context_usage()), "info"))
 
     def context_probe(ctx: pig_sdk.Context, args: str) -> None:
@@ -515,6 +594,19 @@ def new_extension() -> pig_sdk.Extension:
         raise RuntimeError("invalid login definition was accepted")
 
     ext.command("login-probe", "Exercise semantic login submission and host errors", login_probe)
+
+    def sprite_probe(ctx: pig_sdk.Context, args: str) -> None:
+        definition = conformance_sprite_definition()
+        ctx.register_sprite(definition)
+        definition.mascot[0] = definition.mascot[0][:-1]
+        try:
+            ctx.register_sprite(definition)
+        except pig_sdk.HostCallError as err:
+            ctx.notify(str(err), "error")
+            return
+        raise RuntimeError("invalid sprite definition was accepted")
+
+    ext.command("sprite-probe", "Exercise sprite registration and host errors", sprite_probe)
     ext.command("scoped-models-probe", "Report the model scope", lambda ctx, _args: ctx.notify(json.dumps(ctx.scoped_models()), "info"))
     ext.command("context-probe", "Report ctx.mode + ctx.getSystemPromptOptions()", context_probe)
 
@@ -588,13 +680,13 @@ def new_extension() -> pig_sdk.Extension:
             partial = data.get("partialResult", {})
             ctx.notify(
                 "tool-update=%s:%s:%s:%s:%s"
-                % (data.get("toolName"), args.get("path"), args.get("nested", {}).get("depth"), partial.get("content"), partial.get("details", {}).get("progress")),
+                % (data.get("toolName"), args.get("path"), args.get("nested", {}).get("depth"), partial.get("content", [{}])[0].get("text"), partial.get("details", {}).get("progress")),
                 "info",
             )
             return
         ctx.notify(
             "tool-update=%s:%s:%s:%s"
-            % (data.get("toolName"), json.dumps(data.get("args"), separators=(",", ":")), data.get("partialResult", {}).get("content"), data.get("partialResult", {}).get("details", {}).get("progress")),
+            % (data.get("toolName"), json.dumps(data.get("args"), separators=(",", ":")), data.get("partialResult", {}).get("content", [{}])[0].get("text"), data.get("partialResult", {}).get("details", {}).get("progress")),
             "info",
         )
 

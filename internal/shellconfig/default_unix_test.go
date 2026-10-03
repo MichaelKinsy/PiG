@@ -22,3 +22,19 @@ func TestUnixShellConfigResolutionOrder(t *testing.T) {
 		t.Fatalf("sh fallback: %+v", got)
 	}
 }
+
+// Termux has no /bin: bash lives in $PREFIX/bin, found through PATH as upstream's `which bash` finds it.
+func TestUnixShellConfigFindsTermuxBashWithoutBinBash(t *testing.T) {
+	const termuxBash = "/data/data/com.termux/files/usr/bin/bash"
+	exists := func(path string) bool { return path == termuxBash }
+	lookPath := func(name string) (string, error) {
+		if name == "bash" {
+			return termuxBash, nil
+		}
+		return "", errors.New("not found")
+	}
+	got := unixDefault(exists, lookPath)
+	if got.Path != termuxBash || len(got.Args) != 1 || got.Args[0] != "-c" {
+		t.Fatalf("Termux shell: %+v", got)
+	}
+}

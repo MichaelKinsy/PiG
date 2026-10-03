@@ -11,6 +11,7 @@ import (
 // Pi 0.87.1 runner.ts:320-351,578-580: availability follows UI identity,
 // not whether actions are bound. No-op dialogs return immediately without callbacks.
 func TestUIAvailabilityAcrossSDKs(t *testing.T) {
+	t.Parallel()
 	cases := allHarnessCases()
 	for _, language := range []string{"go", "python", "rust"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})

@@ -148,3 +148,41 @@ func cloneThinkingLevelMap(values ai.ThinkingLevelMap) ai.ThinkingLevelMap {
 	}
 	return cloned
 }
+
+// AnyModelInfo projects a model of any type into the extension-facing Pi model shape. A chat model is [ModelInfo]; an image or classifier model carries its own type and the fields of its variant (packages/ai/src/types.ts ImageModel and ClassifierModel). A nil model is nil.
+func AnyModelInfo(model ai.AnyModel) map[string]any {
+	switch typed := model.(type) {
+	case *ai.Model:
+		return ModelInfo(typed)
+	case *ai.ImageModel:
+		if typed == nil {
+			return nil
+		}
+		projected := typedModelInfo(ai.ModelTypeImage, typed.ID, typed.Name, string(typed.API), typed.Provider, typed.BaseURL, typed.Input, typed.InputLimits, typed.Headers, typed.Cost)
+		projected["output"] = append([]string{}, typed.Output...)
+		return projected
+	case *ai.ClassifierModel:
+		if typed == nil {
+			return nil
+		}
+		projected := typedModelInfo(ai.ModelTypeClassifier, typed.ID, typed.Name, string(typed.API), typed.Provider, typed.BaseURL, typed.Input, typed.InputLimits, typed.Headers, typed.Cost)
+		projected["contextWindow"] = typed.ContextWindow
+		return projected
+	}
+	return nil
+}
+
+func typedModelInfo(modelType ai.ModelType, id, name, api, provider, baseURL string, input []string, limits *ai.ModelInputLimits, headers map[string]string, modelCost ai.ModelCost) map[string]any {
+	cost := map[string]any{"input": modelCost.Input, "output": modelCost.Output, "cacheRead": modelCost.CacheRead, "cacheWrite": modelCost.CacheWrite}
+	if len(modelCost.Tiers) > 0 {
+		cost["tiers"] = append([]ai.CostTier(nil), modelCost.Tiers...)
+	}
+	projected := map[string]any{"type": string(modelType), "id": id, "modelId": id, "name": name, "api": api, "provider": provider, "baseUrl": baseURL, "input": append([]string{}, input...), "cost": cost}
+	if headers != nil {
+		projected["headers"] = maps.Clone(headers)
+	}
+	if limits != nil {
+		projected["inputLimits"] = limits.Clone()
+	}
+	return projected
+}

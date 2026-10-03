@@ -15,8 +15,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/agentharness"
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
@@ -170,7 +168,7 @@ type ExperimentalClientTui struct {
 	commands                 []services.SlashCommandContribution
 	controller               services.AgentController
 	session                  *clientTuiSessionFeature
-	snapshot                 *agentharness.LaneSnapshot
+	conversation             *services.ConversationView
 	selectList               *tui.FilterableList
 	selection                *pendingClientSelection
 	selectedServerId         string
@@ -359,8 +357,8 @@ func (component *ExperimentalClientTui) handleEditorInput(data string) {
 }
 
 func (component *ExperimentalClientTui) RefreshTheme() {
-	if component.snapshot != nil && component.chatView != nil {
-		if err := component.chatView.RefreshTheme(component.snapshot); err != nil {
+	if component.conversation != nil && component.chatView != nil {
+		if err := component.chatView.RefreshTheme(*component.conversation); err != nil {
 			component.ShowError(err.Error())
 			return
 		}
@@ -418,7 +416,7 @@ func awaitUncancellable[T any](component *ExperimentalClientTui, ctx context.Con
 	}
 }
 
-func loadClientPresentationFacets(ctx context.Context, data pico3.JsonValue) (chord.LoadedFacets, error) {
+func loadClientPresentationFacets(ctx context.Context, data chord.JsonValue) (chord.LoadedFacets, error) {
 	loaders, err := CreatePresentationFacetLoaders(data)
 	if err != nil {
 		return chord.LoadedFacets{}, err
@@ -446,7 +444,7 @@ func (component *ExperimentalClientTui) start(prepared preparedClientSession) er
 	return nil
 }
 
-func (component *ExperimentalClientTui) reloadPresentationPlugins(ctx context.Context, data pico3.JsonValue) error {
+func (component *ExperimentalClientTui) reloadPresentationPlugins(ctx context.Context, data chord.JsonValue) error {
 	component.reloadMu.Lock()
 	defer component.reloadMu.Unlock()
 	candidate, err := loadClientPresentationFacets(ctx, data)
@@ -525,7 +523,7 @@ func (component *ExperimentalClientTui) presentationBridge(server ClientTuiServe
 			if !server.Radius {
 				return nil
 			}
-			removeConnection, err := server.Server.Connection().Subscribe(func(state *services.ServerConnectionState, _ context.Context, _ pico3.ReplicatedStateDelivery) {
+			removeConnection, err := server.Server.Connection().Subscribe(func(state *services.ServerConnectionState, _ context.Context, _ chord.ReplicatedStateDelivery) {
 				component.recordDeliveryError(component.runOnMain(component.ctx, func() { component.handleConnectionState(server.ServerId, *state) }))
 			})
 			if err != nil {
@@ -535,7 +533,7 @@ func (component *ExperimentalClientTui) presentationBridge(server ClientTuiServe
 				removeConnection()
 				return err
 			}
-			removeAttachment, err := server.Session.Attachment().Subscribe(func(state *services.SessionAttachmentState, _ context.Context, _ pico3.ReplicatedStateDelivery) {
+			removeAttachment, err := server.Session.Attachment().Subscribe(func(state *services.SessionAttachmentState, _ context.Context, _ chord.ReplicatedStateDelivery) {
 				component.recordDeliveryError(component.runOnMain(component.ctx, func() { component.handleAttachmentState(feature, *state) }))
 			})
 			if err != nil {
@@ -597,10 +595,11 @@ func (component *ExperimentalClientTui) openLane(ctx context.Context, feature *c
 func (component *ExperimentalClientTui) populateLane(ctx context.Context, feature *clientTuiSessionFeature, generation uint64) error {
 	view := NewExperimentalChatView(component.ctx, component.cwd, component.ui.RequestRender, component.runOnMain)
 	var gate sync.Mutex
-	var latest *services.TranscriptState
+	var latest *services.ConversationView
 	active, closed := false, false
 	// Decode initial replica state off-loop, then commit close/mount/hydration as one owner mutation. Pi's resolved closeLane await and synchronous subscription hydration complete in one microtask checkpoint; no fresh render can observe the intermediate cleared status.
-	remove, err := feature.transcript.State().Subscribe(func(value *services.TranscriptState, _ context.Context, _ pico3.ReplicatedStateDelivery) {
+	remove, err := feature.transcript.State().Subscribe(func(delivered services.ConversationView, _ context.Context, _ chord.ReplicatedStateDelivery) {
+		value := &delivered
 		gate.Lock()
 		if closed {
 			gate.Unlock()
@@ -609,7 +608,7 @@ func (component *ExperimentalClientTui) populateLane(ctx context.Context, featur
 		latest = value
 		ready := active
 		gate.Unlock()
-		if !ready || value == nil || value.Snapshot == nil {
+		if !ready || value == nil {
 			return
 		}
 		component.recordDeliveryError(component.runOnMain(component.ctx, func() {
@@ -619,8 +618,8 @@ func (component *ExperimentalClientTui) populateLane(ctx context.Context, featur
 			if !live || component.chatView != view || component.closed {
 				return
 			}
-			component.snapshot = value.Snapshot
-			if err := view.Apply(value.Snapshot); err != nil {
+			component.conversation = value
+			if err := view.Apply(*value); err != nil {
 				component.ShowError(err.Error())
 				return
 			}
@@ -639,21 +638,21 @@ func (component *ExperimentalClientTui) populateLane(ctx context.Context, featur
 		}
 		gate.Lock()
 		value := latest
-		if value != nil && value.Snapshot != nil {
+		if value != nil {
 			active = true
 		}
 		gate.Unlock()
-		if value == nil || value.Snapshot == nil {
-			initializeError = errors.New("Transcript has no initialized snapshot")
+		if value == nil {
+			initializeError = errors.New("Transcript has no initialized view")
 			return
 		}
-		initializeError = view.Apply(value.Snapshot)
+		initializeError = view.Apply(*value)
 		if initializeError != nil {
 			return
 		}
 		component.retireLane()
 		component.chatView, component.laneUnsubscribe = view, unsubscribe
-		component.snapshot = value.Snapshot
+		component.conversation = value
 		component.documentContainer.Add(component.sessionHeading)
 		component.documentContainer.Add(view.Transcript)
 		component.pendingMessagesContainer.Add(view.PendingMessages)
@@ -679,7 +678,7 @@ func (component *ExperimentalClientTui) detachLane() *ExperimentalChatView {
 	if view != nil {
 		view.cancel()
 	}
-	component.laneUnsubscribe, component.chatView, component.snapshot = nil, nil, nil
+	component.laneUnsubscribe, component.chatView, component.conversation = nil, nil, nil
 	if component.documentContainer != nil {
 		component.documentContainer.Clear()
 		component.pendingMessagesContainer.Clear()
@@ -871,11 +870,31 @@ func (component *ExperimentalClientTui) rebuild() {
 
 func (component *ExperimentalClientTui) footer() string {
 	const commands = "/model · /thinking · /compact · /reload"
-	if component.snapshot == nil {
+	if component.conversation == nil {
 		return commands
 	}
-	snapshot := component.snapshot
-	return fmt.Sprintf("%s/%s · thinking:%s · %d messages · %s", snapshot.Configuration.Model.Provider, snapshot.Configuration.Model.ModelID, snapshot.Configuration.ThinkingLevel, snapshot.Stats.MessageCount, commands)
+	var agent struct {
+		Model         *services.ModelRef `json:"model"`
+		ThinkingLevel string             `json:"thinkingLevel"`
+	}
+	_ = decodeDocument(*component.conversation, services.AgentDocKind, &agent)
+	model, thinking := "no model", agent.ThinkingLevel
+	if agent.Model != nil {
+		model = agent.Model.Provider + "/" + agent.Model.ModelId
+	}
+	if thinking == "" {
+		thinking = "off"
+	}
+	return fmt.Sprintf("%s · thinking:%s · %d entries · %s", model, thinking, len(component.conversation.Entries), commands)
+}
+
+// running reports whether the conversation has an active run.
+func (component *ExperimentalClientTui) running() bool {
+	if component.conversation == nil {
+		return false
+	}
+	live, err := LiveOf(*component.conversation)
+	return err == nil && live.Run != nil
 }
 
 func (component *ExperimentalClientTui) updateAutocomplete() {
@@ -984,7 +1003,7 @@ func (component *ExperimentalClientTui) runPrompt(text string) {
 		component.ShowError("No Session AgentController service is available")
 		return
 	}
-	running := component.snapshot != nil && component.snapshot.Operation != nil
+	running := component.running()
 	component.status = "Running turn…"
 	if running {
 		component.status = "Queueing steering message…"
@@ -1064,8 +1083,6 @@ func (component *ExperimentalClientTui) reportOperation(response services.AgentO
 	component.status = ""
 	if !response.Accepted {
 		component.status = "Operation rejected: " + response.Error.Message
-	} else if response.Error != nil {
-		component.status = "Operation failed: " + response.Error.Message
 	}
 	component.rebuild()
 }
@@ -1080,31 +1097,48 @@ func (component *ExperimentalClientTui) reportQueue(response services.AgentQueue
 }
 
 func (component *ExperimentalClientTui) interrupt() {
-	if component.snapshot == nil || component.snapshot.Operation == nil || component.controller == nil {
+	if !component.running() || component.controller == nil {
 		return
 	}
-	id, controller := component.snapshot.Operation.ID, component.controller
-	component.status = "Aborting " + id + "…"
+	controller := component.controller
+	const aborting = "Aborting…"
+	component.status = aborting
 	component.rebuild()
 	initiator, _ := controller.(services.AgentControllerInitiator)
-	abortWithoutAdmission := func(ctx context.Context) error {
-		_, err := awaitUncancellable(component, ctx, func() (struct{}, error) {
-			return struct{}{}, controller.RequestAbort(context.Background(), id)
+	// Once the abort settles, the status clears unless something else replaced it.
+	settled := func(ctx context.Context) error {
+		return component.runOnMain(ctx, func() {
+			if component.status == aborting {
+				component.status = ""
+				component.rebuild()
+			}
 		})
-		return err
+	}
+	abortWithoutAdmission := func(ctx context.Context) error {
+		if _, err := awaitUncancellable(component, ctx, func() (struct{}, error) {
+			return struct{}{}, controller.Abort(context.Background())
+		}); err != nil {
+			return err
+		}
+		return settled(ctx)
 	}
 	component.startInvocation(func() (func(context.Context) error, error) {
 		if initiator == nil {
 			return abortWithoutAdmission, nil
 		}
-		operation, err := initiator.BeginRequestAbort(context.Background(), id)
+		operation, err := initiator.BeginAbort(context.Background())
 		if errors.Is(err, chord.ErrInvocationAdmissionUnavailable) {
 			return abortWithoutAdmission, nil
 		}
 		if err != nil {
 			return nil, err
 		}
-		return func(ctx context.Context) error { _, err := operation.Wait(ctx); return err }, nil
+		return func(ctx context.Context) error {
+			if _, err := operation.Wait(ctx); err != nil {
+				return err
+			}
+			return settled(ctx)
+		}, nil
 	})
 }
 
@@ -1271,7 +1305,9 @@ func RunClientTui(ctx context.Context, command ClientCommand, options RunClientT
 	defer executor.Close()
 	uiCtx, cancelUI := context.WithCancel(ctx)
 	defer cancelUI()
-	ui := codingagent.CreateInteractiveTui(codingagent.InteractiveTuiOptions{TuiMode: "fullscreen", ShowHardwareCursor: new(settings.GetShowHardwareCursor()), LogDirectory: agentDir})
+	wheel := settings.GetFullscreenWheelScrollLines()
+	wheelScrollLines := tui.WheelScrollLines{Auto: wheel.Auto, Lines: wheel.Lines}
+	ui := codingagent.CreateInteractiveTui(codingagent.InteractiveTuiOptions{TuiMode: "fullscreen", ShowHardwareCursor: new(settings.GetShowHardwareCursor()), LogDirectory: agentDir, FullscreenWheelScrollLines: &wheelScrollLines})
 	alt := ui.(*tui.TuiAltScreen)
 	terminal := tui.NewProcessTerminal(os.Stdin, os.Stdout)
 	finished := make(chan struct{})

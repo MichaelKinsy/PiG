@@ -3,10 +3,7 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -138,82 +135,19 @@ func runClientCommand(ctx context.Context, command experimental.ClientCommand) e
 		themes := collectThemePaths(cwd, agentDir, settings, CLIFlags{}, settings.IsProjectTrusted())
 		return experimental.RunClientTui(ctx, command, experimental.RunClientTuiOptions{ThemePaths: themes})
 	}
-	streamedText := false
-	result, err := experimental.RunClient(ctx, command, experimental.RunClientOptions{
-		OnEvent: func(_ context.Context, raw json.RawMessage) error {
-			streamed, err := writeClientTextDelta(os.Stdout, raw)
-			streamedText = streamedText || streamed
-			return err
-		},
-	})
+	result, err := experimental.RunClient(ctx, command, experimental.RunClientOptions{})
 	if err != nil {
 		return err
 	}
-	return writeClientResult(os.Stdout, result, streamedText)
+	return writeClientResult(os.Stdout, result)
 }
 
-func writeClientTextDelta(output io.Writer, raw json.RawMessage) (bool, error) {
-	var event struct {
-		Type  json.RawMessage `json:"type"`
-		Frame json.RawMessage `json:"frame"`
-	}
-	if err := json.Unmarshal(raw, &event); err != nil {
-		return false, err
-	}
-	eventType, err := clientEventType(event.Type)
-	if err != nil {
-		return false, err
-	}
-	frameJSON := bytes.TrimSpace(event.Frame)
-	if eventType != "message_update" || len(frameJSON) == 0 || frameJSON[0] != '{' {
-		return false, nil
-	}
-	var frame struct {
-		Type  json.RawMessage `json:"type"`
-		Delta json.RawMessage `json:"delta"`
-	}
-	if err := json.Unmarshal(frameJSON, &frame); err != nil {
-		return false, err
-	}
-	frameType, err := clientEventType(frame.Type)
-	if err != nil {
-		return false, err
-	}
-	if frameType != "text_delta" {
-		return false, nil
-	}
-	deltaJSON := bytes.TrimSpace(frame.Delta)
-	if len(deltaJSON) == 0 || deltaJSON[0] != '"' {
-		return true, errors.New("Text delta must be a string")
-	}
-	var delta string
-	if err := json.Unmarshal(deltaJSON, &delta); err != nil {
-		return true, err
-	}
-	_, err = io.WriteString(output, delta)
-	return true, err
-}
-
-func clientEventType(raw json.RawMessage) (string, error) {
-	raw = bytes.TrimSpace(raw)
-	if len(raw) == 0 || raw[0] != '"' {
-		return "", nil
-	}
-	var kind string
-	err := json.Unmarshal(raw, &kind)
-	return kind, err
-}
-
-func writeClientResult(output io.Writer, result experimental.ClientResult, streamedText bool) error {
+func writeClientResult(output io.Writer, result experimental.ClientResult) error {
 	switch result := result.(type) {
 	case experimental.ClientAttachedResult:
 		_, err := fmt.Fprintf(output, "%s\t%s\tattached\n", result.ServerId, result.SessionId)
 		return err
 	case experimental.ClientPromptedResult:
-		if streamedText {
-			_, err := io.WriteString(output, "\n")
-			return err
-		}
 		_, err := fmt.Fprintln(output, result.Text)
 		return err
 	case experimental.ClientListResult:

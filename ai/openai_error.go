@@ -4,6 +4,7 @@ package ai
 // Ports packages/ai/src/api/openai-responses.ts (SDK HTTP error extraction).
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -27,17 +28,15 @@ func openAIRequestError(ctx context.Context, err error, prefix string) error {
 	return wrapped
 }
 
-// openAIHTTPError reconstructs openai/core/error.APIError.generate's message and inner error object. Pi's shared error-body policy owns status/body composition and truncation.
+// openAIHTTPError reconstructs the openai SDK's thrown status error: OpenAI.makeStatusError followed by APIError.generate's message and inner error object. Pi's shared error-body policy owns status/body composition and truncation.
 func openAIHTTPError(status int, raw []byte, prefix ...string) error {
-	var envelope map[string]json.RawMessage
 	parsed := json.Valid(raw) && jsonValueTruthy(raw)
+	var sdkError json.RawMessage
 	if parsed {
-		canonical, err := jsonstringify.Canonicalize(raw)
-		if err == nil {
-			_ = json.Unmarshal(canonical, &envelope)
+		if canonical, err := jsonstringify.Canonicalize(raw); err == nil {
+			sdkError = openAIStatusErrorObject(canonical)
 		}
 	}
-	sdkError := envelope["error"]
 	message, hasMessage := openAIStreamErrorMessage(sdkError)
 	if !hasMessage && !parsed {
 		message = string(raw)
@@ -48,4 +47,23 @@ func openAIHTTPError(status int, raw []byte, prefix ...string) error {
 		message = fmt.Sprintf("%d %s", status, message)
 	}
 	return &providerError{status: new(status), body: sdkError, message: message, prefix: prefix}
+}
+
+// openAIStatusErrorObject returns APIError.error for a parsed, truthy response body. openai 7.x makeStatusError wraps an object or array body whose `error` member is null or absent as `{ error: body }`, so the whole body becomes the error object; APIError.generate then reads `body.error`, which is undefined for a string, number or boolean body.
+func openAIStatusErrorObject(canonical []byte) json.RawMessage {
+	switch canonical[0] {
+	case '{':
+		var envelope map[string]json.RawMessage
+		if json.Unmarshal(canonical, &envelope) != nil {
+			return nil
+		}
+		if inner, ok := envelope["error"]; ok && !bytes.Equal(inner, []byte("null")) {
+			return inner
+		}
+		return canonical
+	case '[':
+		return canonical
+	default:
+		return nil
+	}
 }

@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// Pi runner.ts:809-886 constructs enumerable own context fields. pi-cc-extensions/compact-thinking.ts spreads ctx before invoking its session_start delegate, so inherited fields alone are insufficient.
+// Pi createContext (runner.ts:868-960) constructs enumerable own context fields, every getter of its object literal included (thinkingLevel at runner.ts:905-908). pi-cc-extensions/compact-thinking.ts spreads ctx before invoking its session_start delegate, so inherited fields alone are insufficient.
 func TestNodeRequestContextSpreadsLikePi(t *testing.T) {
 	nodeCellRequireNode(t)
 	for _, isolation := range []string{"strict", "shared-ok"} {
@@ -15,8 +15,9 @@ func TestNodeRequestContextSpreadsLikePi(t *testing.T) {
 			if err := os.WriteFile(entry, []byte(`export default function(pi) {
   pi.registerCommand("spread", {handler: async (_args, ctx) => {
     const copy = {...ctx};
-    for (const key of ["ui", "mode", "hasUI", "cwd", "sessionManager", "modelRegistry", "model", "signal", "isIdle", "getSystemPrompt", "waitForIdle"]) {
-      if (!Object.hasOwn(copy, key) || copy[key] !== ctx[key]) throw new Error("context spread lost " + key);
+    for (const key of ["ui", "mode", "hasUI", "cwd", "sessionManager", "modelRegistry", "model", "scopedModels", "thinkingLevel", "signal", "isIdle", "getSystemPrompt", "waitForIdle"]) {
+      // An unbound runner's scopedModels is a fresh [] at every read, as Pi's default getScopedModels (runner.ts:366) is.
+      if (!Object.hasOwn(copy, key) || (key !== "scopedModels" && copy[key] !== ctx[key])) throw new Error("context spread lost " + key);
     }
     if (!copy.ui.theme) throw new Error("context spread lost theme");
   }});

@@ -42,3 +42,8 @@ both_not_contain = ['"name":"bad-prompts-type-prompt"', '"name":"skill:bad-skill
 pattern = '/[^" ]*parity-snap-(PI|PIG)_CODING_AGENT_DIR-[0-9]+'
 with = '<agent>'
 reason = "Isolated agent roots differ; preserve each resource path and its metadata."
+
+[[assert.normalize_replace]]
+pattern = '\{"(?:name":"sprite","description":"Select the PiG login sprite\.","source":"extension","sourceInfo":\{"path":"builtin:pig-login","source":"builtin","scope":"temporary","origin":"top-level"\}|description":"Select the PiG login sprite\.","name":"sprite","source":"extension","sourceInfo":\{"origin":"top-level","path":"builtin:pig-login","scope":"temporary","source":"builtin"\})\},?'
+with = ""
+reason = "D2: PiG's built-in pig-login extension registers /sprite, which Pi has no counterpart for. Only that one command entry is removed; every other command, its order and its sourceInfo stay compared."

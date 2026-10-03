@@ -18,7 +18,7 @@ import (
 )
 
 func TestSessionListingCancellationAndProgress(t *testing.T) {
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/file-operations.test.ts:329
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/file-operations.test.ts:341
 	t.Run("rejects a cancelled session listing", func(t *testing.T) {
 		dir := t.TempDir()
 		a, b := t.TempDir(), t.TempDir()

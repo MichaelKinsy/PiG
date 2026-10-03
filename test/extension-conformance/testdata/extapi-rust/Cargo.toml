@@ -1,0 +1,8 @@
+[package]
+name = "extapi-fixture"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+pig-sdk = { path = "../../../../extensions/sdk-rs" }
+serde_json = "1"

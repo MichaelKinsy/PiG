@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { scratchDir } from "./scratch.mjs";
 
 for (const [script, target] of [
   ["extract-cli.mjs", "interface-proposals"],
@@ -12,7 +12,7 @@ for (const [script, target] of [
   ["extract-behavior-inputs.mjs", "behavior-input-inventory"],
 ]) {
   test(`${script} warns for implicit stdout and preserves explicit outputs`, (t) => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), "pig-generator-output-"));
+    const root = scratchDir("pig-generator-output-");
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
     for (const [name, source] of [
       ["packages/coding-agent/src/cli/args.ts", "export function parseArgs(args: string[]) {}\nexport function printHelp() {}\n"],

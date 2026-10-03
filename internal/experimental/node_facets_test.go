@@ -14,8 +14,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/experimental/services"
@@ -137,9 +137,17 @@ export function createFacetBridge(host) {
 	if got := <-results["cancelled"]; !errors.Is(got.err, context.Canceled) {
 		t.Fatalf("cancelled observer=%#v, %v; want context cancellation", got.value, got.err)
 	}
+	// The cancel frame is queued ahead of this request, but Node reads socket frames in separate event-loop turns on Windows, so a single checkpoint can precede the abort. Poll until the exit is recorded; the producer stays unsettled throughout.
 	var exits []string
-	if err := call(t.Context(), false, map[string]any{"op": "exits"}, &exits); err != nil {
-		t.Fatal(err)
+	for deadline := time.Now().Add(10 * time.Second); ; {
+		exits = nil
+		if err := call(t.Context(), false, map[string]any{"op": "exits"}, &exits); err != nil {
+			t.Fatal(err)
+		}
+		if len(exits) > 0 || time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 	if !reflect.DeepEqual(exits, []string{"cancelled"}) {
 		t.Fatalf("Node waiter exits before producer settlement=%q, want [cancelled]", exits)
@@ -332,8 +340,8 @@ export default {id:"counter",setup(env){
 	if err != nil {
 		t.Fatal(err)
 	}
-	var values []pico3.JsonValue
-	remove, err := state.Subscribe(func(value pico3.JsonValue, _ context.Context, _ pico3.ReplicatedStateDelivery) error {
+	var values []chord.JsonValue
+	remove, err := state.Subscribe(func(value chord.JsonValue, _ context.Context, _ chord.ReplicatedStateDelivery) error {
 		values = append(values, value)
 		return nil
 	})
@@ -345,7 +353,7 @@ export default {id:"counter",setup(env){
 	if err != nil || value != 5 {
 		t.Fatalf("add=%d, %v", value, err)
 	}
-	want := []pico3.JsonValue{map[string]any{"value": float64(1)}, map[string]any{"value": float64(5)}}
+	want := []chord.JsonValue{map[string]any{"value": float64(1)}, map[string]any{"value": float64(5)}}
 	if !reflect.DeepEqual(values, want) {
 		t.Fatalf("state publications=%#v, want %#v", values, want)
 	}

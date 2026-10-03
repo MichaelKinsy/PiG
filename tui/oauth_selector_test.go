@@ -33,8 +33,9 @@ func TestOAuthSelector_Render(t *testing.T) {
 	if !strings.Contains(joined, "✓ env: OPENAI_API_KEY") {
 		t.Errorf("missing env indicator:\n%s", joined)
 	}
-	if !strings.Contains(joined, "• unconfigured") {
-		t.Errorf("missing unconfigured indicator:\n%s", joined)
+	// .upstream/v1.0.0/packages/coding-agent/src/modes/interactive/components/oauth-selector.ts:37
+	if !strings.Contains(joined, "• not configured") {
+		t.Errorf("missing not configured indicator:\n%s", joined)
 	}
 }
 
@@ -53,7 +54,8 @@ func TestOAuthSelector_StatusIndicators(t *testing.T) {
 		{"fallback key", OAuthProvider{ID: "openai", Name: "OpenAI", AuthType: "api_key", AuthStatusSource: "fallback"}, "✓ fallback"},
 		{"models.json key", OAuthProvider{ID: "openai", Name: "OpenAI", AuthType: "api_key", AuthStatusSource: "models_json_key"}, "✓ key in models.json"},
 		{"models.json command", OAuthProvider{ID: "openai", Name: "OpenAI", AuthType: "api_key", AuthStatusSource: "models_json_command"}, "✓ command in models.json"},
-		{"oauth unconfigured", OAuthProvider{ID: "anthropic", Name: "Anthropic", AuthType: "oauth"}, "• unconfigured"},
+		// .upstream/v1.0.0/packages/coding-agent/src/modes/interactive/components/oauth-selector.ts:37
+		{"oauth not configured", OAuthProvider{ID: "anthropic", Name: "Anthropic", AuthType: "oauth"}, "• not configured"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

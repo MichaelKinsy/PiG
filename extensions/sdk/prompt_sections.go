@@ -80,7 +80,7 @@ func (s *SystemPromptSections) UnmarshalJSON(raw []byte) error {
 	return nil
 }
 
-// preparePromptOptions gives a before_agent_start handler Pi's normalized options: an ordered section collection and a selectedTools list ([]any), which is empty when the loadout is empty. The handler may edit or replace either; the response returns both.
+// preparePromptOptions gives a before_agent_start handler Pi's normalized options: an ordered section collection and every other collection, empty when the host omitted it. The handler may edit or replace any field; the response returns them all.
 func preparePromptOptions(raw json.RawMessage, data map[string]any) (map[string]any, error) {
 	var event struct {
 		Options struct {
@@ -96,8 +96,17 @@ func preparePromptOptions(raw json.RawMessage, data map[string]any) (map[string]
 	}
 	sections := &event.Options.Sections
 	options["sections"] = sections
-	if _, ok := options["selectedTools"]; !ok {
-		options["selectedTools"] = []any{}
+	for name, empty := range map[string]func() any{
+		"selectedTools":    func() any { return []any{} },
+		"promptGuidelines": func() any { return []any{} },
+		"contextFiles":     func() any { return []any{} },
+		"skills":           func() any { return []any{} },
+		"toolSnippets":     func() any { return map[string]any{} },
+		"toolGuidelines":   func() any { return map[string]any{} },
+	} {
+		if _, ok := options[name]; !ok {
+			options[name] = empty()
+		}
 	}
 	return options, nil
 }

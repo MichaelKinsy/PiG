@@ -29,6 +29,7 @@ func conformanceFlagDeclarations() map[string]extension.ExtensionFlag {
 // restricts getFlag to the requesting extension's declarations. Every nonempty
 // override differs from its SDK fallback; the empty override must not default.
 func TestFlagValuesAcrossSDKs(t *testing.T) {
+	t.Parallel()
 	for _, tc := range allHarnessCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)

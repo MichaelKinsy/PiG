@@ -169,8 +169,23 @@ async function scene(m, tree, configDir) {
   return out;
 }
 
+// getOrCreateDeviceId creates and persists a random UUID (settings-manager.ts:1172-1179, deviceId at :156). Its value differs per tree, so each distinct UUID is numbered in order of appearance: the shape and every reuse of one persisted id stay comparable.
+function anonymizeDeviceIds(value, ids = new Map()) {
+  if (Array.isArray(value)) return value.forEach((entry) => anonymizeDeviceIds(entry, ids));
+  if (value === null || typeof value !== "object") return;
+  for (const [key, entry] of Object.entries(value)) {
+    if (key === "deviceId" || key === "getOrCreateDeviceId") {
+      assert.match(entry, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+      if (!ids.has(entry)) ids.set(entry, "<uuid " + (ids.size + 1) + ">");
+      value[key] = ids.get(entry);
+    } else anonymizeDeviceIds(entry, ids);
+  }
+}
+
 const want = await scene(pi, piTree, ".pi");
 const got = await scene(pig, pigTree, ".pig");
+anonymizeDeviceIds(want);
+anonymizeDeviceIds(got);
 assert.equal(got.global.theme, "light");
 assert.deepEqual(got.project.piVim, { modeColors: { normal: "blue" } });
 assert.equal(got.heldErrors[0]?.code, "ELOCKED");

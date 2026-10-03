@@ -505,6 +505,17 @@ func rpcSuccess(id rpcRequestID, command string, data any) RPCResponse {
 	return RPCResponse{ID: id, Type: "response", Command: command, Success: true, Data: data}
 }
 
+// rpcDispositionData is the `data` of a successful prompt, steer or follow_up response: what the session did with the input.
+//
+// upstream: .upstream/v0.99.1/packages/coding-agent/src/modes/rpc/rpc-types.ts:117-126
+type rpcDispositionData struct {
+	Disposition coding.PromptDisposition `json:"disposition"`
+}
+
+func rpcDispositionSuccess(id rpcRequestID, command string, disposition coding.PromptDisposition) RPCResponse {
+	return rpcSuccess(id, command, rpcDispositionData{Disposition: disposition})
+}
+
 func rpcSuccessNull(id rpcRequestID, command string) rpcNullResponse {
 	return rpcNullResponse{ID: id, Type: "response", Command: command, Success: true, Data: nil}
 }

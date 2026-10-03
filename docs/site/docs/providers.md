@@ -8,13 +8,13 @@ Most hosted providers accept an API key, and some also accept a browser or devic
 
 Raw Provider-object access from extensions has documented 0.3.x gaps (D78, owner decision 2026-09-28). Registered-native methods cross the SDK bridge, but Go, Rust and Python cannot yet retrieve every builtin/composed raw Provider object. Foreign registered-configuration data is a snapshot, not a live alias of the author's object; callable handles do not synchronize arbitrary property writes. Same-process Node roots, children, functions and receivers must retain Pi's behavior. This limit does not change normal model selection or approve incorrect authentication, refresh, cancellation or registration cleanup.
 
-PiG ships the same built-in provider set as Pi 0.87.1. The provider key is the first part of a `provider/model` spec. The wire column lists the APIs that the provider's built-in models use.
+PiG ships the same built-in chat providers and classifier models as Pi 1.0.0. `typesafe` has only classifier models, and `cloudflare-workers-ai`, `opencode`, `openrouter` and `vercel-ai-gateway` list them beside their chat models. The provider key is the first part of a `provider/model` spec. The wire column lists the APIs that the provider's built-in chat models use.
 
 | Provider key | Name | Wire | Credential |
 |---|---|---|---|
 | `amazon-bedrock` | Amazon Bedrock | `bedrock-converse-stream` | AWS credential chain or `AWS_BEARER_TOKEN_BEDROCK`. See [Amazon Bedrock](#amazon-bedrock). |
 | `ant-ling` | Ant Ling | `openai-completions` | `ANT_LING_API_KEY` |
-| `anthropic` | Anthropic | `anthropic-messages` | `ANTHROPIC_API_KEY`, `ANTHROPIC_OAUTH_TOKEN`, `ANTHROPIC_AUTH_TOKEN`, or OAuth |
+| `anthropic` | Anthropic | `anthropic-messages` | `ANTHROPIC_API_KEY`, `ANTHROPIC_OAUTH_TOKEN`, `ANTHROPIC_AUTH_TOKEN`, workload identity federation, or OAuth. See [Anthropic workload identity federation](#anthropic-workload-identity-federation). |
 | `azure-openai-responses` | Azure OpenAI Responses | `azure-openai-responses` | `AZURE_OPENAI_API_KEY` plus an endpoint. See [Azure OpenAI](#azure-openai). |
 | `baseten` | Baseten | `openai-completions` | `BASETEN_API_KEY` |
 | `cerebras` | Cerebras | `openai-completions` | `CEREBRAS_API_KEY` |
@@ -71,6 +71,14 @@ Each provider in the table above reads the variable in its credential column. Us
 
 `anthropic` reads three variables. `ANTHROPIC_AUTH_TOKEN` is sent as an `Authorization: Bearer` token and takes precedence over the other two. `ANTHROPIC_OAUTH_TOKEN` is used as an API key and takes precedence over `ANTHROPIC_API_KEY`. Subscription tokens (`sk-ant-oat`) are sent with the Claude Code identity, and subscription auth shows a warning at session start.
 
+### Anthropic workload identity federation
+
+When no key, stored credential, `ANTHROPIC_AUTH_TOKEN` or authorization header is available, `anthropic` can authenticate with workload identity federation. Set `ANTHROPIC_FEDERATION_RULE_ID`, `ANTHROPIC_ORGANIZATION_ID` and `ANTHROPIC_IDENTITY_TOKEN_FILE`. `ANTHROPIC_SERVICE_ACCOUNT_ID` and `ANTHROPIC_WORKSPACE_ID` are optional.
+
+PiG reads the identity token (a JWT) from the file on every exchange, so a rotated token is picked up. It exchanges the token for an access token with a `jwt-bearer` grant at `<base URL>/v1/oauth/token` and sends the access token as `Authorization: Bearer`. PiG keeps the access token and refreshes it before it expires. After a 401 the next request exchanges again. The token endpoint must use `https`; `http` is accepted only for `localhost`, `127.0.0.1` and `::1`. An identity token over 16 KiB is rejected before the request. An exchange failure is the request's error, and no message request is sent. Error bodies keep only the `error`, `error_description` and `error_uri` fields.
+
+Federation applies to the `anthropic` provider only. Other `anthropic-messages` providers still require a key or an authorization header.
+
 `github-copilot` reads only `COPILOT_GITHUB_TOKEN`. A general `GITHUB_TOKEN` is not a Copilot credential.
 
 `PI_CACHE_RETENTION` sets the prompt cache retention that PiG passes to the provider.
@@ -83,19 +91,19 @@ Google Gemini and Vertex requests encode the system instruction as user-role con
 
 Provider authentication can require several replies. Bedrock supports a bearer token, an AWS profile, or the existing AWS credential chain. Vertex supports an API key, Application Default Credentials, or a service-account file, with project and location prompts. Cloudflare requests an account ID and, for AI Gateway, a gateway ID after the key. Provider-scoped settings are stored in the credential's `env` object, not in the chat transcript.
 
-API keys are stored as entered. Leading and trailing spaces are preserved. An explicitly empty stored Cloudflare key does not fall back to `CLOUDFLARE_API_KEY`. An empty Vertex key does not select `GOOGLE_CLOUD_API_KEY`; Vertex still checks its cloud credentials. Use `/logout` to remove a stored credential and return to environment-only authentication. Provider searches include authentication method names. A credential for another authentication type is labelled `API key configured` or `subscription configured` in the provider list.
+API keys are stored as entered. Leading and trailing spaces are preserved. An explicitly empty stored Cloudflare key does not fall back to `CLOUDFLARE_API_KEY`. An empty Vertex key does not select `GOOGLE_CLOUD_API_KEY`; Vertex still checks its cloud credentials. Use `/logout` to remove a stored credential and return to environment-only authentication. Provider searches include authentication method names. A provider without credentials is labelled `not configured`. A credential for another authentication type is labelled `API key configured`, `subscription configured`, or `account configured` in the provider list. OAuth sign-ins backed by a subscription are labelled `subscription`; other OAuth sign-ins, such as Radius and OpenRouter, are labelled `account`.
 
 PiG stores credentials in `~/.pig/agent/auth.json`. Agent startup creates a missing file containing `{}` with owner-only permissions (mode `0600` on POSIX; an owner-only DACL on Windows, D68). Startup leaves existing contents and permissions unchanged. Stored credentials take precedence over environment fallback; a runtime API key can override them for the current process.
 
 `auth.json` can contain API keys and OAuth tokens. Keep it private and do not commit it.
 
-Interactive login prompts marked as secret use PiG's `maskSecretInput` setting (default `true`). **Mask secret input** in `/settings` shows dots, a character count and the last four characters while typing, then retains only the masked preview after submission. Inputs shorter than five characters show no suffix. Set `maskSecretInput` to `false` to restore Pi 0.87.1's plain-text behavior. This configurable feature is recorded as divergence D80. Ordinary text and manual-code prompts remain visible. Credentials still belong in `auth.json` or the provider's credential store; the setting protects dialog and authentication-diagnostic output, not credential storage.
+Interactive login prompts marked as secret use PiG's `maskSecretInput` setting (default `true`). **Mask secret input** in `/settings` shows dots, a character count and the last four characters while typing, then retains only the masked preview after submission. Inputs shorter than five characters show no suffix. Set `maskSecretInput` to `false` to restore Pi 1.0.0's plain-text behavior. This configurable feature is recorded as divergence D80. Ordinary text and manual-code prompts remain visible. Credentials still belong in `auth.json` or the provider's credential store; the setting protects dialog and authentication-diagnostic output, not credential storage.
 
 ### Interactive login and logout
 
 Run `/login <provider>` with a provider ID or display name to configure that provider. Argument completion shows each provider's supported methods. A provider with one method opens that flow directly. A provider with several methods opens its own method selector. An unmatched argument opens a searchable provider list.
 
-Run `/login` without an argument to choose an authentication method first. Press Escape in its provider list to return to the method selector. Keep answering the prompts inside the login dialog until it reports completion. Escape in a key or text prompt aborts the login and leaves existing credentials unchanged. Pi reports this cancellation as `Failed to save API key for <Name>: This operation was aborted`.
+Run `/login` without an argument to choose an authentication method first. The last option, **Sign in with Radius**, starts the Radius sign-in directly and shows its status. Press Escape in its provider list to return to the method selector. Press Escape at a sign-in method prompt, such as Anthropic's, Radius's, Amazon Bedrock's or Google Vertex AI's, or close a provider's setup note, to return to the menu the login was started from. Keep answering the prompts inside the login dialog until it reports completion. Escape in a key or text prompt aborts the login and leaves existing credentials unchanged. Pi reports this cancellation as `Failed to save API key for <Name>: This operation was aborted`.
 
 Run `/logout` to remove a stored API-key or OAuth credential. The list excludes environment-only credentials. A successful logout also removes the provider's `--api-key` override for the current run. If stored-credential deletion fails or is cancelled, the override remains available. Logout does not change environment variables or `models.json`. If no credentials are stored, PiG reports that there is nothing to remove instead of opening an empty picker.
 
@@ -141,6 +149,8 @@ On Windows, PiG passes browser login URLs directly to the Windows URL handler wi
 Device-code login shows the verification URL, user code, and waiting status without opening a browser. Open the displayed link yourself. Browser authorization URL events still open the default browser.
 
 Built-in OAuth targets are `anthropic`, `github-copilot`, `kimi-coding`, `meta`, `openai-codex`, `openrouter`, `radius`, and `xai`. Each provider owns its flow. For example, GitHub Copilot uses device authorization, while callback-based providers can open a localhost callback server. Tokens are persisted to `auth.json` unless the provider owns another store, and supported providers refresh them when required.
+
+Anthropic login asks for **Browser login (default)** or **Copy code login (headless)**. Browser login listens for the callback on the local machine and also accepts the pasted redirect URL. Copy code login works when the browser runs on another machine: sign in through the printed URL, then paste the code Anthropic shows (`code#state`). Escape in the login dialog reports `Failed to login to Anthropic: This operation was aborted`.
 
 Anthropic login cancels and waits for its contextual manual-code prompt when authorization succeeds or fails. `PI_OAUTH_CALLBACK_HOST` selects its callback listener host; the authorization request retains the localhost redirect URI.
 
@@ -265,7 +275,7 @@ To use a service-account key file, set `GOOGLE_APPLICATION_CREDENTIALS` with the
 
 ### Radius
 
-Radius is a gateway that speaks Pi's own message protocol, `pi-messages`: PiG posts the conversation to `<baseUrl>/messages` and reads the reply as a stream of Pi events. `/login` → **Sign in with an account** → **Radius** offers a browser sign-in (a callback on `127.0.0.1:1456`) or a device code for signing in from another machine. You can also paste a key with **Sign in with an API key** or set `RADIUS_API_KEY`.
+Radius is a gateway that speaks Pi's own message protocol, `pi-messages`: PiG posts the conversation to `<baseUrl>/messages` and reads the reply as a stream of Pi events. `/login` → **Sign in with Radius** (or **Sign in with an account** → **Radius**) offers a browser sign-in (a callback on `127.0.0.1:1456`) or a device code for signing in from another machine. You can also paste a key with **Sign in with an API key** or set `RADIUS_API_KEY`. After a Radius sign-in, `/login` offers to configure the Radius MCP server in the global `mcp.json` with `"auth": { "provider": "radius" }`; answering **Yes** writes the entry and runs `/reload`. Nothing is asked when a global server for the Radius MCP URL already uses the Radius login.
 
 PiG ships Radius's published model list. With credentials configured, PiG fetches the gateway's current list from `<gateway>/v1/config` in the background when interactive or RPC mode starts and after you sign in with `/login`, and caches it in `~/.pig/agent/models-store.json`. Print mode and `--list-models` use the cached list. `PI_OFFLINE` (any value) or `PIG_OFFLINE` (`1`, `true` or `yes`) turns the fetch off. Without Radius credentials, PiG contacts the gateway only while you sign in.
 

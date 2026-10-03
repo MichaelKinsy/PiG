@@ -8,6 +8,7 @@ import (
 )
 
 func TestImportCurrentDenominatorsAccountsEveryLedgerRow(t *testing.T) {
+	parallelHeavy(t)
 	root, err := filepath.Abs("../../..")
 	if err != nil {
 		t.Fatalf("repository root: %v", err)

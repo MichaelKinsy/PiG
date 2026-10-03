@@ -2,7 +2,6 @@ package codingagent
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -70,24 +69,6 @@ func (m *InteractiveMode) openExternalEditorBuffer(ctx context.Context, initial 
 	})
 }
 
-// setGenericToolArgs retains arguments only for extension tools that use the
-// generic call renderer. Built-ins and tools with a custom call renderer keep
-// their existing presentation contract.
-func (m *InteractiveMode) setGenericToolArgs(comp *tui.ToolExecutionComponent, name string, args json.RawMessage) {
-	if comp == nil || m.newRunner == nil {
-		return
-	}
-	definition, ok := m.newRunner.GetToolDefinition(name)
-	// An override of a built-in name draws the built-in renderers it does not
-	// define (upstream renderers/index.ts withBuiltInRenderers).
-	if !ok || definition.RenderCall != nil || tui.HasBuiltInToolRenderers(name) {
-		return
-	}
-	// pig divergence (D59): generic extension cards retain complete args so
-	// every collapsed omission is recoverable through the global details toggle.
-	comp.SetStructuredArgs(args)
-}
-
 // toggleAllTools flips the global tool expansion state for the whole
 // transcript. Mirrors upstream toggleToolOutputExpansion().
 func (m *InteractiveMode) toggleAllTools() {
@@ -119,14 +100,6 @@ func (m *InteractiveMode) setAllToolsExpanded(expanded bool) {
 		}
 	}
 	m.showStatus("Tool output: " + map[bool]string{true: "expanded", false: "collapsed"}[expanded])
-	if !expanded && m.tuiInst != nil {
-		// Collapsing can remove more rows than the viewport contains. Those
-		// expanded rows already live in native scrollback and differential
-		// repainting cannot erase them, so rebuild the transcript in its
-		// collapsed form. This clear is tied to the user's explicit action;
-		// automatic tool completion follows the ordinary Pi redraw path.
-		m.tuiInst.ForceFullRender()
-	}
 }
 
 // rebuildChatFromSession rebuilds the visible conversation from the active

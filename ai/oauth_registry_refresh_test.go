@@ -155,8 +155,9 @@ func TestResolveStoredAPIKeyFromStorageContextCancellationPreservesCredential(t 
 	if err == nil || ok || key != "" {
 		t.Fatalf("ResolveStoredAPIKeyFromStorageContext = %q, %t, %v; want cancellation", key, ok, err)
 	}
-	if contextCalls != 1 || legacyCalls != 0 {
-		t.Fatalf("refresh calls: contextual=%d legacy=%d, want 1 and 0", contextCalls, legacyCalls)
+	// Pi refreshes under credentials.modify, whose withLockAsync throws an abort before it takes the lock (auth-storage.ts:124), so an already cancelled caller never reaches the refresh.
+	if contextCalls != 0 || legacyCalls != 0 {
+		t.Fatalf("refresh calls: contextual=%d legacy=%d, want none", contextCalls, legacyCalls)
 	}
 	stored, found, err := store.GetRaw("stored-context-refresh")
 	if err != nil || !found || stored.Type != original.Type || stored.Refresh != original.Refresh || stored.Access != original.Access || stored.Expires != original.Expires {
@@ -183,8 +184,9 @@ func TestResolveOAuthAPIKeyFromStorageContextCancellationPreservesCredential(t *
 	if key, err := ResolveOAuthAPIKeyFromStorageContext(ctx, store, "context-refresh"); err == nil || key != "" {
 		t.Fatalf("ResolveOAuthAPIKeyFromStorageContext = %q, %v; want cancellation", key, err)
 	}
-	if contextCalls != 1 || legacyCalls != 0 {
-		t.Fatalf("refresh calls: contextual=%d legacy=%d, want 1 and 0", contextCalls, legacyCalls)
+	// Pi refreshes under credentials.modify, whose withLockAsync throws an abort before it takes the lock (auth-storage.ts:124), so an already cancelled caller never reaches the refresh.
+	if contextCalls != 0 || legacyCalls != 0 {
+		t.Fatalf("refresh calls: contextual=%d legacy=%d, want none", contextCalls, legacyCalls)
 	}
 	stored, ok, err := store.GetRaw("context-refresh")
 	if err != nil || !ok || stored.Type != original.Type || stored.Refresh != original.Refresh || stored.Access != original.Access || stored.Expires != original.Expires {

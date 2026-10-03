@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -16,12 +17,46 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// authSelectorProviderNames holds the provider names (ai/src/providers/*.ts
-// `name`) that upstream's auth selector shows where they differ from the OAuth
-// flow's own name (for example meta.ts: "Meta", not "Meta (Muse subscription)").
-var authSelectorProviderNames = map[string]string{
-	"meta":         "Meta",
-	"openai-codex": "OpenAI Codex",
+// catalogProviderName is the name of a catalog provider (providers/<id>.ts), or "" for a provider outside the catalog, whose name its registration or OAuth flow declares.
+func catalogProviderName(id string) string {
+	if slices.Contains(ai.GeneratedProviders, id) {
+		return ai.ProviderDisplayName(id)
+	}
+	return ""
+}
+
+// authSelectorProviderName is the name the login selector shows for an OAuth provider: upstream's provider.name
+// (interactive-mode.ts getLoginProviderOptions), which for a catalog provider is the catalog's name
+// (providers/<id>.ts) rather than the OAuth flow's own name ("Meta (Muse subscription)"). A provider outside the
+// catalog, such as an extension's OAuth provider, keeps the name its flow declares.
+func authSelectorProviderName(provider ai.OAuthProviderInterface) string {
+	if name := catalogProviderName(provider.ID()); name != "" {
+		return name
+	}
+	return provider.Name()
+}
+
+// composedLoginProvider returns the request runtime's composition of a provider, or nil when the runtime does not compose it. Upstream lists login options from the runtime's providers (interactive-mode.ts:5712-5745), so the composition is the authority for the auth methods and name of a provider it composes.
+func (m *InteractiveMode) composedLoginProvider(id string) *RuntimeProvider {
+	runtime := m.opts.RequestAuthRuntime
+	if runtime == nil {
+		return nil
+	}
+	providers := runtime.GetProviders()
+	if index := slices.IndexFunc(providers, func(composed *RuntimeProvider) bool { return composed.ID == id }); index >= 0 {
+		return providers[index]
+	}
+	return nil
+}
+
+// loginProviderSubscription reports whether a provider's OAuth sign-in is backed by a subscription: upstream's provider.auth.oauth?.isSubscription === true (interactive-mode.ts:5722, 5756).
+func (m *InteractiveMode) loginProviderSubscription(id string) *bool {
+	auth := m.providerAuth(id)
+	if composed := m.composedLoginProvider(id); composed != nil {
+		auth = composed.Auth
+	}
+	subscription := auth.OAuth != nil && auth.OAuth.IsSubscription
+	return &subscription
 }
 
 // oauthProviderList returns the auth providers available to /login and /logout.
@@ -32,9 +67,15 @@ func (m *InteractiveMode) oauthProviderList(mode string, includeStatus ...bool) 
 	}
 	var all []tui.OAuthProvider
 	for _, provider := range m.oauthProviders() {
-		name := provider.Name()
-		if providerName, ok := authSelectorProviderNames[provider.ID()]; ok {
-			name = providerName
+		name := authSelectorProviderName(provider)
+		// The runtime is the authority for a provider it composes: without an OAuth method there is no account login, and its composed name (a models.json `name` over the catalog name, provider-composer.ts:588) is the provider.name upstream lists.
+		if composed := m.composedLoginProvider(provider.ID()); composed != nil {
+			if composed.Auth.OAuth == nil {
+				continue
+			}
+			if composed.Name != "" {
+				name = composed.Name
+			}
 		}
 		all = append(all, tui.OAuthProvider{ID: provider.ID(), Name: name, AuthType: "oauth"})
 	}
@@ -45,6 +86,10 @@ func (m *InteractiveMode) oauthProviderList(mode string, includeStatus ...bool) 
 		// The API-key list includes providers that also expose OAuth.
 		all = nil
 		for _, p := range ai.APIKeyProviders() {
+			// A provider the runtime composes without an API-key method has no API-key login (interactive-mode.ts:5732).
+			if composed := m.composedLoginProvider(p.ID); composed != nil && composed.Auth.APIKey == nil {
+				continue
+			}
 			all = append(all, tui.OAuthProvider{ID: p.ID, Name: p.Name, AuthType: "api_key"})
 		}
 		all = m.withLlamaLoginProvider(all)
@@ -137,7 +182,7 @@ func (m *InteractiveMode) runOAuthLogin(loginCtx context.Context, provider strin
 		}
 		method, selected := m.selectOAuthLoginMethod(oauthProvider)
 		if !selected {
-			return nil
+			return errLoginCancelled
 		}
 		return m.runLoginRegisteredOAuth(loginCtx, oauthProvider, method)
 	}
@@ -201,7 +246,12 @@ func (m *InteractiveMode) selectOAuthLoginMethod(provider ai.OAuthProviderInterf
 	for _, option := range prompt.Options {
 		labels = append(labels, option.Label)
 	}
-	index, ok := m.runEditorSlotExtensionSelector(tui.NewExtensionSelector(prompt.Message, labels))
+	selector := tui.NewExtensionSelector(prompt.Message, labels)
+	// Pi introduces Radius in its sign-in method prompt (interactive-mode.ts:6194).
+	if provider.ID() == RadiusProviderID {
+		selector.SetDescription(radiusLoginIntro)
+	}
+	index, ok := m.runEditorSlotExtensionSelector(selector)
 	if !ok || index < 0 || index >= len(prompt.Options) {
 		return "", false
 	}
@@ -249,23 +299,18 @@ func (m *InteractiveMode) runLoginRegisteredOAuth(loginCtx context.Context, prov
 				return "", fmt.Errorf("%s is required", value.Message)
 			}
 			return input, nil
+		case <-ctx.Done():
+			return "", errLoginCancelled
 		case <-loginCtx.Done():
 			return "", loginCtx.Err()
 		}
 	}
-	manualCode := func(ctx context.Context) (string, error) {
-		ch := dlg.ShowManualInput("Paste redirect URL below, or complete login in browser:")
+	const manualCodeMessage = "Paste redirect URL below, or complete login in browser:"
+	manualCode := func(ctx context.Context, message string) (string, error) {
+		ch := dlg.ShowManualInput(message)
 		notify()
 		extension.CallInitiated(ctx)
-		select {
-		case input, ok := <-ch:
-			if !ok {
-				return "", fmt.Errorf("Login cancelled")
-			}
-			return input, nil
-		case <-loginCtx.Done():
-			return "", loginCtx.Err()
-		}
+		return awaitLoginDialogInput(ctx, loginCtx, ch)
 	}
 	selectMethod := func(ctx context.Context, value ai.OAuthSelectPrompt) (string, error) {
 		if selectedMethod != "" {
@@ -294,8 +339,12 @@ func (m *InteractiveMode) runLoginRegisteredOAuth(loginCtx context.Context, prov
 				_ = openBrowser(info.URL)
 			}
 		},
-		OnManualCodeInput:        func() (string, error) { return manualCode(context.Background()) },
-		OnManualCodeInputContext: manualCode,
+		OnManualCodeInput:        func() (string, error) { return manualCode(context.Background(), manualCodeMessage) },
+		OnManualCodeInputContext: func(ctx context.Context) (string, error) { return manualCode(ctx, manualCodeMessage) },
+		// Pi shows a flow's own manual_code message (interactive-mode.ts:6207-6208).
+		OnManualCodePromptContext: func(ctx context.Context, value ai.AuthManualCodePrompt) (string, error) {
+			return manualCode(ctx, value.Message)
+		},
 		OnProgress: func(msg string) {
 			dlg.ShowProgress(msg)
 			notify()
@@ -305,12 +354,14 @@ func (m *InteractiveMode) runLoginRegisteredOAuth(loginCtx context.Context, prov
 	}
 
 	authPath := auth.Path()
+	var failed atomic.Bool
 	go func() {
 		defer loginCancel()
 
 		cred, err := runOAuthProviderLogin(loginCtx, provider, cb)
 		if err != nil {
 			if loginCtx.Err() == nil {
+				failed.Store(true)
 				dlg.ShowProgress(fmt.Sprintf("Login failed: %v", err))
 				notify()
 			}
@@ -323,10 +374,11 @@ func (m *InteractiveMode) runLoginRegisteredOAuth(loginCtx context.Context, prov
 		} else {
 			var credential ai.Credential
 			if credential, err = ai.CredentialFromOAuth(cred); err == nil {
-				err = auth.Set(provider.ID(), credential)
+				err = saveLoginCredential(loginCtx, auth, provider.ID(), credential)
 			}
 		}
 		if err != nil {
+			failed.Store(true)
 			dlg.ShowProgress(fmt.Sprintf("Failed to store credentials: %v", err))
 			notify()
 			return
@@ -342,6 +394,39 @@ func (m *InteractiveMode) runLoginRegisteredOAuth(loginCtx context.Context, prov
 	ok := m.runEditorSlotLoginDialog(dlg, renderNotify)
 	if ok {
 		m.completeProviderAuthentication(provider.ID(), providerName, ai.CredentialOAuth, previousModel, authPath, dlg.Redact)
+		// Pi offers the Radius MCP server after a Radius sign-in (interactive-mode.ts:6276).
+		if provider.ID() == RadiusProviderID {
+			m.offerRadiusMcpServer(provider.ID(), providerName)
+		}
+		return nil
+	}
+	return loginDialogOutcome(dlg, &failed, providerName)
+}
+
+// awaitLoginDialogInput waits for a login dialog answer. A prompt whose own context ends, as a flow's manual code prompt
+// does when the browser callback completes the login first, rejects with "Login cancelled", as Pi's showAuthPrompt races
+// the answer against prompt.signal (interactive-mode.ts:6212-6222).
+func awaitLoginDialogInput(ctx, loginCtx context.Context, answer <-chan string) (string, error) {
+	select {
+	case input, ok := <-answer:
+		if !ok {
+			return "", errLoginCancelled
+		}
+		return input, nil
+	case <-ctx.Done():
+		return "", errLoginCancelled
+	case <-loginCtx.Done():
+		return "", loginCtx.Err()
+	}
+}
+
+// loginDialogOutcome reports a login dialog the user closed before the login failed. Pi's dialog cancel aborts the
+// login signal first, so the login fails with the abort error and Pi shows "Failed to login to <name>: This operation
+// was aborted" instead of reopening a menu (login-dialog.ts:83-90, interactive-mode.ts:6287-6288; probed against Pi
+// 1.0.0 with Escape at the Anthropic browser login).
+func loginDialogOutcome(dlg *tui.LoginDialog, failed *atomic.Bool, providerName string) error {
+	if dlg.Cancelled() && !failed.Load() {
+		return fmt.Errorf("Failed to login to %s: %w", providerName, errLoginAborted)
 	}
 	return nil
 }
@@ -360,7 +445,7 @@ func (m *InteractiveMode) runLoginOpenAICodex(loginCtx context.Context) error {
 	})
 	methodIdx, methodOK := m.runEditorSlotExtensionSelector(methodSel)
 	if !methodOK {
-		return nil
+		return errLoginCancelled
 	}
 	loginMethod := ai.OpenAICodexBrowserLoginMethod
 	if methodIdx == 1 {
@@ -400,15 +485,13 @@ func (m *InteractiveMode) runLoginOpenAICodex(loginCtx context.Context) error {
 		OnManualCodeInput: func() (string, error) {
 			ch := dlg.ShowManualInput("Paste redirect URL below, or complete login in browser:")
 			notify()
-			select {
-			case v, ok := <-ch:
-				if !ok {
-					return "", fmt.Errorf("Login cancelled")
-				}
-				return v, nil
-			case <-loginCtx.Done():
-				return "", loginCtx.Err()
-			}
+			return awaitLoginDialogInput(context.Background(), loginCtx, ch)
+		},
+		// Pi shows a flow's own manual_code message (interactive-mode.ts:6207-6208).
+		OnManualCodePromptContext: func(ctx context.Context, value ai.AuthManualCodePrompt) (string, error) {
+			ch := dlg.ShowManualInput(value.Message)
+			notify()
+			return awaitLoginDialogInput(ctx, loginCtx, ch)
 		},
 		OnProgress: func(msg string) {
 			dlg.ShowProgress(msg)
@@ -416,12 +499,14 @@ func (m *InteractiveMode) runLoginOpenAICodex(loginCtx context.Context) error {
 		},
 	}
 
+	var failed atomic.Bool
 	go func() {
 		defer loginCancel()
 
 		cred, err := ai.LoginOpenAICodex(loginCtx, cb)
 		if err != nil {
 			if loginCtx.Err() == nil {
+				failed.Store(true)
 				dlg.ShowProgress(fmt.Sprintf("Login failed: %v", err))
 				notify()
 			}
@@ -430,9 +515,10 @@ func (m *InteractiveMode) runLoginOpenAICodex(loginCtx context.Context) error {
 
 		codexCred, err := ai.CredentialFromOAuth(cred)
 		if err == nil {
-			err = auth.Set("openai-codex", codexCred)
+			err = saveLoginCredential(loginCtx, auth, "openai-codex", codexCred)
 		}
 		if err != nil {
+			failed.Store(true)
 			dlg.ShowProgress(fmt.Sprintf("Failed to store credentials: %v", err))
 			notify()
 			return
@@ -453,8 +539,9 @@ func (m *InteractiveMode) runLoginOpenAICodex(loginCtx context.Context) error {
 	// ok == !Cancelled() is true only when the goroutine reached dlg.Success().
 	if ok {
 		m.completeProviderAuthentication("openai-codex", buildAuthProviderName("openai-codex"), ai.CredentialOAuth, previousModel, auth.Path(), dlg.Redact)
+		return nil
 	}
-	return nil
+	return loginDialogOutcome(dlg, &failed, buildAuthProviderName("openai-codex"))
 }
 
 // runLoginGitHubCopilotDialog runs the GitHub Copilot login flow in the editor slot.
@@ -501,19 +588,22 @@ func (m *InteractiveMode) runLoginGitHubCopilotDialog(loginCtx context.Context) 
 		},
 	}
 
+	var failed atomic.Bool
 	go func() {
 		defer loginCancel()
 
 		cred, err := loginGitHubCopilotForParity(loginCtx, cb)
 		if err != nil {
 			if loginCtx.Err() == nil {
+				failed.Store(true)
 				dlg.ShowProgress(fmt.Sprintf("Login failed: %v", err))
 				notify()
 			}
 			return
 		}
 
-		if err := auth.Set("github-copilot", cred); err != nil {
+		if err := saveLoginCredential(loginCtx, auth, "github-copilot", cred); err != nil {
+			failed.Store(true)
 			dlg.ShowProgress(fmt.Sprintf("Failed to store credentials: %v", err))
 			notify()
 			return
@@ -528,8 +618,9 @@ func (m *InteractiveMode) runLoginGitHubCopilotDialog(loginCtx context.Context) 
 	ok := m.runEditorSlotLoginDialog(dlg, renderNotify)
 	if ok {
 		m.completeProviderAuthentication("github-copilot", buildAuthProviderName("github-copilot"), ai.CredentialOAuth, previousModel, auth.Path(), dlg.Redact)
+		return nil
 	}
-	return nil
+	return loginDialogOutcome(dlg, &failed, buildAuthProviderName("github-copilot"))
 }
 
 // runOAuthLogout removes stored OAuth credentials for a provider.
@@ -639,8 +730,22 @@ func (m *InteractiveMode) footerUsingSubscription(model *ai.Model) bool {
 func (m *InteractiveMode) newFooter() *StatusLine {
 	footer := NewStatusLine(m.opts.Model, "", nil)
 	footer.SetUsageTotalsSource(m.footerUsageTotals)
+	footer.SetRoutedModelSource(m.footerRoutedModel)
 	footer.SetSubscriptionResolver(m.footerUsingSubscription)
 	return footer
+}
+
+// routedModelHandle is implemented by a session handle whose session can route a virtual model selection.
+type routedModelHandle interface {
+	RoutedModelSelection() *RoutedModelSelection
+}
+
+// footerRoutedModel reads the physical model the current session's latest response was routed to (AgentSession.routedModel).
+func (m *InteractiveMode) footerRoutedModel() *RoutedModelSelection {
+	if handle, ok := m.opts.SessionHandle.(routedModelHandle); ok {
+		return handle.RoutedModelSelection()
+	}
+	return nil
 }
 
 // footerUsageTotals reads the current session's all-entry usage totals.
@@ -657,6 +762,10 @@ func showDeviceCode(dlg *tui.LoginDialog, verificationURI, userCode string) {
 	dlg.ShowDeviceCode(verificationURI, userCode)
 	dlg.ShowWaiting("Waiting for authentication...")
 }
+
+// OpenBrowser opens target in the platform browser. The launch is best-effort, as upstream's: callers still present the target to the user, so a launcher failure is not reported.
+// Ports packages/coding-agent/src/utils/open-browser.ts
+func OpenBrowser(target string) { _ = openBrowser(target) }
 
 // openBrowser opens a URL in the default browser without a shell.
 // Ports packages/coding-agent/src/utils/open-browser.ts
@@ -690,3 +799,9 @@ var openBrowser = func(url string) error {
 // and from agent_end; idempotent because FinalizeAborted no-ops once a tool is
 // terminal, and a genuine ToolExecutionEnd arriving later still overwrites the
 // frozen placeholder with the real result via SetResult.
+
+// saveLoginCredential stores the credential a login produced as Pi's Models.login does, through credentials.modify (pi-ai models.ts:593-610): the cancellable auth lock waits up to 30 seconds for another process's lock and ignores a failed release.
+func saveLoginCredential(ctx context.Context, auth *ai.AuthStorage, providerID string, credential ai.Credential) error {
+	_, err := auth.Modify(ctx, providerID, func(*ai.Credential) (*ai.Credential, error) { return &credential, nil })
+	return err
+}

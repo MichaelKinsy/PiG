@@ -9,7 +9,9 @@
 #
 # Upstream evidence (pi 0.87.1, tmux 100x35): the editor row reads
 #   "\x1b[7m \x1b[0m" then 39 plain cells before the overlay's left border;
-# PiG before the fix painted all 40 cells inverse.
+# PiG before the fix painted all 40 cells inverse. Re-probed with Pi 0.99.2 at
+# 52x35: the editor row (overlay row 18) reads "\x1b[0;7m \x1b[0m" then 15
+# plain cells before the overlay's left border.
 
 name = "30-overlay-over-editor-cursor"
 description = "An overlay covering the editor row leaves the editor cursor one inverse cell wide"
@@ -22,7 +24,12 @@ driver = "interactive-tmux"
 model = "test-faux/faux-1"
 
 [env]
-pig = ["PIG_TEST_FAUX=1"]
+# 256 colors in both binaries: PiG's header then takes Pi's two logo lines with
+# the PiG. text mark (D2), so the transcript behind the centered overlay has the
+# same rows in both binaries. In truecolor PiG's 7-line pig head makes the
+# header 2 rows taller and the overlay covers different rows.
+pig = ["PIG_TEST_FAUX=1", "COLORTERM="]
+pi = ["COLORTERM="]
 pig_args = ["--no-extensions"]
 pig_extensions = ["testdata/ext/overlay-editor-cursor.mjs"]
 pi_extensions = [
@@ -31,15 +38,16 @@ pi_extensions = [
 ]
 
 [tmux]
-width = 100
+width = 52
 height = 35
 ready_pattern_pig = "COVER-PROBE-READY"
 ready_pattern_pi = "COVER-PROBE-READY"
 ready_timeout_seconds = 30
-# The crop is the editor frame: the startup header above names each binary
-# and the overlay cuts the footer's masked cwd below.
-capture_start = "COVER 14"
-capture_end = "COVER 16"
+# The crop is the editor frame (overlay rows 17-19 at 52x35): the startup
+# header above names each binary, the resource listing names Pi's faux provider
+# extension, and the overlay cuts the footer's masked cwd below.
+capture_start = "COVER 17"
+capture_end = "COVER 19"
 
 [[tmux.steps]]
 # Wait for session_start rather than the early-mounted footer. The fixture clears
@@ -50,7 +58,7 @@ wait_timeout_seconds = 30
 
 [assert]
 both_reach_ready = true
-both_contain = ["COVER 15"]
+both_contain = ["COVER 18"]
 both_not_contain = ["panic:", "goroutine ", "unknown command"]
 escaped_output_equal = true
 runs = 3

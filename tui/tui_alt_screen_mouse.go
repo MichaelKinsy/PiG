@@ -459,19 +459,22 @@ func (t *TuiAltScreen) handleScrollToEndIndicatorMouseEvent(event sgrMouseEvent)
 	return true
 }
 
-func (t *TuiAltScreen) getWheelScrollLines(button int) int {
+// wheelDelta is the signed line count of one wheel event: the accelerator's count, multiplied for Alt.
+func (t *TuiAltScreen) wheelDelta(wheel wheelEvent) int {
+	lines := t.wheelScroll.Next(wheel.direction, wheelClock())
 	// SGR mouse button codes use bit 3 (value 8) for the Alt modifier.
-	if button&8 != 0 {
-		return t.wheelScrollLines * altWheelScrollMultiplier
+	if wheel.button&8 != 0 {
+		lines *= altWheelScrollMultiplier
 	}
-	return t.wheelScrollLines
+	return wheel.direction * lines
 }
 
 // handleWheel offers a wheel event to mouse-aware components, then scrolls.
 // It returns false to defer the raw report to a focused overlay. Mirrors the
 // wheel branch of upstream handleViewportInput.
 func (t *TuiAltScreen) handleWheel(wheel wheelEvent) bool {
-	event := t.createMouseEvent(MouseWheel, wheel.button, wheel.x, wheel.y, wheel.direction*t.getWheelScrollLines(wheel.button), 0)
+	delta := t.wheelDelta(wheel)
+	event := t.createMouseEvent(MouseWheel, wheel.button, wheel.x, wheel.y, delta, 0)
 	if result := t.dispatchMouseToScreen(event); result != nil {
 		if t.applyMouseDispatchResult(event, result) {
 			t.RequestRender()
@@ -481,19 +484,19 @@ func (t *TuiAltScreen) handleWheel(wheel wheelEvent) bool {
 	if t.shouldDeferViewportInputToOverlay() {
 		return false
 	}
-	t.routeWheel(wheel)
+	t.routeWheel(wheel, delta)
 	return true
 }
 
 // routeWheel scrolls the scroll views under the pointer, chaining leftover
 // delta outward and finally to the primary view. Mirrors upstream routeWheel.
-func (t *TuiAltScreen) routeWheel(wheel wheelEvent) {
+func (t *TuiAltScreen) routeWheel(wheel wheelEvent, delta int) {
 	t.mu.Lock()
 	layout := t.currentLayout
 	primary := t.getPrimaryScrollView()
 	t.mu.Unlock()
 
-	remaining := wheel.direction * t.getWheelScrollLines(wheel.button)
+	remaining := delta
 	seen := map[*ScrollView]bool{}
 	if layout != nil {
 		for _, sv := range GetScrollViewsAt(*layout, wheel.x, wheel.y) {

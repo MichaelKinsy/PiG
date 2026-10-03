@@ -1,0 +1,53 @@
+# Behavior family: rpc
+# Surface: a bash call that exits non-zero RETURNS an error result, so `isError` stays inside tool_execution_end.result in --mode rpc as in --mode json.
+#
+# Upstream evidence (Pi 0.99.1, dist/cli.js, probed 2026-09-30; test-faux twin, prompt "Run: bash failing exit", command `echo out; exit 3`):
+#   {"type":"tool_execution_end","toolCallId":...,"toolName":"bash","result":{"content":[{"type":"text","text":"out\n\n\nCommand exited with code 3"}],"structuredContent":{"output":"out\n","truncated":false,"exit_code":3,"wall_time_seconds":0},"isError":true},"isError":true}
+# bash.ts:403-409 returns {content, details, structuredContent, isError: true}; agent-loop.ts:912-919 emits the finalized result as `result` and the call's flag as `isError`.
+# The persisted toolResult message carries only the call's isError (agent-loop.ts:930). Records are compared byte for byte, so key order counts.
+name = "42-rpc-failing-bash-result-iserror"
+description = "RPC keeps bash's returned isError inside tool_execution_end.result, in Pi's key order"
+covers = ["packages/coding-agent/src/modes/rpc/rpc-mode.ts", "packages/agent/src/agent-loop.ts", "packages/coding-agent/src/core/tools/bash.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 20
+
+[[rpc.steps]]
+line = '{"id":"run","type":"prompt","message":"Run: bash failing exit"}'
+wait_contains = ['"type":"agent_settled"']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--offline", "--model", "test-faux/faux-1", "--system-prompt", "RPC wire probe.", "--no-context-files", "--no-skills", "--no-session"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--offline", "--model", "test-faux/faux-1", "--system-prompt", "RPC wire probe.", "--no-context-files", "--no-skills", "--no-session"]
+
+[assert]
+exit_code = 0
+output_equal = true
+stderr_equal = true
+runs = 3
+both_contain = [
+  '"role":"toolResult"',
+]
+both_match_regex = [
+  # bash.ts:392 rounds the measured wall clock to 0.1 s: the field's number shape is the contract, not its value.
+  '"structuredContent":\{"output":"out\\n","truncated":false,"exit_code":3,"wall_time_seconds":[0-9]+(\.[0-9])?\},"isError":true\},"isError":true\}',
+]
+
+# normalize-rationale: Only independent clocks and the isolated cwd identity vary; retain every other byte and property order.
+[[assert.normalize_replace]]
+pattern = 'parity-snap-cwd-[0-9]{10}'
+with = 'parity-snap-cwd-0000000000'
+reason = "Alias the isolated working-directory identity while preserving path suffixes and content."
+[[assert.normalize_replace]]
+pattern = '"timestamp":[0-9]+'
+with = '"timestamp":0'
+reason = "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+[[assert.normalize_replace]]
+pattern = '"wall_time_seconds":[0-9.]+'
+with = '"wall_time_seconds":0'
+reason = "bash rounds wall time to 0.1 s (bash.ts:392), so a slow runner can differ by one step; the key, its type and its position stay."

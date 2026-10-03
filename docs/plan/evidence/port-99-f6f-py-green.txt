@@ -1,0 +1,101 @@
+# green run: Python SDK, upstream 0.99.1 extension API additions and pi.events bridge
+# tree: 48cef2070 + working tree (release handling); go1.27.1, python 3.12.3, linux/amd64
+
+## cd extensions/sdk-py && PYTHONPATH=. uv run --no-project --with pytest pytest -q tests   (all suites: 5 existing files unchanged + the ported files of this lane)
+    111 PASSED
+
+## go test ./test/extension-conformance -run TestPythonSDK -count=1 -v
+--- PASS: TestPythonSDKMcpServerRegistration (1.37s)
+    --- PASS: TestPythonSDKMcpServerRegistration/strict (0.88s)
+    --- PASS: TestPythonSDKMcpServerRegistration/shared-ok (0.49s)
+--- PASS: TestPythonSDKVirtualModelRegistrationAndRouting (0.91s)
+    --- PASS: TestPythonSDKVirtualModelRegistrationAndRouting/strict (0.44s)
+    --- PASS: TestPythonSDKVirtualModelRegistrationAndRouting/shared-ok (0.47s)
+--- PASS: TestPythonSDKToolExposureFieldsAndPrepareLoadout (0.93s)
+    --- PASS: TestPythonSDKToolExposureFieldsAndPrepareLoadout/strict (0.47s)
+    --- PASS: TestPythonSDKToolExposureFieldsAndPrepareLoadout/shared-ok (0.46s)
+--- PASS: TestPythonSDKToolResultCarriesStructuredContentAndIsError (0.91s)
+    --- PASS: TestPythonSDKToolResultCarriesStructuredContentAndIsError/strict (0.45s)
+    --- PASS: TestPythonSDKToolResultCarriesStructuredContentAndIsError/shared-ok (0.46s)
+--- PASS: TestPythonSDKGetSettings (0.90s)
+    --- PASS: TestPythonSDKGetSettings/strict (0.44s)
+    --- PASS: TestPythonSDKGetSettings/shared-ok (0.46s)
+--- PASS: TestPythonSDKProviderConfigWithImageAndClassifierModels (0.90s)
+    --- PASS: TestPythonSDKProviderConfigWithImageAndClassifierModels/strict (0.44s)
+    --- PASS: TestPythonSDKProviderConfigWithImageAndClassifierModels/shared-ok (0.46s)
+--- PASS: TestPythonSDKExecuteToolAndCallableTools (1.32s)
+    --- PASS: TestPythonSDKExecuteToolAndCallableTools/strict (0.66s)
+    --- PASS: TestPythonSDKExecuteToolAndCallableTools/shared-ok (0.66s)
+--- PASS: TestPythonSDKToolEventsAndNewEvents (0.88s)
+    --- PASS: TestPythonSDKToolEventsAndNewEvents/strict (0.44s)
+    --- PASS: TestPythonSDKToolEventsAndNewEvents/shared-ok (0.44s)
+PASS
+ok  	github.com/MichaelKinsy/PiG/test/extension-conformance	8.156s
+
+## go test ./test/extension-conformance -run 'TestNativeEventBus.*/python' -count=1 (events lane's rows, python realm; 221 s including the 10,000-emit stress row)
+ok  	github.com/MichaelKinsy/PiG/test/extension-conformance	221.914s   (run after the events.release change)
+
+## Mutation checks, Python unit tests (a mutant is applied to a copy of extensions/sdk-py; the run is the lane's three test files)
+KILLED   register frame omits mcp_servers  <- test_mcp_servers_registered_by_the_factory_travel_in_the_register_frame
+KILLED   queued MCP replacement appends instead of replacing in place  <- test_mcp_servers_registered_by_the_factory_travel_in_the_register_frame
+KILLED   MCP reply does not replace the replicated list  <- test_live_mcp_registration_calls_the_host_and_replicates_the_list
+KILLED   register frame omits virtual_models  <- test_virtual_models_registered_by_the_factory_travel_in_the_register_frame
+KILLED   execute_tool drops the parent request  <- test_execute_tool_runs_the_named_tool_and_returns_the_outcome
+KILLED   nested updates are dropped  <- test_execute_tool_delivers_updates_in_order_before_the_outcome
+KILLED   signal subscribed before the call is sent  <- test_execute_tool_with_an_aborted_signal_cancels_after_the_call_starts
+KILLED   execute_tool does not request updates  <- test_execute_tool_delivers_updates_in_order_before_the_outcome
+KILLED   cancel is sent to a different id  <- test_execute_tool_signal_cancels_the_nested_call
+KILLED   get_exposure has no direct default  <- test_prepare_loadout_request_runs_the_hook_with_the_loadout
+KILLED   get_settings fabricates an empty object  <- test_get_settings_before_the_host_sent_any_raises
+KILLED   state settings not replicated  <- test_get_settings_reads_the_replicated_state
+KILLED   state callableTools not replicated  <- test_ctx_tools_lists_the_callable_tools_from_state_and_only_in_a_tool
+KILLED   every context is a tool context  <- test_ctx_tools_lists_the_callable_tools_from_state_and_only_in_a_tool
+KILLED   route request lacks the signal  <- test_virtual_model_route_request_runs_the_router_in_the_extension
+KILLED   prepares_loadout not declared  <- test_register_tool_declares_exposure_fields
+KILLED   default_active dropped when false  <- test_register_tool_declares_exposure_fields
+KILLED   live events.on omits the by-value flag  <- test_unsubscribe_sends_one_off_and_is_idempotent
+KILLED   factory events.on omits the by-value flag  <- test_factory_listener_is_registered_before_register
+KILLED   factory subscriptions are not sent before register  <- test_factory_listener_is_registered_before_register
+KILLED   unsubscribe drops the listener at once  <- test_a_listener_removed_during_a_dispatch_still_runs_for_that_dispatch
+KILLED   unsubscribe is not idempotent  <- test_unsubscribe_sends_one_off
+KILLED   release is ignored  <- test_a_released_listener_is_dropped_and_a_live_one_ignores_release
+KILLED   release drops a listener that is still subscribed  <- test_a_released_listener_is_dropped_and_a_live_one_ignores_release
+KILLED   dispatch ignores the channel  <- test_a_dispatch_for_another_channel_is_an_unknown_handler
+KILLED   emit does not raise on an unhandled error  <- test_emit_carries_payload_and_parent
+KILLED   emit sends no parent (extension-level call)  <- test_emit_carries_payload_and_parent
+27 killed, 0 survived of 27
+
+## Mutation checks, Host conformance rows (a mutant is applied to pig_sdk/__init__.py in place, one Go row runs, the file is restored)
+KILLED register frame omits mcp_servers <- TestPythonSDKMcpServerRegistration
+KILLED callerId is not the calling tool call <- TestPythonSDKExecuteToolAndCallableTools
+KILLED nested updates dropped <- TestPythonSDKExecuteToolAndCallableTools
+KILLED cancel never sent <- TestPythonSDKExecuteToolAndCallableTools
+KILLED settings not replicated <- TestPythonSDKGetSettings
+KILLED route state dropped <- TestPythonSDKVirtualModelRegistrationAndRouting
+KILLED namespace not declared <- TestPythonSDKToolExposureFieldsAndPrepareLoadout
+KILLED prepare_loadout answer dropped <- TestPythonSDKToolExposureFieldsAndPrepareLoadout
+KILLED callable tools not replicated <- TestPythonSDKExecuteToolAndCallableTools
+9 of 9
+
+## Load: `go test -race` binary, GOMAXPROCS=4, taskset -c 0-3, 8 CPU burners on the same cores, -test.count=24
+/tmp/f6fpy/load.sh TestPythonSDK 24  ->  192 top-level passes (8 rows x 24), 0 failures, exit=0, 1058 s
+
+## Load: Python unit tests, taskset -c 0-3, 8 burners, 24 runs of the whole extensions/sdk-py/tests
+runs=24 failed=0 seconds=292
+
+## Load: the events lane's stress row (100 subscribers, four realms, 10,000 emits), 4 burners pinned to 4 cores, GOMAXPROCS=4, race binary
+go      exit=1 seconds=607   (events_bridge_stress_test.go:52 "the stress run did not finish": the row's own 10-minute cap)
+python  exit=1 seconds=607   (same failure)
+Unloaded on the same host: go 83.5 s, python 108.5 s. The Go realm fails identically under this load, so the cap is not a property of the Python SDK. The row belongs to the events lane, which owns the Host it stresses: flagged in the READY report. Python's own cost is about 130 microseconds of SDK CPU per dispatch (cProfile of 5,000 serial dispatches: thread start 0.55 s, request handling 0.65 s of 2.55 s).
+
+## Other Go runs
+go build ./...                                   ok
+go vet ./...                                     ok
+GOOS=windows go vet ./test/extension-conformance ok
+gofmt -l test/extension-conformance extensions/sdk-py   (empty)
+go fix -diff ./test/extension-conformance        (empty)
+go tool golangci-lint run --allow-parallel-runners --build-tags=integration,live,parity ./test/extension-conformance/   0 issues
+go test -race -count=1 ./extensions/sdk-py/ ./coding/extension/pigsdk/ ./coding/extension/host/runtimecell/   ok ok ok
+go test ./test/extension-conformance -count=1 -skip TestNativeEventBus   only TestSelectedToolsPiContract fails: it imports Pi's npm package from extensions/sdk-ts/node_modules, which `make parity-deps` installs and this checkout does not have (ERR_MODULE_NOT_FOUND ... pi-coding-agent/dist/core/extensions/runner.js). Not touched by this lane.
+python3 automation/ci/check-public-claims.py     no contradicted claims
+uvx ruff check on the new code: event_bus.py clean; the repo's existing files carry the same rule families (baseline 55, now 69 after the events lane's merge and this lane: import order in test files, and `except Exception` sites written in the SDK's existing noqa/nosec pattern).

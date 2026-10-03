@@ -1,0 +1,88 @@
+# port-99-f6f-node red run: each test run alone against the tree before the Node runtime implements the 0.99.1 extension API (go1.27.1, node v24.19.0, isolated HOME/PIG_HOME)
+
+## test/extension-conformance
+### TestNodeMcpServerRegistration
+--- FAIL: TestNodeMcpServerRegistration (0.85s)
+        node_extension_api_test.go:202: load: [extension "nodeapi-mcp": reload "nodeapi-mcp": Failed to load extension: pi.registerMcpServer is not a function extension "nodeapi-sibling": reload "nodeapi-sibling": Failed to load extension: pi.registerMcpServer
+        node_extension_api_test.go:202: loaded 0 of 2 extensions
+FAIL
+### TestNodeMcpServerRegisteredByTheFactoryIsCheckedAtLoad
+--- FAIL: TestNodeMcpServerRegisteredByTheFactoryIsCheckedAtLoad (0.36s)
+    node_extension_api_test.go:278: loaded 0, failures [extension "nodeapi-bad": Failed to load extension: pi.registerMcpServer is not a function]
+FAIL
+### TestNodeVirtualModelRegistrationAndRouting
+--- FAIL: TestNodeVirtualModelRegistrationAndRouting (0.73s)
+        node_extension_api_test.go:310: load: [extension "nodeapi-vm": reload "nodeapi-vm": Failed to load extension: pi.registerVirtualModel is not a function]
+        node_extension_api_test.go:310: loaded 0 of 1 extensions
+FAIL
+### TestNodeVirtualModelRouteStateIsAbsentOrStored
+--- FAIL: TestNodeVirtualModelRouteStateIsAbsentOrStored (0.67s)
+        node_extension_api_test.go:375: load: [extension "nodeapi-states": reload "nodeapi-states": Failed to load extension: pi.registerVirtualModel is not a function]
+        node_extension_api_test.go:375: loaded 0 of 1 extensions
+FAIL
+### TestNodeToolExposureFieldsAndPrepareLoadout
+--- FAIL: TestNodeToolExposureFieldsAndPrepareLoadout (0.92s)
+        node_extension_api_test.go:460: outputSchema=null exposure=""
+        node_extension_api_test.go:460: outputSchema=null exposure=""
+FAIL
+### TestNodeToolResultCarriesStructuredContentAndIsError
+--- FAIL: TestNodeToolResultCarriesStructuredContentAndIsError (0.94s)
+        node_extension_api_test.go:511: result = structured null isError true text "model-visible text"
+        node_extension_api_test.go:511: result = structured null isError true text "model-visible text"
+FAIL
+### TestNodeGetSettings
+--- FAIL: TestNodeGetSettings (0.92s)
+        node_extension_api_test.go:545: nodeapi-tools /settings: pi.getSettings is not a function
+        node_extension_api_test.go:545: nodeapi-tools /settings: pi.getSettings is not a function
+FAIL
+### TestNodeGetAllToolsCarriesExposureNamespaceAndAnnotations
+PASS
+### TestNodeProviderConfigWithImageAndClassifierModels
+PASS
+### TestNodeExecuteToolAndCallableTools
+--- FAIL: TestNodeExecuteToolAndCallableTools (0.74s)
+        node_extension_api_test.go:656: nest = {Content:[] Details:<nil> StructuredContent:null IsError:false Usage:<nil> Terminate:false Preview:}, ctx.executeTool is not a function
+        node_extension_api_test.go:656: nest = {Content:[] Details:<nil> StructuredContent:null IsError:false Usage:<nil> Terminate:false Preview:}, ctx.executeTool is not a function
+FAIL
+### TestNodeToolEventsAndNewEvents
+PASS
+### TestNodeExecuteToolOwnSignalOutlivesTheCallingRequest
+--- FAIL: TestNodeExecuteToolOwnSignalOutlivesTheCallingRequest (40.82s)
+        node_extension_api_test.go:749: the nested call did not start
+        node_extension_api_test.go:749: the nested call did not start
+FAIL
+### TestNodeExecuteToolDefaultsToTheCallingToolSignal
+--- FAIL: TestNodeExecuteToolDefaultsToTheCallingToolSignal (40.83s)
+        node_extension_api_test.go:800: the nested call did not start
+        node_extension_api_test.go:800: the nested call did not start
+FAIL
+### TestNodeSessionToolOrchestrationSupportsToolsThatCallOtherToolsUnderAnyNameThroughTheExtensionAPI
+--- FAIL: TestNodeSessionToolOrchestrationSupportsToolsThatCallOtherToolsUnderAnyNameThroughTheExtensionAPI (0.52s)
+panic: not implemented [recovered, repanicked]
+### TestNodeSessionToolOrchestrationLeavesResultsWithoutNestedCallsUnchanged
+--- FAIL: TestNodeSessionToolOrchestrationLeavesResultsWithoutNestedCallsUnchanged (0.52s)
+panic: not implemented [recovered, repanicked]
+### TestNodeVirtualSuiteRoutesEachRequestIncludingRetriesWhileTheSelectionStaysVirtual
+--- FAIL: TestNodeVirtualSuiteRoutesEachRequestIncludingRetriesWhileTheSelectionStaysVirtual (0.39s)
+    node_session_twins_test.go:346: load: [extension "nodeapi-router": reload "nodeapi-router": Failed to load extension: pi.registerVirtualModel is not a function]
+FAIL
+### TestNodeVirtualSuiteRetriesTheFirstRequestOfATurnOnTheModelRoutedForThatTurn
+--- FAIL: TestNodeVirtualSuiteRetriesTheFirstRequestOfATurnOnTheModelRoutedForThatTurn (0.37s)
+    node_session_twins_test.go:380: load: [extension "nodeapi-router": reload "nodeapi-router": Failed to load extension: pi.registerVirtualModel is not a function]
+FAIL
+### TestNodeVirtualSuiteStoresRouterStateOnTheBranchAndPassesItToLaterRequests
+--- FAIL: TestNodeVirtualSuiteStoresRouterStateOnTheBranchAndPassesItToLaterRequests (0.36s)
+    node_session_twins_test.go:407: load: [extension "nodeapi-router": reload "nodeapi-router": Failed to load extension: pi.registerVirtualModel is not a function]
+FAIL
+### TestNodeJevRouterExample
+PASS
+
+## coding/extension/host/subprocess
+### TestJevRouterExampleRegistersTheVirtualModel
+--- FAIL: TestJevRouterExampleRegistersTheVirtualModel (0.54s)
+    upstream_jev_router_test.go:64: load jev-router: [extension "jev-router": Failed to load extension: pi.registerVirtualModel is not a function] (0 extensions)
+FAIL
+### TestJevRouterExampleRoutes
+--- FAIL: TestJevRouterExampleRoutes (0.56s)
+    upstream_jev_router_test.go:76: load jev-router: [extension "jev-router": Failed to load extension: pi.registerVirtualModel is not a function] (0 extensions)
+FAIL

@@ -1,0 +1,22 @@
+# port-99-f6a gate results (host load average 100+ from other lanes; env: temp HOME, node 24.19.0, python 3.14.5, cargo 1.97.1)
+
+go build ./...                         ok
+go vet ./...                           ok (whole tree)
+GOOS=windows go vet internal/codingagent coding   ok
+GOOS=windows go vet cmd/pig            fails in rpc_shutdown_retire_test.go: waitForRPCTermination undefined (fails on the base commit too, progress "open baseline items (c)")
+gofmt -l, go fix -diff                 empty
+golangci-lint (integration,live,parity) ./internal/codingagent ./coding ./cmd/pig    0 issues
+check-public-claims.py                 ok
+
+go test -race ./internal/codingagent/ ./coding/ ./cmd/pig/ (cmd/pig with -timeout 40m): the only failures also fail on the base commit
+  internal/codingagent: TestW3SessionPiComparison (compares with the published 0.87.1 error text; goes green when the comparator moves to 0.99.1)
+  coding: TestRPC33AzureTickOrder, TestRPC33GoogleObservationMatrix, TestRPC33ObservationMatrix, TestRPC33ObservationMatrixAzure (oracle-version guard, family 2)
+  cmd/pig: TestRPC{Bedrock,Mistral,PiMessages}* replays (regenerated oracles), TestEmbeddedPacked...ByLanguage/python, TestExtensionInitScaffoldsBuildAndRegister/python-*, TestRPCStdoutBackpressureLetsProviderFinishBufferedBody, TestJSONModeStdoutBackpressureMatchesPi
+  A first -race run of cmd/pig hit its 10 minute timeout and TestSharedSubprocessExecAcrossModes (1 s pi.exec deadline) under the load; the rerun with a 40 minute timeout passed that test.
+
+make -o parity-deps -o interface-deps parity-family FAMILY=<f>   (parity-deps refuses to run through the shared node_modules symlink; the pinned 0.87.1 Pi comparator is used)
+  settings         ok
+  print, json, tree, slash-commands, selectors   ok
+  startup          ok on rerun; the first run failed startup-credential-lifecycle.py (20 s queue timeout waiting for a second prompt) under load average 100+
+  session          only 12-unsaved-clone-fork fails: pig prints the 0.99.1 text "Send a message before cloning or forking it.", the 0.87.1 comparator still prints "Wait for the first assistant response ..." (expected until the pin moves)
+  rpc              only 33-rpc-real-provider-records and -anthropic fail (rawStopReason field presence: family 2/4 wire, not a session or settings behavior)

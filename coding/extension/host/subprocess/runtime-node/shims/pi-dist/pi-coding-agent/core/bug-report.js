@@ -49,7 +49,7 @@ export function redactJsonValue(value) {
     }));
 }
 function redactSettings(settings) {
-    const { trackingId: _trackingId, ...rest } = settings;
+    const { trackingId: _trackingId, deviceId: _deviceId, ...rest } = settings;
     return redactJsonValue(rest);
 }
 function collectEnvironment() {

@@ -4,10 +4,12 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
+	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
 // Run the real acceptance tests with an empty tool search path. A skipped test
@@ -24,7 +26,7 @@ func TestRequiredSDKToolsFailWhenMissing(t *testing.T) {
 		{"TestCleanExtensionExitIsReported", "node"},
 		{"TestNodeActionsThrowDuringFactory", "node"},
 		{"TestUnknownEventHandlerIsAnErrorInEverySDK/node", "node"},
-		{"TestUnknownEventHandlerIsAnErrorInEverySDK/python", "python3"},
+		{"TestUnknownEventHandlerIsAnErrorInEverySDK/python", toolchain.PythonExecutable(runtime.GOOS, exec.LookPath)},
 		{"TestUnknownEventHandlerIsAnErrorInEverySDK/rust", "cargo"},
 		{"TestSessionLogLargerThanAPageReachesExtensionWhole", "node"},
 		{"TestNodeRuntimeLoaderProvidesUpstreamHelloExampleExports", "node"},

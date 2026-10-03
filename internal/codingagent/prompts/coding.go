@@ -17,7 +17,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/MichaelKinsy/PiG/agent/harness"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -127,7 +126,7 @@ func BuildSystemPromptSections(o Options) ai.OrderedSections {
 		sections = append(sections, section{"project_context", strings.Join(parts, "\n\n")})
 	}
 	if readTool := skillReadTool(o.Tools); readTool != "" {
-		if skills := formatSkills(o.Skills, readTool); skills != "" {
+		if skills := strings.TrimSpace(formatSkills(o.Skills, readTool)); skills != "" {
 			sections = append(sections, section{"skills", skills})
 		}
 	}
@@ -154,7 +153,7 @@ func docsSection(root string) string {
 		"- Additional docs: " + root + "\n" +
 		"- Examples: https://github.com/MichaelKinsy/PiG/tree/main/examples (extensions, custom tools, SDK)\n" +
 		"- When reading pig docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n" +
-		"- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pig packages (docs/packages.md), environment variables (docs/environment-variables.md)\n" +
+		"- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pig packages (docs/packages.md), environment variables (docs/environment-variables.md), MCP servers (docs/mcp.md), codemode scripts and non-LLM models such as classifiers and image models (docs/codemode.md)\n" +
 		"- When working on pig topics, read the docs and examples, and follow .md cross-references before implementing\n" +
 		"- Always read pig .md files completely and follow links to related docs (e.g., tui.md for TUI API details)"
 }
@@ -223,16 +222,41 @@ func skillReadTool(tools []string) string {
 	return ""
 }
 
-// formatSkills uses the shared XML listing with coding-agent read-tool wording.
+var skillXMLEscaper = strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&quot;", "'", "&apos;")
+
+// formatSkills lists the model-visible skills as the Agent Skills XML, in order, with every field XML-escaped.
+//
+// upstream: packages/coding-agent/src/core/skills.ts formatSkillsForPrompt
 func formatSkills(skills []Skill, readTool string) string {
-	resources := make([]harness.Skill, 0, len(skills))
+	var visible []Skill
 	for _, skill := range skills {
-		resources = append(resources, harness.Skill{Name: skill.Name, Description: skill.Description, FilePath: skill.Path, DisableModelInvocation: skill.DisableModelInvocation})
+		if !skill.DisableModelInvocation {
+			visible = append(visible, skill)
+		}
 	}
-	listing := harness.FormatSkillsForSystemPrompt(resources)
+	if len(visible) == 0 {
+		return ""
+	}
 	load := "Use the read tool to load a skill's file when the task matches its description."
 	if readTool != "read" {
 		load = "Use bash to load a skill's file when the task matches its description."
 	}
-	return strings.Replace(listing, "Read the full skill file when the task matches its description.", load, 1)
+	lines := []string{
+		"\n\nThe following skills provide specialized instructions for specific tasks.",
+		load,
+		"When a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.",
+		"",
+		"<available_skills>",
+	}
+	for _, skill := range visible {
+		lines = append(lines,
+			"  <skill>",
+			"    <name>"+skillXMLEscaper.Replace(skill.Name)+"</name>",
+			"    <description>"+skillXMLEscaper.Replace(skill.Description)+"</description>",
+			"    <location>"+skillXMLEscaper.Replace(skill.Path)+"</location>",
+			"  </skill>",
+		)
+	}
+	lines = append(lines, "</available_skills>")
+	return strings.Join(lines, "\n")
 }

@@ -12,7 +12,7 @@ func markdownForeground(open, text string) string {
 	if open == "" {
 		return text
 	}
-	return open + text + SGRFgReset
+	return open + text + FgClose(open)
 }
 func markdownDecoration(open, close, text string) string {
 	if text == "" {
@@ -37,18 +37,7 @@ func defaultMarkdownTheme() MarkdownTheme {
 		Italic:          func(s string) string { return markdownDecoration("\x1b[3m", SGRItalicReset, s) },
 		Strikethrough:   func(s string) string { return markdownDecoration("\x1b[9m", SGRStrikeReset, s) },
 		Underline:       func(s string) string { return markdownDecoration("\x1b[4m", SGRUnderlineReset, s) },
-		HighlightCode: func(code, lang string) []string {
-			if lang != "" {
-				if highlighted := HighlightCode(code, lang); len(highlighted) == strings.Count(code, "\n")+1 {
-					return highlighted
-				}
-			}
-			lines := strings.Split(code, "\n")
-			for i, line := range lines {
-				lines[i] = markdownForeground(ActiveTheme().MDCodeBlock, line)
-			}
-			return lines
-		},
+		HighlightCode:   highlightMarkdownCode,
 	}
 }
 func (m *Markdown) markdownTheme() MarkdownTheme {

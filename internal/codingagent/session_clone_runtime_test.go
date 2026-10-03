@@ -27,14 +27,16 @@ func TestForkBeforeRootUserKeepsMemoryOnlyStorage(t *testing.T) {
 	}
 }
 
-// Pi session-manager.ts:createBranchedSession gates writes on the retained branch, not on whether the source once had an assistant.
-func TestClonePreservesPersistenceModeAndDefersAssistantFreeBranches(t *testing.T) {
+// Upstream 0.99.1 createBranchedSession gates writes on the retained branch holding a user or assistant message (session-manager.ts:1717-1725), not on whether the source once had one.
+func TestClonePreservesPersistenceModeAndDefersConversationFreeBranches(t *testing.T) {
 	for _, tc := range []struct {
-		name                     string
-		persisted, keepAssistant bool
+		name       string
+		persisted  bool
+		leafKind   string
+		wantOnDisk bool
 	}{
-		{"memory user", false, false}, {"memory assistant", false, true},
-		{"disk user", true, false}, {"disk assistant", true, true},
+		{"memory setup", false, "setup", false}, {"memory user", false, "user", false}, {"memory assistant", false, "assistant", false},
+		{"disk setup", true, "setup", false}, {"disk user", true, "user", true}, {"disk assistant", true, "assistant", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			cwd := t.TempDir()
@@ -47,6 +49,10 @@ func TestClonePreservesPersistenceModeAndDefersAssistantFreeBranches(t *testing.
 					t.Fatal(err)
 				}
 			}
+			if err := source.AppendThinkingLevelChange("off"); err != nil {
+				t.Fatal(err)
+			}
+			setup := *source.LeafID()
 			user, err := source.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "hello"}}}})
 			if err != nil {
 				t.Fatal(err)
@@ -55,10 +61,7 @@ func TestClonePreservesPersistenceModeAndDefersAssistantFreeBranches(t *testing.
 			if err != nil {
 				t.Fatal(err)
 			}
-			leaf := user
-			if tc.keepAssistant {
-				leaf = assistant
-			}
+			leaf := map[string]string{"setup": setup, "user": user, "assistant": assistant}[tc.leafKind]
 			cloned, err := storage.Clone(source, leaf)
 			if err != nil {
 				t.Fatal(err)
@@ -74,11 +77,11 @@ func TestClonePreservesPersistenceModeAndDefersAssistantFreeBranches(t *testing.
 			}
 			if tc.persisted {
 				_, statErr := os.Stat(cloned.Path())
-				if tc.keepAssistant && statErr != nil {
+				if tc.wantOnDisk && statErr != nil {
 					t.Fatal(statErr)
 				}
-				if !tc.keepAssistant && !os.IsNotExist(statErr) {
-					t.Fatalf("assistant-free clone was written: %v", statErr)
+				if !tc.wantOnDisk && !os.IsNotExist(statErr) {
+					t.Fatalf("clone without a user or assistant message was written: %v", statErr)
 				}
 			}
 		})

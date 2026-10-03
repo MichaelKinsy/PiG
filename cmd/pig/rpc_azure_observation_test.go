@@ -20,6 +20,8 @@ import (
 	"github.com/hexops/gotextdiff"
 	"github.com/hexops/gotextdiff/myers"
 	"github.com/hexops/gotextdiff/span"
+
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 var azureRPCRuns = flag.Int("rpc33-azure-runs", 200, "runs per Azure OpenAI Responses RPC observation case")
@@ -50,6 +52,7 @@ func TestRPCAzureOpenAIResponsesObservation(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds and runs the pig binary")
 	}
+	t.Parallel()
 	data, err := os.ReadFile(azureRPCOracle)
 	if err != nil {
 		t.Fatal(err)
@@ -238,7 +241,7 @@ func runAzureRPCOnce(t *testing.T, bin string, bodies map[string]string, shape, 
 			return nil
 		}
 		return canonicalRPCRecords(t, r.records[:min(keep, len(r.records))])
-	case <-time.After(30 * time.Second):
+	case <-time.After(testbudget.Wait(t)):
 		t.Errorf("timeout; stderr: %s", stderr.String())
 		return nil
 	}

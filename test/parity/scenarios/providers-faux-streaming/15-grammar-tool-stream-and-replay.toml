@@ -1,5 +1,6 @@
 # Pi 0.87.1 constrained-sampling.test.ts:201,271 preserves native custom IDs and starts arguments with initial input.
 # Probe full API streams, then replay their result through onPayload. Also replay a foreign fc-prefixed item to prove source identity controls normalization.
+# Pig consumes the stream in the producer's synchronous prefix (RunStreamContinuation owns the turn), as Pi's caller attaches before any provider I/O completes; an unowned goroutine attached late under CPU load and read the later partial. Pi's oracle observes at publication. runs = 20 keeps a load-dependent ordering visible.
 # The strict-schema case at line129 preserves JSON declaration order through decoding, transcript cloning and provider conversion.
 name = "15-grammar-tool-stream-and-replay"
 description = "Grammar tool arguments initialize and grow correctly, and replay IDs follow source provider/API/model identity."
@@ -21,5 +22,6 @@ timeout_seconds = 60
 [assert]
 exit_code = 0
 output_equal = true
-both_contain = ['"ctc_1"', '"fc_otg7yamm1iir"', '"starts":[{"payload":"a"}]']
-runs = 3
+# Pi 1.0.0 openai-responses-shared.ts:299-305 drops a replayed id that does not carry the item type's prefix, so the foreign custom_tool_call replays without an id (0.99.2 normalized it to fc_otg7yamm1iir).
+both_contain = ['"ctc_1"', '"foreignReplay":[{"call_id":"call_1","input":"abc","name":"sample_tool","type":"custom_tool_call"},', '"starts":[{"payload":"a"}]']
+runs = 20

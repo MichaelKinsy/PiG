@@ -444,3 +444,85 @@ func TestDecodeJSONFileRejectsUnknownAndTrailingData(t *testing.T) {
 		t.Fatalf("trailing-data error = %v", err)
 	}
 }
+
+func TestValidateInventoryTracksOptionalMcpAndCodemodePackages(t *testing.T) {
+	packageProblems := func(keys ...string) []string {
+		names := map[string]string{
+			"agent": "@earendil-works/pi-agent-core", "ai": "@earendil-works/pi-ai", "codemode": "@earendil-works/pi-codemode",
+			"coding-agent": "@earendil-works/pi-coding-agent", "mcp": "@earendil-works/pi-mcp", "tui": "@earendil-works/pi-tui",
+		}
+		upstream := testInventory()
+		for _, key := range keys {
+			upstream.Packages = append(upstream.Packages, inventoryPackage{Key: key, Name: names[key], Version: upstream.UpstreamVersion})
+		}
+		return slices.DeleteFunc(validateInventory(upstream), func(problem string) bool {
+			return !strings.Contains(problem, "inventory package") && !strings.Contains(problem, "tracked package")
+		})
+	}
+	core := []string{"agent", "ai", "coding-agent", "tui"}
+	if problems := packageProblems(core...); len(problems) != 0 {
+		t.Fatalf("the four core packages alone (a release before mcp and codemode) = %v", problems)
+	}
+	if problems := packageProblems(append(core, "codemode", "mcp")...); len(problems) != 0 {
+		t.Fatalf("core packages plus codemode and mcp = %v", problems)
+	}
+	if problems := packageProblems("agent", "ai", "tui", "mcp", "codemode"); len(problems) != 1 || !strings.Contains(problems[0], "missing tracked package coding-agent") {
+		t.Fatalf("a missing core package must still be reported, got %v", problems)
+	}
+	upstream := testInventory()
+	upstream.Packages = []inventoryPackage{{Key: "chord", Name: "@earendil-works/chord", Version: upstream.UpstreamVersion}}
+	if problems := validateInventory(upstream); !slices.ContainsFunc(problems, func(problem string) bool {
+		return strings.Contains(problem, `unexpected key/name "@earendil-works/chord"`)
+	}) {
+		t.Fatalf("an untracked package must be rejected, got %v", problems)
+	}
+}
+
+func TestPendingMappingLedgerCarriesOnlyScopeRowsWithAnUnchangedShape(t *testing.T) {
+	const oldHash = "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+	previous := filepath.Join(t.TempDir(), "mapping-old.json")
+	// An unchanged shape does not prove unchanged behavior, so behavior claims are reviewed again.
+	ported := `{"id":"pkg:ai/.#ported","disposition":"ported","upstreamShapeHash":"` + testShapeHash + `","pigTargets":["ai/kept.go#Kept"],"layers":{"shape":"complete"}}`
+	partial := `{"id":"pkg:ai/.#partial","disposition":"partial","upstreamShapeHash":"` + testShapeHash + `","pigTargets":["ai/partial.go#Partial"]}`
+	divergence := `{"id":"pkg:ai/.#divergence","disposition":"divergence","upstreamShapeHash":"` + testShapeHash + `","divergence":"D1","rationale":"r"}`
+	deferred := `{"id":"pkg:ai/.#deferred","disposition":"deferred","upstreamShapeHash":"` + testShapeHash + `","rationale":"outside 0.3.x"}`
+	designed := `{"id":"pkg:ai/.#designed","disposition":"designed-out","upstreamShapeHash":"` + testShapeHash + `","rationale":"Go typing"}`
+	changed := `{"id":"pkg:ai/.#changed","disposition":"deferred","upstreamShapeHash":"` + oldHash + `","rationale":"old shape"}`
+	removed := `{"id":"pkg:ai/.#removed","disposition":"deferred","upstreamShapeHash":"` + testShapeHash + `","rationale":"gone"}`
+	if err := os.WriteFile(previous, []byte(`{"upstreamVersion":"0.84.0","mappings":[`+strings.Join([]string{ported, partial, divergence, deferred, designed, changed, removed}, ",")+`]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	carried, err := readCarriedMappings(previous)
+	if err != nil {
+		t.Fatal(err)
+	}
+	upstream := testInventory()
+	upstream.UpstreamVersion = "0.99.2"
+	upstream.Interfaces = []inventoryEntry{
+		{ID: "pkg:ai/.#added", ShapeHash: testShapeHash},
+		{ID: "pkg:ai/.#changed", ShapeHash: testShapeHash},
+		{ID: "pkg:ai/.#deferred", ShapeHash: testShapeHash},
+		{ID: "pkg:ai/.#designed", ShapeHash: testShapeHash},
+		{ID: "pkg:ai/.#divergence", ShapeHash: testShapeHash},
+		{ID: "pkg:ai/.#partial", ShapeHash: testShapeHash},
+		{ID: "pkg:ai/.#ported", ShapeHash: testShapeHash},
+	}
+	ledger := pendingMappingLedger(upstream, carried)
+	if ledger.UpstreamVersion != "0.99.2" {
+		t.Fatalf("upstreamVersion = %q", ledger.UpstreamVersion)
+	}
+	pending := func(id string) string {
+		return `{"id":"` + id + `","disposition":"pending","upstreamShapeHash":"` + testShapeHash + `"}`
+	}
+	want := []string{
+		pending("pkg:ai/.#added"), pending("pkg:ai/.#changed"), deferred, designed,
+		pending("pkg:ai/.#divergence"), pending("pkg:ai/.#partial"), pending("pkg:ai/.#ported"),
+	}
+	got := make([]string, len(ledger.Mappings))
+	for i, row := range ledger.Mappings {
+		got[i] = string(row)
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("rows =\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+}

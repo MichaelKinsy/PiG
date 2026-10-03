@@ -70,6 +70,7 @@ func SelectStartupSession(
 	allLoader func(SessionListOptions) ([]SessionInfo, error),
 	opts StartupUIOptions,
 ) (path string, selected bool, err error) {
+	configureStartupTheme(opts.Settings, opts.ThemePaths)
 	selector := newStartupSessionSelector(currentLoader, allLoader, NewKeybindingsManager(opts.AgentDir))
 	completed, err := runStartupComponent(selector, opts, false)
 	if err != nil {
@@ -92,7 +93,7 @@ func newStartupSessionSelector(currentLoader, allLoader func(SessionListOptions)
 // ShowStartupSelector displays a small pre-runtime choice list. It returns
 // selected=false when the user cancels.
 func ShowStartupSelector(title string, options []string, opts StartupUIOptions) (index int, selected bool, err error) {
-	selector := tui.NewExtensionSelector(title, options)
+	selector := newStartupSelector(title, options, opts)
 	completed, err := runStartupComponent(selector, opts, true)
 	if err != nil {
 		return -1, false, err
@@ -107,7 +108,7 @@ func ShowStartupSelector(title string, options []string, opts StartupUIOptions) 
 // ShowStartupInput displays the extension text-input surface before runtime
 // services exist. It returns selected=false when the user cancels.
 func ShowStartupInput(title, placeholder string, opts StartupUIOptions) (value string, selected bool, err error) {
-	input := tui.NewExtensionInputComponent(title, placeholder)
+	input := newStartupInput(title, placeholder, opts)
 	completed, err := runStartupComponent(input, opts, true)
 	if err != nil {
 		return "", false, err
@@ -118,6 +119,21 @@ func ShowStartupInput(title, placeholder string, opts StartupUIOptions) (value s
 	return input.Text(), true, nil
 }
 
+// newStartupSelector builds the selector after the startup theme is configured. Pi's showStartupSelector awaits
+// createStartupTui, which registers the themes and marks the terminal colors pending, before it constructs the
+// component (cli/startup-ui.ts:84-92,185-189), and ExtensionSelectorComponent themes its title and rows when it
+// is constructed (extension-selector.ts:48-84), so they are drawn under the grayscale system theme.
+func newStartupSelector(title string, options []string, opts StartupUIOptions) *tui.ExtensionSelectorComponent {
+	configureStartupTheme(opts.Settings, opts.ThemePaths)
+	return tui.NewExtensionSelector(title, options)
+}
+
+// newStartupInput builds the input after the startup theme is configured, as showStartupInput does (cli/startup-ui.ts:238-262).
+func newStartupInput(title, placeholder string, opts StartupUIOptions) *tui.ExtensionInputComponent {
+	configureStartupTheme(opts.Settings, opts.ThemePaths)
+	return tui.NewExtensionInputComponent(title, placeholder)
+}
+
 // startupTerminal is the terminal surface a startup prompt drives.
 type startupTerminal interface {
 	StartWithReadError(onInput func([]byte), onResize func(), onReadError func(error)) error
@@ -125,19 +141,18 @@ type startupTerminal interface {
 	Write(data string)
 }
 
+// runStartupComponent runs a component built after configureStartupTheme.
 func runStartupComponent(component startupComponent, opts StartupUIOptions, clear bool) (bool, error) {
-	configureStartupTheme(opts.Settings, opts.ThemePaths)
 	ui := tui.New()
 	ui.SetLogDirectory(opts.AgentDir)
-	return runStartupComponentWith(component, opts, clear, ui, tui.NewProcessTerminal(os.Stdin, os.Stdout), nil)
+	return runStartupComponentWith(component, opts, clear, ui, tui.NewProcessTerminal(os.Stdin, os.Stdout))
 }
 
 // runStartupComponentWith runs a startup prompt on ui and terminal. Mirrors
 // upstream startStartupTui: the prompt renders at once while the terminal's
-// color scheme and background are queried; replies retheme the prompt and
-// are never delivered as input. env overrides the environment consulted
-// when the terminal does not answer.
-func runStartupComponentWith(component startupComponent, opts StartupUIOptions, clear bool, ui *tui.TUI, terminal startupTerminal, env map[string]string) (bool, error) {
+// colors are queried; replies, including those after the timeout, retheme the
+// prompt and are never delivered as input.
+func runStartupComponentWith(component startupComponent, opts StartupUIOptions, clear bool, ui *tui.TUI, terminal startupTerminal) (bool, error) {
 	asyncSelector, _ := component.(*sessionSelector)
 	var updates <-chan func()
 	var ready <-chan struct{}
@@ -174,30 +189,43 @@ func runStartupComponentWith(component startupComponent, opts StartupUIOptions, 
 	defer ui.Stop()
 	ui.Render()
 
-	var themeTimeout <-chan time.Time
-	detection := newStartupThemeDetection(opts.Settings.themeSetting(), env, ui)
-	if detection != nil {
-		detection.start(func(sequence string) error { terminal.Write(sequence); return nil })
-		timer := time.NewTimer(startupThemeQueryTimeout)
-		defer timer.Stop()
-		themeTimeout = timer.C
-	}
-	applyTheme := func() {
-		tui.SetThemeByName(detection.themeName())
+	// The terminal's colors regenerate the system theme and resolve "" tokens; re-rendering rebuilds the prompt with them.
+	themeSetting := opts.Settings.themeSetting()
+	themed, _ := component.(interface{ startupTheme() string })
+	applyColors := func(colors tui.TerminalColors) {
+		tui.SetTerminalColors(colors)
+		name, ok := tui.ResolveThemeSettingPresence(themeSetting, tui.GetTerminalTheme())
+		if !ok {
+			name = tui.SystemThemeName
+		}
+		if themed != nil {
+			name = themed.startupTheme()
+		}
+		tui.SetThemeByName(name)
+		ui.Invalidate()
 		ui.Render()
 	}
+	colorResults := ui.QueryTerminalColors(tui.TerminalColorQueryOptions{TimeoutMs: float64(terminalColorQueryTimeout / time.Millisecond), OnLateReply: applyColors})
 
+	// settleColors applies a completed query. A completed query is applied before the next input chunk is dispatched, as upstream's promise continuation runs before the next terminal input event.
+	settleColors := func(result tui.TerminalColorsResult) {
+		colorResults = nil
+		// A failed query applies no colors, like a terminal that does not report them.
+		if result.Err != nil {
+			result.Colors = tui.TerminalColors{}
+		}
+		applyColors(result.Colors)
+	}
 	dispatch := func(chunks []string) {
+		select {
+		case result := <-colorResults:
+			settleColors(result)
+		default:
+		}
 		input := chunks[:0:0]
 		for _, chunk := range chunks {
-			if detection != nil {
-				consumed, settled := detection.consume(chunk)
-				if settled {
-					applyTheme()
-				}
-				if consumed {
-					continue
-				}
+			if ui.ConsumeTerminalColorResponse(chunk) {
+				continue
 			}
 			if chunk != "" {
 				input = append(input, chunk)
@@ -260,11 +288,8 @@ func runStartupComponentWith(component startupComponent, opts StartupUIOptions, 
 			ui.Render()
 		case data := <-inputCh:
 			dispatch([]string{string(data)})
-		case <-themeTimeout:
-			themeTimeout = nil
-			if detection.timeout() {
-				applyTheme()
-			}
+		case result := <-colorResults:
+			settleColors(result)
 		case <-resizeCh:
 			ui.Render()
 		case err := <-inputErrCh:
@@ -290,7 +315,11 @@ func runStartupComponentWith(component startupComponent, opts StartupUIOptions, 
 	return true, nil
 }
 
+// configureStartupTheme mirrors createStartupTui (cli/startup-ui.ts:84-92): it applies the terminal capability
+// overrides before it creates the theme, so the theme, and every prompt row built under it, uses the overridden
+// color mode.
 func configureStartupTheme(settings Settings, paths []string) {
+	tui.SetCapabilityOverrides(settings.GetTerminalCapabilityOverrides())
 	registry := tui.NewThemeRegistry()
 	// paths are in upstream precedence order, the first theme of a name
 	// winning; the registry keeps the last one added.
@@ -309,119 +338,7 @@ func configureStartupTheme(settings Settings, paths []string) {
 		}
 	}
 	tui.SetThemeRegistry(registry)
+	// The system theme starts in grayscale until the terminal reports its colors.
+	tui.MarkTerminalColorsPending()
 	tui.SetThemeSettingPresence(settings.themeSetting())
-}
-
-// Startup theme detection. Mirrors applyDetectedStartupTheme in upstream
-// packages/coding-agent/src/cli/startup-ui.ts, detectTerminalThemeForAuto in
-// modes/interactive/theme/theme.ts, and the queryTerminalColorScheme /
-// queryTerminalBackgroundColor reply handling of packages/tui/src/tui.ts and
-// terminal-colors.ts.
-
-const (
-	startupThemeQueryTimeout = 100 * time.Millisecond
-	// terminalColorSchemeQuery is DSR `CSI ? 996 n`; terminals reply
-	// `CSI ? 997 ; 1 n` (dark) or `CSI ? 997 ; 2 n` (light).
-	terminalColorSchemeQuery = "\x1b[?996n"
-)
-
-// startupThemeDetection tracks initial appearance queries for startup prompts and the interactive mode. Background-only detection settles on OSC 11; automatic detection prefers the color-scheme reply and falls back to OSC 11 or the environment at the deadline.
-type startupThemeDetection struct {
-	themeSetting *string
-	env          map[string]string
-
-	renderer           tui.Renderer
-	backgroundQuery    <-chan tui.TerminalBackgroundColorResult
-	backgroundAnswered bool
-	background         *tui.RgbColor
-	scheme             tui.TerminalTheme
-	settled            bool
-	schemeUnavailable  bool
-	backgroundOnly     bool
-}
-
-// newStartupThemeDetection returns nil when the theme setting names a nonempty
-// fixed theme, which startup prompts apply without querying the terminal. An
-// unset or empty setting still queries; the empty name then resolves to itself.
-func newStartupThemeDetection(themeSetting *string, env map[string]string, renderer tui.Renderer) *startupThemeDetection {
-	if themeSetting != nil && *themeSetting != "" {
-		if _, _, auto := tui.ParseAutoThemeSetting(*themeSetting); !auto {
-			return nil
-		}
-	}
-	return &startupThemeDetection{themeSetting: themeSetting, env: env, renderer: renderer}
-}
-
-// start issues OSC 11 through the renderer's shared FIFO after the optional color-scheme query.
-func (d *startupThemeDetection) start(writeScheme func(string) error) {
-	if !d.backgroundOnly {
-		d.schemeUnavailable = writeScheme(terminalColorSchemeQuery) != nil
-	}
-	d.backgroundQuery = d.renderer.QueryTerminalBackgroundColor(tui.TerminalColorQueryOptions{TimeoutMs: float64(startupThemeQueryTimeout / time.Millisecond)})
-}
-
-// consume reports whether chunk is a terminal color reply, which is never
-// delivered as input, and whether it settled detection.
-func (d *startupThemeDetection) consume(chunk string) (consumed, settled bool) {
-	if d.renderer.ConsumeOsc11BackgroundResponse(chunk) {
-		return true, d.readBackground()
-	}
-	if scheme := tui.ParseTerminalColorSchemeReport(chunk); scheme != "" {
-		if d.settled || d.backgroundOnly || d.schemeUnavailable {
-			return true, false
-		}
-		d.scheme = scheme
-		d.settled = true
-		return true, true
-	}
-	return false, false
-}
-
-// readBackground observes completion without blocking the input owner. Timed-out reply slots remain renderer-owned after this detection finishes.
-func (d *startupThemeDetection) readBackground() bool {
-	select {
-	case result := <-d.backgroundQuery:
-		d.backgroundQuery = nil
-		d.backgroundAnswered = true
-		if d.settled {
-			return false
-		}
-		if result.Err == nil {
-			d.background = result.Color
-		}
-		if d.backgroundOnly || d.schemeUnavailable {
-			d.settled = true
-			return true
-		}
-	default:
-	}
-	return false
-}
-
-// timeout settles detection with whatever arrived before the deadline.
-func (d *startupThemeDetection) timeout() bool {
-	wasSettled := d.settled
-	d.readBackground()
-	d.settled = true
-	return !wasSettled
-}
-
-// terminalTheme mirrors detectTerminalThemeForAuto's result.
-func (d *startupThemeDetection) terminalTheme() tui.TerminalTheme {
-	if d.scheme != "" {
-		return d.scheme
-	}
-	if d.background != nil {
-		return tui.GetThemeForRgbColor(*d.background)
-	}
-	return tui.DetectTerminalBackground(tui.TerminalThemeDetectionOptions{Env: d.env}).Theme
-}
-
-// themeName resolves the setting against the detected appearance.
-func (d *startupThemeDetection) themeName() string {
-	terminalTheme := d.terminalTheme()
-	if name, ok := tui.ResolveThemeSettingPresence(d.themeSetting, terminalTheme); ok {
-		return name
-	}
-	return string(terminalTheme)
 }

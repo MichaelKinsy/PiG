@@ -75,6 +75,8 @@ func RunCommand(args []string, stdout, stderr io.Writer) int {
 		return cmdPull(rest, stdout, stderr)
 	case "remove":
 		return cmdRemove(rest, stdout, stderr)
+	case "prune":
+		return cmdPrune(rest, stdout, stderr)
 	case "keygen":
 		return cmdKeygen(rest, stdout, stderr)
 	case "trust":
@@ -102,6 +104,9 @@ func printHelp(w io.Writer) {
   pig piglet publish <name|path> --to github --repo <owner/repo> --sign-key <key> [--yes]
                                       Dry-run or publish signed Binaries to GitHub Releases
   pig piglet remove <name> [facet] Remove --source, --binary, or --all
+  pig piglet prune [--keep <n>] [--max-size <size>] [--dry-run]
+                                      Remove old built Piglet Binaries, keeping the newest n
+                                      of each Piglet and target (default 2); pulled installs stay
   pig piglet build <name> --format <script|binary|image> --out <destination> [--sign-key <key>]
                                       Write a source script or build an artifact
   pig piglet keygen <key-path>     Create an ed25519 Piglet Binary signing key pair
@@ -1050,6 +1055,9 @@ func planPigletAdd(source resolvedPigletAddSource, pigletsDir string) (pigletAdd
 	if err := validatePigletAddOrigins(p); err != nil {
 		return pigletAddCandidate{}, err
 	}
+	if err := validatePigletAddPackageSources(p); err != nil {
+		return pigletAddCandidate{}, err
+	}
 	resolvedExtensions, extensionErrors := ResolveExtensions(p)
 	resolvedSkills, skillErrors := ResolveSkills(p)
 	if len(extensionErrors) > 0 || len(skillErrors) > 0 {
@@ -1112,6 +1120,9 @@ func validatePigletAddOrigins(p *Piglet) error {
 			failures = append(failures, fmt.Sprintf("  FAIL: %s %s (%s)", kind, name, origin))
 		}
 	}
+	for _, alias := range slices.Sorted(maps.Keys(p.Packages)) {
+		check("package", alias, []string{p.Packages[alias]})
+	}
 	for _, ext := range p.Extensions {
 		check("extension", ext.Name, ext.Origins)
 	}
@@ -1122,6 +1133,22 @@ func validatePigletAddOrigins(p *Piglet) error {
 		return nil
 	}
 	return fmt.Errorf("Piglet add cannot copy relative local origins:\n%s\nRun the Piglet from its source path or use a portable origin", strings.Join(failures, "\n"))
+}
+
+// validatePigletAddPackageSources applies the loader's Piglet-anchored path rule to local Package sources. Parse
+// validates local Resource origins with that rule but only parses Package sources, so without this check add would
+// register a Piglet whose absolute local Package the loader rejects.
+func validatePigletAddPackageSources(p *Piglet) error {
+	for _, alias := range slices.Sorted(maps.Keys(p.Packages)) {
+		ref, err := validateTypedSource(p.Packages[alias], sourceref.BareReject)
+		if err != nil || ref.Kind != sourceref.KindLocal {
+			continue
+		}
+		if _, err := portablePathIdentity(ref.Locator); err != nil {
+			return fmt.Errorf("packages[%q]: %w", alias, err)
+		}
+	}
+	return nil
 }
 
 func readPigletRelativeFile(pigletPath, raw string) (string, []byte, error) {
@@ -1473,7 +1500,17 @@ func BuildExtensionWithPiglet(initial *Piglet) extension.Extension {
 	return buildExtension(initial)
 }
 
+// BuildExtensionWithPigletTools is BuildExtensionWithPiglet with the owner of extension-registered tools: owner names
+// the Piglet extension entry whose `tools` allowlist scopes a tool, or "" when no loaded extension registered it.
+func BuildExtensionWithPigletTools(initial *Piglet, owner func(extension.ToolInfo) string) extension.Extension {
+	return buildExtensionWithOwner(initial, owner)
+}
+
 func buildExtension(initial *Piglet) extension.Extension {
+	return buildExtensionWithOwner(initial, nil)
+}
+
+func buildExtensionWithOwner(initial *Piglet, owner func(extension.ToolInfo) string) extension.Extension {
 	activePiglet := initial
 	var resolvedSystemPrompt string // cached after first resolution
 
@@ -1513,7 +1550,7 @@ func buildExtension(initial *Piglet) extension.Extension {
 			os.Exit(1)
 		}
 		activePiglet = resolution.Piglet
-		_, _ = fmt.Fprintf(os.Stderr, "[piglet] Loaded %q from %s\n", activePiglet.Name, resolved)
+		tracef("[piglet] Loaded %q from %s\n", activePiglet.Name, resolved)
 
 		// Resolve system prompt if declared.
 		if activePiglet.SystemPrompt != nil {
@@ -1533,7 +1570,7 @@ func buildExtension(initial *Piglet) extension.Extension {
 				}
 			}
 			if resolvedSystemPrompt != "" {
-				_, _ = fmt.Fprintf(os.Stderr, "[piglet] System prompt: %d bytes\n", len(resolvedSystemPrompt))
+				tracef("[piglet] System prompt: %d bytes\n", len(resolvedSystemPrompt))
 			}
 		}
 	}
@@ -1552,6 +1589,21 @@ func buildExtension(initial *Piglet) extension.Extension {
 					source = name
 				}
 			}
+			// The session reports an extension tool's provenance object (path, source, scope, origin), which names no
+			// Piglet entry; the owner resolves the entry that registered the tool.
+			if source == "" && owner != nil {
+				source = owner(t)
+			}
+			// Real extension tools carry codingagent.PiSourceInfo (value or pointer). When no owner names the entry, such a
+			// tool is still an extension's: never govern it by root `tools` as a built-in.
+			if source == "" {
+				if info, ok := piSourceInfo(t.SourceInfo); ok && info.Source != "builtin" && (info.Source != "" || info.Path != "") {
+					source = info.Source
+					if source == "" {
+						source = info.Path
+					}
+				}
+			}
 			if source == "" {
 				source = "builtin"
 			}
@@ -1567,7 +1619,7 @@ func buildExtension(initial *Piglet) extension.Extension {
 
 		allTools := ctx.GetAllTools()
 		if len(allTools) == 0 {
-			_, _ = fmt.Fprintln(os.Stderr, "[piglet] No tools registered yet: skipping scoping")
+			tracef("[piglet] No tools registered yet: skipping scoping\n")
 			return
 		}
 
@@ -1597,10 +1649,10 @@ func buildExtension(initial *Piglet) extension.Extension {
 
 		removed := len(allTools) - len(active)
 		if removed > 0 {
-			_, _ = fmt.Fprintf(os.Stderr, "[piglet] Applied scoping (%s): %d/%d tools active, %d hidden\n",
+			tracef("[piglet] Applied scoping (%s): %d/%d tools active, %d hidden\n",
 				reason, len(active), len(allTools), removed)
 		} else {
-			_, _ = fmt.Fprintf(os.Stderr, "[piglet] All %d tools active (no scoping restrictions)\n", len(allTools))
+			tracef("[piglet] All %d tools active (no scoping restrictions)\n", len(allTools))
 		}
 
 		ctx.SetActiveTools(active)
@@ -1716,4 +1768,26 @@ func formatActivePiglet(active *Piglet) string {
 		_, _ = fmt.Fprintf(&out, "\nSource: %s", source)
 	}
 	return out.String()
+}
+
+// piSourceInfo reads the provenance object the session reports as a tool's sourceInfo, as a value or a pointer.
+func piSourceInfo(v any) (codingagent.PiSourceInfo, bool) {
+	switch s := v.(type) {
+	case codingagent.PiSourceInfo:
+		return s, true
+	case *codingagent.PiSourceInfo:
+		if s != nil {
+			return *s, true
+		}
+	}
+	return codingagent.PiSourceInfo{}, false
+}
+
+// tracef prints Piglet load and scoping progress only when PIG_PIGLET_DEBUG is set. Written to stderr during an
+// interactive session, these lines land inside the TUI's editor area; /piglet shows the same composition on demand.
+func tracef(format string, args ...any) {
+	if strings.TrimSpace(os.Getenv("PIG_PIGLET_DEBUG")) == "" {
+		return
+	}
+	_, _ = fmt.Fprintf(os.Stderr, format, args...)
 }

@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -17,20 +16,18 @@ import (
 type piColorCase struct {
 	Env      map[string]string `json:"env"`
 	Platform string            `json:"platform"`
-	OSC      string            `json:"osc,omitempty"`
 }
 
 type piColorResult struct {
 	Capabilities TerminalCapabilities
 	Themes       map[string]struct {
-		Mode   ColorMode
+		Mode   TerminalColorMode
 		Colors map[string]string
 	}
-	Background TerminalThemeDetection
-	RGB        *RgbColor
+	ColorFgBg TerminalTheme
 }
 
-// Pi 0.87.1 terminal-image.ts:69-158 and theme.ts:528-529 select only truecolor
+// Upstream 0.99.1 terminal-image.ts detectCapabilities and theme.ts createTheme select only truecolor
 // or 256color. NO_COLOR/FORCE_COLOR affect Chalk, not these theme escapes.
 func TestColorDetectionMatchesPi(t *testing.T) {
 	var cases []piColorCase
@@ -59,9 +56,6 @@ func TestColorDetectionMatchesPi(t *testing.T) {
 	}
 	for _, value := range []string{"", "15;0", "0;15", "0;15suffix", "15;0suffix", "0;  +15.5", "15;256;invalid", "0;255", "15;-1", "0;1e2", "0;0xF"} {
 		add("linux", map[string]string{"COLORFGBG": value})
-	}
-	for _, osc := range []string{"\x1b]11;rgb:ffff/ffff/ffff\x07", "\x1b]11;rgba:ffff/ffff/ffff/ffff\x1b\\", "\x1b]11;#ffffffffffff\x07", "\x1b]11;rgb:00/80/ff/ignored\x07", "\x1b]11;garbage\x07"} {
-		cases = append(cases, piColorCase{Env: map[string]string{}, Platform: "linux", OSC: osc})
 	}
 	input, err := json.Marshal(cases)
 	if err != nil {
@@ -127,11 +121,8 @@ func TestColorDetectionMatchesPi(t *testing.T) {
 					}
 				}
 			}
-			if got := DetectTerminalBackground(TerminalThemeDetectionOptions{Env: tc.Env}); got != want.Background {
-				t.Errorf("background = %+v, Pi = %+v", got, want.Background)
-			}
-			if got := ParseOsc11BackgroundColor(tc.OSC); !reflect.DeepEqual(got, want.RGB) {
-				t.Errorf("OSC %q = %v, Pi = %v", tc.OSC, got, want.RGB)
+			if got := DetectColorFgBgTheme(tc.Env); got != want.ColorFgBg {
+				t.Errorf("COLORFGBG theme = %q, Pi = %q", got, want.ColorFgBg)
 			}
 		})
 	}

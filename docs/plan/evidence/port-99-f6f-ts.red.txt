@@ -1,0 +1,51 @@
+# port-99-f6f-ts red run (pin still 0.87.1, node_modules is the 0.87.1 install)
+
+## cd extensions/sdk-ts && npx tsc --noEmit -p tsconfig.json
+typecheck.ts(2,3): error TS2724: '"@earendil-works/pi-coding-agent"' has no exported member named 'ExecuteToolOptions'. Did you mean 'EditToolOptions'?
+typecheck.ts(5,3): error TS2724: '"@earendil-works/pi-coding-agent"' has no exported member named 'ExtensionToolContext'. Did you mean 'ExtensionContext'?
+typecheck.ts(6,3): error TS2305: Module '"@earendil-works/pi-coding-agent"' has no exported member 'ExtensionVirtualModel'.
+typecheck.ts(8,3): error TS2305: Module '"@earendil-works/pi-coding-agent"' has no exported member 'McpServerConfig'.
+typecheck.ts(9,3): error TS2305: Module '"@earendil-works/pi-coding-agent"' has no exported member 'McpServersChangeEvent'.
+typecheck.ts(11,3): error TS2305: Module '"@earendil-works/pi-coding-agent"' has no exported member 'ProviderStreamEvent'.
+typecheck.ts(12,3): error TS2305: Module '"@earendil-works/pi-coding-agent"' has no exported member 'RegisteredMcpServer'.
+typecheck.ts(13,3): error TS2305: Module '"@earendil-works/pi-coding-agent"' has no exported member 'ToolAnnotations'.
+typecheck.ts(15,3): error TS2305: Module '"@earendil-works/pi-coding-agent"' has no exported member 'ToolExposure'.
+typecheck.ts(16,3): error TS2305: Module '"@earendil-works/pi-coding-agent"' has no exported member 'ToolLoadout'.
+typecheck.ts(17,3): error TS2305: Module '"@earendil-works/pi-coding-agent"' has no exported member 'ToolLoadoutChanges'.
+typecheck.ts(18,3): error TS2305: Module '"@earendil-works/pi-coding-agent"' has no exported member 'ToolNamespace'.
+typecheck.ts(80,5): error TS2353: Object literal may only specify known properties, and 'outputSchema' does not exist in type 'ToolDefinition<TSchema, unknown, any>'.
+typecheck.ts(102,6): error TS2339: Property 'registerMcpServer' does not exist on type 'ExtensionAPI'.
+typecheck.ts(103,45): error TS2339: Property 'getMcpServers' does not exist on type 'ExtensionAPI'.
+typecheck.ts(105,6): error TS2551: Property 'unregisterMcpServer' does not exist on type 'ExtensionAPI'. Did you mean 'unregisterProvider'?
+typecheck.ts(112,13): error TS7006: Parameter 'request' implicitly has an 'any' type.
+typecheck.ts(112,22): error TS7006: Parameter 'ctx' implicitly has an 'any' type.
+typecheck.ts(117,6): error TS2339: Property 'registerVirtualModel' does not exist on type 'ExtensionAPI'.
+typecheck.ts(118,6): error TS2339: Property 'unregisterVirtualModel' does not exist on type 'ExtensionAPI'.
+typecheck.ts(120,31): error TS2339: Property 'getSettings' does not exist on type 'ExtensionAPI'.
+typecheck.ts(123,9): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '"mcp_servers_change"' is not assignable to parameter of type '"input"'.
+typecheck.ts(127,9): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '"provider_stream_event"' is not assignable to parameter of type '"input"'.
+typecheck.ts(131,46): error TS2339: Property 'parentToolCallId' does not exist on type 'ToolCallEvent'.
+  Property 'parentToolCallId' does not exist on type 'BashToolCallEvent'.
+typecheck.ts(135,46): error TS2339: Property 'parentToolCallId' does not exist on type 'ToolResultEvent'.
+  Property 'parentToolCallId' does not exist on type 'BashToolResultEvent'.
+typecheck.ts(136,30): error TS2339: Property 'structuredContent' does not exist on type 'ToolResultEvent'.
+  Property 'structuredContent' does not exist on type 'BashToolResultEvent'.
+typecheck.ts(141,46): error TS2339: Property 'parentToolCallId' does not exist on type 'ToolExecutionStartEvent'.
+typecheck.ts(145,46): error TS2339: Property 'parentToolCallId' does not exist on type 'ToolExecutionUpdateEvent'.
+typecheck.ts(149,46): error TS2339: Property 'parentToolCallId' does not exist on type 'ToolExecutionEndEvent'.
+typecheck.ts(156,9): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'ProviderModelConfig'.
+typecheck.ts(157,9): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'ProviderModelConfig'.
+typecheck.ts(164,51): error TS2339: Property 'replaceable' does not exist on type 'Extension'.
+typecheck.ts(165,58): error TS2353: Object literal may only specify known properties, and 'replaceable' does not exist in type 'InlineExtension'.
+tsc exit=2
+
+## node --test scripts/check-upstream-pin.test.mjs (failing cases)
+ℹ fail 2
+ℹ pass 7
+ℹ tests 9
+✖ rejects a README that does not name the Pi version (44.867424ms)
+✖ rejects a README that names a different Pi version (42.279566ms)

@@ -8,8 +8,8 @@ import (
 	"sync"
 )
 
-func oauthNativeLogin(provider OAuthProviderInterface) func(context.Context, AuthInteraction) (Credential, error) {
-	return func(ctx context.Context, interaction AuthInteraction) (Credential, error) {
+func oauthNativeLogin(provider OAuthProviderInterface) func(context.Context, AuthInteraction, LoginOptions) (Credential, error) {
+	return func(ctx context.Context, interaction AuthInteraction, options LoginOptions) (Credential, error) {
 		if ctx.Err() != nil {
 			return Credential{}, context.Cause(ctx)
 		}
@@ -57,9 +57,14 @@ func oauthNativeLogin(provider OAuthProviderInterface) func(context.Context, Aut
 				notify(AuthDeviceCodeEvent{UserCode: info.UserCode, VerificationURI: info.VerificationURI, IntervalSeconds: new(info.IntervalSeconds), ExpiresInSeconds: new(info.ExpiresInSeconds)})
 			},
 			OnProgress: func(message string) { notify(AuthProgressEvent{Message: message}) },
+			OnInfo:     func(message string) { notify(AuthInfoEvent{Message: message}) },
 			OnPrompt:   func(value OAuthPrompt) (string, error) { return prompt(ctx, value) }, OnPromptContext: prompt,
 			OnSelect: func(value OAuthSelectPrompt) (string, error) { return selectPrompt(ctx, value) }, OnSelectContext: selectPrompt,
 			OnManualCodeInput: func() (string, error) { return manual(ctx) }, OnManualCodeInputContext: manual,
+			OnManualCodePromptContext: func(promptCtx context.Context, prompt AuthManualCodePrompt) (string, error) {
+				return interaction.Prompt(promptCtx, prompt)
+			},
+			GetDeviceID: options.GetDeviceID,
 		}
 		var credential OAuthCredentials
 		var err error

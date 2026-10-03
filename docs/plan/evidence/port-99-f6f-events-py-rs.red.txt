@@ -1,0 +1,117 @@
+# red run: Python and Rust SDK pi.events bridge (stubs raise NotImplementedError / return Err(not implemented))
+
+## python: extensions/sdk-py/tests/test_event_bus.py (run without pytest: the system Python has none)
+FAIL test_dispatch_runs_handler_then_answers NotImplementedError pi.events.on is not implemented
+FAIL test_emit_carries_payload_and_parent TimeoutError timed out
+FAIL test_factory_listener_is_registered_before_register NotImplementedError pi.events.on is not implemented
+FAIL test_handler_error_fails_only_its_dispatch NotImplementedError pi.events.on is not implemented
+FAIL test_unsubscribe_sends_one_off TimeoutError timed out
+
+## rust: cargo test --offline event_bus (extensions/sdk-rs)
+test event_bus_tests::factory_listener_is_registered_before_register ... FAILED
+test event_bus_tests::dispatch_runs_handler_then_answers ... FAILED
+test event_bus_tests::handler_error_and_panic_fail_only_their_dispatch ... FAILED
+test event_bus_tests::unsubscribe_sends_one_off ... FAILED
+test event_bus_tests::emit_carries_payload_and_parent ... FAILED
+test result: FAILED. 0 passed; 5 failed; 0 ignored; 0 measured; 45 filtered out; finished in 5.36s
+
+## go test ./test/extension-conformance -run TestNativeEventBus -v (python and rust subtests; go and node pass)
+--- FAIL: TestNativeEventBusStressKeepsEveryDeliveryAndBoundedState
+    --- FAIL: TestNativeEventBusStressKeepsEveryDeliveryAndBoundedState/python
+    --- FAIL: TestNativeEventBusStressKeepsEveryDeliveryAndBoundedState/rust
+--- FAIL: TestNativeEventBusHungNativeListenerBlocksOnlyItsEmitter
+    --- FAIL: TestNativeEventBusHungNativeListenerBlocksOnlyItsEmitter/python
+    --- FAIL: TestNativeEventBusHungNativeListenerBlocksOnlyItsEmitter/rust
+--- FAIL: TestNativeEventBusNodeEmitterReachesListenerAndItsEcho
+    --- FAIL: TestNativeEventBusNodeEmitterReachesListenerAndItsEcho/python/isolated
+    --- FAIL: TestNativeEventBusNodeEmitterReachesListenerAndItsEcho/python/shared-ok
+    --- FAIL: TestNativeEventBusNodeEmitterReachesListenerAndItsEcho/rust/isolated
+    --- FAIL: TestNativeEventBusNodeEmitterReachesListenerAndItsEcho/rust/shared-ok
+--- FAIL: TestNativeEventBusNodePayloadIsTheEmittersJSONView
+    --- FAIL: TestNativeEventBusNodePayloadIsTheEmittersJSONView/python/isolated
+    --- FAIL: TestNativeEventBusNodePayloadIsTheEmittersJSONView/python/shared-ok
+    --- FAIL: TestNativeEventBusNodePayloadIsTheEmittersJSONView/rust/isolated
+    --- FAIL: TestNativeEventBusNodePayloadIsTheEmittersJSONView/rust/shared-ok
+--- FAIL: TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener
+    --- FAIL: TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener/python/isolated
+        --- FAIL: TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener/python/isolated/bigint
+        --- FAIL: TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener/python/isolated/bigintfield
+        --- FAIL: TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener/python/isolated/cycle
+    --- FAIL: TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener/python/shared-ok
+        --- FAIL: TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener/python/shared-ok/bigint
+        --- FAIL: TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener/python/shared-ok/bigintfield
+        --- FAIL: TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener/python/shared-ok/cycle
+    --- FAIL: TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener/rust/isolated
+        --- FAIL: TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener/rust/isolated/bigint
+        --- FAIL: TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener/rust/isolated/bigintfield
+        --- FAIL: TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener/rust/isolated/cycle
+    --- FAIL: TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener/rust/shared-ok
+        --- FAIL: TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener/rust/shared-ok/bigint
+        --- FAIL: TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener/rust/shared-ok/bigintfield
+        --- FAIL: TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener/rust/shared-ok/cycle
+--- FAIL: TestNativeEventBusNativeEmitterReachesNodeAndOtherCellListeners
+    --- FAIL: TestNativeEventBusNativeEmitterReachesNodeAndOtherCellListeners/python/isolated
+    --- FAIL: TestNativeEventBusNativeEmitterReachesNodeAndOtherCellListeners/python/shared-ok
+    --- FAIL: TestNativeEventBusNativeEmitterReachesNodeAndOtherCellListeners/rust/isolated
+    --- FAIL: TestNativeEventBusNativeEmitterReachesNodeAndOtherCellListeners/rust/shared-ok
+--- FAIL: TestNativeEventBusRegistrationOrderAcrossRealms
+    --- FAIL: TestNativeEventBusRegistrationOrderAcrossRealms/python/isolated
+    --- FAIL: TestNativeEventBusRegistrationOrderAcrossRealms/python/shared-ok
+    --- FAIL: TestNativeEventBusRegistrationOrderAcrossRealms/rust/isolated
+    --- FAIL: TestNativeEventBusRegistrationOrderAcrossRealms/rust/shared-ok
+--- FAIL: TestNativeEventBusReentrantEmitFromHandler
+    --- FAIL: TestNativeEventBusReentrantEmitFromHandler/python/isolated
+    --- FAIL: TestNativeEventBusReentrantEmitFromHandler/python/shared-ok
+    --- FAIL: TestNativeEventBusReentrantEmitFromHandler/rust/isolated
+    --- FAIL: TestNativeEventBusReentrantEmitFromHandler/rust/shared-ok
+--- FAIL: TestNativeEventBusCrossingEmittersDoNotDeadlock
+    --- FAIL: TestNativeEventBusCrossingEmittersDoNotDeadlock/python/isolated
+    --- FAIL: TestNativeEventBusCrossingEmittersDoNotDeadlock/python/shared-ok
+    --- FAIL: TestNativeEventBusCrossingEmittersDoNotDeadlock/rust/isolated
+    --- FAIL: TestNativeEventBusCrossingEmittersDoNotDeadlock/rust/shared-ok
+--- FAIL: TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners
+    --- FAIL: TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners/python/isolated
+        --- FAIL: TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners/python/isolated/emitter-node
+        --- FAIL: TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners/python/isolated/emitter-python
+    --- FAIL: TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners/python/shared-ok
+        --- FAIL: TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners/python/shared-ok/emitter-node
+        --- FAIL: TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners/python/shared-ok/emitter-python
+    --- FAIL: TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners/rust/isolated
+        --- FAIL: TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners/rust/isolated/emitter-node
+        --- FAIL: TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners/rust/isolated/emitter-rust
+    --- FAIL: TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners/rust/shared-ok
+        --- FAIL: TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners/rust/shared-ok/emitter-node
+        --- FAIL: TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners/rust/shared-ok/emitter-rust
+--- FAIL: TestNativeEventBusUnsubscribeDuringDispatchKeepsTheSnapshot
+    --- FAIL: TestNativeEventBusUnsubscribeDuringDispatchKeepsTheSnapshot/python/isolated
+    --- FAIL: TestNativeEventBusUnsubscribeDuringDispatchKeepsTheSnapshot/python/shared-ok
+    --- FAIL: TestNativeEventBusUnsubscribeDuringDispatchKeepsTheSnapshot/rust/isolated
+    --- FAIL: TestNativeEventBusUnsubscribeDuringDispatchKeepsTheSnapshot/rust/shared-ok
+--- FAIL: TestNativeEventBusRuntimeCrashMidDispatchReleasesTheEmitter
+    --- FAIL: TestNativeEventBusRuntimeCrashMidDispatchReleasesTheEmitter/python
+    --- FAIL: TestNativeEventBusRuntimeCrashMidDispatchReleasesTheEmitter/rust
+--- FAIL: TestNativeEventBusFailedFactorySubscriptionsAreDropped
+    --- FAIL: TestNativeEventBusFailedFactorySubscriptionsAreDropped/python/isolated
+    --- FAIL: TestNativeEventBusFailedFactorySubscriptionsAreDropped/python/shared-ok
+    --- FAIL: TestNativeEventBusFailedFactorySubscriptionsAreDropped/rust/isolated
+    --- FAIL: TestNativeEventBusFailedFactorySubscriptionsAreDropped/rust/shared-ok
+--- FAIL: TestNativeEventBusUnhandledErrorChannel
+    --- FAIL: TestNativeEventBusUnhandledErrorChannel/python/isolated
+    --- FAIL: TestNativeEventBusUnhandledErrorChannel/python/shared-ok
+    --- FAIL: TestNativeEventBusUnhandledErrorChannel/rust/isolated
+    --- FAIL: TestNativeEventBusUnhandledErrorChannel/rust/shared-ok
+--- FAIL: TestNativeEventBusFactoryTimeListenerIsLiveAtReady
+    --- FAIL: TestNativeEventBusFactoryTimeListenerIsLiveAtReady/python/isolated
+    --- FAIL: TestNativeEventBusFactoryTimeListenerIsLiveAtReady/python/shared-ok
+    --- FAIL: TestNativeEventBusFactoryTimeListenerIsLiveAtReady/rust/isolated
+    --- FAIL: TestNativeEventBusFactoryTimeListenerIsLiveAtReady/rust/shared-ok
+--- FAIL: TestNativeEventBusNativeEmitterSettlesNodeContinuationsBeforeEmitReturns
+    --- FAIL: TestNativeEventBusNativeEmitterSettlesNodeContinuationsBeforeEmitReturns/python/isolated
+    --- FAIL: TestNativeEventBusNativeEmitterSettlesNodeContinuationsBeforeEmitReturns/python/shared-ok
+    --- FAIL: TestNativeEventBusNativeEmitterSettlesNodeContinuationsBeforeEmitReturns/rust/isolated
+    --- FAIL: TestNativeEventBusNativeEmitterSettlesNodeContinuationsBeforeEmitReturns/rust/shared-ok
+--- FAIL: TestNativeEventBusEmitterReentersThroughItsOwnListener
+    --- FAIL: TestNativeEventBusEmitterReentersThroughItsOwnListener/python/isolated
+    --- FAIL: TestNativeEventBusEmitterReentersThroughItsOwnListener/python/shared-ok
+    --- FAIL: TestNativeEventBusEmitterReentersThroughItsOwnListener/rust/isolated
+    --- FAIL: TestNativeEventBusEmitterReentersThroughItsOwnListener/rust/shared-ok

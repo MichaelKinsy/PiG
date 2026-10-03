@@ -150,7 +150,7 @@ func TestPortMapExpandsBracesAndBareNames(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, "docs", "parity"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	portMap := "| `packages/agent/src/a.ts` | `agent/harness/env/{env,exec}.go` | ✅ |\n" +
+	portMap := "| `packages/agent/src/a.ts` | `durable/env/{env,exec}.go` | ✅ |\n" +
 		"| `packages/agent/src/b.ts` | `internal/codingagent/tools/bash.go + bash_executor.go (note)` | ✅ |\n" +
 		"| `packages/agent/src/c.ts` | `(not needed)` | n/a |\n"
 	if err := os.WriteFile(filepath.Join(root, "docs/parity/PORT_MAP.md"), []byte(portMap), 0o600); err != nil {
@@ -161,8 +161,8 @@ func TestPortMapExpandsBracesAndBareNames(t *testing.T) {
 		t.Fatal(err)
 	}
 	for goFile, up := range map[string]string{
-		"agent/harness/env/env.go":                    "packages/agent/src/a.ts",
-		"agent/harness/env/exec.go":                   "packages/agent/src/a.ts",
+		"durable/env/env.go":                          "packages/agent/src/a.ts",
+		"durable/env/exec.go":                         "packages/agent/src/a.ts",
 		"internal/codingagent/tools/bash.go":          "packages/agent/src/b.ts",
 		"internal/codingagent/tools/bash_executor.go": "packages/agent/src/b.ts",
 	} {

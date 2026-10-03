@@ -12,12 +12,12 @@ func extensionScopedModels(services *coding.Services, patterns []string) []exten
 	if len(patterns) == 0 {
 		return []extension.ScopedModel{}
 	}
-	registry := services.Registry()
-	runtime := newStartupModelRuntime(registry.RuntimeModels(), registry.HasConfiguredAuth)
+	modelRuntime := services.ModelRuntime()
+	runtime := newStartupModelRuntime(modelRuntime.RuntimeModels(), modelRuntime.HasConfiguredAuth)
 	scoped, _ := resolveModelScopeFromModels(patterns, runtime.getAvailable())
 	result := make([]extension.ScopedModel, 0, len(scoped))
 	for _, entry := range scoped {
-		model := services.ModelRuntime().GetModel(entry.Model.Provider, entry.Model.ID)
+		model := modelRuntime.GetModel(entry.Model.Provider, entry.Model.ID)
 		if model != nil {
 			result = append(result, extension.ScopedModel{Model: model, ThinkingLevel: ai.ThinkingLevel(entry.ThinkingLevel)})
 		}

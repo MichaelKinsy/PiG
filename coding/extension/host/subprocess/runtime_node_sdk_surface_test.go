@@ -24,7 +24,7 @@ import assert from "node:assert/strict";
 import net from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Runtime } from %q;
+import { Runtime, requestSignal } from %q;
 
 // register: promptSnippet travels as prompt_snippet.
 const sock = process.platform === "win32"
@@ -80,7 +80,7 @@ assert.deepEqual(fired.at(-1), ["compact", { customInstructions: "keep the plan"
 
 // ctx.compact with callbacks: an unparented call that awaits completion.
 const completed = await new Promise((resolve) => runtime.ctx.compact({ customInstructions: "x", onComplete: resolve }));
-assert.deepEqual(calls.at(-1), ["compact", { customInstructions: "x", awaitCompletion: true }, undefined]);
+assert.deepEqual(calls.at(-1), ["compact", { customInstructions: "x", awaitCompletion: true }, ""]);
 assert.equal(completed.summary, "compacted");
 answer = new Error("Nothing to compact");
 const failed = await new Promise((resolve) => runtime.ctx.compact({ onError: resolve }));
@@ -132,7 +132,8 @@ for (const name of ["session_before_compact", "session_before_tree"]) {
   const handlerId = runtime.handlers.get(name).at(-1).id;
   const controller = new AbortController();
   const ctx = Object.create(runtime.ctx);
-  ctx.signal = controller.signal;
+  // event.signal is the compaction or tree operation's signal, carried by the request; ctx.signal is the run's (runner.ts:917-920).
+  Object.defineProperty(ctx, requestSignal, { value: controller.signal });
   await runtime.handleRequest("r-" + name, { method: "event", event: name, handler_id: handlerId, args: { preparation: {} } }, ctx);
   assert.equal(seen, controller.signal, name);
 }

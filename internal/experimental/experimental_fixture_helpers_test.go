@@ -1,7 +1,6 @@
 package experimental
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -9,9 +8,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/env"
-	"github.com/MichaelKinsy/PiG/agent/harness/session"
-	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/experimental/durabletest"
+	"github.com/MichaelKinsy/PiG/internal/experimental/services"
 )
 
 // The supported Unix platforms have a 103-byte minimum sun_path budget. The longest server filename comes from experimental/server.ts, not the current temporary directory's observed length.
@@ -32,8 +30,8 @@ func TestExperimentalFixtureSocketPathsFitNativeLimitWithLongTestingDirectoryNam
 	}
 }
 
-// The shared fixtures from experimental-session-support.ts must create and read the real durable JSONL repository, not manufacture model or Session snapshots.
-func TestExperimentalFixtureRepositoryRoundTrip(t *testing.T) {
+// The shared fixtures from experimental-session-support.ts must create and read the real catalog and the worker-owned storage, not manufacture model or Session snapshots.
+func TestExperimentalFixtureCatalogRoundTrip(t *testing.T) {
 	agentDir := setupExperimentalRemoteTest(t)
 	if got := os.Getenv("PI_CODING_AGENT_DIR"); got != agentDir {
 		t.Fatalf("agent root=%q, want %q", got, agentDir)
@@ -48,59 +46,38 @@ func TestExperimentalFixtureRepositoryRoundTrip(t *testing.T) {
 	root := filepath.Join(agentDir, "experimental", "sessions")
 	cwd := filepath.Join(t.TempDir(), "other-cwd")
 	metadata := createExperimentalSessions(t, root, []string{"configured"}, cwd)
-	fileSystem := env.NewNodeExecutionEnv(env.NodeExecutionEnvOptions{Cwd: cwd})
-	repo := session.NewJsonlSessionRepo(session.JsonlSessionRepoOptions{FileSystem: fileSystem, SessionsRoot: root})
-	ctx := context.Background()
-	t.Cleanup(func() {
-		if err := repo.Close(ctx); err != nil {
-			t.Error(err)
-		}
-		fileSystem.Cleanup(ctx)
-	})
-	// experimental-session-support.ts:12-31 creates headers only. Its reader at :40-74 requires the main branch that a worker initializes.
-	created, err := repo.List(ctx, nil)
+	listed, err := ListSessions(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, id := range []string{"demo-1", "demo-2"} {
-		index := slices.IndexFunc(created, func(item session.SessionMetadata) bool { return item.ID == id })
-		if index < 0 {
-			t.Fatalf("fresh Session %s missing from repository", id)
-		}
-		fresh, err := repo.Open(ctx, created[index])
-		if err != nil {
-			t.Fatal(err)
-		}
-		branch, branchError := fresh.Branch(ctx, "main")
-		closeError := fresh.Close(ctx)
-		if branchError != nil || closeError != nil || branch != nil {
-			t.Fatalf("fresh Session %s main=%v, read=%v, close=%v; want absent branch", id, branch, branchError, closeError)
+	for _, id := range []string{"demo-1", "demo-2", "configured"} {
+		if !slices.ContainsFunc(listed, func(item SessionCatalogMetadata) bool { return item.ID == id }) {
+			t.Fatalf("fresh Session %s missing from the catalog", id)
 		}
 	}
-	opened, err := repo.Open(ctx, metadata[0])
+	if len(metadata) != 1 || metadata[0].Cwd != cwd {
+		t.Fatalf("created = %+v; want cwd %q", metadata, cwd)
+	}
+	// A fresh Session has no storage until its worker opens it.
+	if state := readExperimentalSessionState(t, root, "configured"); state.Model != nil {
+		t.Fatalf("fresh Session has a model: %+v", state.Model)
+	}
+	storage, err := durabletest.OpenFile(SessionStoragePath(metadata[0]))
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		if err := opened.Close(ctx); err != nil {
-			t.Error(err)
-		}
-	})
-	if _, err := opened.CreateBranch(ctx, "main", nil); err != nil {
+	configured := services.ModelRef{Provider: "test", ModelId: "configured"}
+	if err := storage.Conversation.Configure(t.Context(), services.ConversationConfiguration{Model: &configured}); err != nil {
 		t.Fatal(err)
 	}
-	configuration := session.LaneConfiguration{Model: session.ModelRef{Provider: "test", ModelID: "configured"}, ThinkingLevel: ai.ThinkingOff, ActiveToolNames: []string{"read"}}
-	if err := opened.SetValue(ctx, session.LaneConfig("main").Address(), configuration); err != nil {
+	if err := storage.Harness.Close(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if err := opened.Close(ctx); err != nil {
-		t.Fatal(err)
+	if state := readExperimentalSessionState(t, root, "configured"); !reflect.DeepEqual(state.Model, &configured) {
+		t.Fatalf("state=%#v, want model=%#v", state, configured)
 	}
-	if err := repo.Close(ctx); err != nil {
-		t.Fatal(err)
-	}
-	state := readExperimentalSessionState(t, root, "configured")
-	if !reflect.DeepEqual(state.Model, &configuration.Model) || !reflect.DeepEqual(state.ActiveTools, configuration.ActiveToolNames) {
-		t.Fatalf("state=%#v, want model=%#v tools=%#v", state, configuration.Model, configuration.ActiveToolNames)
+	// A duplicate Session ID fails like the catalog does.
+	if _, err := CreateSession(root, CreateSessionOptions{ID: new("demo-1"), Cwd: cwd}); err == nil || err.Error() != "Session demo-1 already exists" {
+		t.Fatalf("duplicate = %v", err)
 	}
 }

@@ -1,24 +1,8 @@
 import { operationSignal, raceWithAbortSignal } from "../utils/abort.js";
-import { formatThrownValue } from "../utils/diagnostics.js";
-export class ModelsError extends Error {
-    code;
-    constructor(code, message, options) {
-        super(withCauseDetail(message, options?.cause), options);
-        this.name = "ModelsError";
-        this.code = code;
-    }
-}
-/** Callers surface `error.message` only, so keep the underlying reason in it. */
-function withCauseDetail(message, cause) {
-    if (cause === undefined || cause === null)
-        return message;
-    const detail = formatThrownValue(cause).trim();
-    if (!detail || message.includes(detail))
-        return message;
-    return `${message}: ${detail}`;
-}
+import { ModelsError } from "../utils/models-error.js";
+export { ModelsError } from "../utils/models-error.js";
 /**
- * Auth resolution shared by the `Models` and `ImagesModels` collections.
+ * Auth resolution shared by all operations in a `Models` collection.
  * A stored credential owns the provider: ambient/env is consulted only when
  * nothing is stored. No silent env fallback after a failed refresh or for a
  * credential type without a matching handler.

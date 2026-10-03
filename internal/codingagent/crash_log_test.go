@@ -429,6 +429,8 @@ func TestBugReportAttachesAndClearsTheCrashLog(t *testing.T) {
 // Run recovers a crash on its own goroutine, records it, and reports
 // ErrInteractiveCrashed so the caller exits 1 without a second message.
 func TestRunRecordsACrashAndReportsErrInteractiveCrashed(t *testing.T) {
+	// Run applies the theme setting, which selects the process-wide active theme.
+	restoreStartupTheme(t)
 	t.Setenv("PIG_HOME", t.TempDir())
 	agentDir := t.TempDir()
 	m := NewInteractiveMode(InteractiveOptions{

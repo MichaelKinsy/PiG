@@ -2,6 +2,8 @@ package extension
 
 import (
 	"context"
+
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 // ─── Action payload + option types ───────────────────────────────────────
@@ -29,6 +31,12 @@ type SendMessagePayload struct {
 	Content any `json:"content,omitempty"`
 	Display any `json:"display,omitempty"`
 	Details any `json:"details,omitempty"`
+}
+
+// UnmarshalJSON keeps the member order of the `details` object the extension wrote.
+func (p *SendMessagePayload) UnmarshalJSON(data []byte) error {
+	type plain SendMessagePayload
+	return orderedjson.UnmarshalFields(data, (*plain)(p), "details")
 }
 
 // SendMessageOptions mirrors the inline options object on sendMessage.
@@ -89,6 +97,13 @@ type API interface {
 	// (upstream types.ts SessionInfoChangedEvent; adopted upstream in 0.80.3).
 	OnSessionInfoChanged(handler func(ctx context.Context, evt SessionInfoChangedEvent) error)
 
+	// OnMcpServersChange registers a handler for "mcp_servers_change", fired when
+	// an extension registers or unregisters an MCP server after the extensions
+	// are bound. Handling it marks an extension as the one that connects
+	// registered servers.
+	// upstream: types.ts:1562 (on("mcp_servers_change", ...))
+	OnMcpServersChange(handler func(ctx context.Context, evt McpServersChangeEvent) error)
+
 	// OnSessionBeforeSwitch registers a handler for "session_before_switch".
 	// upstream: types.ts:1145
 	OnSessionBeforeSwitch(handler func(ctx context.Context, evt SessionBeforeSwitchEvent) (SessionBeforeSwitchResult, error))
@@ -142,6 +157,11 @@ type API interface {
 	// Handlers mutate evt.Headers in place before the request is sent.
 	// upstream: types.ts:1199
 	OnBeforeProviderHeaders(handler func(ctx context.Context, evt BeforeProviderHeadersEvent) error)
+
+	// OnProviderStreamEvent registers a handler for "provider_stream_event",
+	// fired for a parsed provider stream event before it is normalized.
+	// upstream: types.ts:1580 (on("provider_stream_event", ...))
+	OnProviderStreamEvent(handler func(ctx context.Context, evt ProviderStreamEvent) error)
 
 	// OnBeforeAgentStart registers a handler for "before_agent_start".
 	// upstream: types.ts:1092
@@ -324,15 +344,24 @@ type API interface {
 	// upstream: types.ts:1190
 	Exec(command string, args []string, options *ExecOptions) (ExecResult, error)
 
-	// GetActiveTools returns the list of currently active tool names.
+	// GetActiveTools returns the names of the active tools, which are the tools
+	// declared to the model.
 	// upstream: types.ts:1193
 	GetActiveTools() []string
 
-	// GetAllTools returns all configured tools with parameter schema and source metadata.
+	// GetAllTools returns all configured tools with parameter schema, prompt
+	// guidelines, exposure, and source metadata.
 	// upstream: types.ts:1196
 	GetAllTools() []ToolInfo
 
-	// SetActiveTools sets the active tools by name.
+	// GetSettings returns a copy of the effective settings (global and project
+	// settings merged, with overrides).
+	// upstream: types.ts:1708 (getSettings)
+	GetSettings() Settings
+
+	// SetActiveTools sets the active tools by name. Unknown and `hidden` tools
+	// are ignored. Tools with `codemode` or `deferred` exposure stay callable
+	// from codemode scripts whether active or not.
 	// upstream: types.ts:1199
 	SetActiveTools(toolNames []string)
 
@@ -371,6 +400,51 @@ type API interface {
 	// no effect if the provider is not currently registered.
 	// upstream: types.ts:1280
 	UnregisterProvider(name string)
+
+	// =====================================================================
+	// MCP Servers
+	// =====================================================================
+
+	// RegisterMcpServer registers an MCP server for this session, with the same
+	// config as an `mcpServers` entry in `mcp.json`. The server connects next to
+	// the configured servers: on session_start when registered during extension
+	// load, right away when registered later. Registering a name again replaces
+	// the extension's earlier registration.
+	//
+	// The registration is not saved; register again on every load. A server of
+	// the same name in `mcp.json` takes precedence. It returns an error for
+	// invalid configs and for names another extension registered (upstream
+	// throws). When no loaded extension handles MCP servers (for example because
+	// another MCP extension replaced the built-in one), the registration is
+	// reported as an extension error.
+	// upstream: types.ts:1833 (registerMcpServer)
+	RegisterMcpServer(name string, config McpServerConfig) error
+
+	// UnregisterMcpServer removes an MCP server this extension registered and
+	// closes its connection.
+	// upstream: types.ts:1836 (unregisterMcpServer)
+	UnregisterMcpServer(name string)
+
+	// GetMcpServers returns every MCP server registered by extensions, for
+	// extensions that connect MCP servers.
+	// upstream: types.ts:1839 (getMcpServers)
+	GetMcpServers() []RegisteredMcpServer
+
+	// RegisterVirtualModel registers a virtual model: a selectable catalog entry
+	// that routes each request to a physical model. The selection (`ctx.model`,
+	// `model_change` entries) names the virtual model; assistant messages record
+	// the physical model and thinking level the router picked.
+	//
+	// The provider may be any provider id, including one with physical models,
+	// and may list several virtual models. Registering the same provider and id
+	// again replaces the virtual model. See docs/virtual-models.md.
+	// upstream: types.ts:1852 (registerVirtualModel)
+	RegisterVirtualModel(model ExtensionVirtualModel)
+
+	// UnregisterVirtualModel removes a virtual model registered with
+	// [API.RegisterVirtualModel].
+	// upstream: types.ts:1855 (unregisterVirtualModel)
+	UnregisterVirtualModel(provider, id string)
 
 	// =====================================================================
 	// Event Bus (D1: upstream property → Go method)

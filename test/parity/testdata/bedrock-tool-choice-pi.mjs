@@ -3,7 +3,7 @@ import {readFileSync} from "node:fs";
 import {join} from "node:path";
 import {createServer} from "node:http";
 const root=fileURLToPath(new URL("../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/",import.meta.url));
-if(JSON.parse(readFileSync(join(root,"package.json"),"utf8")).version!=="0.87.1")throw new Error("Expected Pi 0.87.1");
+if(JSON.parse(readFileSync(join(root,"package.json"),"utf8")).version!=="1.0.0")throw new Error("Expected Pi 1.0.0");
 const aiRoot=join(root,"node_modules/@earendil-works/pi-ai/dist");
 const {getModel,normalizeContext}=await import(pathToFileURL(join(aiRoot,"compat.js")));
 const {stream}=await import(pathToFileURL(join(aiRoot,"api/bedrock-converse-stream.js")));

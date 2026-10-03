@@ -8,7 +8,6 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	textutil "github.com/MichaelKinsy/PiG/internal/text"
 )
 
@@ -74,7 +73,7 @@ func AssertFacetRunning(env *FacetEnvironment, operation string) error {
 
 // UseFacetService acquires a singleton for an isolated facet without requiring a compile-time Go service interface. Native consumers retain their registered typed adapters; otherwise remote services use their actual RemoteService facade.
 func UseFacetService(env *FacetEnvironment, serviceId string, local bool) (*FacetService, error) {
-	def := pico3.DefineServiceWithOptions[any](serviceId, pico3.ServiceOptions{Local: local})
+	def := DefineServiceWithOptions[any](serviceId, ServiceOptions{Local: local})
 	ref, err := UseService(env, def)
 	if err != nil {
 		return nil, err
@@ -97,7 +96,7 @@ func UseFacetService(env *FacetEnvironment, serviceId string, local bool) (*Face
 	return service, nil
 }
 
-// ObserveFacetService acquires a keyed service for an isolated facet. Each observed handle checks the owning facet and observation lifetime on every resolution. Remote in-host observations use the same loopback binding as external remote observations.
+// ObserveFacetService acquires a keyed service for an isolated facet. Each observed handle checks the owning facet and observation lifetime on every resolution. Remote in-host observations use the same loopback binding as external remote observations; the facet's activation waits for that loopback subscription and its snapshot handlers after its first activation callback, or after its observations start when it has none.
 func ObserveFacetService(env *FacetEnvironment, serviceId string, local bool, handler func(context.Context, *FacetService) error) error {
 	runtime := env.runtime
 	runtime.lifecycle.mu.Lock()
@@ -109,13 +108,13 @@ func ObserveFacetService(env *FacetEnvironment, serviceId string, local bool, ha
 	if !local {
 		env.ensureFacetRemoteClient(serviceId)
 	}
-	runtime.lifecycle.observations = append(runtime.lifecycle.observations, func() func() {
+	runtime.lifecycle.observations = append(runtime.lifecycle.observations, func() (func(), *task) {
 		observe := func(ctx context.Context, implementation any) error {
 			service := &FacetService{resolve: func() (any, error) {
-				if err := env.kernel.assertServiceTargetAccess(); err != nil {
+				if err := runtime.lifecycle.assertServiceAccess(); err != nil {
 					return nil, err
 				}
-				if err := runtime.lifecycle.assertServiceAccess(); err != nil {
+				if err := env.kernel.assertServiceTargetAccess(); err != nil {
 					return nil, err
 				}
 				if ctx.Err() != nil {
@@ -142,20 +141,25 @@ func ObserveFacetService(env *FacetEnvironment, serviceId string, local bool, ha
 			return handler(ctx, service)
 		}
 		if local {
-			return env.kernel.observeKeyed(serviceId, observe)
+			return env.kernel.observeKeyed(serviceId, observe), nil
 		}
-		var services RemoteServices = env.kernel.internal
-		if external, exists := env.kernel.externalKeyed[serviceId]; exists {
-			services = external
-		}
-		stop, err := services.Observe(serviceId, func(ctx context.Context, implementation *RemoteService) error {
+		remoteObserve := func(ctx context.Context, implementation *RemoteService) error {
 			return observe(ctx, implementation)
-		})
+		}
+		var stop func()
+		var connecting *task
+		var err error
+		if external, exists := env.kernel.externalKeyed[serviceId]; exists {
+			stop, err = external.Observe(serviceId, remoteObserve)
+		} else {
+			// The in-host loopback start is the microtask activation joins; an external source subscribes asynchronously, as upstream.
+			stop, connecting, err = env.kernel.internal.observeConnecting(serviceId, remoteObserve)
+		}
 		if err != nil {
 			env.kernel.onError(err)
-			return func() {}
+			return func() {}, nil
 		}
-		return stop
+		return stop, connecting
 	})
 	return nil
 }
@@ -206,46 +210,6 @@ func classifyFacetImplementation(serviceId string, implementation *FacetServiceI
 		return slices.Compare(textutil.UTF16Units(left), textutil.UTF16Units(right))
 	})
 	return classified, nil
-}
-
-// FacetState imports the state of an isolated provider into the existing Chord state publication path. It preserves the source's sequence and operation batches rather than recomputing a different diff.
-type FacetState struct {
-	core *stateCore
-}
-
-// NewFacetState installs an initialized source snapshot. The loaded generation owns subsequent Apply calls and source-listener cleanup.
-func NewFacetState(value pico3.JsonValue, sequence int) (*FacetState, error) {
-	if sequence < 0 {
-		return nil, errors.New("Replicated state sequence must not be negative")
-	}
-	stored, err := toStateValue(value)
-	if err != nil {
-		return nil, err
-	}
-	core := newStateCore(stored)
-	core.sequence = sequence
-	return &FacetState{core: core}, nil
-}
-
-// Apply publishes one gap-free source operation batch before returning to its producer. Listener failures surface after the value commits, as for native mutable state.
-func (state *FacetState) Apply(ctx context.Context, sequence int, ops []pico3.Op) error {
-	state.core.changeMu.Lock()
-	state.core.mu.Lock()
-	if sequence != state.core.sequence+1 {
-		state.core.mu.Unlock()
-		state.core.changeMu.Unlock()
-		return errors.New("Replicated state update sequence has a gap")
-	}
-	next, err := pico3.ApplyImmutable(state.core.value, ops)
-	if err != nil {
-		state.core.mu.Unlock()
-		state.core.changeMu.Unlock()
-		return err
-	}
-	state.core.value, state.core.sequence = next, sequence
-	state.core.queue = append(state.core.queue, stateJob{value: next, ops: ops, sequence: sequence, ctx: ctx})
-	state.core.changeMu.Unlock()
-	return state.core.drainLocked()
 }
 
 // Registration occurs only during serialized facet setup. Clone the option map rather than changing the caller's configuration, and never replace a typed adapter registered by the owning service.

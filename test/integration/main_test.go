@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // TestMain builds ./cmd/pig once into a process-lifetime temp dir
@@ -28,6 +30,11 @@ func runIntegrationTests(m *testing.M) int {
 	tmp, err := os.MkdirTemp("", "pig-integration-")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "integration: mktmp:", err)
+		return 2
+	}
+	if err := testenv.ScopeTempDir(tmp); err != nil {
+		fmt.Fprintln(os.Stderr, "integration:", err)
+		_ = os.RemoveAll(tmp)
 		return 2
 	}
 	defer func() {

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 )
 
 // An extension that runs inside Pi runs in Pi's own Node process, so
@@ -26,7 +28,7 @@ const (
 // starts. An empty result leaves the harness entry to report the missing
 // binary when an extension runs it.
 func harnessExecutable() string {
-	exe, err := os.Executable()
+	exe, err := linkerexec.Executable()
 	if err != nil {
 		return ""
 	}

@@ -131,6 +131,7 @@ func writeResizeTestSession(t *testing.T, exchanges int) string {
 // FORCE_COLOR=0 and TERM=dumb print plain text. NO_COLOR is not consulted by
 // the pinned chalk 6.0.0 supports-color and keeps the faint codes.
 func TestStartupResumeCancelUsesStdoutAndFaintStyle(t *testing.T) {
+	t.Parallel()
 	binary := buildPigBinaryForSignalTest(t)
 	for _, tc := range []struct {
 		name string
@@ -221,14 +222,24 @@ func startupResumeCancel(t *testing.T, binary string, env []string, want string)
 // window switches, terminal focus changes) must leave scrollback alone; a
 // real height change still repaints fully.
 func TestInteractiveSameSizeResizeKeepsScrollback(t *testing.T) {
+	t.Parallel()
 	binary := buildPigBinaryForSignalTest(t)
 	session := writeResizeTestSession(t, 60)
 	master, slave := openPTY(t, 30, 100)
 	defer func() { _ = master.Close() }()
 
-	cmd := exec.Command(binary, "--model", "test-faux/faux-1", "--session", session)
+	// The case observes the main-screen renderer, so it selects the regular mode; fullscreen is the default since Pi 1.0.0 (settings-manager.ts:1348-1350).
+	cmd := exec.Command(binary, "--model", "test-faux/faux-1", "--session", session, "--tui-mode", "regular")
 	cmd.Dir = t.TempDir()
-	cmd.Env = append(os.Environ(), "PIG_HOME="+t.TempDir(), "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "TERM=xterm-256color")
+	pigHome := t.TempDir()
+	// An existing settings.json skips the first-time setup dialog (D88).
+	if err := os.MkdirAll(filepath.Join(pigHome, "agent"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(pigHome, "agent", "settings.json"), []byte("{}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cmd.Env = append(os.Environ(), "PIG_HOME="+pigHome, "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "TERM=xterm-256color")
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = slave, slave, slave
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true, Setctty: true}
 	if err := cmd.Start(); err != nil {

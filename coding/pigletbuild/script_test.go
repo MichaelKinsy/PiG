@@ -78,6 +78,14 @@ func TestAC2AC7SourceScriptFileAndStdoutCreateNoPigState(t *testing.T) {
 		t.Fatalf("executed lines = %#v", lines)
 	}
 	for i := range wantArgs {
+		if i == 0 && runtime.GOOS == "windows" {
+			// The process cwd may print as an 8.3 short path (RUNNER~1) for the same directory.
+			got, gerr := os.Stat(lines[i])
+			wantInfo, werr := os.Stat(wantArgs[i])
+			if gerr == nil && werr == nil && os.SameFile(got, wantInfo) {
+				continue
+			}
+		}
 		if lines[i] != wantArgs[i] {
 			t.Fatalf("executed lines = %#v, want %#v", lines, wantArgs)
 		}

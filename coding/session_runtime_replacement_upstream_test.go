@@ -301,7 +301,7 @@ func TestRuntimeOriginalUnflushedForkDiagnostic(t *testing.T) {
 		t.Fatalf("fresh file exists: %v", err)
 	}
 	_, err := h.runtime.Fork(t.Context(), *s.LeafID(), &extension.ForkOptions{Position: "at"})
-	if err == nil || err.Error() != "This session has not been saved yet. Wait for the first assistant response before cloning or forking it." {
+	if err == nil || err.Error() != "This session has not been saved yet. Send a message before cloning or forking it." {
 		t.Fatalf("fork error=%v", err)
 	}
 }

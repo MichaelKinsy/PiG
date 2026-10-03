@@ -16,7 +16,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/tui"
-	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // bashPreviewLines mirrors upstream renderers/bash.ts BASH_PREVIEW_LINES.
@@ -32,7 +31,7 @@ type shellResultDetails struct {
 // or from a persisted or extension-supplied result, whose details arrive as the
 // decoded upstream JSON shape ({truncation, fullOutputPath}).
 func shellDetailsFrom(details any) shellResultDetails {
-	switch d := details.(type) {
+	switch d := detailsObject(details).(type) {
 	case *tools.BashDetails:
 		if d == nil {
 			return shellResultDetails{}
@@ -111,14 +110,15 @@ func shellResultLines(content string, d shellResultDetails, isPartial, expanded 
 		if expanded {
 			lines = append(lines, tui.NewPaddedText("\n"+styledOutput, 0, 0, nil).Render(width)...)
 		} else {
-			preview := tui.TruncateToVisualLines(styledOutput, bashPreviewLines, width)
 			lines = append(lines, "")
-			if preview.SkippedCount > 0 {
-				hint := themeFg(theme.Muted, "... ("+strconv.Itoa(preview.SkippedCount)+" earlier lines,") +
-					" " + expandKeyHint() + themeFg(theme.Muted, ")")
-				lines = append(lines, widthx.TruncateToWidth(hint, width, "...", false))
-			}
-			lines = append(lines, preview.VisualLines...)
+			lines = append(lines, tui.NewVisualLinePreview(tui.VisualLinePreviewOptions{
+				Text:           styledOutput,
+				MaxVisualLines: bashPreviewLines,
+				Keep:           tui.VisualKeepEnd,
+				FormatHint: func(hidden int) string {
+					return themeFg(theme.Muted, "... ("+strconv.Itoa(hidden)+" earlier lines,") + " " + expandKeyHint() + themeFg(theme.Muted, ")")
+				},
+			}).Render(width)...)
 		}
 	}
 
@@ -163,7 +163,7 @@ func themeFg(color, text string) string {
 	if color == "" {
 		return text
 	}
-	return color + text + tui.SGRFgReset
+	return color + text + tui.FgClose(color)
 }
 
 // isJSWhitespace reports whether r is JavaScript WhiteSpace or LineTerminator,

@@ -1,7 +1,7 @@
 // Runs Pi's real Bedrock event-stream stack (AWS SDK client-bedrock-runtime 3.1127.0, @smithy/core 3.33.3) over byte sequences and prints, per case, what
 // `for await (const item of response.stream)` yields or throws. bedrock_eventstream_test.go feeds the same bytes to PiG's framing and decoding and compares.
 //
-// Usage: PI_PACKAGE_ROOT=<installed pi-coding-agent 0.87.1> node probe.mjs > golden.json
+// Usage: PI_PACKAGE_ROOT=<installed pi-coding-agent 0.99.1> node probe.mjs > golden.json
 import { createRequire } from 'node:module';
 import { createServer } from 'node:http';
 import { crc32 } from 'node:zlib';

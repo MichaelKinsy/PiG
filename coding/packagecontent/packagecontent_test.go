@@ -738,6 +738,56 @@ func TestValidateConfiguredForStartupReportsEveryUnresolvableExtension(t *testin
 	}
 }
 
+// source.Resolve classifies a directory holding only go.work as a Go root, so a
+// Package member that is a workspace selecting a module elsewhere in the
+// Package is one extension entry at the workspace directory instead of being dropped.
+func TestValidateConfiguredForStartupKeepsGoWorkspaceMember(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "package.json"), `{"name":"pkg","pi":{"extensions":["extensions/named"]}}`)
+	module := filepath.Join(root, "vendor", "extension")
+	writeTestFile(t, filepath.Join(module, "go.mod"), "module example.com/named\n\ngo 1.26\n")
+	writeTestFile(t, filepath.Join(module, "main.go"), "package main\n\nfunc main() {}\n")
+	member := filepath.Join(root, "extensions", "named")
+	writeTestFile(t, filepath.Join(member, "go.work"), "go 1.26\n\nuse ../../vendor/extension\n")
+
+	resources, missing, issues, err := ValidateConfiguredForStartup(root, map[Kind][]string{Extensions: nil})
+	if err != nil || len(missing) != 0 || len(issues) != 0 || !slices.Equal(resources.ExtensionEntries, []string{member}) {
+		t.Fatalf("resources = %#v, missing = %#v, issues = %#v, err = %v; want the workspace member %s", resources.ExtensionEntries, missing, issues, err, member)
+	}
+	if resources, err := ValidatePackage(root); err != nil || !slices.Equal(resources.ExtensionEntries, []string{member}) {
+		t.Fatalf("package validation: extensions = %v, err = %v; want %s", resources.ExtensionEntries, err, member)
+	}
+}
+
+// Upstream collectFilesFromPaths stats a manifest extension entry and
+// collectAutoExtensionEntries stats a linked child, so a directory link
+// (extensions/x -> ../x/extension) loads like its target. Startup validation
+// reported the linked Go module as having no factory and dropped it.
+func TestValidateConfiguredForStartupKeepsLinkedGoExtensionDirectory(t *testing.T) {
+	for _, tc := range []struct{ name, manifest string }{
+		{name: "manifest entry", manifest: `{"name":"pkg","pi":{"extensions":["extensions/x"]}}`},
+		{name: "convention directory", manifest: `{"name":"pkg"}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			writeTestFile(t, filepath.Join(root, "package.json"), tc.manifest)
+			target := filepath.Join(root, "x", "extension")
+			writeTestFile(t, filepath.Join(target, "go.mod"), "module example.com/x\n\ngo 1.26\n")
+			writeTestFile(t, filepath.Join(target, "extension.go"), "package x\nimport sdk \"github.com/MichaelKinsy/PiG/extensions/sdk\"\nfunc Extension() *sdk.Extension { return nil }\n")
+			link := filepath.Join(root, "extensions", "x")
+			if err := os.MkdirAll(filepath.Dir(link), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			testenv.RequireDirectoryLink(t, target, link)
+
+			resources, missing, issues, err := ValidateConfiguredForStartup(root, map[Kind][]string{Extensions: nil})
+			if err != nil || len(missing) != 0 || len(issues) != 0 || !slices.Equal(resources.ExtensionEntries, []string{link}) {
+				t.Fatalf("resources = %#v, missing = %#v, issues = %#v, err = %v; want the linked member %s", resources.ExtensionEntries, missing, issues, err, link)
+			}
+		})
+	}
+}
+
 // Startup used to validate a configured Package with InspectConfigured and then
 // ValidateConfigured, resolving every enabled extension twice.
 // ValidateConfiguredForStartup resolves each enabled extension once and never

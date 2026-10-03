@@ -52,11 +52,11 @@ func TestInteractiveModeDrawsToolDefinitionRenderers(t *testing.T) {
 	if got := render(); !strings.Contains(got, `CALL {"topic":"alpha"} partial=true`) || strings.Contains(got, "RESULT") {
 		t.Fatalf("started card = %q", got)
 	}
-	m.handleAgentEvent(agent.ToolExecutionUpdateEvent{ToolCallID: "call-1", ToolName: definition.Name, Content: "working", Details: "partial-details"})
+	m.handleAgentEvent(agent.ToolExecutionUpdateEvent{ToolCallID: "call-1", ToolName: definition.Name, PartialResult: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "working"}}, Details: "partial-details"}})
 	if got := render(); !strings.Contains(got, `RESULT working partial-details partial=true expanded=false topic={"topic":"alpha"}`) {
 		t.Fatalf("partial card = %q", got)
 	}
-	m.handleAgentEvent(agent.ToolExecutionEndEvent{ToolCallID: "call-1", ToolName: definition.Name, Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "failed"}}, Details: "final-details", IsError: true}})
+	m.handleAgentEvent(agent.ToolExecutionEndEvent{ToolCallID: "call-1", ToolName: definition.Name, Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "failed"}}, Details: "final-details"}, IsError: true})
 	got := render()
 	if !strings.Contains(got, `CALL {"topic":"alpha"} partial=false`) || !strings.Contains(got, "RESULT failed final-details partial=false expanded=false") {
 		t.Fatalf("final card = %q", got)
@@ -66,6 +66,36 @@ func TestInteractiveModeDrawsToolDefinitionRenderers(t *testing.T) {
 	}
 	if strings.Contains(got, "Arguments:") {
 		t.Fatalf("definition card fell back to the generic details card: %q", got)
+	}
+}
+
+// Upstream draws a streamed partial result as `{...event.partialResult, isError: false}` (interactive-mode.ts:3527-3533): a partial result a tool marked isError still reaches renderResult as a non-error result, and every other member the tool wrote (content blocks, details) is kept.
+func TestInteractiveModePartialResultIsNeverAnError(t *testing.T) {
+	var seen []agent.AgentToolResult
+	definition := extension.ToolDefinition{
+		Name: "renders",
+		RenderResult: func(result extension.AgentToolResult, _ extension.ToolRenderResultOptions, _ extension.Theme, _ extension.ToolRenderContext) extension.Component {
+			seen = append(seen, result.(agent.AgentToolResult))
+			return tui.NewText("RESULT")
+		},
+	}
+	m := &InteractiveMode{
+		newRunner:     inproc.NewRunner([]extension.Extension{{Name: "renderers", Tools: map[string]extension.RegisteredTool{definition.Name: {Definition: definition}}}}, ""),
+		chatContainer: tui.NewContainer(),
+		tuiInst:       tui.NewWithOutput(io.Discard, 80, 30),
+		toolByID:      make(map[string]*tui.ToolExecutionComponent),
+		toolStarts:    make(map[string]time.Time),
+	}
+	m.handleAgentEvent(agent.ToolExecutionStartEvent{ToolCallID: "call-1", ToolName: definition.Name, Args: json.RawMessage(`{}`)})
+	content := []ai.ToolResultMessageContent{ai.TextContent{Text: "a"}, ai.ImageContent{Data: "aW1n", MimeType: "image/png"}}
+	m.handleAgentEvent(agent.ToolExecutionUpdateEvent{ToolCallID: "call-1", ToolName: definition.Name, PartialResult: agent.AgentToolResult{Content: content, Details: "d", IsError: true}})
+	m.toolByID["call-1"].Render(160)
+	if len(seen) == 0 {
+		t.Fatal("renderResult did not receive the partial result")
+	}
+	last := seen[len(seen)-1]
+	if last.IsError || last.Details != "d" || len(last.Content) != 2 {
+		t.Fatalf("partial result drawn = %+v, want the tool's content and details with isError false", last)
 	}
 }
 
@@ -88,11 +118,14 @@ func TestBuiltInOverrideFillsMissingRenderer(t *testing.T) {
 	call := func(json.RawMessage, extension.Theme, extension.ToolRenderContext) extension.Component {
 		return tui.NewText("OVERRIDE CALL")
 	}
-	if !usesToolDefinitionRenderers("bash", extension.ToolDefinition{}) {
-		t.Fatal("a built-in override without renderers kept the built-in card")
-	}
-	if usesToolDefinitionRenderers("custom", extension.ToolDefinition{}) {
-		t.Fatal("an extension tool without renderers left the generic details card (D59)")
+	// A registered definition draws through the definition path, an override of a built-in name and a plain extension
+	// tool alike (tool-execution.ts hasRendererDefinition).
+	for _, name := range []string{"bash", "custom"} {
+		m := newFallbackTestMode(extension.ToolDefinition{Name: name})
+		m.handleAgentEvent(agent.ToolExecutionStartEvent{ToolCallID: "call-" + name, ToolName: name, Args: json.RawMessage(`{}`)})
+		if card := m.toolByID["call-"+name]; card == nil || !card.HasDefinition() {
+			t.Fatalf("a registered %q without renderers did not draw through its definition", name)
+		}
 	}
 	filled := withBuiltInRenderers("write", extension.ToolDefinition{RenderCall: call})
 	if filled.RenderResult == nil {
@@ -204,5 +237,39 @@ func TestBuiltInReadResultCollapsedIsEmpty(t *testing.T) {
 	rows := result(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "text"}}}, extension.ToolRenderResultOptions{Expanded: true}, nil, extension.ToolRenderContext{State: map[string]any{}}).(tui.Component).Render(60)
 	if got := plainRows(rows); got != "\ntext" {
 		t.Fatalf("expanded read result = %q", got)
+	}
+}
+
+// Pi 0.99.1 interactive-mode.ts:3539 gives the tool component `{ ...event.result, isError: event.isError }`, so a thrown error (event.isError with
+// no result.isError) renders as a failure and a hook-cleared returned failure (result.isError with no event.isError) does not.
+func TestInteractiveToolEndRendersTheCallFlagNotTheResultFlag(t *testing.T) {
+	var seen []bool
+	definition := extension.ToolDefinition{
+		Name: "flag_tool",
+		RenderResult: func(_ extension.AgentToolResult, _ extension.ToolRenderResultOptions, _ extension.Theme, context extension.ToolRenderContext) extension.Component {
+			seen = append(seen, context.IsError)
+			return tui.NewText("RESULT")
+		},
+	}
+	for _, tc := range []struct {
+		name  string
+		event agent.ToolExecutionEndEvent
+		want  bool
+	}{
+		{"thrown error", agent.ToolExecutionEndEvent{Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "x"}}}, IsError: true}, true},
+		{"hook cleared a returned failure", agent.ToolExecutionEndEvent{Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "x"}}, IsError: true}}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := newFallbackTestMode(definition)
+			m.handleAgentEvent(agent.ToolExecutionStartEvent{ToolCallID: "c", ToolName: "flag_tool", Args: json.RawMessage(`{}`)})
+			card := m.toolByID["c"]
+			seen = nil
+			tc.event.ToolCallID, tc.event.ToolName = "c", "flag_tool"
+			m.handleAgentEvent(tc.event)
+			card.Render(80)
+			if len(seen) == 0 || seen[len(seen)-1] != tc.want {
+				t.Fatalf("renderResult saw isError %v, want last %v", seen, tc.want)
+			}
+		})
 	}
 }

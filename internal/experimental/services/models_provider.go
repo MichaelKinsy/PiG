@@ -5,20 +5,34 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"sync"
 	"sync/atomic"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 )
 
-// ModelsServiceLane is the configuration boundary consumed from an AgentLane.
-type ModelsServiceLane interface {
-	GetModel(context.Context) (*ai.Model, error)
-	SetModel(context.Context, ModelRef) error
-	GetThinkingLevel(context.Context) (ai.ThinkingLevel, error)
-	SetThinkingLevel(context.Context, ai.ThinkingLevel) error
+// AgentState is the part of the conversation's pi.agent document that the Models service follows. An empty ThinkingLevel is unset and reads as "off".
+type AgentState struct {
+	Model         *ModelRef
+	ThinkingLevel ai.ThinkingLevel
+}
+
+// AgentDocument is the conversation's replicated pi.agent document: its configuration follows every change, also those made by other clients. Value is nil until the document exists. Subscribe returns its unsubscribe function. The facet that acquired the document disposes it.
+type AgentDocument interface {
+	Value() *AgentState
+	Subscribe(func(context.Context)) func()
+	Dispose()
+}
+
+// ConversationConfiguration selects the model and thinking level to apply together; a nil member keeps its current value.
+type ConversationConfiguration struct {
+	Model         *ModelRef
+	ThinkingLevel *ai.ThinkingLevel
+}
+
+// ModelsServiceConversation is the configuration boundary the Models service consumes from the root conversation.
+type ModelsServiceConversation interface {
+	Configure(context.Context, ConversationConfiguration) error
 }
 
 // ModelsRefreshResult carries refresh diagnostics. An aborted result is not itself a rejected operation.
@@ -40,62 +54,94 @@ type ModelsServiceSettingsManager interface {
 	Flush() error
 }
 
-// ModelsServiceRuntime binds one Models service to its activation operation.
+// ModelsServiceRuntime binds one Models service to its activation operation and to configuration changes of the agent document.
 type ModelsServiceRuntime struct {
 	Service  Models
 	provider *modelsService
 }
 
 type modelsService struct {
-	lane            ModelsServiceLane
+	conversation    ModelsServiceConversation
+	agent           AgentDocument
 	modelRuntime    ModelsServiceModelRuntime
 	settingsManager ModelsServiceSettingsManager
-	state           pico3.MutableReplicatedStateOf[*ModelsState]
+	state           chord.MutableReplicatedStateOf[*ModelsState]
 	catalogRevision atomic.Int64
 }
 
-// CreateModelsService creates an inactive service with an empty catalog and no selected model. State allocation and publication belong to the caller's Chord host.
-func CreateModelsService(lane ModelsServiceLane, modelRuntime ModelsServiceModelRuntime, settingsManager ModelsServiceSettingsManager, createState func(*ModelsState) pico3.MutableReplicatedStateOf[*ModelsState]) *ModelsServiceRuntime {
+// CreateModelsService creates an inactive service over one conversation. Its configuration starts from the agent document and follows it after SyncConfiguration; state allocation and publication belong to the caller's Chord host.
+func CreateModelsService(conversation ModelsServiceConversation, agent AgentDocument, modelRuntime ModelsServiceModelRuntime, settingsManager ModelsServiceSettingsManager, createState func(*ModelsState) chord.MutableReplicatedStateOf[*ModelsState]) *ModelsServiceRuntime {
 	provider := &modelsService{
-		lane:            lane,
+		conversation:    conversation,
+		agent:           agent,
 		modelRuntime:    modelRuntime,
 		settingsManager: settingsManager,
-		state: createState(&ModelsState{
-			Catalog:       ModelsCatalog{AvailableModels: []ModelSummary{}},
-			Configuration: ModelsConfiguration{ThinkingLevel: ai.ThinkingOff},
-			Refresh:       ModelsRefresh{Status: "idle"},
-		}),
 	}
+	provider.state = createState(&ModelsState{
+		Catalog:       ModelsCatalog{AvailableModels: []ModelSummary{}},
+		Configuration: configurationOf(agent.Value()),
+		Refresh:       ModelsRefresh{Status: "idle"},
+	})
 	return &ModelsServiceRuntime{Service: provider, provider: provider}
 }
 
-// Activate reads the current catalog and lane configuration and publishes one idle snapshot.
+// Activate reads the current catalog and publishes it with an idle refresh. Upstream reads and publishes in one synchronous turn (models-provider.ts:114-120), so catalog revisions publish in order; the read runs inside the change, which the state serializes, so concurrent calls keep that order.
 func (runtime *ModelsServiceRuntime) Activate(ctx context.Context) error {
-	return runtime.provider.publishSnapshot(ctx, ModelsRefresh{Status: "idle"})
+	return runtime.provider.state.Change(ctx, func(draft *ModelsState) error {
+		draft.Catalog = runtime.provider.readCatalog()
+		draft.Refresh = ModelsRefresh{Status: "idle"}
+		return nil
+	})
 }
 
-func (service *modelsService) State() pico3.ReplicatedStateOf[*ModelsState] { return service.state }
-
-func (service *modelsService) readConfiguration(ctx context.Context) (ModelsConfiguration, error) {
-	selected, thinking, err := modelsReadPair(
-		func() (*ai.Model, error) { return service.lane.GetModel(ctx) },
-		func() (ai.ThinkingLevel, error) { return service.lane.GetThinkingLevel(ctx) },
-	)
-	if err != nil {
-		return ModelsConfiguration{}, err
+// SyncConfiguration publishes the agent document's model and thinking level when they changed.
+func (runtime *ModelsServiceRuntime) SyncConfiguration(ctx context.Context) error {
+	next := configurationOf(runtime.provider.agent.Value())
+	current := runtime.provider.state.Value().Configuration
+	if sameModelRef(current.Model, next.Model) && current.ThinkingLevel == next.ThinkingLevel {
+		return nil
 	}
-	configuration := ModelsConfiguration{ThinkingLevel: thinking}
-	if selected != nil {
-		configuration.Model = &ModelRef{Provider: selected.ProviderMeta.ProviderID, ModelId: selected.ID}
-	}
-	return configuration, nil
+	return runtime.provider.state.Change(ctx, func(draft *ModelsState) error { draft.Configuration = next; return nil })
 }
 
-func (service *modelsService) readCatalog(ctx context.Context) (ModelsCatalog, error) {
-	selected, err := service.lane.GetModel(ctx)
-	if err != nil {
-		return ModelsCatalog{}, err
+func sameModelRef(left, right *ModelRef) bool {
+	if left == nil || right == nil {
+		return left == right
 	}
+	return *left == *right
+}
+
+func configurationOf(value *AgentState) ModelsConfiguration {
+	configuration := ModelsConfiguration{ThinkingLevel: ai.ThinkingOff}
+	if value == nil {
+		return configuration
+	}
+	if value.Model != nil {
+		configuration.Model = &ModelRef{Provider: value.Model.Provider, ModelId: value.Model.ModelId}
+	}
+	if value.ThinkingLevel != "" {
+		configuration.ThinkingLevel = value.ThinkingLevel
+	}
+	return configuration
+}
+
+func (service *modelsService) State() chord.ReplicatedStateOf[*ModelsState] { return service.state }
+
+func (service *modelsService) currentThinking() ai.ThinkingLevel {
+	return configurationOf(service.agent.Value()).ThinkingLevel
+}
+
+// selectedModel is the runtime's model for the agent document's reference; nil when none is selected or the runtime does not know it.
+func (service *modelsService) selectedModel() *ai.Model {
+	value := service.agent.Value()
+	if value == nil || value.Model == nil || service.modelRuntime == nil {
+		return nil
+	}
+	return service.modelRuntime.GetModel(value.Model.Provider, value.Model.ModelId)
+}
+
+func (service *modelsService) readCatalog() ModelsCatalog {
+	selected := service.selectedModel()
 	var available []*ai.Model
 	if service.modelRuntime != nil {
 		available = service.modelRuntime.GetAvailableSnapshot()
@@ -111,42 +157,15 @@ func (service *modelsService) readCatalog(ctx context.Context) (ModelsCatalog, e
 	if selected != nil && !included {
 		catalog = append(catalog, modelSummary(selected))
 	}
-	return ModelsCatalog{Revision: int(service.catalogRevision.Add(1)), AvailableModels: catalog}, nil
+	return ModelsCatalog{Revision: int(service.catalogRevision.Add(1)), AvailableModels: catalog}
 }
 
 func modelSummary(model *ai.Model) ModelSummary {
 	return ModelSummary{ModelRef: ModelRef{Provider: model.ProviderMeta.ProviderID, ModelId: model.ID}, Name: model.DisplayName, Reasoning: model.ProviderMeta.Reasoning}
 }
 
-func (service *modelsService) publishSnapshot(ctx context.Context, refresh ModelsRefresh) error {
-	catalog, configuration, err := modelsReadPair(
-		func() (ModelsCatalog, error) { return service.readCatalog(ctx) },
-		func() (ModelsConfiguration, error) { return service.readConfiguration(ctx) },
-	)
-	if err != nil {
-		return err
-	}
-	return service.state.Change(ctx, func(draft *ModelsState) error {
-		draft.Catalog = catalog
-		draft.Configuration = configuration
-		draft.Refresh = refresh
-		return nil
-	})
-}
-
-func (service *modelsService) publishConfiguration(ctx context.Context) error {
-	configuration, err := service.readConfiguration(ctx)
-	if err != nil {
-		return err
-	}
-	return service.state.Change(ctx, func(draft *ModelsState) error { draft.Configuration = configuration; return nil })
-}
-
-func (service *modelsService) GetThinkingLevels(ctx context.Context) ([]ai.ThinkingLevel, error) {
-	selected, err := service.lane.GetModel(ctx)
-	if err != nil {
-		return nil, err
-	}
+func (service *modelsService) GetThinkingLevels(context.Context) ([]ai.ThinkingLevel, error) {
+	selected := service.selectedModel()
 	if selected == nil {
 		return []ai.ThinkingLevel{ai.ThinkingOff}, nil
 	}
@@ -154,22 +173,12 @@ func (service *modelsService) GetThinkingLevels(ctx context.Context) ([]ai.Think
 }
 
 func (service *modelsService) CycleThinking(ctx context.Context) error {
-	levels, err := service.GetThinkingLevels(ctx)
-	if err != nil {
-		return err
-	}
-	current, err := service.lane.GetThinkingLevel(ctx)
-	if err != nil {
-		return err
-	}
+	levels, _ := service.GetThinkingLevels(ctx)
 	next := ai.ThinkingOff
 	if len(levels) > 0 {
-		next = levels[(slices.Index(levels, current)+1)%len(levels)]
+		next = levels[(slices.Index(levels, service.currentThinking())+1)%len(levels)]
 	}
-	if err := service.lane.SetThinkingLevel(ctx, next); err != nil {
-		return err
-	}
-	return service.publishConfiguration(ctx)
+	return service.conversation.Configure(ctx, ConversationConfiguration{ThinkingLevel: &next})
 }
 
 func (service *modelsService) Refresh(ctx context.Context) error {
@@ -190,7 +199,12 @@ func (service *modelsService) Refresh(ctx context.Context) error {
 			}
 		}
 	}
-	return service.publishSnapshot(ctx, refresh)
+	// Read inside the change for the ordering Activate keeps (models-provider.ts:87-91).
+	return service.state.Change(ctx, func(draft *ModelsState) error {
+		draft.Catalog = service.readCatalog()
+		draft.Refresh = refresh
+		return nil
+	})
 }
 
 func (service *modelsService) Select(ctx context.Context, model ModelRef) error {
@@ -201,25 +215,21 @@ func (service *modelsService) Select(ctx context.Context, model ModelRef) error 
 	if selected == nil {
 		return fmt.Errorf("Unknown model: %s/%s", model.Provider, model.ModelId)
 	}
-	if err := service.lane.SetModel(ctx, ModelRef{Provider: selected.ProviderMeta.ProviderID, ModelId: selected.ID}); err != nil {
+	thinking := ai.ClampThinkingLevel(selected, service.currentThinking())
+	if err := service.conversation.Configure(ctx, ConversationConfiguration{Model: &ModelRef{Provider: selected.ProviderMeta.ProviderID, ModelId: selected.ID}, ThinkingLevel: &thinking}); err != nil {
 		return err
 	}
-	if service.settingsManager != nil {
-		if err := service.settingsManager.SetDefaultModelAndProvider(selected.ProviderMeta.ProviderID, selected.ID); err != nil {
-			return err
-		}
-		if err := service.settingsManager.Flush(); err != nil {
-			return err
-		}
+	if service.settingsManager == nil {
+		return nil
 	}
-	return service.publishConfiguration(ctx)
+	if err := service.settingsManager.SetDefaultModelAndProvider(selected.ProviderMeta.ProviderID, selected.ID); err != nil {
+		return err
+	}
+	return service.settingsManager.Flush()
 }
 
 func (service *modelsService) SelectThinking(ctx context.Context, level ai.ThinkingLevel) error {
-	levels, err := service.GetThinkingLevels(ctx)
-	if err != nil {
-		return err
-	}
+	levels, _ := service.GetThinkingLevels(ctx)
 	if !slices.Contains(levels, level) {
 		names := make([]string, len(levels))
 		for i, available := range levels {
@@ -227,50 +237,25 @@ func (service *modelsService) SelectThinking(ctx context.Context, level ai.Think
 		}
 		return fmt.Errorf("Thinking level %s is unavailable; choose one of: %s", level, strings.Join(names, ", "))
 	}
-	if err := service.lane.SetThinkingLevel(ctx, level); err != nil {
-		return err
-	}
-	return service.publishConfiguration(ctx)
+	return service.conversation.Configure(ctx, ConversationConfiguration{ThinkingLevel: &level})
 }
 
-// modelsReadPair owns and joins the concurrent reads made by upstream Promise.all. Both calls receive the invoking operation's context through their closures.
-func modelsReadPair[A, B any](first func() (A, error), second func() (B, error)) (A, B, error) {
-	var a A
-	var b B
-	var failure error
-	var rejected sync.Once
-	recordFailure := func(err error) {
-		if err != nil {
-			rejected.Do(func() { failure = err })
-		}
-	}
-	var work sync.WaitGroup
-	work.Go(func() {
-		var err error
-		a, err = first()
-		recordFailure(err)
-	})
-	work.Go(func() {
-		var err error
-		b, err = second()
-		recordFailure(err)
-	})
-	work.Wait()
-	return a, b, failure
-}
-
-// ModelsServiceFacetOptions selects the lane and optional runtime and settings collaborators.
+// ModelsServiceFacetOptions selects the conversation, its agent document and the optional runtime and settings collaborators. The facet owns Agent and disposes it with the host.
 type ModelsServiceFacetOptions struct {
-	Lane            ModelsServiceLane
+	Conversation    ModelsServiceConversation
+	Agent           AgentDocument
 	ModelRuntime    ModelsServiceModelRuntime
 	SettingsManager ModelsServiceSettingsManager
 }
 
-// CreateModelsServiceFacet declares a Models provider on the Chord host and activates it with a background context after setup completes.
+// CreateModelsServiceFacet declares a Models provider on the Chord host. After setup it publishes the catalog with a background context and then follows the agent document, so configuration changes made by any client reach the replicated state.
 func CreateModelsServiceFacet(options ModelsServiceFacetOptions) chord.Facet {
 	return chord.DefineFacet(chord.Facet{Id: "@pi/models", Setup: func(env *chord.FacetEnvironment) error {
+		if err := env.Own(func(context.Context) error { options.Agent.Dispose(); return nil }); err != nil {
+			return err
+		}
 		var stateError error
-		runtime := CreateModelsService(options.Lane, options.ModelRuntime, options.SettingsManager, func(initial *ModelsState) pico3.MutableReplicatedStateOf[*ModelsState] {
+		runtime := CreateModelsService(options.Conversation, options.Agent, options.ModelRuntime, options.SettingsManager, func(initial *ModelsState) chord.MutableReplicatedStateOf[*ModelsState] {
 			state, err := chord.NewReplicatedState(initial)
 			stateError = err
 			return state
@@ -281,6 +266,12 @@ func CreateModelsServiceFacet(options ModelsServiceFacetOptions) chord.Facet {
 		if err := chord.ProvideService(env, ModelsDefinition, runtime.Service); err != nil {
 			return err
 		}
-		return env.OnActivate(func(context.Context) error { return runtime.Activate(context.Background()) })
+		return env.OnActivate(func(context.Context) error {
+			if err := runtime.Activate(context.Background()); err != nil {
+				return err
+			}
+			unsubscribe := options.Agent.Subscribe(func(ctx context.Context) { _ = runtime.SyncConfiguration(ctx) })
+			return env.Own(func(context.Context) error { unsubscribe(); return nil })
+		})
 	}})
 }

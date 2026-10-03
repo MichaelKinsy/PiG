@@ -1,7 +1,10 @@
 package subprocess
 
 import (
+	"bytes"
 	"encoding/json"
+	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -125,4 +128,98 @@ func TestGetAllToolsHostCallKeepsTheSDKSourceField(t *testing.T) {
 	if want := `[{"name":"lookup","description":"Look up","parameters":{"type":"object"},"sourceInfo":{"path":"/ext.ts"}}]`; string(state) != want {
 		t.Errorf("replicated allTools = %s, want %s", state, want)
 	}
+}
+
+// The host call and the replicated state both carry a tool's exposure, namespace and annotations, which Node extensions read as pi.getAllTools() and the Go, Rust and Python SDKs decode.
+// upstream: types.ts:2063 (ToolInfo)
+func TestGetAllToolsCarriesExposureNamespaceAndAnnotations(t *testing.T) {
+	hint := true
+	b := NewUIBridge(func() {})
+	b.SetActions(&HostCallbacks{GetAllTools: func() []ToolInfo {
+		return []ToolInfo{{
+			Name: "lookup", Description: "Look up", Parameters: json.RawMessage(`{"type":"object"}`), SourceInfo: map[string]any{"path": "/ext.ts"},
+			Exposure: extension.ToolExposureDeferred, Namespace: &extension.ToolNamespace{Name: "docs"}, Annotations: &extension.ToolAnnotations{ReadOnlyHint: &hint},
+		}}
+	}})
+	result, err := b.HandleCall("ext", &CallPayload{Method: "getAllTools"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `[{"name":"lookup","description":"Look up","parameters":{"type":"object"},"sourceInfo":{"path":"/ext.ts"},"exposure":"deferred","namespace":{"name":"docs"},"annotations":{"readOnlyHint":true}}]`
+	var call struct {
+		Tools json.RawMessage `json:"tools"`
+	}
+	if err := json.Unmarshal(result.Result, &call); err != nil {
+		t.Fatal(err)
+	}
+	assertJSONEqual(t, "getAllTools tools", call.Tools, want)
+	state, _ := json.Marshal(b.Snapshot(nil, 0, false).AllTools)
+	assertJSONEqual(t, "replicated allTools", state, want)
+}
+
+func assertJSONEqual(t *testing.T, what string, got json.RawMessage, want string) {
+	t.Helper()
+	var g, w any
+	if err := json.Unmarshal(got, &g); err != nil {
+		t.Fatalf("%s: %v", what, err)
+	}
+	if err := json.Unmarshal([]byte(want), &w); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(g, w) {
+		t.Errorf("%s = %s, want %s", what, got, want)
+	}
+}
+
+// A Node extension sees upstream's member order through Object.keys and JSON.stringify: exposure, namespace and annotations come after promptGuidelines and before sourceInfo, in both the host call and the replicated state. The host call appends the SDKs' deprecated source member, which the Node runtime drops.
+// upstream: agent-session.ts:1452-1461 (getAllTools object literal)
+func TestGetAllToolsKeepsUpstreamMemberOrder(t *testing.T) {
+	hint := true
+	b := NewUIBridge(func() {})
+	b.SetActions(&HostCallbacks{GetAllTools: func() []ToolInfo {
+		return []ToolInfo{{
+			Name: "lookup", Description: "Look up", Parameters: json.RawMessage(`{"type":"object"}`), PromptGuidelines: []string{"Use it."},
+			SourceInfo: map[string]any{"path": "/ext.ts"}, Exposure: extension.ToolExposureDeferred,
+			Namespace: &extension.ToolNamespace{Name: "docs"}, Annotations: &extension.ToolAnnotations{ReadOnlyHint: &hint}, Source: "ext",
+		}}
+	}})
+	result, err := b.HandleCall("ext", &CallPayload{Method: "getAllTools"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var call struct {
+		Tools []json.RawMessage `json:"tools"`
+	}
+	if err := json.Unmarshal(result.Result, &call); err != nil || len(call.Tools) != 1 {
+		t.Fatalf("tools = %s (%v)", result.Result, err)
+	}
+	upstream := []string{"name", "description", "parameters", "promptGuidelines", "exposure", "namespace", "annotations", "sourceInfo"}
+	if got, want := objectKeys(t, call.Tools[0]), append(slices.Clone(upstream), "source"); !slices.Equal(got, want) {
+		t.Errorf("getAllTools members = %v, want %v", got, want)
+	}
+	state, _ := json.Marshal(b.Snapshot(nil, 0, false).AllTools[0])
+	if got := objectKeys(t, state); !slices.Equal(got, upstream) {
+		t.Errorf("replicated allTools members = %v, want %v", got, upstream)
+	}
+}
+
+func objectKeys(t *testing.T, object json.RawMessage) []string {
+	t.Helper()
+	decoder := json.NewDecoder(bytes.NewReader(object))
+	if _, err := decoder.Token(); err != nil {
+		t.Fatal(err)
+	}
+	var keys []string
+	for decoder.More() {
+		key, err := decoder.Token()
+		if err != nil {
+			t.Fatal(err)
+		}
+		keys = append(keys, key.(string))
+		var skip json.RawMessage
+		if err := decoder.Decode(&skip); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return keys
 }

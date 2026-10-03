@@ -12,6 +12,8 @@ func TestOverflowUpstream(t *testing.T) {
 		{"detects explicit Ollama prompt-too-long errors", "400 `prompt too long; exceeded max context length by 100918 tokens`", "ollama", 32768, true},
 		// .upstream/v0.87.1/packages/ai/test/overflow.test.ts:38
 		{"detects z.ai prompt-too-long errors", `400 {"code":"1261","message":"Prompt too long"}`, "zai", 1048576, true},
+		// .upstream/v0.99.2/packages/ai/test/overflow.test.ts:44 (#10208)
+		{"detects z.ai CN endpoint prompt-exceeds-max-length errors", `400 {"code":"1261","message":"Prompt exceeds max length"}`, "zai", 1048576, true},
 		// .upstream/v0.87.1/packages/ai/test/overflow.test.ts:44
 		{"detects Together AI context length errors", "400 The input (516368 tokens) is longer than the model's context length (262144 tokens).", "ollama", 262144, true},
 		// .upstream/v0.87.1/packages/ai/test/overflow.test.ts:51

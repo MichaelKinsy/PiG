@@ -31,15 +31,7 @@ func (runtime *ModelRuntime) RegisterNativeProvider(provider *ai.ModelsProvider)
 
 // RegisterProvider composes legacy provider callbacks with models.json and native registrations.
 func (runtime *ModelRuntime) RegisterProvider(id string, input ProviderConfigInput) error {
-	return runtime.services.Registry().RegisterProviderInput(id, input, func(ctx context.Context, model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
-		entry := icodingagent.NativeModelEntry(model)
-		provider, err := buildProviderForEntry(id, model.ID, model.ProviderMeta.API, entry, runtime.services, options.APIKey, true)
-		if err != nil {
-			return nil, err
-		}
-		options.IsReasoning = model.ProviderMeta.Reasoning || model.Capabilities.MaxThinking != ""
-		return provider.Stream(ctx, transcript, options)
-	})
+	return runtime.services.Registry().RegisterProviderInput(id, input, runtime.builtinStream(id))
 }
 
 // Refresh first yields to the queued registration refresh (model-runtime.ts:750,788,796), then awaits provider-owned catalog publication and generation-checked availability reconciliation. A full refresh recomposes every provider and so supersedes their in-flight refreshes.

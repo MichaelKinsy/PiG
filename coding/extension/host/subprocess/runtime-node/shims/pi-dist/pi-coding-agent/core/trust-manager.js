@@ -7,6 +7,7 @@ import { canonicalizePath, resolvePath } from "../utils/paths.js";
 import { stripBom } from "../utils/text.js";
 const TRUST_REQUIRING_PROJECT_CONFIG_RESOURCES = [
     "settings.json",
+    "mcp.json",
     "extensions",
     "skills",
     "prompts",

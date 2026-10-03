@@ -9,7 +9,6 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/session"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/experimental/services"
 )
@@ -62,11 +61,21 @@ type RoutedSessionHandle interface {
 	Close(context.Context) error
 }
 
+// SessionMetadata is the application's metadata of a hosted Session; routing requires only its ID (packages/server/src/types.ts SessionMetadata). The metadata ResolveSession returns is the value OpenSession receives, so an application asserts its own concrete type there.
+type SessionMetadata interface {
+	SessionID() string
+}
+
+// BasicSessionMetadata is the minimal SessionMetadata: only an ID.
+type BasicSessionMetadata struct{ ID string }
+
+func (metadata BasicSessionMetadata) SessionID() string { return metadata.ID }
+
 // ServerHost supplies application Session resolution and opening. Routing does not own the durable storage implementation.
 type ServerHost struct {
 	ServerServices RoutedServerServiceHost
-	ResolveSession func(context.Context, string) (session.SessionMetadata, error)
-	OpenSession    func(context.Context, session.SessionMetadata) (RoutedSessionHandle, error)
+	ResolveSession func(context.Context, string) (SessionMetadata, error)
+	OpenSession    func(context.Context, SessionMetadata) (RoutedSessionHandle, error)
 }
 
 // ServerOptions selects listeners, logical identity, and bounded framing/handshake admission. Nil numeric options select Pi's defaults; explicit zero is preserved.

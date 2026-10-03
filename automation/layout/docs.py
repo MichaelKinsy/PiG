@@ -32,8 +32,6 @@ RELATIVE_PIN_PATHS = {
 MOVED_ORACLE_ROOTS = {
     "agent/testdata/tool-validation-oracle.mjs": "'../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/'",
     "tui/testdata/color_detection.mjs": '"../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/"',
-    "agent/harness/session/testdata/generate-fork-snapshots.mjs": "'../../../../.upstream/current/packages/agent/src/harness/session/fork.ts'",
-    "agent/harness/testdata/telemetry-schema.mjs": "'../../..'",
 }
 REQUIRED = ("AGENTS.md", "PORT_MAP.md", "DIVERGENCES.md", "CHANGELOG.md", "README.md", "go.mod")
 PARITY_SUFFIXES = {".toml", ".json", ".tsv", ".sh", ".mjs", ".js", ".ts", ".py", ".yaml", ".yml"}

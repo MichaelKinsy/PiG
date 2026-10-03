@@ -1,0 +1,127 @@
+# port-99-f6g green run, 2026-09-30T01:19:05Z
+## go test ./internal/codingagent/tools (all) and the lane tests verbose
+--- PASS: TestShellToolIgnoresOutputAfterOperationsResolve (0.00s)
+--- PASS: TestBashStructuredResultMatchesRecordedUpstream (0.17s)
+    --- PASS: TestBashStructuredResultMatchesRecordedUpstream/fail (0.00s)
+    --- PASS: TestBashStructuredResultMatchesRecordedUpstream/empty (0.00s)
+    --- PASS: TestBashStructuredResultMatchesRecordedUpstream/seq3000 (0.01s)
+    --- PASS: TestBashStructuredResultMatchesRecordedUpstream/seq300000 (0.08s)
+    --- PASS: TestBashStructuredResultMatchesRecordedUpstream/signal (0.00s)
+    --- PASS: TestBashStructuredResultMatchesRecordedUpstream/euro2m (0.08s)
+--- PASS: TestBuiltinFailureDetails (0.01s)
+    --- PASS: TestBuiltinFailureDetails/read/failure (0.00s)
+    --- PASS: TestBuiltinFailureDetails/read/abort (0.00s)
+    --- PASS: TestBuiltinFailureDetails/write/failure (0.00s)
+    --- PASS: TestBuiltinFailureDetails/write/abort (0.00s)
+    --- PASS: TestBuiltinFailureDetails/edit/failure (0.00s)
+    --- PASS: TestBuiltinFailureDetails/edit/abort (0.00s)
+    --- PASS: TestBuiltinFailureDetails/bash/failure (0.00s)
+    --- PASS: TestBuiltinFailureDetails/bash/abort (0.00s)
+    --- PASS: TestBuiltinFailureDetails/grep/failure (0.00s)
+    --- PASS: TestBuiltinFailureDetails/grep/abort (0.00s)
+    --- PASS: TestBuiltinFailureDetails/find/failure (0.00s)
+    --- PASS: TestBuiltinFailureDetails/find/abort (0.00s)
+    --- PASS: TestBuiltinFailureDetails/ls/failure (0.00s)
+    --- PASS: TestBuiltinFailureDetails/ls/abort (0.00s)
+--- PASS: TestShellToolWrapsCommandBeforeSpawn (0.00s)
+--- PASS: TestShellToolTimeoutValidationMirrorsResolveTimeoutMs (0.00s)
+--- PASS: TestShellToolTimeoutAndAbortStatus (0.70s)
+--- PASS: TestShellToolMissingWorkingDirectory (0.00s)
+--- PASS: TestShellToolTempFilePrefix (0.01s)
+--- PASS: TestShellToolPreservesTruncationSnapshot (0.01s)
+--- PASS: TestSanitizeBinaryOutput_PreservesPrintable (0.00s)
+--- PASS: TestSanitizeBinaryOutput_RemovesControlCharacters (0.00s)
+--- PASS: TestSanitizeBinaryOutput_PreservesUTF8 (0.00s)
+--- PASS: TestShellToolStructuredResultForBothShells (0.00s)
+    --- PASS: TestShellToolStructuredResultForBothShells/bash (0.00s)
+    --- PASS: TestShellToolStructuredResultForBothShells/powershell (0.00s)
+--- PASS: TestShellToolThrownFailuresHaveNoStructuredContent (0.00s)
+    --- PASS: TestShellToolThrownFailuresHaveNoStructuredContent/null_exit_code (0.00s)
+    --- PASS: TestShellToolThrownFailuresHaveNoStructuredContent/aborted (0.00s)
+    --- PASS: TestShellToolThrownFailuresHaveNoStructuredContent/timeout (0.00s)
+--- PASS: TestShellToolNonZeroExitKeepsTruncationDetails (0.00s)
+--- PASS: TestShellToolWallTimeRoundsToTenthsOfASecond (0.12s)
+--- PASS: TestShellToolOutputSchema (0.00s)
+    --- PASS: TestShellToolOutputSchema/bash (0.00s)
+    --- PASS: TestShellToolOutputSchema/powershell (0.00s)
+--- PASS: TestSanitizeBinaryOutputRemovesExactlyTheUpstreamClass (0.01s)
+--- PASS: TestReadFullOutput (0.00s)
+    --- PASS: TestReadFullOutput/keeps_everything_in_memory_when_no_temp_file_exists (0.00s)
+    --- PASS: TestReadFullOutput/empty_output (0.00s)
+    --- PASS: TestReadFullOutput/returns_a_file_of_at_most_maxBytes_whole (0.00s)
+    --- PASS: TestReadFullOutput/keeps_the_first_and_last_half_around_the_omission_marker (0.00s)
+    --- PASS: TestReadFullOutput/cuts_multi-byte_characters_only_at_character_boundaries (0.00s)
+    --- PASS: TestReadFullOutput/reports_a_missing_temp_file (0.00s)
+--- PASS: TestShellToolSignalExitCode (0.00s)
+--- PASS: TestRoundedWallTimeSeconds (0.00s)
+--- PASS: TestToolsBashPort (0.34s)
+    --- PASS: TestToolsBashPort/should_execute_simple_commands (0.00s)
+    --- PASS: TestToolsBashPort/should_report_non-zero_exit_codes_as_error_results_with_structured_content (0.01s)
+    --- PASS: TestToolsBashPort/should_return_up_to_1_MiB_of_output_in_structured_content (0.05s)
+    --- PASS: TestToolsBashPort/should_reject_a_null_exit_code_from_custom_operations (0.00s)
+    --- PASS: TestToolsBashPort/should_respect_timeout (0.05s)
+    --- PASS: TestToolsBashPort/should_include_full_output_path_for_truncated_timeout_and_abort_errors (0.03s)
+        --- PASS: TestToolsBashPort/should_include_full_output_path_for_truncated_timeout_and_abort_errors/timeout:5 (0.02s)
+        --- PASS: TestToolsBashPort/should_include_full_output_path_for_truncated_timeout_and_abort_errors/aborted (0.02s)
+    --- PASS: TestToolsBashPort/should_throw_error_when_cwd_does_not_exist (0.00s)
+    --- PASS: TestToolsBashPort/should_handle_process_spawn_errors (0.00s)
+    --- PASS: TestToolsBashPort/should_pass_shellPath_through_to_shell_resolution (0.00s)
+    --- PASS: TestToolsBashPort/should_send_commands_over_stdin_when_shell_resolution_requires_it (0.05s)
+    --- PASS: TestToolsBashPort/should_prepend_command_prefix_when_configured (0.00s)
+    --- PASS: TestToolsBashPort/should_include_output_from_both_prefix_and_command (0.00s)
+    --- PASS: TestToolsBashPort/should_work_without_command_prefix (0.00s)
+    --- PASS: TestToolsBashPort/should_coalesce_streaming_updates_for_chatty_output (0.07s)
+    --- PASS: TestToolsBashPort/should_not_count_a_trailing_newline_as_an_extra_truncated_bash_output_line (0.05s)
+    --- PASS: TestToolsBashPort/should_decode_UTF-8_characters_split_across_output_chunks (0.00s)
+    --- PASS: TestToolsBashPort/should_expose_local_bash_operations_for_extension_reuse (0.00s)
+    --- PASS: TestToolsBashPort/should_preserve_executeBash_sanitization_when_using_local_bash_operations (0.00s)
+    --- PASS: TestToolsBashPort/should_persist_full_output_when_truncation_happens_by_line_count_only (0.00s)
+    --- PASS: TestToolsBashPort/executeBash_should_persist_full_output_when_truncation_happens_by_line_count_only (0.00s)
+--- PASS: TestToolsBashSignalsPort (0.01s)
+    --- PASS: TestToolsBashSignalsPort/should_map_signal-killed_commands_to_128_plus_the_signal_number/KILL (0.00s)
+    --- PASS: TestToolsBashSignalsPort/should_report_signal-killed_commands_as_errors_while_preserving_partial_output/KILL (0.00s)
+    --- PASS: TestToolsBashSignalsPort/should_map_signal-killed_commands_to_128_plus_the_signal_number/TERM (0.00s)
+    --- PASS: TestToolsBashSignalsPort/should_report_signal-killed_commands_as_errors_while_preserving_partial_output/TERM (0.00s)
+--- PASS: TestTruncateMiddle (0.00s)
+    --- PASS: TestTruncateMiddle/returns_content_within_the_limit_unchanged (0.00s)
+    --- PASS: TestTruncateMiddle/keeps_half_of_maxBytes_at_each_end (0.00s)
+    --- PASS: TestTruncateMiddle/counts_lines_of_the_whole_content (0.00s)
+    --- PASS: TestTruncateMiddle/does_not_split_a_four-byte_character (0.00s)
+    --- PASS: TestTruncateMiddle/cuts_multi-byte_text_only_at_character_boundaries (0.00s)
+ok  	github.com/MichaelKinsy/PiG/internal/codingagent/tools	1.431s
+ok  	github.com/MichaelKinsy/PiG/internal/codingagent/tools	5.210s
+--- PASS: TestReadHeadersTreatNullRangeAsOmitted (0.00s)
+ok  	github.com/MichaelKinsy/PiG/tui	0.041s
+
+## Existing tests changed in the green commit (not ported tests)
+- failure_details_test.go TestBuiltinFailureDetails/bash/failure and shell_tool_unix_test.go TestShellToolSignalExitCode asserted 0.87.1's `details: {}` for a non-zero exit. Upstream 0.99.1 returns that case as an error result with details undefined (bash.ts:401-407), verified against the real 0.99.1 package (oracle below). They now assert no details and, for the first, structuredContent.
+- truncate_middle_test.go "returns content within the limit unchanged": "a\nb\n€" is 7 bytes (4 ASCII + 3 for the euro sign); the red test said 6, an arithmetic slip in this lane's own test (not an upstream expectation).
+
+## Oracle: real upstream 0.99.1
+`@earendil-works/pi-coding-agent@0.99.1` installed in a scratch dir with a per-command `--min-release-age=0` (no ~/.npmrc edit). `internal/codingagent/tools/testdata/bash-structured-oracle.mjs` runs `createBashTool` for six commands and records the result shape, sha256 of the model-facing text and of structuredContent.output; `TestBashStructuredResultMatchesRecordedUpstream` replays them against BashTool and passes byte for byte, including `seq 1 300000` (omission marker "940319 bytes omitted", 1048610 output bytes) and `yes '€' | tr -d '\n' | head -c 2000001` (head ends inside a character, tail starts on a continuation byte).
+
+## Mutation checks (revert, see red, restore)
+- tail continuation-byte skip removed: TestReadFullOutput multi-byte case and the oracle euro2m case fail.
+- head decoded without stream mode: TestReadFullOutput multi-byte case fails.
+- omitted-byte count without the tail: two TestReadFullOutput cases fail.
+- exit code check disabled (non-zero returned as success): TestBuiltinFailureDetails/bash/failure, TestShellToolStructuredResultForBothShells (both shells), TestShellToolNonZeroExitKeepsTruncationDetails fail.
+- full_output_path always set: TestShellToolNonZeroExitKeepsTruncationDetails fails.
+- wall time floor instead of round-half-up: survived the timing test, so `roundedWallTimeSeconds` was extracted and TestRoundedWallTimeSeconds added; the mutation now fails it.
+- TruncateMiddle without the head boundary walk / with a wrong tail offset: the four-byte-character and half-of-maxBytes cases fail.
+
+## Load test
+`go test -race -c` binary of internal/codingagent/tools, `GOMAXPROCS=4 taskset -c 0-3`, four CPU burners pinned to the same cores, `-test.count=24` over the bash/shell/accumulator/truncate/oracle/powershell tests: PASS.
+
+## Dependents (go test -race)
+./internal/codingagent/... ./agent ./tui pass. ./coding fails only the four known oracle-version-guard tests (TestRPC33ObservationMatrix, ...Azure, TestRPC33AzureTickOrder, TestRPC33GoogleObservationMatrix), red until the pin move.
+
+## Parity family `tools` (test/parity/scenarios/tools)
+`make parity-family` cannot run here: `parity-deps` refuses the shared `extensions/sdk-ts/node_modules` symlink, and the comparator on disk is 0.87.1. The runner was driven by hand with the real 0.99.1 package as the comparator (installed in a scratch dir), with the pin and the probe version asserts set to 0.99.1 in a scratch worktree (never committed):
+- 17-tool-rpc-error-and-bash-wire: passes against real 0.99.1 with this lane merged with family 4 (`port-99-f4`, clean merge) plus two fields that belong to the RPC layer (see the handoff below). Against the 0.87.1 comparator it fails on `details` by design (0.87.1 threw, 0.99.1 returns).
+- 15-builtin-tool-wire-details: passes 3 of 3 runs against real 0.99.1 after the probe change in the follow-up commit (`structuredContent` compared, `wall_time_seconds` reduced to its type on both sides because it is a clock reading, bash.ts:392).
+- 01-print-bash-tool-exec, 08-print-tool-truncation-pipeline and the other print-mode scenarios pass against real 0.99.1.
+- Scenarios whose Pi probes import the 0.87.1 install by path or assert its version (17-shell-operations, 15-edit-access-abort, 16-tool-context-cwd, 12-managed-tool-status, the sdk-* probes) move with the pin.
+
+## Handoff to other lanes (stubs this lane cannot fill)
+- Family 7 (`cmd/pig/rpc_events.go`, `tool_execution_end`): the `result` object must carry `structuredContent` after `details`, and `isError: true` when the tool itself returned an error result (real 0.99.1: `{"content":[..],"structuredContent":{..},"isError":true}`; a thrown error carries `details: {}` and no `isError` inside `result`). Go's `AgentToolResult.IsError` is also set for loop-generated errors, so the distinction needs family 4's result plumbing. With both fields added in a scratch tree scenario 17 passes.
+- Families 4/6D/6E: `structuredContent` through `afterToolCall` (`agent-loop.ts:879-889`), the session `tool_result` hook (`agent-session.ts:657-680`) and nested calls.

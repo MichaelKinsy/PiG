@@ -117,9 +117,10 @@ func TestReleasePolicyVerifiesCommittedBaseline(t *testing.T) {
 	git("add", "mapping.json")
 	git("-c", "user.name=Parity Test", "-c", "user.email=parity@example.invalid", "-c", "commit.gpgsign=false", "commit", "-qm", "reviewed baseline")
 	policy.BaselineCommit = git("rev-parse", "HEAD")
+	git("update-ref", "refs/remotes/origin/main", "HEAD")
 	policyPath := filepath.Join(root, "policy.json")
 	writeJSON(t, policyPath, policy)
-	if err := checkReleasePolicy(invPath, mapPath, policyPath, root); err != nil {
+	if err := checkReleasePolicy(invPath, mapPath, policyPath, root, defaultPublicMainRef); err != nil {
 		t.Fatal(err)
 	}
 	// A release squashed onto an older public commit records ports made since that commit.
@@ -130,7 +131,7 @@ func TestReleasePolicyVerifiesCommittedBaseline(t *testing.T) {
 	extended := policy
 	extended.BaselinePorted = []string{inv.Files[0].Path, inv.Files[1].Path}
 	writeJSON(t, policyPath, extended)
-	if err := checkReleasePolicy(invPath, mapPath, policyPath, root); err != nil {
+	if err := checkReleasePolicy(invPath, mapPath, policyPath, root, defaultPublicMainRef); err != nil {
 		t.Fatalf("baseline above the committed floor: %v", err)
 	}
 	writeJSON(t, mapPath, m)
@@ -143,18 +144,161 @@ func TestReleasePolicyVerifiesCommittedBaseline(t *testing.T) {
 		t.Fatal(err)
 	}
 	mapPath = renamed
-	if err := checkReleasePolicy(invPath, mapPath, policyPath, root); err != nil {
+	if err := checkReleasePolicy(invPath, mapPath, policyPath, root, defaultPublicMainRef); err != nil {
 		t.Fatalf("renamed mapping must retain the committed baseline: %v", err)
 	}
 	policy.BaselinePorted = nil
 	writeJSON(t, policyPath, policy)
-	if err := checkReleasePolicy(invPath, mapPath, policyPath, root); err == nil || !strings.Contains(err.Error(), "baseline drops 1 ported paths") {
+	if err := checkReleasePolicy(invPath, mapPath, policyPath, root, defaultPublicMainRef); err == nil || !strings.Contains(err.Error(), "baseline drops 1 ported paths") {
 		t.Fatalf("baseline below the committed floor error=%v", err)
 	}
 	policy.BaselineCommit = strings.Repeat("f", 40)
 	writeJSON(t, policyPath, policy)
-	if err := checkReleasePolicy(invPath, mapPath, policyPath, root); err == nil || !strings.Contains(err.Error(), "fetch this commit") {
+	if err := checkReleasePolicy(invPath, mapPath, policyPath, root, defaultPublicMainRef); err == nil || !strings.Contains(err.Error(), "fetch this commit") {
 		t.Fatalf("missing committed baseline error=%v", err)
+	}
+}
+
+// TestReleasePolicyRequiresBaselineReachableFromPublicMain pins the anchor to a commit every clone of public main can fetch. The release lands as one squash on public main, so a commit that exists only in a staging clone passes the local read but cannot be read where the gate runs for the release.
+func TestReleasePolicyRequiresBaselineReachableFromPublicMain(t *testing.T) {
+	inv, m, policy := closedReleasePolicy()
+	_, _, evidence, divergences := baseline()
+	root, invPath, mapPath := writeRepo(t, inv, m, evidence, divergences)
+	git := func(args ...string) string {
+		t.Helper()
+		cmd := exec.CommandContext(t.Context(), "git", args...)
+		cmd.Dir = root
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, output)
+		}
+		return strings.TrimSpace(string(output))
+	}
+	commit := func(message string) {
+		t.Helper()
+		git("-c", "user.name=Parity Test", "-c", "user.email=parity@example.invalid", "-c", "commit.gpgsign=false", "commit", "-qm", message)
+	}
+	git("init", "-q")
+	git("add", "mapping.json")
+	commit("public main")
+	publicMain := git("rev-parse", "HEAD")
+	writeJSON(t, filepath.Join(root, "staging-only.json"), m)
+	git("add", "staging-only.json")
+	commit("staging only")
+	policy.BaselineCommit = git("rev-parse", "HEAD")
+	policyPath := filepath.Join(root, "policy.json")
+	writeJSON(t, policyPath, policy)
+
+	if err := checkReleasePolicy(invPath, mapPath, policyPath, root, defaultPublicMainRef); err == nil || !strings.Contains(err.Error(), "origin/main") {
+		t.Fatalf("no origin/main ref error=%v", err)
+	}
+	git("update-ref", "refs/remotes/origin/main", publicMain)
+	if err := checkReleasePolicy(invPath, mapPath, policyPath, root, defaultPublicMainRef); err == nil || !strings.Contains(err.Error(), "not reachable from refs/remotes/origin/main") {
+		t.Fatalf("staging-only baseline error=%v", err)
+	}
+	// A local branch or tag named origin/main outranks the remote-tracking ref in Git's short-name lookup, so it must not stand in for public main.
+	stagingOnly := policy.BaselineCommit
+	git("branch", "origin/main", stagingOnly)
+	git("tag", "origin/main", stagingOnly)
+	if err := checkReleasePolicy(invPath, mapPath, policyPath, root, defaultPublicMainRef); err == nil || !strings.Contains(err.Error(), "not reachable from refs/remotes/origin/main") {
+		t.Fatalf("staging-only baseline behind a shadowing origin/main branch error=%v", err)
+	}
+	policy.BaselineCommit = publicMain
+	writeJSON(t, policyPath, policy)
+	if err := checkReleasePolicy(invPath, mapPath, policyPath, root, defaultPublicMainRef); err != nil {
+		t.Fatalf("baseline on public main: %v", err)
+	}
+	// A clone whose public remote is not named origin passes that remote's tracking ref; the same staging-only anchor still fails against it.
+	git("update-ref", "-d", "refs/remotes/origin/main")
+	git("update-ref", "refs/remotes/public/main", publicMain)
+	if err := checkReleasePolicy(invPath, mapPath, policyPath, root, defaultPublicMainRef); err == nil || !strings.Contains(err.Error(), "-public-main-ref") {
+		t.Fatalf("missing default ref error=%v", err)
+	}
+	if err := checkReleasePolicy(invPath, mapPath, policyPath, root, "refs/remotes/public/main"); err != nil {
+		t.Fatalf("baseline on public main through -public-main-ref: %v", err)
+	}
+	if err := checkReleasePolicy(invPath, mapPath, policyPath, root, "--all"); err == nil || !strings.Contains(err.Error(), "must name a Git revision") {
+		t.Fatalf("option-shaped ref error=%v", err)
+	}
+	policy.BaselineCommit = stagingOnly
+	writeJSON(t, policyPath, policy)
+	if err := checkReleasePolicy(invPath, mapPath, policyPath, root, "refs/remotes/public/main"); err == nil || !strings.Contains(err.Error(), "not reachable from refs/remotes/public/main") {
+		t.Fatalf("staging-only baseline through -public-main-ref error=%v", err)
+	}
+}
+
+// TestReleasePolicyCarriesTheFloorAcrossAnUpstreamLeap anchors a release that adopts a new upstream version on the last public commit, which maps only the previous version. Every path that commit ported and the new denominator still has must stay ported in the baseline.
+func TestReleasePolicyCarriesTheFloorAcrossAnUpstreamLeap(t *testing.T) {
+	inv, m, policy := closedReleasePolicy()
+	_, _, evidence, divergences := baseline()
+	root, invPath, _ := writeRepo(t, inv, m, evidence, divergences)
+	git := func(args ...string) string {
+		t.Helper()
+		cmd := exec.CommandContext(t.Context(), "git", args...)
+		cmd.Dir = root
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, output)
+		}
+		return strings.TrimSpace(string(output))
+	}
+	// The previous version's mapping is the only one at the anchor; it also ported a path the new denominator dropped.
+	previous := mapping{UpstreamVersion: "0.0.1", Entries: []mappingEntry{
+		{Path: inv.Files[0].Path, Disposition: "ported"},
+		{Path: inv.Files[1].Path, Disposition: "designed-out"},
+		{Path: "packages/gone/test/removed.test.ts", Disposition: "ported"},
+	}}
+	older := mapping{UpstreamVersion: "0.0.0", Entries: []mappingEntry{{Path: inv.Files[1].Path, Disposition: "ported"}}}
+	previousPath := filepath.Join(root, "test-mapping-v0.0.1.json")
+	writeJSON(t, previousPath, previous)
+	writeJSON(t, filepath.Join(root, "test-mapping-v0.0.0.json"), older)
+	git("init", "-q")
+	git("add", "test-mapping-v0.0.1.json", "test-mapping-v0.0.0.json")
+	git("-c", "user.name=Parity Test", "-c", "user.email=parity@example.invalid", "-c", "commit.gpgsign=false", "commit", "-qm", "last public commit")
+	policy.BaselineCommit = git("rev-parse", "HEAD")
+	git("update-ref", "refs/remotes/origin/main", "HEAD")
+	policyPath := filepath.Join(root, "policy.json")
+	writeJSON(t, policyPath, policy)
+	// The current mapping is named for its version, as in the repository.
+	currentPath := filepath.Join(root, "test-mapping-v"+inv.UpstreamVersion+".json")
+	writeJSON(t, currentPath, m)
+	if err := checkReleasePolicy(invPath, currentPath, policyPath, root, defaultPublicMainRef); err != nil {
+		t.Fatalf("anchor that predates the version must carry the previous floor: %v", err)
+	}
+	// A path the new denominator no longer has is not part of the floor; a dropped port is.
+	policy.BaselinePorted = nil
+	writeJSON(t, policyPath, policy)
+	if err := checkReleasePolicy(invPath, currentPath, policyPath, root, defaultPublicMainRef); err == nil || !strings.Contains(err.Error(), "baseline drops 1 ported paths") {
+		t.Fatalf("baseline below the carried floor error=%v", err)
+	}
+	// A mapping for a newer version than the policy is not a floor for it, even when it ported more.
+	writeJSON(t, filepath.Join(root, "test-mapping-v999.0.0.json"), mapping{UpstreamVersion: "999.0.0", Entries: []mappingEntry{
+		{Path: inv.Files[0].Path, Disposition: "ported"},
+		{Path: inv.Files[1].Path, Disposition: "ported"},
+	}})
+	git("add", "test-mapping-v999.0.0.json")
+	git("-c", "user.name=Parity Test", "-c", "user.email=parity@example.invalid", "-c", "commit.gpgsign=false", "commit", "-qm", "newer mapping")
+	policy.BaselineCommit = git("rev-parse", "HEAD")
+	git("update-ref", "refs/remotes/origin/main", "HEAD")
+	policy.BaselinePorted = []string{inv.Files[0].Path}
+	writeJSON(t, policyPath, policy)
+	writeJSON(t, currentPath, m)
+	if err := checkReleasePolicy(invPath, currentPath, policyPath, root, defaultPublicMainRef); err != nil {
+		t.Fatalf("a newer mapping at the anchor must be ignored in favour of the older one: %v", err)
+	}
+	// Two mappings of the newest older version leave the carried floor ambiguous, as two exact mappings do.
+	if err := os.MkdirAll(filepath.Join(root, "copy"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeJSON(t, filepath.Join(root, "copy", "test-mapping-v0.0.1.json"), older)
+	git("add", "copy/test-mapping-v0.0.1.json")
+	git("-c", "user.name=Parity Test", "-c", "user.email=parity@example.invalid", "-c", "commit.gpgsign=false", "commit", "-qm", "ambiguous older mapping")
+	policy.BaselineCommit = git("rev-parse", "HEAD")
+	git("update-ref", "refs/remotes/origin/main", "HEAD")
+	writeJSON(t, policyPath, policy)
+	writeJSON(t, currentPath, m)
+	if err := checkReleasePolicy(invPath, currentPath, policyPath, root, defaultPublicMainRef); err == nil || !strings.Contains(err.Error(), "found 2 of test-mapping-v0.0.1.json") {
+		t.Fatalf("ambiguous carried floor error=%v", err)
 	}
 }
 

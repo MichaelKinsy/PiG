@@ -26,6 +26,8 @@ try {
 } finally { queued.cleanup(); }
 for (const name of ["no-model", "no-auth"]) {
  const h = await createHarness({ withConfiguredAuth: name !== "no-auth" });
+ // agent-session-compaction.test.ts:282-288: auth is resolved only when Pi summarizes itself, after checking there is something to compact.
+ if (name === "no-auth") seed(h);
  const previousPackageDir=process.env.PI_PACKAGE_DIR;
  try {
   process.env.PI_PACKAGE_DIR=process.cwd();

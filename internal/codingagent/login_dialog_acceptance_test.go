@@ -132,7 +132,8 @@ func TestLoginArgumentAndBackNavigation(t *testing.T) {
 func TestLoginArgumentCompletionsUseProviderMetadata(t *testing.T) {
 	m := NewInteractiveMode(InteractiveOptions{AgentDir: t.TempDir()})
 	items := m.loginArgCompletions("openrouter")
-	if len(items) != 1 || items[0].Value != "openrouter" || items[0].Description != "OpenRouter · subscription/API key" {
+	// Pi 1.0.0 labels an OAuth sign-in without isSubscription (providers/openrouter.ts) as an account (oauth-selector.ts:27-33).
+	if len(items) != 1 || items[0].Value != "openrouter" || items[0].Description != "OpenRouter · account/API key" {
 		t.Fatalf("completions=%+v", items)
 	}
 	if m.loginArgCompletions("no-provider-zzzz") != nil {

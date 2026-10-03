@@ -13,7 +13,10 @@ import (
 	"testing"
 )
 
-// .upstream/v0.87.1/packages/coding-agent/test/session-file-invalid.test.ts:47
+// Upstream 0.99.1 changes only how its harness starts the CLI: `--import` receives the source resolver as a file URL (pathToFileURL) instead of a path
+// (.upstream/v0.99.1/packages/coding-agent/test/session-file-invalid.test.ts:10-11). The Go test starts the compiled binary and has no Node loader flag, so that substitution has no Go
+// counterpart: the inputs and expectations of every case are unchanged.
+// .upstream/v0.99.1/packages/coding-agent/test/session-file-invalid.test.ts:49
 func TestInvalidSessionFilePrintsFriendlyErrorAndPreservesContent(t *testing.T) {
 	root := t.TempDir()
 	home := filepath.Join(root, "home")

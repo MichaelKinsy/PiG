@@ -68,7 +68,7 @@ func TestCopilotRetryParseFloatPrefix(t *testing.T) {
 		{"+.", math.NaN()},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
-			got := copilotParseFloat(tc.input)
+			got := jsParseFloat(tc.input)
 			if got != tc.want && !(math.IsNaN(got) && math.IsNaN(tc.want)) {
 				t.Fatalf("parseFloat(%q)=%v want=%v", tc.input, got, tc.want)
 			}

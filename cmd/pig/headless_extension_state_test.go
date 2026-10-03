@@ -45,6 +45,7 @@ type headlessExtensionContextUsage struct {
 // session_shutdown, and session_shutdown sees the persisted assistant entry.
 // The context window is distinct from the SDK fallback (undefined).
 func TestHeadlessExtensionsReadContextUsageAndShutdown(t *testing.T) {
+	t.Parallel()
 	binary := buildPigBinaryForSignalTest(t)
 	fixture := filepath.Join(t.TempDir(), "state.mjs")
 	if err := os.WriteFile(fixture, []byte(headlessExtensionStateFixture), 0o600); err != nil {

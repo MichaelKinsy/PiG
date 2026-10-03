@@ -10,6 +10,10 @@ Pi 0.87.1 is the oracle. This change restores upstream behavior, not an additive
 
 There are no upstream test cases referencing either component or command in the pinned coding-agent test tree. The new differential tests execute the exact pinned component sources. The unchanged covering interactive-mode tests continue to run with the owning Go package.
 
+## PiG's art (D87)
+
+Since 2026-10-01 `/arminsayshi` draws PiG's pig head labeled `pigsayhi`, and `/pigsayhi` is a second name for it (D87). The effects and their timing stay Pi's: `TestArminFramesMatchPinnedPi` now runs the pinned `armin.ts` with the pig head's XBM bits and label substituted, and `TestArminSaysHiDrawsThePigHead` pins the art. `/dementedelves` keeps Pi's announcement unchanged.
+
 ## Regressions and proof
 
 - `TestHiddenEasterEggsSubmitDuringCompaction` failed before implementation: neither label rendered, and both commands appeared in the compaction model-input queue.

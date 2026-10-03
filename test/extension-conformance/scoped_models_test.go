@@ -24,6 +24,7 @@ func scopedModelsWireValue(models []extension.ScopedModel) []map[string]any {
 
 // Based on the scope-only conformance in cdd29705f; runner.ts:841-848 returns live ordered values rather than a constant empty list.
 func TestScopedModelsAcrossSDKs(t *testing.T) {
+	t.Parallel()
 	cases := allHarnessCases()
 	for _, language := range []string{"go", "python", "rust"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedScopeHarness(t, language) }})

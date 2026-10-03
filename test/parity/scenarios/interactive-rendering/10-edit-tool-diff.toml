@@ -57,9 +57,15 @@
 #      the diff-string generator, now landed. Its divergence entry was
 #      removed from docs/parity/DIVERGENCES.md.
 #
+# 3. (FIXED, root) the diff context rows were drawn with SGR dim instead of
+#    the toolDiffContext theme colour (components/diff.ts:89,141), because
+#    internal/codingagent kept a second diff renderer beside tui.RenderDiff.
+#    output_normalized_equal stripped the SGR and hid it (audit-992 CM4).
+#    The diff block is now one renderer (tui.RenderDiff, wrapped by Text).
+#
 # This scenario asserts BOTH the legacy-shape input fix (no validation
-# error) AND the diff body bytes (output_normalized_equal over the
-# cropped block).
+# error) AND the diff body bytes with their colours (escaped_output_equal
+# over the cropped block).
 
 name = "10-edit-tool-diff"
 description = "Edit-tool legacy `{path, oldText, newText}` input shape is normalized by EditTool.PrepareArguments before schema validation, and the line-numbered diff body (ported generateDiffString) matches upstream byte-for-byte."
@@ -100,9 +106,9 @@ wait_timeout_seconds = 15
 [assert]
 both_reach_ready = true
 # The cropped block (edit header through "edited") must match byte-for-byte
-# after normalization: this locks the ported generateDiffString diff body
-# (line-numbered with 4 lines of context) against real pi.
-output_normalized_equal = true
+# with its SGR escapes: this locks the ported generateDiffString diff body
+# (line-numbered with 4 lines of context) and its theme colours against real pi.
+escaped_output_equal = true
 # Guard the legacy-shape fix: if dispatch reverts to validating before
 # preparing arguments, these strings reappear and the scenario fails.
 both_not_contain = [

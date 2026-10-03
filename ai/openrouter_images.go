@@ -26,7 +26,7 @@ func RegisterBuiltInImagesAPIProviders() {
 }
 
 // GenerateImagesOpenRouter implements upstream providers/images/openrouter.ts.
-func GenerateImagesOpenRouter(ctx context.Context, model ImagesModel, imagesCtx ImagesContext, options ProviderImagesOptions) AssistantImages {
+func GenerateImagesOpenRouter(ctx context.Context, model ImageModel, imagesCtx ImagesContext, options ProviderImagesOptions) AssistantImages {
 	out := AssistantImages{
 		API:        model.API,
 		Provider:   model.Provider,
@@ -95,14 +95,6 @@ func GenerateImagesOpenRouter(ctx context.Context, model ImagesModel, imagesCtx 
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if options.OnResponse != nil {
-		if err := options.OnResponse(ProviderResponse{Status: resp.StatusCode, Headers: headersToRecord(resp.Header)}, model); err != nil {
-			out.StopReason = ImagesStopReasonError
-			out.ErrorMessage = err.Error()
-			return out
-		}
-	}
-
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		out.StopReason = imagesStopReasonForContext(ctx)
@@ -111,7 +103,7 @@ func GenerateImagesOpenRouter(ctx context.Context, model ImagesModel, imagesCtx 
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		out.StopReason = ImagesStopReasonError
-		out.ErrorMessage = string(data)
+		out.ErrorMessage = openAIHTTPError(resp.StatusCode, data).Error()
 		return out
 	}
 
@@ -120,6 +112,14 @@ func GenerateImagesOpenRouter(ctx context.Context, model ImagesModel, imagesCtx 
 		out.StopReason = ImagesStopReasonError
 		out.ErrorMessage = err.Error()
 		return out
+	}
+	// The SDK's withResponse() resolves only after a 2xx body parses, so Pi awaits onResponse after both checks (openrouter-images.ts generateImages).
+	if options.OnResponse != nil {
+		if err := options.OnResponse(ProviderResponse{Status: resp.StatusCode, Headers: headersToRecord(resp.Header)}, model); err != nil {
+			out.StopReason = ImagesStopReasonError
+			out.ErrorMessage = err.Error()
+			return out
+		}
 	}
 	out.ResponseID = parsed.ID
 	if parsed.Usage != nil {
@@ -170,7 +170,7 @@ func openRouterImagesHeaders(apiKey string, modelHeaders map[string]string, opti
 	return headers
 }
 
-func buildOpenRouterImagesPayload(model ImagesModel, imagesCtx ImagesContext) map[string]any {
+func buildOpenRouterImagesPayload(model ImageModel, imagesCtx ImagesContext) map[string]any {
 	content := make([]map[string]any, 0, len(imagesCtx.Input))
 	for _, item := range imagesCtx.Input {
 		switch v := item.(type) {
@@ -266,7 +266,7 @@ type openRouterImagesUsage struct {
 
 // parseOpenRouterImagesUsage mirrors upstream openrouter-images.ts parseUsage,
 // which prices each bucket at the image model's flat rates.
-func parseOpenRouterImagesUsage(raw openRouterImagesUsage, model ImagesModel) *Usage {
+func parseOpenRouterImagesUsage(raw openRouterImagesUsage, model ImageModel) *Usage {
 	reportedCachedTokens := 0
 	cacheWriteTokens := 0
 	if raw.PromptTokensDetails != nil {

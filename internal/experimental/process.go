@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
@@ -96,12 +97,13 @@ func SpawnInternalProcess(role InternalProcessRole, args []string, options Inter
 	entry := options.EntryPath
 	if entry == "" {
 		var err error
-		entry, err = os.Executable()
+		entry, err = linkerexec.Executable()
 		if err != nil {
 			return nil, err
 		}
 	}
 	cmd := exec.Command(entry, args...)
+	linkerexec.Prepare(cmd)
 	cmd.Env = os.Environ()
 	for key, value := range options.Env {
 		cmd.Env = append(cmd.Env, key+"="+value)

@@ -15,6 +15,8 @@ A model in PiG is identified by a **provider-qualified spec**: `provider/modelID
 
 The selector lists models from providers with configured authentication. It uses `GEMINI_API_KEY` for Google Gemini, not `GOOGLE_API_KEY`. Providers without configured authentication are omitted.
 
+An extension can add models that choose a physical model for each request. See [Virtual models](virtual-models.md).
+
 ## Scoped models
 
 Scoped models are the list `Ctrl+P` cycles through. They are stored in settings as provider-qualified IDs; PiG accepts legacy bare IDs and rewrites them on next save.
@@ -59,6 +61,25 @@ A model is reasoning-capable when its generated entry sets `Reasoning: true`; `T
 - `Cost` (if known) - input/output rates.
 
 Extensions can read this via `getModelInfo()` (returns `*ModelInfo`) inside any handler.
+
+## Use image models
+
+Image models generate images from a prompt and optional input images. PiG lists OpenRouter's image models, such as `google/gemini-2.5-flash-image` and `black-forest-labs/flux.2-pro`, under the `openrouter` provider; they use the same `OPENROUTER_API_KEY` or `/login` credential as its chat models.
+
+Image models do not appear in `/model`; the model reaches them through the `codemode` tool. Scripts list them with `models.getAvailableOfType("image")` and call `models.generateImages(model, { input })`. The result's `output` holds base64 image blocks, which `image()` attaches to the `codemode` result so the model sees them:
+
+```js
+const painter = await models.getModelOfType("image", "openrouter", "google/gemini-2.5-flash-image");
+const result = await models.generateImages(painter, {
+  input: [{ type: "text", text: "A red fox in the snow, watercolor" }],
+});
+if (result.stopReason !== "stop") return result.errorMessage;
+for (const block of result.output) if (block.type === "image") image(block);
+```
+
+`input` can also contain `{ type: "image", data, mimeType }` blocks to edit or use as references. PiG adds the usage of a script's image calls to the `codemode` tool result, like classifier calls. Generated images are not saved to disk. The codemode page (`codemode.md`, "Generate images") describes the full API.
+
+Extensions generate images through `ctx.modelRegistry.generateImages()`, without codemode.
 
 ## Adding a model
 

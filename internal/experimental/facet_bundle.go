@@ -4,7 +4,7 @@ package experimental
 // Ports packages/coding-agent/src/experimental/plugins/bundled.ts (presentation data).
 
 import (
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
+	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/experimental/protocol"
 )
 
@@ -60,7 +60,7 @@ type FacetBundleArtifact struct {
 }
 
 // CreatePresentationFacetData preserves artifact order in the server-selected presentation payload. It does not build, load, or activate plugin code.
-func CreatePresentationFacetData(artifacts []FacetBundleArtifact) pico3.JsonValue {
+func CreatePresentationFacetData(artifacts []FacetBundleArtifact) chord.JsonValue {
 	selected := make([]FacetBundleArtifact, len(artifacts))
 	copy(selected, artifacts)
 	return map[string]any{"presentationFacetBundles": selected}

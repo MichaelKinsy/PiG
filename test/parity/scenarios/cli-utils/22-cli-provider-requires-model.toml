@@ -1,0 +1,17 @@
+# Upstream evidence: Pi 1.0.0 main.ts:469-474 reports "--provider requires --model (for example: --provider <name> --model <pattern>)" as an error diagnostic when --provider is given without --model (#10236); Pi 0.99.2 ignored --provider and ran the default model of another provider.
+# Probe: pi --offline --no-extensions --provider anthropic --no-session -p exits 1, prints nothing on stdout, and prints the diagnostic below on stderr.
+name = "22-cli-provider-requires-model"
+description = "--provider without --model fails with an error"
+covers = ["packages/coding-agent/src/main.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[cli]
+args = ["--offline", "--no-extensions", "--provider", "anthropic", "--no-session", "-p"]
+timeout_seconds = 10
+
+[assert]
+exit_code = 1
+output_equal = true
+both_contain = ["Error: --provider requires --model (for example: --provider anthropic --model <pattern>)"]
+runs = 3

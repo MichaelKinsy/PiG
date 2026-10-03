@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 // Event payload and result structs.
@@ -191,6 +192,12 @@ type SessionBeforeTreeResultSummary struct {
 	Usage any `json:"usage,omitempty"`
 }
 
+// UnmarshalJSON keeps the member order of the `details` object the extension wrote.
+func (s *SessionBeforeTreeResultSummary) UnmarshalJSON(data []byte) error {
+	type plain SessionBeforeTreeResultSummary
+	return orderedjson.UnmarshalFields(data, (*plain)(s), "details")
+}
+
 // SessionTreeEvent: upstream types.ts SessionTreeEvent.
 //
 // NewLeafID and OldLeafID are upstream `string | null` (NOT optional). The
@@ -236,6 +243,32 @@ type BeforeProviderRequestEvent struct {
 // BeforeProviderRequestEventResult: upstream type alias for `unknown`.
 type BeforeProviderRequestEventResult = any
 
+// ProviderStreamEvent: upstream types.ts ProviderStreamEvent. Fired for a parsed
+// provider stream event before it is normalized. Data is adapter-owned and
+// read-only.
+//
+// upstream: types.ts:884-890
+type ProviderStreamEvent struct {
+	Type     string `json:"type"`
+	Provider string `json:"provider"`
+	API      string `json:"api"`
+	Model    string `json:"model"`
+	Data     any    `json:"data"`
+}
+
+// McpServersChangeEvent: upstream types.ts McpServersChangeEvent. Fired when an
+// extension registers or unregisters an MCP server after the extensions are
+// bound (see [API.RegisterMcpServer]). Servers registered while extensions load
+// are read with [API.GetMcpServers] on session_start. Handling this event marks
+// an extension as the one that connects registered servers.
+//
+// upstream: types.ts:699-709
+type McpServersChangeEvent struct {
+	Type string `json:"type"`
+	// Servers is every registered server after the change.
+	Servers []RegisteredMcpServer `json:"servers"`
+}
+
 // AfterProviderResponseEvent: upstream types.ts AfterProviderResponseEvent.
 type AfterProviderResponseEvent struct {
 	Type    string            `json:"type"`
@@ -279,6 +312,12 @@ type CustomMessageRef struct {
 	Content    any    `json:"content"`
 	Display    any    `json:"display,omitempty"`
 	Details    any    `json:"details,omitempty"`
+}
+
+// UnmarshalJSON keeps the member order of the `details` object the extension wrote.
+func (m *CustomMessageRef) UnmarshalJSON(data []byte) error {
+	type plain CustomMessageRef
+	return orderedjson.UnmarshalFields(data, (*plain)(m), "details")
 }
 
 // AgentStartEvent: upstream types.ts AgentStartEvent.
@@ -411,6 +450,12 @@ func (d SessionBoundaryDraft) MarshalJSON() ([]byte, error) {
 	}
 }
 
+// UnmarshalJSON keeps the member order of the `data` and `details` objects the extension wrote.
+func (d *SessionBoundaryDraft) UnmarshalJSON(data []byte) error {
+	type plain SessionBoundaryDraft
+	return orderedjson.UnmarshalFields(data, (*plain)(d), "data", "details")
+}
+
 // ProjectedSessionEntry is one boundary preview entry and its model-visible messages.
 type ProjectedSessionEntry struct {
 	SourceEntry any            `json:"sourceEntry"`
@@ -494,15 +539,48 @@ type ToolExecutionStartEvent struct {
 	ToolCallID string `json:"toolCallId"`
 	ToolName   string `json:"toolName"`
 	Args       any    `json:"args"`
+	// WireArgs is the JSON the event carries for Args on the extension wire: the model's arguments in the order it wrote them, which the map in Args cannot keep. Nil when Args marshals as it is.
+	WireArgs json.RawMessage `json:"-"`
+	// ParentToolCallID is set when another tool (for example a codemode script)
+	// made this call. upstream: parentToolCallId?: string
+	ParentToolCallID string `json:"parentToolCallId,omitempty"`
+}
+
+// MarshalJSON writes the event with WireArgs in place of Args, in Pi's member order.
+func (e ToolExecutionStartEvent) MarshalJSON() ([]byte, error) {
+	type plain ToolExecutionStartEvent
+	if e.WireArgs != nil {
+		e.Args = e.WireArgs
+	}
+	return json.Marshal(plain(e))
 }
 
 // ToolExecutionUpdateEvent: upstream types.ts ToolExecutionUpdateEvent.
 type ToolExecutionUpdateEvent struct {
-	Type          string `json:"type"`
-	ToolCallID    string `json:"toolCallId"`
-	ToolName      string `json:"toolName"`
-	Args          any    `json:"args"`
-	PartialResult any    `json:"partialResult"`
+	Type       string `json:"type"`
+	ToolCallID string `json:"toolCallId"`
+	ToolName   string `json:"toolName"`
+	Args       any    `json:"args"`
+	// WireArgs is the JSON the event carries for Args on the extension wire; see [ToolExecutionStartEvent.WireArgs].
+	WireArgs      json.RawMessage `json:"-"`
+	PartialResult any             `json:"partialResult"`
+	// WirePartialResult is the value the event carries for PartialResult on the extension wire, with its members in the order the tool wrote them. Nil when PartialResult marshals as it is.
+	WirePartialResult any `json:"-"`
+	// ParentToolCallID is set when another tool (for example a codemode script)
+	// made this call. upstream: parentToolCallId?: string
+	ParentToolCallID string `json:"parentToolCallId,omitempty"`
+}
+
+// MarshalJSON writes the event with the wire values in place of Args and PartialResult, in Pi's member order.
+func (e ToolExecutionUpdateEvent) MarshalJSON() ([]byte, error) {
+	type plain ToolExecutionUpdateEvent
+	if e.WireArgs != nil {
+		e.Args = e.WireArgs
+	}
+	if e.WirePartialResult != nil {
+		e.PartialResult = e.WirePartialResult
+	}
+	return json.Marshal(plain(e))
 }
 
 // ToolExecutionEndEvent: upstream types.ts ToolExecutionEndEvent.
@@ -511,7 +589,21 @@ type ToolExecutionEndEvent struct {
 	ToolCallID string `json:"toolCallId"`
 	ToolName   string `json:"toolName"`
 	Result     any    `json:"result"`
-	IsError    bool   `json:"isError"`
+	// WireResult is the value the event carries for Result on the extension wire, with its members in the order the tool wrote them: a map in Result sorts them. Nil when Result marshals as it is.
+	WireResult any  `json:"-"`
+	IsError    bool `json:"isError"`
+	// ParentToolCallID is set when another tool (for example a codemode script)
+	// made this call. upstream: parentToolCallId?: string
+	ParentToolCallID string `json:"parentToolCallId,omitempty"`
+}
+
+// MarshalJSON writes the event with WireResult in place of Result, in Pi's member order.
+func (e ToolExecutionEndEvent) MarshalJSON() ([]byte, error) {
+	type plain ToolExecutionEndEvent
+	if e.WireResult != nil {
+		e.Result = e.WireResult
+	}
+	return json.Marshal(plain(e))
 }
 
 // ─── Model Events ────────────────────────────────────────────────────────
@@ -632,8 +724,15 @@ func (InputEventResultHandled) isInputEventResult() {}
 //
 // Go embeds the common fields so reflection sees the same promoted shape.
 type ToolCallEventBase struct {
-	Type       string `json:"type"`
+	Type string `json:"type"`
+	// ToolCallID is the call's id. For calls another tool made (with
+	// ParentToolCallID set), pi assigns `<parent id>/<n>`; such ids never appear
+	// as tool calls or tool results in the transcript, only in the parent
+	// result's `nestedCalls` record.
 	ToolCallID string `json:"toolCallId"`
+	// ParentToolCallID is set when another tool (for example a codemode script)
+	// issued this call. upstream: parentToolCallId?: string
+	ParentToolCallID string `json:"parentToolCallId,omitempty"`
 }
 
 // BashToolCallEvent: upstream types.ts BashToolCallEvent.
@@ -713,11 +812,21 @@ type ToolCallEventResult struct {
 
 // ToolResultEventBase mirrors upstream's internal ToolResultEventBase.
 type ToolResultEventBase struct {
-	Type       string         `json:"type"`
-	ToolCallID string         `json:"toolCallId"`
-	Input      map[string]any `json:"input"`
-	Content    []any          `json:"content"` // (TextContent | ImageContent)[]
-	IsError    bool           `json:"isError"`
+	Type string `json:"type"`
+	// ToolCallID is the call's id; `<parent id>/<n>` for nested calls, see [ToolCallEventBase].
+	ToolCallID string `json:"toolCallId"`
+	// ParentToolCallID is set when another tool (for example a codemode script)
+	// issued this call. upstream: parentToolCallId?: string
+	ParentToolCallID string         `json:"parentToolCallId,omitempty"`
+	Input            map[string]any `json:"input"`
+	// WireInput is the tool call's arguments as the model wrote them, which a subprocess extension receives as `input` in that member order; a map in Input sorts them. Empty when Input is the only source.
+	WireInput json.RawMessage `json:"-"`
+	Content   []any           `json:"content"` // (TextContent | ImageContent)[]
+	// StructuredContent is the machine-readable result of a tool that declares an
+	// outputSchema. Handlers that redact Content should also replace this;
+	// replacing Content alone drops it. upstream: structuredContent?: JsonValue
+	StructuredContent json.RawMessage `json:"structuredContent,omitempty"`
+	IsError           bool            `json:"isError"`
 	// Usage is the usage of the tool execution itself, if available
 	// (upstream `usage?: Usage`).
 	Usage any `json:"usage,omitempty"`
@@ -869,10 +978,15 @@ type CustomToolResultEvent struct {
 	Details  any    `json:"details,omitempty"`
 }
 
-// ToolResultEventResult: upstream types.ts ToolResultEventResult.
+// ToolResultEventResult: upstream types.ts ToolResultEventResult. Omitted fields
+// stay as they are, except that replacing Content without returning
+// StructuredContent drops the structured content, because it may no longer
+// match. Return it along with Content to keep it.
 type ToolResultEventResult struct {
 	Content []any `json:"content,omitempty"` // (TextContent | ImageContent)[]
 	Details any   `json:"details,omitempty"`
+	// StructuredContent replaces the result's structured content. upstream: structuredContent?: JsonValue
+	StructuredContent json.RawMessage `json:"structuredContent,omitempty"`
 	// IsError is nil when the handler leaves the error flag unchanged, as
 	// upstream's optional `isError?: boolean` is undefined.
 	IsError *bool `json:"isError,omitempty"`
@@ -881,6 +995,12 @@ type ToolResultEventResult struct {
 	// the AgentMessage alias; folded into session usage totals by the
 	// deferred-tools accounting path.
 	Usage any `json:"usage,omitempty"`
+}
+
+// UnmarshalJSON keeps the member order of the `details` object the handler wrote.
+func (r *ToolResultEventResult) UnmarshalJSON(data []byte) error {
+	type plain ToolResultEventResult
+	return orderedjson.UnmarshalFields(data, (*plain)(r), "details")
 }
 
 // ─── Union event aliases ──────────────────────────────────────────────────

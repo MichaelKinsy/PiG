@@ -18,11 +18,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/usagetotals"
 )
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -99,33 +98,8 @@ func combineUsage(a, b *ai.Usage) *ai.Usage {
 	if b == nil {
 		return a
 	}
-	optionalSum := func(first, second *int) *int {
-		if first == nil && second == nil {
-			return nil
-		}
-		value := 0
-		if first != nil {
-			value += *first
-		}
-		if second != nil {
-			value += *second
-		}
-		return &value
-	}
-	return &ai.Usage{
-		Input:        a.Input + b.Input,
-		Output:       a.Output + b.Output,
-		Reasoning:    optionalSum(a.Reasoning, b.Reasoning),
-		CacheRead:    a.CacheRead + b.CacheRead,
-		CacheWrite:   a.CacheWrite + b.CacheWrite,
-		CacheWrite1h: optionalSum(a.CacheWrite1h, b.CacheWrite1h),
-		TotalTokens:  a.TotalTokens + b.TotalTokens,
-		Cost: ai.UsageCost{
-			Input: a.Cost.Input + b.Cost.Input, Output: a.Cost.Output + b.Cost.Output,
-			CacheRead: a.Cost.CacheRead + b.Cost.CacheRead, CacheWrite: a.Cost.CacheWrite + b.Cost.CacheWrite,
-			Total: a.Cost.Total + b.Cost.Total,
-		},
-	}
+	sum := usagetotals.CombineUsage(*a, *b)
+	return &sum
 }
 
 // SimpleCompleter is a minimal interface for LLM calls used by Compact.
@@ -548,7 +522,7 @@ func convertToLlm(msgs []agent.AgentMessage) []ai.Message {
 		case m.ToolResult != nil:
 			out = append(out, ai.ToolResultMessage{
 				ToolCallID: m.ToolResult.ToolCallID, ToolName: m.ToolResult.ToolName,
-				Content: m.ToolResult.Content, Details: m.ToolResult.Details,
+				Content: m.ToolResult.Content, Details: m.ToolResult.Details, DetailsNull: m.ToolResult.DetailsNull,
 				Usage: m.ToolResult.Usage, IsError: m.ToolResult.IsError,
 				Timestamp: m.ToolResult.Timestamp,
 			})
@@ -689,7 +663,12 @@ func completeSummarization(
 	requestOptions.Env["PI_CACHE_RETENTION"] = "none"
 	requestOptions.CacheRetention = ai.CacheRetentionNone
 	if requestOptions.SessionID == "" {
-		requestOptions.SessionID = uuid.Must(uuid.NewV7()).String()
+		// upstream: packages/coding-agent/src/core/compaction/compaction.ts: sessionId: options.sessionId ?? uuidv7()
+		id, err := ai.UUIDv7(nil)
+		if err != nil {
+			return "", nil, err
+		}
+		requestOptions.SessionID = id
 	}
 	return completeSimpleWithRetries(ctx, retry, func() (string, *ai.Usage, error) {
 		if streamFn != nil {

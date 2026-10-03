@@ -13,6 +13,7 @@ import (
 
 // RebuildStore accepts independently bounded records; accumulated store size is not an external JSONL import.
 func TestStoreReadsCanonicalRecordsPastImportLimit(t *testing.T) {
+	parallelHeavy(t)
 	name := strings.Repeat("x", maxRecordBytes/2)
 	var records []Record
 	var imports []io.Reader

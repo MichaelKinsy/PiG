@@ -303,6 +303,10 @@ func RenderCustomTools(data *SessionData, tools []extension.RegisteredTool, cwd 
 				Details: msg["details"],
 				IsError: blockBool(msg["isError"]),
 			}
+			if details, ok := msg["details"]; ok && details == nil {
+				// upstream: export-html/tool-renderer.ts renderResult builds { content, details, isError } from msg.details, so a stored details: null reaches the renderer as null.
+				result.MemberOrder = []string{"content", "details"}
+			}
 			piece := renderer.renderResult(callID, toolName, result)
 			if piece.CallHTML == "" {
 				piece.CallHTML = existing.CallHTML

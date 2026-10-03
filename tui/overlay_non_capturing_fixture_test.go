@@ -103,7 +103,7 @@ func testNCUpstreamMicrotaskCleanup(t *testing.T) {
 			t.Fatal("timerHandle was not initialized")
 		}
 		timerHandle.Close()
-		ui.hideOverlay()
+		ui.HideOverlay()
 		close(resolved)
 	}
 	timerHandle = ui.OpenOverlay(timer, OverlayOptions{nonCapturing: true})

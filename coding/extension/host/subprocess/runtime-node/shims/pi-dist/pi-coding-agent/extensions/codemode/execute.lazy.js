@@ -1,0 +1,3 @@
+/** Loads the codemode sandbox runtime on the first script (see execute.ts). */
+export const loadCodemodeExecutor = () => import("./execute.js");
+//# sourceMappingURL=execute.lazy.js.map

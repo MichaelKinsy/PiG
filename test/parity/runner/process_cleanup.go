@@ -67,7 +67,7 @@ func retainDescendants(owned map[int]bool, processes []processParent) []int {
 func tmuxSessionProcesses(ctx context.Context, session string) (map[int]bool, error) {
 	out, err := exec.CommandContext(ctx, "tmux", tmuxArgs("list-panes", "-s", "-t", session, "-F", "#{pane_pid}")...).Output()
 	if err != nil {
-		return nil, fmt.Errorf("inspect panes for %s: %w", session, err)
+		return nil, fmt.Errorf("inspect panes for %s: %w (%s)", session, err, tmuxServerReport(ctx, session))
 	}
 	owned := make(map[int]bool)
 	for _, value := range strings.Fields(string(out)) {

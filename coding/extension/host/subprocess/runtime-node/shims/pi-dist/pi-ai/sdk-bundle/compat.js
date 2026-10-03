@@ -29,11 +29,16 @@ import {
   uuidv7,
   validateToolArguments,
   validateToolCall
-} from "./chunk-LTKXQ3LS.js";
+} from "./chunk-E4HYV5TO.js";
 import {
   ANTHROPIC_API_KEY_ENV,
   ANTHROPIC_AUTH_TOKEN_ENV,
+  ANTHROPIC_FEDERATION_RULE_ID_ENV,
+  ANTHROPIC_IDENTITY_TOKEN_FILE_ENV,
   ANTHROPIC_OAUTH_TOKEN_ENV,
+  ANTHROPIC_ORGANIZATION_ID_ENV,
+  ANTHROPIC_SERVICE_ACCOUNT_ID_ENV,
+  ANTHROPIC_WORKSPACE_ID_ENV,
   IMAGE_MODELS,
   anthropicMessagesApi,
   azureOpenAIResponsesApi,
@@ -50,7 +55,11 @@ import {
   openAICompletionsApi,
   openAIResponsesApi,
   piMessagesApi
-} from "./chunk-5CXRZVQK.js";
+} from "./chunk-FNQYVQFE.js";
+import {
+  envApiKeyAuth,
+  lazyOAuth
+} from "./chunk-VLLDVPPZ.js";
 import {
   InMemoryCredentialStore,
   InMemoryModelsStore,
@@ -61,14 +70,11 @@ import {
   collapseSystemMessages,
   contentText,
   createAssistantMessageDiagnostic,
-  createImagesModels,
-  createImagesProvider,
   createInitialSystemMessage,
   createModels,
   createProvider,
   declarationsEqual,
   defaultProviderAuthContext,
-  envApiKeyAuth,
   extractDiagnosticError,
   formatThrownValue,
   getCurrentSystemMessage,
@@ -76,13 +82,14 @@ import {
   getCurrentTools,
   getDeclaredTools,
   getInitialSystemMessage,
+  getModelType,
   getSupportedThinkingLevels,
   getSystemMessageText,
   getToolStateChanges,
   hasApi,
   hasNonAdditiveToolChanges,
   hasToolRedefinitions,
-  lazyOAuth,
+  isModelType,
   modelsAreEqual,
   normalizeContext,
   renderSystemMessageUpdate,
@@ -90,7 +97,7 @@ import {
   resolveTranscriptTools,
   toToolDeclaration,
   withoutInitialSystemMessage
-} from "./chunk-VLBMMG2Q.js";
+} from "./chunk-JUG7GWVD.js";
 import {
   __name
 } from "./chunk-SHUYVCID.js";
@@ -99,25 +106,25 @@ import {
 import { setBedrockProviderModule, bedrockConverseStreamApi } from "../api/bedrock-converse-stream.lazy.js";
 
 // pi-dist/pi-ai/image-models.js
-var imageModelRegistry = /* @__PURE__ */ new Map();
+var imageModelsByProvider = /* @__PURE__ */ new Map();
 for (const [provider, models] of Object.entries(IMAGE_MODELS)) {
-  const providerModels = /* @__PURE__ */ new Map();
-  for (const [id, model] of Object.entries(models)) {
-    providerModels.set(id, model);
+  const imageModels = /* @__PURE__ */ new Map();
+  for (const model of Object.values(models)) {
+    imageModels.set(model.id, model);
   }
-  imageModelRegistry.set(provider, providerModels);
+  if (imageModels.size > 0)
+    imageModelsByProvider.set(provider, imageModels);
 }
 function getImageModel(provider, modelId) {
-  const providerModels = imageModelRegistry.get(provider);
-  return providerModels?.get(modelId);
+  return imageModelsByProvider.get(provider)?.get(modelId);
 }
 __name(getImageModel, "getImageModel");
 function getImageProviders() {
-  return Array.from(imageModelRegistry.keys());
+  return Array.from(imageModelsByProvider.keys());
 }
 __name(getImageProviders, "getImageProviders");
 function getImageModels(provider) {
-  const models = imageModelRegistry.get(provider);
+  const models = imageModelsByProvider.get(provider);
   return models ? Array.from(models.values()) : [];
 }
 __name(getImageModels, "getImageModels");
@@ -400,7 +407,12 @@ __name(completeSimple, "completeSimple");
 export {
   ANTHROPIC_API_KEY_ENV,
   ANTHROPIC_AUTH_TOKEN_ENV,
+  ANTHROPIC_FEDERATION_RULE_ID_ENV,
+  ANTHROPIC_IDENTITY_TOKEN_FILE_ENV,
   ANTHROPIC_OAUTH_TOKEN_ENV,
+  ANTHROPIC_ORGANIZATION_ID_ENV,
+  ANTHROPIC_SERVICE_ACCOUNT_ID_ENV,
+  ANTHROPIC_WORKSPACE_ID_ENV,
   AssistantMessageEventStream,
   AssistantMessageFrameEncoder,
   DEFAULT_MAX_AGENT_RETRY_DELAY_MS,
@@ -424,8 +436,6 @@ export {
   createAssistantMessageDiagnostic,
   createAssistantMessageEventStream,
   createFauxCore,
-  createImagesModels,
-  createImagesProvider,
   createInitialSystemMessage,
   createModels,
   createProvider,
@@ -455,6 +465,7 @@ export {
   getImagesApiProvider,
   getInitialSystemMessage,
   getModel,
+  getModelType,
   getModels,
   getOverflowPatterns,
   getProviders,
@@ -467,6 +478,7 @@ export {
   hasNonAdditiveToolChanges,
   hasToolRedefinitions,
   isContextOverflow,
+  isModelType,
   isRecoverableLength,
   isRetryableAssistantError,
   lazyApi,

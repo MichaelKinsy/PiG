@@ -17,7 +17,9 @@ pi_extensions = ["../../testdata/test-faux-provider.ts"]
 pig_args = ["--no-extensions"]
 
 [tmux]
-width = 100
+# 110 columns: the onboarding line fits beside the head (D2), so every line wraps as
+# in Pi.
+width = 110
 height = 40
 ready_pattern_pig = "(auto)"
 ready_pattern_pi = "(auto)"
@@ -43,3 +45,18 @@ reason = "D2: the onboarding sentence names the host product. Match only that se
 pattern = 'PiG can explain its own features'
 with = 'Pi can explain its own features'
 reason = "D2: the same onboarding sentence starts with the host product name; all remaining words, ANSI and spaces stay literal."
+
+# D2: PiG's 16-cell pig head takes Pi's logo slot, 7 lines tall where Pi's logo is 2, so its later lines sit
+# beside the lines Pi draws below its logo. These rules remove exactly those 16 head cells (the one-cell padding,
+# 16 half-block or transparent cells and their colors) and the cell that separates them from the text; every hint,
+# its ANSI styling and spacing stay compared byte for byte. The head's pixels are pinned by
+# coding/piglogin/testdata/head-*.golden and internal/codingagent/pi_logo_upstream_test.go.
+[[assert.normalize_replace]]
+pattern = '(?m)^ (?:(?:\x1b\[[0-9;]*m)*[▀▄ ]){1,16}(?:\x1b\[[0-9;]*m)*[ ]*$'
+with = ""
+reason = "D2: a head line with no text beside it (tmux trims its trailing transparent cells) is the blank line Pi draws below its 2-line logo."
+
+[[assert.normalize_replace]]
+pattern = '(?m)^ (?:(?:\x1b\[[0-9;]*m)*[▀▄ ]){16}(?:\x1b\[[0-9;]*m)* '
+with = " "
+reason = "D2: a head line with text beside it carries the line Pi draws at the padded margin below its 2-line logo."

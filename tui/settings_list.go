@@ -221,6 +221,20 @@ func (s *SettingsList) hintLines(width int) []string {
 // activates the pressed row on click. Pointer motion does not change selection.
 // Mirrors upstream SettingsList.handleMouse.
 func (s *SettingsList) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
+	if s.submenu != nil {
+		// The submenu owns the pointer. The list keeps keyboard focus, because its HandleInput routes keys to the submenu and it stays mounted after the submenu closes. Like settings-list.ts handleMouse, the submenu's own result is returned rather than a dispatched one, so the list stays the mouse target of a plain result and any result focuses the list.
+		handler, ok := s.submenu.(MouseHandler)
+		if !ok {
+			return nil
+		}
+		result := handler.HandleMouse(event)
+		if result == nil {
+			return nil
+		}
+		focused := *result
+		focused.Focus = true
+		return &focused
+	}
 	if s.searchEnabled {
 		if event.Y == 0 {
 			if event.Type == MousePress && event.Button == MouseButtonLeft {

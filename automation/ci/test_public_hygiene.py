@@ -70,6 +70,7 @@ class PublicHygieneTests(unittest.TestCase):
 
     def test_private_contents_in_text_and_binary(self):
         for secret in ['/home/' + 'kin' + 'sy/work', '/Users/' + 'kin' + 'sy/work',
+                       '/var/tmp/' + 'kin' + 'sy-pig/tasks/lane.md', '/tmp/' + 'kin' + 'sy/evidence',
                        'imla' + 'dris', 'pig' + '-staging', 'node.hpe' + 'corp.net',
                        '$HOME/pig' + '-lanes', '.dev' + 'cache/scratch/key']:
             for prefix in [b'', b'\x00\xff']:

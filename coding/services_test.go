@@ -86,7 +86,7 @@ func TestServicesAreImmutableAfterConstruction(t *testing.T) {
 	dirBefore := srv.AgentDir()
 	// Mutating returned settings struct should not affect future reads.
 	s1 := srv.Settings()
-	s1.QuietStartup = !s1.QuietStartup
+	s1.QuietStartup = QuietStartupTrue
 	s2 := srv.Settings()
 	if s1.QuietStartup == s2.QuietStartup {
 		// They were the same after mutation → settings is value-typed (good)

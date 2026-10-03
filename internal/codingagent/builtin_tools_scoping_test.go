@@ -414,7 +414,7 @@ func TestSubprocessGetAllTools_ExtensionOverrideReplacesBuiltinInPlace(t *testin
 		t.Fatalf("bash = %+v, want the extension's definition and sourceInfo", bash)
 	}
 	grep := tools[5]
-	if grep.SourceInfo != (PiSourceInfo{Path: "<builtin:grep>", Source: "builtin", Scope: "temporary", Origin: "top-level"}) || len(grep.Parameters) == 0 {
+	if grep.SourceInfo != (PiSourceInfo{Path: "builtin:grep", Source: "builtin", Scope: "temporary", Origin: "top-level"}) || len(grep.Parameters) == 0 {
 		t.Fatalf("grep = %+v, want the built-in definition", grep)
 	}
 	if extra := tools[7]; !slices.Equal(extra.PromptGuidelines, []string{"Use extra."}) {

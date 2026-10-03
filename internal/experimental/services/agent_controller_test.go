@@ -14,15 +14,13 @@ func TestAgentControllerContract(t *testing.T) {
 	}
 	contract := reflect.TypeFor[AgentController]()
 	methods := map[string]any{
-		"Prompt":       func(context.Context, AgentPromptRequest) (AgentOperationResponse, error) { panic("signature only") },
-		"RequestAbort": func(context.Context, string) error { panic("signature only") },
-		"Steer":        func(context.Context, AgentPromptRequest) (AgentQueueResponse, error) { panic("signature only") },
-		"FollowUp":     func(context.Context, AgentPromptRequest) (AgentQueueResponse, error) { panic("signature only") },
-		"NextRun":      func(context.Context, AgentPromptRequest) (AgentQueueResponse, error) { panic("signature only") },
-		"CancelQueued": func(context.Context, string) (AgentCancelQueuedResponse, error) { panic("signature only") },
-		"Resume":       func(context.Context) (AgentOperationResponse, error) { panic("signature only") },
-		"Compact":      func(context.Context, AgentCompactionRequest) (AgentOperationResponse, error) { panic("signature only") },
-		"Navigate":     func(context.Context, AgentNavigationRequest) (AgentOperationResponse, error) { panic("signature only") },
+		"Prompt":        func(context.Context, AgentPromptRequest) (AgentOperationResponse, error) { panic("signature only") },
+		"Steer":         func(context.Context, AgentPromptRequest) (AgentQueueResponse, error) { panic("signature only") },
+		"FollowUp":      func(context.Context, AgentPromptRequest) (AgentQueueResponse, error) { panic("signature only") },
+		"CancelQueued":  func(context.Context, string) (AgentCancelQueuedResponse, error) { panic("signature only") },
+		"Abort":         func(context.Context) error { panic("signature only") },
+		"Compact":       func(context.Context, AgentCompactionRequest) (AgentOperationResponse, error) { panic("signature only") },
+		"WaitForPrompt": func(context.Context, string) (AgentPromptResult, error) { panic("signature only") },
 	}
 	if contract.NumMethod() != len(methods) {
 		t.Fatalf("controller methods = %d; want %d", contract.NumMethod(), len(methods))
@@ -50,8 +48,9 @@ func TestAgentControllerJSON(t *testing.T) {
 		{"queue accepted", AgentQueueResponse{Accepted: true, EntryID: new("entry")}, `{"accepted":true,"entryId":"entry","error":null}`},
 		{"queue rejected", AgentQueueResponse{Error: &AgentOperationError{Code: "closed", Message: "closed"}}, `{"accepted":false,"entryId":null,"error":{"code":"closed","message":"closed"}}`},
 		{"compact", AgentCompactionRequest{}, `{"customInstructions":null}`},
-		{"navigate", AgentNavigationRequest{}, `{"targetId":null,"summarize":false,"label":null,"customInstructions":null}`},
-		{"navigate empty strings", AgentNavigationRequest{TargetID: new(""), Summarize: true, Label: new(""), CustomInstructions: new("")}, `{"targetId":"","summarize":true,"label":"","customInstructions":""}`},
+		{"prompt done", AgentPromptResult{Status: "done", Text: new("answer")}, `{"status":"done","text":"answer","reason":null}`},
+		{"prompt done empty", AgentPromptResult{Status: "done", Text: new("")}, `{"status":"done","text":"","reason":null}`},
+		{"prompt unanswered", AgentPromptResult{Status: "unanswered", Reason: new("aborted")}, `{"status":"unanswered","text":null,"reason":"aborted"}`},
 		{"cancelled", AgentCancelQueuedResponse{Outcome: "cancelled"}, `{"outcome":"cancelled"}`},
 		{"consumed", AgentCancelQueuedResponse{Outcome: "already_consumed"}, `{"outcome":"already_consumed"}`},
 		{"missing", AgentCancelQueuedResponse{Outcome: "not_found"}, `{"outcome":"not_found"}`},

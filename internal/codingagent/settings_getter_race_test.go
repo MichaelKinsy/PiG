@@ -2,6 +2,7 @@ package codingagent
 
 import (
 	"context"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -83,6 +84,9 @@ func TestExternalEditorSelectionKeepsJSWhitespaceMeaning(t *testing.T) {
 		{"NEL command", "\u0085", "\u0085"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			if runtime.GOOS == "windows" && tc.configured == "\u0085" {
+				t.Skip("cmd.exe accepts a NEL-only command line as an empty command, so no launch failure occurs")
+			}
 			t.Setenv("PATH", t.TempDir())
 			t.Setenv("VISUAL", "missing-visual-fixture")
 			t.Setenv("EDITOR", "missing-editor-fixture")

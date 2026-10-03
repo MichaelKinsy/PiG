@@ -376,6 +376,15 @@ func (r *ModelRegistry) RefreshCatalogs(ctx context.Context, options CatalogRefr
 			result.errorOrder = append(result.errorOrder, id)
 		}
 	})
+	wg.Go(func() {
+		remote := r.refreshRemoteCatalogs(ctx, ai.ModelsRefreshOptions{AllowNetwork: new(options.AllowNetwork), Providers: options.Providers, Force: options.Force})
+		mu.Lock()
+		defer mu.Unlock()
+		for _, id := range remote.ErrorOrder {
+			result.Errors[id] = remote.Errors[id]
+			result.errorOrder = append(result.errorOrder, id)
+		}
+	})
 	wg.Wait()
 	maps.Copy(result.Errors, r.refreshNativeProviders(ctx, options.Providers, options.AllowNetwork, options.Force))
 	availability := r.reconcileAvailability(ctx, options.Providers, ai.ModelsRefreshResult{Aborted: ctx.Err() != nil, Errors: result.Errors, ErrorOrder: result.errorOrder})

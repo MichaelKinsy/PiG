@@ -91,6 +91,12 @@ func (p *TerminalInput) route(sequences []string) {
 				p.clearNegotiationBuffer()
 				continue
 			}
+			if isKeyboardProtocolNegotiationReply(combined) {
+				// A reassembled reply that answers another query is forwarded whole.
+				p.clearNegotiationBuffer()
+				p.forward(combined)
+				continue
+			}
 			if isKeyboardProtocolNegotiationSequencePrefix(combined) {
 				p.setNegotiationBuffer(combined)
 				continue

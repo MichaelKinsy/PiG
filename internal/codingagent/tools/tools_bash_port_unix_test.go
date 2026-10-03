@@ -20,8 +20,8 @@ func TestToolsBashSignalsPort(t *testing.T) {
 				t.Fatalf("result %+v, %v; want %d", result, err, tc.code)
 			}
 		})
-		// .upstream/v0.87.1/packages/coding-agent/test/tools.test.ts:514
-		t.Run("should reject signal-killed commands while preserving partial output/"+tc.signal, func(t *testing.T) {
+		// .upstream/v0.99.1/packages/coding-agent/test/tools.test.ts:554
+		t.Run("should report signal-killed commands as errors while preserving partial output/"+tc.signal, func(t *testing.T) {
 			result := bashPort(t, &BashTool{CWD: t.TempDir()}, "printf 'before-kill\\n'; kill -"+tc.signal+" $$")
 			assertBashPortError(t, result, `before-kill\s+Command exited with code `+jsNumber(float64(tc.code))+`$`)
 		})

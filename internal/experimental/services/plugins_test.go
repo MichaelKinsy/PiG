@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
+	"github.com/MichaelKinsy/PiG/internal/chord"
 )
 
 // services/plugins.ts defines these exact tokens and awaited method signatures.
@@ -19,8 +19,8 @@ func TestPluginServiceContracts(t *testing.T) {
 		methods  map[string]reflect.Type
 	}{
 		{"presentation", PresentationPluginsDefinition.Id(), PresentationPluginsDefinition.Local(), reflect.TypeFor[PresentationPlugins](), map[string]reflect.Type{
-			"PrepareSession": reflect.TypeFor[func(context.Context, PrepareSessionPluginsRequest) (pico3.JsonValue, error)](),
-			"Reload":         reflect.TypeFor[func(context.Context) (pico3.JsonValue, error)](),
+			"PrepareSession": reflect.TypeFor[func(context.Context, PrepareSessionPluginsRequest) (chord.JsonValue, error)](),
+			"Reload":         reflect.TypeFor[func(context.Context) (chord.JsonValue, error)](),
 		}},
 		{"session", SessionPluginsDefinition.Id(), SessionPluginsDefinition.Local(), reflect.TypeFor[SessionPlugins](), map[string]reflect.Type{
 			"Reload": reflect.TypeFor[func(context.Context) error](),

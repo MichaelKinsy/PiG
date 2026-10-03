@@ -1,0 +1,26 @@
+# mutation checks: apply the mutation, run the named tests, restore the file (git checkout -- <file>)
+assistant-only gate: RED (9 failing) ['TestCreateBranchedSessionUpstream', 'TestCreateBranchedSessionUpstream/does_not_duplicate_entries_when_forking_from_before_the_first_user_message', 'TestDeferredFlush_FileCreatedAtFirstUserMessage', 'TestSessionCrashBeforeFirstReplyKeepsThePrompt', 'TestSessionFileCreationConversationRule', 'TestSessionFileCreationConversationRule/empty_user_text']
+restore: assistant-only: RED (4 failing) ['TestClonePreservesPersistenceModeAndDefersConversationFreeBranches', 'TestClonePreservesPersistenceModeAndDefersConversationFreeBranches/disk_user', 'TestCreateBranchedSessionUpstream', 'TestCreateBranchedSessionUpstream/writes_file_immediately_when_forking_at_a_user_message']
+persist gate removed (write always): RED (9 failing) ['TestDeferredFlush_FileCreatedAtFirstUserMessage', 'TestSessionFileCreationConversationRule', 'TestSessionFileCreationConversationRule/bash_execution_only', 'TestSessionFileCreationConversationRule/custom_entry_only', 'TestSessionFileCreationConversationRule/custom_message_only', 'TestSessionFileCreationConversationRule/session_name_only']
+merge: always replace: RED (6 failing) ['TestMergeDefaultToolsMatchesUpstream', 'TestMergeDefaultToolsMatchesUpstream/empty_override_keeps_an_inherited_list', 'TestMergeDefaultToolsMatchesUpstream/modifiers_append', 'TestUpstreamSettingsManager', 'TestUpstreamSettingsManager/defaultTools', 'TestUpstreamSettingsManager/defaultTools/layers_project_modifiers_on_top_of_the_global_selection']
+merge: empty replaces: RED (2 failing) ['TestMergeDefaultToolsMatchesUpstream', 'TestMergeDefaultToolsMatchesUpstream/empty_override_without_a_base_stays_empty']
+resolve: identity: RED (12 failing) ['TestResolveDefaultToolsMatchesUpstream', 'TestResolveDefaultToolsMatchesUpstream/a_bare_plus_adds_nothing', 'TestResolveDefaultToolsMatchesUpstream/a_duplicate_add_is_ignored', 'TestResolveDefaultToolsMatchesUpstream/modifiers_start_from_the_defaults', 'TestResolveDefaultToolsMatchesUpstream/order_matters', 'TestResolveDefaultToolsMatchesUpstream/plain_names_stay_in_list_order']
+startup uses raw list (cli): GREEN(!) (0 failing) []
+startup uses raw list (rpc): RED (1 failing) ['TestRPCDefaultToolsModifiersSelectInitialTools']
+wheel: no floor: RED (3 failing) ['TestSetFullscreenWheelScrollLinesClampsAndPersists', 'TestUpstreamSettingsManager', 'TestUpstreamSettingsManager/persists_fullscreen_wheel_scroll_lines']
+deviceId: reads merged: RED (4 failing) ['TestGetOrCreateDeviceIDIgnoresProjectAndKeepsMemoryID', 'TestUpstreamSettingsManager', 'TestUpstreamSettingsManager/deviceId', 'TestUpstreamSettingsManager/deviceId/creates_one_global_device_ID_and_reuses_it_in_later_processes']
+deviceId: bug report keeps it: RED (1 failing) ['TestBugReportOmitsDeviceID']
+unsaved message reverted: RED (1 failing) ['TestForkUnsavedRefusalPreservesSource']
+runtime message reverted: RED (1 failing) ['TestRuntimeOriginalUnflushedForkDiagnostic']
+entry count off by one: RED (2 failing) ['TestHeaderOnlySessionFileResumesAsFlushed', 'TestSessionEntryCountExcludesTheHeader']
+codemode merge drops project: GREEN(!) (0 failing) []
+startup uses raw list (cli): RED (1 failing) ['TestCLIDefaultToolsModifiersSelectInitialTools']
+codemode merge drops project mode: RED (1 failing) ['TestCodemodeSettingsRoundTripAndMerge']
+first flush truncates instead of O_EXCL: RED (1 failing) ['TestFirstFlushDoesNotOverwriteAnExistingFile']
+
+# load test (final code): -race -count=24 GOMAXPROCS=4 taskset -c 100-103 with 8 busy-loop burners on the same cores
+Wed Sep 30 01:57:26 AM UTC 2026
+PASS
+exit=0
+Wed Sep 30 01:59:02 AM UTC 2026
+package: internal/codingagent, race detector on; 20 test groups x 24 runs.

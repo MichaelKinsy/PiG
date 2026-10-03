@@ -129,6 +129,19 @@ extensions:
     tools: []
 ```
 
+Read-only role with extension tools:
+
+```yaml
+name: researcher
+tools: [read]
+extensions:
+  - name: search
+    origins: [local:./extensions/search]
+    tools: [web_search]
+```
+
+Root `tools` restricts built-in tools only, so this role cannot write, edit, or run bash. Extension tools are listed per extension under `extensions[].tools`; here the active tools are exactly `read` and `web_search`.
+
 Command-line and platform policy can narrow these lists. They do not silently widen a Piglet.
 
 ## Discovery
@@ -141,7 +154,7 @@ discovery:
   skills: [workspace]
 ```
 
-Explicit entries always load when their origins resolve. In an active Piglet, omitted or empty discovery lists mean no ambient Resources of that type. Bare Stock PiG keeps its normal discovery behavior.
+Explicit entries always load when their origins resolve. An entry whose origins do not resolve is an extension load error: PiG reports each one and exits with status 1, as it does for any extension that fails to load. Like an explicit `-e` path, a Piglet entry still loads with `-ne`, so fix or remove the entry to start. In an active Piglet, omitted or empty discovery lists mean no ambient Resources of that type. Bare Stock PiG keeps its normal discovery behavior.
 
 Use explicit discovery policy to prevent installed or workspace Resources from changing an application unexpectedly.
 
@@ -240,7 +253,7 @@ For this pinned subdirectory form, PiG copies declared relative local Packages, 
 
 The origin record includes the selected source, commit, original and registered Piglet digests, and each copied file's digest. Inventory checks those digests. Removing the source removes its recorded closure without touching sibling Piglets. Other remote source forms still reject local Resource origins.
 
-A Piglet with relative local Resource origins remains source-bound. Run that source directly unless all required relative content is registered with it.
+A Piglet with relative local Package sources or Resource origins remains source-bound, and `piglet add` rejects it. Run that source directly unless all required relative content is registered with it.
 
 ## Inspect the active Piglet
 
@@ -271,6 +284,10 @@ pig piglet build research --format binary --out ./pig-research
 ```
 
 A script is a thin launcher. A Piglet Binary contains PiG and a fixed Piglet composition. See [Piglet Binaries](/docs/latest/piglet-binaries).
+
+The native builder compiles PiG from source with the host Go toolchain. It uses the PiG checkout that contains the current directory, or `PIG_SOURCE_ROOT`. A release binary without a checkout fetches the source of exactly its own version with `go mod download github.com/MichaelKinsy/PiG@v<version>` and prints `fetching PiG v<version> source (cached after first build)`. `GOPROXY` and `GOSUMDB` verify the download, and later builds reuse the Go module cache and a staged copy under `~/.pig/cache/pig-source/`. The fetch needs no Git and no checkout. A development build has no published source for its version, so it reports `source-unavailable` and asks for a checkout or `PIG_SOURCE_ROOT` (D18).
+
+Without a ready native builder, auto selection uses the built-in `container` builder; `--builder container` selects it explicitly. It runs the build in Podman or Docker: `PIG_CONTAINER_ENGINE=docker|podman` selects the engine, and otherwise Podman wins when both are on `PATH`. It pulls the digest-pinned public Go image of PiG's ci-go CI image, installs exactly the running PiG release in it with `go install`, and runs that release's native builder. The host needs no Go and no PiG source, and the target can be any `linux/<arch>` the engine runs; another architecture needs the engine's emulation. Go modules and build output are cached under `~/.pig/cache/container-go/`. The image contains only the Go toolchain, so a Piglet with packed or isolated Rust extensions needs a configured builder image that also has Cargo. A development build cannot install itself in the container, and the container builder does not sign (D18).
 
 Publish signed per-target Binaries, `SHA256SUMS`, and a signed release index as one GitHub Release:
 

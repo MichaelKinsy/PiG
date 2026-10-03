@@ -207,12 +207,12 @@ func TestReadClipboardImageNoImage(t *testing.T) {
 }
 
 func TestReadClipboardImageHeadlessLinuxStillProbesXclip(t *testing.T) {
-	// Pi clipboard-image.ts:246 tries Xclip after an unavailable Wayland backend even without DISPLAY.
+	// Pi clipboard-image.ts tries Xclip after an unavailable Wayland backend even without DISPLAY. When TARGETS fails it probes no image type (.upstream/v0.99.1/packages/coding-agent/src/utils/clipboard-image.ts:177) and falls to the native lookup.
 	f := newClipboardImageFixture(t, "linux", map[string]string{})
 	f.missing = true
 	assertClipboardImage(t, nil)
-	if len(f.commands) != 5 || f.helperCalls != 1 {
-		t.Fatalf("commands=%v helper=%d; want TARGETS, four MIME probes, then native lookup", f.commands, f.helperCalls)
+	if len(f.commands) != 1 || f.helperCalls != 1 {
+		t.Fatalf("commands=%v helper=%d; want the TARGETS query, then native lookup", f.commands, f.helperCalls)
 	}
 }
 

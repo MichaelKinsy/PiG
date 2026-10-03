@@ -9,10 +9,10 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/session"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/experimental/protocol"
 	"github.com/MichaelKinsy/PiG/internal/experimental/routing"
+	"github.com/MichaelKinsy/PiG/internal/experimental/routing/routingtest"
 )
 
 // terminatedLease models the worker manager's attachment: once its worker is retired, a release is rejected (session-worker-manager.ts:#applyDemand throws "Experimental Session worker is stopping" when the worker is no longer registered).
@@ -60,11 +60,11 @@ func (*gatedTerminationHandle) Close(context.Context) error { return nil }
 func TestRouterCloseAppliesTerminationSignalledBeforeClose(t *testing.T) {
 	handle := &gatedTerminationHandle{terminated: make(chan struct{}), entered: make(chan struct{}), release: make(chan struct{})}
 	host := routing.ServerHost{
-		ServerServices: testServerServices{},
-		ResolveSession: func(_ context.Context, id string) (session.SessionMetadata, error) {
-			return session.SessionMetadata{ID: id, CreatedAt: 1, StorageVersion: 1}, nil
+		ServerServices: routingtest.CreateTestServerServices(),
+		ResolveSession: func(_ context.Context, id string) (routing.SessionMetadata, error) {
+			return routing.BasicSessionMetadata{ID: id}, nil
 		},
-		OpenSession: func(context.Context, session.SessionMetadata) (routing.RoutedSessionHandle, error) {
+		OpenSession: func(context.Context, routing.SessionMetadata) (routing.RoutedSessionHandle, error) {
 			return handle, nil
 		},
 	}

@@ -385,3 +385,64 @@ func TestRetryTransport_RequestMaxRetriesOverride(t *testing.T) {
 		t.Errorf("attempts = %d, want 1 (request override disables retries)", got)
 	}
 }
+
+// TestProviderRetryDelayUnparseableRetryAfter covers .upstream/v0.99.2/packages/ai/src/utils/provider-retry.ts:52-66
+// (#9571): a retry-after-ms or retry-after value whose delay is not finite falls through to the next source,
+// and finally to exponential backoff, instead of retrying immediately. Number.parseFloat reads a numeric prefix.
+func TestProviderRetryDelayUnparseableRetryAfter(t *testing.T) {
+	resetProviderRetry(t)
+	providerRetryJitter = func() float64 { return 0 }
+	for _, tc := range []struct {
+		name       string
+		headers    http.Header
+		retryIndex int
+		want       time.Duration
+	}{
+		{"unparseable retry-after date uses exponential backoff", hdr("retry-after", "not a date"), 2, 2 * time.Second},
+		{"unparseable retry-after date at index zero", hdr("retry-after", "soon"), 0, 500 * time.Millisecond},
+		{"infinite retry-after seconds use exponential backoff", hdr("retry-after", "Infinity"), 1, time.Second},
+		{"overflowing retry-after seconds use exponential backoff", hdr("retry-after", "1e999"), 1, time.Second},
+		{"infinite retry-after-ms falls through to retry-after", hdr("retry-after-ms", "Infinity", "retry-after", "3"), 0, 3 * time.Second},
+		{"non-numeric retry-after-ms falls through to retry-after", hdr("retry-after-ms", "later", "retry-after", "3"), 0, 3 * time.Second},
+		{"unparseable retry-after-ms and retry-after use exponential backoff", hdr("retry-after-ms", "later", "retry-after", "later"), 3, 4 * time.Second},
+		{"retry-after-ms reads a numeric prefix", hdr("retry-after-ms", "250ms"), 0, 250 * time.Millisecond},
+		{"retry-after reads a numeric prefix", hdr("retry-after", "5 seconds"), 0, 5 * time.Second},
+		{"retry-after seconds accept an exponent", hdr("retry-after", "1.5e1"), 0, 15 * time.Second},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := providerRetryDelay(tc.headers, tc.retryIndex, 60000, "503")
+			if err != nil || got != tc.want {
+				t.Fatalf("delay = %v, err = %v; want %v", got, err, tc.want)
+			}
+		})
+	}
+	t.Run("a finite prefix above the cap still fails", func(t *testing.T) {
+		_, err := providerRetryDelay(hdr("retry-after", "120 seconds"), 0, 5000, "429")
+		if err == nil || !strings.Contains(err.Error(), "Server requested 120s retry delay (max: 5s)") {
+			t.Fatalf("err = %v; want cap-exceeded error", err)
+		}
+	})
+}
+
+// TestRetryTransport_UnparseableRetryAfterWaitsForBackoff is the wire regression for #9571: a 503 whose
+// Retry-After is not a number or date is retried after the exponential backoff, not immediately.
+func TestRetryTransport_UnparseableRetryAfterWaitsForBackoff(t *testing.T) {
+	resetProviderRetry(t)
+	providerRetryJitter = func() float64 { return 0 }
+	if err := ConfigureProviderRetry(1, 60000); err != nil {
+		t.Fatal(err)
+	}
+	srv, attempts := retryTestServer(t, []int{503, 200}, map[string]string{"retry-after": "next tuesday"})
+	start := time.Now()
+	resp, err := retryClient().Get(srv.URL)
+	if err != nil {
+		t.Fatalf("Get err = %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != 200 || attempts.Load() != 2 {
+		t.Fatalf("status = %d after %d attempts, want 200 after 2", resp.StatusCode, attempts.Load())
+	}
+	if elapsed := time.Since(start); elapsed < 500*time.Millisecond {
+		t.Fatalf("retried after %v, want at least the 500ms exponential backoff", elapsed)
+	}
+}

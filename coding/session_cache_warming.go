@@ -32,6 +32,7 @@ func cacheWarmingStreamFn(session func() *Session) agent.StreamFn {
 	return func(ctx context.Context, model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 		if s := session(); s != nil {
 			options.OnResponse = s.extensionProviderResponseHook
+			options.OnProviderStreamEvent = s.extensionProviderStreamEventHook
 			var err error
 			options, err = s.buildRequestOptions(model, options)
 			if err != nil {

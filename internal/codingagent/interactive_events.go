@@ -51,7 +51,7 @@ func (m *InteractiveMode) maybeShowThinkingDropNotice(message *agent.AssistantMe
 	}
 	text := fmt.Sprintf("Anthropic dropped %d %s (details in session)", count, noun)
 	m.chatContainer.Add(tui.NewSpacer(1))
-	m.chatContainer.Add(tui.NewPaddedText(tui.ActiveTheme().FgText("warning", text), 1, 0, nil))
+	m.chatContainer.Add(themedNotice("warning", text, 1))
 }
 
 func (m *InteractiveMode) finalizeRunningTools() {
@@ -308,6 +308,12 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		m.tuiInst.CancelPendingRender()
 
 	case agent.ToolExecutionStartEvent:
+		// A call another tool made through ctx.executeTool(), for example from a codemode script, is shown inside its
+		// parent's row. Its update and end events find no card.
+		// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:3501-3503
+		if e.ParentToolCallID != "" {
+			return
+		}
 		// Mark the current assistant block as having tool calls so its
 		// abort/error rendering is suppressed (tools show their own).
 		// Mirrors upstream assistant-message.ts:128.
@@ -332,9 +338,6 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 			comp.ArgsPreview = argsPreview
 			comp.SetHeaderArgs(e.Args)
 			m.applyToolPresentation(comp, e.ToolCallID, e.ToolName, e.Args)
-			if e.ToolLabel != "" {
-				comp.Label = e.ToolLabel
-			}
 			comp.MarkExecutionStarted()
 			m.toolStarts[e.ToolCallID] = time.Now()
 			m.toolMu.Unlock()
@@ -345,9 +348,6 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 			comp.Cwd = m.opts.CWD
 			comp.SetHeaderArgs(e.Args)
 			m.applyToolPresentation(comp, e.ToolCallID, e.ToolName, e.Args)
-			if e.ToolLabel != "" {
-				comp.Label = e.ToolLabel
-			}
 			if m.opts.SettingsManager != nil {
 				s := m.opts.SettingsManager.Get()
 				comp.ShowImages = s.GetShowImages() && !s.BlockImages
@@ -379,13 +379,16 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		if tui.IsShellTool(e.ToolName) {
 			// Shell tools render partial results through the shared shell
 			// renderer (upstream renderers/bash.ts, isPartial).
-			comp.BodyRenderer = makeShellBodyRenderer(e.Content, e.Details, true, nil)
+			comp.BodyRenderer = makeShellBodyRenderer(e.PartialResult.Text(), e.PartialResult.Details, true, nil)
 		}
 		if comp.HasDefinition() {
-			// Upstream hands a partial result to renderResult with isPartial.
-			comp.SetResultValue(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: e.Content}}, Details: e.Details})
+			// Upstream hands a partial result to renderResult with isPartial, as `{...event.partialResult, isError: false}`.
+			// upstream: modes/interactive/interactive-mode.ts:3527-3533
+			partial := e.PartialResult
+			partial.IsError = false
+			comp.SetResultValue(partial)
 		}
-		comp.SetStreaming(e.Content)
+		comp.SetStreaming(e.PartialResult.Text())
 		m.tuiInst.RequestRender()
 
 	case agent.ToolExecutionEndEvent:
@@ -401,6 +404,9 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		if comp == nil {
 			return
 		}
+		// upstream: interactive-mode.ts:3539 hands the component `{ ...event.result, isError: event.isError }`.
+		result := e.Result
+		result.IsError = e.IsError
 		var elapsed time.Duration
 		var took *time.Duration
 		if !start.IsZero() {
@@ -409,14 +415,14 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		}
 		// Attach a per-tool body renderer so Ctrl+O reveals a diff /
 		// line-numbered view instead of raw text.
-		comp.BodyRenderer = toolBodyRenderer(e.ToolName, e.Result, took)
+		comp.BodyRenderer = toolBodyRenderer(e.ToolName, result, took)
 		if hasFileCall {
 			// File renderers own their call arguments; wire results carry no private preview state.
-			comp.BodyRenderer = toolBodyRendererForCall(call, e.Result)
+			comp.BodyRenderer = toolBodyRendererForCall(call, result)
 		}
 		// Wire image blocks from tool results so they render inline.
 		// Mirrors upstream tool-execution.ts updateResult → image block handling.
-		images := e.Result.Images()
+		images := result.Images()
 		if len(images) > 0 {
 			blocks := make([]tui.ImageBlock, len(images))
 			for i, img := range images {
@@ -424,8 +430,8 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 			}
 			comp.ImageBlocks = blocks
 		}
-		comp.SetResultValue(e.Result)
-		comp.SetResult(e.Result.Text(), e.Result.IsError, elapsed)
+		comp.SetResultValue(result)
+		comp.SetResult(result.Text(), result.IsError, elapsed)
 		m.maybeConvertImagesForKitty(comp)
 		m.tuiInst.Render()
 
@@ -471,7 +477,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 			if e.Reason == "manual" {
 				m.showError(e.ErrorMessage)
 			} else {
-				m.appendChatBlock(tui.NewPaddedText(tui.ActiveTheme().FgText("error", e.ErrorMessage), 1, 0, nil))
+				m.appendChatBlock(themedNotice("error", e.ErrorMessage, 1))
 			}
 		}
 		// handleAgentEvent runs on the input loop, so queue delivery and any

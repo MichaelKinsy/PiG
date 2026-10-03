@@ -231,6 +231,7 @@ func assertRPCDefined(t *testing.T, v any) {
 }
 
 func TestRPCModeUpstream(t *testing.T) {
+	t.Parallel()
 	// .upstream/v0.87.1/packages/coding-agent/test/rpc.test.ts:36
 	t.Run("should get state", func(t *testing.T) {
 		f := newUpstreamRPC(t, false)

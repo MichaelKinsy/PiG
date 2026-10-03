@@ -46,6 +46,10 @@ type BashTool struct {
 func (t *BashTool) Name() string  { return "bash" }
 func (t *BashTool) Label() string { return "" }
 
+// OutputSchema mirrors upstream bashOutputSchema: the structuredContent of a
+// completed command.
+func (t *BashTool) OutputSchema() json.RawMessage { return json.RawMessage(shellOutputSchema) }
+
 func (t *BashTool) Schema() ai.ToolSchema {
 	return shellToolSchema("bash", "bash", !t.HideSessionEnvironment)
 }

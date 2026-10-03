@@ -59,6 +59,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/pigdocs"
 	"github.com/MichaelKinsy/PiG/internal/profiling"
 	"github.com/MichaelKinsy/PiG/internal/resolvepath"
+	"github.com/MichaelKinsy/PiG/internal/termuxenv"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -364,27 +365,56 @@ func inlinePigletSystemPrompt(p *piglet.Piglet) {
 }
 
 // resolvePigletExtConfigs resolves a piglet's extension origins to
-// subprocess.ExtConfig entries. Returns nil if no extensions with origins.
+// subprocess.ExtConfig entries. An extension that does not resolve stays in the
+// result as an unresolved config, so the host reports it as an extension load
+// failure beside the ones that loaded, as Pi's loadExtensions records every
+// failed extension in path order (loader.ts:684-696) and main.ts reports each
+// one (main.ts:799-802). The configs keep the Piglet's declaration order.
+// Returns nil if no extensions have origins.
 func resolvePigletExtConfigs(p *piglet.Piglet) []subprocess.ExtConfig {
+	// ResolveExtensions yields one resolved extension or one error for each
+	// entry with origins, in declaration order.
 	resolved, errs := piglet.ResolveExtensions(p)
-	for _, err := range errs {
-		fmt.Fprintf(os.Stderr, "warning: %v\n", err)
-	}
-
-	if len(resolved) == 0 {
-		return nil
-	}
-
 	var configs []subprocess.ExtConfig
-	for _, r := range resolved {
-		cfg, _, err := subprocess.ResolveExtConfigWithIdentity(r.Path, r.Entry.Name)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "warning: extension %s: %v\n", r.Path, err)
+	for _, ext := range p.Extensions {
+		if len(ext.Origins) == 0 {
 			continue
 		}
-		configs = append(configs, cfg)
+		if len(resolved) > 0 && resolved[0].Entry.Name == ext.Name {
+			r := resolved[0]
+			resolved = resolved[1:]
+			cfg, _, err := subprocess.ResolveExtConfigWithIdentity(r.Path, r.Entry.Name)
+			if err != nil {
+				cfg = subprocess.UnresolvedExtConfig(r.Path, err)
+			}
+			configs = append(configs, cfg)
+			continue
+		}
+		if len(errs) > 0 {
+			configs = append(configs, unresolvedPigletExtConfig(p, ext.Name, errs[0]))
+			errs = errs[1:]
+		}
 	}
 	return configs
+}
+
+// unresolvedPigletExtConfig reports an extension whose origins did not resolve
+// at the Piglet file. Its name stays unique per entry, so merging the startup
+// configs keeps one failure for each unresolved extension.
+func unresolvedPigletExtConfig(p *piglet.Piglet, name string, err error) subprocess.ExtConfig {
+	path := pigletExtensionFailurePath(p)
+	cfg := subprocess.UnresolvedExtConfig(path, err)
+	cfg.Name = path + "#" + name
+	return cfg
+}
+
+// pigletExtensionFailurePath names the Piglet file for an extension that has no
+// resolved path to report.
+func pigletExtensionFailurePath(p *piglet.Piglet) string {
+	if path := p.SourcePath(); path != "" {
+		return path
+	}
+	return p.Name
 }
 
 func fusedConfigsForPiglet(p *piglet.Piglet) []subprocess.ExtConfig {
@@ -486,6 +516,7 @@ func runStableCLI() {
 	defer nativeplatform.ShutdownClipboard()
 	defer exitOnRenderOverflow()
 
+	termuxenv.Configure()
 	binaryPath := guardBinaryIdentity()
 	setupCli()
 
@@ -543,6 +574,10 @@ func runStableCLI() {
 		switch os.Args[1] {
 		case "config":
 			exitProcess(runConfigCommand(os.Args[2:]))
+		case "mcp":
+			if code := runMcpCommand(os.Args[1:]); code >= 0 {
+				exitProcess(code)
+			}
 		case "diagnose":
 			runDiagnose(os.Stdout, binaryPath)
 			exitProcess(0)
@@ -723,6 +758,10 @@ func runStableCLI() {
 	agentDir := codingagent.AgentDir()
 	agentDirForModelOverride = agentDir
 
+	// pig divergence (D88): first-time setup runs on an interactive start when settings.json does not exist yet; observed
+	// before anything this run writes creates it.
+	firstTimeSetup := shouldRunFirstTimeSetup(processAppMode(flags), codingagent.AgentDirConfigured(), agentDir)
+
 	// Run one-shot config migrations before loading services/resources so
 	// renamed directories (e.g. commands/ → prompts/) are visible on the
 	// current startup path. Mirrors upstream startup ordering.
@@ -742,6 +781,14 @@ func runStableCLI() {
 	if err != nil {
 		printCLIError("%v", err)
 		exitProcess(1)
+	}
+	// Pi runs first-time setup on its own screen before any runtime service, then applies --theme over the saved settings
+	// (main.ts:672-680).
+	if firstTimeSetup && !flags.Help && flags.ListModels == "" && !flags.ListModelsAll {
+		_, setupErr := codingagent.ShowFirstTimeSetup(startupSettingsManager, startupUIOptions(flags, false, initialCWD, agentDir, startupSettingsManager))
+		if setupErr != nil {
+			printCLIError("first-time setup: %v", setupErr)
+		}
 	}
 	startupUIOpts := startupUIOptions(flags, processAppMode(flags) == appModeInteractive, initialCWD, agentDir, startupSettingsManager)
 	// Pi createSessionManager selects in-memory modes before considering the resume picker.
@@ -938,12 +985,14 @@ func runStableCLI() {
 		printCLIError("%v", messageErr)
 		exitProcess(1)
 	}
-	if len(extensionDiagnostics) > 0 || modelErr != nil {
-		if len(extensionDiagnostics) > 0 {
-			reportExtensionLoadFailures(startupDiagnostics)
-		} else {
-			codingagent.ReportDiagnostics(startupDiagnostics)
-		}
+	// main.ts:898 applies the configured theme in every mode before the run starts; the interactive controller applies its own at construction. Print, JSON and RPC runs draw tool output and exports with it.
+	if processAppMode(flags) != appModeInteractive {
+		initTheme(build.Services.SettingsManager(), agentDir)
+	}
+	// Only an error diagnostic stops startup; warnings are reported and startup goes on (main.ts:908-916).
+	hasRuntimeErrors := modelErr != nil || slices.ContainsFunc(extensionDiagnostics, func(diagnostic codingagent.AgentSessionRuntimeDiagnostic) bool { return diagnostic.Type == "error" })
+	if hasRuntimeErrors {
+		reportExtensionLoadFailures(startupDiagnostics)
 		exitProcess(1)
 	}
 	stopModelServices = build.Services.Close
@@ -969,11 +1018,12 @@ func runStableCLI() {
 	var beforeToolCall []agent.BeforeToolCallHook
 
 	// Quiet startup banner so the user always knows which binary launched.
-	// Suppressed in --print mode and when settings.QuietStartup is true.
+	// Suppressed in --print mode and when quietStartup is true; "header" keeps
+	// it (interactive-mode.ts:996, shouldShowStartupHeader at 1409-1412).
 	// --verbose overrides quietStartup (mirrors upstream args.ts:239).
 	// pig divergence (D2): banner says "PiG", not "pi": separate binary
 	// and config root avoid collisions with upstream pi.
-	showBanner := flags.Print == "" && flags.Mode != "rpc" && (!settings.QuietStartup || flags.Verbose)
+	showBanner := flags.Print == "" && flags.Mode != "rpc" && (settings.QuietStartup != codingagent.QuietStartupTrue || flags.Verbose)
 	var loginOperationalLines []string
 	if showBanner {
 		identityLine := fmt.Sprintf("PiG %s • config=%s • bin=%s",
@@ -1173,6 +1223,8 @@ func runStableCLI() {
 		DefaultModelPerProvider: codingagent.DefaultModelPerProvider(),
 		ModelLookup:             codingSess.ModelRuntime().GetModel,
 		ModelCatalog:            codingSess.ModelRuntime().GetModels,
+		ModelClassify:           codingSess.ModelRuntime().Classify,
+		ModelGenerateImages:     codingSess.ModelRuntime().GenerateImages,
 		RequestAuthRuntime:      requestAuthRuntime,
 		ModelRegistry:           services.Registry().ModelRegistry,
 		ExtensionRunner:         codingSess.ExtensionRunner(),

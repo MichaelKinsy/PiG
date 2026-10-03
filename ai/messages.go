@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -131,6 +132,8 @@ type AssistantMessage struct {
 	RawStopReason         string                       `json:"rawStopReason,omitempty"`
 	EndTurn               *bool                        `json:"endTurn,omitempty"`
 	Timestamp             int64                        `json:"timestamp"`
+	// ThinkingLevel is the thinking level the agent loop requested for this response. Absent outside the agent loop and for legacy responses. Mirrors upstream AssistantMessage.thinkingLevel (packages/ai/src/types.ts:557).
+	ThinkingLevel ModelThinkingLevel `json:"thinkingLevel,omitempty"`
 }
 
 func (AssistantMessage) messageRole() string { return "assistant" }
@@ -150,15 +153,119 @@ func cloneAssistantMessage(message AssistantMessage) AssistantMessage {
 	return message
 }
 
+// NestedToolCallStatus is the state of a [NestedToolCallRecord]. `unfinished` means the call was still running when the calling tool finished.
+//
+// upstream: .upstream/v0.99.1/packages/ai/src/types.ts:573-586 (NestedToolCallRecord.status)
+type NestedToolCallStatus string
+
+// The statuses of upstream's NestedToolCallRecord.status union.
+const (
+	NestedToolCallOK         NestedToolCallStatus = "ok"
+	NestedToolCallError      NestedToolCallStatus = "error"
+	NestedToolCallUnfinished NestedToolCallStatus = "unfinished"
+)
+
+// NestedToolCallRecord is a tool call that another tool made while it ran, for example from a codemode script. Arguments is nil when it was over the size limits; ArgumentsBytes then gives their size.
+//
+// upstream: .upstream/v0.99.1/packages/ai/src/types.ts:573-586 (NestedToolCallRecord)
+type NestedToolCallRecord struct {
+	ID     string               `json:"id"`
+	Name   string               `json:"name"`
+	Status NestedToolCallStatus `json:"status"`
+	// Arguments is omitted when over the size limits.
+	Arguments JsonObject `json:"arguments,omitempty"`
+	// ArgumentsBytes is the UTF-8 size of the arguments as JSON, set when Arguments is omitted.
+	ArgumentsBytes *int   `json:"argumentsBytes,omitempty"`
+	DurationMs     *int64 `json:"durationMs,omitempty"`
+	// Error is the error text, truncated.
+	Error string `json:"error,omitempty"`
+
+	// argumentOrder is the member order of Arguments, as ToolCall keeps it.
+	argumentOrder schemaObjectOrder
+}
+
+// SetArgumentsJSON decodes a complete JSON object into Arguments and keeps its member order.
+func (record *NestedToolCallRecord) SetArgumentsJSON(raw []byte) error {
+	call := ToolCall{}
+	if err := call.SetArgumentsJSON(raw); err != nil {
+		return err
+	}
+	record.Arguments, record.argumentOrder = call.Arguments, call.argumentOrder
+	return nil
+}
+
+// MarshalJSON keeps an empty `arguments` object, which differs from omitted arguments (over the size limits): only a nil Arguments is left out.
+func (record NestedToolCallRecord) MarshalJSON() ([]byte, error) {
+	wire := struct {
+		ID             string               `json:"id"`
+		Name           string               `json:"name"`
+		Status         NestedToolCallStatus `json:"status"`
+		Arguments      json.RawMessage      `json:"arguments,omitempty"`
+		ArgumentsBytes *int                 `json:"argumentsBytes,omitempty"`
+		DurationMs     *int64               `json:"durationMs,omitempty"`
+		Error          string               `json:"error,omitempty"`
+	}{ID: record.ID, Name: record.Name, Status: record.Status, ArgumentsBytes: record.ArgumentsBytes, DurationMs: record.DurationMs, Error: record.Error}
+	if record.Arguments != nil {
+		arguments, err := ToolCall{Arguments: record.Arguments, argumentOrder: record.argumentOrder}.ArgumentsJSON()
+		if err != nil {
+			return nil, err
+		}
+		wire.Arguments = arguments
+	}
+	return json.Marshal(wire)
+}
+
+// UnmarshalJSON decodes the record and keeps the member order of its arguments.
+func (record *NestedToolCallRecord) UnmarshalJSON(data []byte) error {
+	if bytes.Equal(bytes.TrimSpace(data), []byte("null")) {
+		return nil
+	}
+	type plain NestedToolCallRecord
+	var decoded plain
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var members struct {
+		Arguments json.RawMessage `json:"arguments"`
+	}
+	if err := json.Unmarshal(data, &members); err != nil {
+		return err
+	}
+	if len(members.Arguments) > 0 {
+		order, err := readSchemaObjectOrder(members.Arguments)
+		if err != nil {
+			return err
+		}
+		decoded.argumentOrder = order
+	}
+	*record = NestedToolCallRecord(decoded)
+	return nil
+}
+
+// NestedToolCalls is the bounded record of the nested calls a tool made. Results are not recorded. Complete is false when calls were dropped, arguments omitted, or calls had not finished.
+//
+// upstream: .upstream/v0.99.1/packages/ai/src/types.ts:588-592 (NestedToolCalls)
+type NestedToolCalls struct {
+	Calls    []NestedToolCallRecord `json:"calls"`
+	Complete bool                   `json:"complete"`
+}
+
 // ToolResultMessage carries one tool execution result.
 type ToolResultMessage struct {
 	ToolCallID string                     `json:"toolCallId"`
 	ToolName   string                     `json:"toolName"`
 	Content    []ToolResultMessageContent `json:"content"`
-	Details    any                        `json:"details,omitempty"`
-	Usage      *Usage                     `json:"usage,omitempty"`
-	IsError    bool                       `json:"isError"`
-	Timestamp  int64                      `json:"timestamp"`
+	// Details is the tool's details value. Nil is no details unless DetailsNull is set.
+	Details any `json:"details,omitempty"`
+	// DetailsNull marks a nil Details as an explicit JSON null, which JSON writes as `"details":null`; without it a nil
+	// Details is absent and JSON omits the key, as JSON.stringify omits undefined. It has no effect when Details is set.
+	DetailsNull bool   `json:"-"`
+	Usage       *Usage `json:"usage,omitempty"`
+	// NestedCalls are the calls this tool made to other tools. Kept for the session record; not sent to the model.
+	// upstream: .upstream/v0.99.1/packages/ai/src/types.ts:604
+	NestedCalls *NestedToolCalls `json:"nestedCalls,omitempty"`
+	IsError     bool             `json:"isError"`
+	Timestamp   int64            `json:"timestamp"`
 }
 
 func (ToolResultMessage) messageRole() string { return "toolResult" }
@@ -168,7 +275,28 @@ func (message ToolResultMessage) cloneMessage() Message {
 	if message.Usage != nil {
 		message.Usage = new(cloneUsage(*message.Usage))
 	}
+	message.NestedCalls = cloneNestedToolCalls(message.NestedCalls)
 	return message
+}
+
+func cloneNestedToolCalls(calls *NestedToolCalls) *NestedToolCalls {
+	if calls == nil {
+		return nil
+	}
+	cloned := &NestedToolCalls{Calls: make([]NestedToolCallRecord, len(calls.Calls)), Complete: calls.Complete}
+	for i, call := range calls.Calls {
+		if call.Arguments != nil {
+			call.Arguments = cloneJSONValue(map[string]any(call.Arguments)).(map[string]any)
+		}
+		if call.ArgumentsBytes != nil {
+			call.ArgumentsBytes = new(*call.ArgumentsBytes)
+		}
+		if call.DurationMs != nil {
+			call.DurationMs = new(*call.DurationMs)
+		}
+		cloned.Calls[i] = call
+	}
+	return cloned
 }
 
 func marshalMessage(role string, value any) ([]byte, error) {
@@ -204,7 +332,47 @@ func (message AssistantMessage) MarshalJSON() ([]byte, error) {
 
 func (message ToolResultMessage) MarshalJSON() ([]byte, error) {
 	type plain ToolResultMessage
+	if message.Details == nil && message.DetailsNull {
+		message.Details = json.RawMessage("null")
+	}
 	return marshalMessage(message.messageRole(), plain(message))
+}
+
+// UnmarshalJSON decodes a toolResult message. A details member that is JSON null sets DetailsNull; a missing one leaves
+// Details nil and DetailsNull unset.
+func (message *ToolResultMessage) UnmarshalJSON(data []byte) error {
+	type plain ToolResultMessage
+	var wire struct {
+		plain
+		Content []json.RawMessage `json:"content"`
+		Details json.RawMessage   `json:"details"`
+	}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	decoded := ToolResultMessage(wire.plain)
+	if wire.Content != nil {
+		decoded.Content = make([]ToolResultMessageContent, 0, len(wire.Content))
+		for index, raw := range wire.Content {
+			block, err := UnmarshalContentBlock(raw)
+			if err != nil {
+				return fmt.Errorf("tool result content[%d]: %w", index, err)
+			}
+			typed, ok := block.(ToolResultMessageContent)
+			if !ok {
+				return fmt.Errorf("tool result content[%d] is %T, not tool result content", index, block)
+			}
+			decoded.Content = append(decoded.Content, typed)
+		}
+	}
+	if wire.Details != nil {
+		if err := json.Unmarshal(wire.Details, &decoded.Details); err != nil {
+			return fmt.Errorf("tool result details: %w", err)
+		}
+		decoded.DetailsNull = decoded.Details == nil
+	}
+	*message = decoded
+	return nil
 }
 
 func cloneSystemContent(content SystemContent) SystemContent {

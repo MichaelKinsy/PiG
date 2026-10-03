@@ -1,4 +1,5 @@
 # Upstream evidence: Pi 0.87.1 interactive-mode.ts:5799-5805 returns from either typed provider list to the authentication method selector on Escape.
+# Pi 1.0.0 interactive-mode.ts:5809-5831 lists "Sign in with Radius • not configured" as the last top-level option (re-probed against Pi 1.0.0 with this fixture).
 name = "16-login-provider-back"
 description = "Escape in the API-key provider list returns to the method selector"
 covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
@@ -30,6 +31,6 @@ pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
 pi_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
 [assert]
 both_reach_ready = true
-both_contain = ["Select authentication method:", "Sign in with an account", "Sign in with an API key"]
+both_contain = ["Select authentication method:", "Sign in with an account", "Sign in with an API key", "Sign in with Radius • not configured"]
 escaped_output_equal = true
 runs = 3

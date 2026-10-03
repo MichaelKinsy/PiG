@@ -6,11 +6,6 @@
 # Exact entries fail when implemented; prefixes fail when no missing cell remains.
 
 [[exception]]
-prefix = "pi.events."
-sdks = ["go", "rust", "python"]
-reason = "No native SDK event-bus bridge exists. Node realms share one bus through cross-process references; native SDKs have no reader or owner for that wire yet (D83 boundary 5)."
-
-[[exception]]
 key = 'pi.on("cache_warming_decision")'
 sdks = ["node", "go", "rust", "python"]
 reason = "Generic handlers receive the emitted cache_warming_decision payload and result. Typed registration remains a separate API declaration gap in test/parity/known-gaps.toml api:OnCacheWarmingDecision."
@@ -26,24 +21,9 @@ sdks = ["node", "go", "rust", "python"]
 reason = "The wire has no writable replacement SessionManager callback handle. Requires replacement callback ownership in the Pi runner bridge (0.3.0), not JSON serialization of a function."
 
 [[exception]]
-key = "ctx.newSession(options.withSession)"
+key = "withSession ctx.sendUserMessage(options.expandPromptTemplates)"
 sdks = ["node", "go", "rust", "python"]
-reason = "No ReplacedSessionContext callback bridge exists. Requires destination-generation callback handles in the Pi runner bridge (0.3.0)."
-
-[[exception]]
-key = "ctx.fork(options.withSession)"
-sdks = ["node", "go", "rust", "python"]
-reason = "No ReplacedSessionContext callback bridge exists. Requires destination-generation callback handles in the Pi runner bridge (0.3.0)."
-
-[[exception]]
-key = "ctx.switchSession(options.withSession)"
-sdks = ["node", "go", "rust", "python"]
-reason = "No ReplacedSessionContext callback bridge exists. Requires destination-generation callback handles in the Pi runner bridge (0.3.0)."
-
-[[exception]]
-prefix = "withSession ctx."
-sdks = ["node", "go", "rust", "python"]
-reason = "No ReplacedSessionContext is created. Its awaited send methods need destination ownership distinct from the ordinary void pi.sendMessage/pi.sendUserMessage operations (Pi runner bridge, 0.3.0)."
+reason = "The host SendUserMessageOptions carries deliverAs only; expandPromptTemplates would be dropped. Requires host prompt-expansion control."
 
 [[exception]]
 key = "ctx.ui.theme.sourceInfo"
@@ -78,7 +58,7 @@ reason = "The provider bridge has no host-to-extension refreshModels request or 
 [[exception]]
 key = "provider.oauth.usesCallbackServer"
 sdks = ["node", "go", "rust", "python"]
-reason = "Deprecated and ignored by Pi 0.87.1 canonical auth flows (core/extensions/types.ts); runtimes do not forward this inert legacy metadata."
+reason = "Deprecated and ignored by upstream 0.99.2 canonical auth flows (core/extensions/types.ts); runtimes do not forward this inert legacy metadata."
 
 [[exception]]
 key = "provider.oauth.modifyModels"
@@ -108,41 +88,6 @@ sdks = ["node"]
 reason = "Members of the type-only root re-export have no runtime receiver. Both Pi and PiG omit the value; the actual class remains in the private core/keybindings module."
 
 # Optional platform/library hooks are absent in the exact Pi runtime too.
-[[exception]]
-key = "pi-agent-core: HarnessClosed.cause"
-sdks = ["node"]
-reason = "Optional Error.cause is not installed by Pi's constructor; the class is vendored."
-
-[[exception]]
-key = "pi-agent-core: SessionBranchExistsError.cause"
-sdks = ["node"]
-reason = "Optional Error.cause is not installed by Pi's constructor; the class is vendored."
-
-[[exception]]
-key = "pi-agent-core: SessionInvalidBranchError.cause"
-sdks = ["node"]
-reason = "Optional Error.cause is not installed by Pi's constructor; the class is vendored."
-
-[[exception]]
-key = "pi-agent-core: SessionInvariantError.cause"
-sdks = ["node"]
-reason = "Optional Error.cause is not installed by Pi's constructor; the class is vendored."
-
-[[exception]]
-key = "pi-agent-core: SessionPendingAssistantMessageError.cause"
-sdks = ["node"]
-reason = "Optional Error.cause is not installed by Pi's constructor; the class is vendored."
-
-[[exception]]
-key = "pi-agent-core: SessionUnknownTargetError.cause"
-sdks = ["node"]
-reason = "Optional Error.cause is not installed by Pi's constructor; the class is vendored."
-
-[[exception]]
-key = "pi-agent-core: SliceNotImplemented.cause"
-sdks = ["node"]
-reason = "Optional Error.cause is not installed by Pi's constructor; the class is vendored."
-
 [[exception]]
 key = "pi-tui: StdinBuffer.[Symbol.captureRejectionSymbol]"
 sdks = ["node"]

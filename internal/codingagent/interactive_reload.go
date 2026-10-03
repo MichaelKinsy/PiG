@@ -6,13 +6,19 @@ import (
 	"context"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/ctxowner"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
+// reloadFromExtension runs /reload for an extension's ctx.reload(). The reloaded extension processes live under the context the reload runs with, and a call's context ends with its command, so the reload runs under the run's context: the command awaits it, and its return must not stop the extensions it started.
 func (m *InteractiveMode) reloadFromExtension(ctx context.Context) error {
 	extension.CallInitiated(ctx)
+	owner := m.runCtx
+	if owner == nil {
+		owner = ctx
+	}
 	return m.runOnMainAndWait(ctx, func() error {
-		return m.buildSlashContext(ctx).Reload()
+		return m.buildSlashContext(ctxowner.WithValuesOf(owner, ctx)).Reload()
 	})
 }
 
@@ -24,7 +30,7 @@ func (m *InteractiveMode) beginReloadBlocker() func() {
 	previous := m.tuiInst.FocusedComponent()
 	box := tui.NewContainer(
 		tui.NewDynamicBorder(""), tui.NewSpacer(1),
-		tui.NewPaddedText(tui.ActiveTheme().FgText("muted", "Reloading keybindings, extensions, skills, prompts, themes, and context files..."), 1, 0, nil),
+		themedNotice("muted", "Reloading keybindings, extensions, skills, prompts, themes, and context files...", 1),
 		tui.NewSpacer(1), tui.NewDynamicBorder(""),
 	)
 	m.editorContainer.SetChildren(box)

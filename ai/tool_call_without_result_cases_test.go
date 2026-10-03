@@ -24,8 +24,8 @@ func toolWithoutResultUpstreamCases() []toolWithoutResultCase {
 		{"should filter out tool calls without corresponding tool results", "cloudflare-ai-gateway", "workers-ai/@cf/moonshotai/kimi-k2.6", "", false, ""},
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:188
 		{"should filter out tool calls without corresponding tool results", "huggingface", "moonshotai/Kimi-K2.5", "", false, ""},
-		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:196
-		{"should filter out tool calls without corresponding tool results", "together", "moonshotai/Kimi-K2.6", "", false, "high"},
+		// .upstream/v0.99.1/packages/ai/test/tool-call-without-result.test.ts:196 (0.99.1 moved Together to Kimi-K3)
+		{"should filter out tool calls without corresponding tool results", "together", "moonshotai/Kimi-K3", "", false, "high"},
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:204
 		{"should filter out tool calls without corresponding tool results", "baseten", "zai-org/GLM-5.2", "", false, "high"},
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:212

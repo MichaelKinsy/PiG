@@ -68,4 +68,32 @@ func TestUpstreamCoreFormatSkillsForPrompt(t *testing.T) {
 			t.Fatalf("prompt=%q", got)
 		}
 	})
+	// formatSkillsForPrompt (skills.ts) emits the exact listing for both file-read tools, led by the blank line that system-prompt.ts trims.
+	t.Run("emits the exact listing for the read and bash tools", func(t *testing.T) {
+		const tail = "\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>test-skill</name>\n    <description>A test skill.</description>\n    <location>/path/to/skill/SKILL.md</location>\n  </skill>\n</available_skills>"
+		const head = "\n\nThe following skills provide specialized instructions for specific tasks.\n"
+		if got, want := formatSkills([]Skill{skill}, "read"), head+"Use the read tool to load a skill's file when the task matches its description."+tail; got != want {
+			t.Fatalf("read listing =\n%q\nwant\n%q", got, want)
+		}
+		if got, want := formatSkills([]Skill{skill}, "bash"), head+"Use bash to load a skill's file when the task matches its description."+tail; got != want {
+			t.Fatalf("bash listing =\n%q\nwant\n%q", got, want)
+		}
+	})
+	// skills.ts escapeXml replaces all five XML specials in every field, and system-prompt.ts trims the listing into the skills section, which buildSystemPromptSections wraps in a <skills> tag. The expected listing is Pi 1.0.0's formatSkillsForPrompt(skills, "bash").trim() under Node 24.
+	t.Run("escapes every field and trims the skills section", func(t *testing.T) {
+		const want = "<skills>\nThe following skills provide specialized instructions for specific tasks.\nUse bash to load a skill's file when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>it&apos;s</name>\n    <description>&lt;&amp;&gt;&quot;&apos;</description>\n    <location>/p/&apos;&quot;&amp;&lt;&gt;/SKILL.md</location>\n  </skill>\n</available_skills>\n</skills>"
+		options := Options{Cwd: "/work", Tools: []string{"bash"}, Skills: []Skill{{Name: "it's", Description: `<&>"'`, Path: `/p/'"&<>/SKILL.md`}}}
+		for _, section := range BuildSystemPromptSections(options) {
+			if section.Name == "skills" {
+				if section.Value == nil {
+					t.Fatal("skills section has no value")
+				}
+				if *section.Value != want {
+					t.Fatalf("skills section =\n%q\nwant\n%q", *section.Value, want)
+				}
+				return
+			}
+		}
+		t.Fatal("missing skills section")
+	})
 }

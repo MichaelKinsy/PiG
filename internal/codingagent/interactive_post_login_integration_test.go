@@ -29,15 +29,15 @@ func TestIntegratedAPIKeyLoginSelectsProviderDefault(t *testing.T) {
 	if err := setPostLoginAPIKey(m, "opencode-go", "fake-key"); err != nil {
 		t.Fatal(err)
 	}
-	waitPostLoginStatus(t, m, "Selected kimi-k2.6")
-	if got := modelSpec(m.opts.Model); got != "opencode-go/kimi-k2.6" {
-		t.Fatalf("login left model %q, want opencode-go/kimi-k2.6", got)
+	waitPostLoginStatus(t, m, "Selected kimi-k3")
+	if got := modelSpec(m.opts.Model); got != "opencode-go/kimi-k3" {
+		t.Fatalf("login left model %q, want opencode-go/kimi-k3", got)
 	}
 	saved := NewSettingsManager(t.TempDir(), m.opts.AgentDir)
-	if got := saved.GetDefaultProvider() + "/" + saved.GetDefaultModel(); got != "opencode-go/kimi-k2.6" {
+	if got := saved.GetDefaultProvider() + "/" + saved.GetDefaultModel(); got != "opencode-go/kimi-k3" {
 		t.Fatalf("saved default = %q", got)
 	}
-	want := "Saved API key for OpenCode Go. Selected kimi-k2.6. Credentials saved to " + filepath.Join(m.opts.AgentDir, "auth.json")
+	want := "Saved API key for OpenCode Go. Selected kimi-k3. Credentials saved to " + filepath.Join(m.opts.AgentDir, "auth.json")
 	if got := plainRender(m.chatContainer); !strings.Contains(got, want) {
 		t.Fatalf("chat = %q, want %q", got, want)
 	}
@@ -296,11 +296,11 @@ func TestRegisteredOAuthLoginCompletesDefaultSelection(t *testing.T) {
 	if err := m.runLoginRegisteredOAuth(t.Context(), &postLoginOAuthProvider{}, ""); err != nil {
 		t.Fatal(err)
 	}
-	waitPostLoginStatus(t, m, "Selected kimi-k2.6")
-	if got := modelSpec(m.opts.Model); got != "opencode-go/kimi-k2.6" {
+	waitPostLoginStatus(t, m, "Selected kimi-k3")
+	if got := modelSpec(m.opts.Model); got != "opencode-go/kimi-k3" {
 		t.Fatalf("OAuth left model %q", got)
 	}
-	if got := plainRender(m.chatContainer); !strings.Contains(got, "Logged in to OpenCode Go. Selected kimi-k2.6. Credentials saved to ") {
+	if got := plainRender(m.chatContainer); !strings.Contains(got, "Logged in to OpenCode Go. Selected kimi-k3. Credentials saved to ") {
 		t.Fatalf("chat = %q", got)
 	}
 }

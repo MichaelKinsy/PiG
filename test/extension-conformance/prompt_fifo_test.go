@@ -13,6 +13,7 @@ import (
 // inside the handler before any host call; notification completion may reorder,
 // but the sequence-to-event association may not.
 func TestPromptHandlerBodyFIFOAcrossSDKs(t *testing.T) {
+	t.Parallel()
 	const prompts = 512
 	for _, tc := range sdkHarnessCases() {
 		t.Run(tc.name, func(t *testing.T) {

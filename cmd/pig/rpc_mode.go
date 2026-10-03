@@ -87,8 +87,9 @@ type headlessCommandCatalog struct {
 	runner headlessCommandRunner
 	// mode is the command context's mode: "print", "json" or "rpc".
 	mode string
-	// llama is the built-in llama.cpp extension's /llama command; notify
-	// carries its ctx.ui.notify calls to the client.
+	// llama runs the built-in llama.cpp extension's /llama command, which the
+	// runner lists with the other extension commands; notify carries its
+	// ctx.ui.notify calls to the client.
 	llama           *llama.Host
 	notify          func(message, kind string)
 	promptTemplates []codingagent.PromptTemplate
@@ -112,9 +113,6 @@ func (c headlessCommandCatalog) slashCatalog() codingagent.SlashCommandCatalog {
 	if c.runner != nil {
 		catalog.Runner = c.runner
 	}
-	if c.llama != nil {
-		catalog.Inline = []codingagent.PiSlashCommand{codingagent.LlamaSlashCommand()}
-	}
 	return catalog
 }
 
@@ -126,9 +124,6 @@ func (c headlessCommandCatalog) extensionCommand(message string) (string, string
 	requestedName, args, found := strings.Cut(requestedNameAndArgs, " ")
 	if !found {
 		args = ""
-	}
-	if c.llama != nil && requestedName == llama.CommandName {
-		return llama.CommandName, args, true
 	}
 	if c.runner == nil {
 		return "", "", false
@@ -160,10 +155,11 @@ func (c headlessCommandCatalog) routePrompt(ctx context.Context, message string)
 	return c.expandPrompt(message), false
 }
 
-// executeCommand runs a command extensionCommand resolved; /llama runs the
-// built-in llama.cpp command with this mode's command context.
+// executeCommand runs a command extensionCommand resolved; the built-in
+// llama.cpp extension's /llama runs the llama host with this mode's command
+// context.
 func (c headlessCommandCatalog) executeCommand(ctx context.Context, name, args string) bool {
-	if c.llama != nil && name == llama.CommandName {
+	if command, found := c.runner.Command(name); found && c.llama != nil && codingagent.IsLlamaCommand(command) {
 		_ = c.llama.HandleCommand(llama.CommandContext{Ctx: ctx, Mode: c.mode, Notify: c.notify})
 		return true
 	}
@@ -426,6 +422,20 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 		exitRPC,
 		forceSignal,
 	)
+	// pig additive (D19): the host waits in-process for the commands Pi answers before it reads stdin's end, because their runtimes are other processes whose frames race the shutdown's own writes.
+	shutdown.settle = func() bool {
+		// Pi reads stdin's end in an event-loop iteration of its own: after the settle tail that a published agent_end started, and after the response of every command that settles in the microtasks and check phase of its line's iteration (rpc-mode.ts:355-360,802-805).
+		host.settle.wait(ctx, rpcUI.PendingRequest, shutdown.Started())
+		if commandJoin := host.commandJoin.Load(); commandJoin != nil {
+			select {
+			case <-commandJoin.windowIdle():
+			case <-rpcUI.PendingRequest():
+			case <-shutdown.Started():
+			case <-ctx.Done():
+			}
+		}
+		return ctx.Err() == nil
+	}
 	defer shutdown.finish()
 	// checkRequestedShutdown is rpc-mode.ts checkShutdownRequested. It runs on
 	// the command loop and the event forwarder, so shutdown runs apart from
@@ -450,10 +460,20 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 	defer setTerminationShutdownHook(nil)
 
 	rt.SetRebindSession(func(ctx context.Context, session *coding.Session) error {
-		return host.bind(ctx, session, session.StartEvent())
+		return host.bind(ctx, session, session.StartEvent(), false)
+	})
+	// rpc-mode.ts:341-343: ctx.reload() runs session.reload() and then rebinds the Session's extensions.
+	rt.SetReload(func(ctx context.Context, session *coding.Session) error {
+		st, ok := host.state(session)
+		if !ok || st.Reload == nil {
+			return errors.New("rpc: this Session cannot reload")
+		}
+		return st.Reload(ctx, host.ctx, session, func(ctx context.Context, event extension.SessionStartEvent) error {
+			return host.bind(ctx, session, event, true)
+		})
 	})
 	first := rt.Session()
-	if err := host.bind(ctx, first, first.StartEvent()); err != nil {
+	if err := host.bind(ctx, first, first.StartEvent(), false); err != nil {
 		fmt.Fprintf(os.Stderr, "pig --rpc: %v\n", err)
 		return 1
 	}
@@ -599,6 +619,8 @@ commandLoop:
 				}
 				inputBatch = next
 			}
+			// Pi reads a stdin chunk in an iteration of its own, after any microtask tail that agent_end started.
+			host.settle.wait(ctx, rpcUI.PendingRequest, shutdown.Started())
 			responses.begin()
 			inputTurn = responses
 		}

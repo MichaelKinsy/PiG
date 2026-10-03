@@ -3,6 +3,8 @@ package codingagent_test
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"slices"
 	"testing"
 
@@ -47,5 +49,35 @@ func TestReloadDynamicToolsClearsRetiredRegistry(t *testing.T) {
 	}
 	if !slices.Contains(session.ActiveToolNames(), "late") {
 		t.Fatalf("fresh session_start tool remained disabled: %v", session.ActiveToolNames())
+	}
+}
+
+// agent-session.ts:3591-3609 (#10245): the interactive /reload path reloads settings through the Session, so a tool the setting newly adds is active after the runtime rebuild, a removed one stays active, and a tool disabled during the session stays off.
+func TestReloadActivatesToolsNewlyAddedToDefaultTools(t *testing.T) {
+	services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err := coding.NewSession(services, coding.SessionOptions{NoSession: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = session.Close() })
+	h := icodingagent.NewTestHarness(t, icodingagent.InteractiveOptions{CWD: services.CWD(), AgentDir: services.AgentDir(), SessionHandle: session, SettingsManager: services.SettingsManager(), Settings: services.SettingsManager().Get(), NoSkills: true, NoThemes: true, NoPromptTemplates: true}, nil)
+	if err := session.BindExtensions(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	session.SetActiveToolsByName([]string{"read", "edit", "write"})
+	settingsPath := filepath.Join(services.AgentDir(), "settings.json")
+	if err := os.WriteFile(settingsPath, []byte(`{"defaultTools":["+grep","-read"]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.ReloadFromExtension(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	active := session.ActiveToolNames()
+	slices.Sort(active)
+	if want := []string{"edit", "grep", "read", "write"}; !slices.Equal(active, want) {
+		t.Fatalf("active after reload = %q, want %q (grep added, read kept, bash still off)", active, want)
 	}
 }

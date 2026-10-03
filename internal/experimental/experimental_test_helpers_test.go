@@ -18,11 +18,11 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/env"
-	"github.com/MichaelKinsy/PiG/agent/harness/session"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/experimental/client"
+	"github.com/MichaelKinsy/PiG/internal/experimental/durabletest"
 	"github.com/MichaelKinsy/PiG/internal/experimental/services"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // upstream: packages/coding-agent/test/experimental-remote-runtime.test.ts:153-166. The spy covers only the static Client.connect constructor; instance Connect in discovery and activation remains real. Call from a non-parallel test and join its runtime before cleanup.
@@ -82,21 +82,8 @@ func isolateExperimentalTest(t *testing.T) string {
 			}
 		}
 	}
-	// Upstream remote-runtime fixtures use /tmp explicitly. Named testing directories exceed sun_path once backend UUID filenames are appended.
-	var root string
-	if runtime.GOOS == "windows" {
-		root = t.TempDir()
-	} else {
-		root, err = os.MkdirTemp("/tmp", "pe")
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(func() {
-			if err := os.RemoveAll(root); err != nil {
-				t.Error(err)
-			}
-		})
-	}
+	// Upstream remote-runtime fixtures use /tmp explicitly. Named testing directories exceed sun_path once backend UUID filenames are appended, on Windows too: the extension host's sockets live under the TMP set below.
+	root := testenv.ShortTempDir(t, "pe")
 	agentDir := filepath.Join(root, "agent")
 	for _, directory := range []string{agentDir, filepath.Join(root, "pig"), filepath.Join(root, "config"), filepath.Join(root, "cache"), filepath.Join(root, "data"), filepath.Join(root, "state"), filepath.Join(root, "run"), filepath.Join(root, "tmp"), filepath.Join(root, "appdata"), filepath.Join(root, "localappdata")} {
 		if err := os.MkdirAll(directory, 0o700); err != nil {
@@ -116,6 +103,18 @@ func isolateExperimentalTest(t *testing.T) string {
 		t.Setenv("PIG_SDK_GO_ROOT", sdk)
 	}
 	return agentDir
+}
+
+// requirePOSIXServerDirectory skips a test that runs an experimental server on
+// Windows. There Pi's ensurePrivateServerDirectory throws "Unix socket
+// directory requires a POSIX user ID" (packages/coding-agent/src/experimental/server.ts:59)
+// before any server starts, as EnsurePrivateServerDirectory does;
+// TestRunningServerRoutesServicesAndJoinsClose asserts that error on Windows.
+func requirePOSIXServerDirectory(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("Pi's experimental server requires a POSIX user ID (packages/coding-agent/src/experimental/server.ts:59)")
+	}
 }
 
 // upstream: packages/coding-agent/test/experimental-remote-runtime.test.ts:39-45.
@@ -139,8 +138,8 @@ func configureExperimentalWorkerModel(t *testing.T, agentDir string) {
 	}
 }
 
-// upstream: packages/coding-agent/test/experimental-session-support.ts:12-31. This helper uses the actual durable JSONL repository, not the stable SessionManager format.
-func createExperimentalSessions(t *testing.T, sessionsRoot string, ids []string, cwdOverride ...string) []session.SessionMetadata {
+// upstream: packages/coding-agent/test/experimental-session-support.ts:12-20. A Session is a catalog directory with its meta.json; its worker creates the storage on first open. A duplicate ID fails with the catalog's error.
+func createExperimentalSessions(t *testing.T, sessionsRoot string, ids []string, cwdOverride ...string) []SessionCatalogMetadata {
 	t.Helper()
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -149,97 +148,36 @@ func createExperimentalSessions(t *testing.T, sessionsRoot string, ids []string,
 	if len(cwdOverride) > 0 {
 		cwd = cwdOverride[0]
 	}
-	fileSystem := env.NewNodeExecutionEnv(env.NodeExecutionEnvOptions{Cwd: cwd})
-	repo := session.NewJsonlSessionRepo(session.JsonlSessionRepoOptions{FileSystem: fileSystem, SessionsRoot: sessionsRoot})
-	ctx := context.Background()
-	defer func() {
-		if err := repo.Close(ctx); err != nil {
-			t.Error(err)
-		}
-		fileSystem.Cleanup(ctx)
-	}()
-	metadata := make([]session.SessionMetadata, 0, len(ids))
+	metadata := make([]SessionCatalogMetadata, 0, len(ids))
 	for _, id := range ids {
-		opened, err := repo.Create(ctx, session.SessionCreateOptions{ID: id, Cwd: cwd})
+		created, err := CreateSession(sessionsRoot, CreateSessionOptions{ID: &id, Cwd: cwd})
 		if err != nil {
 			t.Fatal(err)
 		}
-		metadata = append(metadata, opened.Metadata())
-		if err := opened.Close(ctx); err != nil {
-			t.Fatal(err)
-		}
+		metadata = append(metadata, created)
 	}
 	return metadata
 }
 
 type experimentalSessionState struct {
-	Branch      []session.Entry
-	Model       *session.ModelRef
-	ActiveTools []string
+	Model *services.ModelRef
 }
 
-// upstream: packages/coding-agent/test/experimental-session-support.ts:40-74.
+// upstream: packages/coding-agent/test/experimental-session-support.ts:30-46. The root conversation's model, read from the Session's storage while no worker owns it.
 func readExperimentalSessionState(t *testing.T, sessionsRoot, sessionId string) experimentalSessionState {
 	t.Helper()
-	cwd, err := os.Getwd()
+	metadata := ReadSession(sessionsRoot, sessionId)
+	if metadata == nil {
+		t.Fatalf("Expected Session %s", sessionId)
+	}
+	agent, err := durabletest.ReadAgent(SessionStoragePath(*metadata))
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx := context.Background()
-	fileSystem := env.NewNodeExecutionEnv(env.NodeExecutionEnvOptions{Cwd: cwd})
-	repo := session.NewJsonlSessionRepo(session.JsonlSessionRepoOptions{FileSystem: fileSystem, SessionsRoot: sessionsRoot})
-	var opened session.Session
-	defer func() {
-		if opened != nil {
-			if err := opened.Close(ctx); err != nil {
-				t.Error(err)
-			}
-		}
-		if err := repo.Close(ctx); err != nil {
-			t.Error(err)
-		}
-		fileSystem.Cleanup(ctx)
-	}()
-	metadata, err := repo.List(ctx, nil)
-	if err != nil {
-		t.Fatal(err)
+	if agent == nil {
+		return experimentalSessionState{}
 	}
-	matches := slices.DeleteFunc(metadata, func(value session.SessionMetadata) bool { return value.ID != sessionId })
-	if len(matches) != 1 {
-		t.Fatalf("Expected one Session %s, found %d", sessionId, len(matches))
-	}
-	opened, err = repo.Open(ctx, matches[0])
-	if err != nil {
-		t.Fatal(err)
-	}
-	main, err := opened.Branch(ctx, "main")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if main == nil {
-		t.Fatal("Expected Session main Branch")
-	}
-	var branch []session.Entry
-	var configuration *session.StoredValue[session.LaneConfiguration]
-	var branchErr, configurationErr error
-	var reads sync.WaitGroup
-	reads.Go(func() {
-		branch, branchErr = main.FindEntries(ctx, &session.BranchScan{Order: session.OrderOldestFirst})
-	})
-	reads.Go(func() { configuration, configurationErr = session.GetValue(ctx, opened, session.LaneConfig("main")) })
-	reads.Wait()
-	if branchErr != nil {
-		t.Fatal(branchErr)
-	}
-	if configurationErr != nil {
-		t.Fatal(configurationErr)
-	}
-	result := experimentalSessionState{Branch: branch, ActiveTools: []string{}}
-	if configuration != nil {
-		result.Model = new(configuration.Value.Model)
-		result.ActiveTools = append([]string{}, configuration.Value.ActiveToolNames...)
-	}
-	return result
+	return experimentalSessionState{Model: agent.Model}
 }
 
 // The upstream fixture owns identity sets and closes every client before servers and directories. One per-test registry preserves those phases even when resources are created concurrently or interleaved.
@@ -487,29 +425,6 @@ func waitExperimentalWorkerRetired(t *testing.T, server *RunningServer, id strin
 		case <-t.Context().Done():
 			t.Fatalf("wait for manager to retire %s: %v", id, context.Cause(t.Context()))
 		}
-	}
-}
-
-// waitExperimentalWorkerExit waits on the spawned child's own exit authority. Manager removal follows control-socket disconnection, which can precede process exit and reaping.
-func waitExperimentalWorkerExit(t *testing.T, pid int) {
-	t.Helper()
-	resources := experimentalResourcesFor(t)
-	resources.mu.Lock()
-	var exited *InternalProcess
-	for _, child := range resources.children {
-		if child.PID() == pid {
-			exited = child
-			break
-		}
-	}
-	resources.mu.Unlock()
-	if exited == nil {
-		t.Fatalf("worker PID %d was not spawned through the tracked server", pid)
-	}
-	select {
-	case <-exited.Done():
-	case <-t.Context().Done():
-		t.Fatalf("wait for worker %d to exit: %v", pid, context.Cause(t.Context()))
 	}
 }
 

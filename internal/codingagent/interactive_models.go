@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -211,30 +210,18 @@ func (m *InteractiveMode) cycleModel(forward bool) {
 		m.statusLine.Flash("Model switch failed: "+err.Error(), 5*time.Second)
 		return
 	}
+	// The Session emits model_select once, with source "cycle" (agent-session.ts:2372-2384, 2480, 2512).
 	if m.opts.SessionHandle != nil {
-		if err := m.opts.SessionHandle.SetModel(newModel); err != nil {
+		if err := m.opts.SessionHandle.CycleToModel(newModel); err != nil {
 			m.statusLine.Flash("Model switch failed: "+err.Error(), 5*time.Second)
 			return
 		}
 	} else if m.agent != nil {
 		m.agent.SetModel(newModel)
 	}
-	prevModel := m.opts.Model // snapshot before overwrite
 	m.opts.Model = newModel
 	m.statusLine.SetModel(newModel)
 	m.refreshThinkingLevel()
-
-	// Emit model_select for extensions. Upstream cycleModel is async and its key
-	// handler fires it without awaiting, so the render loop keeps ticking while
-	// extensions handle the event. Here cycleModel runs on the Bubbletea update
-	// goroutine, so emit off-thread: a synchronous emit blocks this goroutine on
-	// the extension round-trip and freezes the working spinner: badly during
-	// active streaming, when the bridge is already busy. modelToExtModel is
-	// evaluated now (before the go statement) so the goroutine captures values.
-	go emitModelSelect(m.newRunner,
-		modelToExtModel(newModel),
-		modelToExtModel(prevModel),
-		extension.ModelSelectSourceCycle)
 
 	displayName := next.DisplayName
 	if displayName == "" {

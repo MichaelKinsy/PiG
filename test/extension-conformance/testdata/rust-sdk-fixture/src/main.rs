@@ -3,7 +3,7 @@ use pig_sdk::{
     OAuthCredentialStatus,
     OAuthCredentialStore, OAuthCredentials, OAuthDeviceCodeInfo, OAuthPrompt, OAuthProvider,
     ProjectTrustDecision, ProjectTrustResult, RemoteComponent, RemoteComponentInvalidate,
-    RemoteComponentResult, TerminalInputResult, TerminalInputSubscription, ToolRenderShell,
+    RemoteComponentResult, SpriteDefinition, TerminalInputResult, TerminalInputSubscription, ToolRenderShell,
     ToolResult,
 };
 use serde_json::{Value, json};
@@ -144,6 +144,18 @@ fn conformance_login_definition() -> LoginDefinition {
     }
 }
 
+fn conformance_sprite_definition() -> SpriteDefinition {
+    SpriteDefinition {
+        id: "conformance-pig".to_string(),
+        name: "Conformance Pig".to_string(),
+        tagline: "One canonical sprite across every SDK".to_string(),
+        mascot: vec!["A".repeat(16); 14],
+        palette: [("A".to_string(), "#123ABC".to_string())]
+            .into_iter()
+            .collect(),
+    }
+}
+
 fn main() {
     let mut ext = Extension::new("rust-sdk-fixture");
     let schema_rejected = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
@@ -214,6 +226,24 @@ fn main() {
         };
         match run() { Ok(()) => CommandResult::Ok, Err(error) => CommandResult::Error(error.to_string()) }
     });
+    ext.command("session-order", "Read the session as Pi returns it", |ctx, _| {
+        let run = || -> std::io::Result<()> {
+            let s = ctx.session_manager();
+            let mut out = serde_json::Map::new();
+            out.insert("getEntries".into(), s.get_entries()?);
+            out.insert("getEntry".into(), s.get_entry("a4")?);
+            out.insert("getLeafEntry".into(), s.get_leaf_entry()?);
+            out.insert("getBranch".into(), s.get_branch(Some("a4"))?);
+            out.insert("getChildren".into(), s.get_children(Some("a1"))?);
+            out.insert("getTree".into(), s.get_tree()?);
+            out.insert("buildContextEntries".into(), s.build_context_entries()?);
+            out.insert("buildSessionProjection".into(), s.build_session_projection()?);
+            out.insert("buildSessionContext".into(), s.build_session_context()?);
+            ctx.notify(&Value::Object(out).to_string(), "info");
+            Ok(())
+        };
+        match run() { Ok(()) => CommandResult::Ok, Err(error) => CommandResult::Error(error.to_string()) }
+    });
     ext.message_renderer("conformance-message", |_ctx, message, options, width| {
         let content = message.get("content").and_then(Value::as_str).unwrap_or("");
         if content == "padding-options" {
@@ -270,6 +300,24 @@ fn main() {
             let _ = ctx.on_update(ToolResult::Json(json!({"content": [{"type": "text", "text": "step 1"}]})));
             let _ = ctx.on_update(ToolResult::Json(json!({"content": [{"type": "text", "text": "step 2"}]})));
             ToolResult::Json(json!({"content": [{"type": "text", "text": "done"}]}))
+        },
+    );
+    ext.tool(
+        "ordered_details",
+        "Return details whose members are not in alphabetical order",
+        json!({"type": "object", "properties": {}}),
+        |ctx, _params: Value| {
+            let _ = ctx.on_update(ToolResult::Json(json!({"content": [{"type": "text", "text": "partial"}], "details": {"zeta": 1.0, "alpha": {"yy": 2, "bb": 3}, "mid": [{"qq": 1, "aa": 2}]}})));
+            ToolResult::Json(json!({"content": [{"type": "text", "text": "done"}], "details": {"zeta": 1.0, "alpha": {"yy": 2, "bb": 3}, "mid": [{"qq": 1, "aa": 2}]}}))
+        },
+    );
+    ext.tool(
+        "ordered_result",
+        "Return a result whose members are not in the declared order",
+        json!({"type": "object", "properties": {}}),
+        |ctx, _params: Value| {
+            let _ = ctx.on_update(ToolResult::Json(json!({"details": {"k": 1}, "content": [{"type": "text", "text": "partial"}]})));
+            ToolResult::Json(json!({"details": {"k": 1}, "is_error": true, "content": [{"type": "text", "text": "done"}]}))
         },
     );
     let abort_observed = Arc::new(AtomicBool::new(false));
@@ -331,6 +379,17 @@ fn main() {
         |_ctx, params| {
             let text = params.get("text").and_then(Value::as_str).unwrap_or("");
             ToolResult::text(format!("prepared:{text}"))
+        },
+    );
+    // Reports the order in which calls start: the number of calls that started before it, plus its own argument.
+    static STARTED_CALLS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    ext.tool(
+        "start_order",
+        "Report the order in which calls start",
+        json!({"type": "object", "properties": {"n": {"type": "number"}}}),
+        |_ctx, params: Value| {
+            let number = STARTED_CALLS.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+            ToolResult::text(format!("start#{number} n={}", params.get("n").map(Value::to_string).unwrap_or_default()))
         },
     );
     ext.tool(
@@ -533,6 +592,19 @@ fn main() {
             CommandResult::Ok
         },
     );
+    // A width handler makes a host call the way any other handler does; the host's reply must reach it (conformance TestConformance_WidthHandlerHostCall).
+    let width_probe = std::sync::Mutex::new(None);
+    ext.command("arm_width_probe", "Notify from a width handler", move |ctx, _args| {
+        let mut armed = width_probe.lock().unwrap();
+        if armed.is_none() {
+            let retained = ctx.clone();
+            *armed = Some(ctx.on_width_change(move |width| {
+                retained.notify(&format!("width-probe:{width}"), "info");
+                retained.notify(&format!("width-probe-returned:{width}"), "info");
+            }));
+        }
+        CommandResult::Ok
+    });
     ext.command("status", "Set a status entry", |ctx, _args| {
         ctx.set_status("conformance", "ok");
         CommandResult::Ok
@@ -656,6 +728,24 @@ fn main() {
         },
     );
     ext.command(
+        "sprite-probe",
+        "Exercise sprite registration and host errors",
+        |ctx, _args| {
+            let mut definition = conformance_sprite_definition();
+            if let Err(err) = ctx.register_sprite(&definition) {
+                return CommandResult::Error(err.to_string());
+            }
+            definition.mascot[0].pop();
+            match ctx.register_sprite(&definition) {
+                Ok(()) => CommandResult::Error("invalid sprite definition was accepted".to_string()),
+                Err(err) => {
+                    ctx.notify(&err.to_string(), "error");
+                    CommandResult::Ok
+                }
+            }
+        },
+    );
+    ext.command(
         "login-probe",
         "Exercise semantic login submission and host errors",
         |ctx, _args| {
@@ -753,6 +843,41 @@ fn main() {
             Ok(())
         })();
         match result { Ok(()) => CommandResult::Ok, Err(err) => CommandResult::Error(err.to_string()) }
+    });
+    ext.command("signal-probe", "Report ctx.signal", |ctx, _args| {
+        let state = match ctx.signal() {
+            None => "none",
+            Some(signal) if signal.is_cancelled() => "aborted",
+            Some(_) => "live",
+        };
+        ctx.notify(&format!("signal:{state}"), "info");
+        CommandResult::Ok
+    });
+    ext.command("signal-wait", "Wait for ctx.signal to abort", |ctx, _args| {
+        let Some(signal) = ctx.signal() else {
+            ctx.notify("wait:none", "info");
+            return CommandResult::Ok;
+        };
+        ctx.notify("wait:start", "info");
+        let deadline = std::time::Instant::now() + Duration::from_secs(10);
+        while !signal.is_cancelled() && std::time::Instant::now() < deadline {
+            thread::sleep(Duration::from_millis(5));
+        }
+        ctx.notify(if signal.is_cancelled() { "wait:aborted" } else { "wait:timeout" }, "info");
+        CommandResult::Ok
+    });
+    ext.command("signal-poll", "Poll ctx.signal until it is live or none", |ctx, args| {
+        ctx.notify("poll:start", "info");
+        let deadline = std::time::Instant::now() + Duration::from_secs(10);
+        while std::time::Instant::now() < deadline {
+            if ctx.signal().is_some() == (args == "live") {
+                ctx.notify(&format!("poll:{args}"), "info");
+                return CommandResult::Ok;
+            }
+            thread::sleep(Duration::from_millis(5));
+        }
+        ctx.notify("poll:timeout", "info");
+        CommandResult::Ok
     });
     ext.command("usage-probe", "Report context usage", |ctx, _args| {
         let usage = ctx.get_context_usage().unwrap().map(|u| json!({"tokens": u.tokens, "contextWindow": u.context_window, "percent": u.percent}));
@@ -988,7 +1113,7 @@ fn main() {
                     data["toolName"].as_str().unwrap_or_default(),
                     data["args"]["path"].as_str().unwrap_or_default(),
                     data["args"]["nested"]["depth"].as_u64().unwrap_or_default(),
-                    data["partialResult"]["content"]
+                    data["partialResult"]["content"][0]["text"]
                         .as_str()
                         .unwrap_or_default(),
                     data["partialResult"]["details"]["progress"]
@@ -1004,7 +1129,7 @@ fn main() {
                 "tool-update={}:{}:{}:{}",
                 data["toolName"].as_str().unwrap_or_default(),
                 data["args"],
-                data["partialResult"]["content"]
+                data["partialResult"]["content"][0]["text"]
                     .as_str()
                     .unwrap_or_default(),
                 data["partialResult"]["details"]["progress"]

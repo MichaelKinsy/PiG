@@ -245,7 +245,7 @@ func TestShowStatus_Coalesces(t *testing.T) {
 	if m.lastStatusText == nil {
 		t.Fatal("lastStatusText is nil")
 	}
-	if got, want := m.lastStatusText.Content, tui.ActiveTheme().FgText("dim", "second"); got != want {
+	if got, want := lastStatusContent(m), tui.ActiveTheme().FgText("dim", "second"); got != want {
 		t.Fatalf("status content = %q, want %q", got, want)
 	}
 }
@@ -756,7 +756,11 @@ func TestInteractiveMode_RendersProviderErrorInAssistantBlock(t *testing.T) {
 	}
 }
 
-func TestInteractiveMode_ResumedGenericToolDetailsToggle(t *testing.T) {
+// A resumed registered tool without renderers draws upstream's fallback call header: the arguments on the title line
+// while collapsed and one per line after the global toggle
+// (.upstream/v0.99.1/packages/coding-agent/src/modes/interactive/components/tool-execution.ts:155-157). It replaces the
+// resumed-card test of the 0.87.1 structured-args view.
+func TestInteractiveMode_ResumedRegisteredToolFallbackToggle(t *testing.T) {
 	sess := NewSession("resume-tools", t.TempDir())
 	args := map[string]any{"find": "RESUME_ALPHA_BRAVO_CHARLIE_DELTA_ECHO_FOXTROT_GOLF_HOTEL_TAIL"}
 	_, err := sess.AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{
@@ -785,12 +789,11 @@ func TestInteractiveMode_ResumedGenericToolDetailsToggle(t *testing.T) {
 			"generic_extension": {Definition: extension.ToolDefinition{Name: "generic_extension"}},
 		},
 	}}, "")
-	var terminal bytes.Buffer
 	m := &InteractiveMode{
 		opts:          InteractiveOptions{SessionHandle: &recordingCompactHandle{inner: sess}},
 		newRunner:     runner,
 		chatContainer: tui.NewContainer(),
-		tuiInst:       tui.NewWithOutput(&terminal, 54, 30),
+		tuiInst:       tui.NewWithOutput(io.Discard, 54, 30),
 		toolByID:      make(map[string]*tui.ToolExecutionComponent),
 		toolStarts:    make(map[string]time.Time),
 	}
@@ -801,74 +804,21 @@ func TestInteractiveMode_ResumedGenericToolDetailsToggle(t *testing.T) {
 		t.Fatalf("resumed tool order has %d components, want 1", len(m.toolOrder))
 	}
 	component := m.toolOrder[0]
-	collapsed := stripANSITest(strings.Join(component.Render(54), "\n"))
-	if !strings.Contains(collapsed, "ctrl+o to expand") || strings.Contains(collapsed, "Arguments:") {
-		t.Fatalf("resumed generic card did not start collapsed:\n%s", collapsed)
+	collapsed := strings.NewReplacer("\n", "", " ", "").Replace(stripANSITest(strings.Join(component.Render(54), "\n")))
+	if !strings.Contains(collapsed, `generic_extensionfind="RESUME_ALPHA_BRAVO_CHARLIE_DELTA_ECHO_FOXTROT_GOLF_HOTEL_TAIL"`) {
+		t.Fatalf("resumed fallback card did not show its arguments on the title line: %s", collapsed)
 	}
 
 	m.toggleAllTools()
 	expanded := strings.NewReplacer("\n", "", " ", "").Replace(stripANSITest(strings.Join(component.Render(54), "\n")))
-	if !strings.Contains(expanded, "Arguments:") || !strings.Contains(expanded, "RESUME_ALPHA_BRAVO_CHARLIE_DELTA_ECHO_FOXTROT_GOLF_HOTEL_TAIL") {
-		t.Fatalf("Ctrl+O did not expand resumed generic details: %s", expanded)
+	if !strings.Contains(expanded, "find:RESUME_ALPHA_BRAVO_CHARLIE_DELTA_ECHO_FOXTROT_GOLF_HOTEL_TAIL") {
+		t.Fatalf("Ctrl+O did not expand resumed fallback arguments: %s", expanded)
 	}
 
-	terminal.Reset()
 	m.toggleAllTools()
-	m.tuiInst.Render()
-	collapsedAgain := stripANSITest(strings.Join(component.Render(54), "\n"))
-	if !strings.Contains(collapsedAgain, "ctrl+o to expand") || strings.Contains(collapsedAgain, "Arguments:") {
-		t.Fatalf("second Ctrl+O did not collapse resumed generic details:\n%s", collapsedAgain)
-	}
-	if !strings.Contains(terminal.String(), "\x1b[3J") {
-		t.Fatalf("explicit collapse did not clear stale expanded rows from native scrollback: %q", terminal.String())
-	}
-}
-
-func TestInteractiveMode_GenericExtensionToolDetailsRetainArguments(t *testing.T) {
-	generic := extension.ToolDefinition{Name: "generic_extension"}
-	custom := extension.ToolDefinition{
-		Name: "custom_extension",
-		RenderCall: func(json.RawMessage, extension.Theme, extension.ToolRenderContext) extension.Component {
-			return tui.NewText("custom call")
-		},
-	}
-	runner := inproc.NewRunner([]extension.Extension{{
-		Name: "test-extension",
-		Tools: map[string]extension.RegisteredTool{
-			generic.Name: {Definition: generic},
-			custom.Name:  {Definition: custom},
-		},
-	}}, "")
-	m := &InteractiveMode{
-		newRunner:     runner,
-		chatContainer: tui.NewContainer(),
-		tuiInst:       tui.NewWithOutput(io.Discard, 80, 30),
-		toolByID:      make(map[string]*tui.ToolExecutionComponent),
-		toolStarts:    make(map[string]time.Time),
-	}
-	args := json.RawMessage(`{"find":"PRODUCTION_PATH_ALPHA_BRAVO_CHARLIE_DELTA_ECHO_FOXTROT"}`)
-
-	m.handleAgentEvent(agent.ToolExecutionStartEvent{ToolCallID: "generic-1", ToolName: generic.Name, Args: args})
-	genericComponent := m.toolByID["generic-1"]
-	m.handleAgentEvent(agent.ToolExecutionEndEvent{
-		ToolCallID: "generic-1",
-		ToolName:   generic.Name,
-		Result:     agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "updated"}}},
-	})
-	if genericComponent == nil {
-		t.Fatal("generic extension tool did not create a tool card")
-	}
-	genericComponent.SetExpanded(true)
-	rendered := strings.NewReplacer("\n", "", " ", "").Replace(stripANSITest(strings.Join(genericComponent.Render(32), "\n")))
-	if !strings.Contains(rendered, "PRODUCTION_PATH_ALPHA_BRAVO_CHARLIE_DELTA_ECHO_FOXTROT") {
-		t.Fatalf("production event path lost retained generic extension arguments: %s", rendered)
-	}
-
-	m.handleAgentEvent(agent.ToolExecutionStartEvent{ToolCallID: "custom-1", ToolName: custom.Name, Args: args})
-	customComponent := m.toolByID["custom-1"]
-	customComponent.SetExpanded(true)
-	if rendered := strings.Join(customComponent.Render(80), "\n"); strings.Contains(rendered, "Arguments:") {
-		t.Fatalf("generic details renderer replaced a custom extension call renderer: %s", rendered)
+	collapsedAgain := strings.NewReplacer("\n", "", " ", "").Replace(stripANSITest(strings.Join(component.Render(54), "\n")))
+	if !strings.Contains(collapsedAgain, `generic_extensionfind="RESUME_`) {
+		t.Fatalf("second Ctrl+O did not collapse resumed fallback header:\n%s", collapsedAgain)
 	}
 }
 
@@ -1519,6 +1469,17 @@ type recordingCompactHandle struct {
 	cacheWarming         *CacheWarmingStatus
 	cacheWarmingModes    []CacheWarmingMode
 	agentSettledCount    int
+	// cycled and switched record the models CycleToModel and SetModel received; compacted records each ExtensionCompact call.
+	cycled, switched []*ai.Model
+	compacted        []*extension.CompactOptions
+}
+
+func (h *recordingCompactHandle) CycleToModel(model *ai.Model, _ ...ModelMutationOptions) error {
+	h.cycled = append(h.cycled, model)
+	return nil
+}
+func (h *recordingCompactHandle) ExtensionCompact(options *extension.CompactOptions) {
+	h.compacted = append(h.compacted, options)
 }
 
 func (h *recordingCompactHandle) IsIdle() bool { return h.agent == nil || !h.agent.IsStreaming() }
@@ -1542,10 +1503,16 @@ func (h *recordingCompactHandle) SetCacheWarmingMode(mode CacheWarmingMode) erro
 }
 func (h *recordingCompactHandle) OnAgentSettled() { h.agentSettledCount++ }
 
-func (h *recordingCompactHandle) Agent() *agent.Agent                               { return h.agent }
-func (h *recordingCompactHandle) Inner() *Session                                   { return h.inner }
-func (h *recordingCompactHandle) Events() <-chan agent.AgentEvent                   { return nil }
-func (h *recordingCompactHandle) SetModel(*ai.Model, ...ModelMutationOptions) error { return nil }
+func (h *recordingCompactHandle) Agent() *agent.Agent             { return h.agent }
+func (h *recordingCompactHandle) Inner() *Session                 { return h.inner }
+func (h *recordingCompactHandle) Events() <-chan agent.AgentEvent { return nil }
+func (h *recordingCompactHandle) SetModel(model *ai.Model, _ ...ModelMutationOptions) error {
+	h.switched = append(h.switched, model)
+	return nil
+}
+func (h *recordingCompactHandle) ExtensionSetModel(_ context.Context, model *ai.Model) (bool, error) {
+	return true, h.SetModel(model)
+}
 func (h *recordingCompactHandle) SetModelOnMain(model *ai.Model, options ModelMutationOptions, dispatch func(func() error) error) error {
 	return dispatch(func() error { return h.SetModel(model, options) })
 }
@@ -1727,7 +1694,7 @@ func newSwitchTuiProbe(t *testing.T) *InteractiveMode {
 func newSwitchTuiProbeWithOptions(t *testing.T, opts InteractiveOptions) *InteractiveMode {
 	t.Helper()
 	m := newUnmountedSwitchTuiProbe(t, opts, &bytes.Buffer{})
-	m.mountInteractiveTui()
+	m.mountInteractiveTui(true)
 	return m
 }
 
@@ -1762,7 +1729,7 @@ func TestSwitchTuiModeRoundTrip(t *testing.T) {
 		t.Fatal("probe did not start in regular mode")
 	}
 
-	if !m.switchTuiMode("fullscreen", false) {
+	if !m.switchTuiMode("fullscreen", false, true) {
 		t.Fatal("switch to fullscreen returned false")
 	}
 	if m.altScreen == nil || m.tuiInst != tui.Renderer(m.altScreen) {
@@ -1772,7 +1739,7 @@ func TestSwitchTuiModeRoundTrip(t *testing.T) {
 		t.Fatal("fullscreen switch did not build the transcript scroll view")
 	}
 
-	if !m.switchTuiMode("regular", false) {
+	if !m.switchTuiMode("regular", false, true) {
 		t.Fatal("switch back to regular returned false")
 	}
 	if m.altScreen != nil {
@@ -1791,7 +1758,7 @@ func TestSwitchTuiModeRoundTrip(t *testing.T) {
 func TestSwitchTuiModeNoOpSameMode(t *testing.T) {
 	m := newSwitchTuiProbe(t)
 	before := m.tuiInst
-	if !m.switchTuiMode("regular", false) {
+	if !m.switchTuiMode("regular", false, true) {
 		t.Fatal("no-op switch returned false")
 	}
 	if m.tuiInst != before {
@@ -1805,7 +1772,7 @@ func TestSwitchTuiModeRefusedWhileOverlayActive(t *testing.T) {
 	m := newSwitchTuiProbe(t)
 	before := m.tuiInst
 	m.tuiInst.OpenOverlay(tui.NewText("overlay"), tui.OverlayOptions{})
-	if m.switchTuiMode("fullscreen", false) {
+	if m.switchTuiMode("fullscreen", false, true) {
 		t.Fatal("switch proceeded while an overlay was active")
 	}
 	if m.tuiInst != before || m.altScreen != nil {
@@ -1830,7 +1797,7 @@ func TestSwitchTuiModeDynamicUIContextFollowsSwap(t *testing.T) {
 		t.Fatal("UI context did not resolve the initial renderer")
 	}
 
-	m.switchTuiMode("fullscreen", false)
+	m.switchTuiMode("fullscreen", false, true)
 	uiCtx.withRenderer(func(r tui.Renderer) { target = r })
 	if target != m.tuiInst {
 		t.Fatal("UI context still points at the stopped renderer after the swap")
@@ -1850,9 +1817,9 @@ func TestSwitchTuiModeShutdownAfterEachTransition(t *testing.T) {
 	for _, target := range []string{"fullscreen", "regular"} {
 		m := newSwitchTuiProbe(t)
 		if target == "regular" {
-			m.switchTuiMode("fullscreen", false)
+			m.switchTuiMode("fullscreen", false, true)
 		}
-		m.switchTuiMode(target, false)
+		m.switchTuiMode(target, false, true)
 		m.teardownCurrentTui()
 		m.stopInteractiveTui()
 		m.stopInteractiveTui() // idempotent
@@ -1870,7 +1837,7 @@ func TestSwitchTuiModePreservesHeaderAndTranscript(t *testing.T) {
 	m.chatContainer.Add(tui.NewText("TRANSCRIPT_MARKER_UNIQUE"))
 	buf := m.rendererOut.(*bytes.Buffer)
 
-	m.switchTuiMode("fullscreen", false)
+	m.switchTuiMode("fullscreen", false, true)
 	frame := stripANSITest(buf.String())
 	if !strings.Contains(frame, "HEADER_MARKER_UNIQUE") {
 		t.Fatalf("fullscreen frame dropped the header:\n%s", frame)
@@ -1880,7 +1847,7 @@ func TestSwitchTuiModePreservesHeaderAndTranscript(t *testing.T) {
 	}
 
 	buf.Reset()
-	m.switchTuiMode("regular", false)
+	m.switchTuiMode("regular", false, true)
 	frame = strings.Join(m.layout.Render(80), "\n")
 	if !strings.Contains(frame, "HEADER_MARKER_UNIQUE") {
 		t.Fatalf("regular layout after round trip dropped the header:\n%s", frame)
@@ -1898,7 +1865,7 @@ func TestSwitchTuiModeRestoresMainScreenStateAcrossRoundTrip(t *testing.T) {
 	m.tuiInst.Render()
 	buf := m.rendererOut.(*bytes.Buffer)
 
-	if !m.switchTuiMode("fullscreen", false) {
+	if !m.switchTuiMode("fullscreen", false, true) {
 		t.Fatal("switch to fullscreen failed")
 	}
 	if m.mainScreenRenderState == nil {
@@ -1906,7 +1873,7 @@ func TestSwitchTuiModeRestoresMainScreenStateAcrossRoundTrip(t *testing.T) {
 	}
 
 	buf.Reset()
-	if !m.switchTuiMode("regular", false) {
+	if !m.switchTuiMode("regular", false, true) {
 		t.Fatal("switch back to regular failed")
 	}
 	if got := stripANSITest(buf.String()); strings.Contains(got, "STATE_MARKER_UNIQUE") {
@@ -2007,7 +1974,7 @@ func TestSwitchTuiModeConcurrentInvalidationRaceSafe(t *testing.T) {
 		if i%2 == 1 {
 			mode = "regular"
 		}
-		m.switchTuiMode(mode, false)
+		m.switchTuiMode(mode, false, true)
 	}
 	close(stop)
 	<-done
@@ -2035,8 +2002,8 @@ func TestSwitchTuiModeMountDoesNotReenterRendererLock(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		m.switchTuiMode("fullscreen", false)
-		m.switchTuiMode("regular", false)
+		m.switchTuiMode("fullscreen", false, true)
+		m.switchTuiMode("regular", false, true)
 	}()
 	select {
 	case <-done:
@@ -2077,7 +2044,7 @@ func TestSwitchTuiModeAltScreenEnterLeaveOrdering(t *testing.T) {
 	}
 
 	buf.Reset()
-	if !m.switchTuiMode("fullscreen", false) {
+	if !m.switchTuiMode("fullscreen", false, true) {
 		t.Fatal("switch to fullscreen failed")
 	}
 	if m.altScreen == nil {
@@ -2088,7 +2055,7 @@ func TestSwitchTuiModeAltScreenEnterLeaveOrdering(t *testing.T) {
 	}
 
 	buf.Reset()
-	if !m.switchTuiMode("regular", false) {
+	if !m.switchTuiMode("regular", false, true) {
 		t.Fatal("switch back to regular failed")
 	}
 	if m.altScreen != nil {
