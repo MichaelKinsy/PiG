@@ -11,6 +11,7 @@ import (
 
 // TestNodeRegisteredProviderConfigMatchesPi runs one scenario against Pi 0.87.1's ModelRegistry and the Node runtime's same-process ModelRegistry and compares every observation: root identity, author aliases, getter evaluation, reader writes, validation before merge, rejected re-registration and unregister.
 func TestNodeRegisteredProviderConfigMatchesPi(t *testing.T) {
+	t.Parallel()
 	nodeCellRequireNode(t)
 	root := findModuleRoot(t)
 	dir, err := filepath.Abs("testdata/registered-provider-config")

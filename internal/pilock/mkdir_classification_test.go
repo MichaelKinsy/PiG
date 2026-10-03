@@ -96,6 +96,10 @@ func TestAcquireSurfacesNonEEXISTMkdirErrorsUnretried(t *testing.T) {
 				if errors.Is(err, ErrLocked) || !errors.Is(err, injected) {
 					t.Fatalf("err = %v, want the unwrapped %s and not ErrLocked", err, name)
 				}
+				// Pi surfaces the fs error's Node message (lib/node_errors.js uvException).
+				if want := nonEEXISTMkdirMessages[name] + ", mkdir '" + path + ".lock'"; err.Error() != want {
+					t.Fatalf("message = %q, want %q", err.Error(), want)
+				}
 				if got := calls.Load(); got != 2 {
 					t.Fatalf("mkdir calls = %d, want 2", got)
 				}

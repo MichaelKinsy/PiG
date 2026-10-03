@@ -81,6 +81,10 @@ func directSimpleAPIKey(meta ProviderMetadata, options StreamOptions) (string, e
 			}
 		}
 	}
+	// upstream: packages/ai/src/api/anthropic-messages.ts:935-937 (streamSimple skips the assertion for federation)
+	if meta.API == APIAnthropicMessages && getAnthropicFederation(meta.ProviderID, "", anthropicHeadersFromProviderHeaders(options.Headers), options.Env) != nil {
+		return "", nil
+	}
 	return "", fmt.Errorf("No API key for provider: %s", meta.ProviderID)
 }
 
@@ -100,7 +104,7 @@ func directAPIProvider(model *Model, key string, env ProviderEnv) (Provider, err
 	case APIBedrockConverseStream:
 		return NewBedrockProviderWithModel(*model), nil
 	case APIGoogleGenerativeAI:
-		return NewGoogleProvider(GoogleConfig{APIKey: key, Model: model.ID, ProviderID: meta.ProviderID, BaseURL: meta.BaseURL, ExtraHeaders: meta.Headers, ThinkingLevelMap: model.ThinkingLevelMap}), nil
+		return NewGoogleProvider(GoogleConfig{ModelMetadata: model, APIKey: key, Model: model.ID, ProviderID: meta.ProviderID, BaseURL: meta.BaseURL, ExtraHeaders: meta.Headers, ThinkingLevelMap: model.ThinkingLevelMap}), nil
 	case APIMistralConversations:
 		return NewMistralProvider(MistralConfig{ModelMetadata: model, APIKey: key, Model: model.ID, ProviderID: meta.ProviderID, BaseURL: meta.BaseURL, ExtraHeaders: meta.Headers, Reasoning: meta.Reasoning}), nil
 	default:

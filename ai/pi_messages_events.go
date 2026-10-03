@@ -6,6 +6,7 @@ package ai
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"time"
 )
 
@@ -43,6 +44,10 @@ type PiMessagesEvent struct {
 type piMessagesEventConverter struct {
 	partial  *AssistantMessage
 	toolJSON map[int]string
+	// observe is the bound OnProviderStreamEvent callback, or nil.
+	observe func(data any) error
+	// replaced records the nested objects the last converted event assigned to partial. Shallow copies taken earlier keep the objects they retained.
+	replaced assistantMessageReplacements
 }
 
 func newPiMessagesEventConverter(providerID, modelID string) *piMessagesEventConverter {
@@ -107,15 +112,19 @@ func (c *piMessagesEventConverter) apply(event PiMessagesEvent) (AssistantMessag
 
 func (c *piMessagesEventConverter) finish(event PiMessagesEvent) {
 	c.partial.StopReason = event.Reason
+	// upstream: packages/ai/src/api/pi-messages.ts:195-217 `Object.assign(partial, { usage: event.usage })` assigns a new usage object.
 	c.partial.Usage = event.Usage
+	c.replaced.Usage = true
 	c.partial.ResponseID = event.ResponseID
 	if event.ProviderThinkingLevel != nil {
 		c.partial.ProviderThinkingLevel = *event.ProviderThinkingLevel
 	}
 	if event.Rewrite != nil {
-		c.partial.Diagnostics = append(c.partial.Diagnostics, AssistantMessageDiagnostic{
+		// diagnostics.ts:42-47 appendAssistantMessageDiagnostic assigns a new array.
+		c.partial.Diagnostics = append(slices.Clone(c.partial.Diagnostics), AssistantMessageDiagnostic{
 			Type: "pi_messages_rewrite", Timestamp: time.Now().UnixMilli(), Details: event.Rewrite,
 		})
+		c.replaced.Diagnostics = true
 	}
 }
 
@@ -167,7 +176,7 @@ func (c *piMessagesEventConverter) deltaBlock(event PiMessagesEvent) (AssistantM
 		return ThinkingDeltaEvent{ContentIndex: index, Delta: event.Delta, Partial: c.partial}, nil
 	case ToolCall:
 		c.toolJSON[index] += event.Delta
-		block.Arguments = parseStreamingJsonObject(c.toolJSON[index])
+		block.SetStreamingArguments(c.toolJSON[index])
 		c.partial.Content[index] = block
 		return ToolCallDeltaEvent{ContentIndex: index, Delta: event.Delta, Partial: c.partial}, nil
 	}
@@ -208,7 +217,7 @@ func mergeToolCall(existing, incoming ToolCall) ToolCall {
 		existing.Name = incoming.Name
 	}
 	if incoming.Arguments != nil {
-		existing.Arguments = incoming.Arguments
+		existing.Arguments, existing.argumentOrder = incoming.Arguments, incoming.argumentOrder
 	}
 	if incoming.ThoughtSignature != "" {
 		existing.ThoughtSignature = incoming.ThoughtSignature

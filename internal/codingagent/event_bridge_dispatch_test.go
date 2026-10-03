@@ -49,8 +49,8 @@ func TestDispatchAgentLoopEvent_DeliversAllAgentLoopEvents(t *testing.T) {
 			AssistantMessageEvent: ai.TextDeltaEvent{ContentIndex: 0, Delta: "hi", Partial: partial},
 		},
 		agent.ToolExecutionStartEvent{ToolCallID: "tc1", ToolName: "bash", Args: json.RawMessage(`{"cmd":"ls"}`)},
-		agent.ToolExecutionUpdateEvent{ToolCallID: "tc1", ToolName: "bash", Content: "partial", Details: map[string]any{"progress": float64(1)}, Args: json.RawMessage(`{"cmd":"ls"}`)},
-		agent.ToolExecutionEndEvent{ToolCallID: "tc1", ToolName: "bash", Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "done"}, ai.ImageContent{Data: "aW1n", MimeType: "image/png"}}, Details: map[string]any{"nested": map[string]any{"value": "kept"}}, IsError: true}},
+		agent.ToolExecutionUpdateEvent{ToolCallID: "tc1", ToolName: "bash", Args: json.RawMessage(`{"cmd":"ls"}`), PartialResult: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "partial"}}, Details: map[string]any{"progress": float64(1)}}},
+		agent.ToolExecutionEndEvent{ToolCallID: "tc1", ToolName: "bash", Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "done"}, ai.ImageContent{Data: "aW1n", MimeType: "image/png"}}, Details: map[string]any{"nested": map[string]any{"value": "kept"}}}, IsError: true},
 		agent.MessageEndEvent{Message: agent.AgentMessage{Custom: map[string]any{"marker": "end"}}},
 		agent.TurnEndEvent{TurnIndex: 3},
 		agent.AgentEndEvent{Messages: []agent.AgentMessage{{Custom: map[string]any{"marker": "final"}}}},
@@ -108,7 +108,7 @@ func TestDispatchAgentLoopEvent_DeliversAllAgentLoopEvents(t *testing.T) {
 		t.Fatalf("tool_execution_start args not unmarshaled: got %#v", ts.Args)
 	}
 	tu, ok := got[EventToolExecutionUpdate].(extension.ToolExecutionUpdateEvent)
-	wantPartial := map[string]any{"content": "partial", "details": map[string]any{"progress": float64(1)}}
+	wantPartial := map[string]any{"content": []any{map[string]any{"type": "text", "text": "partial"}}, "details": map[string]any{"progress": float64(1)}}
 	if !ok || !reflect.DeepEqual(tu.PartialResult, wantPartial) || !reflect.DeepEqual(tu.Args, ts.Args) {
 		t.Fatalf("tool_execution_update: got %#v, want Args=%#v PartialResult=%#v", got[EventToolExecutionUpdate], ts.Args, wantPartial)
 	}
@@ -132,4 +132,53 @@ func TestDispatchAgentLoopEvent_NilRunnerNoPanic(t *testing.T) {
 	DispatchAgentLoopEvent(nil, agent.AgentStartEvent{}, &cur)
 	DispatchAgentLoopEvent(nil, agent.MessageStartEvent{Message: agent.AgentMessage{}}, &cur)
 	DispatchAgentLoopEvent(nil, agent.AgentEndEvent{}, nil)
+}
+
+// Pi 0.99.1 agent-session.ts:671-678 forwards the agent's tool_execution_end as it is, so a handler sees the finalized AgentToolResult
+// (content, details, structuredContent, usage, isError, terminate: agent/src/types.ts:435-455) and the call's own `isError`
+// (agent-loop.ts:912-919). The two flags differ for a thrown error (event.isError only) and for a hook that overrides isError.
+func TestDispatchToolExecutionEndDeliversTheFinalizedResultAndTheCallFlag(t *testing.T) {
+	var got extension.ToolExecutionEndEvent
+	runner := inproc.NewRunner([]extension.Extension{{Path: "/tmp/rec.ts", Handlers: map[string][]extension.HandlerFn{EventToolExecutionEnd: {func(args ...any) (any, error) {
+		got = args[0].(extension.ToolExecutionEndEvent)
+		return nil, nil
+	}}}}}, ".")
+	usage := &ai.Usage{Input: 1, Output: 2, TotalTokens: 3}
+	for _, tc := range []struct {
+		name        string
+		event       agent.ToolExecutionEndEvent
+		wantResult  map[string]any
+		wantIsError bool
+	}{
+		{
+			name:  "returned failure",
+			event: agent.ToolExecutionEndEvent{ToolCallID: "a", ToolName: "bash", IsError: true, Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "x"}}, StructuredContent: json.RawMessage(`{"exit_code":3}`), IsError: true, Usage: usage, Terminate: true}},
+			wantResult: map[string]any{
+				"content": []any{map[string]any{"type": "text", "text": "x"}}, "structuredContent": map[string]any{"exit_code": float64(3)},
+				"isError": true, "usage": usage, "terminate": true,
+			},
+			wantIsError: true,
+		},
+		{
+			name:        "thrown error has no result.isError",
+			event:       agent.ToolExecutionEndEvent{ToolCallID: "b", ToolName: "read", IsError: true, Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "x"}}, Details: map[string]any{}}},
+			wantResult:  map[string]any{"content": []any{map[string]any{"type": "text", "text": "x"}}, "details": map[string]any{}},
+			wantIsError: true,
+		},
+		{
+			name:        "a hook cleared the flag of a returned failure",
+			event:       agent.ToolExecutionEndEvent{ToolCallID: "c", ToolName: "bash", Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "x"}}, IsError: true}},
+			wantResult:  map[string]any{"content": []any{map[string]any{"type": "text", "text": "x"}}, "isError": true},
+			wantIsError: false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got = extension.ToolExecutionEndEvent{}
+			var current extension.AgentMessage
+			DispatchAgentLoopEvent(runner, tc.event, &current)
+			if !reflect.DeepEqual(got.Result, tc.wantResult) || got.IsError != tc.wantIsError || got.ToolCallID != tc.event.ToolCallID {
+				t.Fatalf("event = %#v, want result %#v isError %v", got, tc.wantResult, tc.wantIsError)
+			}
+		})
+	}
 }

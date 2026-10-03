@@ -23,6 +23,13 @@ func (output *synchronizedOutput) Write(data []byte) (int, error) {
 	return output.Buffer.Write(data)
 }
 
+// WriteString shadows the embedded Buffer's, which io.WriteString would otherwise call without the lock.
+func (output *synchronizedOutput) WriteString(data string) (int, error) {
+	output.mu.Lock()
+	defer output.mu.Unlock()
+	return output.Buffer.WriteString(data)
+}
+
 func (output *synchronizedOutput) Reset() {
 	output.mu.Lock()
 	defer output.mu.Unlock()

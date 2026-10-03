@@ -1,0 +1,13 @@
+{"type":"message","id":"a1","parentId":null,"timestamp":"2026-01-01T00:00:01.000Z","message":{"role":"user","content":[{"text":"hi <b> é","type":"text"}],"timestamp":1}}
+{"type":"message","id":"a2","parentId":"a1","timestamp":"2026-01-01T00:00:02.000Z","message":{"usage":{"output":2,"input":1.0},"stopReason":"toolUse","role":"assistant","provider":"p","model":"m","content":[{"type":"toolCall","id":"c1","name":"t","arguments":{"zeta":1,"alpha":{"yy":1,"bb":2},"2":3,"1":4}}],"timestamp":2}}
+{"type":"message","id":"a3","parentId":"a2","timestamp":"2026-01-01T00:00:03.000Z","message":{"role":"toolResult","toolCallId":"c1","toolName":"t","details":{"zeta":1,"alpha":{"yy":1,"bb":2}},"isError":false,"content":[{"type":"text","text":"ok"}],"timestamp":3}}
+{"type":"custom_message","id":"a4","parentId":"a3","timestamp":"2026-01-01T00:00:04.000Z","customType":"note","details":{"zeta":1,"alpha":{"yy":1,"bb":2}},"display":true,"content":"hello"}
+{"type":"custom","id":"a5","parentId":"a4","timestamp":"2026-01-01T00:00:05.000Z","customType":"st","data":{"zeta":1,"alpha":{"yy":1,"bb":2}}}
+{"type":"label","id":"a5l","parentId":"a5","timestamp":"2026-01-01T00:00:05.500Z","targetId":"a4","label":"mark"}
+{"type":"message","id":"a6","parentId":"a5l","timestamp":"2026-01-01T00:00:06.000Z","message":{"content":null,"role":"user","timestamp":6,"extra":{"z":1,"a":2}}}
+{"type":"branch_summary","id":"a7","parentId":"a6","timestamp":"2026-01-01T00:00:07.000Z","summary":"sum","fromId":"a1"}
+{"type":"model_change","id":"a7m","parentId":"a7","timestamp":"2026-01-01T00:00:07.500Z","modelId":"mm","provider":"pp"}
+{"type":"compaction","id":"a8","parentId":"a7m","timestamp":"2026-01-01T00:00:08.000Z","summary":"cs","firstKeptEntryId":"a6","tokensBefore":10,"details":{"z":1,"a":2}}
+{"type":"custom_message","id":"a8c","parentId":"a8","timestamp":"2026-01-01T00:00:08.500Z","customType":"late","content":[{"type":"text","text":"x"}],"display":false}
+{"type":"context_edit","id":"a9","parentId":"a8c","timestamp":"2026-01-01T00:00:09.000Z","targetId":"a6","replacement":{"content":"edited"}}
+{"type":"context_edit","id":"a10","parentId":"a9","timestamp":"2026-01-01T00:00:10.000Z","targetId":"a8c","replacement":{"content":[{"type":"text","text":"y"}]}}

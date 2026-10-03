@@ -14,7 +14,7 @@ import sys
 # Assemble operator-specific literals so this policy does not exempt itself.
 # Domain probes search anywhere in a line; hostname prefixes add no matches and need no greedy scan.
 PRIVATE = re.compile(
-    r"(?:/Users/|/home/)" + "kin" + r"sy(?:/|\b)|"
+    r"(?:/Users/|/home/|/(?:var/)?tmp/)" + "kin" + r"sy(?:/|\b)|"
     + "imla" + r"dris|hpe" + r"corp\.net|labs\.hpe" + r"corp|"
     + "pig" + r"-staging|(?:~/|\$HOME/)pig" + r"-lanes|"
     + r"\.dev" + r"cache/scratch|(?:/Users|/home)/[^/\s]+/PiG-launch"

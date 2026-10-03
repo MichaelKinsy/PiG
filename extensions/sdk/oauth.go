@@ -251,7 +251,9 @@ func oauthConfigFor(name string, provider *OAuthProvider) providerOAuthConfig {
 
 // dispatchOAuth routes an oauth_* request to the provider named by req.Tool.
 func (e *Extension) dispatchOAuth(id string, req *requestMsg) {
+	e.providerMu.RLock()
 	provider := e.oauthProviders[req.Tool]
+	e.providerMu.RUnlock()
 	if provider == nil {
 		_ = e.conn.respond(id, nil, errors.New("unknown oauth provider: "+req.Tool))
 		return

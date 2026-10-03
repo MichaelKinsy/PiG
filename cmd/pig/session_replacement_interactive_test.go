@@ -53,8 +53,10 @@ func startInteractivePig(t *testing.T) *interactivePig {
 func startInteractivePigWith(t *testing.T, fixture string) *interactivePig {
 	t.Helper()
 	binary := buildPigBinaryForSignalTest(t)
-	p := &interactivePig{t: t, log: filepath.Join(t.TempDir(), "replace.log"), output: &ptyOutput{}, home: t.TempDir(), dir: t.TempDir()}
+	// The home holds the Session cwds the resume picker prints; a t.TempDir name repeats the test name and, under a nested TMPDIR, pushes the Session name out of the 140-column picker.
+	p := &interactivePig{t: t, log: filepath.Join(t.TempDir(), "replace.log"), output: &ptyOutput{}, home: shortTempDir(t), dir: t.TempDir()}
 	home := p.home
+	seedFirstRunDone(t, filepath.Join(home, "agent"))
 	master, slave := openPTY(t, 40, 140)
 	p.master = master
 	t.Cleanup(func() { _ = master.Close() })
@@ -111,6 +113,7 @@ func TestInteractiveSessionCommandsReplaceThroughTheRuntimeFactory(t *testing.T)
 	if testing.Short() {
 		t.Skip("starts the pig binary and extension processes")
 	}
+	t.Parallel()
 	p := startInteractivePig(t)
 	// Persist the first Session: only a Session with an assistant reply exists on disk, so only it can be resumed, cloned or forked.
 	p.send("reply with exactly: first\r")
@@ -157,6 +160,7 @@ func TestInteractiveExtensionNewSessionKeepsTheCallerAliveUntilItReturns(t *test
 	if testing.Short() {
 		t.Skip("starts the pig binary and extension processes")
 	}
+	t.Parallel()
 	p := startInteractivePig(t)
 	p.command("/replace-new")
 	waitReplaceLog(t, p.log, 4, "/replace-new")
@@ -180,6 +184,7 @@ func TestInteractiveReplacementDiscoversResourcesWithStartupReason(t *testing.T)
 	if testing.Short() {
 		t.Skip("starts the pig binary and an extension process")
 	}
+	t.Parallel()
 	fixture, err := filepath.Abs(filepath.Join("testdata", "session-resources.mjs"))
 	if err != nil {
 		t.Fatal(err)

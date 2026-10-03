@@ -290,7 +290,7 @@ func (b *AssistantMessageBlock) Render(width int) []string {
 // renderThinking renders the hidden label or Markdown with the theme's thinking text color and italic default text style.
 func (b *AssistantMessageBlock) renderThinking(md *Markdown, hidden bool, contentWidth int, padLine func(string) string) []string {
 	if hidden {
-		return []string{padLine("\x1b[3m" + ActiveTheme().ThinkingText + thinkingHiddenLabel + SGRFgReset + SGRItalicReset)}
+		return []string{padLine("\x1b[3m" + ActiveTheme().ThinkingText + thinkingHiddenLabel + FgClose(ActiveTheme().ThinkingText) + SGRItalicReset)}
 	}
 	md.SetDefaultColor(ActiveTheme().ThinkingText)
 	var out []string

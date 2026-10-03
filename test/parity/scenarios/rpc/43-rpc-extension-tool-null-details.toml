@@ -1,0 +1,62 @@
+# Pi 1.0.0 agent-loop.ts createToolResultMessage sets `details: finalized.result.details`; rpc-mode.ts writes events and get_messages/get_entries results with JSON.stringify, which writes null and omits undefined.
+# An extension tool that returns details: null therefore shows "details":null in tool_execution_end, in every toolResult message event, in get_messages and in the session entry that get_entries returns.
+# PiG's ToolResultMessage dropped the null (an omitempty any), so the message events, get_messages and get_entries had no details member.
+# Full JSON records are compared: canonical_json only sorts keys; it keeps extra/missing fields, nulls and event order.
+name = "43-rpc-extension-tool-null-details"
+description = "RPC events, get_messages and get_entries keep an extension tool's details: null"
+covers = ["packages/coding-agent/src/modes/rpc/rpc-mode.ts", "packages/agent/src/agent-loop.ts", "packages/coding-agent/src/core/session-manager.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+canonical_json = true
+timeout_seconds = 20
+
+[[rpc.steps]]
+line = '{"id":"run","type":"prompt","message":"Run: extension echo hello"}'
+wait_event = '{"type":"agent_settled"}'
+wait_timeout_seconds = 10
+[[rpc.steps]]
+line = '{"id":"messages","type":"get_messages"}'
+wait_contains = ['"command":"get_messages","success":true']
+wait_timeout_seconds = 10
+[[rpc.steps]]
+line = '{"id":"entries","type":"get_entries"}'
+wait_contains = ['"command":"get_entries","success":true']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PARITY_DETAILS_REPORT={{TEMP}}/null-details.jsonl"]
+pi = ["PARITY_DETAILS_REPORT={{TEMP}}/null-details.jsonl"]
+pig_extensions = ["../json/testdata/ext/parity-null-details.mjs"]
+pig_args = ["--offline", "--model", "test-faux/faux-1", "--system-prompt", "RPC wire probe.", "--no-context-files", "--no-skills", "--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "../json/testdata/ext/parity-null-details.mjs"]
+pi_args = ["--offline", "--model", "test-faux/faux-1", "--system-prompt", "RPC wire probe.", "--no-context-files", "--no-skills", "--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+json_output_equal = true
+stderr_equal = true
+runs = 3
+# canonical_json sorts members, so these substrings are in sorted order.
+both_contain = [
+  # tool_execution_end's result.
+  '"result":{"content":[{"text":"echo-bridge: hello","type":"text"}],"details":null}',
+  # The toolResult message in message_start/end, turn_end, agent_end, get_messages and the get_entries session entry.
+  '"details":null,"isError":false,"role":"toolResult"',
+  '"command":"get_entries"',
+]
+[[assert.json_aliases]]
+paths = ["/**/sections/cwd"]
+kind = "path"
+reason = "D2: alias only the exact isolated cwd embedded in the system section; retain its tags, whitespace and suffix."
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent message and entry wall clocks vary; retain field presence, timestamp type and valid syntax."
+[[assert.json_aliases]]
+paths = ["/**/id", "/**/parentId", "/**/leafId"]
+kind = "id"
+group = "entry"
+pattern = '^[a-f0-9]{8,16}$'
+reason = "Generated entry keys vary per process. A bijection retains every parent and leaf reference; command and tool-call IDs stay literal."

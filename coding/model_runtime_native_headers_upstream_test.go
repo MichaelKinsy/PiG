@@ -45,7 +45,7 @@ func registerCapturingHeaderProvider(t *testing.T, services *Services, headers m
 			mu.Unlock()
 			return nil, errors.New("captured")
 		},
-		Models: []*ai.Model{headerTestModel(headers)},
+		Models: []ai.AnyModel{headerTestModel(headers)},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +132,7 @@ func TestNativeExtensionHeaderDeletedByTransformIsNotResentUpstream(t *testing.T
 					defer server.Close()
 					credential := ai.Credential{Type: kind, Key: "stored-key"}
 					wantKey := "stored-key"
-					config := ProviderConfigInput{BaseURL: server.URL, API: api, Models: []*ai.Model{headerTestModel(map[string]string{"x-model": "model"})}}
+					config := ProviderConfigInput{BaseURL: server.URL, API: api, Models: []ai.AnyModel{headerTestModel(map[string]string{"x-model": "model"})}}
 					if kind == ai.CredentialOAuth {
 						credential = ai.Credential{Type: kind, Access: "expired-access", Refresh: "refresh"}
 						wantKey = "refreshed-access"

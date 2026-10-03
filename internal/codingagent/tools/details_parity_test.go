@@ -42,11 +42,11 @@ func TestBuiltinToolDetailsParityProbe(t *testing.T) {
 		{"bash truncated", &BashTool{CWD: cwd}, `{"command":"printf '%060000d' 0"}`},
 	} {
 		var update map[string]any
-		r, err := tc.tool.Execute(t.Context(), "call", json.RawMessage(tc.args), func(text string, details any) {
-			if text != "" {
+		r, err := tc.tool.Execute(t.Context(), "call", json.RawMessage(tc.args), func(partial agent.AgentToolResult) {
+			if text := partial.Text(); text != "" {
 				update = map[string]any{"content": []any{map[string]any{"type": "text", "text": text}}}
-				if details != nil {
-					update["details"] = details
+				if partial.Details != nil {
+					update["details"] = partial.Details
 				}
 			}
 		})
@@ -66,6 +66,18 @@ func TestBuiltinToolDetailsParityProbe(t *testing.T) {
 		result := map[string]any{"content": r.Content}
 		if r.Details != nil {
 			result["details"] = r.Details
+		}
+		if r.StructuredContent != nil {
+			// bash.ts:392 measures the wall clock; the probe keeps only its type on both sides.
+			var structured map[string]any
+			if err := json.Unmarshal(r.StructuredContent, &structured); err != nil {
+				t.Fatal(err)
+			}
+			if _, ok := structured["wall_time_seconds"].(float64); !ok {
+				t.Fatalf("wall_time_seconds = %#v", structured["wall_time_seconds"])
+			}
+			structured["wall_time_seconds"] = "NUMBER"
+			result["structuredContent"] = structured
 		}
 		printToolWire(t, tc.name, result)
 		if tc.name == "bash" {

@@ -91,7 +91,7 @@ func TestCombineChecksumsMatchesInstallShFormat(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cmd := exec.Command("python3", script, dir)
+	cmd := exec.Command(hostPython(), script, dir)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("combine-checksums.py failed: %v\n%s", err, output)
 	}
@@ -155,7 +155,7 @@ func TestCombineChecksumsRejectsAnEmptyDirectory(t *testing.T) {
 	root := repoRoot(t)
 	script := filepath.Join(root, "automation", "release", "combine-checksums.py")
 	dir := t.TempDir()
-	cmd := exec.Command("python3", script, dir)
+	cmd := exec.Command(hostPython(), script, dir)
 	output, err := cmd.CombinedOutput()
 	if err == nil {
 		t.Fatal("combine-checksums.py accepted a directory with no archives")

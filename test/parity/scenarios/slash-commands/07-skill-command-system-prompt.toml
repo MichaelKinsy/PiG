@@ -30,8 +30,6 @@ covers = [
   "packages/coding-agent/src/core/resource-loader.ts",
   "packages/coding-agent/src/core/system-prompt.ts",
   "packages/coding-agent/src/utils/frontmatter.ts",
-  "packages/agent/src/harness/messages.ts",
-  "packages/agent/src/harness/system-prompt.ts",
 ]
 tags = ["fast", "hermetic", "tui"]
 driver = "interactive-tmux"

@@ -104,9 +104,10 @@ func (content ImageContent) MarshalJSON() ([]byte, error) {
 // JSONObject is a provider-facing JSON object.
 type JsonObject map[string]any
 
-// ToolCall is a tool invocation block in an assistant message. Streaming OpenAI calls also serialize provider scratch fields until finalization or failure.
+// ToolCall is a tool invocation block in an assistant message. Streaming OpenAI calls also serialize provider scratch fields until finalization or failure. Arguments is read and edited as a Go map; the member order the model sent is kept beside it and is written by ArgumentsJSON and MarshalJSON.
 type ToolCall struct {
 	scratch          toolCallScratch
+	argumentOrder    schemaObjectOrder
 	ID               string     `json:"id"`
 	Name             string     `json:"name"`
 	Arguments        JsonObject `json:"arguments"`
@@ -120,11 +121,49 @@ func (content ToolCall) MarshalJSON() ([]byte, error) {
 	if err := validateJsonValue(content.Arguments); err != nil {
 		return nil, fmt.Errorf("tool call arguments: %w", err)
 	}
-	type payload ToolCall
+	var arguments any = content.Arguments
+	if content.argumentOrder != nil && content.Arguments != nil {
+		ordered, err := content.ArgumentsJSON()
+		if err != nil {
+			return nil, fmt.Errorf("tool call arguments: %w", err)
+		}
+		arguments = json.RawMessage(ordered)
+	}
 	return marshalContent(content.contentType(), struct {
-		payload
+		ID               string `json:"id"`
+		Name             string `json:"name"`
+		Arguments        any    `json:"arguments"`
+		ThoughtSignature string `json:"thoughtSignature,omitempty"`
+		Namespace        string `json:"namespace,omitempty"`
 		toolCallScratchJSON
-	}{payload(content), content.scratch.wire()})
+	}{content.ID, content.Name, arguments, content.ThoughtSignature, content.Namespace, content.scratch.wire()})
+}
+
+// UnmarshalJSON decodes the call and keeps the member order of its arguments.
+func (content *ToolCall) UnmarshalJSON(data []byte) error {
+	if bytes.Equal(bytes.TrimSpace(data), []byte("null")) {
+		return nil
+	}
+	type payload ToolCall
+	var decoded payload
+	if err := sdkjson.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var members struct {
+		Arguments json.RawMessage `json:"arguments"`
+	}
+	if err := json.Unmarshal(data, &members); err != nil {
+		return err
+	}
+	if len(members.Arguments) > 0 {
+		order, err := readSchemaObjectOrder(members.Arguments)
+		if err != nil {
+			return err
+		}
+		decoded.argumentOrder = order
+	}
+	*content = ToolCall(decoded)
+	return nil
 }
 
 func marshalContent(contentType string, content any) ([]byte, error) {
@@ -632,6 +671,8 @@ type StreamOptions struct {
 	OnPayload func(payload any, model *Model) (any, error)
 	// OnResponse is awaited before response consumption. The request context owns cancellation.
 	OnResponse func(context.Context, ProviderResponse, *Model) error
+	// OnProviderStreamEvent observes each parsed provider stream event before normalization. Event data is adapter-owned and read-only; an adapter without explicit support never calls it. Mirrors upstream StreamOptions.onProviderStreamEvent (packages/ai/src/types.ts:198).
+	OnProviderStreamEvent func(ctx context.Context, data any, model *Model) error
 }
 
 // Provider is the interface implemented by each LLM backend.
@@ -808,6 +849,8 @@ func cloneCompat(in *ModelCompat) *ModelCompat {
 
 // Model pairs an identifier with a provider and capabilities.
 type Model struct {
+	// Type is optional: chat is the default model type, so models without it are chat models.
+	Type             ModelType
 	ID               string
 	DisplayName      string
 	Provider         Provider

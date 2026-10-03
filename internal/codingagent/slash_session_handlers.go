@@ -853,13 +853,21 @@ func settingsItems() []settingItem {
 		},
 		{
 			id: "quiet-startup", label: "Quiet startup",
-			desc:   "Disable verbose printing at startup",
-			values: []string{"true", "false"},
+			desc:   "Disable verbose printing at startup (header: keep only the startup header)",
+			values: []string{"true", "header", "false"},
 			apply: func(s *Settings, v string) {
-				s.QuietStartup = v == "true"
+				// settings-selector.ts:923-925: "header" stays "header"; other values are booleans.
+				switch v {
+				case "header":
+					s.QuietStartup = QuietStartupHeader
+				case "true":
+					s.QuietStartup = QuietStartupTrue
+				default:
+					s.QuietStartup = QuietStartupFalse
+				}
 				s.quietStartupSet = true
 			},
-			get: func(s Settings) string { return boolStr(s.QuietStartup) },
+			get: func(s Settings) string { return s.QuietStartup.String() },
 		},
 		{
 			id: "install-telemetry", label: "Install telemetry",
@@ -966,7 +974,7 @@ func settingsItems() []settingItem {
 		},
 		{
 			id: "tui-mode", label: "TUI mode",
-			desc:   "Interface layout; fullscreen mode is experimental",
+			desc:   "Interface layout; regular mode uses the terminal's normal scrollback",
 			values: []string{"regular", "fullscreen"},
 			get: func(s Settings) string {
 				return (&SettingsManager{merged: s}).GetTuiMode()
@@ -1001,6 +1009,17 @@ func settingsItems() []settingItem {
 			apply: func(s *Settings, v string) {
 				enabled := v == "true"
 				s.FullscreenCopyOnSelect = &enabled
+			},
+		},
+		{
+			id: "fullscreen-wheel-scroll-lines", label: "Fullscreen wheel scrolling",
+			desc:   "Lines per mouse-wheel event in fullscreen mode; 'auto' speeds up fast wheel spins where the terminal does not",
+			values: wheelScrollLinesValues(WheelScrollLines{Auto: true}),
+			get: func(s Settings) string {
+				return wheelScrollLinesLabel((&SettingsManager{merged: s}).GetFullscreenWheelScrollLines())
+			},
+			apply: func(s *Settings, v string) {
+				s.FullscreenWheelScrollLines = wheelScrollLinesJSON(parseWheelScrollLines(v))
 			},
 		},
 		{
@@ -1110,6 +1129,10 @@ func settingsHandlerTUI(sc *SlashContext) error {
 		}
 		if item.id == "model-thinking" {
 			tuiItems[i].Submenu = sc.ModelThinkingSubmenu
+		}
+		if item.id == "fullscreen-wheel-scroll-lines" {
+			// The cycle keeps the configured count (#9758).
+			tuiItems[i].Values = wheelScrollLinesValues(sc.SettingsManager.GetFullscreenWheelScrollLines())
 		}
 	}
 

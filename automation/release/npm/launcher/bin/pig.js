@@ -17,6 +17,8 @@ const SCOPE = "@pi-in-go";
 // process.platform/process.arch -> platform package. Keep in sync with
 // TARGETS in automation/release/npm/pack_npm.py.
 const PLATFORM_PACKAGES = {
+  // Node on Termux reports "android". Termux needs the bionic-linked android binary, never linux-arm64.
+  "android arm64": `${SCOPE}/pig-android-arm64`,
   "darwin arm64": `${SCOPE}/pig-darwin-arm64`,
   "darwin x64": `${SCOPE}/pig-darwin-x64`,
   "linux arm64": `${SCOPE}/pig-linux-arm64`,

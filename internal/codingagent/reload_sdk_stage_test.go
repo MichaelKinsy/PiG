@@ -30,6 +30,7 @@ import (
 // The order is the contract. Staging after the rebuild would be no better than
 // not staging at all for that reload.
 func TestReloadStagesTheSDKBeforeRebuildingExtensions(t *testing.T) {
+	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
 	var order []string
 	host := &orderRecordingHost{onReload: func() { order = append(order, "rebuild") }}
 
@@ -51,6 +52,7 @@ func TestReloadStagesTheSDKBeforeRebuildingExtensions(t *testing.T) {
 // changes, and the rebuild is still worth attempting. It has to be visible
 // though, because its symptom is otherwise untraceable from the session.
 func TestReloadContinuesAndReportsWhenStagingFails(t *testing.T) {
+	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
 	rebuilt := false
 	host := &orderRecordingHost{onReload: func() { rebuilt = true }}
 
@@ -78,6 +80,7 @@ func TestReloadContinuesAndReportsWhenStagingFails(t *testing.T) {
 
 // Reload must not require the hook: headless and test paths leave it nil.
 func TestReloadWithoutAStagingHookStillRebuilds(t *testing.T) {
+	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
 	rebuilt := false
 	host := &orderRecordingHost{onReload: func() { rebuilt = true }}
 
@@ -139,6 +142,7 @@ func (h *reportingHost) LastReloadReport() *subprocess.ReloadReport { return h.r
 // Upstream showLoadedResources lists every extension load error under
 // [Extension issues] after /reload; reload itself does not fail.
 func TestReloadDiagnosticsListUnresolvedExtensions(t *testing.T) {
+	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
 	issue := "/pkg/extensions/bad: Failed to load extension: no factory"
 	host := &reportingHost{report: &subprocess.ReloadReport{Issues: []string{issue}}}
 	m := reloadTestMode(InteractiveOptions{SubprocessHost: host})
@@ -173,6 +177,7 @@ func TestReloadSummaryMatchesUpstreamStatus(t *testing.T) {
 // install a fresh status component instead of coalescing the acknowledgement
 // into the prior reload's component, which produces no new terminal evidence.
 func TestRepeatedReloadRebuildsChatBeforeCompletionStatus(t *testing.T) {
+	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
 	m := reloadTestMode(InteractiveOptions{})
 
 	if err := reloadHandler(m.buildSlashContext(t.Context())); err != nil {
@@ -196,6 +201,7 @@ func TestRepeatedReloadRebuildsChatBeforeCompletionStatus(t *testing.T) {
 // chat that restoreChatBeforeSessionStart rebuilds. The block must survive the
 // reload's chat rebuild.
 func TestReloadKeepsPromptConflictsAfterChatRebuild(t *testing.T) {
+	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
 	m := reloadTestMode(InteractiveOptions{})
 	path := filepath.Join(t.TempDir(), "broken.md")
 	if err := os.WriteFile(path, []byte("---\ndescription: [unterminated\n---\nBody"), 0o600); err != nil {
@@ -214,6 +220,7 @@ func TestReloadKeepsPromptConflictsAfterChatRebuild(t *testing.T) {
 // A prompt contributed through resources_discover joins the one post-reload
 // diagnostics block rather than printing a second [Prompt conflicts] block.
 func TestReloadShowsExtensionPromptConflictsOnce(t *testing.T) {
+	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
 	isolateDisplayHome(t)
 	dir := t.TempDir()
 	local := filepath.Join(dir, "local.md")
@@ -248,6 +255,7 @@ func TestReloadShowsExtensionPromptConflictsOnce(t *testing.T) {
 // rebuilds the chat on reload (interactive-mode.ts:6214-6216), so a settings
 // file edited outside the session takes effect in the rebuilt transcript.
 func TestReloadRebuildsChatWithReloadedDisplaySettings(t *testing.T) {
+	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
 	dir := t.TempDir()
 	sm := NewSettingsManager(dir, dir)
 	if err := sm.SetHideThinkingBlock(false); err != nil {
@@ -305,6 +313,7 @@ func TestReloadRebuildsChatWithReloadedDisplaySettings(t *testing.T) {
 // Pi persists the Ctrl+T thinking visibility toggle (interactive-mode.ts:4431),
 // so the reload that re-reads hideThinkingBlock keeps the toggled value.
 func TestThinkingToggleSurvivesReload(t *testing.T) {
+	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
 	dir := t.TempDir()
 	sm := NewSettingsManager(dir, dir)
 	m := reloadTestMode(InteractiveOptions{SettingsManager: sm, Settings: sm.Get()})
@@ -323,6 +332,7 @@ func TestThinkingToggleSurvivesReload(t *testing.T) {
 // One extension that fails on /reload is listed once under Extension issues,
 // not once as a failed reload and again as its raw error.
 func TestReloadListsAFailingExtensionOnce(t *testing.T) {
+	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
 	if _, err := exec.LookPath("node"); err != nil {
 		t.Fatalf("node is required for the extension fixture: %v", err)
 	}
@@ -401,6 +411,7 @@ func TestDetectExtensionConflictsUsesToolRegistrationOrder(t *testing.T) {
 }
 
 func TestReloadIncludesBuiltinExtensionsInLoadOrderAndConflicts(t *testing.T) {
+	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
 	tool := func(name string) map[string]extension.RegisteredTool {
 		return map[string]extension.RegisteredTool{name: {}}
 	}
@@ -435,6 +446,7 @@ func TestReloadIncludesBuiltinExtensionsInLoadOrderAndConflicts(t *testing.T) {
 }
 
 func TestReloadReconstructsBuiltinFactories(t *testing.T) {
+	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
 	for _, withHost := range []bool{false, true} {
 		t.Run(fmt.Sprintf("subprocess-host-%t", withHost), func(t *testing.T) {
 			generation := 0
@@ -470,6 +482,7 @@ func TestReloadReconstructsBuiltinFactories(t *testing.T) {
 // Upstream lists tool and flag conflicts under [Extension issues] after
 // /reload; both extensions stay loaded.
 func TestReloadListsExtensionToolConflicts(t *testing.T) {
+	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
 	if _, err := exec.LookPath("node"); err != nil {
 		t.Fatalf("node is required for the extension fixture: %v", err)
 	}

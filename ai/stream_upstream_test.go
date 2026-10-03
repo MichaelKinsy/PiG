@@ -28,7 +28,7 @@ type upstreamStreamCase struct {
 	Request                             json.RawMessage
 }
 
-// Every row carries its exact .upstream/v0.87.1/packages/ai/test/stream.test.ts source location. The extractor evaluates only wrapper inputs; all behavior assertions below are Go ports of the six upstream helpers.
+// Every row carries its exact .upstream/v0.99.1/packages/ai/test/stream.test.ts source location. The extractor evaluates only wrapper inputs; all behavior assertions below are Go ports of the six upstream helpers.
 func TestStreamUpstream(t *testing.T) {
 	data, err := os.ReadFile("testdata/stream-cases.json")
 	if err != nil {
@@ -84,7 +84,7 @@ func runUpstreamStreamCase(t *testing.T, tc upstreamStreamCase) {
 	}
 	var image string
 	if tc.Kind == "handleImage" {
-		data, err := os.ReadFile("../.upstream/v0.87.1/packages/ai/test/data/red-circle.png")
+		data, err := os.ReadFile("../.upstream/current/packages/ai/test/data/red-circle.png")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -467,7 +467,7 @@ func validateStreamNativeOptions(t *testing.T, model GeneratedModel, options map
 	if tc.Kind == "bedrockSpecial" {
 		if strings.Contains(tc.Name, "adaptive thinking") {
 			fields, _ := body["additionalModelRequestFields"].(map[string]any)
-			// .upstream/v0.87.1/packages/ai/test/stream.test.ts:1544 expects max, but .upstream/v0.87.1/packages/ai/src/api/bedrock-converse-stream.ts:795-807 returns high for the unmapped xhigh level on Opus 4.6. The direct onPayload probe in bedrock-upstream-inconsistency.log confirms high; the upstream suite is credential-gated at stream.test.ts:1541.
+			// .upstream/v0.99.1/packages/ai/test/stream.test.ts:1544 expects max (:1583), but .upstream/v0.99.1/packages/ai/src/api/bedrock-converse-stream.ts:790-809 returns high for the unmapped xhigh level on Opus 4.6. The direct onPayload probe in bedrock-upstream-inconsistency.log confirms high; the upstream suite is credential-gated at stream.test.ts:1541.
 			if !reflect.DeepEqual(fields["thinking"], map[string]any{"type": "adaptive", "display": "summarized"}) || !reflect.DeepEqual(fields["output_config"], map[string]any{"effort": "high"}) {
 				t.Errorf("adaptive fields = %#v", fields)
 			}

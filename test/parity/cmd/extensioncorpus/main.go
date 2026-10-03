@@ -12,11 +12,13 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"slices"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -94,7 +96,10 @@ func main() {
 		binary = filepath.Join(absoluteRoot, binary)
 	}
 
-	report, err := run(absoluteRoot, binary, *timeout)
+	// A signal cancels the context so validateExample's deferred cleanup removes its scratch home before the process exits.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	report, err := run(ctx, absoluteRoot, binary, *timeout)
+	stop()
 	if err != nil {
 		fatal(err)
 	}
@@ -117,7 +122,7 @@ func main() {
 	}
 }
 
-func run(root, binary string, timeout time.Duration) (report, error) {
+func run(ctx context.Context, root, binary string, timeout time.Duration) (report, error) {
 	corpusRoot := filepath.Join(root, ".upstream", "current", "packages", "coding-agent", "examples", "extensions")
 	paths, err := filepath.Glob(filepath.Join(corpusRoot, "*.ts"))
 	if err != nil {
@@ -166,7 +171,7 @@ func run(root, binary string, timeout time.Duration) (report, error) {
 
 	rep := report{Kind: evidenceKind, Tier: "load-and-registration", Identity: id}
 	for _, path := range paths {
-		item, err := validateExample(root, binary, corpusRoot, path, timeout)
+		item, err := validateExample(ctx, root, binary, corpusRoot, path, timeout)
 		if err != nil {
 			return report{}, err
 		}
@@ -187,7 +192,7 @@ func run(root, binary string, timeout time.Duration) (report, error) {
 	return rep, nil
 }
 
-func validateExample(root, binary, corpusRoot, path string, timeout time.Duration) (result, error) {
+func validateExample(parent context.Context, root, binary, corpusRoot, path string, timeout time.Duration) (result, error) {
 	sourceHash, err := hashFile(path)
 	if err != nil {
 		return result{}, err
@@ -202,7 +207,7 @@ func validateExample(root, binary, corpusRoot, path string, timeout time.Duratio
 	}
 	defer func() { _ = os.RemoveAll(home) }()
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
 	command := exec.CommandContext(ctx, binary, "install", path, "--validate-only", "--json")
 	command.Dir = root
@@ -212,6 +217,9 @@ func validateExample(root, binary, corpusRoot, path string, timeout time.Duratio
 	command.Stdout = &stdout
 	command.Stderr = &stderr
 	runErr := command.Run()
+	if err := parent.Err(); err != nil {
+		return result{}, err
+	}
 	item := result{Source: filepath.ToSlash(relative), SourceSHA256: sourceHash}
 	var payload validationPayload
 	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {

@@ -50,7 +50,7 @@ func resolveTemporaryGitSource(sm *codingagent.SettingsManager, source string, p
 }
 
 // temporaryGitCheckoutPath is a temporary Git source's checkout below the agent temporary extension root; paths outside that root are refused.
-// Ports packages/coding-agent/src/core/package-manager.ts (getGitInstallPath, getTemporaryDir).
+// Ports .upstream/v0.99.1/packages/coding-agent/src/core/package-manager.ts:2153-2183 (getGitInstallPath, getTemporaryDir).
 func temporaryGitCheckoutPath(agentDir string, ref sourceref.Ref) (string, error) {
 	root := filepath.Join(agentDir, "tmp", "extensions")
 	relative, err := packagemanager.GitCheckoutRelative(runtime.GOOS, root, ref)
@@ -58,6 +58,11 @@ func temporaryGitCheckoutPath(agentDir string, ref sourceref.Ref) (string, error
 		return "", err
 	}
 	host, path, _ := strings.Cut(relative, string(filepath.Separator))
-	digest := sha256.Sum256([]byte("git-" + ref.GitHost + "-" + ref.GitPath))
+	// Each pinned ref gets its own checkout: the ref is part of the hash (.upstream/v0.99.1/packages/coding-agent/src/core/package-manager.ts:2153-2183).
+	key := "git-" + ref.GitHost + "-" + ref.GitPath
+	if ref.GitRef != "" {
+		key += "@" + ref.GitRef
+	}
+	digest := sha256.Sum256([]byte(key))
 	return filepath.Join(root, "git-"+host, fmt.Sprintf("%x", digest)[:8], path), nil
 }

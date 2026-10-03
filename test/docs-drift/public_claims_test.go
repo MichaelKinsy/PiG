@@ -107,6 +107,60 @@ func TestPublicClaimsCheckRejectsContradictedStatements(t *testing.T) {
 	}
 }
 
+const versionRecords = `[[record]]
+version = "9.8.0"
+reason = "A probe report."
+paths = ["docs/findings/probe.md", "docs/plan/"]
+`
+
+// Released changelog sections and reviewed records keep the release they
+// describe. The pinned release stays required everywhere else.
+func TestPublicClaimsCheckAcceptsRecordsOfAnEarlierRelease(t *testing.T) {
+	root := writeClaimsFixture(t, map[string]string{
+		"automation/ci/version-records.toml": versionRecords,
+		"docs/findings/probe.md":             "The probe ran against Pi 9.8.0.\n",
+		"docs/plan/progress/lane.md":         "The lane starts from Pi 9.8.0.\n",
+		"CHANGELOG.md": "# Changelog\n\n## [Unreleased]\n\n- Match Pi 9.9.9.\n\n" +
+			"## [1.0.0] - 2026-01-01\n\n- Ported Pi 9.8.0.\n\n## [0.0.0] - Development baseline\n\n- Started at Pi 9.7.0.\n",
+	})
+	if output, err := runPublicClaims(t, root); err != nil {
+		t.Fatalf("records of an earlier release were rejected:\n%s", output)
+	}
+}
+
+func TestPublicClaimsCheckRejectsUnreviewedOrStaleRecords(t *testing.T) {
+	root := writeClaimsFixture(t, map[string]string{
+		"automation/ci/version-records.toml": versionRecords + `
+[[record]]
+version = "9.8.0"
+reason = "A report that no longer names the release."
+paths = ["docs/findings/current.md", "docs/findings/gone.md"]
+`,
+		"docs/findings/probe.md":   "The probe ran against Pi 9.8.0 and Pi 9.7.0.\n",
+		"docs/findings/current.md": "The probe ran against Pi 9.9.9.\n",
+		"docs/findings/new.md":     "The probe ran against Pi 9.8.0.\n",
+		"CHANGELOG.md":             "# Changelog\n\n## [Unreleased]\n\n- Match Pi 9.8.0.\n",
+	})
+	output, err := runPublicClaims(t, root)
+	if err == nil {
+		t.Fatalf("unreviewed or stale records passed:\n%s", output)
+	}
+	for _, want := range []string{
+		"docs/findings/probe.md:1: version: Pi 9.7.0 is not the pinned Pi 9.9.9",
+		"docs/findings/new.md:1: version: Pi 9.8.0 is not the pinned Pi 9.9.9",
+		"CHANGELOG.md:5: version: Pi 9.8.0 is not the pinned Pi 9.9.9",
+		"automation/ci/version-records.toml: docs/findings/current.md (9.8.0) matches nothing; remove the entry",
+		"automation/ci/version-records.toml: docs/findings/gone.md (9.8.0) names a missing file; remove the entry",
+	} {
+		if !strings.Contains(output, want) {
+			t.Errorf("output does not report %q:\n%s", want, output)
+		}
+	}
+	if strings.Contains(output, "docs/findings/probe.md:1: version: Pi 9.8.0") {
+		t.Errorf("the reviewed release in a listed record produced a finding:\n%s", output)
+	}
+}
+
 func TestPublicClaimsCheckRejectsUndocumentedPigletCommandsOutsidePlannedSections(t *testing.T) {
 	root := writeClaimsFixture(t, map[string]string{
 		"docs/piglets.md": "# Piglets\n\npig piglet list\n\n## Planned (not in this release)\n\npig piglet pull demo\n\n### Details\n\npig piglet publish demo\n\n## Current behavior\n\npig piglet update demo\n",

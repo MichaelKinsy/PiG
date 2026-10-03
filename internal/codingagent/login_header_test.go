@@ -467,6 +467,7 @@ func TestNewSessionResetRestoresBuiltInHeaderBeforeHandlers(t *testing.T) {
 }
 
 func TestSuccessfulReloadRestoresBuiltInHeaderAndFailedReloadPreservesCurrentLogin(t *testing.T) {
+	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
 	const builtInHeader = "stock header"
 	host := &orderRecordingHost{}
 	m := reloadTestMode(InteractiveOptions{

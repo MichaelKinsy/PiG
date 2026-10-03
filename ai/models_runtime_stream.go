@@ -9,8 +9,8 @@ import (
 	"time"
 )
 
-func (m *Models) requireProvider(model *Model) (*ModelsProvider, error) {
-	providerID := modelProviderID(model)
+func (m *Models) requireProvider(model AnyModel) (*ModelsProvider, error) {
+	providerID := model.ProviderID()
 	provider := m.GetProvider(providerID)
 	if provider == nil {
 		return nil, NewModelsError(ModelsErrorProvider, "Unknown provider: "+providerID, nil)
@@ -18,46 +18,72 @@ func (m *Models) requireProvider(model *Model) (*ModelsProvider, error) {
 	return provider, nil
 }
 
-func (m *Models) applyAuth(ctx context.Context, model *Model, options StreamOptions) (*Model, StreamOptions, error) {
-	if _, err := m.requireProvider(model); err != nil {
-		return nil, StreamOptions{}, err
+// requireChatProvider rejects models whose type is not chat before looking up their provider.
+func (m *Models) requireChatProvider(model *Model) (*ModelsProvider, error) {
+	if err := assertChatModel(model); err != nil {
+		return nil, err
 	}
-	overrides := AuthResolutionOverrides{Env: options.Env}
-	if options.APIKey != "" {
-		overrides.APIKey = new(options.APIKey)
+	return m.requireProvider(model)
+}
+
+// requestAuth is the result of resolving provider auth for one request: request values win over provider-resolved ones.
+type requestAuth struct {
+	baseURL string
+	apiKey  string
+	headers ProviderHeaders
+	env     ProviderEnv
+}
+
+// resolveRequestAuth resolves provider auth for model and merges it under the request's own key, headers and env.
+// apiKeySet marks an explicit empty request key, which suppresses the resolved key.
+func (m *Models) resolveRequestAuth(ctx context.Context, model AnyModel, apiKey string, apiKeySet bool, headers ProviderHeaders, env ProviderEnv, transform func(context.Context, ProviderHeaders) (ProviderHeaders, error)) (requestAuth, error) {
+	if _, err := m.requireProvider(model); err != nil {
+		return requestAuth{}, err
+	}
+	overrides := AuthResolutionOverrides{Env: env}
+	if apiKey != "" || apiKeySet {
+		overrides.APIKey = new(apiKey)
 	}
 	resolution, err := m.GetModelAuth(ctx, model, overrides)
 	if err != nil {
-		return nil, StreamOptions{}, err
+		return requestAuth{}, err
 	}
 	if resolution == nil {
-		return nil, StreamOptions{}, NewModelsError(ModelsErrorAuth, "Provider is not configured: "+modelProviderID(model), nil)
+		return requestAuth{}, NewModelsError(ModelsErrorAuth, "Provider is not configured: "+model.ProviderID(), nil)
 	}
-	if options.APIKey == "" {
-		options.APIKey = resolution.Auth.APIKey
+	out := requestAuth{baseURL: resolution.Auth.BaseURL, apiKey: apiKey, headers: MergeProviderHeaders(resolution.Auth.Headers, headers), env: env}
+	if apiKey == "" && !apiKeySet {
+		out.apiKey = resolution.Auth.APIKey
 	}
-	options.Headers = MergeProviderHeaders(resolution.Auth.Headers, options.Headers)
-	if options.TransformHeaders != nil {
-		headers := options.Headers
-		if headers == nil {
-			headers = ProviderHeaders{}
+	if transform != nil {
+		transformed := out.headers
+		if transformed == nil {
+			transformed = ProviderHeaders{}
 		}
-		options.Headers, err = options.TransformHeaders(ctx, headers)
+		out.headers, err = transform(ctx, transformed)
 		if err != nil {
-			return nil, StreamOptions{}, err
+			return requestAuth{}, err
 		}
-		options.TransformHeaders = nil
 	}
-	if resolution.Env != nil || options.Env != nil {
-		env := make(ProviderEnv, len(resolution.Env)+len(options.Env))
-		maps.Copy(env, resolution.Env)
-		maps.Copy(env, options.Env)
-		options.Env = env
+	if resolution.Env != nil || env != nil {
+		merged := make(ProviderEnv, len(resolution.Env)+len(env))
+		maps.Copy(merged, resolution.Env)
+		maps.Copy(merged, env)
+		out.env = merged
 	}
+	return out, nil
+}
+
+func (m *Models) applyAuth(ctx context.Context, model *Model, options StreamOptions) (*Model, StreamOptions, error) {
+	auth, err := m.resolveRequestAuth(ctx, model, options.APIKey, false, options.Headers, options.Env, options.TransformHeaders)
+	if err != nil {
+		return nil, StreamOptions{}, err
+	}
+	options.APIKey, options.Headers, options.Env, options.TransformHeaders = auth.apiKey, auth.headers, auth.env, nil
 	requestModel := model
-	if resolution.Auth.BaseURL != "" {
+	if auth.baseURL != "" {
 		requestModel = new(*model)
-		requestModel.ProviderMeta.BaseURL = resolution.Auth.BaseURL
+		requestModel.ProviderMeta.BaseURL = auth.baseURL
 	}
 	return requestModel, options, nil
 }
@@ -97,7 +123,7 @@ func (m *Models) stream(ctx context.Context, model *Model, request Context, simp
 		if transcript.err != nil {
 			return nil, transcript.err
 		}
-		provider, err := m.requireProvider(model)
+		provider, err := m.requireChatProvider(model)
 		if err != nil {
 			return nil, err
 		}
@@ -131,7 +157,7 @@ func (m *Models) StreamDeferred(ctx context.Context, model *Model, handle Deferr
 		opts = options[0]
 	}
 	return m.lazyStream(ctx, model, func() (*AssistantMessageEventStream, error) {
-		provider, err := m.requireProvider(model)
+		provider, err := m.requireChatProvider(model)
 		if err != nil {
 			return nil, err
 		}
@@ -152,7 +178,7 @@ func (m *Models) FetchDeferred(ctx context.Context, model *Model, handle Deferre
 }
 
 func (m *Models) CancelDeferred(ctx context.Context, model *Model, handle DeferredHandle, options ...DeferredCancelOptions) error {
-	provider, err := m.requireProvider(model)
+	provider, err := m.requireChatProvider(model)
 	if err != nil {
 		return err
 	}

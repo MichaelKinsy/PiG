@@ -11,11 +11,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
+	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
 func writeRawFrame(conn net.Conn, body string) error {
@@ -163,8 +165,9 @@ func TestRegisterDecodeFailureNamesTheFieldAndTheRebuild(t *testing.T) {
 // pig's fails with the field it sent and `pig reload`, which restages this
 // pig's SDKs so the runner is rebuilt against them.
 func TestPackedRunnerWithAnotherSDKsRegisterShapeNamesTheRebuild(t *testing.T) {
-	if _, err := exec.LookPath("python3"); err != nil {
-		t.Skipf("python3 not found: %v", err)
+	python := toolchain.PythonExecutable(runtime.GOOS, exec.LookPath)
+	if _, err := exec.LookPath(python); err != nil {
+		t.Skipf("%s not found: %v", python, err)
 	}
 	sdkRoot := filepath.Join(t.TempDir(), "sdk-py")
 	copySDKSource(t, filepath.Join(findModuleRoot(t), "extensions", "sdk-py"), sdkRoot, func(rel string, data []byte) []byte {

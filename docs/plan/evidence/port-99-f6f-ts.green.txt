@@ -1,0 +1,37 @@
+# port-99-f6f-ts green run (package.json/lock/README at 0.99.1, node_modules installed from the lock)
+# internal/coding/pigversion/pigversion.go temporarily set to 0.99.1 for the pin check, then restored (the pin move is the integrator's)
+
+## npm ls
+@michaelkinsy/pig-extension-types@0.0.0 ./extensions/sdk-ts
+├── @earendil-works/pi-coding-agent@0.99.1
+└── typescript@5.9.3
+
+
+## npx tsc --noEmit -p tsconfig.json
+exit=0
+
+## node --test scripts/check-upstream-pin.test.mjs
+✔ reads the relocated Go pin without the old coding directory (57.117304ms)
+✔ uses the current pin even when a different legacy source exists (47.580466ms)
+✔ rejects mismatched declared Pi version (46.784806ms)
+✔ rejects mismatched development Pi version (49.052052ms)
+✔ rejects mismatched locked Pi version (49.66816ms)
+✔ rejects a Go source without the upstream version constant (48.940023ms)
+✔ does not fall back to a legacy-only repository layout (52.688202ms)
+✔ rejects a README that names a different Pi version (73.040831ms)
+✔ rejects a README that does not name the Pi version (51.918944ms)
+ℹ tests 9
+ℹ pass 9
+ℹ fail 0
+
+## node scripts/check-upstream-pin.mjs with pigversion 0.99.1
+exit=0
+
+## node scripts/check-runtime-compat.mjs (expected red until the vendored pi-dist is regenerated)
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  actual: '0.87.1',
+  expected: '0.99.1',
+Updated 1 path from the index
+
+## automation/gen/vendor-pi-dist.sh on a scratch copy at 0.99.1
+Error: /tmp/f6fts-scratch/extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/dist/extensions/codemode/tool.js: import of "@earendil-works/pi-codemode/declarations" has no vendored copy

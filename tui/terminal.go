@@ -116,6 +116,8 @@ type ProcessTerminal struct {
 	readerDone      chan struct{}      // closes after the input goroutine can no longer consume stdin
 	resizeStop      func()             // stops the platform resize watcher; non-nil while running
 	protocolQueried bool
+	// pendingKeyboardProtocolDeviceAttributes counts the DA1 replies owed to keyboard protocol queries. Later DA1 replies answer other queries, such as QueryTerminalColors, and are forwarded.
+	pendingKeyboardProtocolDeviceAttributes atomic.Int32
 
 	progressMu        sync.Mutex
 	progressTicker    *time.Ticker
@@ -206,6 +208,7 @@ func (t *ProcessTerminal) queryAndEnableKittyProtocol() {
 	modifyOtherKeysActive.Store(false)
 	t.protocolQueried = true
 	keyboardProtocolPushed.Store(true)
+	t.pendingKeyboardProtocolDeviceAttributes.Add(1)
 	t.Write(kittyKeyboardProtocolQuery)
 }
 
@@ -280,6 +283,17 @@ func ReadInputChunk(r io.Reader) ([]byte, error) {
 	return buf[:n], err
 }
 
+// isKeyboardProtocolNegotiationReply reports whether sequence is exactly one Kitty flags or DA1 reply, whether or not a query owns it.
+func isKeyboardProtocolNegotiationReply(sequence string) bool {
+	for _, pattern := range []*lazyregexp.Regexp{kittyProtocolResponse, deviceAttributesResponse} {
+		if match := pattern.FindString(sequence); match != "" && match == sequence {
+			return true
+		}
+	}
+	return false
+}
+
+// handleKeyboardProtocolNegotiationSequence consumes a Kitty flags reply, or a DA1 reply owed to a keyboard protocol query, and reports whether it did. A DA1 reply that answers another query is left for the caller to forward.
 func (t *ProcessTerminal) handleKeyboardProtocolNegotiationSequence(sequence string) bool {
 	if match := kittyProtocolResponse.FindStringSubmatch(sequence); match != nil && match[0] == sequence {
 		flags, err := strconv.ParseFloat(match[1], 64)
@@ -295,6 +309,10 @@ func (t *ProcessTerminal) handleKeyboardProtocolNegotiationSequence(sequence str
 		return true
 	}
 	if deviceAttributesResponse.MatchString(sequence) && deviceAttributesResponse.FindString(sequence) == sequence {
+		if t.pendingKeyboardProtocolDeviceAttributes.Load() == 0 {
+			return false
+		}
+		t.pendingKeyboardProtocolDeviceAttributes.Add(-1)
 		if !IsKittyProtocolActive() {
 			t.enableModifyOtherKeys()
 		}

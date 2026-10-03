@@ -1,5 +1,5 @@
-# Only runtime.test.ts:125 and 5943-session-start-notify.test.ts:256 are paired here.
-# The Pi adapter executes the original assertion bodies against published 0.87.1 production modules.
+# Only runtime.test.ts:125 and 5943-session-start-notify.test.ts:220 are paired here.
+# The Pi adapter executes the original assertion bodies against the pinned published production modules.
 # Compare actual assistant roles/costs and unmodified resource/chat containment/order predicates.
 # This does not claim runtime replacement, stale contexts, subscriptions, or reload closure.
 name = "24-runtime-cost-and-resource-order"
@@ -13,7 +13,7 @@ override_base_args = true
 pig_bin = "/usr/bin/env"
 pi_bin = "/usr/bin/env"
 pig_args = ["bash", "./test/parity/testdata/session-runtime-pig.sh"]
-pi_args = ["bash", "-c", "node --experimental-import-meta-resolve ./test/parity/testdata/session-runtime-pi.mjs runtime 125 && node --experimental-import-meta-resolve ./test/parity/testdata/session-runtime-pi.mjs notify 256"]
+pi_args = ["bash", "-c", "node --experimental-import-meta-resolve ./test/parity/testdata/session-runtime-pi.mjs runtime 125 && node --experimental-import-meta-resolve ./test/parity/testdata/session-runtime-pi.mjs notify 220"]
 
 [cli]
 cwd = "../../../.."

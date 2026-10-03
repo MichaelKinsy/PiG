@@ -70,6 +70,8 @@ type GoogleConfig struct {
 	ExtraHeaders map[string]string
 	// ThinkingLevelMap carries the selected model's logical-to-provider thinking mapping. Nil uses the catalog mapping.
 	ThinkingLevelMap ThinkingLevelMap
+	// ModelMetadata is the selected model, which an OnProviderStreamEvent observer receives. Nil hands the observer the configured identity only.
+	ModelMetadata *Model
 }
 
 type googleProvider struct {
@@ -200,9 +202,9 @@ type geminiPart struct {
 }
 
 type geminiFunctionCall struct {
-	Name string         `json:"name"`
-	Args map[string]any `json:"args,omitempty"`
-	ID   string         `json:"id,omitempty"`
+	Name string          `json:"name"`
+	Args json.RawMessage `json:"args,omitempty"`
+	ID   string          `json:"id,omitempty"`
 
 	// idName is the text `${part.functionCall.name}` produces for a decoded response, valid when decoded is set.
 	idName  string
@@ -213,7 +215,7 @@ type geminiFunctionCall struct {
 func (call *geminiFunctionCall) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Name json.RawMessage `json:"name"`
-		Args map[string]any  `json:"args"`
+		Args json.RawMessage `json:"args"`
 		ID   string          `json:"id"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
@@ -302,6 +304,8 @@ const (
 // ─── SSE response types ──────────────────────────────────────────────────────
 
 type geminiStreamChunk struct {
+	// raw is the chunk's JSON as received, for OnProviderStreamEvent.
+	raw           json.RawMessage
 	Candidates    []geminiCandidate    `json:"candidates"`
 	UsageMetadata *geminiUsageMetadata `json:"usageMetadata,omitempty"`
 	ResponseID    string               `json:"responseId,omitempty"`
@@ -464,7 +468,9 @@ func geminiConvertMessages(messages []Message, providerID, modelID string, suppo
 						parts = append(parts, geminiPart{Text: new(sanitizeSurrogates(block.Thinking))})
 					}
 				case ToolCall:
-					call := &geminiFunctionCall{Name: block.Name, Args: block.Arguments}
+					// Pi: args = block.arguments ?? {}. validateProviderRequest rejected arguments with no JSON form before the request was converted.
+					call := &geminiFunctionCall{Name: block.Name}
+					call.Args, _ = block.ArgumentsJSON()
 					if requiresToolCallId(modelID) {
 						call.ID = normalizeToolCallId(modelID, block.ID)
 					}
@@ -543,7 +549,7 @@ func geminiConvertTools(tools []ToolSchema, useParameters, supportsStrictMode bo
 	decls := make([]geminiFuncDecl, len(tools))
 	usesStrictMode := false
 	for i, tool := range tools {
-		strict, err := resolveJSONSchemaStrictSampling(tool, supportsStrictMode)
+		strict, err := resolveJSONSchemaStrictSampling(tool, supportsStrictMode, nil)
 		if err != nil {
 			return nil, false, err
 		}
@@ -872,6 +878,7 @@ func (p *googleProvider) Stream(ctx context.Context, transcript TranscriptContex
 
 	builder := newObservedProviderBuilder(ctx, p.cfg.api, p.cfg.ProviderID, p.cfg.Model)
 	builder.modelCost = opts.ModelCost
+	builder.setProviderEventObserver(opts, providerEventModel(p.cfg.ModelMetadata, p.cfg.api, p.cfg.ProviderID, p.cfg.Model))
 	builder.abort = abort
 	_, builder.managed = resp.Body.(*observedResponseBody)
 	streaming = true
@@ -926,7 +933,11 @@ func runGoogleTurn(ctx context.Context, builder *assistantStreamBuilder, respons
 	state := &googleStreamState{builder: builder}
 	// `for await (const chunk of googleStream)` awaits each next() promise (google-generative-ai.ts:107).
 	err := tslibForAwait(turn, settled.value.(*tslibAsyncIterator), func(value any) (bool, error) {
-		state.handle(value.(*geminiStreamChunk))
+		chunk := value.(*geminiStreamChunk)
+		if err := builder.observeProviderEvent(chunk.raw); err != nil { // google-generative-ai.ts:107
+			return false, err
+		}
+		state.handle(chunk)
 		// The loop body's synchronous segment ends here: consumers that resume before the next chunk see the state it left, not the state at each push.
 		builder.publish()
 		return false, nil
@@ -1052,11 +1063,14 @@ func (state *googleStreamState) handle(chunk *geminiStreamChunk) {
 					fc := part.FunctionCall
 					toolID := googleToolCallID(builder.partial.API, fc.generatedIDName(), fc.ID, builder.partial.Content)
 
-					argsJSON, _ := json.Marshal(fc.Args)
+					// Pi: arguments = args ?? {}, delta = JSON.stringify(arguments).
+					var parsed ToolCall
+					parsed.SetStreamingArguments(string(fc.Args))
+					argsJSON, _ := parsed.ArgumentsJSON()
 
 					// Pi builds the whole tool call, arguments included, before it pushes toolcall_start (google-generative-ai.ts:200-215).
 					builder.toolCallDelta(streamToolCallDelta{
-						index: partIdx, id: toolID, name: fc.Name, argumentsDelta: string(argsJSON), initialArguments: parseStreamingJsonObject(string(argsJSON)), thoughtSignature: part.ThoughtSignature,
+						index: partIdx, id: toolID, name: fc.Name, argumentsDelta: string(argsJSON), initialArguments: parsed.Arguments, thoughtSignature: part.ThoughtSignature,
 					})
 					builder.endToolCall(partIdx)
 				}
@@ -1126,6 +1140,11 @@ func (p *googleProvider) parseGeminiSSE(ctx context.Context, r io.Reader, builde
 		var chunk geminiStreamChunk
 		if err := json.Unmarshal([]byte(data), &chunk); err != nil {
 			builder.fail(StopReasonError, fmt.Errorf("google: invalid SSE JSON: %w", err))
+			return
+		}
+		chunk.raw = json.RawMessage(data)
+		if err := builder.observeProviderEvent(chunk.raw); err != nil {
+			builder.fail(StopReasonError, err)
 			return
 		}
 		state.handle(&chunk)

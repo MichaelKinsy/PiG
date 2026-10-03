@@ -1,23 +1,436 @@
 package tui
 
+// Ports packages/coding-agent/src/utils/syntax-highlight.ts and the highlightCode and getCliHighlightTheme helpers of packages/coding-agent/src/modes/interactive/theme/theme.ts.
+
 import (
-	"path/filepath"
+	"math"
+	"slices"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
-	"github.com/alecthomas/chroma/v2"
-	"github.com/alecthomas/chroma/v2/lexers"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/tui/internal/hljs"
 )
 
-// HighlightCode highlights code with the language's syntax, diff, and metadata theme colors and returns one styled line per source line. An empty or unrecognized language uses the code-block color.
+// HighlightFormatter styles the text of one highlight.js scope.
+type HighlightFormatter func(text string) string
+
+// HighlightTheme maps highlight.js scope names to formatters; "default" styles text outside every mapped scope.
+type HighlightTheme map[string]HighlightFormatter
+
+// HighlightOptions are the options of syntax-highlight.ts highlight. An empty Language auto-detects among LanguageSubset, or every language.
+type HighlightOptions struct {
+	Language       string
+	IgnoreIllegals bool
+	LanguageSubset []string
+	Theme          HighlightTheme
+}
+
+// highlightRegistry is the highlight.js instance with the languages syntax-highlight.ts registers when it loads.
+var highlightRegistry = sync.OnceValue(hljs.NewRegistry)
+
+var loadAllHighlightLanguagesOnce sync.Once
+
+// LoadAllHighlightLanguages registers every highlight.js language, as loadAllHighlightLanguages does, and returns when they are available. It runs once; later calls wait for that load. Highlighted code cached before the load is discarded, because more languages now highlight.
+func LoadAllHighlightLanguages() {
+	loadAllHighlightLanguagesOnce.Do(func() {
+		highlightRegistry().LoadAllLanguages()
+		hlMu.Lock()
+		clear(hlCache)
+		hlGeneration++
+		hlMu.Unlock()
+	})
+}
+
+// SupportsLanguage reports whether highlight.js has a language or alias of that name.
+func SupportsLanguage(name string) bool {
+	return highlightRegistry().SupportsLanguage(name)
+}
+
+// Highlight highlights code with highlight.js and renders its scopes with the theme. An error is an exception highlight.js throws, such as an unknown language.
+func Highlight(code string, options HighlightOptions) (string, error) {
+	out, err := highlightWith(highlightRegistry(), code, options)
+	return terminalText(out), err
+}
+
+func highlightWith(registry *hljs.Registry, code string, options HighlightOptions) (string, error) {
+	var html string
+	var err error
+	if options.Language != "" {
+		html, err = registry.Highlight(code, options.Language, options.IgnoreIllegals)
+	} else {
+		html, err = registry.HighlightAuto(code, options.LanguageSubset)
+	}
+	if err != nil {
+		return "", err
+	}
+	return renderHighlightedHTML(html, options.Theme)
+}
+
+const highlightClassPrefix = "hljs-"
+
+// getScopeFromSpanTag returns the first hljs- class of a span tag without its prefix.
+func getScopeFromSpanTag(tag string) (string, bool) {
+	classValue, ok := spanClassValue(tag)
+	if !ok || classValue == "" {
+		return "", false
+	}
+	for _, className := range splitJSWhitespace(classValue) {
+		if scope, ok := strings.CutPrefix(className, highlightClassPrefix); ok {
+			return scope, true
+		}
+	}
+	return "", false
+}
+
+// spanClassValue is the value matched by /\sclass\s*=\s*(?:"([^"]*)"|'([^']*)')/ in a tag.
+func spanClassValue(tag string) (string, bool) {
+	for i := 0; i < len(tag); {
+		r, size := jsstring.DecodeRuneInString(tag[i:])
+		if !isJSWhitespace(r) || !strings.HasPrefix(tag[i+size:], "class") {
+			i += size
+			continue
+		}
+		j := skipJSWhitespace(tag, i+size+len("class"))
+		if j < len(tag) && tag[j] == '=' {
+			j = skipJSWhitespace(tag, j+1)
+			if j < len(tag) && (tag[j] == '"' || tag[j] == '\'') {
+				if end := strings.IndexByte(tag[j+1:], tag[j]); end >= 0 {
+					return tag[j+1 : j+1+end], true
+				}
+			}
+		}
+		i += size
+	}
+	return "", false
+}
+
+func skipJSWhitespace(text string, i int) int {
+	for i < len(text) {
+		r, size := jsstring.DecodeRuneInString(text[i:])
+		if !isJSWhitespace(r) {
+			break
+		}
+		i += size
+	}
+	return i
+}
+
+// splitJSWhitespace is String.prototype.split(/\s+/).
+func splitJSWhitespace(text string) []string {
+	var parts []string
+	start := 0
+	for i := 0; i < len(text); {
+		r, size := jsstring.DecodeRuneInString(text[i:])
+		if !isJSWhitespace(r) {
+			i += size
+			continue
+		}
+		parts = append(parts, text[start:i])
+		i = skipJSWhitespace(text, i)
+		start = i
+	}
+	return append(parts, text[start:])
+}
+
+// formatter is a theme[scope] property read, true when the value is truthy. The theme is an object literal: an own property shadows Object.prototype even when it is undefined (a nil entry), and a scope naming an Object.prototype member finds that member. syntax-highlight.ts calls it as a strict-mode function with an undefined receiver: Object(text) is a String wrapper that concatenation reads back as text, toString returns "[object Undefined]", isPrototypeOf returns false for a string, __proto__ is an object, and the other members throw a TypeError.
+func (theme HighlightTheme) formatter(scope string) (HighlightFormatter, bool) {
+	if f, ok := theme[scope]; ok {
+		return f, f != nil
+	}
+	switch scope {
+	case "constructor":
+		return func(text string) string { return text }, true
+	case "toString":
+		return func(string) string { return "[object Undefined]" }, true
+	case "isPrototypeOf":
+		return func(string) string { return "false" }, true
+	case "toLocaleString":
+		return throwHighlightThemeError("Object.prototype.toLocaleString called on null or undefined"), true
+	case "__proto__":
+		return throwHighlightThemeError("formatter is not a function"), true
+	case "__defineGetter__", "__defineSetter__", "__lookupGetter__", "__lookupSetter__", "hasOwnProperty", "propertyIsEnumerable", "valueOf":
+		return throwHighlightThemeError("Cannot convert undefined or null to object"), true
+	}
+	return nil, false
+}
+
+func throwHighlightThemeError(message string) HighlightFormatter {
+	return func(string) string { panic(highlightThemeError{message}) }
+}
+
+// highlightThemeError is the TypeError a theme formatter read from Object.prototype throws.
+type highlightThemeError struct{ message string }
+
+func (e highlightThemeError) Error() string { return e.message }
+
+func getScopeFormatter(scope string, theme HighlightTheme) (HighlightFormatter, bool) {
+	if f, ok := theme.formatter(scope); ok {
+		return f, true
+	}
+	if before, _, ok := strings.Cut(scope, "."); ok {
+		if f, ok := theme.formatter(before); ok {
+			return f, true
+		}
+	}
+	if before, _, ok := strings.Cut(scope, "-"); ok {
+		if f, ok := theme.formatter(before); ok {
+			return f, true
+		}
+	}
+	return nil, false
+}
+
+// scopeEntry is a span on the scope stack; a span without an hljs- class pushes an undefined scope.
+type scopeEntry struct {
+	scope   string
+	defined bool
+}
+
+func getActiveFormatter(scopes []scopeEntry, theme HighlightTheme) (HighlightFormatter, bool) {
+	for _, scope := range slices.Backward(scopes) {
+		if !scope.defined {
+			continue
+		}
+		if f, ok := getScopeFormatter(scope.scope, theme); ok {
+			return f, true
+		}
+	}
+	return theme.formatter("default")
+}
+
+func isSpanOpenTagStart(html string, index int) bool {
+	if !strings.HasPrefix(html[index:], "<span") {
+		return false
+	}
+	if index+len("<span") >= len(html) {
+		return false
+	}
+	switch html[index+len("<span")] {
+	case '>', ' ', '\t', '\n', '\r':
+		return true
+	}
+	return false
+}
+
+// RenderHighlightedHtml renders highlight.js HTML as text: each run of text takes the formatter of its innermost mapped scope, or the theme's default, and HTML character references are decoded.
+func RenderHighlightedHtml(html string, theme HighlightTheme) string {
+	out, err := renderHighlightedHTML(html, theme)
+	if err != nil {
+		panic(err)
+	}
+	return terminalText(out)
+}
+
+// terminalText is a JavaScript string as Node writes it to a terminal: UTF-8, each lone surrogate replaced by U+FFFD. Highlighting keeps JavaScript's UTF-16 code units (WTF-8) until this boundary, because highlight.js can split a surrogate pair between two scopes.
+func terminalText(text string) string {
+	if utf8.ValidString(text) {
+		return text
+	}
+	return string(jsstring.ToUTF8(text))
+}
+
+func renderHighlightedHTML(html string, theme HighlightTheme) (output string, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			thrown, ok := recovered.(highlightThemeError)
+			if !ok {
+				panic(recovered)
+			}
+			err = thrown
+		}
+	}()
+	var out, textBuffer strings.Builder
+	var scopes []scopeEntry
+	flushText := func() {
+		if textBuffer.Len() == 0 {
+			return
+		}
+		if f, ok := getActiveFormatter(scopes, theme); ok {
+			out.WriteString(f(textBuffer.String()))
+		} else {
+			out.WriteString(textBuffer.String())
+		}
+		textBuffer.Reset()
+	}
+	for index := 0; index < len(html); {
+		if isSpanOpenTagStart(html, index) {
+			if tagEnd := strings.IndexByte(html[index+5:], '>'); tagEnd >= 0 {
+				tagEnd += index + 5
+				flushText()
+				scope, ok := getScopeFromSpanTag(html[index : tagEnd+1])
+				scopes = append(scopes, scopeEntry{scope, ok})
+				index = tagEnd + 1
+				continue
+			}
+		}
+		if strings.HasPrefix(html[index:], "</span>") {
+			flushText()
+			if len(scopes) > 0 {
+				scopes = scopes[:len(scopes)-1]
+			}
+			index += len("</span>")
+			continue
+		}
+		if html[index] == '&' {
+			if text, length, ok := decodeHTMLEntityAt(html, index); ok {
+				textBuffer.WriteString(text)
+				index += length
+				continue
+			}
+		}
+		textBuffer.WriteByte(html[index])
+		index++
+	}
+	flushText()
+	return out.String(), nil
+}
+
+// decodeHTMLEntityAt ports utils/html.ts decodeHtmlEntityAt: the reference ends at the next semicolon within 16 UTF-16 code units. length is in bytes of html.
+func decodeHTMLEntityAt(html string, index int) (text string, length int, ok bool) {
+	semicolon := strings.IndexByte(html[index+1:], ';')
+	if semicolon < 0 {
+		return "", 0, false
+	}
+	semicolon += index + 1
+	if len(jsstring.ToUTF16(html[index:semicolon])) > 16 {
+		return "", 0, false
+	}
+	decoded, ok := decodeHTMLEntity(html[index+1 : semicolon])
+	if !ok {
+		return "", 0, false
+	}
+	return decoded, semicolon - index + 1, true
+}
+
+// decodeHTMLEntity ports utils/html.ts decodeHtmlEntity.
+func decodeHTMLEntity(entity string) (string, bool) {
+	switch entity {
+	case "amp":
+		return "&", true
+	case "lt":
+		return "<", true
+	case "gt":
+		return ">", true
+	case "quot":
+		return `"`, true
+	case "apos":
+		return "'", true
+	}
+	if rest, ok := strings.CutPrefix(entity, "#x"); ok {
+		return decodeCodePoint(jsParseInt(rest, 16))
+	}
+	if rest, ok := strings.CutPrefix(entity, "#X"); ok {
+		return decodeCodePoint(jsParseInt(rest, 16))
+	}
+	if rest, ok := strings.CutPrefix(entity, "#"); ok {
+		return decodeCodePoint(jsParseInt(rest, 10))
+	}
+	return "", false
+}
+
+// decodeCodePoint is String.fromCodePoint for an integer code point; a surrogate code point stays a lone UTF-16 unit (WTF-8).
+func decodeCodePoint(codePoint float64) (string, bool) {
+	if math.IsNaN(codePoint) || math.IsInf(codePoint, 0) || codePoint != math.Trunc(codePoint) || codePoint < 0 || codePoint > 0x10ffff {
+		return "", false
+	}
+	r := rune(codePoint)
+	if r >= 0xd800 && r <= 0xdfff {
+		return string([]byte{byte(0xe0 | (r >> 12)), byte(0x80 | ((r >> 6) & 0x3f)), byte(0x80 | (r & 0x3f))}), true
+	}
+	return string(r), true
+}
+
+// jsParseInt is Number.parseInt(text, radix) for radix 10 or 16.
+func jsParseInt(text string, radix int) float64 {
+	text = text[skipJSWhitespace(text, 0):]
+	sign := 1.0
+	if text != "" && (text[0] == '+' || text[0] == '-') {
+		if text[0] == '-' {
+			sign = -1
+		}
+		text = text[1:]
+	}
+	if radix == 16 && len(text) >= 2 && text[0] == '0' && (text[1] == 'x' || text[1] == 'X') {
+		text = text[2:]
+	}
+	value, digits := 0.0, 0
+	for _, c := range []byte(text) {
+		var d int
+		switch {
+		case c >= '0' && c <= '9':
+			d = int(c - '0')
+		case radix == 16 && c >= 'a' && c <= 'f':
+			d = int(c-'a') + 10
+		case radix == 16 && c >= 'A' && c <= 'F':
+			d = int(c-'A') + 10
+		default:
+			d = radix
+		}
+		if d >= radix {
+			break
+		}
+		value = value*float64(radix) + float64(d)
+		digits++
+	}
+	if digits == 0 {
+		return math.NaN()
+	}
+	return sign * value
+}
+
+// cliHighlightTheme is theme.ts buildCliHighlightTheme for a theme.
+func cliHighlightTheme(t *Theme) HighlightTheme {
+	fg := func(token string) HighlightFormatter {
+		return func(s string) string { return t.FgText(token, s) }
+	}
+	return HighlightTheme{
+		"keyword":     fg("syntaxKeyword"),
+		"built_in":    fg("syntaxType"),
+		"literal":     fg("syntaxNumber"),
+		"number":      fg("syntaxNumber"),
+		"regexp":      fg("syntaxString"),
+		"string":      fg("syntaxString"),
+		"comment":     fg("syntaxComment"),
+		"doctag":      fg("syntaxComment"),
+		"meta":        fg("muted"),
+		"function":    fg("syntaxFunction"),
+		"title":       fg("syntaxFunction"),
+		"class":       fg("syntaxType"),
+		"type":        fg("syntaxType"),
+		"tag":         fg("syntaxPunctuation"),
+		"name":        fg("syntaxKeyword"),
+		"attr":        fg("syntaxVariable"),
+		"variable":    fg("syntaxVariable"),
+		"params":      fg("syntaxVariable"),
+		"operator":    fg("syntaxOperator"),
+		"punctuation": fg("syntaxPunctuation"),
+		"emphasis":    func(s string) string { return markdownDecoration("\x1b[3m", SGRItalicReset, s) },
+		"strong":      func(s string) string { return markdownDecoration("\x1b[1m", SGRBoldDimReset, s) },
+		"link":        func(s string) string { return markdownDecoration("\x1b[4m", SGRUnderlineReset, s) },
+		"addition":    fg("toolDiffAdded"),
+		"deletion":    fg("toolDiffRemoved"),
+	}
+}
+
+// HighlightCode highlights code for the active theme and returns its lines, as theme.ts highlightCode does. Code in a language highlight.js does not support takes the mdCodeBlock color; code highlight.js fails on stays unstyled.
 func HighlightCode(code, lang string) []string {
+	return highlightCodeLines(code, lang, false)
+}
+
+// highlightMarkdownCode is getMarkdownTheme().highlightCode, which styles a failed highlight with the mdCodeBlock color too.
+func highlightMarkdownCode(code, lang string) []string {
+	return highlightCodeLines(code, lang, true)
+}
+
+func highlightCodeLines(code, lang string, codeBlockOnError bool) []string {
 	t := ActiveTheme()
-	key := hlKey{lang: lang, code: code}
+	key := hlKey{lang: lang, code: code, codeBlockOnError: codeBlockOnError}
 
 	hlMu.Lock()
 	if t != hlTheme {
-		// Active theme changed (e.g. /theme): the memoized colors are
-		// stale. Drop the cache and rebind to the new theme.
+		// The active theme changed (e.g. /theme): drop the colors cached for the old one.
 		clear(hlCache)
 		hlTheme = t
 	}
@@ -25,13 +438,13 @@ func HighlightCode(code, lang string) []string {
 		hlMu.Unlock()
 		return v
 	}
+	generation := hlGeneration
 	hlMu.Unlock()
 
-	// Compute outside the lock; chroma lexing is the slow part.
-	out := highlightCodeUncached(code, lang, t)
+	out := highlightCodeUncached(highlightRegistry(), code, lang, codeBlockOnError, t)
 
 	hlMu.Lock()
-	if t == hlTheme { // theme unchanged while we computed
+	if t == hlTheme && generation == hlGeneration {
 		if len(hlCache) >= hlCacheMax {
 			clear(hlCache)
 		}
@@ -41,196 +454,56 @@ func HighlightCode(code, lang string) []string {
 	return out
 }
 
-// hlKey memoizes HighlightCode by (lang, code) for the active theme.
-type hlKey struct{ lang, code string }
+// hlKey memoizes highlighted lines for the active theme and loaded languages.
+type hlKey struct {
+	lang, code       string
+	codeBlockOnError bool
+}
 
-// hlCacheMax bounds the memo so a long session cannot grow it without
-// limit. A single streaming turn has only a handful of code blocks, so it
-// never approaches the cap; clearing on overflow keeps memory O(1) at the
-// cost of an occasional cold re-highlight.
+// hlCacheMax bounds the memo so a long session cannot grow it without limit; clearing on overflow keeps memory bounded at the cost of an occasional cold re-highlight.
 const hlCacheMax = 1024
 
 var (
-	hlMu    sync.Mutex
-	hlTheme *Theme
-	hlCache = map[hlKey][]string{}
+	hlMu         sync.Mutex
+	hlTheme      *Theme
+	hlGeneration int
+	hlCache      = map[hlKey][]string{}
 )
 
-// highlightCodeUncached is the pure highlighter. HighlightCode wraps it with
-// a memo: syntax highlighting dominates markdown parse cost, and streaming
-// re-parses the whole message every frame, re-highlighting already-closed
-// code blocks whose (lang, code) never change. The output is a pure function
-// of (lang, code, theme), so the memo is byte-identical to calling this
-// directly. Callers treat the returned slice as read-only.
-func highlightCodeUncached(code, lang string, t *Theme) []string {
-	if lang == "" {
-		return fallbackCodeLines(code, t)
+// highlightCodeUncached is the pure highlighter behind the memo: streaming re-parses a message every frame, so closed code blocks would otherwise re-highlight with unchanged input. Callers treat the returned slice as read-only.
+func highlightCodeUncached(registry *hljs.Registry, code, lang string, codeBlockOnError bool, t *Theme) []string {
+	if lang == "" || !registry.SupportsLanguage(lang) {
+		return codeBlockLines(code, t)
 	}
-	lexer := lexers.Get(lang)
-	if lexer == nil {
-		lexer = lexers.Match("file." + lang)
-	}
-	if lexer == nil {
-		return fallbackCodeLines(code, t)
-	}
-	lexer = chroma.Coalesce(lexer)
-
-	it, err := lexer.Tokenise(nil, code)
+	highlighted, err := highlightWith(registry, code, HighlightOptions{Language: lang, IgnoreIllegals: true, Theme: cliHighlightTheme(t)})
 	if err != nil {
-		return fallbackCodeLines(code, t)
-	}
-
-	var buf strings.Builder
-	// emit writes v in fg; a token spanning lines resets the color at each line break so a multi-line string doesn't bleed into the next line's gutter / surrounding chrome.
-	emit := func(fg, v string) {
-		if fg == "" {
-			buf.WriteString(v)
-			return
+		if codeBlockOnError {
+			return codeBlockLines(code, t)
 		}
-		segs := strings.Split(v, "\n")
-		for i, seg := range segs {
-			if seg != "" {
-				buf.WriteString(fg)
-				buf.WriteString(seg)
-				buf.WriteString(SGRFgReset)
-			}
-			if i < len(segs)-1 {
-				buf.WriteByte('\n')
-			}
-		}
+		return strings.Split(code, "\n")
 	}
-	// A string interpolation is an unmapped nested scope: its unstyled tokens inherit the string color as one segment, and a styled token (number, keyword) ends that segment.
-	// upstream: packages/coding-agent/src/utils/syntax-highlight.ts:renderHighlightedHtml
-	depth := 0
-	var subst strings.Builder
-	flushSubst := func() {
-		if subst.Len() > 0 {
-			emit(t.SyntaxString, subst.String())
-			subst.Reset()
-		}
-	}
-	for tok := it(); tok != chroma.EOF; tok = it() {
-		fg := syntaxColorFor(tok.Type, t)
-		v := tok.Value
-		if tok.Type == chroma.LiteralStringInterpol && (depth > 0 || strings.HasSuffix(v, "{") || strings.HasSuffix(v, `\(`)) {
-			// Coalesce merges adjacent delimiters ("}${", "}}", ")\(") and some lexers fold a conversion into the closer ("!r}", "=}"), so count every delimiter in the value.
-			for _, r := range v {
-				switch r {
-				case '{', '(':
-					depth++
-				case '}', ')':
-					if depth > 0 {
-						depth--
-					}
-				}
-			}
-			subst.WriteString(v)
-			if depth == 0 {
-				flushSubst()
-			}
-			continue
-		}
-		if depth > 0 {
-			if fg == "" {
-				subst.WriteString(v)
-				continue
-			}
-			flushSubst()
-		}
-		emit(fg, v)
-	}
-	flushSubst()
-	highlighted := buf.String()
-	// Chroma's EnsureNL lexers may emit their synthetic final newline. It is lexer input, not a source line for the caller to render.
-	if lexer.Config().EnsureNL && !strings.HasSuffix(code, "\n") {
-		highlighted = strings.TrimSuffix(highlighted, "\n")
-	}
-	return strings.Split(highlighted, "\n")
+	return strings.Split(terminalText(highlighted), "\n")
 }
 
-// syntaxColorFor maps lexer categories to Pi's syntax, diff, metadata, and tag-name colors.
-// upstream: packages/coding-agent/src/modes/interactive/theme/theme.ts:buildCliHighlightTheme
-func syntaxColorFor(t chroma.TokenType, theme *Theme) string {
-	switch t {
-	case chroma.GenericInserted:
-		return theme.ToolDiffAdded
-	case chroma.GenericDeleted:
-		return theme.ToolDiffRemoved
-	case chroma.NameDecorator:
-		return theme.Muted
-	case chroma.NameTag:
-		return theme.SyntaxKeyword
-	}
-	switch t.SubCategory() {
-	case chroma.LiteralString:
-		return theme.SyntaxString
-	case chroma.LiteralNumber:
-		return theme.SyntaxNumber
-	}
-	switch t.Category() {
-	case chroma.Comment:
-		return theme.SyntaxComment
-	case chroma.Keyword:
-		// KeywordType has its own SyntaxType slot upstream.
-		if t == chroma.KeywordType {
-			return theme.SyntaxType
-		}
-		return theme.SyntaxKeyword
-	case chroma.Operator:
-		return theme.SyntaxOperator
-	case chroma.Punctuation:
-		return theme.SyntaxPunctuation
-	case chroma.Name:
-		switch t {
-		case chroma.NameFunction, chroma.NameFunctionMagic, chroma.NameBuiltin:
-			return theme.SyntaxFunction
-		case chroma.NameClass, chroma.NameNamespace:
-			return theme.SyntaxType
-		case chroma.NameVariable, chroma.NameVariableClass, chroma.NameVariableGlobal,
-			chroma.NameVariableInstance, chroma.NameAttribute:
-			return theme.SyntaxVariable
-		default:
-			return "" // plain name: leave uncolored
-		}
-	}
-	return ""
-}
-
-func fallbackCodeLines(code string, t *Theme) []string {
+func codeBlockLines(code string, t *Theme) []string {
 	lines := strings.Split(code, "\n")
-	out := make([]string, len(lines))
-	for i, ln := range lines {
-		if ln == "" {
-			out[i] = ""
-			continue
-		}
-		out[i] = t.MDCodeBlock + ln + SGRFgReset
+	for i, line := range lines {
+		lines[i] = t.FgText("mdCodeBlock", line)
 	}
-	return out
+	return lines
 }
 
-// LanguageFromPath returns a language identifier for the given file path,
-// or empty if no mapping exists. Mirrors upstream getLanguageFromPath in
-// theme.ts:1015-1077. The extension table is kept in lock-step with
-// upstream so a file rendered through `read` displays identically in both
-// implementations.
+// LanguageFromPath returns the highlight language for a file path, or "" when none maps, as theme.ts getLanguageFromPath does: the extension is the text after the path's last dot, or the whole path when it has none, lowercased as String.prototype.toLowerCase does.
 func LanguageFromPath(path string) string {
-	ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(path), "."))
+	ext := path[strings.LastIndexByte(path, '.')+1:]
 	if ext == "" {
-		// Some files use the basename as the "extension" (Dockerfile,
-		// Makefile, CMakeLists.txt). Upstream uses the last dot-segment;
-		// we fall back to the basename for the extensionless cases.
-		base := strings.ToLower(filepath.Base(path))
-		if lang, ok := extToLang[base]; ok {
-			return lang
-		}
 		return ""
 	}
-	return extToLang[ext]
+	// strings.ToLower maps U+0130 to "i"; toLowerCase maps it to "i\u0307" (SpecialCasing.txt). Every other character lowercases to the same ASCII letters in both.
+	return extToLang[strings.ToLower(strings.ReplaceAll(ext, "\u0130", "i\u0307"))]
 }
 
-// extToLang mirrors theme.ts:1019-1076 byte-for-byte. Do not reorder or
-// extend without checking upstream first.
+// extToLang is getLanguageFromPath's extension table.
 var extToLang = map[string]string{
 	"ts":         "typescript",
 	"tsx":        "typescript",

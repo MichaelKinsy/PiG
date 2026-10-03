@@ -1,49 +1,4 @@
 [[fields]]
-id = "agent/harness/session/jsonl_types.go#LegacyV3SessionHeader.Version:json:version"
-path = "agent/harness/session/jsonl_types.go"
-owner = "LegacyV3SessionHeader"
-field = "Version"
-wire_name = "version"
-classification = "upstream"
-rationale = "Exact upstream Pi format-3 JSONL session header discriminator retained for legacy transcript migration."
-
-[[fields]]
-id = "agent/harness/session/jsonl_types.go#const.JSONLFormatVersion:go:-"
-path = "agent/harness/session/jsonl_types.go"
-owner = "<package>"
-field = "JSONLFormatVersion"
-wire_name = "-"
-classification = "upstream"
-rationale = "Exact upstream Pi JSONL session file format discriminator."
-
-[[fields]]
-id = "agent/harness/session/jsonl_types.go#const.JSONLStorageVersion:go:-"
-path = "agent/harness/session/jsonl_types.go"
-owner = "<package>"
-field = "JSONLStorageVersion"
-wire_name = "-"
-classification = "upstream"
-rationale = "Exact upstream Pi JSONL storageVersion discriminator (matches upstream JSONL_STORAGE_VERSION)."
-
-[[fields]]
-id = "agent/harness/session/memory.go#const.memoryStorageVersion:go:-"
-path = "agent/harness/session/memory.go"
-owner = "<package>"
-field = "memoryStorageVersion"
-wire_name = "-"
-classification = "upstream"
-rationale = "Mirrors upstream's session storageVersion concept (agent-harness/sqlite-node storageVersion) for the in-memory backend."
-
-[[fields]]
-id = "agent/harness/telemetry_schema.go#TelemetrySchemaDefinition.Version:json:version"
-path = "agent/harness/telemetry_schema.go"
-owner = "TelemetrySchemaDefinition"
-field = "Version"
-wire_name = "version"
-classification = "upstream"
-rationale = "Preserves TelemetrySchemaDefinition.version from packages/telemetry/src/index.ts and the exact schema values in packages/agent/src/harness/telemetry.ts; TestTelemetrySchemasMatchUpstream compares both schemas to the executable upstream snapshot. It does not select a Pig format reader."
-
-[[fields]]
 id = "ai/anthropic_client.go#const.claudeCodeVersion:go:-"
 path = "ai/anthropic_client.go"
 owner = "<package>"
@@ -287,6 +242,15 @@ classification = "release-content"
 rationale = "Carries the Profile release version into build record identity."
 
 [[fields]]
+id = "coding/pigletbuild/source_fetch.go#modDownloadResult.Version:go:-"
+path = "coding/pigletbuild/source_fetch.go"
+owner = "modDownloadResult"
+field = "Version"
+wire_name = "-"
+classification = "external"
+rationale = "Module version reported by `go mod download -json`; the Go toolchain owns the field."
+
+[[fields]]
 id = "coding/upstream.go#const.PigVersion:go:-"
 path = "coding/upstream.go"
 owner = "<package>"
@@ -321,6 +285,123 @@ field = "Version"
 wire_name = "-"
 classification = "release-content"
 rationale = "Aliases internal/coding/pigversion/pigversion.go's Version, the combined Pig+upstream release string."
+
+[[fields]]
+id = "durable/codecs.go#documentContentWire.Version:json:version"
+path = "durable/codecs.go"
+owner = "documentContentWire"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "Wire form of pi-durable DocumentContent.version (packages/durable/src/types.ts), the application document definition version stored with each document."
+
+[[fields]]
+id = "durable/documents.go#AnyDocDefinition.Version:go:-"
+path = "durable/documents.go"
+owner = "AnyDocDefinition"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-durable document definition version (packages/durable/src/types.ts DocDefinition.version) that selects migrations."
+
+[[fields]]
+id = "durable/session/session.go#LineDocument.Version:go:-"
+path = "durable/session/session.go"
+owner = "LineDocument"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-durable document definition version carried by a Session document line (packages/durable/src/session)."
+
+[[fields]]
+id = "durable/storage/jsonl/storage.go#const.formatVersion:go:-"
+path = "durable/storage/jsonl/storage.go"
+owner = "<package>"
+field = "formatVersion"
+wire_name = "-"
+classification = "upstream"
+rationale = "Exact upstream pi-durable JSONL storage FORMAT_VERSION (packages/durable/src/storage/jsonl/storage.ts:28)."
+
+[[fields]]
+id = "durable/storage/jsonl/storage.go#contentWire.Version:json:version"
+path = "durable/storage/jsonl/storage.go"
+owner = "contentWire"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "pi-durable document content version in the JSONL storage line (packages/durable/src/storage/jsonl/storage.ts)."
+
+[[fields]]
+id = "durable/storage/sqlite/migrations.go#SqliteMigration.Version:go:-"
+path = "durable/storage/sqlite/migrations.go"
+owner = "SqliteMigration"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-durable SQLite schema migration version (packages/durable/src/storage/sqlite/migrations.ts)."
+
+[[fields]]
+id = "durable/tasks.go#AnyTaskDefinition.Version:go:-"
+path = "durable/tasks.go"
+owner = "AnyTaskDefinition"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-durable task definition version (packages/durable/src/types.ts TaskDefinition.version)."
+
+[[fields]]
+id = "durable/types.go#CommonDocDefinition.Version:go:-"
+path = "durable/types.go"
+owner = "CommonDocDefinition"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-durable document definition version (packages/durable/src/types.ts:73)."
+
+[[fields]]
+id = "durable/types.go#DocumentChange.Version:go:-"
+path = "durable/types.go"
+owner = "DocumentChange"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-durable document change version (packages/durable/src/types.ts)."
+
+[[fields]]
+id = "durable/types.go#DocumentContent.Version:json:version"
+path = "durable/types.go"
+owner = "DocumentContent"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "pi-durable DocumentContent.version (packages/durable/src/types.ts)."
+
+[[fields]]
+id = "durable/types.go#StoredDocument.Version:go:-"
+path = "durable/types.go"
+owner = "StoredDocument"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-durable stored document version (packages/durable/src/types.ts)."
+
+[[fields]]
+id = "durable/types.go#TaskDefinition.Version:go:-"
+path = "durable/types.go"
+owner = "TaskDefinition"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-durable task definition version (packages/durable/src/types.ts:237)."
+
+[[fields]]
+id = "durable/types.go#TaskRecord.Version:json:version"
+path = "durable/types.go"
+owner = "TaskRecord"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "pi-durable TaskRecord.version (packages/durable/src/types.ts)."
 
 [[fields]]
 id = "internal/coding/pigversion/pigversion.go#const.PigVersion:go:-"
@@ -438,6 +519,24 @@ field = "CurrentSessionVersion"
 wire_name = "-"
 classification = "upstream"
 rationale = "Exact upstream Pi Session format discriminator retained for transcript compatibility."
+
+[[fields]]
+id = "internal/evals/report.go#EvalComparisonReport.SchemaVersion:json:schemaVersion"
+path = "internal/evals/report.go"
+owner = "EvalComparisonReport"
+field = "SchemaVersion"
+wire_name = "schemaVersion"
+classification = "upstream"
+rationale = "Exact upstream pi-evals EvalComparisonReport schemaVersion (packages/evals/src/report.ts:76, :405)."
+
+[[fields]]
+id = "internal/evals/report.go#const.evalReportSchemaVersion:go:-"
+path = "internal/evals/report.go"
+owner = "<package>"
+field = "evalReportSchemaVersion"
+wire_name = "-"
+classification = "upstream"
+rationale = "Exact upstream pi-evals report schemaVersion 3 (packages/evals/src/report.ts:405)."
 
 [[fields]]
 id = "internal/experimental/coordinator.go#const.CoordinatorProtocolVersion:go:-"
@@ -564,6 +663,69 @@ field = "Version"
 wire_name = "version"
 classification = "external"
 rationale = "Go release index (go.dev/dl) release field owned by the external download service."
+
+[[fields]]
+id = "mcp/client.go#ClientOptions.ProtocolVersion:go:-"
+path = "mcp/client.go"
+owner = "ClientOptions"
+field = "ProtocolVersion"
+wire_name = "-"
+classification = "external"
+rationale = "Model Context Protocol revision negotiated in initialize and sent as the MCP-Protocol-Version header; owned by the external MCP specification and mirrored from packages/mcp/src/protocol/types.ts (LATEST_PROTOCOL_VERSION, SUPPORTED_PROTOCOL_VERSIONS), not a Pig-owned format."
+
+[[fields]]
+id = "mcp/oauth/discovery.go#DiscoveryOptions.ProtocolVersion:go:-"
+path = "mcp/oauth/discovery.go"
+owner = "DiscoveryOptions"
+field = "ProtocolVersion"
+wire_name = "-"
+classification = "external"
+rationale = "Model Context Protocol revision negotiated in initialize and sent as the MCP-Protocol-Version header; owned by the external MCP specification and mirrored from packages/mcp/src/protocol/types.ts (LATEST_PROTOCOL_VERSION, SUPPORTED_PROTOCOL_VERSIONS), not a Pig-owned format."
+
+[[fields]]
+id = "mcp/types.go#Implementation.Version:json:version"
+path = "mcp/types.go"
+owner = "Implementation"
+field = "Version"
+wire_name = "version"
+classification = "external"
+rationale = "MCP clientInfo/serverInfo implementation version string reported by the peer (Implementation.version in packages/mcp/src/protocol/types.ts); a release label, not a format discriminator."
+
+[[fields]]
+id = "mcp/types.go#InitializeParams.ProtocolVersion:json:protocolVersion"
+path = "mcp/types.go"
+owner = "InitializeParams"
+field = "ProtocolVersion"
+wire_name = "protocolVersion"
+classification = "external"
+rationale = "Model Context Protocol revision negotiated in initialize and sent as the MCP-Protocol-Version header; owned by the external MCP specification and mirrored from packages/mcp/src/protocol/types.ts (LATEST_PROTOCOL_VERSION, SUPPORTED_PROTOCOL_VERSIONS), not a Pig-owned format."
+
+[[fields]]
+id = "mcp/types.go#InitializeResult.ProtocolVersion:json:protocolVersion"
+path = "mcp/types.go"
+owner = "InitializeResult"
+field = "ProtocolVersion"
+wire_name = "protocolVersion"
+classification = "external"
+rationale = "Model Context Protocol revision negotiated in initialize and sent as the MCP-Protocol-Version header; owned by the external MCP specification and mirrored from packages/mcp/src/protocol/types.ts (LATEST_PROTOCOL_VERSION, SUPPORTED_PROTOCOL_VERSIONS), not a Pig-owned format."
+
+[[fields]]
+id = "mcp/types.go#const.LatestProtocolVersion:go:-"
+path = "mcp/types.go"
+owner = "<package>"
+field = "LatestProtocolVersion"
+wire_name = "-"
+classification = "external"
+rationale = "Model Context Protocol revision negotiated in initialize and sent as the MCP-Protocol-Version header; owned by the external MCP specification and mirrored from packages/mcp/src/protocol/types.ts (LATEST_PROTOCOL_VERSION, SUPPORTED_PROTOCOL_VERSIONS), not a Pig-owned format."
+
+[[fields]]
+id = "telemetry/schema.go#TelemetrySchemaDefinition.Version:json:version"
+path = "telemetry/schema.go"
+owner = "TelemetrySchemaDefinition"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "pi-telemetry schema definition version (packages/telemetry/src/index.ts:67)."
 
 [[fields]]
 id = "test/parity/cmd/asynccheck/main.go#asyncManifest.Version:go:-"

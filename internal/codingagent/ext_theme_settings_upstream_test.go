@@ -20,8 +20,7 @@ func (s *themeRendererSpy) RequestRender() { s.requests++ }
 
 func themeSettingsMode(t *testing.T) (*ExtUIContext, *SettingsManager, string, *themeRendererSpy) {
 	t.Helper()
-	restore := tui.ActiveThemeRegistry()
-	t.Cleanup(func() { tui.SetThemeRegistry(restore) })
+	restoreStartupTheme(t)
 	tui.SetThemeRegistry(tui.NewThemeRegistry())
 	tui.SetThemeByName("dark", false)
 	agentDir := t.TempDir()
@@ -61,7 +60,7 @@ func TestExtensionSetThemePersistsToSettingsManagerUpstream(t *testing.T) {
 	}
 }
 
-// Ports packages/coding-agent/test/interactive-mode-status.test.ts:204-227 (does not persist invalid theme names). Upstream's mocked controller asserts requestRender is not called, which only shows that the UI-context wrapper adds no render. Pi's real controller repaints once while falling back to dark (theme-controller.ts:132-137 applyThemeName -> notifyChanged), so the faithful counterpart is exactly one Invalidate and one RequestRender. The test starts from light so the dark fallback proves the name was applied.
+// Ports packages/coding-agent/test/interactive-mode-status.test.ts:204-227 (does not persist invalid theme names). Upstream's mocked controller asserts requestRender is not called, which only shows that the UI-context wrapper adds no render. Pi's real controller repaints once while falling back to the system theme (upstream 0.99.1 theme.ts:772-790 setTheme, theme-controller.ts:178-186 applyThemeName -> notifyChanged), so the faithful counterpart is exactly one Invalidate and one RequestRender. The test starts from light so the system fallback proves the name was applied.
 func TestExtensionSetThemeDoesNotPersistInvalidNamesUpstream(t *testing.T) {
 	ui, sm, path, renderer := themeSettingsMode(t)
 	tui.SetThemeByName("light", false)
@@ -75,8 +74,8 @@ func TestExtensionSetThemeDoesNotPersistInvalidNamesUpstream(t *testing.T) {
 	if data, err := os.ReadFile(path); err == nil && strings.Contains(string(data), "__missing_theme__") {
 		t.Fatalf("invalid theme reached settings: %s", data)
 	}
-	if got := tui.ActiveTheme().Name; got != "dark" {
-		t.Fatalf("fallback theme=%q, want dark after starting from light", got)
+	if got := tui.ActiveTheme().Name; got != tui.SystemThemeName {
+		t.Fatalf("fallback theme=%q, want system after starting from light", got)
 	}
 	if renderer.invalidates != 1 || renderer.requests != 1 {
 		t.Fatalf("invalidates=%d render requests=%d, want one each", renderer.invalidates, renderer.requests)

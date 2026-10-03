@@ -4,7 +4,7 @@ import {tmpdir} from "node:os";
 import {join, resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 const root=process.env.PI_PACKAGE_ROOT??resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-assert.equal(JSON.parse(readFileSync(join(root,"package.json"),"utf8")).version,"0.87.1");
+assert.equal(JSON.parse(readFileSync(join(root,"package.json"),"utf8")).version,"1.0.0");
 const load=path=>import(pathToFileURL(join(root,"dist",path)));
 const {createAgentSession}=await load("core/sdk.js");
 const {DefaultResourceLoader}=await load("core/resource-loader.js");

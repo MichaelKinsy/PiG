@@ -1,0 +1,240 @@
+from = "0.99.1"
+to = "0.99.2"
+
+[[files]]
+path = "packages/ai/src/api/anthropic-messages.ts"
+change = "modified"
+disposition = "deferred"
+evidence = ["test:ai/anthropic_federation_upstream_test.go#TestAnthropicWorkloadIdentityFederation", "test:ai/anthropic_federation_sdk_upstream_test.go#TestAnthropicFederationClientCache", "test:ai/anthropic_federation_sdk_upstream_test.go#TestAnthropicFederationSkippedForHeaderOwnedAuth", "test:ai/anthropic_strict_tool_schema_upstream_test.go#TestAnthropicStrictToolSchemas"]
+rationale = "Deferred, not closed: two audit-992-ai findings on this delta remain open on this base. F1: ai/anthropic.go and ai/anthropic_client.go inject the ambient ANTHROPIC_AUTH_TOKEN as an Authorization header before the federation check, so a direct stream with that token and the federation variables sends the ambient token where Pi (getAnthropicFederation, anthropic-messages.ts:351-372) exchanges the identity token; red test TestAudit992DirectAnthropicStreamIgnoresAmbientAuthTokenForFederation on the audit-992-ai lane branch. F2: a federation token endpoint that cannot be reached reports the Go *url.Error text where Node reports \"TypeError: fetch failed\"; red test TestAudit992FederationUnreachableTokenEndpointMessage. The cited tests prove what is ported: workload identity exchange, the per-config client cache, header-owned auth skipping federation, and the strict-tool keyword fallback. fix-992-federation-auth owns F1 and F2; flip this row to ported when its audit tests are green."
+
+[[files]]
+path = "packages/ai/src/api/constrained-sampling.ts"
+change = "modified"
+disposition = "deferred"
+evidence = ["test:ai/anthropic_strict_keywords_test.go#TestStrictSamplingProviderKeywordCheck", "test:ai/anthropic_strict_keywords_test.go#TestAnthropicStrictUnsupportedKeyword", "test:ai/anthropic_strict_tool_schema_upstream_test.go#TestAnthropicStrictToolSchemas"]
+rationale = "Deferred, not closed: the new keyword check is ported (UnsupportedStrictSchemaKeywordCheck threads through makeStrictJsonSchema, makeJsonSchemaNodeStrict and resolveJsonSchemaStrictSampling; TestStrictSamplingProviderKeywordCheck asserts it runs on every node and rejects the schema, so a \"prefer\" tool falls back to non-strict), but the reason it throws, `${key}: ${JSON.stringify(value)} is unsupported` (constrained-sampling.ts:65-70), reaches the strict: \"require\" error with an object-valued keyword printed in sorted key order where Pi keeps the authored order (audit-992-ai F5; red test TestAudit992StrictRequireReasonKeepsObjectKeyOrder on the audit-992-ai lane branch, still failing here). fix-992-ai-js-semantics owns F5 (staging c94c84c9d); flip this row to ported when jsonStringifyValue keeps schema key order."
+
+[[files]]
+path = "packages/ai/src/env-api-keys.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/anthropic_federation_upstream_test.go#TestAnthropicWorkloadIdentityFederation"]
+rationale = "The delta adds the five ANTHROPIC_* federation variable names (ai/auth_env_keys.go). TestAnthropicWorkloadIdentityFederation resolves auth from exactly those variables with the required three and the two optional ones, so a misspelled name fails it."
+
+[[files]]
+path = "packages/ai/src/providers/anthropic.ts"
+change = "modified"
+disposition = "deferred"
+evidence = ["test:ai/anthropic_federation_upstream_test.go#TestAnthropicWorkloadIdentityFederation", "test:ai/anthropic_federation_upstream_test.go#TestAnthropicAuthTreatsEmptyContextValuesAsAbsent"]
+rationale = "Deferred, not closed: the ai resolver is ported, but two audit-992-ai findings on this delta remain open on this base. In Pi this resolver is the only change that makes the coding agent treat federation-only env as Anthropic auth (ModelRuntime.hasConfiguredAuth reads configuredProviders, which model-runtime.ts:336-353 fills from models.checkAuth, and checkAuth runs this resolver). F3: PiG's registry and CLI availability (internal/codingagent/model_registry.go HasConfiguredAuth/HasAnyKey/hasEnvAuth, AuthenticatedProviders used by cmd/pig/model.go) read the env-key tables instead, so pig --list-models and pig -p report no anthropic auth with only the federation variables set; red test TestAudit992FederationEnvConfiguresAnthropic (coding) on the audit-992-ai lane branch, still failing here. F6: the Node builtin-API bridge (pi-ai-bridge.mjs) rejects a federation-only anthropic request before it reaches the host; red test TestAudit992NodeBridgeForwardsFederationOnlyAnthropicRequest (coding/extension/host/subprocess), still failing here. fix-992-federation-auth owns F3 and F6; flip this row to ported when its audit tests are green. What is ported: the last-in-line federation branch of the Anthropic apiKey auth resolver: keys and ANTHROPIC_AUTH_TOKEN keep winning, the three required variables must all be present, the two optional ones are carried in env, and the source is \"workload identity federation\". Both cited tests exercise that resolver with Pi's inputs, including empty values counting as absent."
+
+[[files]]
+path = "packages/ai/src/utils/overflow.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/overflow_upstream_test.go#TestOverflowUpstream"]
+rationale = "The delta adds the /prompt exceeds max length/i pattern for the z.ai CN endpoint. TestOverflowUpstream asserts the 1261 \"Prompt exceeds max length\" body overflows for provider zai; deleting the pattern from ai/overflow.go fails it (mutation-checked)."
+
+[[files]]
+path = "packages/ai/src/utils/provider-retry.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/provider_retry_test.go#TestProviderRetryDelayUnparseableRetryAfter", "test:ai/provider_retry_test.go#TestRetryTransport_UnparseableRetryAfterWaitsForBackoff", "test:ai/retry_after_date_test.go#TestProviderRetryDelayAcceptsEveryDateParseForm"]
+rationale = "The delta replaces Number.isNaN with Number.isFinite for retry-after-ms and rejects a non-finite retry-after delay, so Infinity, 1e999 and unparseable dates fall through to the next source and finally to exponential backoff instead of retrying at once. TestProviderRetryDelayUnparseableRetryAfter covers each header form (including numeric-prefix parsing) and TestRetryTransport_UnparseableRetryAfterWaitsForBackoff covers the transport. A date header reads through jsDateParse (V8 Date.parse), so every form the unparseable fallback leaves alone reaches the date branch exactly as in Pi; TestProviderRetryDelayAcceptsEveryDateParseForm asserts the forms."
+
+[[files]]
+path = "packages/codemode/src/runtime/host.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "The delta only widens CodemodeExecutionOptions/Sandbox workerUrl to string | URL. PiG has no worker: the QuickJS wasm module runs in process on wazero and the module and prelude are go:embed-ed (codemode/assets.go), so there is no worker entry to locate and the Bun-compiled-binary failure of #10204 cannot occur. codemode.SandboxOptions (codemode/types.go) deliberately has no worker field. The remaining host.ts behavior is unchanged and its async contract is recorded in async-contracts.toml."
+
+[[files]]
+path = "packages/codemode/src/runtime/prelude-source.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:codemode/sandbox_test.go#TestEmbeddedSourcesMatchTheirRecordedHashes", "test:codemode/sandbox_test.go#TestRejectsInvalidTextAndImageArguments", "test:codemode/sandbox_test.go#TestAcceptsWrappedAndLargeBase64ImageData", "test:codemode/sandbox_test.go#TestCollectsTextImageAndConsoleOutputInOrder"]
+rationale = "The 0.99.2 delta (#10215) makes image() ignore the declared MIME type: it strips whitespace, validates the base64 alphabet, length and padding, detects PNG, JPEG (not JPEG-LS), GIF and WebP from the IMAGE_SIGNATURES base64 prefixes, rejects unknown signatures, and emits the detected type; a raw MCP image block becomes data:;base64,<data>. PiG embeds the prelude as codemode/assets/prelude.js, byte-identical to PRELUDE_SOURCE regenerated from the 0.99.2 mirror and pinned by the hash test; the invalid-argument test carries all sixteen upstream cases with the same messages and the wrapped/large test covers CRLF unwrapping and 1 MiB data."
+
+[[files]]
+path = "packages/codemode/src/runtime/worker.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "The delta is a comment-only change about the worker entry used by Bun compiled executables; it has no behavior and PiG has no worker (see packages/codemode/src/runtime/host.ts)."
+
+[[files]]
+path = "packages/codemode/src/types.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "The delta changes the type and documentation of CodemodeSandboxOptions.workerUrl (string | URL, Bun worker entries). PiG has no worker, so SandboxOptions (codemode/types.go) has no counterpart field; the pkg:codemode CodemodeSandboxOptions::property:workerUrl interface row is recorded in the interface mapping, not here."
+
+[[files]]
+path = "packages/coding-agent/src/config.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "The delta adds resolveCodemodeWorkerSpecifier (#10204), which picks the worker entry of the codemode sandbox for a Bun compiled executable, a bundled Node release or an unbundled checkout, and reworks the getCodemodeWorkerUrl comment. PiG has no worker: the QuickJS module runs in process on wazero and is go:embed-ed (codemode/assets.go), so there is no worker entry to resolve on any platform. The nearest failure, a module that cannot be loaded, is covered by TestCorruptWasmModuleIsASandboxError. SCRUTINIZED:approved by owner Michael Kinsy on 2026-10-01 (lead session, \"Yes go with recommendations\"). "
+
+[[files]]
+path = "packages/coding-agent/src/core/agent-session.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/session_tool_registry_port_test.go#TestDefaultToolsReloadPort", "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"]
+rationale = "Two deltas. (1) usesDefaultTools: /reload activates only tools newly added to the defaultTools setting, keeps removed ones active and leaves allowlist, no-tools and exclusion options alone (coding/session_tool_registry.go, coding/session_tools.go). TestDefaultToolsReloadPort ports default-tools-setting.test.ts:159-235. (2) Hidden tools are not listed in the prompt snippets, in both the build and the loadout-applied paths (coding/session_tools.go toolPromptMetadata). TestUpstreamAgentSessionCodemodeTool asserts the prompt lists codemode but not the hidden read tool (#10192)."
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/loader.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/extension/host/subprocess/upstream_command_validation_test.go#TestNodeRunnerRejectsInvalidCommandRegistration", "test:coding/extension/host/subprocess/upstream_command_validation_test.go#TestCommandNamesValidatedBeforeDeduplication", "test:coding/extension/host/inproc/mcp_servers_registration_test.go#TestRuntimeRegisterMcpServerRejectsNamesThatShareANamespace", "test:extensions/sdk/command_validation_test.go", "test:extensions/sdk-py/tests/test_command_validation.py"]
+rationale = "Two deltas. registerCommand rejects an empty name and a missing handler before any registration replaces another (Node host loader and the Go, Rust and Python SDKs, each with its own test). registerMcpServer rejects a name whose mcpNamespace matches a different registered server (\"MCP server ... conflicts with registered server ...\"): TestRuntimeRegisterMcpServerRejectsNamesThatShareANamespace."
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/types.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/extension/builtin/codemode/description_upstream_test.go#TestCodemodeDescriptionLeavesNamespaceInstructionsOut", "test:coding/extension/builtin/codemode/run_test.go#TestDescribeNamespaceReturnsTheNamespaceItsInstructionsAndItsToolNames", "test:coding/extension/host/subprocess/extension_api_wire_test.go", "test:test/extension-conformance/node_extension_api_test.go", "test:test/extension-conformance/extension_api_rust_test.go", "test:test/extension-conformance/python_extension_api_test.go#TestPythonSDKToolExposureFieldsAndPrepareLoadout"]
+rationale = "The delta adds ToolNamespace.instructions and narrows description to a short summary. extension.ToolNamespace carries Instructions on the wire (the Go reference, Node, Rust and Python conformance rows assert the value round-trips through registration and getAllTools), the codemode description leaves instructions out, and describeNamespace() returns them. Only this delta is claimed: PORT_MAP keeps types.ts partial for the unrelated setEditorComponent and autocomplete gaps recorded in docs/extension-api-parity.md."
+
+[[files]]
+path = "packages/coding-agent/src/core/mcp-servers.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/mcpext/config_test.go#TestMCPConfigValidatesExposureAndReadsAutoEnableCodemodeWithProjectPrecedence", "test:coding/mcpext/config_test.go#TestMCPConfigValidatesTheOAuthCallbackURLScopeAndClientName", "test:coding/mcpext/config_test.go#TestMCPConfigValidatesProviderAuthAndAcceptsItOnlyInTheGlobalMcpJSON", "test:coding/mcpext/config_test.go#TestMCPConfigRejectsServerNamesThatDifferOnlyInDashAndUnderscore", "test:coding/extension/mcp_servers_test.go#TestValidateMcpServerConfigTrimsTheOAuthClientNameAsJavaScriptDoes"]
+rationale = "The delta drops the codemode-deferred exposure (accepted as an alias that validation resolves in exposure and toolExposure and returns a copy), adds description, oauth.clientName, auth.provider (https or loopback only) and mcpNamespace. The cited tests assert each: alias resolution, the description type error, the clientName error text, the three auth errors and the namespace clash. Validation lives in coding/mcpext/config.go and the registry in coding/extension/mcp_servers.go."
+
+[[files]]
+path = "packages/coding-agent/src/core/model-runtime.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream", "test:coding/model_registration_refresh_test.go#TestRegisterProviderPublishesProvisionalConfiguredAuth"]
+rationale = "The delta extracts markProvisionallyConfigured and calls it from registerNativeProvider as well as registerProvider, so a native extension provider with a stored credential or configured auth is available before its first availability pass, typed oauth or api_key. TestModelRuntimeNativeCompatibilityUpstream asserts the native cases (provisional \"configured provider\" check, availability, no entry for an unconfigured provider, api_key typing) and TestRegisterProviderPublishesProvisionalConfiguredAuth keeps the registerProvider path."
+
+[[files]]
+path = "packages/coding-agent/src/core/remote-catalog-provider.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/remote_catalog_provider_test.go#TestMergeRemoteCatalogModelsKeysByTypeAndIDInFirstSeenOrder", "test:internal/codingagent/remote_catalog_provider_upstream_test.go#TestRemoteCatalogProviderUpstream"]
+rationale = "The delta rewrites mergeModels over a Map keyed by type and id. mergeRemoteCatalogModels (internal/codingagent/remote_catalog_provider.go, wired by remote_catalog_registry.go) keeps first-seen order, lets a later model replace an earlier one in place, keeps a same-id model of another type separate and collapses repeated baseline entries. TestMergeRemoteCatalogModelsKeysByTypeAndIDInFirstSeenOrder asserts that; restoring the 0.99.1 findIndex loop fails it on the repeated baseline entry (mutation-checked). The unchanged remote fetch behavior stays covered by TestRemoteCatalogProviderUpstream."
+
+[[files]]
+path = "packages/coding-agent/src/core/sdk.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/session_tool_registry_port_test.go#TestDefaultToolsReloadPort"]
+rationale = "The one-line delta passes usesDefaultTools = (options.tools === undefined && !options.noTools). coding/session_tool_registry.go:171 computes it from AllowedTools, NoTools and SkipBuiltinTools, and the third TestDefaultToolsReloadPort subtest asserts that the CLI's resolved default selection is treated as default tools while --no-builtin-tools and explicit allowlists are overrides."
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/renderers/bash.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/tool_render_shell_test.go#TestShellBodyRendererCollapsedPreview", "test:tui/shell_renderers_test.go#TestToolExecutionComponent_ShellElapsedFooterRows"]
+rationale = "The delta replaces the hand-rolled cached render closure with Spacer + VisualLinePreview(keep: \"end\") and a plain Container. internal/codingagent/tool_render_shell.go builds the same Spacer and tui.NewVisualLinePreview (line 114); tool_render_shell_test.go asserts the \"... (N earlier lines, ctrl+o to expand)\" hint above the last five visual rows and the expanded form, and tui/shell_renderers_test.go keeps the width boundaries."
+
+[[files]]
+path = "packages/coding-agent/src/core/virtual-models.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/virtual_models_upstream_test.go#TestGetBranchSelectionLooksUpOnlyTheLastModelChange"]
+rationale = "The delta makes getBranchSelection walk the branch backward and look up at most one model, the last model_change before the answering assistant message (#10198). TestGetBranchSelectionLooksUpOnlyTheLastModelChange ports the three virtual-models.test.ts cases (:67,:89,:101) and counts catalog lookups."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/codemode/execute.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/extension/builtin/codemode/run_test.go#TestDescribeNamespaceReturnsTheNamespaceItsInstructionsAndItsToolNames", "test:coding/extension/builtin/codemode/run_test.go#TestNamespaceNamesAcceptTheServerNameTheIdentifierAndTheirSuffixes", "test:coding/extension/builtin/codemode/run_test.go#TestSearchToolsRanksToolsByTheirNamespacesInstructions"]
+rationale = "The delta adds isNamespaceName (the namespace name, its script identifier, or the part after the last \"__\" in either form), uses it in searchTools({ namespace }) and adds describeNamespace(). The cited tests assert the accepted spellings, the returned { name, description, instructions, tools } shape and that search ranks by namespace instructions. The one-line workerUrl: getCodemodeWorkerSpecifier() change has no Go counterpart because the sandbox runs QuickJS on wazero in process (codemode/sandbox.go); that part belongs to the owner decision recorded on config.ts."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/codemode/renderer.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/tool_codemode_renderer_upstream_test.go#TestCodemodeRendererLimitsCollapsedOutputToWrappedLinesNotLogicalLines", "test:internal/codingagent/tool_codemode_renderer_upstream_test.go#TestCodemodeRendererCollapsesCallsOutputAndArguments", "test:internal/codingagent/tool_codemode_renderer_upstream_test.go#TestCodemodeRendererShowsResultsWithoutAHeaderSuchAsRejectedOptions"]
+rationale = "The delta renders the call and result as Containers with Spacer, Text and VisualLinePreview(keep: \"start\") so collapsed script and output previews limit wrapped rows, and names the full output file only when collapsed. The cited tests port codemode-renderer.test.ts (the wrapped-row limit, the collapse hints and the header-less result)."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/codemode/tool.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/extension/builtin/codemode/description_upstream_test.go#TestCodemodeDescriptionLeavesDeferredToolsAndTheirNamespacesOutEntirely", "test:coding/extension/builtin/codemode/description_namespace_test.go#TestCodemodeDescriptionDocumentsDescribeNamespaceAndAlwaysCarriesTheSearchGuidance", "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"]
+rationale = "The delta documents describeNamespace() and the namespace option of searchTools, always carries the \"some nested tools may be omitted\" guidance, drops the COMPLETE/PARTIAL line and the per-namespace counts, leaves deferred tools out of the description entirely and lists shared MCP types only for shown tools. The cited tests assert those description texts and the session-level description with Pi's expected strings."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/codemode/worker.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "The delta is a one-line comment change in the worker entry of the codemode sandbox: it names getCodemodeWorkerSpecifier instead of getCodemodeWorkerUrl (#10204). It has no behavior, and PiG has no worker entry: the sandbox runs in process on wazero. SCRUTINIZED:approved by owner Michael Kinsy on 2026-10-01 (lead session, \"Yes go with recommendations\"). "
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/cli.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/mcpext/cli_upstream_test.go#TestMcpCommandAddsHTTPServersAndKeepsOtherContentOfTheFile", "test:coding/mcpext/cli_upstream_test.go#TestMcpCommandAddSavesTheResolvedExposureAlias", "test:coding/mcpext/cli_upstream_test.go#TestMcpCommandRejectsInvalidAddInvocationsWithoutWriting", "test:coding/mcpext/cli_test.go#TestMcpCommandHelpIsPisHelpWithPiGsIdentity"]
+rationale = "The delta adds --oauth-client-name (HTTP only), --description and the codemode-deferred removal from the help text. The cited tests assert the saved config, the alias resolved on add, the misplaced-option rejection and the help text recorded from upstream 0.99.2 (coding/mcpext/testdata/mcp_help.txt)."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/config.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/mcpext/config_test.go#TestMCPConfigRejectsServerNamesThatDifferOnlyInDashAndUnderscore", "test:coding/mcpext/config_test.go#TestMCPConfigValidatesProviderAuthAndAcceptsItOnlyInTheGlobalMcpJSON"]
+rationale = "The delta adds the namespace-clash error between configured servers and the project-file rejection of auth. Both tests assert the exact error strings of config.ts."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/index.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/mcpext/extension_test.go#TestAgentSessionMCPCodemodeScriptWaitsForTheServersItNames", "test:coding/mcpext/extension_test.go#TestAgentSessionMCPHoldsTheFirstPromptForServersWithDirectToolsOnlyUpToTheStartupWait", "test:coding/mcpext/extension_test.go#TestAgentSessionMCPListsAServerBeforeItConnectsAndAddsItsSummaryWithTheNextPrompt", "test:coding/mcpext/extension_test.go#TestAgentSessionMCPWaitingForAServerEndsWhenTheCallIsAborted", "test:coding/mcpext/extension_test.go#TestAgentSessionMCPRoutesToolsWhoseNamesDifferOnlyInDashAndUnderscore", "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPWaitsForServersBeforeToolSearchSearches"]
+rationale = "The delta is the background-connection model and its consumers: connections start in the background (startConnection and the ready promise), the first prompt waits only for servers with direct tools up to startupWaitMs, codemode scripts, tool_search and the resource tools wait for the servers they need (scriptNeedsServer, aborted by ctx.signal), the mcp_servers prompt section is rendered on every before_agent_start, discovery tools are activated from config, plain names that sanitize alike all take the hash suffix, and registered servers are overridden by namespace. coding/mcpext/extension.go implements each; the cited tests run the extension at its own boundary and through a Session (coding/mcp_session_upstream_test.go) with Pi's expectations. Section rendering and limits: servers_section_test.go."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/oauth.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/mcpext/cli_test.go#TestMcpLoginRegistersWithTheConfiguredClientName"]
+rationale = "The delta sends settings.clientName as the dynamic-registration client_name, defaulting to the application name. TestMcpLoginRegistersWithTheConfiguredClientName registers against a local OAuth server and asserts both the configured name and the pig fallback."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/runtime.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/mcpext/connection_test.go#TestMCPConnectionsSendsTheProviderTokenAndAsksForTheProviderLoginWhenTheServerRejectsIt", "test:coding/mcpext/connection_test.go#TestMCPConnectionsAsksOAuthServersThatKeepRejectingRequestsForANewSignIn"]
+rationale = "The delta adds providerToken (read on every request) for auth.provider servers, skips OAuth for them, passes oauth.clientName on to the OAuth settings (asserted end to end by the login test cited on oauth.ts), and words the sign-in message as \"/login <provider>\" for provider servers and \"/mcp\" otherwise. The cited tests assert the token on the wire, the message text for both kinds and the needsSignIn gating."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/tools.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/mcpext/tools_test.go#TestMCPToolsCreatesProviderSafeToolNames", "test:coding/mcpext/tools_render_test.go#TestMCPToolResultRendererLimitsCollapsedOutputToWrappedLinesNotLogicalLines", "test:coding/mcpext/tools_render_test.go#TestMCPToolResultRendererCollapsesAfterFiveLines", "test:coding/mcpext/extension_test.go#TestAgentSessionMCPRegistersCodemodeServersToolsAsDeferredSoTheCodemodeDescriptionDoesNotListThem"]
+rationale = "The delta maps the codemode exposure to the deferred tool exposure, sanitizes every character except [A-Za-z0-9_] in tool names, and renders results as Spacer + VisualLinePreview(keep: \"start\") with the full-output path while collapsed. The cited tests assert the names (including the hash suffix), the five-visual-row collapse and the exposure mapping."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/ui.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/mcpext/manager_test.go#TestMcpManagerViewRedirectURLShowsTheURLAsAHyperlinkWithAClickHint"]
+rationale = "The delta shows the authorization URL as an OSC 8 hyperlink with a Cmd+click or Ctrl+click hint. The test asserts the escape sequences and the hint row of the redirect view."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/tool-search/tool.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/extension/builtin/toolsearch/toolsearch_upstream_test.go#TestToolSearchDescriptionDoesNotListTheSearchableSources", "test:coding/extension/builtin/toolsearch/toolsearch_upstream_test.go#TestBm25RankerIncludesTheNamespaceInstructionsInTheSearchText"]
+rationale = "The delta indexes the namespace instructions in the search document and replaces the per-source description (and its prepareLoadout hook) with the constant TOOL_SEARCH_DESCRIPTION. Both tests assert the new behavior with Pi's strings."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/visual-truncate.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/visual_truncate_test.go#TestTruncateToVisualLinesKeepsTheEndByDefaultAndTheStartOnRequest", "test:tui/visual_truncate_test.go#TestVisualLinePreviewPlacesTheHintAfterKeptStartLinesAndBeforeKeptEndLines", "test:tui/visual_truncate_test.go#TestVisualLinePreviewTruncatesTheHintToTheWidth", "test:tui/visual_truncate_test.go#TestVisualLinePreviewCachesItsLinesPerWidthUntilInvalidated"]
+rationale = "The delta adds the keep: start|end option to truncateToVisualLines and the VisualLinePreview component (hint placement, hint truncation to the width, per-width cache until invalidated). Each behavior has a named test in tui/visual_truncate_test.go (tui/visual_truncate.go)."
+
+[[files]]
+path = "packages/mcp/src/transports/streamable-http.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:mcp/streamable_http_test.go#TestStreamableHTTPTransportRoutesEveryRequestThroughTheFetchInUse", "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportHandsUnauthorizedAndInsufficientScopeResponsesToTheAuthProviderWithTheRejectedToken"]
+rationale = "The 0.99.2 delta (#10188) wraps the injected or global fetch as (input, init) => fetch(input, init) so it never runs with the transport as receiver (Cloudflare Workers reject that), for transport requests and for UnauthorizedContext.fetch. A Go McpFetch is an interface value whose Do always runs on its own receiver, so the receiver assertion is designed out (test-mapping-v0.99.2.json). The observable part is ported: the injected fetch carries the initialize POST, the provider's GET through UnauthorizedContext.Fetch, the retried POST, the notification, tools/list and the closing DELETE, and an absent fetch falls back to http.DefaultClient; mutations that give the provider http.DefaultClient or build a fresh client for the default fail the test."

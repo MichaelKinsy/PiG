@@ -75,18 +75,18 @@ func TestBasetenModels(t *testing.T) {
 }
 
 func TestTogetherModels(t *testing.T) {
-	// .upstream/v0.87.1/packages/ai/test/together-models.test.ts:16
-	t.Run("registers the default Kimi K2.6 model via OpenAI-compatible Chat Completions API", func(t *testing.T) {
-		m := mustGeneratedModel(t, "together", "moonshotai/Kimi-K2.6")
-		if m.API != APIOpenAICompletions || m.Provider != "together" || m.BaseURL != "https://api.together.ai/v1" || !m.Reasoning || m.ContextWindow != 262144 || m.MaxOutputTokens != 131000 {
+	// .upstream/v0.99.1/packages/ai/test/together-models.test.ts:16
+	t.Run("registers the default Kimi K3 model via OpenAI-compatible Chat Completions API", func(t *testing.T) {
+		m := mustGeneratedModel(t, "together", "moonshotai/Kimi-K3")
+		if m.API != APIOpenAICompletions || m.Provider != "together" || m.BaseURL != "https://api.together.ai/v1" || !m.Reasoning || m.ContextWindow != 1048576 || m.MaxOutputTokens != 131072 {
 			t.Fatalf("model = %+v", m)
 		}
 		assertCatalogJSON(t, m.Capabilities, `["text","image"]`)
 		assertCatalogJSON(t, m.ThinkingLevelMap, `{"minimal":null,"low":null,"medium":null}`)
-		assertCatalogJSON(t, (&Model{Capabilities: m.ToCapabilities()}).CostRates(), `{"input":1.2,"output":4.5,"cacheRead":0.2,"cacheWrite":0}`)
+		assertCatalogJSON(t, (&Model{Capabilities: m.ToCapabilities()}).CostRates(), `{"input":3,"output":15,"cacheRead":0.3,"cacheWrite":0}`)
 		assertCatalogJSON(t, m.Compat, `{"supportsStore":false,"supportsDeveloperRole":false,"supportsReasoningEffort":false,"maxTokensField":"max_tokens","thinkingFormat":"together","supportsStrictMode":false,"supportsLongCacheRetention":false}`)
 	})
-	// .upstream/v0.87.1/packages/ai/test/together-models.test.ts:47
+	// .upstream/v0.99.1/packages/ai/test/together-models.test.ts:45
 	t.Run("models Together reasoning controls from the Together API surface", func(t *testing.T) {
 		gpt := mustGeneratedModel(t, "together", "openai/gpt-oss-120b")
 		assertCatalogJSON(t, gpt.ThinkingLevelMap, `{"off":null,"minimal":null,"low":"low","medium":"medium","high":"high","max":null,"xhigh":null}`)
@@ -104,7 +104,7 @@ func TestTogetherModels(t *testing.T) {
 			t.Fatalf("compat = %+v", minimax.Compat)
 		}
 	})
-	// .upstream/v0.87.1/packages/ai/test/together-models.test.ts:79
+	// .upstream/v0.99.1/packages/ai/test/together-models.test.ts:80
 	t.Run("resolves TOGETHER_API_KEY from the environment", func(t *testing.T) {
 		t.Setenv("TOGETHER_API_KEY", "test-together-key")
 		assertCatalogJSON(t, FindEnvKeys("together", nil), `["TOGETHER_API_KEY"]`)

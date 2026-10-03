@@ -6,8 +6,9 @@ import (
 )
 
 // OpenRouter image usage is priced by upstream openrouter-images.ts
-// parseUsage; the expected value is Pi 0.87.1's serialized usage for the same
-// response usage (test/parity/testdata/ai-sdk-pi.mjs).
+// parseUsage; the expected value is Pi 0.99.1's serialized usage for the same
+// response usage (test/parity/testdata/ai-sdk-pi.mjs): the published catalog
+// prices this model's cache writes at 0.083333 (openrouter-catalog.ts roundCost).
 func TestOpenRouterImagesUsageCostMatchesUpstream(t *testing.T) {
 	model, ok := GetImageModel(ProviderImagesOpenRouter, "google/gemini-2.5-flash-image")
 	if !ok {
@@ -18,5 +19,5 @@ func TestOpenRouterImagesUsageCostMatchesUpstream(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertUsageJSON(t, *parseOpenRouterImagesUsage(raw, model),
-		`{"input":6,"output":3,"cacheRead":3,"cacheWrite":1,"totalTokens":13,"cost":{"input":1.8e-06,"output":7.500000000000001e-06,"cacheRead":8.999999999999999e-08,"cacheWrite":8.33333333333333e-08,"total":9.473333333333333e-06}}`)
+		`{"input":6,"output":3,"cacheRead":3,"cacheWrite":1,"totalTokens":13,"cost":{"input":1.8e-06,"output":7.500000000000001e-06,"cacheRead":8.999999999999999e-08,"cacheWrite":8.333300000000001e-08,"total":9.473333e-06}}`)
 }

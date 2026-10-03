@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -36,11 +37,18 @@ func baseToolDefinition(name string) extension.ToolDefinition {
 }
 func toolComponent(t *testing.T, name, id string, args map[string]any, definition *extension.ToolDefinition) toolComponentFixture {
 	t.Helper()
-	cwd, err := os.Getwd()
+	raw, err := json.Marshal(args)
 	if err != nil {
 		t.Fatal(err)
 	}
-	raw, err := json.Marshal(args)
+	return toolComponentRaw(t, name, id, raw, definition)
+}
+
+// toolComponentRaw takes the arguments as JSON text, for a case whose expectation depends on the key order of the
+// JavaScript object literal upstream passes (a Go map has none).
+func toolComponentRaw(t *testing.T, name, id string, raw json.RawMessage, definition *extension.ToolDefinition) toolComponentFixture {
+	t.Helper()
+	cwd, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +86,7 @@ func assertToolContains(t *testing.T, text string, wants ...string) {
 }
 
 func TestToolExecutionComponentUpstream(t *testing.T) {
-	// .upstream/v0.87.1/packages/coding-agent/test/tool-execution-component.test.ts:85
+	// .upstream/v0.99.1/packages/coding-agent/test/tool-execution-component.test.ts:85
 	t.Run("stacks custom call and result renderers like the old implementation", func(t *testing.T) {
 		def := baseToolDefinition("custom_tool")
 		def.RenderCall = func(json.RawMessage, extension.Theme, extension.ToolRenderContext) extension.Component {
@@ -92,7 +100,7 @@ func TestToolExecutionComponentUpstream(t *testing.T) {
 		f.update(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "done"}}, Details: map[string]any{}}, false)
 		assertToolContains(t, f.plain(120), "custom call", "custom result")
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/tool-execution-component.test.ts:117
+	// .upstream/v0.99.1/packages/coding-agent/test/tool-execution-component.test.ts:117
 	t.Run("self-rendered empty tool rows take no layout space", func(t *testing.T) {
 		def := baseToolDefinition("custom_tool")
 		def.RenderShell = extension.ToolRenderShellSelf
@@ -111,7 +119,7 @@ func TestToolExecutionComponentUpstream(t *testing.T) {
 			t.Fatalf("settled rows: %q", rows)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/tool-execution-component.test.ts:148
+	// .upstream/v0.99.1/packages/coding-agent/test/tool-execution-component.test.ts:148
 	t.Run("uses built-in rendering for built-in overrides without custom renderers", func(t *testing.T) {
 		def := baseToolDefinition("edit")
 		f := toolComponent(t, "edit", "tool-2", map[string]any{"path": "README.md", "oldText": "before", "newText": "after"}, &def)
@@ -122,12 +130,12 @@ func TestToolExecutionComponentUpstream(t *testing.T) {
 			t.Fatalf("unexpected line suffix: %q", text)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/tool-execution-component.test.ts:169
+	// .upstream/v0.99.1/packages/coding-agent/test/tool-execution-component.test.ts:169
 	t.Run("preserves legacy file_path rendering compatibility for built-in tools", func(t *testing.T) {
 		f := toolComponent(t, "read", "tool-3", map[string]any{"file_path": "README.md"}, nil)
 		assertToolContains(t, f.plain(120), "read", "README.md")
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/tool-execution-component.test.ts:282
+	// .upstream/v0.99.1/packages/coding-agent/test/tool-execution-component.test.ts:282
 	t.Run("does not duplicate built-in headers when passed the active built-in definition", func(t *testing.T) {
 		def := withBuiltInRenderers("read", baseToolDefinition("read"))
 		f := toolComponent(t, "read", "tool-4", map[string]any{"path": "README.md"}, &def)
@@ -136,7 +144,17 @@ func TestToolExecutionComponentUpstream(t *testing.T) {
 			t.Fatalf("read header duplicated: %q", text)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/tool-execution-component.test.ts:297
+	// .upstream/v0.99.1/packages/coding-agent/test/tool-execution-component.test.ts:298 (Issue #9996: strict tool schemas send null for omitted optional fields)
+	t.Run("renders read calls with null offset and limit as full-file reads", func(t *testing.T) {
+		def := withBuiltInRenderers("read", baseToolDefinition("read"))
+		f := toolComponent(t, "read", "tool-read-null-range", map[string]any{"path": "src/example.ts", "offset": nil, "limit": nil}, &def)
+		text := f.plain(120)
+		assertToolContains(t, text, "read src/example.ts")
+		if strings.Contains(text, "src/example.ts:") {
+			t.Fatalf("null range rendered as a line range: %q", text)
+		}
+	})
+	// .upstream/v0.99.1/packages/coding-agent/test/tool-execution-component.test.ts:313
 	t.Run("inherits missing built-in result renderer slot from the built-in tool", func(t *testing.T) {
 		def := baseToolDefinition("read")
 		def.RenderCall = func(json.RawMessage, extension.Theme, extension.ToolRenderContext) extension.Component {
@@ -147,7 +165,7 @@ func TestToolExecutionComponentUpstream(t *testing.T) {
 		f.card.SetExpanded(true)
 		assertToolContains(t, f.plain(120), "override call", "hello")
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/tool-execution-component.test.ts:319
+	// .upstream/v0.99.1/packages/coding-agent/test/tool-execution-component.test.ts:335
 	t.Run("inherits missing built-in call renderer slot from the built-in tool", func(t *testing.T) {
 		def := baseToolDefinition("read")
 		def.RenderResult = func(extension.AgentToolResult, extension.ToolRenderResultOptions, extension.Theme, extension.ToolRenderContext) extension.Component {
@@ -158,9 +176,9 @@ func TestToolExecutionComponentUpstream(t *testing.T) {
 		assertToolContains(t, f.plain(120), "read", "README.md", "override result")
 	})
 	for _, tc := range []struct{ name, prefix, id string }{
-		// .upstream/v0.87.1/packages/coding-agent/test/tool-execution-component.test.ts:341
+		// .upstream/v0.99.1/packages/coding-agent/test/tool-execution-component.test.ts:357
 		{"uses custom renderers for built-in overrides that reuse built-in definition parameters", "override", "tool-4d"},
-		// .upstream/v0.87.1/packages/coding-agent/test/tool-execution-component.test.ts:363
+		// .upstream/v0.99.1/packages/coding-agent/test/tool-execution-component.test.ts:379
 		{"uses custom renderers for built-in overrides that reuse wrapped built-in tool parameters", "wrapped override", "tool-4e"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -185,7 +203,7 @@ func TestToolExecutionComponentUpstream(t *testing.T) {
 			}
 		})
 	}
-	// .upstream/v0.87.1/packages/coding-agent/test/tool-execution-component.test.ts:385
+	// .upstream/v0.99.1/packages/coding-agent/test/tool-execution-component.test.ts:401
 	t.Run("shares renderer state across custom call and result slots", func(t *testing.T) {
 		def := baseToolDefinition("custom_tool")
 		def.RenderCall = func(_ json.RawMessage, _ extension.Theme, ctx extension.ToolRenderContext) extension.Component {
@@ -202,7 +220,7 @@ func TestToolExecutionComponentUpstream(t *testing.T) {
 		f.update(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "done"}}, Details: map[string]any{}}, false)
 		assertToolContains(t, f.plain(120), "custom call shared-token", "custom result shared-token")
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/tool-execution-component.test.ts:413
+	// .upstream/v0.99.1/packages/coding-agent/test/tool-execution-component.test.ts:429
 	t.Run("exposes args in render result context", func(t *testing.T) {
 		def := baseToolDefinition("custom_tool")
 		def.RenderCall = func(json.RawMessage, extension.Theme, extension.ToolRenderContext) extension.Component {
@@ -225,7 +243,36 @@ func TestToolExecutionComponentUpstream(t *testing.T) {
 		f.update(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "done"}}, Details: map[string]any{}}, false)
 		assertToolContains(t, f.plain(120), "arg:bar")
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/tool-execution-component.test.ts:435
+	// .upstream/v0.99.1/packages/coding-agent/test/tool-execution-component.test.ts:451
+	t.Run("shows arguments in the fallback call header", func(t *testing.T) {
+		longValue := strings.Repeat("x", 200)
+		def := baseToolDefinition("custom_tool")
+		// The upstream object literal { query, long, text } keeps that key order.
+		args := json.RawMessage(`{"query":"pi","long":"` + longValue + `","text":"line one\nline two"}`)
+		f := toolComponentRaw(t, "custom_tool", "tool-args", args, &def)
+
+		collapsed := f.plain(300)
+		assertToolContains(t, collapsed, `custom_tool query="pi" long="xxx`, "...")
+		if strings.Contains(collapsed, longValue) {
+			t.Fatalf("collapsed header shows the whole value: %q", collapsed)
+		}
+
+		f.card.SetExpanded(true)
+		expanded := f.plain(300)
+		assertToolContains(t, expanded, "  query: pi", longValue)
+		lines := strings.Split(expanded, "\n")
+		for i, line := range lines {
+			lines[i] = strings.TrimRight(line, " \t")
+		}
+		textLine := slices.IndexFunc(lines, func(line string) bool { return strings.HasSuffix(line, "  text: line one") })
+		if textLine < 0 {
+			t.Fatalf("missing text line: %q", expanded)
+		}
+		if !regexp.MustCompile(`^\s+ {4}line two$`).MatchString(lines[textLine+1]) {
+			t.Fatalf("continuation line = %q", lines[textLine+1])
+		}
+	})
+	// .upstream/v0.99.1/packages/coding-agent/test/tool-execution-component.test.ts:478
 	t.Run("collapses fallback results until expanded", func(t *testing.T) {
 		def := baseToolDefinition("custom_tool")
 		fixture := toolComponent(t, "custom_tool", "tool-6", map[string]any{"foo": "bar"}, &def)
@@ -247,17 +294,22 @@ func TestToolExecutionComponentUpstream(t *testing.T) {
 		}
 		fmt.Printf("TOOL_FALLBACK [%t,%t,%t,%t,%t,%t,%t]\n", strings.Contains(collapsed, "custom_tool"), strings.Contains(collapsed, "line-10"), !strings.Contains(collapsed, "line-11"), strings.Contains(collapsed, "5 more lines"), strings.Contains(collapsed, "to expand"), strings.Contains(expanded, "line-15"), !strings.Contains(expanded, "more lines"))
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/tool-execution-component.test.ts:465
+	// .upstream/v0.99.1/packages/coding-agent/test/tool-execution-component.test.ts:508
 	t.Run("trims trailing blank display lines from write previews", func(t *testing.T) {
 		def := withBuiltInRenderers("write", baseToolDefinition("write"))
 		f := toolComponent(t, "write", "tool-7", map[string]any{"path": "README.md", "content": "one\ntwo\n"}, &def)
-		text := f.plain(120)
+		// Upstream strips only the ANSI codes: the padded rows keep their trailing spaces, so the styled empty line that highlightCode returns for the final newline is a row of spaces, not an empty row.
+		rows := f.card.Render(120)
+		for i, row := range rows {
+			rows[i] = stripANSITest(osc8Link.ReplaceAllString(row, ""))
+		}
+		text := strings.Join(rows, "\n")
 		assertToolContains(t, text, "one", "two")
 		if strings.Contains(text, "two\n\n") {
 			t.Fatalf("trailing blank preview: %q", text)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/tool-execution-component.test.ts:481
+	// .upstream/v0.99.1/packages/coding-agent/test/tool-execution-component.test.ts:524
 	t.Run("trims trailing blank display lines from read results", func(t *testing.T) {
 		def := withBuiltInRenderers("read", baseToolDefinition("read"))
 		f := toolComponent(t, "read", "tool-8", map[string]any{"path": "notes.txt"}, &def)
@@ -269,7 +321,7 @@ func TestToolExecutionComponentUpstream(t *testing.T) {
 			t.Fatalf("trailing blank result: %q", text)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/tool-execution-component.test.ts:502
+	// .upstream/v0.99.1/packages/coding-agent/test/tool-execution-component.test.ts:545
 	t.Run("does not syntax-highlight read errors based on the requested file path", func(t *testing.T) {
 		def := withBuiltInRenderers("read", baseToolDefinition("read"))
 		f := toolComponent(t, "read", "tool-read-error-highlighting", map[string]any{"path": "config.exs", "offset": 120, "limit": 130}, &def)
@@ -279,7 +331,7 @@ func TestToolExecutionComponentUpstream(t *testing.T) {
 		assertToolContains(t, stripANSITest(raw), message)
 		assertToolContains(t, raw, tui.ActiveTheme().FgText("toolOutput", message))
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/tool-execution-component.test.ts:520
+	// .upstream/v0.99.1/packages/coding-agent/test/tool-execution-component.test.ts:563
 	t.Run("expands a collapsed tool result when clicked", func(t *testing.T) {
 		def := withBuiltInRenderers("read", baseToolDefinition("read"))
 		f := toolComponent(t, "read", "tool-click-expand", map[string]any{"path": "notes.txt"}, &def)
@@ -301,7 +353,7 @@ func TestToolExecutionComponentUpstream(t *testing.T) {
 		}
 		assertToolContains(t, f.plain(120), "hidden content")
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/tool-execution-component.test.ts:556
+	// .upstream/v0.99.1/packages/coding-agent/test/tool-execution-component.test.ts:599
 	t.Run("collapses ordinary read results until expanded", func(t *testing.T) {
 		def := withBuiltInRenderers("read", baseToolDefinition("read"))
 		f := toolComponent(t, "read", "tool-ordinary-read-collapsed", map[string]any{"path": "notes.txt"}, &def)
@@ -354,7 +406,7 @@ func TestToolExecutionCompactReadsUpstream(t *testing.T) {
 		{"outside AGENTS.md", filepath.Join(cwd, "..", "AGENTS.md"), "Hidden outside resource instructions", "read resource " + filepath.ToSlash(filepath.Join(cwd, "..", "AGENTS.md")), "Hidden outside resource instructions", ""},
 		{"Pi documentation", readme, "Hidden docs content", "read docs README.md", "Hidden docs content", ""},
 	} {
-		// .upstream/v0.87.1/packages/coding-agent/test/tool-execution-component.test.ts:623 (all five rows at 581-621).
+		// .upstream/v0.99.1/packages/coding-agent/test/tool-execution-component.test.ts:666 (all five rows at 624-664).
 		t.Run("renders "+tc.title+" read results compactly until expanded", func(t *testing.T) {
 			def := withBuiltInRenderers("read", baseToolDefinition("read"))
 			f := toolComponent(t, "read", "tool-compact-"+tc.title, map[string]any{"path": tc.path}, &def)
@@ -369,7 +421,7 @@ func TestToolExecutionCompactReadsUpstream(t *testing.T) {
 		})
 	}
 	for _, tc := range []struct{ title, path, compact string }{{"SKILL.md", filepath.Join(cwd, "attio", "SKILL.md"), "[skill] attio:120-329"}, {"Pi documentation", readme, "read docs README.md:120-329"}} {
-		// .upstream/v0.87.1/packages/coding-agent/test/tool-execution-component.test.ts:655 (both rows at 651-654).
+		// .upstream/v0.99.1/packages/coding-agent/test/tool-execution-component.test.ts:698 (both rows at 694-697).
 		t.Run("shows the read line range in compact "+tc.title+" reads before the expand hint", func(t *testing.T) {
 			def := withBuiltInRenderers("read", baseToolDefinition("read"))
 			f := toolComponent(t, "read", "tool-compact-range-"+tc.title, map[string]any{"path": tc.path, "offset": 120, "limit": 210}, &def)
@@ -382,7 +434,7 @@ func TestToolExecutionCompactReadsUpstream(t *testing.T) {
 	}
 }
 
-// .upstream/v0.87.1/packages/coding-agent/test/tool-execution-component.test.ts:242 (all ten rows).
+// .upstream/v0.99.1/packages/coding-agent/test/tool-execution-component.test.ts:242 (all ten rows).
 func TestToolExecutionBashDurationUpstream(t *testing.T) {
 	for _, tc := range []struct {
 		ms        int
@@ -393,7 +445,7 @@ func TestToolExecutionBashDurationUpstream(t *testing.T) {
 				def := withBuiltInRenderers("bash", baseToolDefinition("bash"))
 				f := toolComponent(t, "bash", "tool-bash-duration", map[string]any{"command": "long-running-command"}, &def)
 				f.mode.handleAgentEvent(agent.ToolExecutionStartEvent{ToolCallID: f.id, ToolName: f.name, Args: json.RawMessage(`{"command":"long-running-command"}`)})
-				f.mode.handleAgentEvent(agent.ToolExecutionUpdateEvent{ToolCallID: f.id, ToolName: f.name, Content: ""})
+				f.mode.handleAgentEvent(agent.ToolExecutionUpdateEvent{ToolCallID: f.id, ToolName: f.name, PartialResult: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{}}})
 				time.Sleep(time.Duration(tc.ms) * time.Millisecond)
 				f.card.Invalidate()
 				running := f.plain(120)
@@ -419,7 +471,7 @@ func (o componentBashOperations) Exec(ctx context.Context, command, cwd string, 
 	return o.exec(ctx, command, cwd, options)
 }
 
-// .upstream/v0.87.1/packages/coding-agent/test/tool-execution-component.test.ts:184
+// .upstream/v0.99.1/packages/coding-agent/test/tool-execution-component.test.ts:184
 func TestBashEmitsInitialEmptyPartialUpdateUpstream(t *testing.T) {
 	started, release := make(chan struct{}), make(chan struct{})
 	var once sync.Once
@@ -441,7 +493,9 @@ func TestBashEmitsInitialEmptyPartialUpdateUpstream(t *testing.T) {
 	var result agent.AgentToolResult
 	var executeErr error
 	go func() {
-		result, executeErr = tool.Execute(t.Context(), "tool-bash-1", json.RawMessage(`{"command":"sleep 10"}`), func(content string, details any) { updates = append(updates, update{content, details}) })
+		result, executeErr = tool.Execute(t.Context(), "tool-bash-1", json.RawMessage(`{"command":"sleep 10"}`), func(partial agent.AgentToolResult) {
+			updates = append(updates, update{partial.Text(), partial.Details})
+		})
 		close(done)
 	}()
 	t.Cleanup(func() { finish(); <-done })
@@ -460,7 +514,7 @@ func TestBashEmitsInitialEmptyPartialUpdateUpstream(t *testing.T) {
 	}
 }
 
-// .upstream/v0.87.1/packages/coding-agent/test/tool-execution-component.test.ts:204
+// .upstream/v0.99.1/packages/coding-agent/test/tool-execution-component.test.ts:204
 func TestBashDoesNotDuplicateFinalTruncationDetailsUpstream(t *testing.T) {
 	tool := &tools.BashTool{CWD: t.TempDir(), HideSessionEnvironment: true, Operations: componentBashOperations{exec: func(_ context.Context, command, _ string, options tools.BashOperationsExecOptions) (tools.BashOperationsResult, error) {
 		if command != "generate output" {

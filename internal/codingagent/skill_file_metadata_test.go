@@ -15,7 +15,7 @@ func TestSkillFileMetadataRetainsCollisionDiagnostics(t *testing.T) {
 	loser := filepath.Join(root, "pkg-b", "skills", "demo", "SKILL.md")
 	other := filepath.Join(root, "pkg-c", "skills", "other", "SKILL.md")
 	m := upstreamListingMode(t, false, nil)
-	m.opts.Settings.QuietStartup = true
+	m.opts.Settings.QuietStartup = QuietStartupTrue
 	m.resourceSourceInfo = map[string]ResourceSourceInfo{
 		winner: {Path: winner, ResourceType: "skills", Enabled: true, Scope: "user", Origin: "package", Source: "npm:pkg-a", BaseDir: filepath.Join(root, "pkg-a")},
 		loser:  {Path: loser, ResourceType: "skills", Enabled: true, Scope: "project", Origin: "package", Source: "git:https://example.com/pkg-b.git", BaseDir: filepath.Join(root, "pkg-b")},

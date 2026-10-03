@@ -39,6 +39,13 @@ func TestMain(m *testing.M) {
 		}
 		os.Exit(0)
 	}
+	// A lock compromise in the test binary itself exits with status 1 from a heartbeat goroutine, after which go test shows only FAIL with no --- FAIL. Write the cause to the stderr the binary started with, so it stays visible even while a test has os.Stderr redirected into a pipe.
+	stderr := os.Stderr
+	terminate := terminateOnLockCompromise
+	terminateOnLockCompromise = func(err error) {
+		_, _ = fmt.Fprintf(stderr, "experimental test binary: lock compromise terminates the process: %v\n", err)
+		terminate(err)
+	}
 	os.Exit(m.Run())
 }
 

@@ -36,6 +36,7 @@ func newModelRegistryTestSession(t *testing.T, services *coding.Services) *codin
 }
 
 func TestModelOperationsThroughPrintJSONAndRPCEntrypoints(t *testing.T) {
+	t.Parallel()
 	binary := buildPigBinaryForSignalTest(t)
 	fixture, err := filepath.Abs(filepath.Join("testdata", "model-operations-entrypoint.mjs"))
 	if err != nil {

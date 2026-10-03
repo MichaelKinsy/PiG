@@ -5,39 +5,64 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/agent"
-	"github.com/MichaelKinsy/PiG/agent/harness/agentharness"
-	"github.com/MichaelKinsy/PiG/agent/harness/session"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/harness"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/experimental/services"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 var experimentalToolRenderers = codingagent.CreateAllToolRenderers()
 
-// ExperimentalChatView is a snapshot-driven transcript. Apply and RefreshTheme run on the presentation owner loop. After detaching the view from that loop, Dispose cancels and joins its timers, image conversions and tool-renderer work.
+// LiveOf is the pi.live document of a view: the active run, the streaming answer, and running tools. An absent document is an empty one.
+func LiveOf(view services.ConversationView) (harness.LiveState, error) {
+	var live harness.LiveState
+	return live, decodeDocument(view, services.LiveDocKind, &live)
+}
+
+// decodeDocument decodes a built-in document of a view into out; an absent document leaves out empty.
+func decodeDocument(view services.ConversationView, kind string, out any) error {
+	document, present := view.Docs[kind]
+	if !present {
+		return nil
+	}
+	encoded, err := json.Marshal(document)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(encoded, out)
+}
+
+// ExperimentalChatView renders the root conversation's durable view for the service-only experimental presentation. Apply and RefreshTheme run on the presentation owner loop. After detaching the view from that loop, Dispose cancels and joins its timers, image conversions and tool-renderer work.
 type ExperimentalChatView struct {
-	Transcript       *tui.Container
-	PendingMessages  *tui.Container
-	Status           *tui.Container
-	ctx              context.Context
-	cancel           context.CancelFunc
-	requestRender    func()
-	runOnMain        func(context.Context, func()) error
-	cwd              string
-	tools            map[string]*codingagent.ToolRendererCard
-	renderedEntryIds []string
+	Transcript      *tui.Container
+	PendingMessages *tui.Container
+	Status          *tui.Container
+	ctx             context.Context
+	cancel          context.CancelFunc
+	requestRender   func()
+	runOnMain       func(context.Context, func()) error
+	cwd             string
+	// tools holds the newest card per call ID; provider call IDs may repeat across turns.
+	tools map[string]*codingagent.ToolRendererCard
+	// cards holds every card shown, also older ones whose call ID a later turn reused.
+	cards []*codingagent.ToolRendererCard
+	// streamingCalls holds the call IDs whose cards the streaming answer created; its entry takes them over.
+	streamingCalls   map[string]struct{}
+	renderedEntryIds []durable.EntryId
 	streaming        *tui.AssistantMessageBlock
 	indicator        *tui.Loader
 	stopIndicator    context.CancelFunc
-	working          bool
+	statusText       string
 	tasks            sync.WaitGroup
 	errorsMu         sync.Mutex
 	failures         []error
@@ -51,17 +76,35 @@ func NewExperimentalChatView(ctx context.Context, cwd string, requestRender func
 	return &ExperimentalChatView{
 		Transcript: tui.NewContainer(), PendingMessages: tui.NewContainer(), Status: tui.NewContainer(),
 		ctx: lifetime, cancel: cancel, cwd: cwd, requestRender: requestRender, runOnMain: runOnMain,
-		tools: make(map[string]*codingagent.ToolRendererCard),
+		tools: make(map[string]*codingagent.ToolRendererCard), streamingCalls: make(map[string]struct{}),
 	}
 }
 
 func (view *ExperimentalChatView) theme() *tui.Theme { return tui.ActiveTheme() }
 
-func userMessageText(message agent.AgentMessage) string {
-	if message.User == nil {
-		return ""
+// decodeEntryMessage is the entry's first model message, or nil when it has none.
+func decodeEntryMessage(entry durable.EntryRecord) (*agent.AgentMessage, error) {
+	if len(entry.Model) == 0 {
+		return nil, nil
 	}
-	switch content := message.User.Content.(type) {
+	return agentMessageOf(entry.Model[0])
+}
+
+// agentMessageOf converts a pi-ai message to the agent's message through its JSON form.
+func agentMessageOf(value any) (*agent.AgentMessage, error) {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+	var message agent.AgentMessage
+	if err := json.Unmarshal(encoded, &message); err != nil {
+		return nil, err
+	}
+	return &message, nil
+}
+
+func userContentText(content ai.UserContent) string {
+	switch content := content.(type) {
 	case ai.UserText:
 		return string(content)
 	case ai.UserContentBlocks:
@@ -76,61 +119,95 @@ func userMessageText(message agent.AgentMessage) string {
 	return ""
 }
 
-// Apply appends new entries, reuses streaming assistant/tool components, replaces queues, and tracks operation liveness. Only a changed entry-ID prefix rebases the retained transcript.
-func (view *ExperimentalChatView) Apply(snapshot *agentharness.LaneSnapshot) error {
+func userMessageText(message agent.AgentMessage) string {
+	if message.User == nil {
+		return ""
+	}
+	return userContentText(message.User.Content)
+}
+
+// Apply appends new entries, reuses streaming assistant/tool components, replaces the queue, and tracks the status line. Only a changed entry-ID prefix, or a streaming answer whose partial disappeared, rebuilds the retained transcript.
+func (view *ExperimentalChatView) Apply(conversation services.ConversationView) error {
 	if err := view.ctx.Err(); err != nil {
 		return err
 	}
-	if snapshot == nil {
-		return errors.New("Transcript has no initialized snapshot")
-	}
-	if err := view.syncTranscript(snapshot.Transcript); err != nil {
+	live, err := LiveOf(conversation)
+	if err != nil {
 		return err
 	}
-	if operation := snapshot.Operation; operation != nil {
-		if err := view.syncStreaming(operation.StreamingMessage); err != nil {
+	if err := view.syncTranscript(conversation.Entries); err != nil {
+		return err
+	}
+	var partial *agent.AssistantMessage
+	if generation := live.Generation; generation != nil && len(generation.Message) != 0 {
+		message, err := agentMessageOf(generation.Message)
+		if err != nil {
 			return err
 		}
-		for _, tool := range operation.RunningTools {
-			card, err := view.tool(tool.ToolName, tool.ToolCallID, tool.Args, true)
-			if err != nil {
-				return err
-			}
-			if tool.Status == "running" {
-				card.Component.MarkExecutionStarted()
-			}
-			if tool.Result != nil {
-				view.updateResult(tool.ToolCallID, card, agent.AgentToolResult{Content: tool.Result.Content, Details: tool.Result.Details, IsError: tool.Status != "running" && tool.IsError}, tool.Status == "running")
-			}
+		partial = message.Assistant
+	}
+	// A partial without its entry was dropped, for example by a retry: render the transcript again.
+	if partial == nil && view.streaming != nil {
+		if err := view.rebuild(conversation.Entries); err != nil {
+			return err
 		}
 	}
-	view.syncQueues(snapshot.Queues)
-	view.setWorking(snapshot.Operation != nil)
+	if partial != nil {
+		if err := view.syncStreaming(partial); err != nil {
+			return err
+		}
+	}
+	for _, slot := range live.Tools {
+		if slot.Status == harness.ToolSlotPending {
+			continue
+		}
+		card, err := view.tool(slot.Name, slot.CallId, nil, false, false)
+		if err != nil {
+			return err
+		}
+		card.Component.SetArgsComplete()
+		if slot.Status != harness.ToolSlotRunning {
+			continue
+		}
+		card.Component.MarkExecutionStarted()
+		if slot.Output != nil {
+			var details any
+			if slot.Details != nil {
+				details = *slot.Details
+			}
+			view.updateResult(slot.CallId, card, agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: *slot.Output}}, Details: details}, true)
+		}
+	}
+	var inbox harness.InboxState
+	if err := decodeDocument(conversation, services.InboxDocKind, &inbox); err != nil {
+		return err
+	}
+	if err := view.syncQueue(inbox); err != nil {
+		return err
+	}
+	view.syncStatus(live)
 	view.Transcript.Invalidate()
 	view.PendingMessages.Invalidate()
 	view.Status.Invalidate()
 	return nil
 }
 
-// RefreshTheme replaces themed components while retaining the supplied snapshot as the single source of transcript state.
-func (view *ExperimentalChatView) RefreshTheme(snapshot *agentharness.LaneSnapshot) error {
-	view.setWorking(false)
-	view.Transcript.Clear()
-	view.PendingMessages.Clear()
+// RefreshTheme replaces themed components while retaining the supplied view as the single source of transcript state.
+func (view *ExperimentalChatView) RefreshTheme(conversation services.ConversationView) error {
+	view.stopStatusIndicator()
+	view.statusText = ""
 	view.Status.Clear()
-	view.retireTools()
-	view.renderedEntryIds = nil
-	view.streaming = nil
-	return view.Apply(snapshot)
+	if err := view.rebuild(conversation.Entries); err != nil {
+		return err
+	}
+	return view.Apply(conversation)
 }
 
 // Dispose joins background work after the caller has detached all view callbacks and rendering. Repeated calls return the same result.
 func (view *ExperimentalChatView) Dispose() error {
 	view.disposeOnce.Do(func() {
 		view.cancel()
-		for _, card := range view.tools {
-			card.Dispose()
-		}
+		view.discardTools()
 		view.tasks.Wait()
 		view.errorsMu.Lock()
 		view.disposeError = errors.Join(view.failures...)
@@ -139,25 +216,57 @@ func (view *ExperimentalChatView) Dispose() error {
 	return view.disposeError
 }
 
-func (view *ExperimentalChatView) retireTools() {
-	retired := view.tools
+// discardTools finishes every card: a running bash card keeps a timer until it gets a final result.
+func (view *ExperimentalChatView) discardTools() {
+	cards := view.cards
+	view.cards = nil
 	view.tools = make(map[string]*codingagent.ToolRendererCard)
+	clear(view.streamingCalls)
+	for _, card := range cards {
+		card.Component.SetResultValue(agent.AgentToolResult{})
+		card.Component.ImageBlocks = nil
+		card.Component.SetResult("", false, 0)
+	}
 	view.tasks.Go(func() {
-		for _, card := range retired {
+		for _, card := range cards {
 			card.Dispose()
 		}
 	})
 }
 
-func (view *ExperimentalChatView) syncQueues(queues []agentharness.LaneQueuedItem) {
+func (view *ExperimentalChatView) syncQueue(inbox harness.InboxState) error {
 	view.PendingMessages.Clear()
-	for _, item := range queues {
-		text := "<" + item.CustomType + ">"
-		if item.Type == "message" {
-			text = collapseClientQueueWhitespace(userMessageText(item.Message))
+	for _, item := range inbox.Items {
+		var text string
+		if item.Mode == harness.InboxWrite {
+			kind, _ := item.Entry["kind"].(string)
+			text = "<" + kind + ">"
+		} else {
+			content, err := decodeInboxContent(item.Content)
+			if err != nil {
+				return err
+			}
+			text = collapseClientQueueWhitespace(userContentText(content))
 		}
-		view.PendingMessages.Add(tui.NewPaddedTruncatedText(view.theme().FgText("muted", "["+item.Kind+"] "+text), 1, 0))
+		view.PendingMessages.Add(tui.NewPaddedTruncatedText(view.theme().FgText("muted", "["+string(item.Mode)+"] "+text), 1, 0))
 	}
+	return nil
+}
+
+// decodeInboxContent decodes a queued user input: a string, or an array of text and image blocks.
+func decodeInboxContent(content durable.JsonValue) (ai.UserContent, error) {
+	var message agent.AgentMessage
+	wrapped, err := json.Marshal(map[string]any{"role": "user", "content": content, "timestamp": 0})
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(wrapped, &message); err != nil {
+		return nil, err
+	}
+	if message.User == nil {
+		return nil, errors.New("Inbox content is not user content")
+	}
+	return message.User.Content, nil
 }
 
 func collapseClientQueueWhitespace(text string) string {
@@ -179,57 +288,107 @@ func collapseClientQueueWhitespace(text string) string {
 	return result.String()
 }
 
-func (view *ExperimentalChatView) syncTranscript(transcript []session.Entry) error {
-	for i, id := range view.renderedEntryIds {
-		if i >= len(transcript) || transcript[i].ID != id {
-			view.Transcript.Clear()
-			view.retireTools()
-			view.renderedEntryIds = nil
-			view.streaming = nil
-			break
+// syncStatus shows what the conversation waits for: a retry, a deferred response, a compaction, a running tool, or a plain working run.
+func (view *ExperimentalChatView) syncStatus(live harness.LiveState) {
+	text := ""
+	switch {
+	case live.Generation != nil && live.Generation.Retry != nil:
+		text = "Retrying (attempt " + itoa(live.Generation.Attempt+1) + "): " + live.Generation.Retry.Error
+	case live.Generation != nil && live.Generation.Deferred != nil:
+		text = "Waiting for deferred response..."
+	case len(live.Compactions) > 0:
+		compaction := live.Compactions[0]
+		if compaction.Retry != nil {
+			text = "Retrying " + string(compaction.Reason) + " compaction (attempt " + itoa(compaction.Attempt+1) + ")..."
+		} else {
+			text = "Compacting (" + string(compaction.Reason) + ")..."
+		}
+	case runningToolName(live) != "":
+		text = "Running " + runningToolName(live) + "... (esc to abort)"
+	case live.Run != nil:
+		text = "Working... (esc to abort)"
+	}
+	if text == view.statusText {
+		return
+	}
+	view.statusText = text
+	view.stopStatusIndicator()
+	view.Status.Clear()
+	if text == "" {
+		return
+	}
+	indicator := tui.NewStyledLoader(view.theme().Accent, view.theme().Muted, text, nil)
+	view.indicator = indicator
+	view.Status.Add(indicator)
+	view.startIndicator(indicator)
+}
+
+func runningToolName(live harness.LiveState) string {
+	for _, slot := range live.Tools {
+		if slot.Status == harness.ToolSlotRunning {
+			return slot.Name
 		}
 	}
-	for _, entry := range transcript[len(view.renderedEntryIds):] {
+	return ""
+}
+
+func (view *ExperimentalChatView) stopStatusIndicator() {
+	if view.stopIndicator != nil {
+		view.stopIndicator()
+		view.stopIndicator = nil
+	}
+	view.indicator = nil
+}
+
+func (view *ExperimentalChatView) syncTranscript(entries []durable.EntryRecord) error {
+	// Compaction and resets replace the head of the active transcript.
+	for i, id := range view.renderedEntryIds {
+		if i >= len(entries) || entries[i].Id != id {
+			if err := view.rebuild(entries); err != nil {
+				return err
+			}
+			return nil
+		}
+	}
+	for _, entry := range entries[len(view.renderedEntryIds):] {
 		if err := view.ctx.Err(); err != nil {
 			return err
 		}
 		if err := view.addEntry(entry); err != nil {
 			return err
 		}
-		view.renderedEntryIds = append(view.renderedEntryIds, entry.ID)
+		view.renderedEntryIds = append(view.renderedEntryIds, entry.Id)
 	}
 	return nil
 }
 
-func (view *ExperimentalChatView) addEntry(entry session.Entry) error {
-	switch entry.Type {
-	case session.EntryTypeCompaction:
-		view.addText(view.theme().FgText("muted", fmt.Sprintf("[compaction] compacted from %d tokens", entry.TokensBefore)))
-		for _, message := range entry.RetainedTail {
-			if err := view.ctx.Err(); err != nil {
-				return err
-			}
-			if err := view.addMessage(message); err != nil {
-				return err
-			}
+func (view *ExperimentalChatView) rebuild(entries []durable.EntryRecord) error {
+	view.Transcript.Clear()
+	view.discardTools()
+	view.renderedEntryIds = nil
+	view.streaming = nil
+	for _, entry := range entries {
+		if err := view.ctx.Err(); err != nil {
+			return err
 		}
-	case session.EntryTypeBranchSummary:
-		view.addText(view.theme().FgText("muted", "[branch summary]"))
-		view.addText(entry.Summary)
-	case session.EntryTypeCustom:
-		view.addText(view.theme().FgText("muted", "["+entry.CustomType+"]"))
-	default:
-		return view.addMessage(entry.Message)
+		if err := view.addEntry(entry); err != nil {
+			return err
+		}
+		view.renderedEntryIds = append(view.renderedEntryIds, entry.Id)
 	}
 	return nil
 }
 
-func (view *ExperimentalChatView) addMessage(message agent.AgentMessage) error {
+func (view *ExperimentalChatView) addEntry(entry durable.EntryRecord) error {
+	message, err := decodeEntryMessage(entry)
+	if err != nil {
+		return err
+	}
 	switch {
-	case message.User != nil:
+	case entry.Kind == "pi.user" && message != nil && message.User != nil:
 		view.Transcript.Add(tui.NewSpacer(1))
-		view.Transcript.Add(tui.NewUserMessageBlock(userMessageText(message)))
-	case message.Assistant != nil:
+		view.Transcript.Add(tui.NewUserMessageBlock(userMessageText(*message)))
+	case entry.Kind == "pi.assistant" && message != nil && message.Assistant != nil:
 		component := view.streaming
 		if component == nil {
 			component = tui.NewAssistantMessageBlock(false)
@@ -237,22 +396,41 @@ func (view *ExperimentalChatView) addMessage(message agent.AgentMessage) error {
 		}
 		view.streaming = nil
 		applyClientAssistant(component, message.Assistant)
+		// Only a tool-calling answer runs its calls; an aborted, failed, or truncated one never does.
+		ran := message.Assistant.StopReason == ai.StopReasonToolUse
 		for _, block := range message.Assistant.Content {
-			if call, ok := block.(ai.ToolCall); ok {
-				card, err := view.tool(call.Name, call.ID, call.Arguments, true)
-				if err != nil {
-					return err
-				}
-				card.Component.SetArgsComplete()
+			call, ok := block.(ai.ToolCall)
+			if !ok {
+				continue
+			}
+			_, streamed := view.streamingCalls[call.ID]
+			if !ran && !streamed {
+				continue
+			}
+			card, err := view.tool(call.Name, call.ID, call.Arguments, true, !streamed)
+			if err != nil {
+				return err
+			}
+			card.Component.SetArgsComplete()
+			if !ran {
+				view.updateResult(call.ID, card, agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "Not run: the answer was interrupted."}}, IsError: true}, false)
 			}
 		}
-	case message.ToolResult != nil:
+		clear(view.streamingCalls)
+	case entry.Kind == "pi.tool-result" && message != nil && message.ToolResult != nil:
 		result := message.ToolResult
-		card, err := view.tool(result.ToolName, result.ToolCallID, nil, false)
+		card, err := view.tool(result.ToolName, result.ToolCallID, nil, false, false)
 		if err != nil {
 			return err
 		}
-		view.updateResult(result.ToolCallID, card, agent.AgentToolResult{Content: result.Content, Details: result.Details, IsError: result.IsError}, false)
+		view.updateResult(result.ToolCallID, card, result.Result(), false)
+	case entry.Kind == "pi.compaction":
+		view.addText(view.theme().FgText("muted", "[compaction]"))
+		if message != nil && message.User != nil {
+			view.addText(userMessageText(*message))
+		}
+	case entry.Kind == "pi.reset":
+		view.addText(view.theme().FgText("muted", "[new context]"))
 	}
 	return nil
 }
@@ -277,9 +455,6 @@ func applyClientAssistant(component *tui.AssistantMessageBlock, message *agent.A
 }
 
 func (view *ExperimentalChatView) syncStreaming(message *agent.AssistantMessage) error {
-	if message == nil {
-		return nil
-	}
 	if view.streaming == nil {
 		view.streaming = tui.NewAssistantMessageBlock(false)
 		view.Transcript.Add(view.streaming)
@@ -287,17 +462,20 @@ func (view *ExperimentalChatView) syncStreaming(message *agent.AssistantMessage)
 	applyClientAssistant(view.streaming, message)
 	for _, block := range message.Content {
 		if call, ok := block.(ai.ToolCall); ok {
-			if _, err := view.tool(call.Name, call.ID, call.Arguments, true); err != nil {
+			_, streamed := view.streamingCalls[call.ID]
+			if _, err := view.tool(call.Name, call.ID, call.Arguments, true, !streamed); err != nil {
 				return err
 			}
+			view.streamingCalls[call.ID] = struct{}{}
 		}
 	}
 	return nil
 }
 
-func (view *ExperimentalChatView) tool(name, id string, args any, supplied bool) (*codingagent.ToolRendererCard, error) {
-	if existing := view.tools[id]; existing != nil {
-		if supplied {
+// tool is the card of a call. hasArgs updates an existing card's arguments; fresh starts a new card for a call ID an earlier turn used.
+func (view *ExperimentalChatView) tool(name, id string, args any, hasArgs, fresh bool) (*codingagent.ToolRendererCard, error) {
+	if existing := view.tools[id]; existing != nil && !fresh {
+		if hasArgs {
 			encoded, err := json.Marshal(args)
 			if err != nil {
 				return nil, err
@@ -315,6 +493,7 @@ func (view *ExperimentalChatView) tool(name, id string, args any, supplied bool)
 	}
 	card := codingagent.NewToolRendererCard(view.ctx, name, id, view.cwd, encoded, experimentalToolRenderers[name], view.requestRender)
 	view.Transcript.Add(card.Component)
+	view.cards = append(view.cards, card)
 	view.tools[id] = card
 	return card, nil
 }
@@ -366,26 +545,6 @@ func (view *ExperimentalChatView) recordTaskError(err error) {
 	}
 }
 
-func (view *ExperimentalChatView) setWorking(working bool) {
-	if view.working == working {
-		return
-	}
-	view.working = working
-	if view.stopIndicator != nil {
-		view.stopIndicator()
-		view.stopIndicator = nil
-	}
-	view.indicator = nil
-	view.Status.Clear()
-	if !working {
-		return
-	}
-	indicator := tui.NewStyledLoader(view.theme().Accent, view.theme().Muted, "Working... (esc to abort)", nil)
-	view.indicator = indicator
-	view.Status.Add(indicator)
-	view.startIndicator(indicator)
-}
-
 func (view *ExperimentalChatView) startIndicator(indicator *tui.Loader) {
 	ctx, cancel := context.WithCancel(view.ctx)
 	view.stopIndicator = cancel
@@ -414,3 +573,5 @@ func (view *ExperimentalChatView) startIndicator(indicator *tui.Loader) {
 		}
 	})
 }
+
+func itoa(value int) string { return strconv.Itoa(value) }

@@ -10,6 +10,7 @@ import (
 // Mirrors upstream OVERFLOW_PATTERNS (packages/ai/src/utils/overflow.ts).
 var overflowPatterns = []*lazyregexp.Regexp{
 	lazyregexp.New(`(?i)prompt (?:is )?too long`),                                                                   // Anthropic and z.ai token overflow
+	lazyregexp.New(`(?i)prompt exceeds max length`),                                                                 // z.ai CN endpoint token overflow
 	lazyregexp.New(`(?i)request_too_large`),                                                                         // Anthropic request byte-size overflow (HTTP 413)
 	lazyregexp.New(`(?i)input is too long for requested model`),                                                     // Amazon Bedrock
 	lazyregexp.New(`(?i)exceeds the context window`),                                                                // OpenAI (Completions & Responses API)

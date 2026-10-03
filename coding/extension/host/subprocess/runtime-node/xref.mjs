@@ -90,6 +90,16 @@ function cloneOutcome(serialize) {
   }
 }
 
+// A native pi.events listener receives the emitter's JSON.stringify view, computed here in the owner (one read of each getter): the JSON text, null when JSON has no form for the value, or the error JSON.stringify threw.
+function jsonOutcome(value) {
+  try {
+    const text = JSON.stringify(value);
+    return text === undefined ? { json: null } : { json: text };
+  } catch (error) {
+    return { error: String(error instanceof Error ? error.message : error) };
+  }
+}
+
 const isBuiltinSite = site => site.getFileName() == null && site.getLineNumber() == null && !site.isEval();
 
 // Reports whether a rejected operation on the proxy throws in its caller: a strict-mode assignment or delete, Object.defineProperty and the builtins that throw on failure. Sloppy code and the Reflect functions observe the false result instead. `trap` is the handler function V8 called.
@@ -503,6 +513,7 @@ export class Realm {
       case "functionText": return Function.prototype.toString.call(target);
       case "serialize": return cloneOutcome(() => v8.serialize(values));
       case "serializeOne": return cloneOutcome(() => v8.serialize(values[0]));
+      case "json": return jsonOutcome(target);
       case "detach": return structuredClone(values[0], { transfer: [values[0]] }) && true;
       case "setStrict": return strictOutcome(strictSet, [target, values[0], values[1]]);
       case "deleteStrict": return strictOutcome(strictDelete, [target, values[0]]);
@@ -589,7 +600,7 @@ export class Realm {
   encodeResult(op, result) {
     if (op === "ownKeys") return { $x: "json", v: result.map(key => this.encodeKey(key)) };
     if (op === "getOwnPropertyDescriptor") return result === undefined ? { $x: "undefined" } : { $x: "json", v: this.encodeDescriptor(result) };
-    if (op === "snapshotDescriptors" || op === "view" || op === "lookup" || op === "serialize" || op === "serializeOne" || Object.hasOwn(STRICT_OPERATIONS, op)) return { $x: "json", v: result };
+    if (op === "snapshotDescriptors" || op === "view" || op === "lookup" || op === "serialize" || op === "serializeOne" || op === "json" || Object.hasOwn(STRICT_OPERATIONS, op)) return { $x: "json", v: result };
     return this.encode(result);
   }
 

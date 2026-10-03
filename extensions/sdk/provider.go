@@ -23,6 +23,9 @@ type Provider struct {
 	StreamSimple   ProviderStreamFunc
 	FetchDeferred  ProviderStreamFunc
 	CancelDeferred func(map[string]any, map[string]any, ProviderStreamOptions) error
+	// GenerateImages and Classify are the provider's image and classifier operations. The models they serve come from GetModels.
+	GenerateImages ProviderImagesFunc
+	Classify       ProviderClassifyFunc
 }
 
 type ProviderStreamFunc func(model, transcriptOrHandle map[string]any, options ProviderStreamOptions) (*ModelEventStream, error)
@@ -132,7 +135,7 @@ func providerDeclaration(provider *Provider, key string) (providerObjectDeclarat
 	for _, entry := range []struct {
 		method  string
 		present bool
-	}{{"filterModels", provider.FilterModels != nil}, {"refreshModels", provider.RefreshModels != nil}, {"fetchDeferred", provider.FetchDeferred != nil}, {"cancelDeferred", provider.CancelDeferred != nil}} {
+	}{{"filterModels", provider.FilterModels != nil}, {"refreshModels", provider.RefreshModels != nil}, {"fetchDeferred", provider.FetchDeferred != nil}, {"cancelDeferred", provider.CancelDeferred != nil}, {"generateImages", provider.GenerateImages != nil}, {"classify", provider.Classify != nil}} {
 		if entry.present {
 			decl.Methods = append(decl.Methods, entry.method)
 		}
@@ -176,7 +179,7 @@ func (e *Extension) RegisterNativeProvider(provider *Provider) error {
 	}
 	e.nativeProviders[decl.Key] = provider
 	e.providerMu.Unlock()
-	e.UnregisterProvider(provider.ID)
+	e.dropQueuedProvider(provider.ID)
 	e.providers = append(e.providers, providerDef{Name: provider.ID, Config: json.RawMessage("{}"), Native: &decl})
 	return nil
 }

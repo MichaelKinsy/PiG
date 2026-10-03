@@ -13,7 +13,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
-	"github.com/MichaelKinsy/PiG/internal/codingagent/llama"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -137,9 +136,11 @@ type SlashContext struct {
 	// Accessors. Any of these may be nil; handlers must guard. Keeps
 	// the registry decoupled from the full InteractiveMode struct so
 	// /help and friends are unit-testable in isolation.
-	ModelName       func() string
-	ToolNames       func() []string
-	RegisteredTools func() []extension.RegisteredTool
+	ModelName func() string
+	// SelectedModelKey is `provider/id` of the session's selected model, the key of a single-model /session cost total.
+	SelectedModelKey func() string
+	ToolNames        func() []string
+	RegisteredTools  func() []extension.RegisteredTool
 	// ShareState returns the system prompt and active tool schemas for the
 	// pi.share entry attached to exported transcripts.
 	ShareState func() ShareState
@@ -333,11 +334,12 @@ type SlashContext struct {
 	LoginProviders     func() []tui.OAuthProvider
 	LogoutProviders    func() ([]tui.OAuthProvider, error)
 	SelectAuthProvider func(mode string, providers []tui.OAuthProvider, initialSearch string) (tui.OAuthProvider, bool)
-	SelectAuthMethod   func(providers []tui.OAuthProvider) (authType string, ok bool)
+	// SelectAuthMethod returns "oauth" or "api_key", or the ID of a provider the top-level menu (nil providers) offers
+	// directly, such as Radius.
+	SelectAuthMethod func(providers []tui.OAuthProvider) (choice string, ok bool)
+	// StartProviderLogin returns errLoginCancelled when the user cancels the login, which reopens the menu it was
+	// started from.
 	StartProviderLogin func(provider tui.OAuthProvider) error
-
-	// RunLlama runs the built-in /llama command.
-	RunLlama func() error
 
 	// Logout removes stored credentials for the given provider.
 	// Mirrors upstream showOAuthSelector logout branch (interactive-mode.ts:4299).
@@ -585,7 +587,6 @@ func defaultBuiltins() []BuiltinSlashCommand {
 		{Name: "resume", Description: "Resume a different session", Handler: resumeHandler},
 		{Name: "reload", Description: "Reload keybindings, extensions, skills, prompts, themes, and context files", Handler: reloadHandler},
 		{Name: "quit", Description: "Quit " + AppName, Handler: quitHandler},
-		{Name: llama.CommandName, Description: llama.CommandDescription, Handler: llamaHandler},
 		// Hidden: dispatchable but absent from /help and autocomplete, matching
 		// upstream (handled inline in the submit handler, not in the canonical
 		// slash-commands.js completion list). /debug writes a debug log; it is
@@ -610,16 +611,6 @@ func defaultBuiltins() []BuiltinSlashCommand {
 		)
 	}
 	return cmds
-}
-
-// llamaHandler runs the command upstream's built-in hidden llama.cpp inline
-// extension registers (extensions/llama/index.ts).
-func llamaHandler(sc *SlashContext) error {
-	if sc.RunLlama == nil {
-		sc.Append("llama.cpp is not available in this context.")
-		return nil
-	}
-	return sc.RunLlama()
 }
 
 func quitHandler(sc *SlashContext) error {
@@ -966,7 +957,13 @@ func sessionHandler(sc *SlashContext) error {
 	if ts.Cost > 0 || stats.CacheWaste.MissedTokens > 0 {
 		b.WriteString("\n" + bold("Cost") + "\n")
 		fmt.Fprintf(&b, "%s $%s", dim("Total:"), tui.JSToFixed(ts.Cost, 3))
-		if len(stats.UsageBreakdown) > 1 {
+		// A single entry repeats the total, unless it names a model other than the selected one.
+		// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts handleSessionCommand renderInfo
+		selectedModelKey := "undefined/undefined"
+		if sc.SelectedModelKey != nil {
+			selectedModelKey = sc.SelectedModelKey()
+		}
+		if len(stats.UsageBreakdown) > 1 || (len(stats.UsageBreakdown) == 1 && stats.UsageBreakdown[0].Key != selectedModelKey) {
 			for _, entry := range stats.UsageBreakdown {
 				fmt.Fprintf(&b, "\n  %s $%s %s", dim(entry.Key+":"), tui.JSToFixed(entry.Cost, 3), dim(fmt.Sprintf("(%s tokens)", formatTokens(entry.Tokens))))
 			}

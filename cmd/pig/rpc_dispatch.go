@@ -81,6 +81,9 @@ type rpcCommandJoin struct {
 	suspended int
 	closed    bool
 	waiters   []chan struct{}
+	// windowSuspended counts the commands Pi would have left unanswered when it read stdin's end (Host.SetCommandWindowHandler); windowWaiters wait for unwritten to reach it.
+	windowSuspended int
+	windowWaiters   []chan struct{}
 }
 
 func (j *rpcCommandJoin) begin() {
@@ -93,6 +96,7 @@ func (j *rpcCommandJoin) end() {
 	j.mu.Lock()
 	j.unwritten--
 	j.releaseLocked()
+	j.releaseWindowLocked()
 	j.mu.Unlock()
 }
 
@@ -102,6 +106,37 @@ func (j *rpcCommandJoin) setSuspended(n int) {
 	j.suspended = n
 	j.releaseLocked()
 	j.mu.Unlock()
+}
+
+// setWindowSuspended records how many in-flight commands would be unanswered when stdin's end is read.
+func (j *rpcCommandJoin) setWindowSuspended(n int) {
+	j.mu.Lock()
+	j.windowSuspended = n
+	j.releaseWindowLocked()
+	j.mu.Unlock()
+}
+
+func (j *rpcCommandJoin) releaseWindowLocked() {
+	if j.unwritten > j.windowSuspended && !j.closed {
+		return
+	}
+	for _, w := range j.windowWaiters {
+		close(w)
+	}
+	j.windowWaiters = nil
+}
+
+// windowIdle is closed once every unwritten response belongs to a command that Pi would have left unanswered when it read stdin's end: Pi answers the others before it reads it, so their responses precede the shutdown.
+func (j *rpcCommandJoin) windowIdle() <-chan struct{} {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	done := make(chan struct{})
+	if j.closed || j.unwritten <= j.windowSuspended {
+		close(done)
+	} else {
+		j.windowWaiters = append(j.windowWaiters, done)
+	}
+	return done
 }
 
 // releaseLocked wakes the waiters once every unwritten response belongs to a suspended command.
@@ -115,12 +150,12 @@ func (j *rpcCommandJoin) releaseLocked() {
 	j.waiters = nil
 }
 
-// idle is closed once every unwritten response belongs to a suspended command.
+// idle is closed once every unwritten response belongs to a suspended command, or the join closed.
 func (j *rpcCommandJoin) idle() <-chan struct{} {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	done := make(chan struct{})
-	if j.unwritten <= j.suspended {
+	if j.closed || j.unwritten <= j.suspended {
 		close(done)
 	} else {
 		j.waiters = append(j.waiters, done)
@@ -128,10 +163,15 @@ func (j *rpcCommandJoin) idle() <-chan struct{} {
 	return done
 }
 
-// close ends the join: no command response is written after it.
+// close ends the join: no command response is written after it, so nothing is left to wait for.
 func (j *rpcCommandJoin) close() {
 	j.mu.Lock()
 	j.closed = true
+	for _, w := range j.waiters {
+		close(w)
+	}
+	j.waiters = nil
+	j.releaseWindowLocked()
 	j.mu.Unlock()
 }
 

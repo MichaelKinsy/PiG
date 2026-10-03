@@ -29,11 +29,10 @@ func TestUserBashNodeOwner(t *testing.T) {
 import {join} from "node:path";
 writeFileSync(new URL("./owner.pid", import.meta.url), String(process.pid));
 export default pi => pi.on("user_bash", async (event, ctx) => {
-  const signal = ctx.signal;
-  const cancelled = new Promise(resolve => signal.addEventListener("abort", resolve, {once:true}));
   writeFileSync(join(event.cwd, "started"), ctx.ui.getEditorText());
-  await cancelled;
-  writeFileSync(join(event.cwd, "cancelled"), String(signal.aborted));
+  // Pi gives a user_bash handler no cancellation: the event carries none (types.ts UserBashEvent) and ctx.signal is the signal of the run in progress, which a user command is not (runner.ts:917-920). The handler returns after the host abandoned it on the abort.
+  await new Promise(resolve => setTimeout(resolve, 500));
+  writeFileSync(join(event.cwd, "returned"), String(ctx.signal === undefined));
   return {result:{output:"late result",exitCode:7,cancelled:false,truncated:false}};
 });`), 0o600); err != nil {
 				t.Fatal(err)
@@ -93,7 +92,7 @@ export default pi => pi.on("user_bash", async (event, ctx) => {
 			case <-time.After(testbudget.Wait(t)):
 				t.Fatal("Node hook blocked input owner")
 			}
-			waitUserBashFile(t, filepath.Join(root, "cancelled"), "true")
+			waitUserBashFile(t, filepath.Join(root, "returned"), "true")
 			m.backgroundTasks.Wait()
 			if len(m.bashOrder) != 0 {
 				t.Fatal("cancelled Node result created a block")

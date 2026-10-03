@@ -1,8 +1,8 @@
 // Ports upstream pi-tui column slicing and overlay-segment extraction.
 //
 // Mirrors:
-//   - sliceByColumn       utils.ts:954
-//   - sliceWithWidth      utils.ts:959
+//   - sliceByColumn       utils.ts:1263
+//   - sliceWithWidth      utils.ts:1268
 //   - extractSegments     utils.ts:1014
 
 package widthx
@@ -42,7 +42,10 @@ func SliceWithWidth(line string, startCol, length int, strict bool) SliceResult 
 		if n := ExtractAnsi(line, i); n > 0 {
 			code := line[i : i+n]
 			if currentCol >= startCol && currentCol < endCol {
+				// Codes from before the range precede codes at the boundary, keeping the line's order (#10169).
+				result.WriteString(pendingAnsi)
 				result.WriteString(code)
+				pendingAnsi = ""
 			} else if currentCol < startCol {
 				pendingAnsi += code
 			}

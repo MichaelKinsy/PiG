@@ -10,6 +10,7 @@ import (
 // An owner-approved known difference is imported scrutiny, not behavioral proof
 // or a closure waiver. Keep the 2026-09-28 decisions visible in that state.
 func TestApproved030GapsRemainProvisionalNotWaived(t *testing.T) {
+	parallelHeavy(t)
 	root, err := filepath.Abs("../../..")
 	if err != nil {
 		t.Fatal(err)

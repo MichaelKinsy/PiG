@@ -1,178 +1,179 @@
 package services
 
+// Ports packages/coding-agent/src/experimental/services/agent-controller-provider.ts
+
 import (
 	"context"
 	"errors"
+	"strconv"
 
-	"github.com/MichaelKinsy/PiG/agent/harness"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/durable"
 )
 
-// LaneOperation is the portion of OperationResultRecord or SuspendedRun consumed by the presentation facade. A lane adapter projects compaction.compaction and navigation.navigation into the same observation.
-type LaneOperation struct {
-	OperationID string
-	Status      string
-	Error       *AgentOperationError
+// SettledPrompt is a prompt submission that finished: unanswered with a reason, or answered by Answer. Answer is the first model message of the answer entry; it is nil when the settled submission has no answer.
+type SettledPrompt struct {
+	Unanswered bool
+	Reason     string
+	Answer     ai.Message
 }
 
-// LaneCompactionOptions preserves absent options separately from empty instructions.
-type LaneCompactionOptions struct {
-	CustomInstructions *string
+// PromptSubmission is one durable submission that a prompt created.
+type PromptSubmission interface {
+	// Wait returns once the submission is answered or settles unanswered.
+	Wait(context.Context) (SettledPrompt, error)
 }
 
-// LaneNavigateOptions carries the options consumed by navigateTree.
-type LaneNavigateOptions struct {
-	Summarize          bool
-	Label              *string
-	CustomInstructions *string
+// AgentConversation is the root durable conversation boundary the controller drives. Submit adds one input and returns its submission; Compact starts a compaction task and returns its task ID.
+type AgentConversation interface {
+	ID() durable.ConversationId
+	Submit(ctx context.Context, content ai.UserContent, whenBusy durable.WhenBusy) (durable.SubmissionId, error)
+	Abort(context.Context) error
+	Compact(ctx context.Context, customInstructions *string) (int64, error)
 }
 
-// AgentLane is the controller's consumer-owned lane boundary. Implementations unwrap Result failures as harness.TaggedError and return rejected Promises as ordinary errors. Queue methods return value.entryId; CancelQueued returns value.kind. RequestAbort discards the successful observation, not its completion.
-type AgentLane interface {
-	Prompt(context.Context, string, []ai.ImageContent) (LaneOperation, error)
-	RequestAbort(context.Context, string) error
-	Steer(context.Context, string, []ai.ImageContent) (string, error)
-	FollowUp(context.Context, string, []ai.ImageContent) (string, error)
-	NextRun(context.Context, string, []ai.ImageContent) (string, error)
-	CancelQueued(context.Context, string) (string, error)
-	Resume(context.Context) (LaneOperation, error)
-	Compact(context.Context, *LaneCompactionOptions) (LaneOperation, error)
-	NavigateTree(context.Context, *string, LaneNavigateOptions) (LaneOperation, error)
+// AgentHarness is the durable Harness boundary the worker services consult: queued and settled submissions for the controller, and a conversation's pi.agent document for the Models service. Submission returns (nil, nil) for an unknown ID; AgentDocument returns (nil, nil) for a conversation without one.
+type AgentHarness interface {
+	AbortSubmission(ctx context.Context, id durable.SubmissionId, conversationID durable.ConversationId) (durable.SubmissionAbortResult, error)
+	Submission(ctx context.Context, id durable.SubmissionId) (PromptSubmission, error)
+	AgentDocument(ctx context.Context, conversationID durable.ConversationId) (AgentDocument, error)
 }
 
-// AgentControllerProvider adapts lane outcomes without exposing worker-owned result details.
+// AgentControllerProvider adapts durable conversation outcomes without exposing worker-owned details.
 type AgentControllerProvider struct {
-	lane AgentLane
+	harness      AgentHarness
+	conversation AgentConversation
 }
 
 var _ AgentController = (*AgentControllerProvider)(nil)
 
-// CreateAgentController creates the presentation-safe facade for one lane.
-func CreateAgentController(lane AgentLane) *AgentControllerProvider {
-	return &AgentControllerProvider{lane: lane}
+// CreateAgentController creates the presentation-safe facade for one root conversation.
+func CreateAgentController(harness AgentHarness, conversation AgentConversation) *AgentControllerProvider {
+	return &AgentControllerProvider{harness: harness, conversation: conversation}
 }
 
 func (controller *AgentControllerProvider) Prompt(ctx context.Context, request AgentPromptRequest) (AgentOperationResponse, error) {
-	value, err := controller.lane.Prompt(ctx, request.Message, toTextPrompt(request))
-	return operationResponse(value, err, true)
-}
-
-func (controller *AgentControllerProvider) RequestAbort(ctx context.Context, operationID string) error {
-	return commandError(controller.lane.RequestAbort(ctx, operationID))
+	id, err := controller.conversation.Submit(ctx, toInput(request), durable.WhenBusyReject)
+	if err != nil {
+		return AgentOperationResponse{Error: toAgentError(err)}, nil
+	}
+	return AgentOperationResponse{Accepted: true, OperationID: new(formatSubmissionID(id))}, nil
 }
 
 func (controller *AgentControllerProvider) Steer(ctx context.Context, request AgentPromptRequest) (AgentQueueResponse, error) {
-	entryID, err := controller.lane.Steer(ctx, request.Message, toTextPrompt(request))
-	return queueResponse(entryID, err)
+	return controller.queue(ctx, durable.WhenBusySteer, request)
 }
 
 func (controller *AgentControllerProvider) FollowUp(ctx context.Context, request AgentPromptRequest) (AgentQueueResponse, error) {
-	entryID, err := controller.lane.FollowUp(ctx, request.Message, toTextPrompt(request))
-	return queueResponse(entryID, err)
+	return controller.queue(ctx, durable.WhenBusyFollowUp, request)
 }
 
-func (controller *AgentControllerProvider) NextRun(ctx context.Context, request AgentPromptRequest) (AgentQueueResponse, error) {
-	entryID, err := controller.lane.NextRun(ctx, request.Message, toTextPrompt(request))
-	return queueResponse(entryID, err)
+func (controller *AgentControllerProvider) queue(ctx context.Context, whenBusy durable.WhenBusy, request AgentPromptRequest) (AgentQueueResponse, error) {
+	id, err := controller.conversation.Submit(ctx, toInput(request), whenBusy)
+	if err != nil {
+		return AgentQueueResponse{Error: toAgentError(err)}, nil
+	}
+	return AgentQueueResponse{Accepted: true, EntryID: new(formatSubmissionID(id))}, nil
 }
 
 func (controller *AgentControllerProvider) CancelQueued(ctx context.Context, entryID string) (AgentCancelQueuedResponse, error) {
-	outcome, err := controller.lane.CancelQueued(ctx, entryID)
-	if err != nil {
-		return AgentCancelQueuedResponse{}, commandError(err)
+	id, ok := parseSubmissionID(entryID)
+	if !ok {
+		return AgentCancelQueuedResponse{Outcome: "not_found"}, nil
 	}
-	return AgentCancelQueuedResponse{Outcome: outcome}, nil
+	result, err := controller.harness.AbortSubmission(ctx, id, controller.conversation.ID())
+	if err != nil {
+		return AgentCancelQueuedResponse{}, err
+	}
+	switch result {
+	case durable.SubmissionAborted:
+		return AgentCancelQueuedResponse{Outcome: "cancelled"}, nil
+	case durable.SubmissionNotFound:
+		return AgentCancelQueuedResponse{Outcome: "not_found"}, nil
+	}
+	return AgentCancelQueuedResponse{Outcome: "already_consumed"}, nil
 }
 
-func (controller *AgentControllerProvider) Resume(ctx context.Context) (AgentOperationResponse, error) {
-	value, err := controller.lane.Resume(ctx)
-	return operationResponse(value, err, false)
+func (controller *AgentControllerProvider) Abort(ctx context.Context) error {
+	return controller.conversation.Abort(ctx)
 }
 
 func (controller *AgentControllerProvider) Compact(ctx context.Context, request AgentCompactionRequest) (AgentOperationResponse, error) {
-	var options *LaneCompactionOptions
-	if request.CustomInstructions != nil {
-		options = &LaneCompactionOptions{CustomInstructions: request.CustomInstructions}
+	id, err := controller.conversation.Compact(ctx, request.CustomInstructions)
+	if err != nil {
+		return AgentOperationResponse{Error: toAgentError(err)}, nil
 	}
-	value, err := controller.lane.Compact(ctx, options)
-	return operationResponse(value, err, true)
+	return AgentOperationResponse{Accepted: true, OperationID: new(strconv.FormatInt(id, 10))}, nil
 }
 
-func (controller *AgentControllerProvider) Navigate(ctx context.Context, request AgentNavigationRequest) (AgentOperationResponse, error) {
-	value, err := controller.lane.NavigateTree(ctx, request.TargetID, LaneNavigateOptions{
-		Summarize: request.Summarize, Label: request.Label, CustomInstructions: request.CustomInstructions,
-	})
-	return operationResponse(value, err, true)
-}
-
-func operationResponse(value LaneOperation, err error, includeOperationID bool) (AgentOperationResponse, error) {
-	if err == nil {
-		response := AgentOperationResponse{Accepted: true, OperationID: new(value.OperationID)}
-		if value.Status == "failed" && value.Error != nil {
-			response.Error = &AgentOperationError{Code: value.Error.Code, Message: value.Error.Message}
+func (controller *AgentControllerProvider) WaitForPrompt(ctx context.Context, operationID string) (AgentPromptResult, error) {
+	id, ok := parseSubmissionID(operationID)
+	var submission PromptSubmission
+	if ok {
+		var err error
+		if submission, err = controller.harness.Submission(ctx, id); err != nil {
+			return AgentPromptResult{}, err
 		}
-		return response, nil
 	}
-	tagged, ok := errors.AsType[harness.TaggedError](err)
-	if !ok {
-		return AgentOperationResponse{}, err
+	if submission == nil {
+		return AgentPromptResult{}, errors.New("Unknown prompt: " + operationID)
 	}
-	response := AgentOperationResponse{Error: toAgentError(tagged)}
-	if busy, ok := tagged.(*harness.LaneBusy); includeOperationID && ok {
-		response.OperationID = new(busy.OperationID)
+	settled, err := submission.Wait(ctx)
+	if err != nil {
+		return AgentPromptResult{}, err
 	}
-	return response, nil
+	if settled.Unanswered {
+		return AgentPromptResult{Status: "unanswered", Reason: &settled.Reason}, nil
+	}
+	text := ""
+	if assistant, ok := settled.Answer.(ai.AssistantMessage); ok {
+		for _, block := range assistant.Content {
+			if content, ok := block.(ai.TextContent); ok {
+				text += content.Text
+			}
+		}
+	}
+	return AgentPromptResult{Status: "done", Text: &text}, nil
 }
 
-func queueResponse(entryID string, err error) (AgentQueueResponse, error) {
-	if err == nil {
-		return AgentQueueResponse{Accepted: true, EntryID: new(entryID)}, nil
+// maxSafeJSInteger is Number.MAX_SAFE_INTEGER.
+const maxSafeJSInteger = 1<<53 - 1
+
+func formatSubmissionID(id durable.SubmissionId) string { return strconv.FormatInt(int64(id), 10) }
+
+// parseSubmissionID accepts only the canonical positive decimal form that formatSubmissionID returns, within the safe-integer range of the wire's JavaScript numbers.
+func parseSubmissionID(value string) (durable.SubmissionId, bool) {
+	if value == "" || value[0] == '0' {
+		return 0, false
 	}
-	if tagged, ok := errors.AsType[harness.TaggedError](err); ok {
-		return AgentQueueResponse{Error: toAgentError(tagged)}, nil
+	for _, digit := range value {
+		if digit < '0' || digit > '9' {
+			return 0, false
+		}
 	}
-	return AgentQueueResponse{}, err
+	id, err := strconv.ParseInt(value, 10, 64)
+	if err != nil || id > maxSafeJSInteger {
+		return 0, false
+	}
+	return durable.SubmissionId(id), true
 }
 
-func commandError(err error) error {
-	if tagged, ok := errors.AsType[harness.TaggedError](err); ok {
-		return errors.New(tagged.Error())
+// toInput is a plain string without images; with images it is the text block followed by the images.
+func toInput(request AgentPromptRequest) ai.UserContent {
+	if len(request.Images) == 0 {
+		return ai.UserText(request.Message)
 	}
-	return err
+	content := make(ai.UserContentBlocks, 0, 1+len(request.Images))
+	content = append(content, ai.TextContent{Text: request.Message})
+	for _, image := range request.Images {
+		content = append(content, ai.ImageContent{Data: image.Data, MimeType: image.MimeType})
+	}
+	return content
 }
 
-func toAgentError(err harness.TaggedError) *AgentOperationError {
-	code := "operation_failed"
-	switch err.Tag() {
-	case "LaneBusy":
-		code = "lane_busy"
-	case "InvalidMessage":
-		code = "invalid_message"
-	case "UnknownSkill":
-		code = "unknown_skill"
-	case "UnknownTemplate":
-		code = "unknown_template"
-	case "NothingToCompact":
-		code = "nothing_to_compact"
-	case "NothingToResume":
-		code = "nothing_to_resume"
-	case "InvalidNavigation":
-		code = "invalid_navigation"
-	case "UnknownTarget":
-		code = "unknown_target"
-	case "Closed":
-		code = "closed"
+func toAgentError(err error) *AgentOperationError {
+	if _, ok := errors.AsType[*durable.ConversationBusy](err); ok {
+		return &AgentOperationError{Code: "busy", Message: err.Error()}
 	}
-	return &AgentOperationError{Code: code, Message: err.Error()}
-}
-
-func toTextPrompt(request AgentPromptRequest) []ai.ImageContent {
-	if request.Images == nil {
-		return nil
-	}
-	images := make([]ai.ImageContent, len(request.Images))
-	for i, image := range request.Images {
-		images[i] = ai.ImageContent{Data: image.Data, MimeType: image.MimeType}
-	}
-	return images
+	return &AgentOperationError{Code: "operation_failed", Message: err.Error()}
 }

@@ -60,6 +60,8 @@ type runtimeReplacement struct {
 	quitEmitted   atomic.Bool
 	createRuntime CreateAgentSessionRuntimeFactory
 	rebindSession func(context.Context, *Session) error
+	// reload is the mode's session.reload() for the current Session (agent-session.ts:3575-3625); nil until the mode installs it.
+	reload func(context.Context, *Session) error
 	// drain settles mode-owned work of the outgoing Session after cancellable before hooks approved the replacement and before the Session aborts and shuts down.
 	drain func(context.Context) error
 }
@@ -118,7 +120,24 @@ func (rt *Runtime) ExtensionCommandActions(session *Session) extension.CommandAc
 	bound.SwitchSession = func(path string, options *extension.SwitchSessionOptions) (extension.CancelledResult, error) {
 		return rt.SwitchSession(context.Background(), path, options)
 	}
+	// print-mode.ts:97-99 and rpc-mode.ts:341-343 bind reload to session.reload(); this Session's mode runs it.
+	bound.ReloadContext = func(ctx context.Context) error { return rt.reloadSession(ctx, session) }
+	bound.Reload = func() error { return bound.ReloadContext(context.Background()) }
 	return bound
+}
+
+// SetReload installs the mode's reload of the current Session: the work of upstream's session.reload() that depends on the resources and extension host the mode owns. Configure it before extensions run.
+func (rt *Runtime) SetReload(reload func(context.Context, *Session) error) {
+	rt.replacement.reload = reload
+}
+
+// reloadSession runs the mode's reload for session. Pi's reload returns a Promise, so the caller's call lane advances after its synchronous start.
+func (rt *Runtime) reloadSession(ctx context.Context, session *Session) error {
+	extension.CallInitiated(ctx)
+	if rt.replacement.reload == nil {
+		return errors.New("coding: Runtime has no reload")
+	}
+	return rt.replacement.reload(ctx, session)
 }
 
 // EmitQuitShutdown emits session_shutdown with reason quit for the current Session, once. A mode that must emit it before it tears its terminal down calls it; Close then does not repeat the event.
@@ -424,7 +443,7 @@ func (rt *Runtime) Fork(ctx context.Context, entryID string, options *extension.
 		storage := newSessionManagerForDir(rt.Services(), source.GetSessionDir())
 		if source.IsPersisted() {
 			if _, err := os.Stat(source.Path()); errors.Is(err, os.ErrNotExist) {
-				return RuntimeForkResult{}, errors.New("This session has not been saved yet. Wait for the first assistant response before cloning or forking it.")
+				return RuntimeForkResult{}, errors.New("This session has not been saved yet. Send a message before cloning or forking it.")
 			}
 			source, err = storage.Load(source.Path())
 			if err != nil {

@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -36,7 +37,14 @@ func TestSyncSwapsCompleteTreeAndRemovesStagingLeftovers(t *testing.T) {
 	}
 }
 
+// The documented modes are 0755 for a directory and 0644 for a file. Windows
+// keeps only a read-only attribute, which neither mode sets, so Go reports a
+// directory there as 0777 and a writable file as 0666.
 func TestSyncedTreeHoldsExactlyTheBundleWithDocumentedModes(t *testing.T) {
+	dirMode, fileMode := fs.FileMode(0o755), fs.FileMode(0o644)
+	if runtime.GOOS == "windows" {
+		dirMode, fileMode = 0o777, 0o666
+	}
 	for _, bundle := range bundles() {
 		t.Run(bundle.lang, func(t *testing.T) {
 			root := t.TempDir()
@@ -54,13 +62,13 @@ func TestSyncedTreeHoldsExactlyTheBundleWithDocumentedModes(t *testing.T) {
 					return err
 				}
 				if entry.IsDir() {
-					if info.Mode().Perm() != 0o755 {
-						t.Errorf("%s mode = %v, want 0755", path, info.Mode().Perm())
+					if info.Mode().Perm() != dirMode {
+						t.Errorf("%s mode = %v, want %v", path, info.Mode().Perm(), dirMode)
 					}
 					return nil
 				}
-				if info.Mode().Perm() != 0o644 {
-					t.Errorf("%s mode = %v, want 0644", path, info.Mode().Perm())
+				if info.Mode().Perm() != fileMode {
+					t.Errorf("%s mode = %v, want %v", path, info.Mode().Perm(), fileMode)
 				}
 				rel, _ := filepath.Rel(dir, path)
 				got = append(got, filepath.ToSlash(rel))

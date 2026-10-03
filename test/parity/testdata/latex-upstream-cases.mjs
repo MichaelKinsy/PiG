@@ -12,8 +12,8 @@ import ts from "../../../extensions/sdk-ts/node_modules/typescript/lib/typescrip
 
 const pkg = realpathSync("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/package.json");
 const { renderLatex } = await import(pathToFileURL(resolve(dirname(pkg), "node_modules/@earendil-works/pi-tui/dist/latex.js")).href);
-assert.equal(JSON.parse(readFileSync(pkg, "utf8")).version, "0.87.1");
-const path = ".upstream/v0.87.1/packages/tui/test/latex.test.ts";
+assert.equal(JSON.parse(readFileSync(pkg, "utf8")).version, "1.0.0");
+const path = ".upstream/current/packages/tui/test/latex.test.ts";
 const source = readFileSync(path, "utf8");
 const ast = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true);
 const rowLines = new Map();
@@ -68,4 +68,4 @@ for (const c of cases) {
  console.log(" })");
 }
 console.log("}");
-console.error(`${cases.length} cases, ${cases.reduce((n, c) => n + c.assertions.length, 0)} assertions verified against Pi 0.87.1`);
+console.error(`${cases.length} cases, ${cases.reduce((n, c) => n + c.assertions.length, 0)} assertions verified against Pi 1.0.0`);

@@ -263,7 +263,10 @@ func (p *BedrockProvider) runBedrockPipeline(ctx context.Context, turn *continua
 	chain.hops(2)
 	item := first
 	for {
-		err := state.handleItem(item)
+		err := builder.observeProviderEventData(item.event) // bedrock-converse-stream.ts:297
+		if err == nil {
+			err = state.handleItem(item)
+		}
 		// Pi's handlers mutate the shared output in place; a consumer's continuation sees the state at the end of this synchronous segment, before the next await.
 		builder.publish()
 		if err != nil {

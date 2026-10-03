@@ -14,7 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding"
 )
 
-// The two helpers at .upstream/v0.87.1/packages/ai/test/image-tool-result.test.ts:30-203 are exercised for every inventoried model. Real request converters must retain the image/text before the faux generation side will describe the known fixture. Stochastic visual recognition is live-only, including upstream's four skipped Xiaomi mixed-content cases.
+// The two helpers at .upstream/v0.99.1/packages/ai/test/image-tool-result.test.ts:30-203 are exercised for every inventoried model. Real request converters must retain the image/text before the faux generation side will describe the known fixture. Stochastic visual recognition is live-only, including upstream's four skipped Xiaomi mixed-content cases.
 func TestImageToolResultMatrixUpstream(t *testing.T) {
 	asset, err := os.ReadFile("testdata/upstream-red-circle.png")
 	if err != nil {
@@ -24,7 +24,7 @@ func TestImageToolResultMatrixUpstream(t *testing.T) {
 	cases := upstreamCaseSites(t, "packages/ai/test/image-tool-result.test.ts")
 	specs := []struct{ provider, model string }{
 		{"google", "gemini-2.5-flash"}, {"openai", "gpt-4o-mini"}, {"openai", "gpt-5-mini"}, {"azure-openai-responses", "gpt-4o-mini"},
-		{"anthropic", "claude-haiku-4-5"}, {"openrouter", "z-ai/glm-4.5v"}, {"mistral", "pixtral-12b"}, {"together", "moonshotai/Kimi-K2.6"},
+		{"anthropic", "claude-haiku-4-5"}, {"openrouter", "z-ai/glm-4.5v"}, {"mistral", "pixtral-12b"}, {"together", "moonshotai/Kimi-K3"},
 		{"baseten", "moonshotai/Kimi-K2.6"}, {"xiaomi", "mimo-v2.5-pro"}, {"xiaomi-token-plan-cn", "mimo-v2.5-pro"},
 		{"xiaomi-token-plan-ams", "mimo-v2.5-pro"}, {"xiaomi-token-plan-sgp", "mimo-v2.5-pro"}, {"qwen-token-plan", "qwen3.7-max"},
 		{"qwen-token-plan-individual", "qwen3.8-max"}, {"qwen-token-plan-cn", "qwen3.7-max"}, {"kimi-coding", "kimi-for-coding"},
@@ -36,7 +36,7 @@ func TestImageToolResultMatrixUpstream(t *testing.T) {
 	}
 	for index, tc := range cases {
 		t.Run(tc.ID, func(t *testing.T) {
-			t.Logf(".upstream/v0.87.1/packages/ai/test/image-tool-result.test.ts:%d", tc.Line)
+			t.Logf(".upstream/current/packages/ai/test/image-tool-result.test.ts:%d", tc.Line)
 			spec := specs[index/2]
 			metadata, ok := ai.LookupModelExact(spec.provider + "/" + spec.model)
 			if !ok {

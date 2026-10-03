@@ -1,4 +1,4 @@
-import { Box, Container, Markdown } from "../../../../../pi-tui.mjs";
+import { Container, Markdown } from "../../../../../pi-tui.mjs";
 import { getMarkdownTheme, theme } from "../theme/theme.js";
 import { createMarkdownTransform } from "./markdown-transform.js";
 const OSC133_ZONE_START = "\x1b]133;A\x07";
@@ -26,15 +26,16 @@ export class UserMessageComponent extends Container {
     }
     rebuild() {
         this.clear();
-        const contentBox = new Box(this.outputPad, 1, (content) => theme.bg("userMessageBg", content));
-        contentBox.addChild(new Markdown(this.text, 0, 0, this.markdownTheme, {
+        // The Markdown pads and colors its own background: a Box around it would keep a second full-width copy of every
+        // line, with identical output.
+        this.addChild(new Markdown(this.text, this.outputPad, 1, this.markdownTheme, {
             color: (content) => theme.fg("userMessageText", content),
+            bgColor: (content) => theme.bg("userMessageBg", content),
         }, {
             preserveOrderedListMarkers: true,
             preserveBackslashEscapes: true,
             transform: createMarkdownTransform("user", false, this.markdownTransformers),
         }));
-        this.addChild(contentBox);
     }
     render(width) {
         const lines = super.render(width);

@@ -5,8 +5,6 @@ import (
 	"errors"
 	"reflect"
 	"testing"
-
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 )
 
 // host.ts routes remotely exposable in-host services through a retained replica.
@@ -35,7 +33,7 @@ func TestDeltaRetainedFacetStateSubscriptionFollowsReload(t *testing.T) {
 		t.Fatal(err)
 	}
 	var deliveries []int
-	stop, err := held.State().Subscribe(func(value *counterState, _ context.Context, _ pico3.ReplicatedStateDelivery) {
+	stop, err := held.State().Subscribe(func(value *counterState, _ context.Context, _ ReplicatedStateDelivery) {
 		deliveries = append(deliveries, value.Count)
 	})
 	if err != nil {
@@ -81,12 +79,11 @@ func TestDeltaRetainedFacetStateValueRejectsRevocation(t *testing.T) {
 	}
 }
 
-// state.ts Subscribe hydrates on the caller stack. Change during that initial
-// hydration delivers an update before Change returns when no drain is active.
-func TestDeltaSubscribeHydrationChangeIsSynchronous(t *testing.T) {
+// state.ts StateSubscriber.drain (1.0.0): Subscribe hydrates on the caller stack, and a Change during that hydration queues its update behind the running callback, so the callback finishes before the update starts (state-delivery.test.ts "serializes reentrant hydration and update callbacks").
+func TestDeltaSubscribeHydrationChangeIsSerialized(t *testing.T) {
 	counter := newCounter(t)
 	var events []string
-	stop, err := counter.state.Subscribe(func(_ *counterState, _ context.Context, info pico3.ReplicatedStateDelivery) {
+	stop, err := counter.state.Subscribe(func(_ *counterState, _ context.Context, info ReplicatedStateDelivery) {
 		events = append(events, info.Kind)
 		if info.Kind == DeliveryHydrate {
 			if _, err := counter.Add(context.Background(), 1, "nested"); err != nil {
@@ -99,7 +96,7 @@ func TestDeltaSubscribeHydrationChangeIsSynchronous(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer stop()
-	if want := []string{"hydrate", "update", "after change"}; !reflect.DeepEqual(events, want) {
+	if want := []string{"hydrate", "after change", "update"}; !reflect.DeepEqual(events, want) {
 		t.Fatalf("events = %v, upstream = %v", events, want)
 	}
 }

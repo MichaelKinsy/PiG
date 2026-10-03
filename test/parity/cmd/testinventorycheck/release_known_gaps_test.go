@@ -130,15 +130,16 @@ func TestReleaseKnownGapRetainsCommittedBaselineIdentity(t *testing.T) {
 	git("add", "mapping.json")
 	git("-c", "user.name=Parity Test", "-c", "user.email=parity@example.invalid", "-c", "commit.gpgsign=false", "commit", "-qm", "reviewed baseline")
 	policy.BaselineCommit = git("rev-parse", "HEAD")
+	git("update-ref", "refs/remotes/origin/main", "HEAD")
 	writeJSON(t, mapPath, m)
 	policyPath := filepath.Join(root, "policy.json")
 	writeJSON(t, policyPath, policy)
-	if err := checkReleasePolicy(invPath, mapPath, policyPath, root); err != nil {
+	if err := checkReleasePolicy(invPath, mapPath, policyPath, root, defaultPublicMainRef); err != nil {
 		t.Fatal(err)
 	}
 	policy.BaselinePorted = nil
 	writeJSON(t, policyPath, policy)
-	if err := checkReleasePolicy(invPath, mapPath, policyPath, root); err == nil || !strings.Contains(err.Error(), "baseline drops") {
+	if err := checkReleasePolicy(invPath, mapPath, policyPath, root, defaultPublicMainRef); err == nil || !strings.Contains(err.Error(), "baseline drops") {
 		t.Fatalf("known-gap approval must not lower the committed baseline: %v", err)
 	}
 }

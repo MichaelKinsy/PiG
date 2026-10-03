@@ -36,6 +36,7 @@ import { SettingsManager } from "./core/settings-manager.js";
 import { printTimings, resetTimings, time } from "./core/timings.js";
 import { hasTrustRequiringProjectResources, ProjectTrustStore } from "./core/trust-manager.js";
 import { builtInExtensions } from "./extensions/index.js";
+import { loadMcpCommand } from "./extensions/mcp/cli.lazy.js";
 import { runMigrations, showDeprecationWarnings } from "./migrations.js";
 import { InteractiveMode, runPrintMode, runRpcMode } from "./modes/index.js";
 import { initTheme, setThemeJsonValidator, stopThemeWatcher } from "./modes/interactive/theme/theme.js";
@@ -356,6 +357,12 @@ function buildSessionOptions(parsed, scopedModels, hasExistingSession, modelRunt
     // Model from CLI
     // - supports --provider <name> --model <pattern>
     // - supports --model <provider>/<pattern>
+    if (parsed.provider && !parsed.model) {
+        diagnostics.push({
+            type: "error",
+            message: `--provider requires --model (for example: --provider ${parsed.provider} --model <pattern>)`,
+        });
+    }
     if (parsed.model) {
         const resolved = resolveCliModel({
             cliProvider: parsed.provider,
@@ -472,6 +479,11 @@ export async function main(args, options) {
         return;
     }
     if (await handleConfigCommand(args, { extensionFactories })) {
+        return;
+    }
+    if (args[0] === "mcp") {
+        const { runMcpCommand } = await loadMcpCommand();
+        process.exitCode = await runMcpCommand(args.slice(1), { cwd, agentDir });
         return;
     }
     const parsed = parseArgs(args);
@@ -636,6 +648,10 @@ export async function main(args, options) {
             ...resourceLoader.getExtensions().errors.map(({ path, error }) => ({
                 type: "error",
                 message: `Failed to load extension "${path}": ${error}`,
+            })),
+            ...(resourceLoader.getExtensions().warnings ?? []).map(({ path, warning }) => ({
+                type: "warning",
+                message: `Extension package "${path}": ${warning}`,
             })),
         ];
         const modelPatterns = parsed.models ?? settingsManager.getEnabledModels();

@@ -1,0 +1,62 @@
+# Behavior family: json
+# Surface: an extension tool that returns details: null keeps the null in the tool_result event its handlers receive, in the turn_end event's toolResults, in tool_execution_end, in the toolResult message of message_end and turn_end, and in the session file.
+#
+# Upstream rule (Pi 1.0.0): agent-loop.ts createToolResultMessage sets `details: finalized.result.details`, agent-session.ts _afterToolCall emits `details: result.details` and _dispatchTurnEndBoundary hands turn_end handlers the ToolResultMessage objects, and JSON.stringify writes null where it omits undefined. session-manager.ts writes each entry with JSON.stringify. PiG's ToolResultMessage held details as an omitempty any and dropped the null from every message and from the stored entry; the tool_result event dropped it too.
+name = "10-json-extension-tool-null-details"
+description = "--mode json and the session file keep an extension tool's details: null"
+
+covers = [
+  "packages/agent/src/agent-loop.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+  "packages/coding-agent/src/modes/json-event.ts",
+]
+
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[cli]
+args = ["--mode", "json", "--model", "test-faux/faux-1", "--system-prompt", "JSON event probe.", "--no-context-files", "--no-skills", "Run: extension echo hello"]
+timeout_seconds = 30
+artifact_path = "{{TEMP}}/null-details.jsonl"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PARITY_DETAILS_REPORT={{TEMP}}/null-details.jsonl"]
+pi = ["PARITY_DETAILS_REPORT={{TEMP}}/null-details.jsonl"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["../../scenarios/json/testdata/ext/parity-null-details.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "../../scenarios/json/testdata/ext/parity-null-details.mjs"]
+pi_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+runs = 3
+output_equal = true
+stderr_equal = true
+artifact_normalized_equal = true
+both_contain = [
+  # tool_execution_end and the toolResult message both carry the null.
+  '"result":{"content":[{"type":"text","text":"echo-bridge: hello"}],"details":null}',
+  '"role":"toolResult","toolCallId":"call_test_faux_1","toolName":"echo_bridge","content":[{"type":"text","text":"echo-bridge: hello"}],"details":null,"isError":false',
+]
+artifact_both_contain = [
+  '{"event":"tool_result","details":null,"isNull":true}',
+  '"role":"toolResult","toolCallId":"call_test_faux_1","toolName":"echo_bridge","content":[{"type":"text","text":"echo-bridge: hello"}],"details":null,"isError":false',
+]
+
+# normalize-rationale: Only independent clocks, the header UUID and the isolated cwd identity vary; retain every other byte and property order.
+[[assert.normalize_replace]]
+pattern = 'parity-snap-cwd-[0-9]{10}'
+with = 'parity-snap-cwd-0000000000'
+reason = "Alias the isolated working-directory identity while preserving path suffixes and content."
+[[assert.normalize_replace]]
+pattern = '"timestamp":[0-9]+'
+with = '"timestamp":0'
+reason = "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+[[assert.normalize_replace]]
+pattern = '"timestamp":"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z"'
+with = '"timestamp":"2000-01-01T00:00:00.000Z"'
+reason = "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
+[[assert.normalize_replace]]
+pattern = '"id":"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"'
+with = '"id":"SESSION"'
+reason = "The header UUID is independently generated; no message content or property order is replaced."

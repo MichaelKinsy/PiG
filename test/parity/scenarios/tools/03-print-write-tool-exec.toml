@@ -22,7 +22,6 @@ name = "03-print-write-tool-exec"
 description = "Faux triggers write(parity-write-output.txt), both produce wrote in print mode"
 covers = [
   "packages/coding-agent/src/core/tools/write.ts",
-  "packages/agent/src/harness/tools/write.ts",
 ]
 tags = ["hermetic", "fast"]
 driver = "print-mode"

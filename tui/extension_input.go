@@ -10,6 +10,10 @@ type ExtensionInputComponent struct {
 	baseTitle string
 	done      bool
 	cancelled bool
+
+	// The title and hint are built when the component is constructed (and the title for a countdown tick), as upstream builds each Text with theme.fg; a theme change leaves them as built.
+	titleText string
+	hintText  string
 }
 
 // NewExtensionInputComponent creates the editor-slot extension input wrapper.
@@ -23,6 +27,8 @@ func NewExtensionInputComponent(title, placeholder string) *ExtensionInputCompon
 		input:     input,
 		title:     title,
 		baseTitle: title,
+		titleText: ActiveTheme().FgText("accent", title),
+		hintText:  extensionActionHint(KBSelectConfirm, "submit") + "  " + extensionActionHint(KBSelectCancel, "cancel"),
 	}
 }
 
@@ -30,6 +36,7 @@ func NewExtensionInputComponent(title, placeholder string) *ExtensionInputCompon
 // upstream's countdown sets the title to `${baseTitle} (${s}s)`.
 func (e *ExtensionInputComponent) SetCountdown(seconds int) {
 	e.title = countdownTitle(e.baseTitle, seconds)
+	e.titleText = ActiveTheme().FgText("accent", e.title)
 	e.Invalidate()
 }
 
@@ -77,18 +84,16 @@ func (e *ExtensionInputComponent) HandleInput(data string) {
 // Render mirrors upstream ExtensionInputComponent layout: the title and the
 // key hints are Text(..., 1, 0) children, so they wrap within the width.
 func (e *ExtensionInputComponent) Render(width int) []string {
-	th := ActiveTheme()
 	border := NewDynamicBorder("")
-	hint := extensionActionHint(KBSelectConfirm, "submit") + "  " + extensionActionHint(KBSelectCancel, "cancel")
 
 	var lines []string
 	lines = append(lines, border.Render(width)...)
 	lines = append(lines, "")
-	lines = append(lines, NewPaddedText(th.FgText("accent", e.title), 1, 0, nil).Render(width)...)
+	lines = append(lines, NewPaddedText(e.titleText, 1, 0, nil).Render(width)...)
 	lines = append(lines, "")
 	lines = append(lines, e.input.Render(width)...)
 	lines = append(lines, "")
-	lines = append(lines, NewPaddedText(hint, 1, 0, nil).Render(width)...)
+	lines = append(lines, NewPaddedText(e.hintText, 1, 0, nil).Render(width)...)
 	lines = append(lines, "")
 	lines = append(lines, border.Render(width)...)
 	return lines

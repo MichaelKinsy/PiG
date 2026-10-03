@@ -117,9 +117,19 @@ func TestPaintBgWith_GrepShortReset(t *testing.T) {
 	if !strings.Contains(result, "\x1b[m"+open) {
 		t.Fatalf("paintBgWith did not re-apply bg after short \\x1b[m reset in: %q", result)
 	}
-	// Embedded \x1b[K should be stripped (we add our own at the end).
-	embeddedEraseCnt := strings.Count(result[:len(result)-10], "\x1b[K")
+	// Embedded \x1b[K is stripped, and paintBgWith adds none of its own.
+	embeddedEraseCnt := strings.Count(result, "\x1b[K")
 	if embeddedEraseCnt > 0 {
 		t.Fatalf("paintBgWith should strip embedded \\x1b[K, found %d in: %q", embeddedEraseCnt, result)
+	}
+}
+
+// TestPaintBgWithEndsAtPadding mirrors upstream applyBackgroundToLine (utils.ts:1099-1108): the line is padded to width inside the background and nothing follows the close, so a fullscreen frame keeps the padded cells exactly as Pi writes them.
+func TestPaintBgWithEndsAtPadding(t *testing.T) {
+	open := "\x1b[48;2;30;33;38m"
+	got := paintBgWith(open, "ab", 5)
+	want := open + "ab   " + ActiveTheme().BgClose
+	if got != want {
+		t.Fatalf("paintBgWith = %q, want %q", got, want)
 	}
 }

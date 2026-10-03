@@ -27,6 +27,16 @@ import (
 // representation.
 type Settings = icodingagent.Settings
 
+// QuietStartup is the quiet startup setting (re-exported alias): true hides all startup output, "header" keeps only the startup header.
+type QuietStartup = icodingagent.QuietStartup
+
+// Quiet startup values.
+const (
+	QuietStartupFalse  = icodingagent.QuietStartupFalse
+	QuietStartupTrue   = icodingagent.QuietStartupTrue
+	QuietStartupHeader = icodingagent.QuietStartupHeader
+)
+
 // SettingsManager is the live settings reader (re-exported alias). Use
 // Services.Settings() to obtain the merged Settings; use
 // Services.SettingsManager() if you need to call Reload() or watch for
@@ -54,6 +64,7 @@ type Services struct {
 	auth         *ai.AuthStorage
 	credentials  ai.CredentialStore
 	settings     *icodingagent.SettingsManager
+	settingsOnce sync.Once
 	registry     *ModelRegistry
 	modelRuntime *ModelRuntime
 
@@ -199,6 +210,19 @@ func (s *Services) Settings() Settings { return s.settings.Get() }
 // layers separately.
 func (s *Services) SettingsManager() *SettingsManager { return s.settings }
 
+// ensureSettings loads the settings files of a Services built around a bare ModelRuntime, as upstream's createAgentSession does when no settingsManager is given (sdk.ts: `options.settingsManager ?? SettingsManager.create(cwd, agentDir)`).
+func (s *Services) ensureSettings() {
+	s.settingsOnce.Do(func() {
+		if s.settings == nil {
+			cwd := s.cwd
+			if cwd == "" {
+				cwd, _ = os.Getwd()
+			}
+			s.settings = icodingagent.NewSettingsManagerWithProjectTrust(cwd, s.agentDir, true)
+		}
+	})
+}
+
 // Registry returns the model registry. Use Registry().Resolve(provider,
 // model) to obtain a ModelEntry with credentials resolved through
 // configvalue (env vars and !cmd shell prefixes).
@@ -225,6 +249,7 @@ type ModelRuntime struct {
 	modelNetworkEnabled bool
 	services            *Services
 	availability        modelAvailability
+	virtuals            virtualModelStore
 	prepare             func(context.Context, *ai.Model, ai.StreamOptions) (*ai.Model, ai.Provider, ai.StreamOptions, error)
 }
 
@@ -266,13 +291,16 @@ func (runtime *ModelRuntime) GetModels() []*ai.Model {
 	for i, model := range models {
 		models[i] = runtime.bindCatalogModel(model)
 	}
-	return models
+	return runtime.virtuals.overlay(models)
 }
 
 // GetModel returns a registered model by exact provider and model ID without synthesizing unknown identities.
 func (runtime *ModelRuntime) GetModel(providerID, modelID string) *ai.Model {
 	if runtime == nil || runtime.services == nil || providerID == "" || modelID == "" {
 		return nil
+	}
+	if model := runtime.virtuals.model(providerID, modelID); model != nil {
+		return model
 	}
 	for _, model := range runtime.services.Registry().GetProviderModelData(providerID) {
 		if model.ID == modelID {
@@ -284,6 +312,10 @@ func (runtime *ModelRuntime) GetModel(providerID, modelID string) *ai.Model {
 
 // CheckAuth checks the provider's current authentication contract.
 func (runtime *ModelRuntime) CheckAuth(ctx context.Context, providerID string) (*ai.AuthCheck, error) {
+	// A provider of only virtual models needs no credentials. upstream: model-runtime.ts:953-958.
+	if runtime.virtuals.onlyVirtual(providerID, runtime.services.Registry().GetProviderModelData) {
+		return &ai.AuthCheck{Type: ai.CredentialAPIKey, Source: "virtual"}, nil
+	}
 	runtime.services.Registry().StartRegistrationRefresh(ctx)
 	return runtime.services.Registry().CheckRegistryAuth(ctx, providerID)
 }
@@ -298,6 +330,9 @@ func (runtime *ModelRuntime) SetChangeListener(listener func()) func() {
 
 // Stream returns immediately. Context normalization happens before asynchronous setup. Setup failures are errors; provider cancellation is aborted, and an established stream owns its terminal event.
 func (runtime *ModelRuntime) Stream(ctx context.Context, model *ai.Model, request ai.Context, options ai.StreamOptions) *ai.AssistantMessageEventStream {
+	if err := assertChat(model); err != nil {
+		return runtime.failedStream(model, err)
+	}
 	if model != nil && registryOwnsModelBackend(model.Provider) && runtime.services.Registry().GetProvider(model.ProviderMeta.ProviderID) != nil {
 		return runtime.services.Registry().NativeModels().Stream(ctx, model, request, options)
 	}
@@ -313,21 +348,31 @@ func (runtime *ModelRuntime) Complete(ctx context.Context, model *ai.Model, requ
 	return runtime.Stream(ctx, model, request, options).Result()
 }
 
-// StreamSimple shares normalization and auth preparation with Stream. Native and caller-owned callbacks receive source options; only registry-built stock API leaves lower simple options.
-func (runtime *ModelRuntime) StreamSimple(ctx context.Context, model *ai.Model, request ai.Context, options ai.StreamOptions) *ai.AssistantMessageEventStream {
+// StreamSimple shares normalization and auth preparation with Stream; options is optional, as in pi-ai. Native and caller-owned callbacks receive source options; only registry-built stock API leaves lower simple options.
+func (runtime *ModelRuntime) StreamSimple(ctx context.Context, model *ai.Model, request ai.Context, options ...ai.StreamOptions) *ai.AssistantMessageEventStream {
+	var selected ai.StreamOptions
+	if len(options) > 0 {
+		selected = options[0]
+	}
+	if err := assertChat(model); err != nil {
+		return runtime.failedStream(model, err)
+	}
+	if IsVirtualModel(model) {
+		return runtime.streamVirtual(ctx, model, request, selected)
+	}
 	if model != nil && registryOwnsModelBackend(model.Provider) && runtime.services.Registry().GetProvider(model.ProviderMeta.ProviderID) != nil {
-		return runtime.services.Registry().NativeModels().StreamSimple(ctx, model, request, options)
+		return runtime.services.Registry().NativeModels().StreamSimple(ctx, model, request, selected)
 	}
 	transcript := ai.NormalizeContext(request)
 	outer := ai.NewAssistantMessageEventStream()
 	ctx = outer.ObservationContext(ctx)
-	go runtime.start(ctx, model, transcript, options, outer, true)
+	go runtime.start(ctx, model, transcript, selected, outer, true)
 	return outer
 }
 
 // CompleteSimple returns the exact terminal pointer produced by StreamSimple.
-func (runtime *ModelRuntime) CompleteSimple(ctx context.Context, model *ai.Model, request ai.Context, options ai.StreamOptions) *ai.AssistantMessage {
-	return runtime.StreamSimple(ctx, model, request, options).Result()
+func (runtime *ModelRuntime) CompleteSimple(ctx context.Context, model *ai.Model, request ai.Context, options ...ai.StreamOptions) *ai.AssistantMessage {
+	return runtime.StreamSimple(ctx, model, request, options...).Result()
 }
 
 func (runtime *ModelRuntime) start(ctx context.Context, model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions, outer *ai.AssistantMessageEventStream, simple bool) {

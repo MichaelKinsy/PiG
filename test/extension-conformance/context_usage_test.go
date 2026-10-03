@@ -11,6 +11,7 @@ import (
 
 // Pi agent-session.ts:3858-3900: missing model/window gives undefined; post-compaction usage is null, not zero.
 func TestContextUsagePresenceAcrossSDKs(t *testing.T) {
+	t.Parallel()
 	cases := allHarnessCases()
 	for _, language := range []string{"go", "python", "rust"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})

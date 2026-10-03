@@ -510,3 +510,20 @@ func TestFormatTreeRow_ScopedFgReset(t *testing.T) {
 		t.Errorf("tree row should close colours with scoped fg reset (SGR 39); got %q", row)
 	}
 }
+
+// upstream 0.99.1 theme.ts fg: the fg helpers of the /tree, session and shell renderers close a dim foreground with the faint reset, as Theme.FgText does.
+func TestForegroundHelpersCloseDimTokensLikeTheTheme(t *testing.T) {
+	restoreStartupTheme(t)
+	tui.SetThemeByName(tui.SystemThemeName)
+	th := tui.ActiveTheme()
+	prefix := th.Fg("dim")
+	if !strings.HasSuffix(prefix, "\x1b[2m") {
+		t.Fatalf("system theme dim prefix = %q, want the faint attribute", prefix)
+	}
+	want := th.FgText("dim", "x")
+	for name, got := range map[string]string{"fg": fg(prefix, "x"), "sessionFg": sessionFg(prefix, "x"), "themeFg": themeFg(prefix, "x")} {
+		if got != want {
+			t.Errorf("%s = %q, want %q", name, got, want)
+		}
+	}
+}

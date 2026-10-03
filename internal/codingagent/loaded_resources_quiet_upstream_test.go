@@ -11,7 +11,7 @@ import (
 func TestLoadedResourcesQuietReloadUpstream(t *testing.T) {
 	t.Run("does not show verbose listing on quiet startup during reload", func(t *testing.T) {
 		m := upstreamListingMode(t, false, []upstreamExtensionFixture{{path: "/tmp/ext/index.ts"}})
-		m.opts.Settings.QuietStartup = true
+		m.opts.Settings.QuietStartup = QuietStartupTrue
 		m.opts.Skills = []*SkillDef{{Path: "/tmp/skill/SKILL.md", Name: "commit"}}
 		m.showLoadedResources(false, true)
 		if m.loadedResourcesContainer.ChildCount() != 0 {
@@ -20,7 +20,7 @@ func TestLoadedResourcesQuietReloadUpstream(t *testing.T) {
 	})
 	t.Run("still shows diagnostics on quiet startup when requested", func(t *testing.T) {
 		m := upstreamListingMode(t, false, nil)
-		m.opts.Settings.QuietStartup = true
+		m.opts.Settings.QuietStartup = QuietStartupTrue
 		m.opts.Skills = []*SkillDef{{Path: "/tmp/skill/SKILL.md", Name: "commit"}}
 		m.opts.SkillDiagnostics = []extension.ResourceDiagnostic{{Type: extension.DiagnosticWarning, Message: "duplicate skill name"}}
 		m.showLoadedResources(false, true)

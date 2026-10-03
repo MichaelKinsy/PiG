@@ -6,6 +6,7 @@ import (
 
 // PiG's isolation setting has no Pi counterpart: Pi loads every extension into one runtime. A process holds module state only for the extensions placed in it, so an extension whose placement changes (isolated to shared-ok or back) or that Host.Load started outside the plan gets a new process and a new module on the next reload, and its old process ends. An unchanged placement keeps the process (TestNodeReloadReinvokesFactoriesInTheRetainedProcessWithPiLoaderRules).
 func TestReloadAcrossAPlacementChangeStartsAFreshProcess(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name  string
 		start func(t *testing.T, h *Host, cfg ExtConfig)

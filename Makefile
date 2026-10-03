@@ -153,6 +153,7 @@ generate help-text: export FORCE_COLOR := 0
 generate: ## Regenerate committed inventories, coverage, catalogs, help, and docs mirrors
 	@$(MAKE) model-catalogs
 	@$(MAKE) node-runtime
+	@$(MAKE) highlight-grammars
 	@$(MAKE) help-text
 	@$(MAKE) knowledge-graph
 	@$(MAKE) interface-proposals
@@ -165,12 +166,19 @@ generate: ## Regenerate committed inventories, coverage, catalogs, help, and doc
 help-text: parity-deps ## Regenerate the pinned upstream CLI help with PiG's identity
 	@./automation/gen/gen-help.sh
 
-.PHONY: generate help-text
+highlight-grammars: parity-deps ## Snapshot Pi's highlight.js grammars into tui/internal/hljs and re-record Pi's highlighting oracle
+	@node automation/gen/generate-highlight-grammars.mjs "$(PI_PACKAGE_ROOT)" tui/internal/hljs
+	@node automation/gen/generate-highlight-oracle.mjs "$(PI_PACKAGE_ROOT)" tui/internal/hljs/testdata/corpus.json tui/internal/hljs/testdata/oracle.json.gz
+
+.PHONY: generate help-text highlight-grammars
 
 ##@ Test and lint
 
-vet: ## Run go vet on every package
+vet: ## Run go vet on every package, natively and for every shipped Windows architecture and for Android (Termux)
 	go vet ./...
+	GOOS=windows GOARCH=amd64 go vet ./...
+	GOOS=windows GOARCH=arm64 go vet ./...
+	CGO_ENABLED=0 GOOS=android GOARCH=arm64 go vet ./...
 
 LINT_BASE ?= main
 

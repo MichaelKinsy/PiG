@@ -82,19 +82,15 @@ func exeNameFor(goos, name string) string {
 }
 
 // Go returns the go command to run: the one on PATH, else the PiG-managed
-// toolchain. The error names both places it looked and the setup command.
+// toolchain. The error names both places it looked and the setup command. A
+// caller that runs the command must also use ResolveGo's Environ, so the command
+// and its GOROOT come from one installation.
 func Go() (string, error) {
-	if path, err := exec.LookPath("go"); err == nil {
-		return path, nil
+	t, err := ResolveGo()
+	if err != nil {
+		return "", err
 	}
-	root, err := ConfigRoot()
-	if err == nil {
-		managed := filepath.Join(ManagedGoRoot(root), "bin", exeName("go"))
-		if info, statErr := os.Stat(managed); statErr == nil && !info.IsDir() {
-			return managed, nil
-		}
-	}
-	return "", fmt.Errorf("go is not on PATH and no PiG-managed Go toolchain is installed; run `pig setup go`: %w", exec.ErrNotFound)
+	return t.Command, nil
 }
 
 // ContainerRuntimes lists the container engines PiG can drive, in preference

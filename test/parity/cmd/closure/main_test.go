@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -267,17 +266,15 @@ func TestClosureCommandRejectsMissingInputsAndEscapingPaths(t *testing.T) {
 	if err := run(context.Background(), []string{"rebuild", "-root", root, "-input", outside}, &stdout, &stderr); err == nil || !strings.Contains(err.Error(), "escapes repository root") {
 		t.Fatalf("escaping input error = %v", err)
 	}
-	if runtime.GOOS != "windows" {
-		symlink := filepath.Join(root, "linked-outside")
-		if err := os.WriteFile(outside, []byte("{}\n"), 0o600); err != nil {
-			t.Fatalf("create outside input: %v", err)
-		}
-		defer func() { _ = os.Remove(outside) }()
-		testenv.Symlink(t, filepath.Dir(root), symlink)
-		linkedOutside := filepath.Join(symlink, filepath.Base(outside))
-		if err := run(context.Background(), []string{"rebuild", "-root", root, "-input", linkedOutside}, &stdout, &stderr); err == nil || !strings.Contains(err.Error(), "symlink escapes repository root") {
-			t.Fatalf("symlinked input error = %v", err)
-		}
+	symlink := filepath.Join(root, "linked-outside")
+	if err := os.WriteFile(outside, []byte("{}\n"), 0o600); err != nil {
+		t.Fatalf("create outside input: %v", err)
+	}
+	defer func() { _ = os.Remove(outside) }()
+	testenv.RequireDirectoryLink(t, filepath.Dir(root), symlink)
+	linkedOutside := filepath.Join(symlink, filepath.Base(outside))
+	if err := run(context.Background(), []string{"rebuild", "-root", root, "-input", linkedOutside}, &stdout, &stderr); err == nil || !strings.Contains(err.Error(), "symlink escapes repository root") {
+		t.Fatalf("symlinked input error = %v", err)
 	}
 	if err := run(context.Background(), []string{"import-denominators"}, &stdout, &stderr); err == nil || !strings.Contains(err.Error(), "requires -upstream-commit") {
 		t.Fatalf("import-denominators error = %v, want required snapshot inputs", err)

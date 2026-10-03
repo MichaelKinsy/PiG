@@ -91,8 +91,11 @@ The planned targets are:
 - `linux/amd64`;
 - `linux/arm64`;
 - `darwin/amd64`;
-- `darwin/arm64`; and
-- `windows/amd64`.
+- `darwin/arm64`;
+- `windows/amd64`; and
+- `android/arm64`.
+
+`android/arm64` is the Termux binary. It is built with cgo by the Android NDK (`automation/release/android-binary.sh`) and its ELF headers are checked (PIE, `/system/bin/linker64`, bionic `libc.so`); Termux never runs `linux/arm64`. No hosted runner executes it on Android, so a device run is its native verification: an Android 14 emulator with real Termux and `TERMUX_EXEC__SYSTEM_LINKER_EXEC__MODE=force`, and a physical Google Play phone.
 
 Do not list a target as supported until its native or approved equivalent verification passes for the release candidate.
 
@@ -128,7 +131,7 @@ The job:
 
 1. downloads every platform's uploaded archive (skipping the source candidate, which is not a platform archive and which GitHub Releases attaches automatically);
 2. combines their digests into one `SHA256SUMS` with `automation/release/combine-checksums.py` and cross-checks it with `sha256sum -c`, so `install.sh` and pi-in-go.dev's installer API (`/api/installer/releases`) see one combined manifest instead of the five separate per-platform ones each matrix job writes as its own evidence;
-3. writes `update.json`, the self-update manifest naming each macOS and Linux archive with its SHA-256 from `SHA256SUMS` (`automation/release/gen-update-manifest.py --sha256sums`), signs it with each Ed25519 key in the `release` environment secret `PIG_UPDATE_SIGNING_KEY` (`automation/release/sign-update-manifest.sh`), checks every signature against the keys in `automation/release/update-trust.pem`, and attaches both `update.json` and `update.json.sig` (the signatures as comma-separated base64). The job fails if the secret is missing or holds a key whose public key is not in `update-trust.pem`;
+3. writes `update.json`, the self-update manifest naming each macOS, Linux and Android archive with its SHA-256 from `SHA256SUMS` (`automation/release/gen-update-manifest.py --sha256sums`), signs it with each Ed25519 key in the `release` environment secret `PIG_UPDATE_SIGNING_KEY` (`automation/release/sign-update-manifest.sh`), checks every signature against the keys in `automation/release/update-trust.pem`, and attaches both `update.json` and `update.json.sig` (the signatures as comma-separated base64). The job fails if the secret is missing or holds a key whose public key is not in `update-trust.pem`;
 4. creates each nested Go module tag (`extensions/sdk/v<version>`) as an annotated tag on the release commit `$GITHUB_SHA`, after `automation/release/module-tags.sh` validates the release dependency pins; an existing nested tag must name that same commit. It then runs `automation/ci/check-module-publication.py` to verify the published tags and downloaded checksums before creating the draft root release. A nested module tag alone installs no PiG executable: `go install .../cmd/pig@v<version>` resolves only once the root tag exists;
 5. creates a **draft** GitHub Release on tag `v<version>` (the tag pattern from "Version and tag" above) with every archive and the combined `SHA256SUMS` attached. A draft never becomes visible, and its tag is never created, until a maintainer reviews the evidence and presses Publish; this is the explicit approval "Publication controls" requires.
 
@@ -154,7 +157,7 @@ off-workflow action by a maintainer with release authority.
 ## npm distribution
 
 PiG also ships on npm as `@pi-in-go/pig`. The npm version is the PiG release
-version (`0.2.0`); npm semver cannot carry the `+0.87.1` build metadata usefully,
+version (`0.3.0`); npm semver cannot carry the `+0.99.1` build metadata usefully,
 so the Pi base version appears in each package's description and README
 instead. The layout follows the esbuild/biome pattern and runs no install
 script and no download at install time:
@@ -162,18 +165,19 @@ script and no download at install time:
 - `@pi-in-go/pig`, a small Node.js (>= 18) launcher with `bin: pig`. It maps
   `process.platform`/`process.arch` to a platform package, then runs that
   package's native binary with inherited stdio, forwarding arguments, the exit
-  status and signals. When the platform package is missing (for example after
+  status and signals. Node on Termux reports `process.platform` `android`, which
+  the launcher maps to the `android-arm64` package. When the platform package is missing (for example after
   `--omit=optional`), it prints the other install methods.
-- `@pi-in-go/pig-{darwin,linux,win32}-{x64,arm64}`, one per release target,
+- `@pi-in-go/pig-{darwin,linux,win32}-{x64,arm64}` and `@pi-in-go/pig-android-arm64`, one per release target,
   each with `os`/`cpu` fields, the single `pig`/`pig.exe` binary, and
-  `LICENSE`, `NOTICE` and `THIRD_PARTY_NOTICES.md`. The launcher lists all six
+  `LICENSE`, `NOTICE` and `THIRD_PARTY_NOTICES.md`. The launcher lists all seven
   as exact-version `optionalDependencies`, so npm installs only the matching
   one.
 
-`automation/release/npm/pack_npm.py` builds all seven packages from the release
+`automation/release/npm/pack_npm.py` builds all eight packages from the release
 archives only: it verifies each archive against `SHA256SUMS` before it reads
 the binary and notices out of it, writes the `package.json` files, runs
-`npm pack`, and writes `publish-order.txt` (six platform packages, then the
+`npm pack`, and writes `publish-order.txt` (seven platform packages, then the
 launcher).
 
 ### One-time owner setup (trusted publishing, no token)
@@ -183,7 +187,7 @@ token is exchanged for a short-lived publish credential, and npm attaches
 provenance automatically. No npm token or GitHub secret is stored.
 
 1. Create the npm organization `pi-in-go` (free plan; public packages).
-2. Bootstrap the seven packages once, because npm can require a package to
+2. Bootstrap the eight packages once, because npm can require a package to
    exist before a trusted publisher can be configured for it. After the
    GitHub Release `v0.2.0` is published, on a maintainer machine with `gh`,
    `npm` and Python 3:
@@ -195,15 +199,17 @@ provenance automatically. No npm token or GitHub secret is stored.
 
    The script downloads the published release archives with `gh`, verifies
    them against `SHA256SUMS`, generates the packages with the same
-   `pack_npm.py` CI uses, runs `npm publish --access public` for the six
+   `pack_npm.py` CI uses, runs `npm publish --access public` for the seven
    platform packages and then the launcher (skipping any version already on
    npm), and prints the trusted-publisher settings. `DRY_RUN=1` packs without
    publishing.
-3. On each of the seven packages (`https://www.npmjs.com/package/<name>/access`),
+3. On each of the eight packages (`https://www.npmjs.com/package/<name>/access`),
    add a Trusted Publisher: GitHub Actions, organization or user
    `MichaelKinsy`, repository `PiG`, workflow filename `npm-publish.yml`,
    environment empty. Optionally set publishing access to require 2FA and
-   disallow tokens.
+   disallow tokens. A package that first ships in a later release, such as
+   `@pi-in-go/pig-android-arm64`, needs the same bootstrap and trusted-publisher
+   setup before `npm-publish.yml` can publish it.
 
 ### How the npm job runs
 

@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-// Pi session-manager.ts:1029-1058 preserves an explicit missing path and defers persistence until the first assistant.
+// Pi session-manager.ts:1029-1058 preserves an explicit missing path and defers persistence until the first user or assistant message.
 func TestSessionManagerLoadMissingDefersExplicitPath(t *testing.T) {
 	root := t.TempDir()
 	sm := NewSessionManagerWithDir(root, filepath.Join(root, "sessions"))

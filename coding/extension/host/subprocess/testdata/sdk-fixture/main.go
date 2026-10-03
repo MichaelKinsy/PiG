@@ -188,6 +188,22 @@ func main() {
 		return "done", nil
 	})
 
+	ext.Tool("ordered_details", "Return details whose members are not in alphabetical order", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(ctx sdk.Context, _ map[string]any) (any, error) {
+		details := json.RawMessage(`{"zeta":1,"alpha":{"yy":2,"bb":3},"mid":[{"qq":1,"aa":2}]}`)
+		if err := ctx.OnUpdate(sdk.ToolResult{Content: "partial", Details: details}); err != nil {
+			return nil, err
+		}
+		return sdk.ToolResult{Content: "done", Details: details}, nil
+	})
+
+	// The Go SDK writes a result from a struct, which has one member order (content, details, isError): not a row of the member-order test, but the same tool set as every other fixture.
+	ext.Tool("ordered_result", "Return a result whose members are not in the declared order", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(ctx sdk.Context, _ map[string]any) (any, error) {
+		if err := ctx.OnUpdate(sdk.ToolResult{Content: "partial", Details: map[string]any{"k": 1}}); err != nil {
+			return nil, err
+		}
+		return sdk.ToolResult{Content: "done", Details: map[string]any{"k": 1}, IsError: true}, nil
+	})
+
 	var abortObserved atomic.Bool
 	ext.Tool("abort_tool", "Wait for the abort signal", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(ctx sdk.Context, _ map[string]any) (any, error) {
 		if err := ctx.OnUpdate("waiting"); err != nil {
@@ -687,11 +703,11 @@ func main() {
 		if event["toolName"] == "production_tool" {
 			args, _ := event["args"].(map[string]any)
 			nested, _ := args["nested"].(map[string]any)
-			ctx.Notify(fmt.Sprintf("tool-update=%v:%v:%v:%v:%v", event["toolName"], args["path"], nested["depth"], partial["content"], details["progress"]), "info")
+			ctx.Notify(fmt.Sprintf("tool-update=%v:%v:%v:%v:%v", event["toolName"], args["path"], nested["depth"], firstPartialText(partial), details["progress"]), "info")
 			return nil, nil
 		}
 		args, _ := json.Marshal(event["args"])
-		ctx.Notify(fmt.Sprintf("tool-update=%v:%s:%v:%v", event["toolName"], args, partial["content"], details["progress"]), "info")
+		ctx.Notify(fmt.Sprintf("tool-update=%v:%s:%v:%v", event["toolName"], args, firstPartialText(partial), details["progress"]), "info")
 		return nil, nil
 	})
 	ext.OnEvent("tool_execution_end", func(ctx sdk.Context, event map[string]any) (any, error) {
@@ -788,4 +804,14 @@ func errString(err error) string {
 		return ""
 	}
 	return err.Error()
+}
+
+// firstPartialText is the text of the first content block of a tool_execution_update partialResult, the AgentToolResult the tool passed to onUpdate (agent-loop.ts:778-786); absent when `content` is not an array of blocks.
+func firstPartialText(partial map[string]any) any {
+	blocks, _ := partial["content"].([]any)
+	if len(blocks) == 0 {
+		return nil
+	}
+	block, _ := blocks[0].(map[string]any)
+	return block["text"]
 }

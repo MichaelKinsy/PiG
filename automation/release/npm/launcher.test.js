@@ -8,7 +8,9 @@ const assert = require("node:assert");
 const path = require("path");
 const launcher = require("./launcher/bin/pig.js");
 
-const SIX = [
+const TARGETS = [
+  // Node on Termux reports "android" and needs the android binary, not linux-arm64.
+  ["android", "arm64", "@pi-in-go/pig-android-arm64", "pig"],
   ["darwin", "arm64", "@pi-in-go/pig-darwin-arm64", "pig"],
   ["darwin", "x64", "@pi-in-go/pig-darwin-x64", "pig"],
   ["linux", "arm64", "@pi-in-go/pig-linux-arm64", "pig"],
@@ -17,7 +19,7 @@ const SIX = [
   ["win32", "x64", "@pi-in-go/pig-win32-x64", "pig.exe"],
 ];
 
-for (const [platform, arch, pkg, bin] of SIX) {
+for (const [platform, arch, pkg, bin] of TARGETS) {
   test(`resolves ${platform}/${arch}`, () => {
     assert.strictEqual(launcher.platformPackage(platform, arch), pkg);
     const root = path.join(path.sep, "prefix", "node_modules", pkg);
@@ -29,11 +31,11 @@ for (const [platform, arch, pkg, bin] of SIX) {
   });
 }
 
-test("exactly six platform packages", () => {
-  assert.strictEqual(Object.keys(launcher.PLATFORM_PACKAGES).length, 6);
+test("exactly seven platform packages", () => {
+  assert.strictEqual(Object.keys(launcher.PLATFORM_PACKAGES).length, 7);
 });
 
-for (const [platform, arch] of [["freebsd", "x64"], ["linux", "ia32"], ["linux", "s390x"], ["aix", "ppc64"]]) {
+for (const [platform, arch] of [["freebsd", "x64"], ["android", "arm"], ["android", "x64"], ["linux", "ia32"], ["linux", "s390x"], ["aix", "ppc64"]]) {
   test(`unsupported ${platform}/${arch} explains alternatives`, () => {
     assert.strictEqual(launcher.platformPackage(platform, arch), null);
     assert.throws(

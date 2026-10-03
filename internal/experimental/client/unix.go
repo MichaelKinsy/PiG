@@ -92,10 +92,14 @@ type unixByteTransport struct {
 	writes          []*unixWrite
 	parts           atomic.Int32
 	done            chan struct{}
+	// notified closes once a terminal close is visible to the handlers. Upstream's socket close listener calls onClose/onError before any pending write settles, so write completions caused by the close wait for it.
+	notified chan struct{}
+	// rejected holds Sends admitted after a remote close began but before its handlers returned; remoteClose settles them after the handlers.
+	rejected []func(error)
 }
 
 func newUnixByteTransport(connection net.Conn, maxPendingBytes uint64, handlers ByteTransportHandlers) *unixByteTransport {
-	transport := &unixByteTransport{connection: connection, maxPendingBytes: maxPendingBytes, handlers: handlers, done: make(chan struct{})}
+	transport := &unixByteTransport{connection: connection, maxPendingBytes: maxPendingBytes, handlers: handlers, done: make(chan struct{}), notified: make(chan struct{})}
 	transport.ready = sync.NewCond(&transport.mu)
 	transport.parts.Store(2)
 	go transport.write()
@@ -111,6 +115,14 @@ func (transport *unixByteTransport) finished() {
 func (transport *unixByteTransport) Send(chunk []byte, complete func(error)) {
 	transport.mu.Lock()
 	if transport.closed {
+		select {
+		case <-transport.notified:
+		default:
+			// Upstream send() rejects asynchronously and its close handlers run synchronously in the socket listener, so the rejection never precedes them.
+			transport.rejected = append(transport.rejected, complete)
+			transport.mu.Unlock()
+			return
+		}
 		transport.mu.Unlock()
 		complete(errors.New("Unix transport is closed"))
 		return
@@ -133,6 +145,7 @@ func (transport *unixByteTransport) Close() {
 	}
 	transport.closed = true
 	transport.ready.Broadcast()
+	close(transport.notified)
 	transport.mu.Unlock()
 	// Upstream marks the local terminal state before destroying the socket; local close does not notify the remote-close handler.
 	_ = transport.connection.Close()
@@ -147,10 +160,23 @@ func (transport *unixByteTransport) remoteClose(err error) {
 	transport.ready.Broadcast()
 	transport.mu.Unlock()
 	_ = transport.connection.Close()
+	defer transport.settleRejected()
 	if err == nil {
 		transport.handlers.OnClose()
 	} else {
 		transport.handlers.OnError(err)
+	}
+}
+
+// settleRejected publishes a remote close to waiting writes once its handlers returned, then rejects the Sends admitted meanwhile.
+func (transport *unixByteTransport) settleRejected() {
+	transport.mu.Lock()
+	rejected := transport.rejected
+	transport.rejected = nil
+	close(transport.notified)
+	transport.mu.Unlock()
+	for _, complete := range rejected {
+		complete(errors.New("Unix transport is closed"))
 	}
 }
 func (transport *unixByteTransport) read() {
@@ -213,7 +239,15 @@ func (transport *unixByteTransport) write() {
 		}
 		transport.mu.Lock()
 		transport.pendingBytes -= uint64(len(request.bytes))
+		closedNow := transport.closed
 		transport.mu.Unlock()
+		if err != nil && closedNow {
+			// A close during the write settles it as upstream's write close listener does, after the handlers saw the close.
+			if !closed {
+				err = errors.New("Unix transport closed during write")
+			}
+			<-transport.notified
+		}
 		request.complete(err)
 		if err != nil && !closed {
 			transport.remoteClose(err)

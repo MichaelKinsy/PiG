@@ -29,6 +29,6 @@ wait_visible_contains = ["before cloning or forking it."]
 
 [assert]
 runs = 3
-both_contain = [" No messages to fork from", " Error: This session has not been saved yet. Wait for the first assistant response before cloning or forking it."]
+both_contain = [" No messages to fork from", " Error: This session has not been saved yet. Send a message before cloning or forking it."]
 both_not_contain = ["Cloned", "Fork cancelled"]
 output_equal = true

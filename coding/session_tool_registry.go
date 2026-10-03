@@ -14,6 +14,7 @@ import (
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
@@ -24,6 +25,19 @@ import (
 type sessionBoundTool struct {
 	agent.AgentTool
 	session *Session
+	// description replaces the tool's declared description when set, as a prepareLoadout hook does.
+	description *string
+}
+
+// Schema is the wrapped tool's schema with the description a prepareLoadout hook set.
+//
+// upstream: agent-session.ts:1551-1557 (declared = { ...tool, description })
+func (tool *sessionBoundTool) Schema() ai.ToolSchema {
+	schema := tool.AgentTool.Schema()
+	if tool.description != nil {
+		schema.Description = *tool.description
+	}
+	return schema
 }
 
 type sessionArgumentSchema interface {
@@ -40,8 +54,11 @@ func (tool *sessionBoundArgumentTool) ArgumentSchema() json.RawMessage {
 }
 
 // bindTool preserves optional validation metadata without manufacturing the capability on ordinary tools.
-func (s *Session) bindTool(tool agent.AgentTool) agent.AgentTool {
+func (s *Session) bindTool(tool agent.AgentTool, description ...string) agent.AgentTool {
 	bound := sessionBoundTool{AgentTool: tool, session: s}
+	if len(description) > 0 {
+		bound.description = &description[0]
+	}
 	if schema, ok := tool.(sessionArgumentSchema); ok {
 		return &sessionBoundArgumentTool{sessionBoundTool: bound, schema: schema}
 	}
@@ -64,10 +81,11 @@ func (tool *sessionBoundTool) Execute(ctx context.Context, id string, args json.
 		}
 		ctx = agent.WithToolEnvironment(ctx, env)
 	}
-	if extension.FromContext(ctx) == nil {
-		if runner := tool.session.currentRunner(); runner != nil {
-			ctx = runner.DispatchContext(ctx)
-		}
+	// Every call gets its own tool context, including a nested call an extension made, as upstream's wrapToolDefinition creates one per call.
+	//
+	// upstream: wrapper.ts:14-19, tool-definition-wrapper.ts:7-30
+	if runner := tool.session.currentRunner(); runner != nil {
+		ctx = runner.CreateToolContext(ctx, id)
 	}
 	return tool.AgentTool.Execute(ctx, id, args, update)
 }
@@ -96,10 +114,21 @@ type sessionToolRegistry struct {
 	entries           []sessionToolEntry
 	allowed, excluded map[string]struct{}
 	skipExtensions    bool
+	// usesDefaultTools reports that the initial tools come from the defaultTools setting, so a reload activates tools newly added to it.
+	// upstream: agent-session.ts:263-267 (usesDefaultTools), sdk.ts:448
+	usesDefaultTools bool
+	// addedDefaultTools are the tools a settings reload newly added to defaultTools; the next RefreshTools activates them.
+	addedDefaultTools []string
 }
 
+// syntheticToolSource is createSyntheticSourceInfo for a tool of a session: `builtin:<name>` for a built-in tool and `<sdk:name>` for an SDK tool.
+// Ports .upstream/v0.99.1/packages/coding-agent/src/core/agent-session.ts:3425-3440,3470-3474.
 func syntheticToolSource(name, source string) icodingagent.PiSourceInfo {
-	return icodingagent.PiSourceInfo{Path: "<" + source + ":" + name + ">", Source: source, Scope: "temporary", Origin: "top-level"}
+	path := "<" + source + ":" + name + ">"
+	if source == "builtin" {
+		path = icodingagent.BuiltinPathPrefix + name
+	}
+	return icodingagent.PiSourceInfo{Path: path, Source: source, Scope: "temporary", Origin: "top-level"}
 }
 
 func toolDefinition(tool agent.AgentTool) (extension.ToolDefinition, error) {
@@ -129,11 +158,17 @@ func toolDefinition(tool agent.AgentTool) (extension.ToolDefinition, error) {
 	if preparer, ok := tool.(agent.ArgumentPreparer); ok {
 		definition.PrepareArguments = preparer.PrepareArguments
 	}
+	// upstream: tool-definition-wrapper.ts:52 (createToolDefinitionFromAgentTool copies outputSchema)
+	// upstream: bash.ts:262 (outputSchema: bashOutputSchema); codemode resolves a nested call of such a tool to its structuredContent, also for a returned isError (codemode/execute.ts:201-209).
+	if provider, ok := tool.(agent.OutputSchemaProvider); ok {
+		definition.OutputSchema = provider.OutputSchema()
+	}
 	return definition, nil
 }
 
 func createSessionToolRegistry(services *Services, opts SessionOptions) (sessionToolRegistry, []agent.AgentTool, error) {
-	registry := sessionToolRegistry{allowed: maps.Clone(opts.AllowedTools), excluded: maps.Clone(opts.ExcludedTools), skipExtensions: opts.skipExtensionTools}
+	registry := sessionToolRegistry{allowed: maps.Clone(opts.AllowedTools), excluded: maps.Clone(opts.ExcludedTools), skipExtensions: opts.skipExtensionTools,
+		usesDefaultTools: opts.AllowedTools == nil && opts.NoTools == "" && !opts.SkipBuiltinTools}
 	if opts.toolRegistry != nil {
 		registry = *opts.toolRegistry
 		registry.base = slices.Clone(registry.base)
@@ -169,16 +204,23 @@ func createSessionToolRegistry(services *Services, opts SessionOptions) (session
 			}
 		case opts.NoTools != "":
 		case opts.ActiveBuiltinTools != nil:
-			for _, entry := range registry.base {
-				if _, ok := opts.ActiveBuiltinTools[entry.tool.Name()]; ok {
-					activeNames = append(activeNames, entry.tool.Name())
+			// upstream: sdk.ts:264-269, agent-session.ts:3487-3506, 1508-1511: the initial selection is the defaultTools list in its order, which also names extension tools; selectTools keeps the names the registry admits. The CLI's set is that list, so its names keep the resolved defaultTools order; the rest follow in registry order, then by name.
+			pending := maps.Clone(opts.ActiveBuiltinTools)
+			for _, name := range services.SettingsManager().ResolvedDefaultTools() {
+				if _, ok := pending[name]; ok {
+					activeNames = append(activeNames, name)
+					delete(pending, name)
 				}
 			}
-		default:
-			activeNames = services.SettingsManager().GetDefaultTools()
-			if activeNames == nil {
-				activeNames = []string{"read", "bash", "edit", "write"}
+			for _, entry := range registry.base {
+				if _, ok := pending[entry.tool.Name()]; ok {
+					activeNames = append(activeNames, entry.tool.Name())
+					delete(pending, entry.tool.Name())
+				}
 			}
+			activeNames = append(activeNames, slices.Sorted(maps.Keys(pending))...)
+		default:
+			activeNames = services.SettingsManager().ResolvedDefaultTools()
 		}
 	}
 	for _, tool := range opts.Tools {
@@ -207,7 +249,9 @@ func createSessionToolRegistry(services *Services, opts SessionOptions) (session
 	}
 	if opts.Runner != nil && !registry.skipExtensions {
 		for _, tool := range opts.Runner.Tools() {
-			activeNames = append(activeNames, tool.Definition.Name)
+			if ExtensionToolStartsActive(tool.Definition, registry.allowed) {
+				activeNames = append(activeNames, tool.Definition.Name)
+			}
 		}
 	}
 	return registry, registry.selectTools(activeNames), nil
@@ -248,6 +292,20 @@ func (r *sessionToolRegistry) refresh(runner *inproc.Runner) error {
 	return nil
 }
 
+// extensionToolNames names the tools of runner and the SDK custom tools, the registrations upstream's _refreshToolRegistry wraps as extension tools (agent-session.ts:3434-3441).
+func (r *sessionToolRegistry) extensionToolNames(runner *inproc.Runner) map[string]struct{} {
+	names := make(map[string]struct{})
+	if runner != nil && !r.skipExtensions {
+		for _, registration := range runner.Tools() {
+			names[registration.Definition.Name] = struct{}{}
+		}
+	}
+	for _, entry := range r.custom {
+		names[entry.tool.Name()] = struct{}{}
+	}
+	return names
+}
+
 func (r *sessionToolRegistry) selectTools(names []string) []agent.AgentTool {
 	result := make([]agent.AgentTool, 0, len(names))
 	seen := make(map[string]struct{})
@@ -281,7 +339,14 @@ func (s *Session) GetAllTools() []extension.ToolInfo {
 	result := make([]extension.ToolInfo, 0, len(s.toolRegistry.entries))
 	for _, entry := range s.toolRegistry.entries {
 		definition := entry.registration.Definition
-		result = append(result, extension.ToolInfo{Name: definition.Name, Description: definition.Description, Parameters: slices.Clone(definition.Parameters), PromptGuidelines: slices.Clone(definition.PromptGuidelines), SourceInfo: entry.registration.SourceInfo})
+		info := extension.ToolInfo{Name: definition.Name, Description: definition.Description, Parameters: slices.Clone(definition.Parameters), PromptGuidelines: slices.Clone(definition.PromptGuidelines), SourceInfo: entry.registration.SourceInfo, Exposure: toolExposureOf(definition)}
+		if definition.Namespace != nil {
+			info.Namespace = new(*definition.Namespace)
+		}
+		if definition.Annotations != nil {
+			info.Annotations = new(*definition.Annotations)
+		}
+		result = append(result, info)
 	}
 	return result
 }
@@ -314,29 +379,66 @@ func (s *Session) BindExtensions(ctx context.Context, bindings ...ExtensionBindi
 	if _, err := runner.Emit(ctx, event); err != nil {
 		return err
 	}
+	// upstream: agent-session.ts:3207 (bindExtensions)
+	runner.ReportUnhandledMcpServers()
 	return s.RefreshTools()
 }
 
 // RefreshTools rebuilds registered definitions and their prompt contributions, preserves active selection, and activates newly admitted names.
 func (s *Session) RefreshTools() error {
+	return s.refreshTools(false)
+}
+
+// RefreshToolsAfterReload is the tool registry rebuild of upstream's reload(): RefreshTools, except that without a tool allowlist every extension or SDK tool that activates on registration is active again, including one disabled during the session.
+//
+// upstream: agent-session.ts:3604-3609 (_buildRuntime with includeAllExtensionTools), 3507-3510
+//
+// Active tools that the reloaded extensions register later, such as MCP tools, are pending until then (upstream: agent-session.ts reload).
+func (s *Session) RefreshToolsAfterReload() error {
+	return s.refreshTools(true)
+}
+
+// refreshTools rebuilds the registry. Only a reload passes includeAllExtensionTools.
+func (s *Session) refreshTools(includeAllExtensionTools bool) error {
+	s.loadout.applyMu.Lock()
+	defer s.loadout.applyMu.Unlock()
 	s.toolRegistryMu.Lock()
 	defer s.toolRegistryMu.Unlock()
+	if includeAllExtensionTools {
+		// The active tools become pending under the same locks as the rebuild, as reload() marks them and calls _buildRuntime without yielding, so no loadout change or registry refresh runs in between.
+		s.addPendingTools(s.ActiveToolNames())
+	}
+	// upstream: agent-session.ts:3457-3459: only tools that were already activated on registration count as known, so a tool whose exposure changes to `direct` or `model-only` is activated like a new tool.
 	previous := make(map[string]struct{}, len(s.tools))
 	for _, tool := range s.tools {
-		previous[tool.Name()] = struct{}{}
+		if definition, ok := s.toolDefinitionLocked(tool.Name()); ok && toolActivatesOnRegistration(definition) || !ok {
+			previous[tool.Name()] = struct{}{}
+		}
 	}
-	active := s.ActiveToolNames()
+	// upstream: agent-session.ts:3598-3609: a reload activates the tools it newly added to defaultTools.
+	active := append(s.ActiveToolNames(), s.toolRegistry.addedDefaultTools...)
+	s.toolRegistry.addedDefaultTools = nil
 	if err := s.toolRegistry.refresh(s.currentRunner()); err != nil {
 		return err
 	}
 	s.tools = s.toolRegistry.tools()
+	// upstream: agent-session.ts:3507-3510: a reload without an allowlist activates every extension or SDK tool that activates on registration.
+	var reactivated map[string]struct{}
+	if includeAllExtensionTools && s.toolRegistry.allowed == nil {
+		reactivated = s.toolRegistry.extensionToolNames(s.currentRunner())
+	}
 	for _, tool := range s.tools {
 		_, known := previous[tool.Name()]
 		_, allowed := s.toolRegistry.allowed[tool.Name()]
-		if !known || allowed {
+		_, reactivate := reactivated[tool.Name()]
+		definition, _ := s.toolDefinitionLocked(tool.Name())
+		// upstream: agent-session.ts:3487-3506: naming a tool activates it when it is declarable; a new tool activates only when it activates on registration.
+		if allowed && toolIsDeclarable(definition) || (!known || reactivate) && toolActivatesOnRegistration(definition) {
 			active = append(active, tool.Name())
 		}
 	}
+	// upstream: agent-session.ts _buildRuntime: pending tools that are registered now become active.
+	active = append(active, s.pendingToolNames...)
 	var names []string
 	for _, tool := range s.toolRegistry.selectTools(active) {
 		names = append(names, tool.Name())

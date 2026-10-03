@@ -14,7 +14,7 @@ func TestResourceCollisionDiagnostics_SkillIncludesSourceInfo(t *testing.T) {
 	winner := filepath.FromSlash("/pkg-a/skills/demo/SKILL.md")
 	loser := filepath.FromSlash("/pkg-b/skills/demo/SKILL.md")
 	m := upstreamListingMode(t, false, nil)
-	m.opts.Settings.QuietStartup = true
+	m.opts.Settings.QuietStartup = QuietStartupTrue
 	m.resourceSourceInfo = map[string]ResourceSourceInfo{
 		winner: {Path: winner, ResourceType: "skills", Enabled: true, Scope: "user", Origin: "package", Source: "npm:pkg-a", BaseDir: filepath.FromSlash("/pkg-a")},
 		loser:  {Path: loser, ResourceType: "skills", Enabled: true, Scope: "project", Origin: "package", Source: "git:https://example.com/pkg-b.git", BaseDir: filepath.FromSlash("/pkg-b")},

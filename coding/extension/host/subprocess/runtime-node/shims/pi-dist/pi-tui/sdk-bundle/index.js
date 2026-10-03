@@ -106,6 +106,7 @@ __name(fuzzyFilter, "fuzzyFilter");
 import { autocompleteBoundaryRegex, autocompleteSeparatorRegex } from "../utils.js";
 var PATH_DELIMITERS = /* @__PURE__ */ new Set([" ", "	", '"', "'", "="]);
 var tokenStartRegex = new RegExp(`${autocompleteBoundaryRegex.source}$`, "u");
+var PATH_WRAPPERS = { "(": ")", "[": "]", "{": "}", "<": ">", "`": "`" };
 function toDisplayPath(value) {
   return value.replace(/\\/g, "/");
 }
@@ -148,6 +149,18 @@ function findLastDelimiter(text) {
   return lastDelimiter;
 }
 __name(findLastDelimiter, "findLastDelimiter");
+function stripLeadingWrappers(token) {
+  let result = token;
+  while (result.length > 0) {
+    const closer = PATH_WRAPPERS[result[0]];
+    if (!closer || result.includes(closer, 1)) {
+      break;
+    }
+    result = result.slice(1);
+  }
+  return result;
+}
+__name(stripLeadingWrappers, "stripLeadingWrappers");
 function findUnclosedQuoteStart(text) {
   let inQuotes = false;
   let quoteStart = -1;
@@ -163,7 +176,11 @@ function findUnclosedQuoteStart(text) {
 }
 __name(findUnclosedQuoteStart, "findUnclosedQuoteStart");
 function isTokenStart(text, index) {
-  return PATH_DELIMITERS.has(text[index - 1] ?? "") || tokenStartRegex.test(text.slice(0, index));
+  let start = index;
+  while (start > 0 && PATH_WRAPPERS[text[start - 1]]) {
+    start -= 1;
+  }
+  return PATH_DELIMITERS.has(text[start - 1] ?? "") || tokenStartRegex.test(text.slice(0, start));
 }
 __name(isTokenStart, "isTokenStart");
 function extractQuotedPrefix(text) {
@@ -318,10 +335,11 @@ var CombinedAutocompleteProvider = class {
         prefix: atPrefix
       };
     }
-    if (!options.force && textBeforeCursor.startsWith("/")) {
-      const spaceIndex = textBeforeCursor.indexOf(" ");
+    const commandText = textBeforeCursor.trimStart();
+    if (!options.force && commandText.startsWith("/")) {
+      const spaceIndex = commandText.indexOf(" ");
       if (spaceIndex === -1) {
-        const prefix = textBeforeCursor.slice(1);
+        const prefix = commandText.slice(1);
         const commandItems = this.commands.map((cmd) => {
           const name = "name" in cmd ? cmd.name : cmd.value;
           const hint = "argumentHint" in cmd && cmd.argumentHint ? cmd.argumentHint : void 0;
@@ -333,7 +351,10 @@ var CombinedAutocompleteProvider = class {
             description: fullDesc || void 0
           };
         });
-        const filtered = fuzzyFilter(commandItems, prefix, (item) => !prefix.startsWith("skill:") && item.name.startsWith("skill:") ? item.name.slice("skill:".length) : item.name).map((item) => ({
+        const bareNameMatches = fuzzyFilter(commandItems, prefix, (item) => item.name.startsWith("skill:") ? item.name.slice("skill:".length) : item.name);
+        const bareNameMatchSet = new Set(bareNameMatches);
+        const fullNameOnlyMatches = fuzzyFilter(commandItems.filter((item) => item.name.startsWith("skill:") && !bareNameMatchSet.has(item)), prefix, (item) => item.name);
+        const filtered = [...bareNameMatches, ...fullNameOnlyMatches].map((item) => ({
           value: item.name,
           label: item.label,
           ...item.description && { description: item.description }
@@ -342,11 +363,11 @@ var CombinedAutocompleteProvider = class {
           return null;
         return {
           items: filtered,
-          prefix: textBeforeCursor
+          prefix: commandText
         };
       }
-      const commandName = textBeforeCursor.slice(1, spaceIndex);
-      const argumentText = textBeforeCursor.slice(spaceIndex + 1);
+      const commandName = commandText.slice(1, spaceIndex);
+      const argumentText = commandText.slice(spaceIndex + 1);
       const command = this.commands.find((cmd) => {
         const name = "name" in cmd ? cmd.name : cmd.value;
         return name === commandName;
@@ -442,9 +463,9 @@ var CombinedAutocompleteProvider = class {
       return quotedPrefix;
     }
     const lastDelimiterIndex = findLastDelimiter(text);
-    const tokenStart = lastDelimiterIndex === -1 ? 0 : lastDelimiterIndex + 1;
-    if (text[tokenStart] === "@") {
-      return text.slice(tokenStart);
+    const token = stripLeadingWrappers(lastDelimiterIndex === -1 ? text : text.slice(lastDelimiterIndex + 1));
+    if (token.startsWith("@")) {
+      return token;
     }
     return null;
   }
@@ -455,7 +476,7 @@ var CombinedAutocompleteProvider = class {
       return quotedPrefix;
     }
     const lastDelimiterIndex = findLastDelimiter(text);
-    const pathPrefix = lastDelimiterIndex === -1 ? text : text.slice(lastDelimiterIndex + 1);
+    const pathPrefix = stripLeadingWrappers(lastDelimiterIndex === -1 ? text : text.slice(lastDelimiterIndex + 1));
     if (forceExtract) {
       return pathPrefix;
     }
@@ -715,9 +736,446 @@ var CombinedAutocompleteProvider = class {
   }
 };
 
+// pi-dist/pi-tui/oklab.js
+var multiply = /* @__PURE__ */ __name((m, [x, y, z]) => m.map((row) => row[0] * x + row[1] * y + row[2] * z), "multiply");
+var LINEAR_SRGB_TO_LMS = [
+  [0.4122214694707629, 0.5363325372617349, 0.0514459932675022],
+  [0.2119034958178251, 0.6806995506452344, 0.1073969535369405],
+  [0.0883024591900564, 0.2817188391361215, 0.6299787016738222]
+];
+var LMS_TO_LAB = [
+  [0.210454268309314, 0.793617774702305, -0.0040720430116193],
+  [1.9779985324311684, -2.42859224204858, 0.450593709617411],
+  [0.0259040424655478, 0.7827717124575296, -0.8086757549230774]
+];
+var LAB_TO_LMS = [
+  [1, 0.3963377773761749, 0.2158037573099136],
+  [1, -0.1055613458156586, -0.0638541728258133],
+  [1, -0.0894841775298119, -1.2914855480194092]
+];
+var LMS_TO_LINEAR_SRGB = [
+  [4.076741636075958, -3.307711539258063, 0.2309699031821043],
+  [-1.2684379732850315, 2.609757349287688, -0.341319376002657],
+  [-0.0041960761386756, -0.7034186179359362, 1.7076146940746117]
+];
+var SATURATION_FIT = [
+  [
+    [-1.8817031, -0.80936501],
+    [1.19086277, 1.76576728, 0.59662641, 0.75515197, 0.56771245]
+  ],
+  [
+    [1.8144408, -1.19445267],
+    [0.73956515, -0.45954404, 0.08285427, 0.12541073, -0.14503204]
+  ],
+  [
+    [0.13110758, 1.81333971],
+    [1.35733652, -915799e-8, -1.1513021, -0.50559606, 692167e-8]
+  ]
+];
+var K1 = 0.206;
+var K2 = 0.03;
+var K3 = (1 + K1) / (1 + K2);
+var oklabToOkhslLightness = /* @__PURE__ */ __name((x) => 0.5 * (K3 * x - K1 + Math.sqrt((K3 * x - K1) ** 2 + 4 * K2 * K3 * x)), "oklabToOkhslLightness");
+var okhslToOklabLightness = /* @__PURE__ */ __name((x) => (x * x + K1 * x) / (K3 * (x + K2)), "okhslToOklabLightness");
+var linearToSrgb = /* @__PURE__ */ __name((value) => value > 31308e-7 ? 1.055 * value ** (1 / 2.4) - 0.055 : 12.92 * value, "linearToSrgb");
+var srgbToLinear = /* @__PURE__ */ __name((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4, "srgbToLinear");
+function oklabToLinearSrgb(lab) {
+  return multiply(LMS_TO_LINEAR_SRGB, multiply(LAB_TO_LMS, lab).map((value) => value ** 3));
+}
+__name(oklabToLinearSrgb, "oklabToLinearSrgb");
+function linearSrgbToOklab(rgb) {
+  return multiply(LMS_TO_LAB, multiply(LINEAR_SRGB_TO_LMS, rgb).map(Math.cbrt));
+}
+__name(linearSrgbToOklab, "linearSrgbToOklab");
+function rgbToOklab({ r, g, b }) {
+  return linearSrgbToOklab([r / 255, g / 255, b / 255].map(srgbToLinear));
+}
+__name(rgbToOklab, "rgbToOklab");
+function linearSrgbToRgb(linear) {
+  const [r, g, b] = linear.map((value) => Math.round(Math.min(1, Math.max(0, linearToSrgb(value))) * 255));
+  return { r, g, b };
+}
+__name(linearSrgbToRgb, "linearSrgbToRgb");
+function lmsSlopes(a, b) {
+  return [LAB_TO_LMS[0], LAB_TO_LMS[1], LAB_TO_LMS[2]].map((row) => row[1] * a + row[2] * b);
+}
+__name(lmsSlopes, "lmsSlopes");
+function maxSaturation(a, b) {
+  const channel = SATURATION_FIT.findIndex(([[x, y]], index) => index === 2 || x * a + y * b > 1);
+  const [k0, k1, k2, k3, k4] = SATURATION_FIT[channel][1];
+  const weights = LMS_TO_LINEAR_SRGB[channel];
+  const saturation = k0 + k1 * a + k2 * b + k3 * a * a + k4 * a * b;
+  const slopes = lmsSlopes(a, b);
+  const base = slopes.map((k) => 1 + saturation * k);
+  const dot = /* @__PURE__ */ __name((values) => values.reduce((sum, value, index) => sum + weights[index] * value, 0), "dot");
+  const f = dot(base.map((value) => value ** 3));
+  const f1 = dot(base.map((value, index) => 3 * slopes[index] * value ** 2));
+  const f2 = dot(base.map((value, index) => 6 * slopes[index] ** 2 * value));
+  return saturation - f * f1 / (f1 * f1 - 0.5 * f * f2);
+}
+__name(maxSaturation, "maxSaturation");
+function cusp(a, b) {
+  const saturation = maxSaturation(a, b);
+  const lightness = Math.cbrt(1 / Math.max(...oklabToLinearSrgb([1, saturation * a, saturation * b])));
+  return [lightness, lightness * saturation];
+}
+__name(cusp, "cusp");
+function maxChroma(a, b, lightness, [cuspL, cuspC]) {
+  if (lightness <= cuspL)
+    return cuspC * lightness / cuspL;
+  const t = cuspC * (lightness - 1) / (cuspL - 1);
+  const slopes = lmsSlopes(a, b);
+  const lms = slopes.map((k) => lightness + t * k);
+  const cubes = lms.map((value) => value ** 3);
+  const first = lms.map((value, index) => 3 * slopes[index] * value ** 2);
+  const second = lms.map((value, index) => 6 * slopes[index] ** 2 * value);
+  const dot = /* @__PURE__ */ __name((row, values) => row[0] * values[0] + row[1] * values[1] + row[2] * values[2], "dot");
+  const steps = LMS_TO_LINEAR_SRGB.map((row) => {
+    const f = dot(row, cubes) - 1;
+    const f1 = dot(row, first);
+    const f2 = dot(row, second);
+    const u = f1 / (f1 * f1 - 0.5 * f * f2);
+    return u >= 0 ? -f * u : Number.MAX_VALUE;
+  });
+  return t + Math.min(...steps);
+}
+__name(maxChroma, "maxChroma");
+function chromaStops(L, a, b) {
+  const peak = cusp(a, b);
+  const cMax = maxChroma(a, b, L, peak);
+  const k = cMax / Math.min(L * (peak[1] / peak[0]), (1 - L) * (peak[1] / (1 - peak[0])));
+  const midS = 0.11516993 + 1 / (7.4477897 + 4.1590124 * b + a * (-2.19557347 + 1.75198401 * b + a * (-2.13704948 - 10.02301043 * b + a * (-4.24894561 + 5.38770819 * b + 4.69891013 * a))));
+  const midT = 0.11239642 + 1 / (1.6132032 - 0.68124379 * b + a * (0.40370612 + 0.90148123 * b + a * (-0.27087943 + 0.6122399 * b + a * (299215e-8 - 0.45399568 * b - 0.14661872 * a))));
+  const cMid = 0.9 * k * Math.sqrt(Math.sqrt(1 / (1 / (L * midS) ** 4 + 1 / ((1 - L) * midT) ** 4)));
+  const c0 = Math.sqrt(1 / (1 / (L * 0.4) ** 2 + 1 / ((1 - L) * 0.8) ** 2));
+  return [c0, cMid, cMax];
+}
+__name(chromaStops, "chromaStops");
+function okhslToRgb(hue, saturation, lightness) {
+  const L = okhslToOklabLightness(lightness);
+  let lab = [L, 0, 0];
+  if (L > 0 && L < 1 && saturation > 0) {
+    const angle = 2 * Math.PI * ((hue % 360 + 360) % 360) / 360;
+    const a = Math.cos(angle);
+    const b = Math.sin(angle);
+    const [c0, cMid, cMax] = chromaStops(L, a, b);
+    let chroma;
+    if (saturation < 0.8) {
+      const t = 1.25 * saturation;
+      const k1 = 0.8 * c0;
+      chroma = t * k1 / (1 - (1 - k1 / cMid) * t);
+    } else {
+      const t = 5 * (saturation - 0.8);
+      const k1 = 0.2 * cMid ** 2 * 1.25 ** 2 / c0;
+      chroma = cMid + t * k1 / (1 - (1 - k1 / (cMax - cMid)) * t);
+    }
+    lab = [L, chroma * a, chroma * b];
+  }
+  return linearSrgbToRgb(oklabToLinearSrgb(lab));
+}
+__name(okhslToRgb, "okhslToRgb");
+function rgbToOkhsl(rgb) {
+  const [L, labA, labB] = rgbToOklab(rgb);
+  const chroma = Math.hypot(labA, labB);
+  const lightness = oklabToOkhslLightness(L);
+  if (chroma < 1e-9 || lightness <= 0 || lightness >= 1)
+    return { h: 0, s: 0, l: lightness };
+  const hue = (Math.atan2(labB, labA) * 180 / Math.PI + 360) % 360;
+  const [c0, cMid, cMax] = chromaStops(L, labA / chroma, labB / chroma);
+  let saturation;
+  if (chroma < cMid) {
+    const k1 = 0.8 * c0;
+    saturation = 0.8 * (chroma / (k1 + (1 - k1 / cMid) * chroma));
+  } else {
+    const k1 = 0.2 * cMid ** 2 * 1.25 ** 2 / c0;
+    const offset = chroma - cMid;
+    saturation = 0.8 + 0.2 * (offset / (k1 + (1 - k1 / (cMax - cMid)) * offset));
+  }
+  return { h: hue, s: Math.min(1, Math.max(0, saturation)), l: lightness };
+}
+__name(rgbToOkhsl, "rgbToOkhsl");
+
+// pi-dist/pi-tui/colors.js
+function requireFinite(value, name) {
+  if (!Number.isFinite(value))
+    throw new Error(`${name} must be finite`);
+}
+__name(requireFinite, "requireFinite");
+function indexedColor(index) {
+  if (!Number.isInteger(index) || index < 0 || index > 255) {
+    throw new Error(`ANSI color index must be an integer from 0 to 255: ${index}`);
+  }
+  return Object.freeze({ kind: "indexed", index });
+}
+__name(indexedColor, "indexedColor");
+function rgbColor(r, g, b) {
+  for (const [name, value] of [
+    ["r", r],
+    ["g", g],
+    ["b", b]
+  ]) {
+    requireFinite(value, name);
+    if (value < 0 || value > 255)
+      throw new Error(`${name} must be between 0 and 255: ${value}`);
+  }
+  return Object.freeze({ kind: "rgb", r, g, b });
+}
+__name(rgbColor, "rgbColor");
+function oklchColor(l, c, h) {
+  requireFinite(l, "l");
+  requireFinite(c, "c");
+  requireFinite(h, "h");
+  if (l < 0 || l > 1)
+    throw new Error(`l must be between 0 and 1: ${l}`);
+  if (c < 0)
+    throw new Error(`c must not be negative: ${c}`);
+  return Object.freeze({ kind: "oklch", l, c, h: (h % 360 + 360) % 360 });
+}
+__name(oklchColor, "oklchColor");
+var NUMBER_PATTERN = String.raw`[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?`;
+var OKLCH_PATTERN = new RegExp(`^oklch\\(\\s*(${NUMBER_PATTERN})(%)?\\s+(${NUMBER_PATTERN})\\s+(${NUMBER_PATTERN})(?:deg)?\\s*\\)$`, "i");
+var OKHSL_PATTERN = new RegExp(`^okhsl\\(\\s*(${NUMBER_PATTERN})(?:deg)?\\s+(${NUMBER_PATTERN})(%)?\\s+(${NUMBER_PATTERN})(%)?\\s*\\)$`, "i");
+function okhslColor(h, s, l) {
+  requireFinite(h, "h");
+  requireFinite(s, "s");
+  requireFinite(l, "l");
+  if (s < 0 || s > 1)
+    throw new Error(`s must be between 0 and 1: ${s}`);
+  if (l < 0 || l > 1)
+    throw new Error(`l must be between 0 and 1: ${l}`);
+  const { r, g, b } = okhslToRgb(h, s, l);
+  return rgbColor(r, g, b);
+}
+__name(okhslColor, "okhslColor");
+function colorToOkhsl(color) {
+  return rgbToOkhsl(colorToRgb(color));
+}
+__name(colorToOkhsl, "colorToOkhsl");
+function parseColor(value) {
+  if (typeof value === "number")
+    return indexedColor(value);
+  const hex = /^#([\da-f]{3}|[\da-f]{6})$/i.exec(value);
+  if (hex) {
+    const digits = hex[1].length === 3 ? [...hex[1]].map((digit) => digit + digit).join("") : hex[1];
+    return rgbColor(Number.parseInt(digits.slice(0, 2), 16), Number.parseInt(digits.slice(2, 4), 16), Number.parseInt(digits.slice(4, 6), 16));
+  }
+  const oklch = OKLCH_PATTERN.exec(value);
+  if (oklch) {
+    const lightness = Number.parseFloat(oklch[1]) / (oklch[2] ? 100 : 1);
+    return oklchColor(lightness, Number.parseFloat(oklch[3]), Number.parseFloat(oklch[4]));
+  }
+  const okhsl = OKHSL_PATTERN.exec(value);
+  if (okhsl) {
+    const saturation = Number.parseFloat(okhsl[2]) / (okhsl[3] ? 100 : 1);
+    const lightness = Number.parseFloat(okhsl[4]) / (okhsl[5] ? 100 : 1);
+    return okhslColor(Number.parseFloat(okhsl[1]), saturation, lightness);
+  }
+  throw new Error(`Invalid color value: ${value}`);
+}
+__name(parseColor, "parseColor");
+var BASIC_COLORS = [
+  { r: 0, g: 0, b: 0 },
+  { r: 128, g: 0, b: 0 },
+  { r: 0, g: 128, b: 0 },
+  { r: 128, g: 128, b: 0 },
+  { r: 0, g: 0, b: 128 },
+  { r: 128, g: 0, b: 128 },
+  { r: 0, g: 128, b: 128 },
+  { r: 192, g: 192, b: 192 },
+  { r: 128, g: 128, b: 128 },
+  { r: 255, g: 0, b: 0 },
+  { r: 0, g: 255, b: 0 },
+  { r: 255, g: 255, b: 0 },
+  { r: 0, g: 0, b: 255 },
+  { r: 255, g: 0, b: 255 },
+  { r: 0, g: 255, b: 255 },
+  { r: 255, g: 255, b: 255 }
+];
+var CUBE_VALUES = [0, 95, 135, 175, 215, 255];
+var GRAY_VALUES = Array.from({ length: 24 }, (_, index) => 8 + index * 10);
+function indexedToRgb(index) {
+  if (index < 16)
+    return { ...BASIC_COLORS[index] };
+  if (index < 232) {
+    const cubeIndex = index - 16;
+    return {
+      r: CUBE_VALUES[Math.floor(cubeIndex / 36)],
+      g: CUBE_VALUES[Math.floor(cubeIndex % 36 / 6)],
+      b: CUBE_VALUES[cubeIndex % 6]
+    };
+  }
+  const gray = 8 + (index - 232) * 10;
+  return { r: gray, g: gray, b: gray };
+}
+__name(indexedToRgb, "indexedToRgb");
+function isInSrgbGamut(linear) {
+  const epsilon = 1e-7;
+  return linear.every((channel) => channel >= -epsilon && channel <= 1 + epsilon);
+}
+__name(isInSrgbGamut, "isInSrgbGamut");
+function oklchToRgb({ l, c, h }) {
+  const radians = h * Math.PI / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const atChroma = /* @__PURE__ */ __name((chroma) => oklabToLinearSrgb([l, chroma * cos, chroma * sin]), "atChroma");
+  const direct = atChroma(c);
+  if (isInSrgbGamut(direct))
+    return linearSrgbToRgb(direct);
+  let linear = atChroma(0);
+  let low = 0;
+  let high = c;
+  for (let index = 0; index < 20; index++) {
+    const chroma = (low + high) / 2;
+    const candidate = atChroma(chroma);
+    if (isInSrgbGamut(candidate)) {
+      low = chroma;
+      linear = candidate;
+    } else {
+      high = chroma;
+    }
+  }
+  return linearSrgbToRgb(linear);
+}
+__name(oklchToRgb, "oklchToRgb");
+function colorToRgb(color) {
+  switch (color.kind) {
+    case "indexed":
+      return indexedToRgb(color.index);
+    case "rgb":
+      return { r: color.r, g: color.g, b: color.b };
+    case "oklch":
+      return oklchToRgb(color);
+  }
+}
+__name(colorToRgb, "colorToRgb");
+function colorToOklch(color) {
+  if (color.kind === "oklch")
+    return { l: color.l, c: color.c, h: color.h };
+  const [l, a, b] = rgbToOklab(colorToRgb(color));
+  return { l, c: Math.hypot(a, b), h: (Math.atan2(b, a) * 180 / Math.PI + 360) % 360 };
+}
+__name(colorToOklch, "colorToOklch");
+function colorToHex(color) {
+  const { r, g, b } = colorToRgb(color);
+  const channel = /* @__PURE__ */ __name((value) => Math.round(value).toString(16).padStart(2, "0"), "channel");
+  return `#${channel(r)}${channel(g)}${channel(b)}`;
+}
+__name(colorToHex, "colorToHex");
+function mixColors(first, second, amount, space = "oklch") {
+  requireFinite(amount, "amount");
+  if (amount < 0 || amount > 1)
+    throw new Error(`amount must be between 0 and 1: ${amount}`);
+  if (space === "srgb") {
+    const a2 = colorToRgb(first);
+    const b2 = colorToRgb(second);
+    return rgbColor(a2.r + (b2.r - a2.r) * amount, a2.g + (b2.g - a2.g) * amount, a2.b + (b2.b - a2.b) * amount);
+  }
+  const a = colorToOklch(first);
+  const b = colorToOklch(second);
+  const firstHue = a.c < 1e-7 ? b.h : a.h;
+  const secondHue = b.c < 1e-7 ? firstHue : b.h;
+  const hueDelta = (secondHue - firstHue + 540) % 360 - 180;
+  return oklchColor(a.l + (b.l - a.l) * amount, a.c + (b.c - a.c) * amount, firstHue + hueDelta * amount);
+}
+__name(mixColors, "mixColors");
+function findClosest(values, target) {
+  let closestIndex = 0;
+  let closestDistance = Infinity;
+  for (let index = 0; index < values.length; index++) {
+    const distance = Math.abs(target - values[index]);
+    if (distance < closestDistance) {
+      closestIndex = index;
+      closestDistance = distance;
+    }
+  }
+  return closestIndex;
+}
+__name(findClosest, "findClosest");
+function colorDistance(first, second) {
+  const dr = first.r - second.r;
+  const dg = first.g - second.g;
+  const db = first.b - second.b;
+  return dr * dr * 0.299 + dg * dg * 0.587 + db * db * 0.114;
+}
+__name(colorDistance, "colorDistance");
+function rgbToAnsi256(color) {
+  const rIndex = findClosest(CUBE_VALUES, color.r);
+  const gIndex = findClosest(CUBE_VALUES, color.g);
+  const bIndex = findClosest(CUBE_VALUES, color.b);
+  const cubeColor = { r: CUBE_VALUES[rIndex], g: CUBE_VALUES[gIndex], b: CUBE_VALUES[bIndex] };
+  const cubeIndex = 16 + 36 * rIndex + 6 * gIndex + bIndex;
+  const gray = Math.round(0.299 * color.r + 0.587 * color.g + 0.114 * color.b);
+  const grayOffset = findClosest(GRAY_VALUES, gray);
+  const grayValue = GRAY_VALUES[grayOffset];
+  const spread = Math.max(color.r, color.g, color.b) - Math.min(color.r, color.g, color.b);
+  if (spread < 10 && colorDistance(color, { r: grayValue, g: grayValue, b: grayValue }) < colorDistance(color, cubeColor)) {
+    return 232 + grayOffset;
+  }
+  return cubeIndex;
+}
+__name(rgbToAnsi256, "rgbToAnsi256");
+function colorAnsi(color, mode, background) {
+  if (color.kind === "indexed")
+    return `\x1B[${background ? 48 : 38};5;${color.index}m`;
+  const rgb = colorToRgb(color);
+  if (mode === "truecolor") {
+    return `\x1B[${background ? 48 : 38};2;${Math.round(rgb.r)};${Math.round(rgb.g)};${Math.round(rgb.b)}m`;
+  }
+  return `\x1B[${background ? 48 : 38};5;${rgbToAnsi256(rgb)}m`;
+}
+__name(colorAnsi, "colorAnsi");
+function foregroundAnsi(color, mode) {
+  return colorAnsi(color, mode, false);
+}
+__name(foregroundAnsi, "foregroundAnsi");
+function backgroundAnsi(color, mode) {
+  return colorAnsi(color, mode, true);
+}
+__name(backgroundAnsi, "backgroundAnsi");
+function styleText(text, options, mode) {
+  return styleTextWithAnsi(text, options.fg && foregroundAnsi(options.fg, mode), options.bg && backgroundAnsi(options.bg, mode), options);
+}
+__name(styleText, "styleText");
+function styleTextWithAnsi(text, fgAnsi, bgAnsi, options) {
+  let prefix = "";
+  let suffix = "";
+  if (fgAnsi) {
+    prefix += fgAnsi;
+    suffix = "\x1B[39m";
+  }
+  if (bgAnsi) {
+    prefix += bgAnsi;
+    suffix = `\x1B[49m${suffix}`;
+  }
+  if (options.bold)
+    prefix += "\x1B[1m";
+  if (options.dim)
+    prefix += "\x1B[2m";
+  if (options.bold || options.dim)
+    suffix = `\x1B[22m${suffix}`;
+  if (options.italic) {
+    prefix += "\x1B[3m";
+    suffix = `\x1B[23m${suffix}`;
+  }
+  if (options.underline) {
+    prefix += "\x1B[4m";
+    suffix = `\x1B[24m${suffix}`;
+  }
+  if (options.inverse) {
+    prefix += "\x1B[7m";
+    suffix = `\x1B[27m${suffix}`;
+  }
+  if (options.strikethrough) {
+    prefix += "\x1B[9m";
+    suffix = `\x1B[29m${suffix}`;
+  }
+  return `${prefix}${text}${suffix}`;
+}
+__name(styleTextWithAnsi, "styleTextWithAnsi");
+
 // pi-dist/pi-tui/components/box.js
 import { dispatchMouseEvent } from "../tui.js";
-import { applyBackgroundToLine, visibleWidth } from "../utils.js";
+import { flattenLines, visibleWidth } from "../utils.js";
 var Box = class {
   static {
     __name(this, "Box");
@@ -799,7 +1257,7 @@ var Box = class {
       const lines = child.render(contentWidth);
       mouseChildren.push({ component: child, height: lines.length });
       for (const line of lines) {
-        childLines.push(leftPad + line);
+        childLines.push(line);
       }
     }
     this.mouseLayout = { width: contentWidth, children: mouseChildren };
@@ -815,11 +1273,12 @@ var Box = class {
       result.push(this.applyBg("", width));
     }
     for (const line of childLines) {
-      result.push(this.applyBg(line, width));
+      result.push(this.applyBg(leftPad + line, width));
     }
     for (let i = 0; i < this.paddingY; i++) {
       result.push(this.applyBg("", width));
     }
+    flattenLines(result);
     this.cache = { childLines, width, bgSample, lines: result };
     return result;
   }
@@ -827,10 +1286,7 @@ var Box = class {
     const visLen = visibleWidth(line);
     const padNeeded = Math.max(0, width - visLen);
     const padded = line + " ".repeat(padNeeded);
-    if (this.bgFn) {
-      return applyBackgroundToLine(padded, width, this.bgFn);
-    }
-    return padded;
+    return this.bgFn ? this.bgFn(padded) : padded;
   }
 };
 
@@ -838,7 +1294,7 @@ var Box = class {
 import { getKeybindings } from "../keybindings.js";
 
 // pi-dist/pi-tui/components/text.js
-import { applyBackgroundToLine as applyBackgroundToLine2, visibleWidth as visibleWidth2, wrapTextWithAnsi } from "../utils.js";
+import { applyBackgroundToLine, flattenLines as flattenLines2, visibleWidth as visibleWidth2, wrapTextWithAnsi } from "../utils.js";
 var Text = class {
   static {
     __name(this, "Text");
@@ -897,7 +1353,7 @@ var Text = class {
     for (const line of wrappedLines) {
       const lineWithMargins = leftMargin + line + rightMargin;
       if (this.customBgFn) {
-        contentLines.push(applyBackgroundToLine2(lineWithMargins, width, this.customBgFn));
+        contentLines.push(applyBackgroundToLine(lineWithMargins, width, this.customBgFn));
       } else {
         const visibleLen = visibleWidth2(lineWithMargins);
         const paddingNeeded = Math.max(0, width - visibleLen);
@@ -907,10 +1363,11 @@ var Text = class {
     const emptyLine = " ".repeat(width);
     const emptyLines = [];
     for (let i = 0; i < this.paddingY; i++) {
-      const line = this.customBgFn ? applyBackgroundToLine2(emptyLine, width, this.customBgFn) : emptyLine;
+      const line = this.customBgFn ? applyBackgroundToLine(emptyLine, width, this.customBgFn) : emptyLine;
       emptyLines.push(line);
     }
     const result = [...emptyLines, ...contentLines, ...emptyLines];
+    flattenLines2(result);
     this.cachedText = this.text;
     this.cachedWidth = width;
     this.cachedLines = result;
@@ -1470,17 +1927,18 @@ var SLASH_COMMAND_SELECT_LIST_LAYOUT = {
 var ATTACHMENT_AUTOCOMPLETE_DEBOUNCE_MS = 20;
 var DEFAULT_AUTOCOMPLETE_TRIGGER_CHARACTERS = ["@", "#"];
 var unquotedAutocompleteSuffixRegex = new RegExp(`(?:(?!${autocompleteSeparatorRegex2.source}).)*`, "u");
+var autocompleteTokenStartSource = `${autocompleteBoundaryRegex2.source}[([{<\`]*`;
 function escapeCharacterClass(value) {
   return value.replace(/[\\^$.*+?()[\]{}|-]/g, "\\$&");
 }
 __name(escapeCharacterClass, "escapeCharacterClass");
 function buildTriggerPattern(triggerCharacters) {
-  return new RegExp(`${autocompleteBoundaryRegex2.source}(?:@"[^"]*|[${triggerCharacters.map(escapeCharacterClass).join("")}]${unquotedAutocompleteSuffixRegex.source})$`, "u");
+  return new RegExp(`${autocompleteTokenStartSource}(?:@"[^"]*|[${triggerCharacters.map(escapeCharacterClass).join("")}]${unquotedAutocompleteSuffixRegex.source})$`, "u");
 }
 __name(buildTriggerPattern, "buildTriggerPattern");
 function buildDebouncePattern(triggerCharacters) {
   const escapedWithoutAt = triggerCharacters.filter((character) => character !== "@").map(escapeCharacterClass);
-  return new RegExp(`${autocompleteBoundaryRegex2.source}(?:@(?:"[^"]*|${unquotedAutocompleteSuffixRegex.source})|[${escapedWithoutAt.join("")}]${unquotedAutocompleteSuffixRegex.source})$`, "u");
+  return new RegExp(`${autocompleteTokenStartSource}(?:@(?:"[^"]*|${unquotedAutocompleteSuffixRegex.source})|[${escapedWithoutAt.join("")}]${unquotedAutocompleteSuffixRegex.source})$`, "u");
 }
 __name(buildDebouncePattern, "buildDebouncePattern");
 function createScrollBorder(direction, hiddenLineCount, width) {
@@ -5047,7 +5505,7 @@ __name(renderLatex, "renderLatex");
 
 // pi-dist/pi-tui/components/markdown.js
 import { getCapabilities as getCapabilities2, hyperlink, isImageLine } from "../terminal-image.js";
-import { applyBackgroundToLine as applyBackgroundToLine3, visibleWidth as visibleWidth8, wrapTextWithAnsi as wrapTextWithAnsi2 } from "../utils.js";
+import { applyBackgroundToLine as applyBackgroundToLine2, flattenLines as flattenLines3, visibleWidth as visibleWidth8, wrapTextWithAnsi as wrapTextWithAnsi2 } from "../utils.js";
 var STRICT_STRIKETHROUGH_REGEX = /^(~~)(?=[^\s~])((?:\\.|[^\\])*?(?:\\.|[^\s~\\]))\1(?=[^~]|$)/;
 var StrictStrikethroughTokenizer = class extends Tokenizer {
   static {
@@ -5207,6 +5665,10 @@ var Markdown = class {
   cachedText;
   cachedWidth;
   cachedLines;
+  // Parsed tokens depend only on the source, so they survive theme and width invalidation. Held weakly: a token tree is
+  // about ten times the size of its source, and every message of a long transcript keeps a Markdown component. The
+  // tokens survive a burst of re-renders, such as a theme preview, and are collected afterwards.
+  cachedTokens;
   constructor(text, paddingX, paddingY, theme, defaultTextStyle, options) {
     this.text = text;
     this.paddingX = paddingX;
@@ -5238,8 +5700,13 @@ var Markdown = class {
       return result2;
     }
     const normalizedText = text.replace(/\t/g, "   ");
-    const tokens = markdownParser.lexer(normalizedText);
-    trimPartialClosingFences(tokens);
+    const cached = this.cachedTokens?.deref();
+    let tokens = cached?.source === normalizedText ? cached.tokens : void 0;
+    if (!tokens) {
+      tokens = markdownParser.lexer(normalizedText);
+      trimPartialClosingFences(tokens);
+      this.cachedTokens = new WeakRef({ source: normalizedText, tokens });
+    }
     const renderedLines = [];
     for (let i = 0; i < tokens.length; i++) {
       const token = tokens[i];
@@ -5270,7 +5737,7 @@ var Markdown = class {
       }
       const lineWithMargins = leftMargin + line + rightMargin;
       if (bgFn) {
-        contentLines.push(applyBackgroundToLine3(lineWithMargins, width, bgFn));
+        contentLines.push(applyBackgroundToLine2(lineWithMargins, width, bgFn));
       } else {
         const visibleLen = visibleWidth8(lineWithMargins);
         const paddingNeeded = Math.max(0, width - visibleLen);
@@ -5280,10 +5747,11 @@ var Markdown = class {
     const emptyLine = " ".repeat(width);
     const emptyLines = [];
     for (let i = 0; i < this.paddingY; i++) {
-      const line = bgFn ? applyBackgroundToLine3(emptyLine, width, bgFn) : emptyLine;
+      const line = bgFn ? applyBackgroundToLine2(emptyLine, width, bgFn) : emptyLine;
       emptyLines.push(line);
     }
     const result = emptyLines.concat(contentLines, emptyLines);
+    flattenLines3(result);
     this.cachedText = this.text;
     this.cachedWidth = width;
     this.cachedLines = result;
@@ -6704,6 +7172,8 @@ var ProcessTerminal = class {
   _kittyProtocolActive = false;
   _modifyOtherKeysActive = false;
   keyboardProtocolPushed = false;
+  /** DA1 replies owed to keyboard protocol queries. Later DA1 replies answer other queries and are forwarded. */
+  pendingKeyboardProtocolDeviceAttributes = 0;
   keyboardProtocolNegotiationBuffer = "";
   keyboardProtocolBufferFlushTimer;
   stdinBuffer;
@@ -6755,15 +7225,15 @@ var ProcessTerminal = class {
   setupStdinBuffer() {
     this.stdinBuffer = new StdinBuffer({ escapeTimeout: resolveEscapeTimeoutMs() });
     this.stdinBuffer.on("data", (sequence) => {
-      const negotiationSequence = this.readKeyboardProtocolNegotiationSequence(sequence);
-      if (negotiationSequence === "pending") {
+      const negotiation = this.readKeyboardProtocolNegotiationSequence(sequence);
+      if (negotiation === "pending") {
         this.scheduleKeyboardProtocolNegotiationBufferFlush();
         return;
       }
-      if (this.handleKeyboardProtocolNegotiationSequence(negotiationSequence)) {
+      if (negotiation && this.handleKeyboardProtocolNegotiationSequence(negotiation.parsed)) {
         return;
       }
-      this.forwardInputSequence(sequence);
+      this.forwardInputSequence(negotiation?.sequence ?? sequence);
     });
     this.stdinBuffer.on("paste", (content) => {
       if (this.inputHandler) {
@@ -6791,13 +7261,17 @@ var ProcessTerminal = class {
     this.setupStdinBuffer();
     process.stdin.on("data", this.stdinDataHandler);
     this.keyboardProtocolPushed = true;
+    this.pendingKeyboardProtocolDeviceAttributes += 1;
     this.clearKeyboardProtocolNegotiationBuffer();
     process.stdout.write(KITTY_KEYBOARD_PROTOCOL_QUERY);
   }
   handleKeyboardProtocolNegotiationSequence(negotiationSequence) {
-    if (!negotiationSequence)
-      return false;
     this.clearKeyboardProtocolNegotiationBuffer();
+    if (negotiationSequence.type === "device-attributes") {
+      if (this.pendingKeyboardProtocolDeviceAttributes === 0)
+        return false;
+      this.pendingKeyboardProtocolDeviceAttributes -= 1;
+    }
     if (negotiationSequence.type === "kitty-flags") {
       if (negotiationSequence.flags !== 0) {
         this.disableModifyOtherKeys();
@@ -6815,13 +7289,14 @@ var ProcessTerminal = class {
     }
     return true;
   }
+  /** Returns the parsed negotiation reply with its full (possibly reassembled) sequence. */
   readKeyboardProtocolNegotiationSequence(sequence) {
     if (this.keyboardProtocolNegotiationBuffer) {
       const bufferedSequence = this.keyboardProtocolNegotiationBuffer + sequence;
       const negotiationSequence2 = parseKeyboardProtocolNegotiationSequence(bufferedSequence);
       if (negotiationSequence2) {
         this.clearKeyboardProtocolNegotiationBuffer();
-        return negotiationSequence2;
+        return { parsed: negotiationSequence2, sequence: bufferedSequence };
       }
       if (isKeyboardProtocolNegotiationSequencePrefix(bufferedSequence)) {
         this.setKeyboardProtocolNegotiationBuffer(bufferedSequence);
@@ -6831,7 +7306,7 @@ var ProcessTerminal = class {
     }
     const negotiationSequence = parseKeyboardProtocolNegotiationSequence(sequence);
     if (negotiationSequence)
-      return negotiationSequence;
+      return { parsed: negotiationSequence, sequence };
     if (isKeyboardProtocolNegotiationSequencePrefix(sequence)) {
       this.setKeyboardProtocolNegotiationBuffer(sequence);
       return "pending";
@@ -7028,57 +7503,7 @@ var ProcessTerminal = class {
 };
 
 // pi-dist/pi-tui/terminal-colors.js
-function hexToRgb(hex) {
-  const normalized = hex.startsWith("#") ? hex.slice(1) : hex;
-  const r = parseInt(normalized.slice(0, 2), 16);
-  const g = parseInt(normalized.slice(2, 4), 16);
-  const b = parseInt(normalized.slice(4, 6), 16);
-  return { r, g, b };
-}
-__name(hexToRgb, "hexToRgb");
-function parseOscHexChannel(channel) {
-  if (!/^[0-9a-f]+$/i.test(channel)) {
-    return void 0;
-  }
-  const max = 16 ** channel.length - 1;
-  if (max <= 0) {
-    return void 0;
-  }
-  return Math.round(parseInt(channel, 16) / max * 255);
-}
-__name(parseOscHexChannel, "parseOscHexChannel");
-var OSC11_BACKGROUND_COLOR_RESPONSE_PATTERN = /^\x1b\]11;([^\x07\x1b]*)(?:\x07|\x1b\\)$/i;
 var COLOR_SCHEME_REPORT_PATTERN = /^(?:\x1b\[\?997;(1|2)n)+$/;
-function parseOsc11BackgroundColor(data) {
-  const match = data.match(OSC11_BACKGROUND_COLOR_RESPONSE_PATTERN);
-  if (!match) {
-    return void 0;
-  }
-  const value = match[1].trim();
-  if (value.startsWith("#")) {
-    const hex = value.slice(1);
-    if (/^[0-9a-f]{6}$/i.test(hex)) {
-      return hexToRgb(value);
-    }
-    if (/^[0-9a-f]{12}$/i.test(hex)) {
-      const r2 = parseOscHexChannel(hex.slice(0, 4));
-      const g2 = parseOscHexChannel(hex.slice(4, 8));
-      const b2 = parseOscHexChannel(hex.slice(8, 12));
-      return r2 !== void 0 && g2 !== void 0 && b2 !== void 0 ? { r: r2, g: g2, b: b2 } : void 0;
-    }
-    return void 0;
-  }
-  const rgbValue = value.replace(/^rgba?:/i, "");
-  const [red, green, blue] = rgbValue.split("/");
-  if (red === void 0 || green === void 0 || blue === void 0) {
-    return void 0;
-  }
-  const r = parseOscHexChannel(red);
-  const g = parseOscHexChannel(green);
-  const b = parseOscHexChannel(blue);
-  return r !== void 0 && g !== void 0 && b !== void 0 ? { r, g, b } : void 0;
-}
-__name(parseOsc11BackgroundColor, "parseOsc11BackgroundColor");
 function parseTerminalColorSchemeReport(data) {
   const match = data.match(COLOR_SCHEME_REPORT_PATTERN);
   if (!match) {
@@ -7089,7 +7514,7 @@ function parseTerminalColorSchemeReport(data) {
 __name(parseTerminalColorSchemeReport, "parseTerminalColorSchemeReport");
 
 // pi-dist/pi-tui/index.js
-import { allocateImageId as allocateImageId2, calculateImageRows, deleteAllKittyImages as deleteAllKittyImages2, deleteKittyImage as deleteKittyImage3, detectCapabilities, encodeITerm2, encodeKitty, getCapabilities as getCapabilities4, getCellDimensions as getCellDimensions2, getGifDimensions, getImageDimensions as getImageDimensions2, getJpegDimensions, getPngDimensions, getWebpDimensions, hyperlink as hyperlink2, imageFallback as imageFallback2, renderImage as renderImage2, resetCapabilitiesCache, setCapabilities as setCapabilities2, setCapabilityOverrides, setCellDimensions } from "../terminal-image.js";
+import { allocateImageId as allocateImageId2, calculateImageRows, deleteAllKittyImages as deleteAllKittyImages2, deleteKittyImage as deleteKittyImage3, detectCapabilities, encodeITerm2, encodeKitty, getCapabilities as getCapabilities4, getCellDimensions as getCellDimensions2, getGifDimensions, getImageDimensions as getImageDimensions2, getJpegDimensions, getPngDimensions, getTerminalColorMode, getWebpDimensions, hyperlink as hyperlink2, imageFallback as imageFallback2, renderImage as renderImage2, resetCapabilitiesCache, setCapabilities as setCapabilities2, setCapabilityOverrides, setCellDimensions } from "../terminal-image.js";
 import { Container as Container4, CURSOR_MARKER as CURSOR_MARKER5, compositeTuiLine as compositeTuiLine4, isFocusable, isViewportTUI } from "../tui.js";
 
 // pi-dist/pi-tui/alt-screen-search.js
@@ -7758,6 +8183,67 @@ __name(getScrollViewsAt, "getScrollViewsAt");
 import { deleteAllKittyImages, deleteAllKittyPlacements, deleteKittyImage, getCapabilities as getCapabilities3, getKittyImagePlacement, isImageLine as isImageLine3, setCapabilities } from "../terminal-image.js";
 import { Container as Container3, CURSOR_MARKER as CURSOR_MARKER4, compositeTuiLine as compositeTuiLine3, dispatchMouseEvent as dispatchMouseEvent3, retargetMouseEvent, TuiBase, VIEWPORT_TUI } from "../tui.js";
 import { extractAnsiCode as extractAnsiCode2, getGraphemeCellRange as getGraphemeCellRange2, getOsc8LinkAtColumn, getWordSegmenter as getWordSegmenter3, sliceByColumn as sliceByColumn4, stripTerminalSequences as stripTerminalSequences2, truncateToWidth as truncateToWidth8, visibleWidth as visibleWidth13 } from "../utils.js";
+
+// pi-dist/pi-tui/wheel-scroll.js
+var BURST_GAP_MS = 5;
+var GESTURE_GAP_MS = 200;
+var REFERENCE_GAP_MS = 100;
+var MAX_AUTO_LINES = 6;
+function terminalAcceleratesWheel() {
+  const env = process.env;
+  return process.platform === "darwin" && env.SSH_CONNECTION === void 0 && env.SSH_CLIENT === void 0 && env.SSH_TTY === void 0;
+}
+__name(terminalAcceleratesWheel, "terminalAcceleratesWheel");
+var WheelScrollAccelerator = class {
+  static {
+    __name(this, "WheelScrollAccelerator");
+  }
+  lines;
+  accelerate;
+  lastTime = Number.NEGATIVE_INFINITY;
+  lastDirection = 0;
+  averageGap;
+  carry = 0;
+  constructor(lines = "auto", accelerate = !terminalAcceleratesWheel()) {
+    this.lines = lines;
+    this.accelerate = accelerate;
+  }
+  setLines(lines) {
+    this.lines = lines;
+    this.reset();
+  }
+  /** Return the positive line count for a wheel event in `direction` at time `now` (milliseconds). */
+  next(direction, now) {
+    if (this.lines !== "auto")
+      return Number.isFinite(this.lines) ? Math.max(1, Math.floor(this.lines)) : 1;
+    if (!this.accelerate)
+      return 1;
+    const gap = now - this.lastTime;
+    const sameGesture = direction === this.lastDirection && gap <= GESTURE_GAP_MS;
+    this.lastTime = now;
+    this.lastDirection = direction;
+    if (!sameGesture) {
+      this.averageGap = void 0;
+      this.carry = 0;
+      return 1;
+    }
+    if (gap < BURST_GAP_MS)
+      return 1;
+    this.averageGap = this.averageGap === void 0 ? gap : (this.averageGap + gap) / 2;
+    const lines = Math.min(MAX_AUTO_LINES, Math.max(1, REFERENCE_GAP_MS / this.averageGap)) + this.carry;
+    const whole = Math.floor(lines);
+    this.carry = lines - whole;
+    return whole;
+  }
+  reset() {
+    this.lastTime = Number.NEGATIVE_INFINITY;
+    this.lastDirection = 0;
+    this.averageGap = void 0;
+    this.carry = 0;
+  }
+};
+
+// pi-dist/pi-tui/tui-alt-screen.js
 import { wordSegmenter as wordSegmenter3 } from "../../../pi-tui-segmenters.mjs";
 var ENTER_ALT_SCREEN = "\x1B[?1049h";
 var EXIT_ALT_SCREEN = "\x1B[?1049l";
@@ -7819,7 +8305,7 @@ var TuiAltScreen = class extends TuiBase {
   mousePressPoint;
   mousePressMoved = false;
   lastComponentClick;
-  wheelScrollLines;
+  wheelScroll;
   mouseEnabled;
   searchMatchStyle;
   searchCurrentMatchStyle;
@@ -7841,7 +8327,7 @@ var TuiAltScreen = class extends TuiBase {
     };
     this.implicitScrollView = new ScrollView(this.implicitDocument, { follow: "end", primary: true });
     this.flashes = new AltScreenFlashContainer(() => this.requestRender());
-    this.wheelScrollLines = Math.max(1, Math.floor(options.wheelScrollLines ?? 1));
+    this.wheelScroll = new WheelScrollAccelerator(options.wheelScrollLines ?? 1);
     this.mouseEnabled = options.mouse ?? true;
     this.searchMatchStyle = options.searchMatchStyle ?? ((text) => `\x1B[4m${text}\x1B[24m`);
     this.searchCurrentMatchStyle = options.searchCurrentMatchStyle ?? ((text) => `\x1B[1;7m${text}\x1B[22;27m`);
@@ -7859,6 +8345,9 @@ var TuiAltScreen = class extends TuiBase {
   get isFollowingOutput() {
     return this.getPrimaryScrollView().isFollowingEnd;
   }
+  setWheelScrollLines(lines) {
+    this.wheelScroll.setLines(lines);
+  }
   getCopyOnSelect() {
     return this.copyOnSelect;
   }
@@ -7875,6 +8364,10 @@ var TuiAltScreen = class extends TuiBase {
     if (!text)
       return false;
     return this.copyTextToClipboard(text);
+  }
+  /** The lines of the last rendered frame, one per terminal row, as written to the terminal. */
+  getScreenLines() {
+    return [...this.previousScreen];
   }
   setLayoutRoot(component) {
     if (this.layoutRoot === component)
@@ -8218,9 +8711,9 @@ var TuiAltScreen = class extends TuiBase {
       return { consume: true };
     const wheelEvent = this.parseWheelEvent(data);
     if (wheelEvent) {
-      const event = this.createMouseEvent("wheel", wheelEvent.button, wheelEvent.x, wheelEvent.y, {
-        wheelDelta: wheelEvent.direction * this.getWheelScrollLines(wheelEvent.button)
-      });
+      const lines = this.wheelScroll.next(wheelEvent.direction, performance.now());
+      const wheelDelta = wheelEvent.direction * ((wheelEvent.button & 8) !== 0 ? lines * ALT_WHEEL_SCROLL_MULTIPLIER : lines);
+      const event = this.createMouseEvent("wheel", wheelEvent.button, wheelEvent.x, wheelEvent.y, { wheelDelta });
       const overlay = this.dispatchMouseToOverlay(event);
       const result = overlay.result ?? (overlay.hit ? void 0 : this.dispatchMouseToLayout(event));
       if (result) {
@@ -8230,7 +8723,7 @@ var TuiAltScreen = class extends TuiBase {
       }
       if (this.shouldDeferViewportInputToOverlay())
         return void 0;
-      this.routeWheel(wheelEvent);
+      this.routeWheel(wheelEvent, wheelDelta);
       return { consume: true };
     }
     const mouseEvent = this.parseSgrMouseEvent(data);
@@ -8493,11 +8986,8 @@ var TuiAltScreen = class extends TuiBase {
     }
     return void 0;
   }
-  getWheelScrollLines(button) {
-    return (button & 8) !== 0 ? this.wheelScrollLines * ALT_WHEEL_SCROLL_MULTIPLIER : this.wheelScrollLines;
-  }
-  routeWheel(event) {
-    let remaining = event.direction * this.getWheelScrollLines(event.button);
+  routeWheel(event, delta) {
+    let remaining = delta;
     const seen = /* @__PURE__ */ new Set();
     for (const scrollView of this.currentLayout ? getScrollViewsAt(this.currentLayout, event.x, event.y) : []) {
       seen.add(scrollView);
@@ -9744,7 +10234,12 @@ export {
   TuiMainScreen,
   VStack,
   allocateImageId2 as allocateImageId,
+  backgroundAnsi,
   calculateImageRows,
+  colorToHex,
+  colorToOkhsl,
+  colorToOklch,
+  colorToRgb,
   compositeTuiLine4 as compositeTuiLine,
   decodeKittyPrintable2 as decodeKittyPrintable,
   deleteAllKittyImages2 as deleteAllKittyImages,
@@ -9752,6 +10247,7 @@ export {
   detectCapabilities,
   encodeITerm2,
   encodeKitty,
+  foregroundAnsi,
   fuzzyFilter,
   fuzzyMatch,
   getCapabilities4 as getCapabilities,
@@ -9763,21 +10259,29 @@ export {
   getNativeClipboard,
   getOsc8LinkAtColumn2 as getOsc8LinkAtColumn,
   getPngDimensions,
+  getTerminalColorMode,
   getWebpDimensions,
   hyperlink2 as hyperlink,
   imageFallback2 as imageFallback,
+  indexedColor,
+  isAppleTerminalSession,
   isFocusable,
   isKeyRelease2 as isKeyRelease,
   isKeyRepeat,
   isKittyProtocolActive,
   isViewportTUI,
   matchesKey2 as matchesKey,
+  mixColors,
+  okhslColor,
+  oklabToOkhslLightness,
+  oklchColor,
+  parseColor,
   parseKey,
-  parseOsc11BackgroundColor,
   parseTerminalColorSchemeReport,
   renderImage2 as renderImage,
   renderLatex,
   resetCapabilitiesCache,
+  rgbColor,
   setCapabilities2 as setCapabilities,
   setCapabilityOverrides,
   setCellDimensions,
@@ -9785,6 +10289,8 @@ export {
   setKittyProtocolActive2 as setKittyProtocolActive,
   sliceByColumn5 as sliceByColumn,
   stripTerminalSequences3 as stripTerminalSequences,
+  styleText,
+  styleTextWithAnsi,
   truncateToWidth9 as truncateToWidth,
   visibleWidth15 as visibleWidth,
   wrapTextWithAnsi4 as wrapTextWithAnsi

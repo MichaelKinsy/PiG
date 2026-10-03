@@ -96,6 +96,9 @@ func checkThemeDocument(errs *themeSchemaErrors, root any, data []byte) {
 	if value, present := object["name"]; present {
 		checkString(errs, "/name", value)
 	}
+	if value, present := object["appearance"]; present {
+		checkThemeAppearance(errs, value)
+	}
 	if value, present := object["vars"]; present {
 		if vars, ok := value.(map[string]any); ok {
 			for _, key := range jsPropertyOrder(themeObjectKeys(data, "vars")) {
@@ -120,6 +123,21 @@ func checkThemeDocument(errs *themeSchemaErrors, root any, data []byte) {
 			}
 		}
 	}
+}
+
+// checkThemeAppearance checks Optional(Union([Literal("dark"), Literal("light")])) the way TypeBox reports it: each literal's type and constant failures, then the union failure.
+func checkThemeAppearance(errs *themeSchemaErrors, value any) {
+	if appearance, ok := value.(string); ok && (appearance == "dark" || appearance == "light") {
+		return
+	}
+	_, isString := value.(string)
+	for range 2 {
+		if !isString {
+			errs.add(themeSchemaError{path: "/appearance", message: "must be string"})
+		}
+		errs.add(themeSchemaError{path: "/appearance", message: "must be equal to constant"})
+	}
+	errs.add(themeSchemaError{path: "/appearance", message: "must match a schema in anyOf"})
 }
 
 func checkThemeColors(errs *themeSchemaErrors, value any) {

@@ -53,6 +53,7 @@ type ImageRenderOptions struct {
 
 type renderedImage struct {
 	Sequence string
+	Columns  int
 	Rows     int
 	ImageID  int
 }
@@ -138,7 +139,7 @@ func detectCapabilitiesFromEnvironment(tmuxForwardsHyperlink func() bool, goos s
 	terminalEmulator := strings.ToLower(os.Getenv("TERMINAL_EMULATOR"))
 	term := strings.ToLower(os.Getenv("TERM"))
 	colorTerm := strings.ToLower(os.Getenv("COLORTERM"))
-	hasTrueColorHint := colorTerm == "truecolor" || colorTerm == "24bit"
+	hasTrueColorHint := colorTerm == "truecolor" || colorTerm == "24bit" || strings.HasSuffix(term, "-direct")
 	isWindowsConsole := goos == "windows"
 
 	// Emit OSC 8 hyperlinks only when tmux confirms it forwards. Image
@@ -246,7 +247,13 @@ func GetCapabilities() TerminalCapabilities {
 		hyperlinks := *overrides.Hyperlinks
 		probe = func() bool { return hyperlinks }
 	}
-	caps := DetectCapabilities(probe)
+	caps := ApplyCapabilityOverrides(DetectCapabilities(probe), overrides)
+	cachedCapabilities.Store(&caps)
+	return caps
+}
+
+// ApplyCapabilityOverrides lays the settings overrides over detected capabilities, as `{...detectCapabilities(), ...overrides}` does.
+func ApplyCapabilityOverrides(caps TerminalCapabilities, overrides CapabilityOverrides) TerminalCapabilities {
 	if overrides.Images != nil {
 		caps.Images = *overrides.Images
 	}
@@ -256,8 +263,19 @@ func GetCapabilities() TerminalCapabilities {
 	if overrides.Hyperlinks != nil {
 		caps.Hyperlinks = *overrides.Hyperlinks
 	}
-	cachedCapabilities.Store(&caps)
 	return caps
+}
+
+// GetTerminalColorMode is the color depth the terminal supports: truecolor when capabilities report it, else 256 colors. Upstream defaults the argument to getCapabilities(); omit it for that default.
+func GetTerminalColorMode(capabilities ...TerminalCapabilities) TerminalColorMode {
+	caps := GetCapabilities()
+	if len(capabilities) > 0 {
+		caps = capabilities[0]
+	}
+	if caps.TrueColor {
+		return TerminalColorModeTrueColor
+	}
+	return TerminalColorMode256
 }
 
 func ResetCapabilitiesCache() {
@@ -370,7 +388,8 @@ type ImageCellSize struct {
 	Rows    int
 }
 
-func CalculateImageCellSize(imageDimensions ImageDimensions, maxWidthCells int, maxHeightCells int, dims CellDimensions) ImageCellSize {
+// CalculateImageCellSize mirrors calculateImageCellSize; upstream defaults optimizeAspectRatio to false, so omit the argument for that default.
+func CalculateImageCellSize(imageDimensions ImageDimensions, maxWidthCells int, maxHeightCells int, dims CellDimensions, optimizeAspectRatio ...bool) ImageCellSize {
 	maxWidth := max(1, maxWidthCells)
 	imageWidth := max(1, imageDimensions.WidthPx)
 	imageHeight := max(1, imageDimensions.HeightPx)
@@ -386,11 +405,36 @@ func CalculateImageCellSize(imageDimensions ImageDimensions, maxWidthCells int, 
 	scaledHeightPx := float64(imageHeight) * scale
 	columns := max(1, min(maxWidth, int(math.Ceil(scaledWidthPx/float64(dims.WidthPx)))))
 	rows := max(1, int(math.Ceil(scaledHeightPx/float64(dims.HeightPx))))
-	if maxHeightCells > 0 && rows > maxHeightCells {
-		rows = maxHeightCells
+	if maxHeightCells > 0 {
+		rows = min(maxHeightCells, rows)
 	}
 
+	if len(optimizeAspectRatio) == 0 || !optimizeAspectRatio[0] {
+		return ImageCellSize{Columns: columns, Rows: rows}
+	}
+
+	if widthScale <= heightScale {
+		idealRows := (float64(columns*dims.WidthPx) * float64(imageHeight)) / float64(imageWidth*dims.HeightPx)
+		rows = chooseLessDistortedCellCount(rows, idealRows)
+	} else {
+		idealColumns := (float64(rows*dims.HeightPx) * float64(imageWidth)) / float64(imageHeight*dims.WidthPx)
+		columns = chooseLessDistortedCellCount(columns, idealColumns)
+	}
 	return ImageCellSize{Columns: columns, Rows: rows}
+}
+
+// chooseLessDistortedCellCount picks upperCount or one cell fewer, whichever distorts the image less against the ideal count.
+func chooseLessDistortedCellCount(upperCount int, idealCount float64) int {
+	if upperCount <= 1 {
+		return upperCount
+	}
+	lowerCount := upperCount - 1
+	upperDistortion := math.Max(float64(upperCount)/idealCount, idealCount/float64(upperCount))
+	lowerDistortion := math.Max(float64(lowerCount)/idealCount, idealCount/float64(lowerCount))
+	if lowerDistortion < upperDistortion {
+		return lowerCount
+	}
+	return upperCount
 }
 
 func CalculateImageRows(imageDimensions ImageDimensions, targetWidthCells int, dims CellDimensions) int {
@@ -505,7 +549,8 @@ func RenderImage(base64Data string, imageDimensions ImageDimensions, options Ima
 	if maxWidth <= 0 {
 		maxWidth = 80
 	}
-	size := CalculateImageCellSize(imageDimensions, maxWidth, options.MaxHeightCells, GetCellDimensions())
+	// Reduce Kitty's cell-aligned distortion without shrinking iTerm2 reservations.
+	size := CalculateImageCellSize(imageDimensions, maxWidth, options.MaxHeightCells, GetCellDimensions(), caps.Images == ImageProtocolKitty)
 	switch caps.Images {
 	case ImageProtocolKitty:
 		if options.ImageID > 0 {
@@ -518,11 +563,11 @@ func RenderImage(base64Data string, imageDimensions ImageDimensions, options Ima
 			})
 		}
 		seq := EncodeKitty(base64Data, size.Columns, size.Rows, options.ImageID, options.MoveCursor == nil || *options.MoveCursor)
-		return &renderedImage{Sequence: seq, Rows: size.Rows, ImageID: options.ImageID}
+		return &renderedImage{Sequence: seq, Columns: size.Columns, Rows: size.Rows, ImageID: options.ImageID}
 	case ImageProtocolITerm2:
 		preserve := options.PreserveAspectRatio == nil || *options.PreserveAspectRatio
 		seq := EncodeITerm2(base64Data, size.Columns, "auto", "", preserve)
-		return &renderedImage{Sequence: seq, Rows: size.Rows}
+		return &renderedImage{Sequence: seq, Columns: size.Columns, Rows: size.Rows}
 	default:
 		return nil
 	}

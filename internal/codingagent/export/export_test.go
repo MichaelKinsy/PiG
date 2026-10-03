@@ -11,6 +11,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 type testComponent struct{ lines []string }
@@ -336,16 +337,20 @@ func TestJsReplace_NoDollar(t *testing.T) {
 
 // TestGenerateThemeVars_IncludesScrollbarThumb guards that the HTML
 // theme-variable surface (which iterates ColorKeys) emits the fullscreen
-// scrollbar tokens: the thumb resolves like the text color (its upstream
-// fallback) and the track resolves to its own color.
+// scrollbar tokens: the thumb resolves to the theme's own color, which upstream
+// 0.99.1 dark.json:29 defines (the text color is only its fallback), and the
+// track resolves to its own color.
 func TestGenerateThemeVars_IncludesScrollbarThumb(t *testing.T) {
+	// Export reads the selected theme and the system theme before any selection (upstream 0.99.2 theme.ts:904), so the dark theme this test names is selected first.
+	t.Cleanup(func() { tui.SetTheme("dark") })
+	tui.SetTheme("dark")
 	css := generateThemeVars()
 	thumb := extractCSSVar(css, "scrollbarThumb")
 	if thumb == "" {
 		t.Fatalf("HTML theme vars omit --scrollbarThumb:\n%s", css)
 	}
-	if text := extractCSSVar(css, "text"); thumb != text {
-		t.Fatalf("--scrollbarThumb = %q, want the text color %q", thumb, text)
+	if want := tui.ActiveTheme().Colors()["scrollbarThumb"]; thumb != want {
+		t.Fatalf("--scrollbarThumb = %q, want the theme's %q", thumb, want)
 	}
 	if extractCSSVar(css, "scrollbarTrack") == "" {
 		t.Fatalf("HTML theme vars omit --scrollbarTrack:\n%s", css)

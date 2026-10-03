@@ -63,7 +63,7 @@ func TestLoadContainerBuilderConfigsRejectsSecretsAndDuplicateNames(t *testing.T
 	}
 }
 
-func TestConfiguredBuildersPreservesConfiguredOrderBeforeNative(t *testing.T) {
+func TestConfiguredBuildersPreservesConfiguredOrderBeforeNativeAndContainer(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("PIG_HOME", home)
 	body := `{"builders":[` +
@@ -75,19 +75,19 @@ func TestConfiguredBuildersPreservesConfiguredOrderBeforeNative(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := builderNames(builders); got != "docker, podman, native" {
+	if got := builderNames(builders); got != "docker, podman, native, container" {
 		t.Fatalf("builder order = %q", got)
 	}
 }
 
-func TestConfiguredBuildersLeavesRawPigNativeOnlyWithoutConfig(t *testing.T) {
+func TestConfiguredBuildersWithoutConfigTriesNativeThenContainer(t *testing.T) {
 	t.Setenv("PIG_HOME", t.TempDir())
 	builders, err := configuredBuilders()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(builders) != 1 || builders[0].Name() != "native" {
-		t.Fatalf("builders = %v", builderNames(builders))
+	if got := builderNames(builders); got != "native, container" {
+		t.Fatalf("builders = %v", got)
 	}
 }
 

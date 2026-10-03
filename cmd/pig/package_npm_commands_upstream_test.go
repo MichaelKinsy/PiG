@@ -42,7 +42,7 @@ func newPackageProcessFixture(t *testing.T, body string) packageProcessFixture {
 	t.Setenv("PIG_TEST_PACKAGE_CWD", f.cwd)
 	prefix := `const fs=require('node:fs'),path=require('node:path');const [command,...args]=process.argv.slice(2);fs.appendFileSync(process.env.PIG_TEST_PACKAGE_LOG,JSON.stringify({command,args,cwd:process.cwd()})+'\n');`
 	writePackageResource(t, script, prefix+body)
-	for _, name := range []string{"npm", "pnpm", "bun", "mise", "git"} {
+	for _, name := range []string{"npm", "pnpm", "bun", "mise", "git", "corepack"} {
 		writeStubScript(t, filepath.Join(bin, name), fmt.Sprintf("#!/bin/sh\nexec %q %q %q \"$@\"\n", filepath.ToSlash(node), filepath.ToSlash(script), name))
 	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))

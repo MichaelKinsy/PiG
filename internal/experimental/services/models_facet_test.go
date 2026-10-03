@@ -3,30 +3,21 @@ package services
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 )
 
-// models-provider.ts registers the provider during setup and activates it with BACKGROUND_CONTEXT, not the host caller's cancellation.
+// models-provider.ts:131-157 registers the provider during setup and activates it with BACKGROUND_CONTEXT, not the host caller's cancellation; after activation it follows the agent document.
 func TestModelsFacetOnConcreteChordHost(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	setupFinished := false
 	model := testModel("local", "chosen", true)
-	lane := &testModelsLane{getModel: func(ctx context.Context) (*ai.Model, error) {
-		if !setupFinished {
-			t.Error("lane read before all facets completed setup")
-		}
-		return model, ctx.Err()
-	}, thinking: ai.ThinkingHigh}
-	facet := CreateModelsServiceFacet(ModelsServiceFacetOptions{Lane: lane})
+	lane := &testModelsLane{model: refOf(model), thinking: ai.ThinkingHigh}
+	facet := CreateModelsServiceFacet(ModelsServiceFacetOptions{Conversation: lane, Agent: lane, ModelRuntime: &testModelsRuntime{all: []*ai.Model{model}}})
 	checkModelsEqual(t, facet.Id, "@pi/models")
-	observer := chord.Facet{Id: "setup-observer", Setup: func(*chord.FacetEnvironment) error { setupFinished = true; return nil }}
-	host, err := chord.CreateFacetHost(ctx, chord.FacetOptions{Facets: []chord.Facet{facet, observer}})
+	host, err := chord.CreateFacetHost(ctx, chord.FacetOptions{Facets: []chord.Facet{facet}})
 	requireModelsOK(t, err)
 	t.Cleanup(func() { requireModelsOK(t, host.Dispose(context.Background())) })
 	endpoint := chord.CreateRemoteServiceEndpoint(host.Services())
@@ -46,15 +37,19 @@ func TestModelsFacetOnConcreteChordHost(t *testing.T) {
 	if len(updates) != 1 || updates[0].Type != chord.UpdateState || updates[0].Member != "state" {
 		t.Fatalf("missing remote state update: %+v", updates)
 	}
+	// A change made by another client reaches the state through the document subscription.
+	other := ai.ThinkingMedium
+	requireModelsOK(t, lane.Configure(t.Context(), ConversationConfiguration{ThinkingLevel: &other}))
+	checkModelsEqual(t, service.State().Value().Configuration.ThinkingLevel, ai.ThinkingMedium)
 	requireModelsOK(t, subscription.Close(t.Context()))
 }
 
 // Upstream facet service facades retain methods and state across replacement, and revoke access on disposal.
 func TestModelsFacetConsumerRetainsGuardedServiceAcrossReload(t *testing.T) {
 	local, other := testModel("local", "chosen", true), testModel("other", "chosen", false)
-	lane := &testModelsLane{model: local, models: []*ai.Model{local, other}, thinking: ai.ThinkingHigh}
-	runtime := &testModelsRuntime{all: lane.models, refresh: func(context.Context) (ModelsRefreshResult, error) { return ModelsRefreshResult{}, nil }}
-	options := ModelsServiceFacetOptions{Lane: lane, ModelRuntime: runtime}
+	lane := &testModelsLane{model: refOf(local), thinking: ai.ThinkingHigh}
+	runtime := &testModelsRuntime{all: []*ai.Model{local, other}, refresh: func(context.Context) (ModelsRefreshResult, error) { return ModelsRefreshResult{}, nil }}
+	options := ModelsServiceFacetOptions{Conversation: lane, Agent: lane, ModelRuntime: runtime}
 	var ref *chord.ServiceRef[Models]
 	var service Models
 	wantThinkingAtActivation := ai.ThinkingHigh
@@ -77,7 +72,7 @@ func TestModelsFacetConsumerRetainsGuardedServiceAcrossReload(t *testing.T) {
 	t.Cleanup(func() { requireModelsOK(t, host.Dispose(context.Background())) })
 	state := service.State()
 	var snapshots []*ModelsState
-	stop, err := state.Subscribe(func(value *ModelsState, _ context.Context, _ pico3.ReplicatedStateDelivery) {
+	stop, err := state.Subscribe(func(value *ModelsState, _ context.Context, _ chord.ReplicatedStateDelivery) {
 		snapshots = append(snapshots, value)
 	})
 	requireModelsOK(t, err)
@@ -98,11 +93,12 @@ func TestModelsFacetConsumerRetainsGuardedServiceAcrossReload(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, err := levels(ctx); !errors.Is(err, context.Canceled) {
-		t.Fatalf("remote call lost caller cancellation: %v", err)
+	// getThinkingLevels reads the agent document synchronously (models-provider.ts:57-60), so a cancelled caller no longer changes its result.
+	if _, err := levels(ctx); err != nil {
+		t.Fatalf("thinking levels with a cancelled caller: %v", err)
 	}
-	lane = &testModelsLane{model: local, thinking: ai.ThinkingLow}
-	options.Lane = lane
+	lane = &testModelsLane{model: refOf(local), thinking: ai.ThinkingLow}
+	options.Conversation, options.Agent = lane, lane
 	requireModelsOK(t, host.Reload(t.Context(), []chord.Facet{CreateModelsServiceFacet(options)}))
 	checkModelsEqual(t, state.Value().Configuration.ThinkingLevel, ai.ThinkingLow)
 	checkModelsEqual(t, snapshots[len(snapshots)-1].Configuration.ThinkingLevel, ai.ThinkingLow)
@@ -122,7 +118,7 @@ func TestModelsFacetConsumerRetainsGuardedServiceAcrossReload(t *testing.T) {
 			t.Fatal("retained method remained usable after consumer retirement")
 		}
 	}
-	if _, err := state.Subscribe(func(*ModelsState, context.Context, pico3.ReplicatedStateDelivery) {}); err == nil {
+	if _, err := state.Subscribe(func(*ModelsState, context.Context, chord.ReplicatedStateDelivery) {}); err == nil {
 		t.Fatal("retained state remained subscribable after consumer retirement")
 	}
 	requireModelsOK(t, service.CycleThinking(t.Context()))
@@ -133,11 +129,19 @@ func TestModelsFacetConsumerRetainsGuardedServiceAcrossReload(t *testing.T) {
 	}
 }
 
-func TestModelsFacetActivationFailurePropagates(t *testing.T) {
-	failure := errors.New("lane read failed")
-	lane := &testModelsLane{getModel: func(context.Context) (*ai.Model, error) { return nil, failure }, thinking: ai.ThinkingOff}
-	host, err := chord.CreateFacetHost(t.Context(), chord.FacetOptions{Facets: []chord.Facet{CreateModelsServiceFacet(ModelsServiceFacetOptions{Lane: lane})}})
-	if host != nil || !errors.Is(err, failure) {
-		t.Fatalf("host=%v error=%v", host, err)
-	}
+// models-provider.ts:139 the facet owns the agent document it was given and disposes it with the host.
+func TestModelsFacetDisposesItsAgentDocument(t *testing.T) {
+	lane := &disposeCountingAgent{testModelsLane: &testModelsLane{thinking: ai.ThinkingOff}}
+	host, err := chord.CreateFacetHost(t.Context(), chord.FacetOptions{Facets: []chord.Facet{CreateModelsServiceFacet(ModelsServiceFacetOptions{Conversation: lane, Agent: lane})}})
+	requireModelsOK(t, err)
+	checkModelsEqual(t, lane.disposed, 0)
+	requireModelsOK(t, host.Dispose(t.Context()))
+	checkModelsEqual(t, lane.disposed, 1)
 }
+
+type disposeCountingAgent struct {
+	*testModelsLane
+	disposed int
+}
+
+func (agent *disposeCountingAgent) Dispose() { agent.disposed++ }

@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { extractTestInventory } from "../src/test-inventory.mjs";
+import { scratchDir } from "./scratch.mjs";
 
 // fixture writes upstream-shaped test files (including a nested workspace package
 // and every call form the extractor must handle) and returns the source root.
 function fixture() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pig-test-inventory-"));
+  const root = scratchDir("pig-test-inventory-");
   const write = (relative, contents) => {
     const file = path.join(root, relative);
     fs.mkdirSync(path.dirname(file), { recursive: true });

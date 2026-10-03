@@ -242,11 +242,12 @@ func newKeyedBinding(parent *RemoteServiceBinding, serviceId string, bound bool)
 	}
 }
 
-func (keyed *keyedBinding) observe(handler func(context.Context, *RemoteService) error) (func(), error) {
+// observe adds one observer and returns the subscription start it joined, or nil when the binding is unbound (upstream KeyedBinding.observe and its #starting).
+func (keyed *keyedBinding) observe(handler func(context.Context, *RemoteService) error) (func(), *task, error) {
 	keyed.mu.Lock()
 	if keyed.closed {
 		keyed.mu.Unlock()
-		return nil, errors.New("Remote keyed service binding is closed")
+		return nil, nil, errors.New("Remote keyed service binding is closed")
 	}
 	var stopped bool
 	observer := &instanceObserver{handler: handler, tasks: map[*instanceEntry]context.CancelFunc{}}
@@ -264,12 +265,13 @@ func (keyed *keyedBinding) observe(handler func(context.Context, *RemoteService)
 	stop, err := keyed.instances.observe(observer)
 	if err != nil {
 		keyed.mu.Unlock()
-		return nil, err
+		return nil, nil, err
 	}
 	starts := keyed.instances.takeStarts()
 	if keyed.bound && keyed.starting == nil {
 		keyed.launchLocked(keyed.revision)
 	}
+	starting := keyed.starting
 	keyed.mu.Unlock()
 	runObservationStarts(starts)
 	var once sync.Once
@@ -284,7 +286,7 @@ func (keyed *keyedBinding) observe(handler func(context.Context, *RemoteService)
 				keyed.parent.releaseKeyed(keyed)
 			}
 		})
-	}, nil
+	}, starting, nil
 }
 
 func (parent *RemoteServiceBinding) releaseKeyed(keyed *keyedBinding) {
@@ -437,6 +439,8 @@ func (keyed *keyedBinding) start(revision int) error {
 func (keyed *keyedBinding) update(ctx context.Context, update ServiceProviderUpdate, revision int) {
 	var err error
 	switch update.Type {
+	case UpdateReset:
+		err = keyed.rebaseline(ctx, *update.Reset, revision)
 	case UpdateUnavailable, UpdateReplaced:
 		err = errors.New("Keyed service received a singleton lifecycle update")
 	case UpdateSpawned:
@@ -463,6 +467,40 @@ func (keyed *keyedBinding) update(ctx context.Context, update ServiceProviderUpd
 	if err != nil {
 		keyed.parent.reportError(err)
 	}
+}
+
+// rebaseline rebaselines the observed instances from a full snapshot: instances whose key is absent or whose generation differs are removed, live generations keep their facade and reinstall their state, and new keys are spawned (upstream consumer.ts "reset").
+func (keyed *keyedBinding) rebaseline(ctx context.Context, snapshot ServiceSubscriptionSnapshot, revision int) error {
+	if err := validateResetSnapshot(snapshot, keyed.serviceId, ServiceKeyed); err != nil {
+		return err
+	}
+	snapshots := make(map[string]ServiceInstanceSnapshot, len(snapshot.Instances))
+	for _, instance := range snapshot.Instances {
+		snapshots[instance.Instance.Key] = instance
+	}
+	keyed.mu.Lock()
+	for _, key := range keyed.instances.entries.Keys() {
+		instance, _ := keyed.instances.entries.Get(key)
+		if current, ok := snapshots[key]; !ok || current.Instance.Generation != instance.generation {
+			keyed.instances.remove(instance)
+		}
+	}
+	keyed.mu.Unlock()
+	for _, instance := range snapshot.Instances {
+		keyed.mu.Lock()
+		existing, ok := keyed.instances.entries.Get(instance.Instance.Key)
+		keyed.mu.Unlock()
+		if !ok {
+			if err := keyed.spawn(ctx, instance, revision); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := existing.facade.install(ctx, instance, 0); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (keyed *keyedBinding) spawn(ctx context.Context, snapshot ServiceInstanceSnapshot, revision int) error {

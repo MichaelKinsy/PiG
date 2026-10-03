@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 
 const root = process.env.PI_PACKAGE_ROOT ?? resolve('extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent');
 const aiRoot = join(root, 'node_modules/@earendil-works/pi-ai');
-if (JSON.parse(readFileSync(join(aiRoot, 'package.json'), 'utf8')).version !== '0.87.1') throw new Error('expected Pi AI 0.87.1');
+if (JSON.parse(readFileSync(join(aiRoot, 'package.json'), 'utf8')).version !== '1.0.0') throw new Error('expected Pi AI 1.0.0');
 const mod = (path) => import(pathToFileURL(join(aiRoot, 'dist', path)).href);
 const { getModel, normalizeContext } = await mod('compat.js');
 const anthropic = await mod('api/anthropic-messages.js');

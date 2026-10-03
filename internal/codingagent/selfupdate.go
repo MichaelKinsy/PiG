@@ -27,9 +27,11 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 
 	semver "github.com/Masterminds/semver/v3"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/managementhttp"
 	"github.com/MichaelKinsy/PiG/internal/ownerfile"
 )
@@ -454,6 +456,10 @@ func FetchUpdateManifest(ctx context.Context, client *http.Client, rawURL string
 	if err != nil {
 		return nil, err
 	}
+	// upstream: packages/coding-agent/src/utils/version-check.ts:getLatestPiRelease sends these two headers.
+	// pig divergence (D65): the User-Agent is PiG's product identity, not Pi's.
+	req.Header.Set("User-Agent", ai.PiUserAgent())
+	req.Header.Set("Accept", "application/json")
 	maxRetries := 0
 	if len(options) > 0 && options[0].Retry {
 		// upstream: packages/coding-agent/src/utils/version-check.ts:getLatestPiRelease
@@ -556,7 +562,7 @@ func platformKey() string { return PlatformKey() }
 // Windows quarantine dance pig does not implement, so on Windows it returns an
 // error directing the user to reinstall.
 func SelfReplace(ctx context.Context, client *http.Client, bin UpdateBinary) error {
-	exe, err := os.Executable()
+	exe, err := linkerexec.Executable()
 	if err != nil {
 		return err
 	}

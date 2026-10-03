@@ -27,7 +27,7 @@ func TestOverlayCompletionRemovesAppendTailNotFocusedFront(t *testing.T) {
 		t.Fatalf("focused visual front = %T %p, want first %p", got, got, first)
 	}
 
-	tu.hideOverlay()
+	tu.HideOverlay()
 
 	if got := tu.ActiveOverlay(); got != first {
 		t.Fatalf("after append-tail removal active overlay = %T %p, want first %p", got, got, first)
@@ -189,7 +189,7 @@ func TestOverlayGenericComponentOwnsFramingAndBuiltinModalPreservesFrame(t *test
 		t.Fatalf("generic component output missing: %q", joined)
 	}
 
-	tu.hideOverlay()
+	tu.HideOverlay()
 	modal := &recordingComponent{lines: []string{"choice"}}
 	tu.openModalOverlay(modal, "Select", 0.75, 0.75)
 	framedLines := tu.composeOverlayLines(nil, 20, 8)
@@ -271,7 +271,7 @@ func TestOverlayGeometryRecalculatesAndVisibilityIsReentrant(t *testing.T) {
 
 func TestOverlayCommandsHandleEmptyRepeatedAndStrictIdentity(t *testing.T) {
 	tu := NewWithOutput(io.Discard, 80, 24)
-	tu.hideOverlay()
+	tu.HideOverlay()
 
 	first := &recordingComponent{lines: []string{"same"}}
 	second := &recordingComponent{lines: []string{"same"}}
@@ -304,7 +304,7 @@ func TestOverlayCommandsHandleEmptyRepeatedAndStrictIdentity(t *testing.T) {
 		t.Fatal("targeted removal did not restore remaining eligible overlay")
 	}
 	secondHandle.Close()
-	tu.hideOverlay()
+	tu.HideOverlay()
 	if tu.HasOverlay() {
 		t.Fatal("repeated teardown retained an entry")
 	}

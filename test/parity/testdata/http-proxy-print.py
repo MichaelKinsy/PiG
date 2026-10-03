@@ -16,18 +16,20 @@ binary=(os.environ.get('PIG_PARITY_PIG_BIN') or os.environ.get('PIG_BIN') or shu
 if not binary: raise RuntimeError('Pinned CLI binary is not configured')
 results=[]
 for api in ['openai-completions','openai-responses']:
+    # The origin speaks HTTP/1.1 keep-alive with a Content-Length body. A Connection: close origin (BaseHTTPRequestHandler's HTTP/1.0 default) makes Pi 0.99.2's bundled undici open a second, empty CONNECT tunnel on the openai-completions path: the Client _resume in the first tunnel socket's close handler reconnects after the origin closed it (undici:request:create shows one POST per API, the origin sees one POST, and the second tunnel closes after 0 bytes). That tunnel is a transport artifact racing process exit, not a request, so the fixture does not provoke it; the CONNECT count stays in the compared output.
     class Origin(http.server.BaseHTTPRequestHandler):
+        protocol_version='HTTP/1.1'
         def log_message(self,*args): pass
         def do_POST(self):
             self.rfile.read(int(self.headers['Content-Length']))
-            self.send_response(200); self.send_header('Content-Type','text/event-stream'); self.end_headers()
             if api=='openai-completions':
                 frames=[{'id':'response','choices':[{'index':0,'delta':{'role':'assistant','content':'origin'},'finish_reason':None}]}, {'id':'response','choices':[{'index':0,'delta':{},'finish_reason':'stop'}],'usage':{'prompt_tokens':2,'completion_tokens':1,'total_tokens':3}}]
             else:
                 item={'id':'message','type':'message','role':'assistant','status':'completed','content':[{'type':'output_text','text':'origin','annotations':[]}]}
                 frames=[{'type':'response.output_item.added','output_index':0,'item':{**item,'content':[]}},{'type':'response.output_text.delta','output_index':0,'content_index':0,'delta':'origin'},{'type':'response.output_item.done','output_index':0,'item':item},{'type':'response.completed','response':{'id':'response','status':'completed','output':[item],'usage':{'input_tokens':2,'output_tokens':1,'total_tokens':3}}}]
-            for frame in frames: self.wfile.write(('data: '+json.dumps(frame)+'\n\n').encode())
-            if api=='openai-completions': self.wfile.write(b'data: [DONE]\n\n')
+            body=b''.join(('data: '+json.dumps(frame)+'\n\n').encode() for frame in frames)
+            if api=='openai-completions': body+=b'data: [DONE]\n\n'
+            self.send_response(200); self.send_header('Content-Type','text/event-stream'); self.send_header('Content-Length',str(len(body))); self.end_headers(); self.wfile.write(body)
     origin=http.server.ThreadingHTTPServer(('127.0.0.1',0),Origin)
     target='127.0.0.1:'+str(origin.server_port)
     observations=[]

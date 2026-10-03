@@ -217,7 +217,8 @@ func TestSelectStartupModelMatchesUpstream(t *testing.T) {
 		{name: "bare --model with a thinking suffix", options: startupModelOptions{CLIModel: "anthropic/claude-sonnet-4-5:high"}, want: "anthropic/claude-sonnet-4-5", thinking: "high"},
 		{name: "unknown bare --model is an error", options: startupModelOptions{CLIModel: "no-such-model-xyz"}, errContains: `Model "no-such-model-xyz" not found`},
 		{name: "unknown --provider is an error", options: startupModelOptions{CLIProvider: "no-such-provider", CLIModel: "x"}, errContains: `Unknown provider "no-such-provider"`},
-		{name: "--provider without --model is ignored", options: startupModelOptions{CLIProvider: "openai"}, want: "anthropic/claude-opus-4-8"},
+		// Pi 1.0.0 main.ts:469-474 (#10236) rejects --provider without --model instead of running another provider's default model.
+		{name: "--provider without --model is an error", options: startupModelOptions{CLIProvider: "openai"}, errContains: "--provider requires --model (for example: --provider openai --model <pattern>)"},
 		{name: "saved default without auth falls back", settings: codingagent.Settings{DefaultProvider: "openai", DefaultModel: "gpt-4o-mini"}, want: "anthropic/claude-opus-4-8"},
 		{name: "saved default with auth is used", settings: codingagent.Settings{DefaultProvider: "anthropic", DefaultModel: "claude-sonnet-4-5"}, want: "anthropic/claude-sonnet-4-5"},
 		{name: "scope picks a new session's model and thinking", options: startupModelOptions{ScopePatterns: []string{"anthropic/claude-sonnet-4-5:low", "anthropic/claude-haiku-4-5"}}, want: "anthropic/claude-sonnet-4-5", thinking: "low"},

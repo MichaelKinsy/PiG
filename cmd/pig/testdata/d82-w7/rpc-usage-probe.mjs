@@ -44,8 +44,11 @@ await new Promise((resolve) => {
 	else child.stdin.end();
 	setTimeout(resolve, 20000).unref();
 });
+// The child runs with dir as its cwd; Windows refuses to remove a directory a live process is in, so wait for it to exit.
+const exited = child.exitCode !== null || child.signalCode !== null ? Promise.resolve() : new Promise((resolve) => child.once('exit', resolve));
 child.kill();
+await exited;
 server.close();
-rmSync(dir, { recursive: true, force: true });
+rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 const text = JSON.stringify(frames, null, 2) + '\n';
 if (outPath) writeFileSync(outPath, text); else process.stdout.write(text);

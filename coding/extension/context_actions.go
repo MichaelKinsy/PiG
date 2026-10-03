@@ -89,6 +89,10 @@ type ContextActions struct {
 	// upstream: types.ts:332
 	IsProjectTrusted func() bool
 
+	// GetSignal backs Context.Signal(). It returns the active run's cancellation, or nil while no run is active.
+	// upstream: types.ts:2158, runner.ts:917-920
+	GetSignal func() context.Context
+
 	// HasPendingMessages backs Context.HasPendingMessages().
 	// upstream: types.ts:313
 	HasPendingMessages func() bool
@@ -150,8 +154,22 @@ type ContextActions struct {
 	// Tools not in the list are hidden from the agent.
 	SetActiveTools func(names []string)
 
+	// RefreshTools rebuilds the session's tool registry from the tools extensions hold, so a tool registered after load
+	// reaches the model. It returns the error that admitting a registered tool reports.
+	// upstream: types.ts:1598 (RefreshToolsHandler), loader.ts:273-284 (registerTool calls runtime.refreshTools)
+	RefreshTools func() error
+
+	// GetMcpServers returns the MCP servers extensions registered, in registration order.
+	// upstream: loader.ts:475-478 (getMcpServers)
+	GetMcpServers func() []RegisteredMcpServer
+
 	// GetFlagValue returns the value of an extension-registered flag.
 	GetFlagValue func(name string) any
+
+	// ToolActions back the [ToolContext] of a tool call: executeTool and
+	// getCallableTools of upstream's ExtensionContextActions.
+	// upstream: types.ts:2161-2169
+	ToolActions
 }
 
 // CancelledResult is the return type for session-mutation commands

@@ -106,25 +106,18 @@ func TestReadClipboardImageXclipTargetsWithoutImageIsEmpty(t *testing.T) {
 	}
 }
 
-// When TARGETS fails, upstream probes every supported type in preference
-// order, after the preferred raw type, deduplicated by exact string.
-func TestReadClipboardImageXclipTargetsFailureProbesSupportedTypes(t *testing.T) {
+// When TARGETS fails, upstream 0.99.1 probes no image type: an unavailable
+// TARGETS query leaves the clipboard unread (clipboard-image.ts:177), so a
+// type the clipboard might hold is never requested blind.
+func TestReadClipboardImageXclipTargetsFailureProbesNoType(t *testing.T) {
 	withEnv(t, map[string]string{"DISPLAY": ":0"})
 	s := withScriptedClipboard(t, map[string]fakeCall{
 		"xclip -selection clipboard -t image/gif -o": {out: []byte("GIF89a")},
 	})
-	data, mime, _ := readClipboardImageLinux()
-	if mime != "image/gif" || string(data) != "GIF89a" {
-		t.Fatalf("read = %q, %q; want gif", data, mime)
+	if data, _, _ := readClipboardImageLinux(); data != nil {
+		t.Fatalf("read = %q; want no image", data)
 	}
-	want := []string{
-		"xclip -selection clipboard -t TARGETS -o",
-		"xclip -selection clipboard -t image/png -o",
-		"xclip -selection clipboard -t image/jpeg -o",
-		"xclip -selection clipboard -t image/webp -o",
-		"xclip -selection clipboard -t image/gif -o",
-	}
-	if !slices.Equal(s.log, want) {
+	if want := []string{"xclip -selection clipboard -t TARGETS -o"}; !slices.Equal(s.log, want) {
 		t.Fatalf("calls = %v, want %v", s.log, want)
 	}
 }
@@ -262,13 +255,13 @@ func TestReadClipboardImageNonWSLSkipsWindowsClipboard(t *testing.T) {
 	}
 }
 
-// The preferred raw type keeps its advertised spelling and upstream's Set
-// deduplicates only exact strings, so "image/PNG" is followed by "image/png".
-func TestReadClipboardImageXclipPreferredRawTypeThenSupportedTypes(t *testing.T) {
+// The preferred raw type keeps its advertised spelling, so "image/PNG" is
+// requested as advertised and is the only type requested.
+func TestReadClipboardImageXclipPreferredRawTypeKeepsSpelling(t *testing.T) {
 	withEnv(t, map[string]string{"DISPLAY": ":0"})
 	s := withScriptedClipboard(t, map[string]fakeCall{
 		"xclip -selection clipboard -t TARGETS -o":   {out: []byte("image/PNG\n")},
-		"xclip -selection clipboard -t image/png -o": {out: linuxClipboardPNG},
+		"xclip -selection clipboard -t image/PNG -o": {out: linuxClipboardPNG},
 	})
 	data, mime, _ := readClipboardImageLinux()
 	if mime != "image/png" || string(data) != string(linuxClipboardPNG) {
@@ -277,7 +270,6 @@ func TestReadClipboardImageXclipPreferredRawTypeThenSupportedTypes(t *testing.T)
 	want := []string{
 		"xclip -selection clipboard -t TARGETS -o",
 		"xclip -selection clipboard -t image/PNG -o",
-		"xclip -selection clipboard -t image/png -o",
 	}
 	if !slices.Equal(s.log, want) {
 		t.Fatalf("calls = %v, want %v", s.log, want)

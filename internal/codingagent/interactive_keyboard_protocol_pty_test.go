@@ -256,14 +256,14 @@ func TestKeyboardProtocolDriverChild(t *testing.T) {
 	}
 	m.rawRestore, m.rawDrain = restore, drain
 	mark("raw")
-	m.mountInteractiveTui()
+	m.mountInteractiveTui(true)
 	mark("fullscreen")
 
-	if !m.switchTuiMode("regular", false) {
+	if !m.switchTuiMode("regular", false, true) {
 		t.Fatal("switch to regular refused")
 	}
 	mark("regular")
-	if !m.switchTuiMode("fullscreen", false) {
+	if !m.switchTuiMode("fullscreen", false, true) {
 		t.Fatal("switch to fullscreen refused")
 	}
 	mark("fullscreen-again")

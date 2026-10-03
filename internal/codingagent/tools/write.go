@@ -131,10 +131,10 @@ func (t *WriteTool) Execute(ctx context.Context, _ string, rawParams json.RawMes
 		// written, so this must not be reported as a success. Mirrors
 		// upstream write.ts awaiting withFileMutationQueue and propagating
 		// its rejection instead of assuming the write happened.
-		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: err.Error()}}, Details: map[string]any{}, IsError: true}, nil
+		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: err.Error()}}, Details: map[string]any{}, IsError: true, Thrown: true}, nil
 	}
 	if failure != "" {
-		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: failure}}, Details: map[string]any{}, IsError: true}, nil
+		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: failure}}, Details: map[string]any{}, IsError: true, Thrown: true}, nil
 	}
 	return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "Successfully wrote to " + p.Path}}}, nil
 }

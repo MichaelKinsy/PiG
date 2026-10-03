@@ -201,6 +201,17 @@ func (m *InteractiveMode) extensionIsIdle() bool {
 	return !m.turnActive.Load()
 }
 
+// extensionSignal answers the extension-facing ctx.signal.
+//
+// upstream: agent-session.ts:3368 (`getSignal: () => this.agent.signal`)
+func (m *InteractiveMode) extensionSignal() context.Context {
+	current := m.extensionAgent.Load()
+	if current == nil {
+		return nil
+	}
+	return current.Signal()
+}
+
 // emitAgentSettledEvent awaits every settled handler before releasing actions
 // that would start a replacement run.
 func (m *InteractiveMode) emitAgentSettledEvent() {

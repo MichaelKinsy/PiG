@@ -11,21 +11,28 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
+// providerModelInput is the model-bearing part of a registered provider: its name, endpoint, api, models of every type and the implementations of its image and classifier models. Callback and credential fields are added by legacyProviderInput.
+func providerModelInput(id string, config providerConfig) ProviderConfigInput {
+	input := ProviderConfigInput{Name: config.Name, BaseURL: config.BaseURL, API: ai.API(config.API), Images: config.Images, Classifiers: config.Classifiers}
+	if config.Models != nil {
+		input.Models = make([]ai.AnyModel, 0, len(config.Models))
+		for _, model := range config.Models {
+			input.Models = append(input.Models, anyModelFromDefinition(id, config, model))
+		}
+	}
+	return input
+}
+
 // legacyProviderInput preserves the effective legacy definition when callers switch between the two Go registration payloads.
 func legacyProviderInput(id string, config providerConfig) ProviderConfigInput {
-	input := ProviderConfigInput{Name: config.Name, BaseURL: config.BaseURL, APIKey: config.APIKey, API: ai.API(config.API), AuthHeader: config.AuthHeader}
+	input := providerModelInput(id, config)
+	input.APIKey, input.AuthHeader = config.APIKey, config.AuthHeader
 	if config.Headers != nil {
 		input.Headers = make(map[string]string, len(config.Headers))
 		for name, value := range config.Headers {
 			if value != nil {
 				input.Headers[name] = *value
 			}
-		}
-	}
-	if config.Models != nil {
-		input.Models = make([]*ai.Model, 0, len(config.Models))
-		for _, model := range config.Models {
-			input.Models = append(input.Models, nativeModelFromEntry(modelDefinitionEntry(id, config, model)))
 		}
 	}
 	if callback := config.StreamSimple; callback != nil {

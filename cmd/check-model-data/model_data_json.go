@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf16"
+
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 )
 
 type modelDataObject struct {
@@ -186,6 +188,57 @@ func runModelDataNode(script string, input []byte) (string, error) {
 	return string(output), nil
 }
 
+// modelDataJSString is JavaScript's String(value) for a decoded JSON value.
+func modelDataJSString(raw json.RawMessage) string {
+	raw = bytes.TrimSpace(raw)
+	if len(raw) == 0 {
+		return "undefined"
+	}
+	switch raw[0] {
+	case '"':
+		value, _ := modelDataString(raw)
+		return value
+	case '{':
+		return "[object Object]"
+	case '[':
+		var elements []json.RawMessage
+		if json.Unmarshal(raw, &elements) != nil {
+			return string(raw)
+		}
+		parts := make([]string, len(elements))
+		for i, element := range elements {
+			if trimmed := bytes.TrimSpace(element); !bytes.Equal(trimmed, []byte("null")) {
+				parts[i] = modelDataJSString(element)
+			}
+		}
+		return strings.Join(parts, ",")
+	case 't', 'f', 'n':
+		return string(raw)
+	}
+	return jsnumber.String(jsnumber.FromJSON(raw))
+}
+
+func modelDataModalityList(raw json.RawMessage) ([]string, bool) {
+	var entries []json.RawMessage
+	if json.Unmarshal(raw, &entries) != nil || len(entries) == 0 {
+		return nil, false
+	}
+	list := make([]string, len(entries))
+	for i, entry := range entries {
+		value, ok := modelDataString(entry)
+		if !ok || (value != "text" && value != "image") {
+			return nil, false
+		}
+		list[i] = value
+	}
+	return list, true
+}
+
+func modelDataPositiveNumber(raw json.RawMessage) bool {
+	value, ok := modelDataNumber(raw)
+	return ok && value > 0
+}
+
 func validateModelValue(raw json.RawMessage, provider, id, api string, errs *[]string) {
 	label := provider + "/" + id
 	model := parseModelDataObject(raw)
@@ -204,24 +257,34 @@ func validateModelValue(raw json.RawMessage, provider, id, api string, errs *[]s
 	if _, ok := modelDataString(model.get("baseUrl")); !ok {
 		*errs = append(*errs, label+" has no baseUrl string")
 	}
-	if value := string(bytes.TrimSpace(model.get("reasoning"))); value != "true" && value != "false" {
-		*errs = append(*errs, label+" has no reasoning boolean")
-	}
-	var input []json.RawMessage
-	validInput := json.Unmarshal(model.get("input"), &input) == nil && len(input) > 0
-	for _, entry := range input {
-		value, ok := modelDataString(entry)
-		if !ok || (value != "text" && value != "image") {
-			validInput = false
-		}
-	}
-	if !validInput {
+	if _, ok := modelDataModalityList(model.get("input")); !ok {
 		*errs = append(*errs, label+" has invalid input modalities")
 	}
-	for _, field := range []string{"contextWindow", "maxTokens"} {
-		if value, ok := modelDataNumber(model.get(field)); !ok || value <= 0 {
-			*errs = append(*errs, label+" has invalid "+field)
+	modelType, _ := modelDataString(model.get("type"))
+	if modelType == "image" {
+		if output, ok := modelDataModalityList(model.get("output")); !ok || !slices.Contains(output, "image") {
+			*errs = append(*errs, label+" has invalid output modalities")
 		}
+	} else if model.get("output") != nil {
+		*errs = append(*errs, label+" has unsupported output modalities")
+	}
+	switch modelType {
+	case "chat":
+		if value := string(bytes.TrimSpace(model.get("reasoning"))); value != "true" && value != "false" {
+			*errs = append(*errs, label+" has no reasoning boolean")
+		}
+		for _, field := range []string{"contextWindow", "maxTokens"} {
+			if !modelDataPositiveNumber(model.get(field)) {
+				*errs = append(*errs, label+" has invalid "+field)
+			}
+		}
+	case "classifier":
+		if !modelDataPositiveNumber(model.get("contextWindow")) {
+			*errs = append(*errs, label+" has invalid contextWindow")
+		}
+	case "image":
+	default:
+		*errs = append(*errs, label+" has type "+modelDataValue(model.get("type"))+`, expected "chat", "image", or "classifier"`)
 	}
 	cost := parseModelDataObject(model.get("cost"))
 	if cost == nil {

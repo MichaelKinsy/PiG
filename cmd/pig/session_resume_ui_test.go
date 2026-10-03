@@ -65,6 +65,7 @@ func TestInteractiveResumeIntoAnUntrustedProjectPromptsForTrust(t *testing.T) {
 	if testing.Short() {
 		t.Skip("starts the pig binary and extension processes")
 	}
+	t.Parallel()
 	p := startInteractivePig(t)
 	destination := filepath.Join(p.home, "destination")
 	if err := os.MkdirAll(filepath.Join(destination, ".agents", "skills"), 0o755); err != nil {
@@ -83,6 +84,7 @@ func TestInteractiveResumeWithAMissingCWDShowsPisStatuses(t *testing.T) {
 	if testing.Short() {
 		t.Skip("starts the pig binary and extension processes")
 	}
+	t.Parallel()
 	for _, tc := range []struct {
 		name, answer, status string
 		resumed              bool
@@ -119,6 +121,7 @@ func TestInteractiveExtensionSwitchSessionWithAMissingCWDPrompts(t *testing.T) {
 	if testing.Short() {
 		t.Skip("starts the pig binary and extension processes")
 	}
+	t.Parallel()
 	fixture, err := filepath.Abs(filepath.Join("testdata", "session-switch.mjs"))
 	if err != nil {
 		t.Fatal(err)
@@ -166,6 +169,7 @@ func TestInteractiveExtensionSwitchSessionIntoAnUntrustedProjectPromptsForTrust(
 	if testing.Short() {
 		t.Skip("starts the pig binary and extension processes")
 	}
+	t.Parallel()
 	fixture, err := filepath.Abs(filepath.Join("testdata", "session-switch.mjs"))
 	if err != nil {
 		t.Fatal(err)

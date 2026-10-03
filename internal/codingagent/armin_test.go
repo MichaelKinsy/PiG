@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -35,8 +36,32 @@ func plainArminLines(lines []string) []string {
 	return result
 }
 
+// arminXBM encodes the pig head as armin.ts stores its image: XBM rows of ceil(width/8) bytes, least significant bit
+// first, 1 for background and 0 for foreground. The pinned source reads these bits in place of Armin's.
+func arminXBM() []int {
+	bytesPerRow := (arminWidth + 7) / 8
+	bits := make([]int, arminHeight*bytesPerRow)
+	for i := range bits {
+		bits[i] = 0xff
+	}
+	for y, row := range arminImage {
+		for x := range arminWidth {
+			if row[x] == '#' {
+				bits[y*bytesPerRow+x/8] &^= 1 << (x % 8)
+			}
+		}
+	}
+	return bits
+}
+
 func TestArminFramesMatchPinnedPi(t *testing.T) {
-	output, err := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/armin-oracle.mjs").Output()
+	image, err := json.Marshal(map[string]any{
+		"upstream": pigversion.UpstreamVersion, "width": arminWidth, "height": arminHeight, "bits": arminXBM(), "label": arminLabel,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	output, err := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/armin-oracle.mjs", string(image)).Output()
 	if err != nil {
 		t.Fatalf("pinned Pi oracle: %v", err)
 	}
@@ -169,5 +194,53 @@ func BenchmarkArminFrameRender(b *testing.B) {
 		a.gridVersion++
 		a.BaseComponent.Invalidate()
 		container.Render(100)
+	}
+}
+
+// TestArminSaysHiDrawsThePigHead pins PiG's art (D87): once settled, /arminsayshi shows the pig head and "pigsayhi", never
+// Armin's image or label.
+func TestArminSaysHiDrawsThePigHead(t *testing.T) {
+	want := []string{
+		" ▄▄                         ▄▄ ",
+		" █ ▀▀▄▄                 ▄▄▀▀ █ ",
+		" █     ▀▀▄▄         ▄▄▀▀     █ ",
+		" █         ▀▀▀▀▀▀▀▀▀         █ ",
+		" █                           █ ",
+		"█                             █",
+		"█      ▄██▄         ▄██▄      █",
+		"█      ▀██▀         ▀██▀      █",
+		"█                             █",
+		"█       ▄▄▀▀▀▀▀▀▀▀▀▀▀▄▄       █",
+		"█      █    ▄▄   ▄▄    █      █",
+		"█      █   ▀██▀ ▀██▀   █      █",
+		"█       ▀▄▄         ▄▄▀       █",
+		" █         ▀▀▀▀▀▀▀▀▀         █ ",
+		"  █           ▄ ▄           █  ",
+		"   ▀▀▄▄        ▀        ▄▄▀▀   ",
+		"       ▀▀▀▄▄▄▄▄▄▄▄▄▄▄▀▀▀       ",
+	}
+	for effect := range arminEffects {
+		a := newArminComponent(arminTestRandom(effect))
+		for range 600 {
+			if a.tickEffect() {
+				break
+			}
+		}
+		a.gridVersion++
+		got := plainArminLines(a.Render(40))
+		if len(got) != len(want)+1 {
+			t.Fatalf("%s: %d lines, want %d", a.effect, len(got), len(want)+1)
+		}
+		for row, line := range want {
+			if got[row] != " "+line+strings.Repeat(" ", 40-1-len([]rune(line))) {
+				t.Fatalf("%s row %d: %q, want %q", a.effect, row, got[row], line)
+			}
+		}
+		if label := got[len(want)]; label != " pigsayhi"+strings.Repeat(" ", 40-9) {
+			t.Fatalf("%s label: %q", a.effect, label)
+		}
+		if strings.Contains(strings.Join(got, "\n"), "ARMIN") {
+			t.Fatalf("%s shows Armin's label", a.effect)
+		}
 	}
 }

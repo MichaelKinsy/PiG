@@ -1,7 +1,7 @@
 # Both sides execute the original #2860 assertions against real Runtime replacement.
 # Each marker is emitted after assertions verify rebound callback order, stale contexts and the replacement's messages.
 # Only this upstream test file explicitly filters native system messages from its conversation assertions.
-# This proves native replacement semantics, not subprocess callback transport closure.
+# This proves native replacement semantics; cmd/pig TestReplacedSession2860AcrossSDKs proves the subprocess callback transport.
 name = "27-replaced-session-context"
 description = "Fresh withSession contexts after new, fork and switch, with stale original context rejection"
 covers = ["packages/coding-agent/src/core/agent-session-runtime.ts", "packages/coding-agent/src/core/agent-session.ts"]

@@ -4,16 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
-	"golang.org/x/term"
-
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
-	"github.com/MichaelKinsy/PiG/internal/buildprogress"
 	"github.com/MichaelKinsy/PiG/internal/pigsdklock"
 )
 
@@ -118,15 +113,10 @@ func (h *Host) isolateCellFailure(ctx context.Context, cell CellSpec, oldByName 
 func (h *Host) stageCell(ctx context.Context, cell CellSpec, oldByName map[string]*managedExt) (stageOutcome, error) {
 	ctx = context.WithValue(ctx, packedConfigsKey{}, cell.Extensions)
 	ctx = context.WithValue(ctx, retentionGroupKey{}, cell.Group)
-	// pig additive (D19): native cold-build notices belong to interactive mode, not to a terminal file descriptor alone. Explicit build observers remain authoritative.
-	if !buildprogress.Enabled(ctx) && h.mode == "tui" && term.IsTerminal(int(os.Stderr.Fd())) {
-		var notice sync.Once
-		ctx = buildprogress.Observe(ctx, func(event buildprogress.Event) {
-			if strings.HasPrefix(event.Phase, "Compiling ") {
-				notice.Do(func() { fmt.Fprintln(os.Stderr, "Building extensions... (first run, will be cached)") })
-			}
-		}, false)
-	}
+	ctx, closeLine := h.withBuildLine(ctx, []CellSpec{cell})
+	defer closeLine()
+	ctx, cellDone := observeBuildLine(ctx, cell)
+	defer cellDone()
 	work := func() (stageOutcome, error) {
 		rep := ReloadCellReport{
 			Key:        cell.Key,

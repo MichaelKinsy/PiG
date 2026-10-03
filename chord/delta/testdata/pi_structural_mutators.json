@@ -1,0 +1,700 @@
+{
+	"upstream": "packages/chord/src/delta (Pi 1.0.0)",
+	"rows": [
+		{
+			"method": "splice",
+			"args": [
+				1,
+				1,
+				9
+			],
+			"native": [
+				1,
+				9,
+				3
+			],
+			"nativeRemoved": [
+				2
+			],
+			"draft": [
+				1,
+				9,
+				3
+			],
+			"draftRemoved": [
+				2
+			]
+		},
+		{
+			"method": "splice",
+			"args": [
+				0,
+				0
+			],
+			"native": [
+				1,
+				2,
+				3
+			],
+			"nativeRemoved": [],
+			"draft": [
+				1,
+				2,
+				3
+			],
+			"draftRemoved": []
+		},
+		{
+			"method": "splice",
+			"args": [
+				1,
+				0
+			],
+			"native": [
+				1,
+				2,
+				3
+			],
+			"nativeRemoved": [],
+			"draft": [
+				1,
+				2,
+				3
+			],
+			"draftRemoved": []
+		},
+		{
+			"method": "splice",
+			"args": [
+				3,
+				0,
+				9,
+				8
+			],
+			"native": [
+				1,
+				2,
+				3,
+				9,
+				8
+			],
+			"nativeRemoved": [],
+			"draft": [
+				1,
+				2,
+				3,
+				9,
+				8
+			],
+			"draftRemoved": []
+		},
+		{
+			"method": "splice",
+			"args": [
+				0,
+				10
+			],
+			"native": [],
+			"nativeRemoved": [
+				1,
+				2,
+				3
+			],
+			"draft": [],
+			"draftRemoved": [
+				1,
+				2,
+				3
+			]
+		},
+		{
+			"method": "splice",
+			"args": [
+				-1,
+				1,
+				9
+			],
+			"native": [
+				1,
+				2,
+				9
+			],
+			"nativeRemoved": [
+				3
+			],
+			"draft": [
+				1,
+				2,
+				9
+			],
+			"draftRemoved": [
+				3
+			]
+		},
+		{
+			"method": "splice",
+			"args": [
+				-2,
+				5
+			],
+			"native": [
+				1
+			],
+			"nativeRemoved": [
+				2,
+				3
+			],
+			"draft": [
+				1
+			],
+			"draftRemoved": [
+				2,
+				3
+			]
+		},
+		{
+			"method": "splice",
+			"args": [
+				-3,
+				0,
+				7
+			],
+			"native": [
+				7,
+				1,
+				2,
+				3
+			],
+			"nativeRemoved": [],
+			"draft": [
+				7,
+				1,
+				2,
+				3
+			],
+			"draftRemoved": []
+		},
+		{
+			"method": "splice",
+			"args": [
+				-5,
+				1,
+				9
+			],
+			"native": [
+				9,
+				2,
+				3
+			],
+			"nativeRemoved": [
+				1
+			],
+			"draft": [
+				9,
+				2,
+				3
+			],
+			"draftRemoved": [
+				1
+			]
+		},
+		{
+			"method": "splice",
+			"args": [
+				5,
+				1,
+				9
+			],
+			"native": [
+				1,
+				2,
+				3,
+				9
+			],
+			"nativeRemoved": [],
+			"draft": [
+				1,
+				2,
+				3,
+				9
+			],
+			"draftRemoved": []
+		},
+		{
+			"method": "splice",
+			"args": [
+				1,
+				-1,
+				9
+			],
+			"native": [
+				1,
+				9,
+				2,
+				3
+			],
+			"nativeRemoved": [],
+			"draft": [
+				1,
+				9,
+				2,
+				3
+			],
+			"draftRemoved": []
+		},
+		{
+			"method": "splice",
+			"args": [
+				2,
+				1
+			],
+			"native": [
+				1,
+				2
+			],
+			"nativeRemoved": [
+				3
+			],
+			"draft": [
+				1,
+				2
+			],
+			"draftRemoved": [
+				3
+			]
+		},
+		{
+			"method": "fill",
+			"args": [
+				7,
+				0,
+				3
+			],
+			"native": [
+				7,
+				7,
+				7
+			],
+			"draft": [
+				7,
+				7,
+				7
+			]
+		},
+		{
+			"method": "fill",
+			"args": [
+				7,
+				1,
+				2
+			],
+			"native": [
+				1,
+				7,
+				3
+			],
+			"draft": [
+				1,
+				7,
+				3
+			]
+		},
+		{
+			"method": "fill",
+			"args": [
+				7,
+				-2,
+				-1
+			],
+			"native": [
+				1,
+				7,
+				3
+			],
+			"draft": [
+				1,
+				7,
+				3
+			]
+		},
+		{
+			"method": "fill",
+			"args": [
+				7,
+				-5,
+				2
+			],
+			"native": [
+				7,
+				7,
+				3
+			],
+			"draft": [
+				7,
+				7,
+				3
+			]
+		},
+		{
+			"method": "fill",
+			"args": [
+				7,
+				1,
+				10
+			],
+			"native": [
+				1,
+				7,
+				7
+			],
+			"draft": [
+				1,
+				7,
+				7
+			]
+		},
+		{
+			"method": "fill",
+			"args": [
+				7,
+				2,
+				1
+			],
+			"native": [
+				1,
+				2,
+				3
+			],
+			"draft": [
+				1,
+				2,
+				3
+			]
+		},
+		{
+			"method": "fill",
+			"args": [
+				7,
+				1,
+				1
+			],
+			"native": [
+				1,
+				2,
+				3
+			],
+			"draft": [
+				1,
+				2,
+				3
+			]
+		},
+		{
+			"method": "fill",
+			"args": [
+				7,
+				5,
+				9
+			],
+			"native": [
+				1,
+				2,
+				3
+			],
+			"draft": [
+				1,
+				2,
+				3
+			]
+		},
+		{
+			"method": "fill",
+			"args": [
+				7,
+				-1,
+				3
+			],
+			"native": [
+				1,
+				2,
+				7
+			],
+			"draft": [
+				1,
+				2,
+				7
+			]
+		},
+		{
+			"method": "fill",
+			"args": [
+				"NaN",
+				0,
+				3
+			],
+			"native": [
+				"NaN",
+				"NaN",
+				"NaN"
+			],
+			"draftError": "TypeError: Value contains a non-finite number and is not strict JSON",
+			"draft": [
+				1,
+				2,
+				3
+			]
+		},
+		{
+			"method": "fill",
+			"args": [
+				"NaN",
+				1,
+				1
+			],
+			"native": [
+				1,
+				2,
+				3
+			],
+			"draft": [
+				1,
+				2,
+				3
+			]
+		},
+		{
+			"method": "fill",
+			"args": [
+				"NaN",
+				2,
+				1
+			],
+			"native": [
+				1,
+				2,
+				3
+			],
+			"draft": [
+				1,
+				2,
+				3
+			]
+		},
+		{
+			"method": "copyWithin",
+			"args": [
+				0,
+				1,
+				3
+			],
+			"native": [
+				2,
+				3,
+				3
+			],
+			"draft": [
+				2,
+				3,
+				3
+			]
+		},
+		{
+			"method": "copyWithin",
+			"args": [
+				1,
+				0,
+				2
+			],
+			"native": [
+				1,
+				1,
+				2
+			],
+			"draft": [
+				1,
+				1,
+				2
+			]
+		},
+		{
+			"method": "copyWithin",
+			"args": [
+				2,
+				0,
+				1
+			],
+			"native": [
+				1,
+				2,
+				1
+			],
+			"draft": [
+				1,
+				2,
+				1
+			]
+		},
+		{
+			"method": "copyWithin",
+			"args": [
+				-1,
+				0,
+				1
+			],
+			"native": [
+				1,
+				2,
+				1
+			],
+			"draft": [
+				1,
+				2,
+				1
+			]
+		},
+		{
+			"method": "copyWithin",
+			"args": [
+				0,
+				-2,
+				-1
+			],
+			"native": [
+				2,
+				2,
+				3
+			],
+			"draft": [
+				2,
+				2,
+				3
+			]
+		},
+		{
+			"method": "copyWithin",
+			"args": [
+				0,
+				-5,
+				1
+			],
+			"native": [
+				1,
+				2,
+				3
+			],
+			"draft": [
+				1,
+				2,
+				3
+			]
+		},
+		{
+			"method": "copyWithin",
+			"args": [
+				5,
+				0,
+				1
+			],
+			"native": [
+				1,
+				2,
+				3
+			],
+			"draft": [
+				1,
+				2,
+				3
+			]
+		},
+		{
+			"method": "copyWithin",
+			"args": [
+				0,
+				2,
+				1
+			],
+			"native": [
+				1,
+				2,
+				3
+			],
+			"draft": [
+				1,
+				2,
+				3
+			]
+		},
+		{
+			"method": "copyWithin",
+			"args": [
+				0,
+				1,
+				1
+			],
+			"native": [
+				1,
+				2,
+				3
+			],
+			"draft": [
+				1,
+				2,
+				3
+			]
+		},
+		{
+			"method": "copyWithin",
+			"args": [
+				1,
+				0,
+				10
+			],
+			"native": [
+				1,
+				1,
+				2
+			],
+			"draft": [
+				1,
+				1,
+				2
+			]
+		},
+		{
+			"method": "copyWithin",
+			"args": [
+				-5,
+				-1,
+				3
+			],
+			"native": [
+				3,
+				2,
+				3
+			],
+			"draft": [
+				3,
+				2,
+				3
+			]
+		},
+		{
+			"method": "copyWithin",
+			"args": [
+				0,
+				3,
+				5
+			],
+			"native": [
+				1,
+				2,
+				3
+			],
+			"draft": [
+				1,
+				2,
+				3
+			]
+		}
+	]
+}

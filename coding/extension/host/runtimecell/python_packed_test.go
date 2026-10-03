@@ -12,13 +12,11 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
+	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
 func TestBuildPythonPackedCellBuildsCachedRunner(t *testing.T) {
-	python := "python3"
-	if runtime.GOOS == "windows" {
-		python = "python"
-	}
+	python := toolchain.PythonExecutable(runtime.GOOS, exec.LookPath)
 	if _, err := exec.LookPath(python); err != nil {
 		t.Skipf("%s not found: %v", python, err)
 	}

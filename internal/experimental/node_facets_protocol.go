@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/experimental/services"
@@ -25,7 +24,7 @@ var nodeFacetAssets embed.FS
 type nodeFacetStateUpdate struct {
 	ctx      context.Context
 	sequence int
-	ops      []pico3.Op
+	ops      []chord.Op
 }
 type nodeFacetState struct {
 	mu      sync.Mutex
@@ -34,7 +33,7 @@ type nodeFacetState struct {
 	ready   bool
 }
 
-func (state *nodeFacetState) apply(ctx context.Context, sequence int, ops []pico3.Op) error {
+func (state *nodeFacetState) apply(ctx context.Context, sequence int, ops []chord.Op) error {
 	state.mu.Lock()
 	if !state.ready {
 		state.pending = append(state.pending, nodeFacetStateUpdate{ctx, sequence, ops})
@@ -189,7 +188,7 @@ type nodeFacetReplicaSubscription struct {
 	closed   bool
 	remove   func()
 	value    nodeFacetValue
-	latest   pico3.JsonValue
+	latest   chord.JsonValue
 	sequence int
 	hydrated bool
 }

@@ -88,7 +88,8 @@ func reviewedRoot(root string) (reviewedSemantic, bool) {
 		"pkg:tui/.#TUI": "exported factory TUI object surface shared by regular and fullscreen implementations", "pkg:tui/.#Terminal": "exported terminal ownership and I/O surface", "pkg:tui/.#Component": "render/invalidate contract with optional ordered input and key-release opt-in", "pkg:tui/.#Focusable": "mutable strict focus identity contract",
 		"pkg:tui/.#OverlayAnchor": "closed nine-value anchor union", "pkg:tui/.#OverlayMargin": "per-edge optional margin object", "pkg:tui/.#OverlayOptions": "static geometry, executable visibility, and capture options", "pkg:tui/.#OverlayHandle": "identity-targeted removal, hidden, focus, and query operations", "pkg:tui/.#OverlayUnfocusOptions": "optional explicit unfocus target wrapper", "pkg:tui/.#SizeValue": "absolute number or decimal percentage template literal",
 		"pkg:tui/.#TuiInputListener": "ordered input transform/consume callback",
-		"pkg:tui/.#TuiMouseEvent":    "normalized zero-based cell mouse event with component-local and absolute coordinates", "pkg:tui/.#TuiMouseEventResult": "optional handled, capture, focus, and render claims returned by a mouse handler", "pkg:tui/.#TuiMouseEventType": "closed press/release/move/drag/click/wheel union", "pkg:tui/.#TuiMouseButton": "closed left/middle/right/none union", "pkg:tui/.#OverlayBounds": "rendered overlay row, column, width, and height record", "pkg:tui/.#TuiInputListenerResult": "optional consume flag and replacement input result", "pkg:coding-agent/.#Theme": "stable live styling object with foreground/background domains and attributes", "pkg:coding-agent/.#ThemeColor": "closed foreground color-name union", "pkg:coding-agent/.#KeybindingsManager": "configured ordered action-to-key manager", "pkg:coding-agent/.#ExtensionUIContext::property:custom": "generic custom factory call surface",
+		"pkg:tui/.#TuiMouseEvent":    "normalized zero-based cell mouse event with component-local and absolute coordinates", "pkg:tui/.#TuiMouseEventResult": "optional handled, capture, focus, and render claims returned by a mouse handler", "pkg:tui/.#TuiMouseEventType": "closed press/release/move/drag/click/wheel union", "pkg:tui/.#TuiMouseButton": "closed left/middle/right/none union", "pkg:tui/.#OverlayBounds": "rendered overlay row, column, width, and height record", "pkg:tui/.#TuiInputListenerResult": "optional consume flag and replacement input result", "pkg:coding-agent/.#Theme": "stable live styling object with foreground/background domains and attributes", "pkg:coding-agent/.#ThemeColor": "closed foreground color-name union", "pkg:coding-agent/.#ThemeBg": "closed background color-name union", "pkg:coding-agent/.#ThemeToken": "union of the foreground and background token names, the keys of Theme.colors", "pkg:coding-agent/.#ThemeAppearance": "closed light/dark background-appearance union (TerminalTheme)", "pkg:coding-agent/.#ThemeStyle": "text attributes plus an optional foreground token or Color and background token or Color, each token accepted only in its own slot",
+		"pkg:tui/.#Color": "concrete indexed, rgb or oklch color union convertible to sRGB", "pkg:tui/.#TerminalColorMode": "closed 256color/truecolor union", "pkg:tui/.#TerminalColors": "record of the terminal's reported default foreground, default background and 16-color palette", "pkg:coding-agent/.#KeybindingsManager": "configured ordered action-to-key manager", "pkg:coding-agent/.#ExtensionUIContext::property:custom": "generic custom factory call surface",
 	}[root]
 	if behavior == "" {
 		return reviewedSemantic{}, false
@@ -100,9 +101,13 @@ var reviewedSupportProperties = map[string]map[string]string{
 	"pkg:coding-agent/.#SourceInfo":  {"baseDir": "optional resolved source base directory", "origin": "source origin classification", "path": "optional source path", "scope": "source scope classification", "source": "source identifier"},
 	"pkg:tui/.#KeybindingConflict":   {"key": "conflicting normalized key identifier", "keybindings": "ordered actions bound to the same key"},
 	"pkg:tui/.#KeybindingDefinition": {"defaultKeys": "ordered default normalized key identifiers", "description": "human-readable action description"},
-	"pkg:tui/.#RgbColor":             {"r": "red channel", "g": "green channel", "b": "blue channel"},
-	"pkg:tui/.#TuiStopOptions":       {"preserveScreen": "optional request to preserve the rendered screen while stopping"},
-	"pkg:tui/.#OverlayBounds":        {"row": "zero-based rendered top row", "col": "zero-based rendered left column", "width": "rendered width in cells", "height": "rendered height in rows"},
+	"pkg:coding-agent/.#ThemeStyle": {
+		"fg": "optional foreground token or Color", "bg": "optional background token or Color", "bold": "optional bold attribute", "dim": "optional faint attribute", "italic": "optional italic attribute", "underline": "optional underline attribute", "inverse": "optional inverse-video attribute", "strikethrough": "optional strikethrough attribute",
+	},
+	"pkg:tui/.#TerminalColors": {"foreground": "optional default foreground (OSC 10)", "background": "optional default background (OSC 11)", "palette": "optional ANSI colors 0-15 (OSC 4), set only when the terminal reported all 16"},
+	"pkg:tui/.#RgbColor":       {"r": "red channel", "g": "green channel", "b": "blue channel"},
+	"pkg:tui/.#TuiStopOptions": {"preserveScreen": "optional request to preserve the rendered screen while stopping"},
+	"pkg:tui/.#OverlayBounds":  {"row": "zero-based rendered top row", "col": "zero-based rendered left column", "width": "rendered width in cells", "height": "rendered height in rows"},
 	"pkg:tui/.#TuiMouseEvent": {
 		"type": "event type", "button": "button, none for motion without a pressed button", "x": "zero-based column local to the receiving component", "y": "zero-based row local to the receiving component",
 		"screenX": "zero-based absolute terminal column", "screenY": "zero-based absolute terminal row", "width": "receiving component width", "height": "receiving component height",
@@ -142,13 +147,16 @@ var tuiBehavior = map[string]string{
 	"setFocus": "synchronously transitions strict component focus and Focusable flags", "showOverlay": "synchronously appends one mounted overlay entry, conditionally focuses it, hides terminal cursor, requests render, and returns an identity handle", "hideOverlay": "permanently removes the append-stack tail independent of visual focus order", "hasOverlay": "returns whether any mounted entry is currently visible",
 	"start": "starts terminal input/render lifecycle", "stop": "stops render timers and terminal lifecycle with optional preserve-screen behavior", "render": "renders root component lines for the supplied width", "renderNow": "cancels pending coalesced work and renders immediately; force resets renderer state", "requestRender": "coalesces demand to the 16 ms frame cadence; force marks the next frame full", "invalidate": "invalidates mounted roots and overlay components",
 	"addInputListener": "adds a listener in Set insertion order and returns an identity disposer", "removeInputListener": "removes the strict-identical listener", "handleInput": "optional Component input method inherited by TUI shape", "handleMouse": "Container mouse dispatch inherited by TUI: routes an in-bounds event to the child under its row with child-local coordinates and returns the first claiming dispatch result", "wantsKeyRelease": "optional Component release opt-in inherited by TUI shape",
-	"onTerminalColorSchemeChange": "registers a color-scheme listener and returns an identity disposer", "setTerminalColorSchemeNotifications": "idempotently enables or disables terminal color notifications", "queryTerminalBackgroundColor": "writes OSC 11 query and asynchronously returns parsed RGB or undefined at timeout", "queryTerminalColorScheme": "writes color-scheme query and asynchronously returns scheme or undefined at timeout",
+	"onTerminalColorSchemeChange": "registers a color-scheme listener and returns an identity disposer", "setTerminalColorSchemeNotifications": "idempotently enables or disables terminal color notifications", "queryTerminalColors": "writes one combined OSC 10, OSC 11, OSC 4 and DA1 query and asynchronously resolves with the replies so far when DA1 or every color reply arrives or at the timeout; unreported colors are undefined and the palette is set only when all 16 arrived; replies after the timeout go to onLateReply",
 }
 
 var themeBehavior = map[string]string{
-	"name": "readonly optional theme name", "sourcePath": "readonly optional source path", "sourceInfo": "optional source provenance", "fg": "wraps text with selected foreground ANSI and domain-preserving reset", "bg": "wraps text with selected background ANSI and domain-preserving reset",
-	"bold": "wraps text in bold and restores prior attribute state", "italic": "wraps text in italic and restores prior attribute state", "underline": "wraps text in underline and restores prior attribute state", "strikethrough": "wraps text in strikethrough and restores prior attribute state", "inverse": "wraps text in inverse video and restores prior attribute state",
-	"getFgAnsi": "returns raw ANSI prefix for a foreground domain", "getBgAnsi": "returns raw ANSI prefix for a background domain", "getColorMode": "returns truecolor or 256color mode", "getThinkingBorderColor": "returns the styling closure selected for a ThinkingLevel", "getBashModeBorderColor": "returns the bash-mode border styling closure",
+	"name": "readonly optional theme name", "sourcePath": "readonly optional source path", "sourceInfo": "optional source provenance", "fg": "wraps text with the selected foreground ANSI; a faint token also enables SGR 2 and the reset restores the foreground and intensity domains", "bg": "wraps text with the selected background token ANSI and the default-background reset",
+	"style":      "wraps text with one ThemeStyle: a foreground or background given as a token uses that token's ANSI (a faint foreground token also sets dim) and one given as a Color is converted for the theme color mode; the attribute flags then apply, and an unknown token throws",
+	"colors":     "readonly concrete Color for every ThemeToken; tokens set to the terminal default use the terminal's reported foreground and background, or a guess from appearance, and faint tokens are mixed toward the background; recomputed when the reported terminal colors change and frozen otherwise",
+	"appearance": "readonly light or dark background the theme is designed for: declared in the theme JSON, detected from the lightness of its own colors, or the terminal's appearance for a theme without usable colors",
+	"bold":       "wraps text in bold and restores prior attribute state", "italic": "wraps text in italic and restores prior attribute state", "underline": "wraps text in underline and restores prior attribute state", "strikethrough": "wraps text in strikethrough and restores prior attribute state", "inverse": "wraps text in inverse video and restores prior attribute state",
+	"getFgAnsi": "returns the opening ANSI sequence for a foreground token, including SGR 2 for a faint token", "getBgAnsi": "returns the opening ANSI sequence for a background token", "getColorMode": "returns truecolor or 256color mode", "getThinkingBorderColor": "returns the styling closure selected for a ThinkingLevel", "getBashModeBorderColor": "returns the bash-mode border styling closure",
 }
 
 var keybindingBehavior = map[string]string{
@@ -172,7 +180,7 @@ func memberProperty(id string) string {
 func isConstruct(id string) bool { return strings.Contains(id, "::construct:") }
 
 func memberTiming(root, property string) string {
-	if property == "drainInput" || property == "queryTerminalBackgroundColor" || property == "queryTerminalColorScheme" || (root == "pkg:coding-agent/.#ExtensionUIContext::property:custom" && property == "custom") {
+	if property == "drainInput" || property == "queryTerminalColors" || (root == "pkg:coding-agent/.#ExtensionUIContext::property:custom" && property == "custom") {
 		return "asynchronous-promise"
 	}
 	if property == "requestRender" {
@@ -191,8 +199,11 @@ func memberTiming(root, property string) string {
 }
 
 func memberError(root, property string) string {
-	if property == "drainInput" || property == "queryTerminalBackgroundColor" || property == "queryTerminalColorScheme" {
+	if property == "drainInput" {
 		return "Promise resolves undefined on supported timeout paths; transport/runtime rejection remains observable where declared"
+	}
+	if property == "queryTerminalColors" {
+		return "Promise resolves with the partial TerminalColors at the timeout and never rejects on a silent terminal; transport/runtime rejection remains observable where declared"
 	}
 	if root == "pkg:coding-agent/.#ExtensionUIContext::property:custom" {
 		return "factory throw or Promise rejection rejects while open; first completion wins and later outcomes cannot replace it"
@@ -207,10 +218,15 @@ func memberError(root, property string) string {
 }
 
 // absentInPig lists pinned members that Pig does not implement yet: the
-// normalized mouse API, rendered overlay bounds, and the added alternate-screen
-// navigation and search actions.
+// normalized mouse API, rendered overlay bounds, the added alternate-screen
+// navigation and search actions, and the 0.99.1 theme style, concrete-color and
+// appearance API (family 9a owns the theme system).
 func absentInPig(root, property string) bool {
 	switch {
+	case root == "pkg:coding-agent/.#ThemeStyle", root == "pkg:coding-agent/.#ThemeBg", root == "pkg:coding-agent/.#ThemeToken", root == "pkg:coding-agent/.#ThemeAppearance":
+		return true
+	case root == "pkg:coding-agent/.#Theme" && (property == "style" || property == "colors" || property == "appearance"):
+		return true
 	case strings.HasPrefix(root, "pkg:tui/.#TuiMouse"), root == "pkg:tui/.#OverlayBounds":
 		return true
 	case property == "handleMouse" || (root == "pkg:tui/.#OverlayHandle" && property == "getBounds"):
@@ -229,7 +245,7 @@ func currentPigDisposition(root, property string) string {
 		return "absent in Pig; the pinned member is not implemented"
 	}
 	switch root {
-	case "pkg:ai/.#ThinkingLevel", "pkg:tui/.#TuiMode", "pkg:coding-agent/.#SourceInfo", "pkg:tui/.#KeyId", "pkg:tui/.#Keybinding", "pkg:tui/.#KeybindingConflict", "pkg:tui/.#KeybindingDefinition", "pkg:tui/.#Keybindings", "pkg:tui/.#KeybindingsConfig", "pkg:tui/.#RgbColor", "pkg:tui/.#TerminalColorScheme", "pkg:tui/.#TuiStopOptions":
+	case "pkg:tui/.#Color", "pkg:tui/.#TerminalColorMode", "pkg:tui/.#TerminalColors", "pkg:ai/.#ThinkingLevel", "pkg:tui/.#TuiMode", "pkg:coding-agent/.#SourceInfo", "pkg:tui/.#KeyId", "pkg:tui/.#Keybinding", "pkg:tui/.#KeybindingConflict", "pkg:tui/.#KeybindingDefinition", "pkg:tui/.#Keybindings", "pkg:tui/.#KeybindingsConfig", "pkg:tui/.#RgbColor", "pkg:tui/.#TerminalColorScheme", "pkg:tui/.#TuiStopOptions":
 		return "source-reviewed support type; public custom-factory realization deferred"
 	case "pkg:tui/.#OverlayOptions", "pkg:tui/.#OverlayHandle", "pkg:tui/.#OverlayMargin", "pkg:tui/.#OverlayUnfocusOptions", "pkg:tui/.#SizeValue", "pkg:tui/.#OverlayAnchor":
 		return "private-pr-a-foundation-only; exported extension contract remains reduced"
@@ -263,6 +279,10 @@ func pigTargets(root string) []string {
 		return []string{"internal/codingagent/keybindings.go"}
 	case root == "pkg:tui/.#RgbColor" || root == "pkg:tui/.#TerminalColorScheme" || root == "pkg:tui/.#TuiStopOptions":
 		return []string{"tui/tui.go"}
+	case root == "pkg:tui/.#Color" || root == "pkg:tui/.#TerminalColorMode":
+		return []string{"tui/colors.go"}
+	case root == "pkg:tui/.#TerminalColors":
+		return []string{"tui/terminal_colors.go"}
 	case root == "pkg:ai/.#ThinkingLevel":
 		return []string{"ai/types.go", "tui/theme.go"}
 	case root == "pkg:tui/.#TuiMode", strings.HasPrefix(root, "pkg:tui/.#TuiMouse"):
@@ -272,8 +292,8 @@ func pigTargets(root string) []string {
 	case root == "pkg:tui/.#Terminal":
 		return []string{"tui/terminal.go"}
 	case root == "pkg:tui/.#TUI", root == "pkg:tui/.#TuiInputListener", root == "pkg:tui/.#TuiInputListenerResult":
-		return []string{"tui/tui.go", "tui/tui_alt_screen.go"}
-	case root == "pkg:coding-agent/.#Theme", root == "pkg:coding-agent/.#ThemeColor":
+		return []string{"tui/tui.go", "tui/tui_alt_screen.go", "tui/terminal_color_query.go"}
+	case root == "pkg:coding-agent/.#Theme", root == "pkg:coding-agent/.#ThemeColor", root == "pkg:coding-agent/.#ThemeBg", root == "pkg:coding-agent/.#ThemeToken", root == "pkg:coding-agent/.#ThemeAppearance", root == "pkg:coding-agent/.#ThemeStyle":
 		return []string{"tui/theme.go", "coding/extension/host/subprocess/runtime-node/runtime.mjs"}
 	case root == "pkg:coding-agent/.#KeybindingsManager":
 		return []string{"internal/codingagent/keybindings.go", "coding/extension/host/subprocess/runtime-node/runtime.mjs"}
@@ -322,6 +342,10 @@ func memberCitation(root, property string) string {
 		return "packages/tui/src/keybindings.ts" + citationMember(property)
 	case "pkg:tui/.#RgbColor", "pkg:tui/.#TerminalColorScheme", "pkg:tui/.#TuiStopOptions":
 		return "packages/tui/src/tui.ts" + citationMember(property)
+	case "pkg:tui/.#Color", "pkg:tui/.#TerminalColorMode":
+		return "packages/tui/src/colors.ts:4-25#" + strings.TrimPrefix(root, "pkg:tui/.#")
+	case "pkg:tui/.#TerminalColors":
+		return "packages/tui/src/terminal-colors.ts:10-17#TerminalColors" + citationMember(property)
 	case "pkg:ai/.#ThinkingLevel":
 		return "packages/ai/src/types.ts#ThinkingLevel"
 	case "pkg:tui/.#TuiMode":
@@ -335,9 +359,12 @@ func memberCitation(root, property string) string {
 	case "pkg:tui/.#OverlayOptions", "pkg:tui/.#OverlayMargin", "pkg:tui/.#OverlayHandle", "pkg:tui/.#OverlayUnfocusOptions", "pkg:tui/.#SizeValue", "pkg:tui/.#OverlayAnchor":
 		return "packages/tui/src/tui.ts:84-190#" + strings.TrimPrefix(root, "pkg:tui/.#") + citationMember(property)
 	case "pkg:tui/.#TUI", "pkg:tui/.#TuiInputListener", "pkg:tui/.#TuiInputListenerResult":
+		if property == "queryTerminalColors" {
+			return "packages/tui/src/tui.ts:478-481,1464-1492#TuiBase.queryTerminalColors"
+		}
 		return "packages/tui/src/tui.ts:291-318,354-683,835-894,949-1171#TuiBase" + citationMember(property)
-	case "pkg:coding-agent/.#Theme", "pkg:coding-agent/.#ThemeColor":
-		return "packages/coding-agent/src/modes/interactive/theme/theme.ts:110-165,338-445,813-893#Theme" + citationMember(property)
+	case "pkg:coding-agent/.#Theme", "pkg:coding-agent/.#ThemeColor", "pkg:coding-agent/.#ThemeBg", "pkg:coding-agent/.#ThemeToken", "pkg:coding-agent/.#ThemeAppearance", "pkg:coding-agent/.#ThemeStyle":
+		return "packages/coding-agent/src/modes/interactive/theme/theme.ts:57-127,186-456,727-745#" + strings.TrimPrefix(root, "pkg:coding-agent/.#") + citationMember(property)
 	case "pkg:coding-agent/.#KeybindingsManager":
 		if property == "reload" || property == "getEffectiveConfig" || property == "" {
 			return "packages/coding-agent/src/core/keybindings.ts:340-390#KeybindingsManager" + citationMember(property)
@@ -378,6 +405,9 @@ func realizationDispositions(root string, unsafe bool) []realizationDisposition 
 }
 
 func memberDisposition(root, property string) string {
+	if root == "pkg:tui/.#Color" || root == "pkg:tui/.#TerminalColorMode" || root == "pkg:tui/.#TerminalColors" || root == "pkg:coding-agent/.#ThemeStyle" || root == "pkg:coding-agent/.#ThemeBg" || root == "pkg:coding-agent/.#ThemeToken" || root == "pkg:coding-agent/.#ThemeAppearance" {
+		return "source-reviewed support type required by the exact custom-factory closure"
+	}
 	if root == "pkg:ai/.#ThinkingLevel" || root == "pkg:tui/.#TuiMode" || root == "pkg:coding-agent/.#SourceInfo" || root == "pkg:tui/.#KeyId" || strings.HasPrefix(root, "pkg:tui/.#Keybinding") || root == "pkg:tui/.#RgbColor" || root == "pkg:tui/.#TerminalColorScheme" || root == "pkg:tui/.#TuiStopOptions" {
 		return "source-reviewed support type required by the exact custom-factory closure"
 	}

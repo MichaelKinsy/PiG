@@ -88,7 +88,7 @@ func (w *ThemeWatcher) selectTheme(name string) {
 		w.watcher = nil
 	}
 	// upstream: packages/coding-agent/src/modes/interactive/theme/theme.ts:startThemeWatcher
-	if name != "" && name != "dark" && name != "light" && filepath.Base(name) == name {
+	if name != "" && name != "dark" && name != "light" && name != SystemThemeName && filepath.Base(name) == name {
 		if _, err := os.Stat(filepath.Join(w.directory, name+".json")); err == nil {
 			if watcher, err := fsnotify.NewWatcher(); err == nil {
 				if err := watcher.Add(w.directory); err == nil {
@@ -215,7 +215,7 @@ func (w *ThemeWatcher) reload(name string, generation uint64) {
 	if err != nil {
 		return
 	}
-	indexed := theme.WithColorMode(ColorMode256)
+	indexed := theme.WithColorMode(TerminalColorMode256)
 	w.mu.Lock()
 	dispatch := w.dispatch
 	w.mu.Unlock()
@@ -238,7 +238,7 @@ func (w *ThemeWatcher) reload(name string, generation uint64) {
 		}
 		registry.paths[name] = filepath.Join(w.directory, name+".json")
 		registry.mu.Unlock()
-		if currentColorMode() == ColorMode256 {
+		if currentColorMode() == TerminalColorMode256 {
 			activeTheme.Store(indexed)
 		} else {
 			activeTheme.Store(theme)

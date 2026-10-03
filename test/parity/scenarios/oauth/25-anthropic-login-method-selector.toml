@@ -1,0 +1,44 @@
+# Upstream evidence: Pi 1.0.0 anthropic.ts:273-291 asks "Select Anthropic login method:" with "Browser login (default)" and "Copy code login (headless)" before it starts either flow; interactive-mode.ts:6168-6206 shows the select prompt in the editor slot.
+# Probe (Pi 1.0.0, this fixture): /login, Enter (account), Enter (Anthropic) shows the method selector. No callback server or token request runs before a method is chosen.
+# Pi 1.0.0 ports .upstream/v1.0.0/packages/ai/test/anthropic-oauth.test.ts:80 "offers browser login first and uses the selected Anthropic copy code flow" at the selector boundary.
+# serial: before the fix Pig starts the browser flow immediately, which binds the fixed Anthropic callback port 53692 that 02-oauth-anthropic also uses.
+name = "25-anthropic-login-method-selector"
+description = "Anthropic /login offers browser and copy code login methods"
+covers = ["packages/ai/src/auth/oauth/anthropic.ts", "packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "tui", "serial"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 120
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Select Anthropic login method:"
+capture_end = "cancel"
+settle_seconds = 1
+cwd = "../selectors/testdata/login-empty-project"
+
+[[tmux.steps]]
+keys = ["/login", "Enter"]
+wait_contains = ["Select authentication method:"]
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Select provider to configure:", "Anthropic"]
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Select Anthropic login method:", "Copy code login (headless)"]
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/privacy-pi-compatible", "PI_CODING_AGENT_DIR=", "PIG_HOME=../selectors/testdata/pig-home-noauth", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pi = ["PI_CODING_AGENT_DIR=testdata/privacy-pi-compatible", "PIG_CODING_AGENT_DIR=", "PIG_HOME=", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["Select Anthropic login method:", "Browser login (default)", "Copy code login (headless)"]
+escaped_output_equal = true
+runs = 3

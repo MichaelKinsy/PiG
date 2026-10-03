@@ -27,6 +27,7 @@ func TestFrameTooLargeError_Message(t *testing.T) {
 // no compliant extension could read, returning a typed error instead of
 // queueing an undeliverable frame.
 func TestConn_Send_RejectsOversizedFrame(t *testing.T) {
+	t.Parallel()
 	hostEnd, extEnd := net.Pipe()
 	c := NewConn("t", hostEnd)
 	c.Start(t.Context())
@@ -157,6 +158,7 @@ func TestEncodedRawSize_MatchesEncoder(t *testing.T) {
 
 // TestMarshalEnvelope_OversizedCompactResultReportsEscapedSize proves the size of a rejected compact result counts the bytes the encoder adds: it rewrites <, > and & as six-byte escapes and U+2028/U+2029 as six-byte escapes inside a raw message.
 func TestMarshalEnvelope_OversizedCompactResultReportsEscapedSize(t *testing.T) {
+	t.Parallel()
 	raw := oversizedJSONString()
 	tail := []byte("<>&\u2028\u2029\"")
 	raw = append(raw[:len(raw)-1], tail...)
@@ -276,7 +278,7 @@ func TestHandleIncoming_OversizedResultReturnsError(t *testing.T) {
 	go h.handleIncoming(me, me.connection())
 
 	// Extension issues a call that yields an oversized result.
-	callFrame, _ := json.Marshal(&Envelope{Type: MsgCall, ID: "1", Call: &CallPayload{Method: "getBranch"}})
+	callFrame, _ := json.Marshal(&Envelope{Type: MsgCall, ID: "1", Call: &CallPayload{Method: "sessionRead"}})
 	go func() {
 		var lb [4]byte
 		binary.BigEndian.PutUint32(lb[:], uint32(len(callFrame)))

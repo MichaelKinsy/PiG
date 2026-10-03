@@ -4,8 +4,6 @@ import (
 	"context"
 	"strings"
 	"testing"
-
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 )
 
 type reviewBenchState struct {
@@ -15,14 +13,14 @@ type reviewBenchState struct {
 
 type reviewBenchService interface {
 	Increment(context.Context) (int, error)
-	State() pico3.ReplicatedStateOf[*reviewBenchState]
+	State() ReplicatedStateOf[*reviewBenchState]
 }
 
 type reviewBenchCounter struct {
 	state *MutableReplicatedState[*reviewBenchState]
 }
 
-func (counter *reviewBenchCounter) State() pico3.ReplicatedStateOf[*reviewBenchState] {
+func (counter *reviewBenchCounter) State() ReplicatedStateOf[*reviewBenchState] {
 	return counter.state
 }
 func (counter *reviewBenchCounter) Increment(ctx context.Context) (int, error) {
@@ -37,7 +35,7 @@ func (counter *reviewBenchCounter) Increment(ctx context.Context) (int, error) {
 
 func BenchmarkReviewJSONCopyIncrement(b *testing.B) {
 	ctx := context.Background()
-	def := pico3.DefineService[reviewBenchService]("review.benchmark")
+	def := DefineService[reviewBenchService]("review.benchmark")
 	state, err := NewReplicatedState(&reviewBenchState{Payload: strings.Repeat("x", 64*1024)})
 	if err != nil {
 		b.Fatal(err)

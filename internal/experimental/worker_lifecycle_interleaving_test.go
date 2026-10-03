@@ -6,7 +6,7 @@ import (
 	"testing/synctest"
 )
 
-// upstream: packages/coding-agent/src/experimental/session-worker.ts:305-313 sets #retiring and calls #onRetire in the same synchronous #reconcile, so operationStarted (session-worker.ts:285-287) cannot run between the retirement commit and the onRetire call.
+// upstream: packages/coding-agent/src/experimental/session-worker.ts:292-304 sets #retiring and calls #onRetire in the same synchronous #reconcile, so setHarnessActive (session-worker.ts:279-282) cannot run between the retirement commit and the onRetire call.
 func TestWorkerLifecycleRetireRunsInsideCommitCriticalSection(t *testing.T) {
 	const generation = "generation-1"
 	synctest.Test(t, func(t *testing.T) {
@@ -30,7 +30,7 @@ func TestWorkerLifecycleRetireRunsInsideCommitCriticalSection(t *testing.T) {
 			t.Fatalf("retire calls = %d, want 1", retired.Load())
 		}
 		if got := lockFreeAtRetire.Load(); got != 0 {
-			t.Fatalf("lifecycle state was unlocked while onRetire ran; OperationStarted could interleave (%d)", got)
+			t.Fatalf("lifecycle state was unlocked while onRetire ran; SetHarnessActive could interleave (%d)", got)
 		}
 	})
 }

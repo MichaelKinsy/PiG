@@ -209,6 +209,9 @@ func renderToolResultPayload(result extension.AgentToolResult) *RenderToolResult
 		if details, err := json.Marshal(toolResult.Details); err == nil {
 			out.Details = details
 		}
+	} else if toolResult.DetailsNull() {
+		// upstream: tool-execution.ts updateResult keeps the result as given, so a renderer sees a tool's details: null.
+		out.Details = json.RawMessage("null")
 	}
 	return out
 }

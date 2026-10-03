@@ -1,8 +1,28 @@
 import { Container, fuzzyFilter, getKeybindings, Input, Spacer, TruncatedText, } from "../../../../../pi-tui.mjs";
 import { theme } from "../theme/theme.js";
 import { DynamicBorder } from "./dynamic-border.js";
-export function formatAuthSelectorProviderType(authType) {
-    return authType === "oauth" ? "subscription" : "API key";
+export function formatAuthSelectorProviderType(authType, subscription) {
+    if (authType === "api_key")
+        return "API key";
+    return subscription === false ? "account" : "subscription";
+}
+/** Themed suffix describing whether and how a login option is configured, for example " ✓ configured". */
+export function formatAuthSelectorProviderStatus(provider) {
+    if (!provider.status)
+        return theme.fg("muted", " • not configured");
+    if (provider.status.type !== provider.authType) {
+        const label = `${formatAuthSelectorProviderType(provider.status.type, provider.subscription)} configured`;
+        return theme.fg("muted", " • ") + theme.fg("warning", label);
+    }
+    if (!provider.status.source ||
+        provider.status.source === "OAuth" ||
+        provider.status.source === "stored credential") {
+        return theme.fg("success", " ✓ configured");
+    }
+    const source = /^[A-Z][A-Z0-9_]*(?:, [A-Z][A-Z0-9_]*)*$/.test(provider.status.source)
+        ? `env: ${provider.status.source}`
+        : provider.status.source;
+    return theme.fg("success", ` ✓ ${source}`);
 }
 /**
  * Component that renders an auth provider selector
@@ -79,9 +99,9 @@ export class OAuthSelectorComponent extends Container {
             if (!provider)
                 continue;
             const isSelected = i === this.selectedIndex;
-            const statusIndicator = this.formatStatusIndicator(provider);
+            const statusIndicator = formatAuthSelectorProviderStatus(provider);
             const authTypeLabel = this.showAuthTypeLabels
-                ? theme.fg("muted", ` [${formatAuthSelectorProviderType(provider.authType)}]`)
+                ? theme.fg("muted", ` [${formatAuthSelectorProviderType(provider.authType, provider.subscription)}]`)
                 : "";
             let line = "";
             if (isSelected) {
@@ -108,23 +128,6 @@ export class OAuthSelectorComponent extends Container {
                 : "No matching providers";
             this.listContainer.addChild(new TruncatedText(theme.fg("muted", `  ${message}`), 1, 0));
         }
-    }
-    formatStatusIndicator(provider) {
-        if (!provider.status)
-            return theme.fg("muted", " • unconfigured");
-        if (provider.status.type !== provider.authType) {
-            const label = provider.status.type === "oauth" ? "subscription configured" : "API key configured";
-            return theme.fg("muted", " • ") + theme.fg("warning", label);
-        }
-        if (!provider.status.source ||
-            provider.status.source === "OAuth" ||
-            provider.status.source === "stored credential") {
-            return theme.fg("success", " ✓ configured");
-        }
-        const source = /^[A-Z][A-Z0-9_]*(?:, [A-Z][A-Z0-9_]*)*$/.test(provider.status.source)
-            ? `env: ${provider.status.source}`
-            : provider.status.source;
-        return theme.fg("success", ` ✓ ${source}`);
     }
     handleInput(keyData) {
         const kb = getKeybindings();

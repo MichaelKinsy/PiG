@@ -14,8 +14,14 @@ func TestImageModelRegistry_OpenRouterGeneratedModels(t *testing.T) {
 		t.Fatalf("GetImageProviders() = %v, want [openrouter]", providers)
 	}
 	models := GetImageModels(ProviderImagesOpenRouter)
-	if len(models) != 55 {
-		t.Fatalf("GetImageModels(openrouter) length = %d, want published pi-ai 0.87.1 image-catalog count 55", len(models))
+	publishedOpenRouter := 0
+	for _, model := range loadPublishedCatalog(t)["image"] {
+		if model["provider"] == ProviderImagesOpenRouter {
+			publishedOpenRouter++
+		}
+	}
+	if len(models) != publishedOpenRouter || publishedOpenRouter == 0 {
+		t.Fatalf("GetImageModels(openrouter) length = %d, want published pi-ai %s image-catalog count %d", len(models), UpstreamVersionString(), publishedOpenRouter)
 	}
 	for _, id := range []string{"google/gemini-3-pro-image", "google/gemini-3.1-flash-image", "microsoft/mai-image-2.5-pro", "openai/gpt-image-2", "krea/krea-2-large", "qwen/qwen-image-3", "qwen/qwen-image-3-pro"} {
 		if _, ok := GetImageModel(ProviderImagesOpenRouter, id); !ok {
@@ -35,7 +41,7 @@ func TestImageModelRegistry_OpenRouterGeneratedModels(t *testing.T) {
 }
 
 func TestGenerateImages_NoProvider(t *testing.T) {
-	_, err := GenerateImages(context.Background(), ImagesModel{API: "missing"}, ImagesContext{}, ProviderImagesOptions{})
+	_, err := GenerateImages(context.Background(), ImageModel{API: "missing"}, ImagesContext{}, ProviderImagesOptions{})
 	if err == nil || err.Error() != "No API provider registered for api: missing" {
 		t.Fatalf("GenerateImages error = %v", err)
 	}
@@ -61,7 +67,7 @@ func TestGenerateImagesOpenRouter_RequestAndResponse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	model := ImagesModel{
+	model := ImageModel{
 		ID:       "test-image-model",
 		API:      APIImagesOpenRouter,
 		Provider: ProviderImagesOpenRouter,

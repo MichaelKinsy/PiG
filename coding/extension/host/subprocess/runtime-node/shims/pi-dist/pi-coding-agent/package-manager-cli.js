@@ -9,7 +9,7 @@ import { APP_NAME, CONFIG_DIR_NAME, detectInstallMethod, getAgentDir, getPackage
 import { ModelRuntime } from "./core/model-runtime.js";
 import { DefaultPackageManager } from "./core/package-manager.js";
 import { resolveProjectTrusted } from "./core/project-trust.js";
-import { DefaultResourceLoader } from "./core/resource-loader.js";
+import { DefaultResourceLoader, isBuiltinExtension } from "./core/resource-loader.js";
 import { SettingsManager } from "./core/settings-manager.js";
 import { hasTrustRequiringProjectResources, ProjectTrustStore } from "./core/trust-manager.js";
 import { spawnProcess, spawnProcessSync, waitForChildProcess } from "./utils/child-process.js";
@@ -725,14 +725,18 @@ export async function handleConfigCommand(args, runtimeOptions = {}) {
         return true;
     }
     reportSettingsErrors(settingsManager, "config command");
+    const builtinExtensions = (runtimeOptions.extensionFactories ?? [])
+        .filter(isBuiltinExtension)
+        .map((input) => input.name);
     const globalSettingsManager = SettingsManager.create(cwd, agentDir, { projectTrusted: false });
     const globalResolvedPaths = await new DefaultPackageManager({
         cwd,
         agentDir,
         settingsManager: globalSettingsManager,
+        builtinExtensions,
     }).resolve();
     const projectResolvedPaths = settingsManager.isProjectTrusted()
-        ? await new DefaultPackageManager({ cwd, agentDir, settingsManager }).resolve()
+        ? await new DefaultPackageManager({ cwd, agentDir, settingsManager, builtinExtensions }).resolve()
         : globalResolvedPaths;
     await selectConfig({
         resolvedPaths: { global: globalResolvedPaths, project: projectResolvedPaths },

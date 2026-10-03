@@ -2,6 +2,7 @@ package codingagent
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -111,8 +112,9 @@ func TestLoginSelectCancellationIsSilent(t *testing.T) {
 	}()
 	waitForRender(t, m.editorContainer, "Select Google Vertex AI authentication method:")
 	deliverModalInput(t, m, []byte("\x1b"))
-	if err := <-done; err != nil {
-		t.Fatal(err)
+	// Pi 1.0.0 reopens the menu the login was started from instead of reporting it (interactive-mode.ts:6160-6162).
+	if err := <-done; !errors.Is(err, errLoginCancelled) {
+		t.Fatalf("err = %v, want %v", err, errLoginCancelled)
 	}
 	if strings.Contains(plainRender(m.chatContainer), "Failed") {
 		t.Fatal("select cancellation should reject as Login cancelled, not abort the dialog")

@@ -45,6 +45,7 @@ func TestSignalEmitsSessionShutdownToExtensions(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
+			seedIntegrationSettings(t, dir)
 			marker := filepath.Join(dir, "shutdown-marker")
 			extPath := filepath.Join(dir, "shutdown-probe.mjs")
 			if err := os.WriteFile(extPath, []byte(shutdownProbeExtension), 0o600); err != nil {
@@ -151,6 +152,7 @@ func TestInteractiveSigintTerminatesAndRestoresTerminal(t *testing.T) {
 		t.Fatalf("expected a sane terminal before pig starts; %s reports:\n%s", tty, settings)
 	}
 
+	seedIntegrationSettings(t, dir)
 	launch := strings.Join([]string{
 		"cd", dir, "&&",
 		// The shell can change line discipline while reading this command. Set

@@ -1,17 +1,20 @@
 package extension
 
-// EventBus is the extension-to-extension pub/sub bus. Mirrors upstream's
-// core/event-bus.EventBus, exposed on ExtensionAPI as the property
-// `events: EventBus`.
+// EventBus is the extension-to-extension event bus. Mirrors upstream's
+// core/event-bus.ts EventBus, exposed on ExtensionAPI as the property
+// `events: EventBus`, with upstream's method names.
 //
 // Go exposes upstream's `events` property through [API.Events].
+//
+// upstream: event-bus.ts:3-6
 type EventBus interface {
-	// Publish broadcasts payload under the given topic to every current
-	// subscriber. Synchronous: handlers run before Publish returns. Panics
-	// in handlers are recovered and logged by the host.
-	Publish(topic string, payload any)
+	// Emit broadcasts data on channel to every current listener. Synchronous:
+	// handlers run before Emit returns. A handler's failure does not reach the
+	// emitter or the other listeners; the host reports it as
+	// `Event handler error (<channel>):` (event-bus.ts:19-23).
+	Emit(channel string, data any)
 
-	// Subscribe registers handler for topic and returns a cancel func that
-	// unsubscribes. Handlers are dispatched in registration order.
-	Subscribe(topic string, handler func(payload any)) (cancel func())
+	// On registers handler for channel and returns an idempotent function that
+	// removes it. Handlers are dispatched in registration order.
+	On(channel string, handler func(data any)) (unsubscribe func())
 }

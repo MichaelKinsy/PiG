@@ -83,3 +83,48 @@ func TestContextSetLoginSurfacesHostError(t *testing.T) {
 		t.Fatalf("SetLogin error = %v", err)
 	}
 }
+
+func TestContextRegisterSpriteSendsTheDefinitionAsCallArguments(t *testing.T) {
+	client, server := net.Pipe()
+	t.Cleanup(func() { _ = server.Close() })
+
+	connection := newConn(client)
+	connection.start()
+	t.Cleanup(func() { _ = client.Close() })
+
+	definition := SpriteDefinition{
+		ID:      "blue-pig",
+		Name:    "Blue PiG",
+		Tagline: "From an extension.",
+		Mascot:  []string{"mascot"},
+		Palette: map[string]string{"P": "#5B8DEF"},
+	}
+	result := make(chan error, 1)
+	go func() {
+		result <- (Context{ext: &Extension{conn: connection}}).RegisterSprite(definition)
+	}()
+
+	host := &mockHost{nc: server}
+	call := host.readEnvelope(t)
+	if call.Type != msgCall || call.Call == nil || call.Call.Method != "ui.registerSprite" {
+		t.Fatalf("call = %+v", call)
+	}
+	var got map[string]any
+	if err := json.Unmarshal(call.Call.Args, &got); err != nil {
+		t.Fatalf("decode call args: %v", err)
+	}
+	want := map[string]any{
+		"id":      "blue-pig",
+		"name":    "Blue PiG",
+		"tagline": "From an extension.",
+		"mascot":  []any{"mascot"},
+		"palette": map[string]any{"P": "#5B8DEF"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("args = %#v, want %#v", got, want)
+	}
+	host.writeEnvelope(t, envelope{Type: msgCallResult, ID: call.ID, CallResult: &callResultMsg{Error: &errorInfo{Code: "invalid_sprite", Message: "invalid sprite definition mascot: must contain exactly 14 rows"}}})
+	if err := <-result; err == nil || err.Error() != "invalid_sprite: invalid sprite definition mascot: must contain exactly 14 rows" {
+		t.Fatalf("RegisterSprite = %v, want the host's error", err)
+	}
+}

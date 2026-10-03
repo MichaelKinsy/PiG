@@ -65,8 +65,8 @@ func TestAnthropicUpstreamEmptyThinkingSignature(t *testing.T) {
 			}
 		}
 	})
-	// .upstream/v0.87.1/packages/ai/test/anthropic-empty-thinking-signature-compat.test.ts:108 (all six rows)
-	for _, id := range []string{"accounts/fireworks/models/deepseek-v4-flash-0731", "accounts/fireworks/models/deepseek-v4-flash-vision-exp", "accounts/fireworks/models/deepseek-v4-pro-0813", "accounts/fireworks/models/qwen3p8-max", "accounts/fireworks/models/qwen3p8-2p4t-a95b", "accounts/fireworks/models/kimi-k2p6"} {
+	// .upstream/v0.99.1/packages/ai/test/anthropic-empty-thinking-signature-compat.test.ts:108 (all four 0.99.1 rows)
+	for _, id := range []string{"accounts/fireworks/models/deepseek-v4p1-flash", "accounts/fireworks/models/qwen3p8-max", "accounts/fireworks/models/qwen3p8-2p4t-a95b", "accounts/fireworks/models/nemotron-3-ultra-nvfp4"} {
 		t.Run("preserves unsigned thinking for Fireworks "+id, func(t *testing.T) {
 			model := upstreamCatalogModel(t, "fireworks", id)
 			if !modelAllowsEmptySignature(model) {
@@ -76,10 +76,10 @@ func TestAnthropicUpstreamEmptyThinkingSignature(t *testing.T) {
 			assertShapeJSON(t, assistantPayloadContent(t, payload), `[{"type":"thinking","thinking":"internal reasoning","signature":""},{"type":"text","text":"answer"}]`)
 		})
 	}
-	// .upstream/v0.87.1/packages/ai/test/anthropic-empty-thinking-signature-compat.test.ts:129
+	// .upstream/v0.99.1/packages/ai/test/anthropic-empty-thinking-signature-compat.test.ts:127
 	t.Run("still converts cross-model Fireworks thinking to text", func(t *testing.T) {
-		model := upstreamCatalogModel(t, "fireworks", "accounts/fireworks/models/deepseek-v4-flash-0731")
-		payload := upstreamAnthropicParams(t, model, emptySignatureContext("fireworks", "accounts/fireworks/models/kimi-k2p6", "internal reasoning", "", false), StreamOptions{})
+		model := upstreamCatalogModel(t, "fireworks", "accounts/fireworks/models/deepseek-v4p1-flash")
+		payload := upstreamAnthropicParams(t, model, emptySignatureContext("fireworks", "accounts/fireworks/models/nemotron-3-ultra-nvfp4", "internal reasoning", "", false), StreamOptions{})
 		assertShapeJSON(t, assistantPayloadContent(t, payload), `[{"type":"text","text":"internal reasoning"}]`)
 	})
 	// .upstream/v0.87.1/packages/ai/test/anthropic-empty-thinking-signature-compat.test.ts:140

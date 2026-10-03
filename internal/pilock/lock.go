@@ -15,6 +15,8 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 )
 
 // Pi 0.87.1 auth-storage.ts:69-93,119-143 and settings-manager.ts:241-265.
@@ -27,8 +29,8 @@ const (
 	maxDelay   = 2 * time.Second
 )
 
-// ErrLocked reports contention under Pi's directory protocol.
-var ErrLocked = errors.New("lock file is already being held")
+// ErrLocked reports contention under Pi's directory protocol. Its text is proper-lockfile 4.1.2's ELOCKED message (lib/lockfile.js:53,68), which Pi's stores rethrow unchanged.
+var ErrLocked = errors.New("Lock file is already being held")
 
 // ErrLegacyLocked reports an older PiG writer; acquisition uses the same retry budget as directory contention.
 var ErrLegacyLocked = fmt.Errorf("%w by an older PiG process; stop the older PiG before upgrading", ErrLocked)
@@ -72,10 +74,11 @@ func Acquire(ctx context.Context, path string) (*Lock, error) {
 		}
 		lock, err := tryAcquire(ctx, path, asyncStale)
 		if err == nil {
-			if err := context.Cause(ctx); err != nil {
-				return nil, errors.Join(err, lock.Release())
-			}
-			return lock, nil
+			return lockUnlessAborted(ctx, lock)
+		}
+		// An abort that arrived during the attempt wins over its failure (auth-storage.ts:135).
+		if cause := context.Cause(ctx); cause != nil {
+			return nil, cause
 		}
 		remaining := time.Until(deadline)
 		if !errors.Is(err, ErrLocked) || remaining <= 0 {
@@ -112,10 +115,7 @@ func AcquireWithOptions(ctx context.Context, path string, options AcquireOptions
 		}
 		lock, err := tryAcquireWithUpdate(ctx, path, options.Stale, options.Update, options.OnCompromised)
 		if err == nil {
-			if err := context.Cause(ctx); err != nil {
-				return nil, errors.Join(err, lock.Release())
-			}
-			return lock, nil
+			return lockUnlessAborted(ctx, lock)
 		}
 		remaining := time.Until(deadline)
 		if !errors.Is(err, ErrLocked) || remaining <= 0 {
@@ -131,7 +131,19 @@ func AcquireWithOptions(ctx context.Context, path string, options AcquireOptions
 	}
 }
 
-// acquire is lockSync: it probes the mtime precision on every call.
+// lockUnlessAborted returns lock unless the caller was cancelled while it was being taken. Then, like Pi's acquireLockAsync (auth-storage.ts:149-152), it releases the lock and returns the cancellation, or the release's error when the release fails.
+func lockUnlessAborted(ctx context.Context, lock *Lock) (*Lock, error) {
+	cause := context.Cause(ctx)
+	if cause == nil {
+		return lock, nil
+	}
+	if err := lock.Release(); err != nil {
+		return nil, err
+	}
+	return nil, cause
+}
+
+// acquire is one attempt of lockSync: it probes the mtime precision on every call.
 func acquire(path string, stale time.Duration) (*Lock, error) {
 	return acquireWithProbe(context.Background(), path, stale, stale/2, nil, probeMtime)
 }
@@ -155,7 +167,9 @@ func acquireWithProbe(ctx context.Context, path string, stale, update time.Durat
 	}
 	mtime, precision, err := probe(path)
 	if err != nil {
-		return nil, errors.Join(err, syscall.Rmdir(path))
+		// proper-lockfile removes the directory it just made and ignores that rmdir's result (lib/lockfile.js:33-40).
+		_ = syscall.Rmdir(path)
+		return nil, err
 	}
 	ctx, cancel := context.WithCancelCause(ctx)
 	lock := &Lock{path: path, mtime: mtime, precision: precision, ctx: ctx, cancel: cancel, stop: make(chan struct{}), done: make(chan struct{}), onCompromised: onCompromised}
@@ -167,11 +181,11 @@ func acquireWithProbe(ctx context.Context, path string, stale, update time.Durat
 // osMkdir creates the lock directory; tests replace it to inject platform errors.
 var osMkdir = os.Mkdir
 
-// mkdir mirrors proper-lockfile 4.1.2 lib/lockfile.js acquireLock (lines 22-48): only EEXIST means the directory is held. isEEXIST matches Node's EEXIST exactly; fs.ErrExist is wider because it also matches ENOTEMPTY and Windows ERROR_DIR_NOT_EMPTY. Every other mkdir error, including the ERROR_ACCESS_DENIED Windows returns while a just-removed lock directory is pending deletion, is returned unretried. libuv's uv_translate_sys_error (src/win/error.c) surfaces ERROR_ACCESS_DENIED as EPERM, ERROR_SHARING_VIOLATION as EBUSY and ERROR_DIR_NOT_EMPTY as ENOTEMPTY, none of which are ELOCKED, so Pi's auth-storage.ts acquireLockSyncWithRetry (`code !== "ELOCKED"`) and acquireLockAsync throw them. Do not widen this to retry them.
+// mkdir mirrors proper-lockfile 4.1.2 lib/lockfile.js acquireLock (lines 22-48): only EEXIST means the directory is held. isEEXIST matches Node's EEXIST exactly; fs.ErrExist is wider because it also matches ENOTEMPTY and Windows ERROR_DIR_NOT_EMPTY. Every other mkdir error, including the ERROR_ACCESS_DENIED Windows returns while a just-removed lock directory is pending deletion, is returned unretried. libuv's uv_translate_sys_error (src/win/error.c) surfaces ERROR_ACCESS_DENIED as EPERM, ERROR_SHARING_VIOLATION as EBUSY and ERROR_DIR_NOT_EMPTY as ENOTEMPTY, none of which are ELOCKED, so Pi's auth-storage.ts acquireLockSyncWithRetry (`code !== "ELOCKED"`) and acquireLockAsync throw them. Do not widen this to retry them. Each failure Pi would throw carries Node's fs message for its call (mkdir, stat, rmdir).
 func mkdir(path string, stale time.Duration) error {
 	err := osMkdir(path, 0o777)
 	if err == nil || !isEEXIST(err) {
-		return err
+		return nodeFS(err, "mkdir", path)
 	}
 	if stale <= 0 {
 		return ErrLocked
@@ -181,7 +195,10 @@ func mkdir(path string, stale time.Duration) error {
 		return mkdir(path, 0)
 	}
 	if err != nil {
-		return err
+		return nodeFS(err, "stat", path)
+	}
+	if info.Mode()&fs.ModeSymlink != 0 {
+		return mkdirOverLink(path, stale)
 	}
 	if info.Mode().IsRegular() && info.Size() == 0 {
 		if !info.ModTime().Before(time.Now().Add(-stale)) {
@@ -197,14 +214,28 @@ func mkdir(path string, stale time.Duration) error {
 		}
 		return replaceLegacy(path, observed, stale)
 	}
-	if !info.IsDir() {
-		return fmt.Errorf("lock path is neither a directory nor an empty legacy sidecar: %s", path)
+	return removeIfStale(path, info, stale)
+}
+
+// mkdirOverLink continues proper-lockfile 4.1.2 acquireLock for a lock path that is a link. Its fs.stat follows the link (lib/lockfile.js:56-65), a dangling link stats ENOENT, and only the target's mtime is judged (lib/lockfile.js:67-69). A link is never a PiG legacy sidecar.
+func mkdirOverLink(path string, stale time.Duration) error {
+	info, err := statLock(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return mkdir(path, 0)
 	}
+	if err != nil {
+		return nodeFS(err, "stat", path)
+	}
+	return removeIfStale(path, info, stale)
+}
+
+// removeIfStale finishes proper-lockfile 4.1.2 acquireLock once fs.stat has read the lock path as info, whatever its type: a fresh one is ELOCKED (lib/lockfile.js:67-69), and a stale one is removed with rmdir before mkdir is tried again (lib/lockfile.js:71-79,88-96). rmdir ignores only ENOENT. Windows removes a directory or a directory link; libuv reports rmdir of a file or a file link as ENOENT (src/win/fs.c fs__unlink_rmdir; RemoveDirectory's ERROR_DIRECTORY translates to ENOENT), so the repeated mkdir reports ELOCKED and the file stays. Unix rmdir(2) of a file or a link fails with ENOTDIR, which is returned.
+func removeIfStale(path string, info fs.FileInfo, stale time.Duration) error {
 	if !info.ModTime().Before(time.Now().Add(-stale)) {
 		return ErrLocked
 	}
-	if err := syscall.Rmdir(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return err
+	if err := syscall.Rmdir(path); err != nil && !errors.Is(err, fs.ErrNotExist) && nodeerrno.ErrorCode(err) != "ENOENT" {
+		return nodeFS(err, "rmdir", path)
 	}
 	return mkdir(path, 0)
 }
@@ -227,9 +258,9 @@ var osChtimes = os.Chtimes
 // probeMtimeCached is lib/mtime-precision.js probe on the shared async fs: once a probe has set the cache, it only stats the new lock directory and returns that mtime with the cached precision (lines 8-17). The first probe to finish keeps the cache.
 func probeMtimeCached(path string) (time.Time, mtimePrecision, error) {
 	if precision := mtimePrecision(cachedPrecision.Load()); precision != precisionUnknown {
-		info, err := os.Stat(path)
+		info, err := statLock(path)
 		if err != nil {
-			return time.Time{}, 0, err
+			return time.Time{}, 0, nodeFS(err, "stat", path)
 		}
 		return info.ModTime(), precision, nil
 	}
@@ -244,11 +275,11 @@ func probeMtimeCached(path string) (time.Time, mtimePrecision, error) {
 func probeMtime(path string) (time.Time, mtimePrecision, error) {
 	mtime := time.UnixMilli((time.Now().UnixMilli()+999)/1000*1000 + 5)
 	if err := osChtimes(path, mtime, mtime); err != nil {
-		return time.Time{}, 0, err
+		return time.Time{}, 0, nodeFS(err, "utime", path)
 	}
-	info, err := os.Stat(path)
+	info, err := statLock(path)
 	if err != nil {
-		return time.Time{}, 0, err
+		return time.Time{}, 0, nodeFS(err, "stat", path)
 	}
 	observed := info.ModTime()
 	if nodeDateMs(observed)%1000 == 0 {
@@ -265,7 +296,7 @@ func touch(path string, precision mtimePrecision) (time.Time, error) {
 	}
 	mtime := time.UnixMilli(now)
 	if err := osChtimes(path, mtime, mtime); err != nil {
-		return time.Time{}, err
+		return time.Time{}, nodeFS(err, "utime", path)
 	}
 	return mtime, nil
 }
@@ -282,7 +313,7 @@ func (l *Lock) check() error {
 	if l.err != nil {
 		return l.err
 	}
-	info, err := os.Stat(l.path)
+	info, err := statLock(l.path)
 	if err != nil {
 		l.err = &CompromisedError{Cause: err}
 	} else if !info.IsDir() || !sameMtime(info.ModTime(), l.mtime) {
@@ -293,6 +324,13 @@ func (l *Lock) check() error {
 		l.cancel(l.err)
 	}
 	return l.err
+}
+
+// Compromised reports that the lock has been removed or replaced, without the caller's cancellation. It is withLockAsync's throwIfCompromised, which Pi applies after a write (auth-storage.ts:168-172,189).
+func (l *Lock) Compromised() error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.check()
 }
 
 // Check refuses a write after cancellation or after the lock has been removed or replaced.
@@ -318,7 +356,7 @@ func (l *Lock) heartbeat(stale, update time.Duration) {
 		case <-timer.C:
 		}
 		l.mu.Lock()
-		info, err := os.Stat(l.path)
+		info, err := statLock(l.path)
 		if err == nil && (!info.IsDir() || !sameMtime(info.ModTime(), l.mtime)) {
 			l.err = &CompromisedError{}
 		} else {
@@ -358,7 +396,7 @@ func (l *Lock) heartbeat(stale, update time.Duration) {
 // Context cancels with the caller or when another process compromises the lock.
 func (l *Lock) Context() context.Context { return l.ctx }
 
-// Release joins the heartbeat before removing the owned directory. Repeated calls return the same result.
+// Release joins the heartbeat before removing the owned directory. Like proper-lockfile's release, its result is the removal's, whether or not the caller's context was cancelled. Repeated calls return the same result.
 func (l *Lock) Release() error {
 	l.once.Do(func() {
 		held.remove(l)
@@ -368,7 +406,7 @@ func (l *Lock) Release() error {
 		defer l.mu.Unlock()
 		l.releaseErr = l.check()
 		if l.releaseErr == nil {
-			l.releaseErr = errors.Join(context.Cause(l.ctx), syscall.Rmdir(l.path))
+			l.releaseErr = nodeFS(syscall.Rmdir(l.path), "rmdir", l.path)
 		}
 		l.cancel(context.Canceled)
 	})

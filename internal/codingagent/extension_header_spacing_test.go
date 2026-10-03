@@ -26,7 +26,7 @@ func TestExtensionHeaderKeepsHostSpacers(t *testing.T) {
 		after := newSpecialLinesComponent(nil)
 		after.SetLines([]string{"after-header"})
 		m.loadedResourcesContainer = tui.NewContainer(after)
-		m.mountInteractiveTui()
+		m.mountInteractiveTui(true)
 		ui := &ExtUIContext{m: m}
 		for _, lines := range [][]string{{"first"}, {"", "second", ""}, {}, {"last"}} {
 			ui.SetHeader(extension.WidthLines{Lines: lines, Width: 80})

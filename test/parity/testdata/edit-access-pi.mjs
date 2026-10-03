@@ -4,7 +4,7 @@ import { resolve, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const root = process.env.PI_PACKAGE_ROOT ?? resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, "0.87.1");
+assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, "1.0.0");
 const { createEditTool } = await import(pathToFileURL(join(root, "dist/core/tools/edit.js")));
 const controller = new AbortController();
 let read = false;

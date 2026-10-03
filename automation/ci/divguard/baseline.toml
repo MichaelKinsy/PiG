@@ -221,16 +221,9 @@ finding = "GUARD-02"
 
 [[hit]]
 check = "magic-literal"
-file = "ai/oauth_openrouter.go"
-func = "openRouterCallback.close"
-snippet = "shutCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)"
-finding = "GUARD-02"
-
-[[hit]]
-check = "magic-literal"
-file = "ai/oauth_radius.go"
-func = "RadiusOAuth.startCallbackServer"
-snippet = "callback.server = &http.Server{Handler: radiusCallbackHandler(expectedState, callback.finish), ReadHeaderTimeout: 10 * time.Second}"
+file = "ai/oauth_callback_server.go"
+func = "oauthCallbackHeaderTimeout"
+snippet = "const oauthCallbackHeaderTimeout = 10 * time.Second"
 finding = "GUARD-02"
 
 [[hit]]

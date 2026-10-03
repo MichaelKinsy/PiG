@@ -1,10 +1,10 @@
 # Behavior family: selectors
 # Surface: `pi config` / `pig config` with no resources
 #
-# Upstream evidence (pi v0.81.1, probed in tmux 100×35):
+# Upstream evidence (pi 0.99.2, re-probed 2026-10-01 in tmux 100×35):
 #   command: PI_CODING_AGENT_DIR=testdata/pi-agent pi config
 #   ready: "Global Resources"
-#   crop: start="Global Resources" end="No resources found"
+#   crop: start="Global Resources" end="[x] tool-search"
 #   raw cropped upstream block:
 #
 #     Global Resources                                          tab switch mode · space toggle · esc close
@@ -12,14 +12,22 @@
 #
 #     >
 #
-#       No resources found
+#       Built-in
+#         Extensions
+#     >     [x] codemode
+#           [x] llama.cpp
+#           [x] mcp
+#           [x] tool-search
 #
 # The top-level `pi config` command is the user-facing entry into the
 # `ConfigSelectorComponent`. Both binaries open the overlay, render the
-# 0.81 write-scope header line ("Global Resources … tab switch mode · space
-# toggle · esc close"), the global settings subtitle, an empty Input prompt
-# (`>`), and the empty-state message. The borders frame the overlay top and
-# bottom.
+# write-scope header line ("Global Resources … tab switch mode · space
+# toggle · esc close"), the global settings subtitle and an empty Input prompt
+# (`>`). An empty agent dir still lists the built-in extensions, which Pi
+# registers as resources with source "builtin" (config-selector.ts:88-89,
+# 138), so the "No resources found" state (config-selector.ts:406) needs a
+# resource-free list and is not reachable here. The borders frame the overlay
+# top and bottom.
 
 name = "01-config-empty"
 description = "Both binaries open the resource configuration overlay with an empty agent dir."
@@ -37,7 +45,7 @@ ready_pattern_pig = "Global Resources"
 ready_pattern_pi = "Global Resources"
 ready_timeout_seconds = 15
 capture_start = "Global Resources"
-capture_end = "No resources found"
+capture_end = "[x] tool-search"
 settle_seconds = 1
 cwd = "testdata/empty-project"
 
@@ -58,7 +66,12 @@ both_contain = [
   "toggle",
   "esc",
   "close",
-  "No resources found",
+  "Built-in",
+  "Extensions",
+  "[x] codemode",
+  "[x] llama.cpp",
+  "[x] mcp",
+  "[x] tool-search",
 ]
 output_normalized_equal = true
 runtime_ratio_max = 1.40
@@ -71,3 +84,8 @@ runs = 1
 pattern = '~/\.pig/agent/'
 with    = '~/.pi/agent/'
 reason = "D2: only the configuration-root product name differs in the selector subtitle."
+
+[[assert.normalize_replace]]
+pattern = '\n {6}\[x\] pig-login *'
+with    = ""
+reason = "D2: PiG's built-in pig-login extension (the /sprite command) is listed with the other built-in extensions; Pi has no such entry. Only that one row is removed; the others, their order and the selector chrome stay compared."

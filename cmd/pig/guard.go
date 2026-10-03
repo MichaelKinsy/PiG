@@ -6,12 +6,14 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 )
 
 // guardBinaryIdentity rejects Pi's binary name and reports suspect install paths.
 func guardBinaryIdentity() string {
 	argv0 := os.Args[0]
-	resolved, err := os.Executable()
+	resolved, err := linkerexec.Executable()
 	if err != nil {
 		resolved = argv0
 	}

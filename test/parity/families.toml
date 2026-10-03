@@ -18,11 +18,11 @@
 # declaring scope before producing scenarios prevents silent skipping.
 
 [families.experimental-client]
-description = "Experimental client, mini, and micro terminal presentations over replicated or remote Session state."
+description = "Experimental client and durable terminal presentations over replicated or remote Session state."
 includes = [
   "packages/coding-agent/src/experimental/client-tui.ts",
-  "packages/coding-agent/src/experimental/micro/tui.ts",
-  "packages/coding-agent/src/experimental/mini/tui/view.ts",
+  "packages/coding-agent/src/experimental/durable/tui.ts",
+  "packages/coding-agent/src/experimental/vacation/tui.ts",
 ]
 
 [families.experimental-pico3]
@@ -187,6 +187,7 @@ includes = [
   "packages/coding-agent/src/modes/interactive/components/armin.ts",
   "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
   "packages/coding-agent/src/modes/interactive/components/bash-execution.ts",
+  "packages/coding-agent/src/modes/interactive/components/visual-truncate.ts",
   "packages/coding-agent/src/modes/interactive/components/user-message.ts",
   "packages/coding-agent/src/modes/interactive/components/diff.ts",
   "packages/coding-agent/src/modes/interactive/components/bordered-loader.ts",
@@ -198,9 +199,11 @@ includes = [
   "packages/coding-agent/src/modes/interactive/components/user-message-selector.ts",
   "packages/coding-agent/src/modes/interactive/components/countdown-timer.ts",
   "packages/coding-agent/src/modes/interactive/components/daxnuts.ts",
+  "packages/coding-agent/src/modes/interactive/components/pi-logo-animation.ts",
   "packages/coding-agent/src/modes/interactive/components/dynamic-border.ts",
   "packages/coding-agent/src/modes/interactive/components/keybinding-hints.ts",
   "packages/coding-agent/src/modes/interactive/components/status-indicator.ts",
+  "packages/coding-agent/src/modes/interactive/components/themed-text.ts",
   "packages/coding-agent/src/utils/syntax-highlight.ts",
 ]
 
@@ -219,6 +222,7 @@ includes = [
   "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
   "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
   "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts",
+  "packages/coding-agent/src/modes/interactive/components/radius-login-selector.ts",
   "packages/coding-agent/src/modes/interactive/components/show-images-selector.ts",
   "packages/coding-agent/src/modes/interactive/components/theme-selector.ts",
   "packages/coding-agent/src/modes/interactive/components/thinking-selector.ts",
@@ -235,6 +239,10 @@ includes = [
   "packages/coding-agent/src/core/extensions/wrapper.ts",
   "packages/coding-agent/src/core/agent-session.ts",
   "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/extensions/codemode/",
+  "packages/coding-agent/src/extensions/mcp/",
+  "packages/coding-agent/src/extensions/tool-search/",
+  "packages/codemode/src/",
 ]
 
 [families.interactive-input]
@@ -293,6 +301,7 @@ includes = [
   "packages/ai/src/providers/openai-responses-shared.ts",
   "packages/ai/src/providers/openai-responses.ts",
   "packages/ai/src/providers/register-builtins.ts",
+  "packages/ai/src/api/llama-cpp-classify.ts",
 ]
 
 [families.oauth]
@@ -301,7 +310,7 @@ includes = [
   "packages/ai/src/oauth.ts",
   "packages/ai/src/auth/oauth/anthropic.ts",
   "packages/ai/src/auth/oauth/github-copilot.ts",
-  "packages/ai/src/auth/oauth/oauth-page.ts",
+  "packages/ai/src/utils/oauth-page.ts",
   "packages/ai/src/auth/oauth/openai-codex.ts",
   "packages/ai/src/auth/oauth/pkce.ts",
   "packages/ai/src/auth/types.ts",

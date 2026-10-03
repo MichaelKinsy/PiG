@@ -1,0 +1,36 @@
+# Upstream evidence: Pi 1.0.0 interactive-mode.ts:5747-5759 sets subscription from provider.auth.oauth.isSubscription for each stored credential, and oauth-selector.ts:27-33 labels an OAuth sign-in without a subscription "account". The Radius OAuth method sets no isSubscription; OpenAI's API key keeps "API key". The labels show because the list mixes auth types (oauth-selector.ts:92).
+# Probe (Pi 1.0.0, this fixture): /logout lists "OpenAI [API key] ✓ configured" and "Radius [account] ✓ configured". Pi 0.99.2 labeled Radius "[subscription]".
+# The fixture stores a synthetic OpenAI key and a far-future Radius OAuth credential; --offline prevents catalog and refresh requests.
+name = "29-logout-radius-account-label"
+description = "Logout labels a non-subscription OAuth sign-in as an account"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts", "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts"]
+tags = ["hermetic", "tui", "fixture-auth"]
+driver = "interactive-tmux"
+model = "openai/gpt-5.5"
+
+[tmux]
+width = 160
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Select provider to logout:"
+capture_end_regex = 'Radius[^\n]*configured'
+settle_seconds = 1
+cwd = "../selectors/testdata/login-empty-project"
+
+[[tmux.steps]]
+keys = ["/logout", "Enter"]
+wait_contains = ["Select provider to logout:", "OpenAI [API key] ✓ configured", "Radius ["]
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/logout-radius-account", "PI_CODING_AGENT_DIR=", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pi = ["PI_CODING_AGENT_DIR=testdata/logout-radius-account", "PIG_CODING_AGENT_DIR=", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pig_args = ["--offline", "--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--offline", "--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["Select provider to logout:", "OpenAI [API key] ✓ configured", "Radius [account] ✓ configured"]
+escaped_output_equal = true
+runs = 3

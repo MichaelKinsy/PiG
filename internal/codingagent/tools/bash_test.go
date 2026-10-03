@@ -92,9 +92,9 @@ func TestBashStreamsLiveOutput(t *testing.T) {
 		mu      sync.Mutex
 		updates []string
 	)
-	onUpdate := func(content string, _ any) {
+	onUpdate := func(partial agent.AgentToolResult) {
 		mu.Lock()
-		updates = append(updates, content)
+		updates = append(updates, partial.Text())
 		mu.Unlock()
 	}
 
@@ -138,10 +138,10 @@ func TestBashFirstUpdateFiresImmediately(t *testing.T) {
 		firstAt     time.Time
 		updateCount int
 	)
-	onUpdate := func(content string, _ any) {
+	onUpdate := func(partial agent.AgentToolResult) {
 		mu.Lock()
 		updateCount++
-		if firstAt.IsZero() && content != "" {
+		if firstAt.IsZero() && partial.Text() != "" {
 			firstAt = time.Now()
 		}
 		mu.Unlock()
@@ -197,7 +197,7 @@ func TestBashNoDeadlockWithSlowConsumer(t *testing.T) {
 	// Simulate a slow consumer: each callback takes 200ms.
 	// With 64-slot channel + synchronous emit, this would deadlock
 	// the old code because the read goroutine would block on emit.
-	onUpdate := func(content string, _ any) {
+	onUpdate := func(agent.AgentToolResult) {
 		time.Sleep(200 * time.Millisecond)
 		mu.Lock()
 		updates++
@@ -424,8 +424,8 @@ func TestBashAbortReturnsBufferedOutput(t *testing.T) {
 	started := make(chan struct{})
 	var startedOnce sync.Once
 	go func() {
-		res, _ := bt.Execute(ctx, "", args, func(content string, _ any) {
-			if strings.Contains(content, "started") {
+		res, _ := bt.Execute(ctx, "", args, func(partial agent.AgentToolResult) {
+			if strings.Contains(partial.Text(), "started") {
 				startedOnce.Do(func() { close(started) })
 			}
 		})

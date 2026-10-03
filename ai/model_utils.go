@@ -18,9 +18,12 @@ func (m *Model) CostRates() ModelCost {
 	}
 }
 
-// CalculateCost fills usage.Cost from the model's prices and returns it.
-// Mirrors upstream models.ts:calculateCost.
-func CalculateCost(m *Model, usage *Usage) UsageCost {
+// CalculateCost fills usage.Cost from the prices of a chat, image or classifier model and returns it.
+// A nil model has no price. Mirrors upstream models.ts:calculateCost(model: AnyModel, usage).
+func CalculateCost(m AnyModel, usage *Usage) UsageCost {
+	if m == nil {
+		return calculateUsageCost(ModelCost{}, usage)
+	}
 	return calculateUsageCost(m.CostRates(), usage)
 }
 
@@ -125,9 +128,23 @@ func ClampThinkingLevel(m *Model, level ThinkingLevel) ThinkingLevel {
 
 // ModelsAreEqual compares model IDs and declared provider IDs independently of backend construction. Native models without provider metadata use their backend's provider ID.
 // Mirrors upstream models.ts:modelsAreEqual.
-func ModelsAreEqual(a, b *Model) bool {
-	if a == nil || b == nil {
+func ModelsAreEqual(a, b AnyModel) bool {
+	if isNilModel(a) || isNilModel(b) {
 		return false
 	}
-	return a.ID == b.ID && modelProviderID(a) == modelProviderID(b)
+	return GetModelType(a) == GetModelType(b) && a.ModelID() == b.ModelID() && a.ProviderID() == b.ProviderID()
+}
+
+func isNilModel(model AnyModel) bool {
+	switch typed := model.(type) {
+	case nil:
+		return true
+	case *Model:
+		return typed == nil
+	case *ImageModel:
+		return typed == nil
+	case *ClassifierModel:
+		return typed == nil
+	}
+	return false
 }

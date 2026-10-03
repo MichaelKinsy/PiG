@@ -65,7 +65,7 @@ func newTickRenderProbe(t testing.TB, mode string) (*InteractiveMode, *terminalR
 	m.widgetContainer = tui.NewContainer()
 	m.agent = agent.NewAgent(agent.AgentOptions{})
 	m.keybindings = NewKeybindingsManager(t.TempDir())
-	m.mountInteractiveTui()
+	m.mountInteractiveTui(true)
 	m.installRenderDispatcher()
 	return m, term
 }

@@ -1,4 +1,5 @@
 # Upstream evidence: Pi 0.87.1 oauth-selector.ts:103-108 includes method.name in fuzzy search.
+# Pi 1.0.0 oauth-selector.ts:37 labels options without credentials " • not configured" (re-probed against Pi 1.0.0: "→ OpenAI • not configured", same 19 matches).
 # The W3 B2 oracle captured 19 matches for 'open' in the 41-provider API-key catalog; the complete first page and counter remain compared.
 name = "17-login-method-search"
 description = "Provider search includes authentication method metadata"
@@ -31,6 +32,6 @@ pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
 pi_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
 [assert]
 both_reach_ready = true
-both_contain = ["> open", "OpenAI", "OpenRouter", "(1/19)"]
+both_contain = ["> open", "OpenAI • not configured", "OpenRouter • not configured", "(1/19)"]
 escaped_output_equal = true
 runs = 3

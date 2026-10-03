@@ -16,6 +16,7 @@ import (
 
 // The same runtime must cross source loading and Runner.BindCore, not merely reproduce queue results in a test-only registry. None of these registrations makes a provider request or resolves credentials.
 func TestHostProviderQueueBindsToRunnerRegistry(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name            string
 		api             ai.API

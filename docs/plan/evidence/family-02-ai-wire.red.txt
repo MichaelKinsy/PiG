@@ -1,0 +1,91 @@
+# Family 2 red run: go test ./ai/ -count=1 (TMPDIR=/private/tmp/pt GOFLAGS=-buildvcs=false)
+# Only the failures below; every other test in ./ai passes. go vet ./... is clean.
+--- FAIL: TestIsRetryableAssistantErrorClassification
+    --- FAIL: TestIsRetryableAssistantErrorClassification/retries_temporary_ChatGPT_subscription_errors/usage_unavailable
+    --- FAIL: TestIsRetryableAssistantErrorClassification/retries_temporary_ChatGPT_subscription_errors/user_unavailable
+--- FAIL: TestAnthropicStreamPricesCacheWrite1hReportedOnlyInMessageDelta
+--- FAIL: TestMistralIgnoresEmptyContentDeltasUpstream
+--- FAIL: TestMistralReasoningModeUpstream
+    --- FAIL: TestMistralReasoningModeUpstream/zai-glm-5-3_sends_reasoning_effort_low
+    --- FAIL: TestMistralReasoningModeUpstream/zai-glm-5-3_sends_reasoning_effort_high
+    --- FAIL: TestMistralReasoningModeUpstream/zai-glm-5-3_sends_reasoning_effort_max
+    --- FAIL: TestMistralReasoningModeUpstream/zai-glm-5-3_maps_medium_to_high
+    --- FAIL: TestMistralReasoningModeUpstream/mistral-small-2603_sends_reasoning_effort_none_when_thinking_is_off
+    --- FAIL: TestMistralReasoningModeUpstream/mistral-medium-latest_sends_reasoning_effort_none_when_thinking_is_off
+    --- FAIL: TestMistralReasoningModeUpstream/zai-glm-5-2_sends_reasoning_effort_none_when_thinking_is_off
+--- FAIL: TestCodexSSEAndPayloadUpstream
+    --- FAIL: TestCodexSSEAndPayloadUpstream/streams_SSE_responses_and_forwards_raw_provider_events
+--- FAIL: TestCodexWebSocketUpstream
+    --- FAIL: TestCodexWebSocketUpstream/forwards_auto_transport_and_raw_provider_events_from_streamSimple
+--- FAIL: TestCodexProviderStreamEventCallbackFailureSkipsTransportRecovery
+--- FAIL: TestOpenAIResponsesChatGPTSignInUpstream
+    --- FAIL: TestOpenAIResponsesChatGPTSignInUpstream/omits_request_fields_that_token_sharing_rejects
+    --- FAIL: TestOpenAIResponsesChatGPTSignInUpstream/omits_prompt_cache_options_on_models_with_explicit_prompt_cache_mode
+--- FAIL: TestOpenAIResponsesChatGPTUsageLimitUpstream
+    --- FAIL: TestOpenAIResponsesChatGPTUsageLimitUpstream/links_to_ChatGPT_usage_when_the_request_is_rejected
+    --- FAIL: TestOpenAIResponsesChatGPTUsageLimitUpstream/links_to_ChatGPT_usage_when_the_stream_fails
+--- FAIL: TestOpenAIResponsesCompatDefaultsUpstream
+    --- FAIL: TestOpenAIResponsesCompatDefaultsUpstream/applies_gpt-6-luna_cost_multiplier_for_requested_priority_and_returned_fast_service_tier
+    --- FAIL: TestOpenAIResponsesCompatDefaultsUpstream/applies_gpt-6-luna_cost_multiplier_for_requested_fast_and_returned_fast_service_tier
+--- FAIL: TestOpenAIResponsesTerminalEventUpstream
+    --- FAIL: TestOpenAIResponsesTerminalEventUpstream/rejects_completed_streams_whose_tool_call_never_received_output_item.done
+    --- FAIL: TestOpenAIResponsesTerminalEventUpstream/rejects_parallel_tool_calls_without_output_index_instead_of_running_mixed-up_calls
+--- FAIL: TestProviderStreamEventsUpstream
+    --- FAIL: TestProviderStreamEventsUpstream/openai-completions_exposes_provider_chunks_including_OpenRouter_metadata
+    --- FAIL: TestProviderStreamEventsUpstream/openai-responses_forwards_parsed_provider_stream_events_in_order
+    --- FAIL: TestProviderStreamEventsUpstream/azure-openai-responses_forwards_parsed_events_in_order_before_normalizing_the_response
+    --- FAIL: TestProviderStreamEventsUpstream/anthropic_forwards_parsed_provider_stream_events_in_order
+    --- FAIL: TestProviderStreamEventsUpstream/google_forwards_each_SDK_chunk_in_order_before_normalizing_it_for_Google_Generative_AI
+    --- FAIL: TestProviderStreamEventsUpstream/google_forwards_each_SDK_chunk_in_order_before_normalizing_it_for_Google_Vertex
+    --- FAIL: TestProviderStreamEventsUpstream/mistral_forwards_each_parsed_SSE_payload_before_normalizing_it
+    --- FAIL: TestProviderStreamEventsUpstream/pi-messages_forwards_parsed_wire_events_in_order_before_converting_them
+--- FAIL: TestBedrockProviderStreamEventsUpstream
+    --- FAIL: TestBedrockProviderStreamEventsUpstream/forwards_SDK_stream_items_in_order_before_normalizing_them
+    --- FAIL: TestBedrockProviderStreamEventsUpstream/forwards_SDK_error_items_before_reporting_them
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/ai	93.714s
+FAIL
+
+# Cases that pass in red (Go already satisfies the upstream behavior): sampling-options 0.99.1 cases (TestSamplingOptionsUpstream, ...ModelDefaultsOnDirectStreamUpstream, ...PassThroughStreamSimpleUpstream); openai-responses sign-in 'keeps those fields' rows; openai-responses-compat priority/flex rows; cache-retention sk- key rows.
+
+# Review rev-port-f2-red (after the review fixes): go test ./ai/ -count=1 on Linux (Go 1.27.1)
+# Same failing set as above. The run above omits one failure that is reported on the parent test, not a subtest:
+#   assistant_retry_test.go:68: the ChatGPT subscription usage limit must stay non-retryable (retry.test.ts:88).
+#   Red reason: "429" matches the retryable pattern and subscription_sharing_usage_limit_exceeded is not yet non-retryable (retry.ts:27).
+# Each failure comes from missing behavior: no adapter calls OnProviderStreamEvent; no ChatGPT sign-in detection or usage URL;
+# no unfinished-tool-call check; no "fast" tier pricing; 1h cache writes from message_delta priced at the 5m rate; Mistral
+# empty deltas open blocks; Mistral has no GLM-5.3 effort mapping and no reasoning_effort "none"; missing retry patterns.
+# Harness check: the stream event harnesses (Responses via Fetch at api.openai.com, Bedrock with the catalog model, Azure with
+# the catalog model, Mistral with the createSseResponse body) produce the upstream result without the observer.
+
+# Cases that pass on the red tree, with the reason
+# - sampling-options.test.ts:69,:79,:87 (3 APIs),:99,:112,:121: Go never had #9506; directAPIProvider hands
+#   model.SamplingParams to the completions, responses and Azure configs (ai/direct_simple.go:93-97). Mutation: removing it
+#   from the completions and Azure constructors fails the :87 rows for those APIs.
+# - openai-responses-chatgpt-sign-in.test.ts:63 (both rows): sk- keys and non-OpenAI base URLs keep today's payload.
+# - openai-responses-compat.test.ts:480 priority/flex rows and every sk-test-key input: unchanged 0.87.1 behavior.
+# - cache-retention.test.ts sk-fake-key rows: the Responses cache fields do not change for OpenAI API keys.
+# - mistral-reasoning-mode.test.ts:74,:81,:92,:99,:114,:136,:143,:151: Go already reads the thinking level map for the
+#   effort models and falls back to "high" (ai/mistral.go:312-317).
+# - Fixture moves ported in review (tool-choice :1315,:1369,:1428,:1450,:1521; prompt-cache :174; empty-signature
+#   :108,:127; sse-parsing :271; adaptive-thinking-models :11; providers :195; Together Kimi-K3 rows in tokens,
+#   total-tokens, unicode-surrogate, tool-call-without-result, cross-provider-handoff): the models already exist in the
+#   catalog and the behavior did not change.
+
+# Changed upstream cases not ported in family 2, with the reason
+# - stream.test.ts:759-782 (Together describe, six generated cases): inputs come from
+#   test/parity/testdata/extract-stream-cases.mjs, which evaluates the 0.87.1 test file with the installed 0.87.1 pi-ai
+#   getModel. They move with the pin move (plan Phase 5: upstream-mirror, extensions/sdk-ts package).
+# - abort.test.ts:181 (Together: abort mid-stream, immediate abort), context-overflow.test.ts:341 (renamed
+#   "Kimi-K3 - should detect overflow via isContextOverflow"), empty.test.ts:370 (Together: four cases),
+#   image-tool-result.test.ts:301 (Together: two cases): the Go spec tables index
+#   test/parity/interfaces/upstream-tests-v0.87.1.json by position (upstreamCaseSites). They move with
+#   test-inventory-generate at the pin move.
+# - supports-xhigh.test.ts (Claude Sonnet 5.5, GPT-6.1 Sol, removed OpenCode Go Kimi K2.6 case) and
+#   max-thinking.test.ts:70 (gpt-6.1-sol): the models are not in the catalog; family 1 open issue 1.
+# - Copilot Opus 5.5 thinking levels and OpenCode qwen3.8-flash signature replay: no upstream test changed
+#   (github-copilot-anthropic.test.ts and qwen-token-plan-models.test.ts are identical); the change is catalog data from
+#   generate-models.ts, family 1 open issue 2.
+# - providers.test.ts:79, classifier-models, cloudflare-workers-ai-system-one, typesafe-system-one, llama-cpp-classify,
+#   oauth-callback-server, openai-chatgpt-oauth and the changed OAuth tests: family 3.
+# - fetch-option, provider-error-body-passthrough, telemetry-options, models-runtime, images*, model-types: family 1.

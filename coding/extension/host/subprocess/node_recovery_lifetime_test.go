@@ -36,6 +36,7 @@ func TestNodeShutdownCancelsInitialAdmission(t *testing.T) {
 }
 
 func TestNodeRecoveryShutdownCancelsBlockedFactory(t *testing.T) {
+	t.Parallel()
 	h, configs, _ := nodeRecoveryFixture(t, 2)
 	marker := filepath.Join(t.TempDir(), "restarted")
 	source := `import {writeFileSync} from "node:fs";
@@ -89,6 +90,7 @@ func TestNodeStaleRecoveryDoesNotReplaceReloadedGeneration(t *testing.T) {
 }
 
 func TestNodeRecoveryKeepsOriginalOwnerCancellation(t *testing.T) {
+	t.Parallel()
 	// A connection's owner can end without Host.Shutdown, e.g. a mode replacement.
 	nodeCellRequireNode(t)
 	ctx, cancel := context.WithCancel(t.Context())

@@ -1,4 +1,4 @@
-// D82 W5 tick oracle for pi-messages (Pi 0.87.1, packages/ai/src/api/pi-messages.ts).
+// D82 W5 tick oracle for pi-messages (Pi 1.0.0, packages/ai/src/api/pi-messages.ts).
 //
 // Runs Pi's real stream() with options.fetch returning a Response over a scripted ReadableStream, so every read, await and yield
 // is a microtask with no I/O in between. A self-rescheduling microtask counts ticks from the first body read. Every mark is the
@@ -17,7 +17,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 
 const root = process.env.PI_PACKAGE_ROOT;
 const scope = root + '/node_modules/@earendil-works/';
-assert.equal(JSON.parse(await readFile(scope + 'pi-ai/package.json', 'utf8')).version, '0.87.1');
+assert.equal(JSON.parse(await readFile(scope + 'pi-ai/package.json', 'utf8')).version, '1.0.0');
 const { stream: piMessagesStream } = await import(scope + 'pi-ai/dist/api/pi-messages.js');
 const { AssistantMessageEventStream } = await import(scope + 'pi-ai/dist/utils/event-stream.js');
 
@@ -111,4 +111,4 @@ async function run(name, { chunks, end }) {
 
 const out = [];
 for (const [name, scenario] of Object.entries(scenarios)) out.push(await run(name, scenario));
-await writeFile(process.argv[2], JSON.stringify({ piVersion: '0.87.1', node: process.version, scenarios: out }, null, 2) + '\n');
+await writeFile(process.argv[2], JSON.stringify({ piVersion: '1.0.0', node: process.version, scenarios: out }, null, 2) + '\n');

@@ -23,8 +23,8 @@ import (
 )
 
 // The pi-messages row of the D82 multi-provider oracle. coding/testdata/rpc33-observation/providers/pi-messages/pi.json is the raw
-// output of Pi 0.87.1's real `pi --mode rpc` binary (probe.mjs in that directory). This test serves the same wire bytes to the real
-// cmd/pig binary and requires the first assistant turn's RPC records to equal Pi's.
+// output of the real `pi --mode rpc` binary of the Pi release its piVersion field names (probe.mjs in that directory). This test
+// serves the same wire bytes to the real cmd/pig binary and requires the first assistant turn's RPC records to equal Pi's.
 
 const piMessagesOracleDir = "coding/testdata/rpc33-observation/providers/pi-messages"
 
@@ -52,8 +52,19 @@ func loadPiMessagesOracle(t *testing.T) piMessagesOracle {
 }
 
 // servePiMessages answers POST /messages the way probe.mjs's serve() does: odd requests get the fixture, even requests the follow-up reply.
-func servePiMessages(t *testing.T, body, reply, delivery string) string {
+//
+// The fixture's writes are paced by the client, not only by the clock. Pi's recorded message_update.usage depends on how many SSE
+// records one body read delivers: when a record and the terminal record that sets the usage share a read, the earlier record's update
+// already carries the final usage (the `tail` rows). The 25ms gap between writes is what keeps a write from joining its predecessor
+// in one read; a stalled client process (a loaded machine) lets two writes pile up and turns a `chunked` run into a different,
+// equally faithful delivery. After each write the server therefore also waits until the client has recorded one RPC record for every
+// SSE record the writes so far completed. recorded receives one token per record runPiMessagesRPC reports. Every fixture record
+// yields exactly one RPC record (agent-loop.ts emits message_start on `start`, one message_update per content event and
+// message_end on the terminal or failing record), so a PiG run that drops a record stalls here until testbudget's hang bound
+// ends the run and reports its partial transcript.
+func servePiMessages(t *testing.T, body, reply, delivery string) (baseURL string, recorded chan struct{}) {
 	t.Helper()
+	recorded = make(chan struct{}, 1024)
 	var count atomic.Int64
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -61,9 +72,9 @@ func servePiMessages(t *testing.T, body, reply, delivery string) string {
 	}
 	server := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.Copy(io.Discard, r.Body)
-		payload := body
+		payload, paced := body, true
 		if count.Add(1)%2 == 0 {
-			payload = reply
+			payload, paced = reply, false
 		}
 		w.Header().Set("Content-Type", "text/event-stream")
 		if delivery == "buffered" {
@@ -87,9 +98,20 @@ func servePiMessages(t *testing.T, body, reply, delivery string) string {
 		if delivery == "tail" {
 			gap = 150 * time.Millisecond
 		}
+		var written strings.Builder
+		var awaited int
 		for _, piece := range piMessagesPieces(payload, delivery) {
 			_, _ = io.WriteString(w, piece)
 			flusher.Flush()
+			written.WriteString(piece)
+			completed := strings.Count(written.String(), "\n\n")
+			for ; paced && awaited < completed; awaited++ {
+				select {
+				case <-recorded:
+				case <-r.Context().Done():
+					return
+				}
+			}
 			select {
 			case <-time.After(gap):
 			case <-r.Context().Done():
@@ -99,7 +121,7 @@ func servePiMessages(t *testing.T, body, reply, delivery string) string {
 	})}
 	go func() { _ = server.Serve(listener) }()
 	t.Cleanup(func() { _ = server.Close() })
-	return "http://" + listener.Addr().String()
+	return "http://" + listener.Addr().String(), recorded
 }
 
 // piMessagesPieces splits a body into the writes of probe.mjs's chunked (one SSE record per write), split (40-byte pieces) and tail
@@ -163,8 +185,8 @@ func withoutTimestamps(value any) any {
 
 // runPiMessagesRPC runs one pig RPC session in dir against baseURL and returns the first assistant turn's records in probe.mjs's
 // runRPC() shape: message_start/message_end carry the message, message_update its cumulative usage and assistantMessageEvent
-// (toJsonEvent drops the message).
-func runPiMessagesRPC(ctx context.Context, bin, dir, baseURL string) ([]string, error) {
+// (toJsonEvent drops the message). Each record it collects is announced on recorded, which servePiMessages paces its writes by.
+func runPiMessagesRPC(ctx context.Context, bin, dir, baseURL string, recorded chan<- struct{}) ([]string, error) {
 	agent := filepath.Join(dir, "agent")
 	if err := os.MkdirAll(agent, 0o700); err != nil {
 		return nil, err
@@ -227,6 +249,7 @@ func runPiMessagesRPC(ctx context.Context, bin, dir, baseURL string) ([]string, 
 			return nil, err
 		}
 		records = append(records, string(encoded))
+		recorded <- struct{}{}
 		if kind == "message_end" {
 			return records, nil
 		}
@@ -243,6 +266,7 @@ func TestRPCPiMessagesMatchesPi(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds and runs the pig binary")
 	}
+	t.Parallel()
 	runs := 3
 	if value := os.Getenv("PIG_D82_RUNS"); value != "" {
 		parsed, err := strconv.Atoi(value)
@@ -281,7 +305,8 @@ func TestRPCPiMessagesMatchesPi(t *testing.T) {
 				sem <- struct{}{}
 				group.Go(func() {
 					defer func() { <-sem }()
-					got, err := runPiMessagesRPC(ctx, bin, dirs[run], servePiMessages(t, oracle.Bodies[c.Fixture], oracle.Reply, c.Delivery))
+					baseURL, recorded := servePiMessages(t, oracle.Bodies[c.Fixture], oracle.Reply, c.Delivery)
+					got, err := runPiMessagesRPC(ctx, bin, dirs[run], baseURL, recorded)
 					if err == nil && strings.Join(got, "\n") == strings.Join(want, "\n") {
 						return
 					}

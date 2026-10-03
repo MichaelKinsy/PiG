@@ -137,9 +137,9 @@ func (a *rpcAdmission) input(text string, images []ai.ImageContent, behavior str
 	return wrapped
 }
 func (a *rpcAdmission) queue(id rpcRequestID, command, text string, images []ai.ImageContent) {
-	queued := &rpcPromise[struct{}]{turn: a.turn}
+	queued := &rpcPromise[coding.QueuedInputDisposition]{turn: a.turn}
 	if name, _, ok := a.catalog.extensionCommand(text); ok {
-		queued.resolve(struct{}{}, fmt.Errorf("Extension command %q cannot be queued. Use prompt() or execute the command when not streaming.", "/"+strings.TrimPrefix(name, "/")))
+		queued.resolve("", fmt.Errorf("Extension command %q cannot be queued. Use prompt() or execute the command when not streaming.", "/"+strings.TrimPrefix(name, "/")))
 	} else {
 		behavior := "steer"
 		if command == "follow_up" {
@@ -149,8 +149,13 @@ func (a *rpcAdmission) queue(id rpcRequestID, command, text string, images []ai.
 			if a.ctx.Err() != nil {
 				return
 			}
-			if err != nil || input.handled {
-				queued.resolve(struct{}{}, err)
+			if err != nil {
+				queued.resolve("", err)
+				return
+			}
+			// A handler that consumed the input reports "handled", even when it queued another message on its own (agent-session.ts:2076-2078).
+			if input.handled {
+				queued.resolve(coding.DispositionHandled, nil)
 				return
 			}
 			if command == "steer" {
@@ -160,17 +165,17 @@ func (a *rpcAdmission) queue(id rpcRequestID, command, text string, images []ai.
 			}
 			err = a.session.FlushEvents(a.ctx)
 			// _queueUserInput awaits the resolved _queueSteer/_queueFollowUp call.
-			rpcResolved(a.turn, struct{}{}, err).then(queued.resolve)
+			rpcResolved(a.turn, coding.DispositionQueued, err).then(queued.resolve)
 		})
 	}
 	// steer/followUp await _queueUserInput; handleCommand then awaits that wrapper.
-	wrapped := &rpcPromise[struct{}]{turn: a.turn}
+	wrapped := &rpcPromise[coding.QueuedInputDisposition]{turn: a.turn}
 	queued.then(wrapped.resolve)
-	wrapped.then(func(_ struct{}, err error) {
+	wrapped.then(func(disposition coding.QueuedInputDisposition, err error) {
 		if err != nil {
 			a.turn.complete(rpcError(id, command, err.Error()))
 		} else {
-			a.turn.complete(rpcSuccess(id, command, nil))
+			a.turn.complete(rpcDispositionSuccess(id, command, disposition))
 		}
 	})
 }
@@ -193,7 +198,7 @@ func (a *rpcAdmission) command(id rpcRequestID, name, args string) {
 				}
 				defer a.commands.end()
 			}
-			a.write(rpcSuccess(id, "prompt", nil))
+			a.write(rpcDispositionSuccess(id, "prompt", coding.DispositionHandled))
 		})
 	})
 }
@@ -222,7 +227,7 @@ func (a *rpcAdmission) promptInput(id rpcRequestID, cmd RPCPromptCommand) {
 			return
 		}
 		if input.handled {
-			a.write(rpcSuccess(id, "prompt", nil))
+			a.write(rpcDispositionSuccess(id, "prompt", coding.DispositionHandled))
 			return
 		}
 		text := a.catalog.expandPrompt(input.text)
@@ -240,7 +245,7 @@ func (a *rpcAdmission) promptInput(id rpcRequestID, cmd RPCPromptCommand) {
 				fail(err)
 				return
 			}
-			a.turn.after(func() { a.write(rpcSuccess(id, "prompt", nil)) })
+			a.turn.after(func() { a.write(rpcDispositionSuccess(id, "prompt", coding.DispositionQueued)) })
 			return
 		}
 		if err := a.validateModel(); err != nil {
@@ -290,7 +295,7 @@ func (a *rpcAdmission) beforeAgentStart(id rpcRequestID, content []ai.UserConten
 				fail(err)
 				return
 			}
-			a.write(rpcSuccess(id, "prompt", nil))
+			a.write(rpcDispositionSuccess(id, "prompt", coding.DispositionStarted))
 			run, err := a.session.BeginPreparedPrompt(a.ctx, prepared)
 			if err != nil {
 				return

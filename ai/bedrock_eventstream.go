@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
@@ -10,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime/document"
 	btypes "github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
 	"github.com/aws/smithy-go"
 
@@ -294,9 +296,11 @@ type bedrockStreamDelta struct {
 }
 
 type bedrockStreamEventBody struct {
-	Role              string `json:"role"`
-	ContentBlockIndex *int32 `json:"contentBlockIndex"`
-	Start             *struct {
+	// AdditionalModelResponseFields is the messageStop member the SDK reads as a document.
+	AdditionalModelResponseFields any    `json:"additionalModelResponseFields"`
+	Role                          string `json:"role"`
+	ContentBlockIndex             *int32 `json:"contentBlockIndex"`
+	Start                         *struct {
 		ToolUse *struct {
 			ToolUseID *string `json:"toolUseId"`
 			Name      *string `json:"name"`
@@ -331,6 +335,9 @@ func bedrockStreamEvent(eventType string, body []byte) (bedrockStreamItem, error
 		}
 	}
 	switch eventType {
+	case "internalServerException", "modelStreamErrorException", "validationException", "throttlingException", "serviceUnavailableException":
+		// Pi's union models the exception members, so an event frame carrying one is yielded as `{ <member>: exception }` (bedrock-converse-stream.ts:318-327). The Go union does not model them; the SDK reader yields *types.UnknownUnionMember for such a frame, and so does this decoder.
+		return bedrockStreamItem{event: &btypes.UnknownUnionMember{Tag: eventType, Value: bytes.Clone(body)}}, nil
 	case "messageStart":
 		return bedrockStreamItem{event: &btypes.ConverseStreamOutputMemberMessageStart{Value: btypes.MessageStartEvent{Role: btypes.ConversationRole(fields.Role)}}}, nil
 	case "contentBlockStart":
@@ -368,7 +375,11 @@ func bedrockStreamEvent(eventType string, body []byte) (bedrockStreamItem, error
 	case "contentBlockStop":
 		return bedrockStreamItem{event: &btypes.ConverseStreamOutputMemberContentBlockStop{Value: btypes.ContentBlockStopEvent{ContentBlockIndex: fields.ContentBlockIndex}}}, nil
 	case "messageStop":
-		return bedrockStreamItem{event: &btypes.ConverseStreamOutputMemberMessageStop{Value: btypes.MessageStopEvent{StopReason: btypes.StopReason(fields.StopReason)}}}, nil
+		stop := btypes.MessageStopEvent{StopReason: btypes.StopReason(fields.StopReason)}
+		if fields.AdditionalModelResponseFields != nil {
+			stop.AdditionalModelResponseFields = document.NewLazyDocument(fields.AdditionalModelResponseFields)
+		}
+		return bedrockStreamItem{event: &btypes.ConverseStreamOutputMemberMessageStop{Value: stop}}, nil
 	case "metadata":
 		event := btypes.ConverseStreamMetadataEvent{}
 		if usage := fields.Usage; usage != nil {

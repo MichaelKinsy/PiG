@@ -1,6 +1,7 @@
 package codingagent
 
 import (
+	"bytes"
 	"encoding/json"
 	"strconv"
 	"strings"
@@ -56,7 +57,13 @@ func ToolResultEventOverride(result *extension.ToolResultEventResult) agent.Afte
 			}
 		}
 	}
-	return agent.AfterToolCallResult{Content: content, Details: result.Details, IsError: result.IsError, Usage: toolResultUsage(result.Usage)}
+	// upstream: agent-session.ts:672-678 returns the chained structuredContent with the content; the runner drops it when a handler replaced the content alone (runner.ts:1187).
+	details := result.Details
+	if raw, ok := details.(json.RawMessage); ok && bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+		// upstream: agent-loop.ts:884 `afterResult.details ?? result.details`: null details keep the tool's own.
+		details = nil
+	}
+	return agent.AfterToolCallResult{Content: content, Details: details, StructuredContent: result.StructuredContent, IsError: result.IsError, Usage: toolResultUsage(result.Usage)}
 }
 
 // toolResultUsage decodes a handler's usage override; nil keeps the tool's own.

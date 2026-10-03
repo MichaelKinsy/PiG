@@ -10,8 +10,10 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// packages/coding-agent/test/suite/regressions/5943-session-start-notify.test.ts:256.
+// .upstream/v1.0.0/packages/coding-agent/test/suite/regressions/5943-session-start-notify.test.ts:220.
 // Pi showLoadedResources clears only the resource container, which precedes chat in the root.
+// Pi 1.0.0's fake stubs shouldShowStartupDetails to true (test :212); Verbose makes it true here
+// (.upstream/v1.0.0/packages/coding-agent/src/modes/interactive/interactive-mode.ts:1415).
 func TestSessionStartNotifyOriginalLoadedResources(t *testing.T) {
 	mode := &InteractiveMode{
 		opts: InteractiveOptions{CWD: "/repo", Verbose: true, NoThemes: true,
@@ -40,7 +42,7 @@ func TestSessionStartNotifyOriginalLoadedResources(t *testing.T) {
 		t.Fatalf("resource/chat observations = %v\nchat: %q\nroot: %q", observations, chat, rendered)
 	}
 	if os.Getenv("PIG_RUNTIME_ORIGINAL_PROBE") != "" {
-		data, err := json.Marshal([]any{"notify", 256, observations})
+		data, err := json.Marshal([]any{"notify", 220, observations})
 		if err != nil {
 			t.Fatal(err)
 		}

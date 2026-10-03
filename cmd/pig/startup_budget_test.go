@@ -226,6 +226,7 @@ func TestWarmStandardStartupWorkBudgetWithHeldSDKLock(t *testing.T) {
 // is not staged yet), the startup trace names the wait instead of leaving a
 // silent gap.
 func TestStartupTraceNamesSDKLockWait(t *testing.T) {
+	t.Parallel()
 	binary := buildPigBinaryForSignalTest(t)
 	home := t.TempDir()
 	agentDir := filepath.Join(home, "agent")

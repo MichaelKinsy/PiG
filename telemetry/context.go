@@ -5,7 +5,7 @@ package telemetry
 // AttributeValue is a string, number, boolean, or slice of those values.
 type AttributeValue = any
 
-// SpanAttributes carries named telemetry values.
+// SpanAttributes carries named telemetry values. A nil value is upstream's undefined: recorders omit it.
 type SpanAttributes map[string]AttributeValue
 
 // SpanOptions supplies a span's name and initial attributes.

@@ -12,6 +12,7 @@ import (
 
 // Pi rpc-mode.ts returns executeBash/recordBashResult persistence failures as failed Bash responses, including user_bash result overrides.
 func TestRPCBashPersistenceFailureRejectsResponse(t *testing.T) {
+	t.Parallel()
 	for _, override := range []bool{false, true} {
 		t.Run(fmt.Sprint(override), func(t *testing.T) {
 			dir := t.TempDir()

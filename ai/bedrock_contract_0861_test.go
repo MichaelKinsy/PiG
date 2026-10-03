@@ -112,3 +112,43 @@ func TestBedrockStreamWithoutStopReasonTerminatesWithError(t *testing.T) {
 		t.Fatalf("terminal event = %s", got[len(got)-1].EventType())
 	}
 }
+
+// The SDK reader yields an event frame whose :event-type the Go union does not model as *types.UnknownUnionMember. Pi's union models the five
+// exception members, so it forwards those items to onProviderStreamEvent and throws them (bedrock-converse-stream.ts:297,318-327), and drops any
+// other unknown event before its loop (SmithyMessageDecoderStream.js drops a `$unknown` result).
+func TestBedrockSDKStreamForwardsExceptionMembersAndDropsUnknownEvents(t *testing.T) {
+	run := func(t *testing.T, events ...btypes.ConverseStreamOutput) (*AssistantMessage, []any) {
+		t.Helper()
+		input := make(chan btypes.ConverseStreamOutput, len(events))
+		for _, event := range events {
+			input <- event
+		}
+		close(input)
+		recorder := &providerEventRecorder{}
+		builder := newAssistantStreamBuilder(context.Background(), APIBedrockConverseStream, "amazon-bedrock", "model")
+		builder.setProviderEventObserver(StreamOptions{OnProviderStreamEvent: recorder.observe}, &Model{ID: "model"})
+		go (&BedrockProvider{}).parseBedrockEvents(context.Background(), &fakeBedrockEventStream{events: input}, builder, "")
+		result := builder.stream.Result()
+		observed, _ := recorder.snapshot()
+		return result, observed
+	}
+	start := &btypes.ConverseStreamOutputMemberMessageStart{Value: btypes.MessageStartEvent{Role: btypes.ConversationRoleAssistant}}
+
+	exception := &btypes.UnknownUnionMember{Tag: "throttlingException", Value: []byte(`{"message":"slow down"}`)}
+	result, observed := run(t, start, exception)
+	if !reflect.DeepEqual(observed, []any{start, exception}) {
+		t.Fatalf("observed = %#v", observed)
+	}
+	if result.StopReason != StopReasonError || result.ErrorMessage != "Throttling error: slow down" {
+		t.Fatalf("result = %#v", result)
+	}
+
+	unknown := &btypes.UnknownUnionMember{Tag: "somethingUnknown", Value: []byte(`{}`)}
+	result, observed = run(t, start, unknown)
+	if !reflect.DeepEqual(observed, []any{start}) {
+		t.Fatalf("observed = %#v", observed)
+	}
+	if result.StopReason != StopReasonError || result.ErrorMessage != "Bedrock stream ended without a stop reason" {
+		t.Fatalf("result = %#v", result)
+	}
+}

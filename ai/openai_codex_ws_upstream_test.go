@@ -3,10 +3,12 @@ package ai
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -104,19 +106,28 @@ func codexWSResult(t *testing.T, provider Provider, transcript TranscriptContext
 	return stream.Result(), types
 }
 func TestCodexWebSocketUpstream(t *testing.T) {
-	// .upstream/v0.87.1/packages/ai/test/openai-codex-stream.test.ts:1269
-	t.Run("forwards auto transport from streamSimple options and uses cached websocket context", func(t *testing.T) {
-		peer := newCodexWSPeer(t, func(int, int, map[string]any) []string {
-			frames := codexWSHello("", "Hello")
-			frames[len(frames)-1] = `{"type":"response.completed","response":{"status":"completed","end_turn":false,"usage":{"input_tokens":5,"output_tokens":3,"total_tokens":8}}}`
-			return frames
-		})
-		result, _ := codexWSResult(t, peer.provider(t, "acc_test"), codexUpstreamContext(), StreamOptions{Transport: TransportAuto, SessionID: "session-auto"})
+	// .upstream/v0.99.1/packages/ai/test/openai-codex-stream.test.ts:1283
+	t.Run("forwards auto transport and raw provider events from streamSimple", func(t *testing.T) {
+		wire := []string{
+			`{"type":"response.output_item.added","item":{"type":"message","id":"msg_1","role":"assistant","status":"in_progress","content":[]}}`,
+			`{"type":"response.content_part.added","part":{"type":"output_text","text":""}}`,
+			`{"type":"response.output_text.delta","delta":"Hello"}`,
+			`{"type":"response.output_item.done","item":{"type":"message","id":"msg_1","role":"assistant","status":"completed","content":[{"type":"output_text","text":"Hello"}]}}`,
+			`{"type":"response.done","response":{"status":"completed","end_turn":false,"usage":{"input_tokens":5,"output_tokens":3,"total_tokens":8,"input_tokens_details":{"cached_tokens":0}}}}`,
+		}
+		peer := newCodexWSPeer(t, func(int, int, map[string]any) []string { return wire })
+		recorder := &providerEventRecorder{}
+		result, _ := codexWSResult(t, peer.provider(t, "acc_test"), codexUpstreamContext(), StreamOptions{Transport: TransportAuto, SessionID: "session-auto", OnProviderStreamEvent: recorder.observe})
 		headers, bodies, fetches := peer.snapshot()
 		stats := GetOpenAICodexWebSocketDebugStats("session-auto")
 		if result.EndTurn == nil || *result.EndTurn || len(bodies) != 1 || len(headers) != 1 || headers[0].Get("session-id") != "session-auto" || headers[0].Get("session_id") != "" || headers[0].Get("x-client-request-id") != "session-auto" || fetches != 0 || stats == nil || stats.CachedContextRequests != 1 || stats.FullContextRequests != 1 {
 			t.Fatalf("result=%#v headers=%v bodies=%v fetches=%d stats=%#v", result, headers, bodies, fetches, stats)
 		}
+		events, models := recorder.snapshot()
+		if !reflect.DeepEqual(events, decodedEvents(t, wire...)) {
+			t.Fatalf("events = %#v", events)
+		}
+		assertEventModelIdentity(t, models, &Model{ID: "gpt-5.1-codex", ProviderMeta: ProviderMetadata{ProviderID: "openai-codex", API: APIOpenAICodexResponses}}, 5)
 	})
 	// .upstream/v0.87.1/packages/ai/test/openai-codex-stream.test.ts:1386
 	t.Run("scopes cached websockets to the authenticated account", func(t *testing.T) {
@@ -385,5 +396,20 @@ func TestCodexWebSocketTimeoutsUpstream(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// A failing OnProviderStreamEvent callback ends the request. It is not a transport failure, so neither the WebSocket reconnect nor the SSE fallback runs
+// (openai-codex-responses.ts ProviderStreamEventCallbackError, isCodexNonTransportError).
+func TestCodexProviderStreamEventCallbackFailureSkipsTransportRecovery(t *testing.T) {
+	peer := newCodexWSPeer(t, func(int, int, map[string]any) []string { return codexWSHello("resp_1", "Hello") })
+	callbackFailure := errors.New("observer rejected the event")
+	result, _ := codexWSResult(t, peer.provider(t, "acc_test"), codexUpstreamContext(), StreamOptions{Transport: TransportAuto, SessionID: "callback-failure", OnProviderStreamEvent: func(context.Context, any, *Model) error { return callbackFailure }})
+	headers, bodies, fetches := peer.snapshot()
+	if result.StopReason != StopReasonError || !strings.Contains(result.ErrorMessage, callbackFailure.Error()) {
+		t.Fatalf("result = %#v", result)
+	}
+	if len(headers) != 1 || len(bodies) != 1 || fetches != 0 {
+		t.Fatalf("connections=%d requests=%d sse fetches=%d, want one WebSocket request and no fallback", len(headers), len(bodies), fetches)
 	}
 }

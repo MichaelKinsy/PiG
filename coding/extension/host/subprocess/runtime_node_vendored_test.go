@@ -111,15 +111,15 @@ var pinnedPackageDist = map[string][]string{
 	"pi-ai":           {"node_modules", "@earendil-works", "pi-ai", "dist"},
 	"pi-coding-agent": {"dist"},
 	"pi-agent-core":   {"node_modules", "@earendil-works", "pi-agent-core", "dist"},
-	"chord":           {"node_modules", "@earendil-works", "chord", "dist"},
-	"pi-telemetry":    {"node_modules", "@earendil-works", "pi-telemetry", "dist"},
+	"pi-codemode":     {"node_modules", "@earendil-works", "pi-codemode", "dist"},
+	"pi-mcp":          {"node_modules", "@earendil-works", "pi-mcp", "dist"},
 }
 
 // closureVendoredPackages are copied as the module graph reachable from
 // pi-agent-core's entry (automation/gen/vendor-pi-closure.mjs): verbatim
 // except that each bare import specifier names the vendored copy by a
 // relative path.
-var closureVendoredPackages = map[string]bool{"pi-agent-core": true, "chord": true, "pi-telemetry": true}
+var closureVendoredPackages = map[string]bool{"pi-agent-core": true, "pi-codemode": true, "pi-mcp": true}
 
 var importSpecifierLine = regexp.MustCompile(`^((?:.*?\bfrom\s*|.*\bimport\(\s*|import\s*))"([^"]+)"(.*)$`)
 
@@ -690,6 +690,10 @@ if (want !== got) { console.log("pinned: " + want + "\npig:    " + got); process
 // theme: Pi 0.87.1's own theme and keybinding-hints modules against the shim
 // with ctx.ui.theme carrying PiG's dark theme palette, as the host sends it.
 func TestPiThemeHelpersMatchThePinnedPackage(t *testing.T) {
+	// The palette below is declared "truecolor", so the theme must resolve in truecolor whatever the terminal that runs the test reports.
+	previousCaps := tui.GetCapabilities()
+	t.Cleanup(func() { tui.SetCapabilities(previousCaps) })
+	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
 	dark, err := tui.LoadBuiltinTheme("dark")
 	if err != nil {
 		t.Fatal(err)
@@ -845,4 +849,53 @@ for (let i = 0; i < want.length; i++) {
   if (normalize(want[i], piDir) !== normalize(got[i], pigDir)) fail("call " + i + ":\npi:  " + want[i] + "\npig: " + got[i]);
 }
 `)
+}
+
+// createCodemodeExtension from the runtime's Pi SDK runs a script as Pi's
+// does: executeCodemode (.upstream/v0.99.1/packages/coding-agent/src/extensions/codemode/execute.ts)
+// loads the QuickJS wasm from getQuickJSWasmPath and starts the sandbox on
+// getCodemodeWorkerUrl (config.ts:488-490,501-505), so both assets must exist
+// in the private copy. A direct call has no session context, so the script
+// cannot call tools (execute.ts executeCodemode). The sandbox worker inherits
+// Node's execArgv, so the scene runs from a file rather than --eval.
+func TestPiCodemodeRunsFromTheVendoredSDK(t *testing.T) {
+	t.Parallel()
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Fatalf("node is required: %v", err)
+	}
+	readPinned(t, "dist", "index.js")
+	pinned, err := filepath.Abs(filepath.Join(pinnedPiPackages, "dist", "index.js"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	shim, err := filepath.Abs(filepath.Join("runtime-node", "shims", "pi-coding-agent.mjs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	script := filepath.Join(t.TempDir(), "codemode.mjs")
+	if err := os.WriteFile(script, []byte(`
+import assert from "node:assert/strict";
+async function scene(url) {
+  const m = await import(url);
+  const tools = [];
+  m.createCodemodeExtension({ mode: "on", models: false })({ registerTool: (tool) => tools.push(tool), appendEntry() {}, getAllTools: () => [], getSettings: () => ({}) });
+  assert.deepEqual(tools.map((tool) => [tool.name, tool.defaultActive]), [["codemode", false]]);
+  const out = [];
+  for (const code of ["console.log('a'); return [1 + 1, typeof store]", "throw new Error('boom')", "return await callTool('read', {})"]) {
+    const result = await tools[0].execute("c1", { code }, undefined, undefined, undefined);
+    out.push({ ...result, content: result.content.map((item) => ({ ...item, text: item.text?.replace(/Wall time [0-9.]+ seconds/, "Wall time <t> seconds") })), details: undefined });
+  }
+  return out;
+}
+const want = await scene(process.argv[2]);
+assert.match(JSON.stringify(want), /Script completed/);
+assert.deepEqual(await scene(process.argv[3]), want);
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.CommandContext(t.Context(), node, script, "file://"+filepath.ToSlash(pinned), "file://"+filepath.ToSlash(shim))
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("%v\n%s", err, output)
+	}
 }

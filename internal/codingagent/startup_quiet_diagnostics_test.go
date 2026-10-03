@@ -37,7 +37,7 @@ func TestQuietStartupBindShowsDiagnosticsOnly(t *testing.T) {
 		o.ThemePaths = []string{missingTheme}
 	})
 	sm := f.runtime.Services().SettingsManager()
-	if err := sm.SetQuietStartup(true); err != nil {
+	if err := sm.SetQuietStartup(coding.QuietStartupTrue); err != nil {
 		t.Fatal(err)
 	}
 	f.h.SetRebindResources(sm, f.runtime.Services().Registry().ModelRegistry)

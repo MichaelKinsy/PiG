@@ -6,6 +6,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -505,5 +506,33 @@ func TestCheckNodeBridgeHarness(t *testing.T) {
 	}
 	if err := checkNodeBridgeHarness(mapPath, t.TempDir()); err == nil || !strings.Contains(err.Error(), "read Node-bridge harness") {
 		t.Fatalf("missing harness not rejected: %v", err)
+	}
+}
+
+func TestCarryMappingKeepsOnlyEntriesWhoseUpstreamTestIsUnchanged(t *testing.T) {
+	const oldHash = "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+	const sameHash = "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+	const newHash = "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+	previous := mapping{UpstreamVersion: "0.87.1", Entries: []mappingEntry{
+		{Path: "packages/ai/test/kept.test.ts", Disposition: "ported", UpstreamTestHash: sameHash, Evidence: []string{"ai/kept_test.go"}},
+		{Path: "packages/ai/test/changed.test.ts", Disposition: "ported", UpstreamTestHash: oldHash, Evidence: []string{"ai/changed_test.go"}},
+		{Path: "packages/chord/test/removed.test.ts", Disposition: "designed-out", UpstreamTestHash: sameHash, Rationale: "outside scope"},
+		{Path: "packages/ai/test/designed.test.ts", Disposition: "designed-out", UpstreamTestHash: sameHash, Rationale: "Go typing"},
+	}}
+	inv := inventory{UpstreamVersion: "0.99.2", Files: []inventoryFile{
+		{Path: "packages/ai/test/added.test.ts", SHA256: newHash},
+		{Path: "packages/ai/test/changed.test.ts", SHA256: newHash},
+		{Path: "packages/ai/test/designed.test.ts", SHA256: sameHash},
+		{Path: "packages/ai/test/kept.test.ts", SHA256: sameHash},
+	}}
+	got := carryMapping(inv, previous)
+	want := mapping{UpstreamVersion: "0.99.2", Entries: []mappingEntry{
+		{Path: "packages/ai/test/added.test.ts", Disposition: "pending", UpstreamTestHash: newHash},
+		{Path: "packages/ai/test/changed.test.ts", Disposition: "pending", UpstreamTestHash: newHash},
+		{Path: "packages/ai/test/designed.test.ts", Disposition: "designed-out", UpstreamTestHash: sameHash, Rationale: "Go typing"},
+		{Path: "packages/ai/test/kept.test.ts", Disposition: "ported", UpstreamTestHash: sameHash, Evidence: []string{"ai/kept_test.go"}},
+	}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("carried mapping = %+v\nwant %+v", got, want)
 	}
 }

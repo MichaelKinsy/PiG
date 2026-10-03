@@ -35,5 +35,9 @@ func openModePTY(t *testing.T) (*os.File, *os.File) {
 	if err != nil {
 		t.Fatalf("open pseudo-terminal slave %s: %v", path, err)
 	}
+	// The Linux helper opens its pseudo-terminal 24 rows by 80 columns; a zero-width terminal makes the interactive renderer emit one character per row.
+	if err := unix.IoctlSetWinsize(fd, unix.TIOCSWINSZ, &unix.Winsize{Row: 24, Col: 80}); err != nil {
+		t.Fatalf("size pseudo-terminal: %v", err)
+	}
 	return master, slave
 }

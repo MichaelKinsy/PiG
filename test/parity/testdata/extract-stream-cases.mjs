@@ -6,7 +6,7 @@ import {fileURLToPath,pathToFileURL} from 'node:url';
 import {resolve,dirname} from 'node:path';
 import vm from 'node:vm';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../../..');
-const path=resolve(root,'.upstream/v0.87.1/packages/ai/test/stream.test.ts');
+const path=resolve(root,'.upstream/current/packages/ai/test/stream.test.ts');
 const source=readFileSync(path,'utf8');
 const file=ts.createSourceFile(path,source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
 const helpers=new Set(['basicTextGeneration','handleToolCall','handleStreaming','handleThinking','handleImage','multiTurn']);
@@ -30,7 +30,7 @@ const expect=new Proxy(()=>expect,{get:()=>expect,apply:()=>expect});
 const env={};for(const m of source.matchAll(/process\.env\.([A-Z0-9_]+)/g))env[m[1]]='fixture-'+m[1];env.PI_NO_LOCAL_LLM='';
 const output=[];
 const record=(kind,model,options,request)=>{
- output.push({source:'.upstream/v0.87.1/packages/ai/test/stream.test.ts:'+current.line,line:current.line,name:current.scopes.map(s=>s.name).concat(current.name).join('/'),kind,provider:model.provider,model:model.id,api:model.api,hasCompat:model.compat!==undefined,options:options??{},...(model.provider==='ollama'?{customModel:model}:{}),...(request?{request}:{})});
+ output.push({source:'.upstream/current/packages/ai/test/stream.test.ts:'+current.line,line:current.line,name:current.scopes.map(s=>s.name).concat(current.name).join('/'),kind,provider:model.provider,model:model.id,api:model.api,hasCompat:model.compat!==undefined,options:options??{},...(model.provider==='ollama'?{customModel:model}:{}),...(request?{request}:{})});
 };
 const requireNative=createRequire(import.meta.url);
 const sandbox={Date:class extends Date {static now(){return 1;}},console:{log(){},warn(){}},process:{env,cwd:()=>root},Buffer,URL,queueMicrotask,setTimeout:fn=>{queueMicrotask(fn);return 0;},fetch:async()=>({ok:true}),recordHelper:record};

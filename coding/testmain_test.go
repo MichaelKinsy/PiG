@@ -5,12 +5,19 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 func TestMain(m *testing.M) {
-	testRoot, err := os.MkdirTemp("", "pig-coding-tests-")
+	testRoot, err := os.MkdirTemp("", "pig-coding-")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "create isolated test config root:", err)
+		os.Exit(2)
+	}
+	if err := testenv.ScopeTempDir(testRoot); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		_ = os.RemoveAll(testRoot)
 		os.Exit(2)
 	}
 	for _, key := range []string{"PIG_CODING_AGENT_DIR", "PIG_CODING_AGENT_SESSION_DIR"} {

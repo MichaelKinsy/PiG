@@ -119,7 +119,7 @@ func (builder *assistantStreamBuilder) failUnfinished(reason StopReason, err err
 	clear(builder.toolCalls)
 	builder.partial.StopReason = reason
 	if err != nil {
-		builder.partial.ErrorMessage = err.Error()
+		builder.partial.ErrorMessage = builder.failureMessage(err)
 	}
 	builder.push(ErrorEvent{Reason: reason, Error: builder.partial})
 }

@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/coding"
 )
 
 const repoRoot = "../../../.."
@@ -65,8 +68,27 @@ func TestSurfaceCoversPiExtensionAPI(t *testing.T) {
 			events++
 		}
 	}
-	if events != 39 {
-		t.Errorf("types.ts ExtensionAPI.on declares 39 events, surface has %d", events)
+	// The denominator is every `on(event: "<name>"` overload of the ExtensionAPI
+	// interface, counted straight from the pinned types.ts.
+	source, err := os.ReadFile(filepath.Join(repoRoot, ".upstream", "v"+coding.UpstreamVersion, "packages/coding-agent/src/core/extensions/types.ts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, api, ok := strings.Cut(string(source), "export interface ExtensionAPI {")
+	if !ok {
+		t.Fatal("types.ts declares no ExtensionAPI")
+	}
+	// The interface body ends at the first closing brace in column 0; later
+	// declarations in the file must not enter the denominator.
+	if api, _, ok = strings.Cut(api, "\n}\n"); !ok {
+		t.Fatal("types.ts ExtensionAPI has no closing brace")
+	}
+	declared := map[string]bool{}
+	for _, match := range regexp.MustCompile(`\bon\(\s*event:\s*"([^"]+)"`).FindAllStringSubmatch(api, -1) {
+		declared[match[1]] = true
+	}
+	if events != len(declared) {
+		t.Errorf("types.ts ExtensionAPI.on declares %d events, surface has %d", len(declared), events)
 	}
 }
 

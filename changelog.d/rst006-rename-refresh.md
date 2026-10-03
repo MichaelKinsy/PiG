@@ -1,1 +1,0 @@
-- Keep the Session rename panel open until its refresh settles. Preserve completion after a cancelled refresh settles, wake both selector owners, and apply JavaScript whitespace rules to submitted names.

@@ -1,4 +1,4 @@
-# test-faux oracle (Pi 0.87.1)
+# test-faux oracle (Pi 1.0.0)
 
 `probe.mjs` drives Pi's real pipeline for the paired fixture `test/parity/testdata/test-faux-provider.ts` (the Pi-side counterpart of PiG's `ai/test_faux.go`). `recorder.mjs` is loaded into the real `pi --mode rpc` process and registers that fixture unchanged. `pi.json` is the retained raw output (Node 24.19.0; Node 26.7.0 produced identical records). Do not replace it with Go output.
 

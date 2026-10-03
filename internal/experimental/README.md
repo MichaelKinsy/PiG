@@ -66,7 +66,7 @@ A failed reattachment disconnects the client and retries.
 
 ## Automatic native activation
 
-`StartServer` composes the native coordinator, worker manager, JSONL-backed service catalog, plugin selection/builds and Unix backend. `RunningServer.Closed` observes backend/catalog closure; `Close` also joins worker and coordinator cleanup. `StartForegroundServer` serializes that startup with automatic activation. No relay is opened (D64).
+`StartServer` composes the native coordinator, worker manager, meta.json Session catalog, plugin selection/builds and Unix backend. `RunningServer.Closed` observes backend/catalog closure; `Close` also joins worker and coordinator cleanup. `StartForegroundServer` serializes that startup with automatic activation. No relay is opened (D64).
 
 `ActivateServer` acquires the server profile and activation lock, connects to an existing endpoint, or spawns the internal server role and waits for its native handshake. Failed activation terminates and joins its child before releasing the lock. Worker manager/process APIs preserve model-option presence, generation demand, operation ownership and joined shutdown. `RunSessionWorkerProcess` runs the coding-Harness factory. The worker closes its resources on retirement, shutdown, disconnection, SIGTERM or SIGINT, and leaves its control socket to process exit, so the coordinator reports the disconnection only when the worker is exiting.
 
@@ -78,7 +78,7 @@ A failed reattachment disconnects the client and retries.
 
 `OpenClientRuntime` validates selection, discovers or activates local routes, and owns the real client and server/Session namespaces. Non-Unix routes are rejected before discovery (D64). `Dispose` marks the runtime disposed before joining source and client cleanup phases. A repeated or reentrant call returns immediately, matching Pi's disposed flag.
 
-`RunClient` lists, creates or attaches Sessions through those services. One-shot prompts wait for both the operation response and its independent terminal transcript event. `OnEvent` receives the exact strict-JSON `LaneWatchEvent` payload in order; callbacks are awaited and their errors propagate. The broader in-process `HarnessEvent` is not substituted for that wire representation. Result variants are values: `ClientListResult`, `ClientAttachedResult` and `ClientPromptedResult`, with `Kind()` and the corresponding JSON fields.
+`RunClient` lists, creates or attaches Sessions through those services. A one-shot prompt returns the text that `AgentController.WaitForPrompt` settles with; a rejected prompt and an unanswered prompt are errors. Result variants are values: `ClientListResult`, `ClientAttachedResult` and `ClientPromptedResult`, with `Kind()` and the corresponding JSON fields.
 
 ## Client service namespaces
 

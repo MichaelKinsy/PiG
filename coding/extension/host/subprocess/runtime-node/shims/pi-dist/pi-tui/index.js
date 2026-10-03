@@ -2,6 +2,8 @@
 export { Marked } from "../../marked/lib/marked.esm.js";
 // Autocomplete support
 export { CombinedAutocompleteProvider, } from "./autocomplete.js";
+// Colors and styling
+export { backgroundAnsi, colorToHex, colorToOkhsl, colorToOklch, colorToRgb, foregroundAnsi, indexedColor, mixColors, okhslColor, oklchColor, parseColor, rgbColor, styleText, styleTextWithAnsi, } from "./colors.js";
 // Components
 export { Box } from "./components/box.js";
 export { CancellableLoader } from "./components/cancellable-loader.js";
@@ -29,14 +31,15 @@ export { decodeKittyPrintable, isKeyRelease, isKeyRepeat, isKittyProtocolActive,
 export { renderLatex } from "./latex.js";
 // Native platform integration
 export { getNativeClipboard } from "./native-platform.js";
+export { oklabToOkhslLightness } from "./oklab.js";
 // Input buffering for batch splitting
 export { StdinBuffer } from "./stdin-buffer.js";
 // Terminal interface and implementations
-export { ProcessTerminal } from "./terminal.js";
+export { isAppleTerminalSession, ProcessTerminal } from "./terminal.js";
 // Terminal colors
-export { parseOsc11BackgroundColor, parseTerminalColorSchemeReport, } from "./terminal-colors.js";
+export { parseTerminalColorSchemeReport, } from "./terminal-colors.js";
 // Terminal image support
-export { allocateImageId, calculateImageRows, deleteAllKittyImages, deleteKittyImage, detectCapabilities, encodeITerm2, encodeKitty, getCapabilities, getCellDimensions, getGifDimensions, getImageDimensions, getJpegDimensions, getPngDimensions, getWebpDimensions, hyperlink, imageFallback, renderImage, resetCapabilitiesCache, setCapabilities, setCapabilityOverrides, setCellDimensions, } from "./terminal-image.js";
+export { allocateImageId, calculateImageRows, deleteAllKittyImages, deleteKittyImage, detectCapabilities, encodeITerm2, encodeKitty, getCapabilities, getCellDimensions, getGifDimensions, getImageDimensions, getJpegDimensions, getPngDimensions, getTerminalColorMode, getWebpDimensions, hyperlink, imageFallback, renderImage, resetCapabilitiesCache, setCapabilities, setCapabilityOverrides, setCellDimensions, } from "./terminal-image.js";
 export { Container, CURSOR_MARKER, compositeTuiLine, isFocusable, isViewportTUI, } from "./tui.js";
 export { TuiAltScreen } from "./tui-alt-screen.js";
 export { TuiMainScreen } from "./tui-main-screen.js";

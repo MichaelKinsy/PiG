@@ -224,7 +224,8 @@ func TestReloadRefreshesRealSubprocessShortcuts(t *testing.T) {
 	host.SetMode("tui")
 	config := subprocess.ExtConfig{Name: "reload-shortcut", Source: source, Enabled: true}
 	host.SetConfigLoader(func() ([]subprocess.ExtConfig, error) { return []subprocess.ExtConfig{config}, nil })
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	// The context bounds the whole test, which starts four node extension processes in sequence; a Windows runner needs most of a minute for those, and an expired context makes a reload drop the extension instead of failing.
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 	ext, err := host.Load(ctx, config)
 	if err != nil {

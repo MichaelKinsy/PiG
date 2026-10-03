@@ -5,6 +5,7 @@ import "testing"
 // packages/coding-agent/test/suite/regressions/7193-event-bus-lifecycle.test.ts:16.
 // Preserve the original shared bus, factory/resource loader, two Session.reload calls, captured API error and host-listener survival. Only the harness setup is replaced with the public SDK's in-memory Session.
 func TestNodeSessionEventBusLifecycle7193MatchesPi(t *testing.T) {
+	t.Parallel()
 	runPinnedComparison(t, []string{"dist", "index.js"}, "pi-coding-agent.mjs", `
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";

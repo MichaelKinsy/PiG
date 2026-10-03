@@ -307,9 +307,9 @@ func TestEmitHelpers_NilRunnerIsNoOp(t *testing.T) {
 	emitTurnEnd(nil, agent.TurnEndEvent{})
 	emitMessageStart(nil, agent.AgentMessage{})
 	emitMessageEnd(nil, agent.AgentMessage{})
-	emitToolExecutionStart(nil, "id", "bash", nil)
-	emitToolExecutionUpdate(nil, "id", "bash", "partial", nil, nil)
-	emitToolExecutionEnd(nil, "id", "bash", agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "ok"}}})
+	emitToolExecutionStart(nil, "id", "bash", nil, "")
+	emitToolExecutionUpdate(nil, "id", "bash", agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "partial"}}}, nil, "")
+	emitToolExecutionEnd(nil, agent.ToolExecutionEndEvent{ToolCallID: "id", ToolName: "bash", Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "ok"}}}})
 	emitMessageUpdate(nil, nil, nil)
 	emitThinkingLevelSelect(nil, "high", "medium")
 }
@@ -470,7 +470,7 @@ func TestEmitMessageEnd_BridgesToRunner(t *testing.T) {
 func TestEmitToolExecutionStart_BridgesToRunner(t *testing.T) {
 	var fired atomic.Int32
 	fresh := makeFreshWithHandler(t, EventToolExecutionStart, func() { fired.Add(1) })
-	emitToolExecutionStart(fresh, "tc-1", "bash", []byte(`{"command":"ls"}`))
+	emitToolExecutionStart(fresh, "tc-1", "bash", []byte(`{"command":"ls"}`), "")
 	if got := fired.Load(); got != 1 {
 		t.Errorf("tool_execution_start handler fired %d times, want 1", got)
 	}
@@ -479,7 +479,7 @@ func TestEmitToolExecutionStart_BridgesToRunner(t *testing.T) {
 func TestEmitToolExecutionEnd_BridgesToRunner(t *testing.T) {
 	var fired atomic.Int32
 	fresh := makeFreshWithHandler(t, EventToolExecutionEnd, func() { fired.Add(1) })
-	emitToolExecutionEnd(fresh, "tc-1", "bash", agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "output text"}}})
+	emitToolExecutionEnd(fresh, agent.ToolExecutionEndEvent{ToolCallID: "tc-1", ToolName: "bash", Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "output text"}}}})
 	if got := fired.Load(); got != 1 {
 		t.Errorf("tool_execution_end handler fired %d times, want 1", got)
 	}
@@ -532,7 +532,7 @@ func TestEmitToolExecutionEnd_PayloadFields(t *testing.T) {
 		},
 	}
 	fresh := inproc.NewRunner([]extension.Extension{ext}, ".")
-	emitToolExecutionEnd(fresh, "tc-2", "read", agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "file contents"}}, IsError: true})
+	emitToolExecutionEnd(fresh, agent.ToolExecutionEndEvent{ToolCallID: "tc-2", ToolName: "read", IsError: true, Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "file contents"}}}})
 	if got := capturedName.Load().(string); got != "read" {
 		t.Errorf("toolName = %q, want read", got)
 	}

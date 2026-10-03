@@ -6,9 +6,14 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 var fixtureRoot, fixtureSourceRoot string
+
+// busBuildRoot is the config root of every event-bus rig's Host, shared the way concurrent PiG sessions share ~/.pig: a fixture compiles once for the package run and its builds are reused by later rigs.
+var busBuildRoot string
 
 func TestMain(m *testing.M) {
 	parent := ""
@@ -20,6 +25,11 @@ func TestMain(m *testing.M) {
 		fmt.Fprintln(os.Stderr, "create isolated test home:", err)
 		os.Exit(2)
 	}
+	if err := testenv.ScopeTempDir(testRoot); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		_ = os.RemoveAll(testRoot)
+		os.Exit(2)
+	}
 	sourceRoot, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "resolve source SDK roots:", err)
@@ -27,6 +37,7 @@ func TestMain(m *testing.M) {
 		os.Exit(2)
 	}
 	fixtureRoot, fixtureSourceRoot = testRoot, sourceRoot
+	busBuildRoot = filepath.Join(testRoot, "bus-builds")
 	// Each Host creates its own socket directory beneath this short package root.
 	for key, value := range map[string]string{
 		"XDG_RUNTIME_DIR": testRoot,

@@ -181,6 +181,7 @@ fn main() {
 // keeps its edit. The Rust SDK reports no list identity, so the host compares
 // its lists by value and an in-place edit counts as a replacement there.
 func TestContextResultShapesCrossSDKTransports(t *testing.T) {
+	t.Parallel()
 	type loader struct {
 		load          func(t *testing.T) extension.Extension
 		valueIdentity bool

@@ -5,7 +5,7 @@ import { mock } from "node:test";
 
 const root = fileURLToPath(new URL("../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent", import.meta.url));
 const version = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version;
-if (version !== "0.87.1") throw new Error(`Expected Pi 0.87.1, found ${version}`);
+if (version !== "1.0.0") throw new Error(`Expected Pi 1.0.0, found ${version}`);
 const { ProcessTerminal } = await import(pathToFileURL(join(root, "node_modules/@earendil-works/pi-tui/dist/terminal.js")));
 const lines = [];
 for (const name of ["batch-order", "zero", "DA", "split", "late-confirmation", "rejected-prefix", "replay", "paste", "large-flags", "progress"]) {

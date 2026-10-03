@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 )
 
@@ -75,7 +74,7 @@ type SlashCommands interface {
 }
 
 // SlashCommandsDefinition names the local service token; Go shares type and value names.
-var SlashCommandsDefinition = pico3.DefineServiceWithOptions[SlashCommands]("pi.local.slash-commands", pico3.ServiceOptions{Local: true})
+var SlashCommandsDefinition = chord.DefineServiceWithOptions[SlashCommands]("pi.local.slash-commands", chord.ServiceOptions{Local: true})
 
 func init() {
 	chord.RegisterServiceView(SlashCommandsDefinition, func(resolve func() (SlashCommands, error)) SlashCommands {

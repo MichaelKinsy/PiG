@@ -212,4 +212,33 @@ export function truncateLine(line, maxChars = GREP_MAX_LINE_LENGTH) {
     }
     return { text: `${line.slice(0, maxChars)}... [truncated]`, wasTruncated: true };
 }
+/**
+ * Keep the start and the end of `content`, half of `maxBytes` each, and replace the middle with a
+ * `…N chars truncated…` marker, like Codex does for tool output. Cuts only at character boundaries.
+ */
+export function truncateMiddle(content, maxBytes) {
+    const buf = Buffer.from(content, "utf-8");
+    const totalLines = splitLinesForCounting(content).length;
+    if (buf.length <= maxBytes) {
+        return { content, truncated: false, removedChars: 0, totalBytes: buf.length, totalLines };
+    }
+    // Continuation bytes (10xxxxxx) are not character starts.
+    const isBoundary = (index) => index >= buf.length || (buf[index] & 0xc0) !== 0x80;
+    let headEnd = Math.floor(maxBytes / 2);
+    while (headEnd > 0 && !isBoundary(headEnd))
+        headEnd--;
+    let tailStart = buf.length - (maxBytes - Math.floor(maxBytes / 2));
+    while (tailStart < buf.length && !isBoundary(tailStart))
+        tailStart++;
+    const head = buf.subarray(0, headEnd).toString("utf-8");
+    const tail = buf.subarray(tailStart).toString("utf-8");
+    const removedChars = Array.from(buf.subarray(headEnd, tailStart).toString("utf-8")).length;
+    return {
+        content: `${head}…${removedChars} chars truncated…${tail}`,
+        truncated: true,
+        removedChars,
+        totalBytes: buf.length,
+        totalLines,
+    };
+}
 //# sourceMappingURL=truncate.js.map

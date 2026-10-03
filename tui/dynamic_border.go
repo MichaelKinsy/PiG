@@ -8,6 +8,7 @@ package tui
 type DynamicBorder struct {
 	invalidatable
 	color string // ANSI fg escape; empty = use theme border color
+	token string // theme token resolved at render time; takes precedence over color
 }
 
 // NewDynamicBorder creates a border. If color is empty, the active
@@ -16,8 +17,16 @@ func NewDynamicBorder(color string) *DynamicBorder {
 	return &DynamicBorder{color: color}
 }
 
+// NewDynamicBorderToken creates a border colored with a theme token at render time (dynamic-border.ts takes a `(str) => theme.fg(token, str)` callback), so it follows theme changes.
+func NewDynamicBorderToken(token string) *DynamicBorder {
+	return &DynamicBorder{token: token}
+}
+
 // Render produces a full-width rule and resets only its foreground color.
 func (d *DynamicBorder) Render(width int) []string {
+	if d.token != "" {
+		return []string{ActiveTheme().FgText(d.token, repeatRune('─', max(1, width)))}
+	}
 	color := d.color
 	if color == "" {
 		return []string{ActiveTheme().FgText("border", repeatRune('─', max(1, width)))}

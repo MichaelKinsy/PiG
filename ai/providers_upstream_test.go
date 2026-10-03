@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"os"
 	"reflect"
 	"slices"
 	"strings"
@@ -32,9 +33,12 @@ func resolveProviderAuthUpstream(t *testing.T, id string, env map[string]string,
 }
 
 func TestBuiltinProvidersUpstream(t *testing.T) {
-	// .upstream/v0.87.1/packages/ai/test/providers.test.ts:50
+	// .upstream/v0.99.1/packages/ai/test/providers.test.ts:56
 	t.Run("builtinModels registers every builtin provider with models", func(t *testing.T) {
 		providers := ListProviders()
+		if len(BuiltinProviders()) != len(providers) {
+			t.Fatalf("BuiltinProviders() = %d providers, ListProviders() = %d", len(BuiltinProviders()), len(providers))
+		}
 		if !slices.Contains(providers, "anthropic") || len(ListModels("")) <= 500 {
 			t.Fatal("incomplete builtin catalog")
 		}
@@ -42,12 +46,12 @@ func TestBuiltinProvidersUpstream(t *testing.T) {
 			t.Fatal("wrong Anthropic API")
 		}
 		for _, provider := range providers {
-			models := ListModels(provider)
+			models := GetAllBuiltinModels(provider)
 			if len(models) == 0 {
 				t.Fatal(provider)
 			}
 			for _, model := range models {
-				if model.Provider != provider {
+				if model.ProviderID() != provider {
 					t.Fatal(model)
 				}
 			}
@@ -127,10 +131,10 @@ func TestBuiltinProvidersUpstream(t *testing.T) {
 			t.Fatal(got)
 		}
 	})
-	// .upstream/v0.87.1/packages/ai/test/providers.test.ts:141
+	// .upstream/v0.99.1/packages/ai/test/providers.test.ts:162 (0.99.1 moved the Fireworks unsupported row from kimi-k2p6 to nemotron-3-ultra-nvfp4)
 	t.Run("enables mid-conversation system messages only for verified models", func(t *testing.T) {
 		supported := [][2]string{{"moonshotai", "kimi-k2.6"}, {"moonshotai", "kimi-k2.7-code"}, {"moonshotai", "kimi-k2.7-code-highspeed"}, {"moonshotai", "kimi-k3"}, {"moonshotai-cn", "kimi-k2.6"}, {"moonshotai-cn", "kimi-k2.7-code"}, {"moonshotai-cn", "kimi-k2.7-code-highspeed"}, {"moonshotai-cn", "kimi-k3"}, {"fireworks", "accounts/fireworks/models/kimi-k3"}, {"fireworks", "accounts/fireworks/routers/kimi-k3-fast"}, {"openai", "gpt-5.4"}, {"openai", "gpt-5.5"}, {"openai", "gpt-6-astra"}, {"openai-codex", "gpt-5.5"}, {"anthropic", "claude-opus-5"}, {"opencode", "gpt-5.4"}, {"opencode", "gpt-5.6-terra"}, {"opencode-go", "gpt-5.6-luna"}, {"opencode", "claude-opus-4-8"}, {"opencode", "claude-opus-5"}, {"opencode", "kimi-k3"}, {"opencode-go", "kimi-k3"}, {"github-copilot", "gpt-5.6-terra"}, {"github-copilot", "claude-opus-5"}, {"github-copilot", "claude-opus-4.8"}, {"github-copilot", "kimi-k3"}, {"deepseek", "deepseek-v4-pro"}, {"openrouter", "openai/gpt-5.6-terra"}}
-		unsupported := [][2]string{{"fireworks", "accounts/fireworks/models/kimi-k2p6"}, {"openai", "gpt-4.1"}, {"openai", "gpt-5.2"}, {"anthropic", "claude-sonnet-4-5"}, {"google", "gemini-2.5-pro"}, {"opencode", "gpt-5.2"}, {"opencode", "claude-sonnet-4-5"}, {"github-copilot", "claude-sonnet-4.6"}, {"deepseek", "deepseek-flash"}, {"openrouter", "anthropic/claude-opus-5"}, {"openrouter", "moonshotai/kimi-k3"}, {"openrouter", "openai/gpt-5.6-terra:batch"}}
+		unsupported := [][2]string{{"fireworks", "accounts/fireworks/models/nemotron-3-ultra-nvfp4"}, {"openai", "gpt-4.1"}, {"openai", "gpt-5.2"}, {"anthropic", "claude-sonnet-4-5"}, {"google", "gemini-2.5-pro"}, {"opencode", "gpt-5.2"}, {"opencode", "claude-sonnet-4-5"}, {"github-copilot", "claude-sonnet-4.6"}, {"deepseek", "deepseek-flash"}, {"openrouter", "anthropic/claude-opus-5"}, {"openrouter", "moonshotai/kimi-k3"}, {"openrouter", "openai/gpt-5.6-terra:batch"}}
 		for _, row := range supported {
 			model := providerModelUpstream(t, row[0], row[1])
 			if model.Compat == nil || model.Compat.SupportsMidConvoSystemMessages == nil || !*model.Compat.SupportsMidConvoSystemMessages {
@@ -287,4 +291,37 @@ func TestBuiltinProvidersUpstream(t *testing.T) {
 			t.Fatal(result)
 		}
 	})
+}
+
+// getBuiltinProviders is Object.keys(MODELS) (providers/all.ts:94-96), so a provider whose shard holds only classifier
+// models (typesafe) is a builtin provider, and the list keeps the barrel's order.
+func TestListProvidersMatchesPinnedBarrelKeys(t *testing.T) {
+	data, err := os.ReadFile("../.upstream/current/packages/ai/src/models.generated.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, body, ok := strings.Cut(string(data), "} = {\n")
+	if !ok {
+		t.Fatal("MODELS initializer not found in the pinned barrel")
+	}
+	body, _, _ = strings.Cut(body, "\n};")
+	var want []string
+	for line := range strings.SplitSeq(body, "\n") {
+		if id, _, ok := strings.Cut(strings.TrimPrefix(strings.TrimSpace(line), `"`), `":`); ok {
+			want = append(want, id)
+		}
+	}
+	if len(want) < 40 || !slices.Contains(want, "typesafe") {
+		t.Fatalf("barrel keys = %v", want)
+	}
+	if got := ListProviders(); !slices.Equal(got, want) {
+		t.Fatalf("ListProviders() = %v\nwant barrel keys %v", got, want)
+	}
+	var built []string
+	for _, provider := range BuiltinProviders() {
+		built = append(built, provider.ID)
+	}
+	if !slices.Equal(built, want) {
+		t.Fatalf("BuiltinProviders() ids = %v\nwant %v", built, want)
+	}
 }

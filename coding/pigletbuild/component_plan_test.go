@@ -179,7 +179,7 @@ func TestAC7NativeBuildProducesLinkedBinaryRecord(t *testing.T) {
 	lock, err := buildNativeLock(parsed, nil, Options{
 		Targets: []Target{host}, Sandbox: Sandbox{Native: host},
 		Version: "1.0.0", BakedSettings: []byte("name: review\n"),
-	})
+	}, checkoutPigSource(t))
 	if err != nil {
 		t.Fatal(err)
 	}

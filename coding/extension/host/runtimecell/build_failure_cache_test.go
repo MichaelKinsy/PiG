@@ -119,7 +119,17 @@ func TestBuildGoPackedCellRetriesTransientGoFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	binDir := t.TempDir()
+	// The wrapper is its own installation (bin/go beside pkg/tool), as a real
+	// toolchain is. PiG runs it with that installation's GOROOT, so it delegates
+	// to the real go with GOROOT removed, letting the real go use its own.
+	fakeRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(fakeRoot, "pkg", "tool"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	binDir := filepath.Join(fakeRoot, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	fakeGo := filepath.Join(binDir, "go")
 	if runtime.GOOS == "windows" {
 		fakeGo += ".exe"
@@ -174,6 +184,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 )
 
 func main() {
@@ -195,6 +206,11 @@ func main() {
 		}
 	}
 	cmd := exec.Command(os.Getenv("PIG_TEST_REAL_GO"), args...)
+	for _, kv := range os.Environ() {
+		if !strings.HasPrefix(kv, "GOROOT=") {
+			cmd.Env = append(cmd.Env, kv)
+		}
+	}
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

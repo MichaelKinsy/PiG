@@ -32,6 +32,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Termux. Built with cgo by the NDK (automation/release/android-binary.sh),
+          # not by a plain cross compile, and checked by ELF headers: no hosted
+          # runner executes it, so the device run is its native verification.
+          - goos: android
+            goarch: arm64
+            format: tar
           - goos: linux
             goarch: amd64
             format: tar
@@ -107,13 +113,20 @@ jobs:
           # Release binaries know where their signed update manifest lives and
           # which key signs it, so `pig update` works for script installs.
           codingagent=github.com/MichaelKinsy/PiG/internal/codingagent
+          # The archive source has no VCS metadata, so the binary records which tagged module
+          # source it is; `pig piglet build` fetches exactly that source without a checkout.
+          pigletbuild=github.com/MichaelKinsy/PiG/coding/pigletbuild
           update_url="https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/update.json"
           trust_root=$(base64 < "$source_root/automation/release/update-trust.pem" | tr -d '\n')
+          ldflags="-s -w -X main.Build=$GITHUB_SHA -X $codingagent.DefaultUpdateURL=$update_url -X $codingagent.DefaultUpdateTrustRoot=$trust_root -X $pigletbuild.releaseSourceVersion=v$VERSION"
           (
             cd "$source_root"
-            CGO_ENABLED=0 go build -trimpath \
-              -ldflags "-s -w -X main.Build=$GITHUB_SHA -X $codingagent.DefaultUpdateURL=$update_url -X $codingagent.DefaultUpdateTrustRoot=$trust_root" \
-              -o "$stage/$binary" ./cmd/pig
+            if [ "$GOOS" = android ]; then
+              automation/release/android-binary.sh build -trimpath -ldflags "$ldflags" -o "$stage/$binary" ./cmd/pig
+              automation/release/android-binary.sh check "$stage/$binary"
+            else
+              CGO_ENABLED=0 go build -trimpath -ldflags "$ldflags" -o "$stage/$binary" ./cmd/pig
+            fi
           )
           cp "$source_root/LICENSE" "$source_root/NOTICE" "$source_root/THIRD_PARTY_NOTICES.md" "$stage/"
           cp -R "$source_root/LICENSES" "$stage/"

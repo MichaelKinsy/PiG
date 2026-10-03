@@ -7,4 +7,8 @@ D81: additive helper download coalescing in docs/additive-features.md; not a div
 D82: cross-process partial-message observation (RPC33); ledger-030; known gap approved by owner Michael Kinsy 2026-09-28.
 D83: cross-process event-bus payload identity; ledger-030; known gap approved by owner Michael Kinsy 2026-09-28.
 D84: direct Go provider registration refreshes availability on the next awaited call; fx-provider2; approved by owner Michael Kinsy 2026-09-29.
-Next free ID: D85.
+D85: RPC stdin-end residuals (suspended command continuation, cross-process shutdown keepalive); approved by owner Michael Kinsy 2026-09-29.
+D86: RPC settle-tail stdin hold for a handler of a runtime that cannot report its wait; fix-992-stdin-eof; approved by owner Michael Kinsy 2026-10-01.
+D87: PiG's versions of Pi's easter eggs (logo-click animation with the PiG mark's running pig, /arminsayshi pig head and /pigsayhi); pig-eggs; approved by owner Michael Kinsy 2026-10-01.
+D88: PiG's own first-time setup (theme, sprite, analytics) on an interactive start without settings.json; first-run-sprite; approved by owner Michael Kinsy 2026-10-02.
+Next free ID: D89.

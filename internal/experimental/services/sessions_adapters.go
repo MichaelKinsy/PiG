@@ -5,7 +5,6 @@ package services
 import (
 	"context"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 )
 
@@ -24,8 +23,8 @@ type sessionDirectoryView struct {
 	resolve func() (SessionDirectory, error)
 }
 
-func (view sessionDirectoryView) State() pico3.ReplicatedStateOf[*SessionDirectoryState] {
-	return chord.StateView(func() (pico3.ReplicatedStateOf[*SessionDirectoryState], error) {
+func (view sessionDirectoryView) State() chord.ReplicatedStateOf[*SessionDirectoryState] {
+	return chord.StateView(func() (chord.ReplicatedStateOf[*SessionDirectoryState], error) {
 		service, err := view.resolve()
 		if err != nil {
 			return nil, err
@@ -36,7 +35,7 @@ func (view sessionDirectoryView) State() pico3.ReplicatedStateOf[*SessionDirecto
 
 type remoteSessionDirectory struct{ service *chord.RemoteService }
 
-func (service remoteSessionDirectory) State() pico3.ReplicatedStateOf[*SessionDirectoryState] {
+func (service remoteSessionDirectory) State() chord.ReplicatedStateOf[*SessionDirectoryState] {
 	replica, err := service.service.State("state")
 	if err != nil {
 		panic(err)

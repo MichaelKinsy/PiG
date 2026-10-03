@@ -32,9 +32,6 @@ covers = [
   "packages/coding-agent/src/core/sdk.ts",
   "packages/coding-agent/src/core/agent-session-runtime.ts",
   "packages/coding-agent/src/core/agent-session-services.ts",
-  "packages/agent/src/harness/types.ts",
-  "packages/agent/src/harness/agent-harness.ts",
-  "packages/agent/src/harness/session/session.ts",
 ]
 tags = ["fast", "hermetic", "tui"]
 driver = "interactive-tmux"

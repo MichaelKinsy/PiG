@@ -12,12 +12,17 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 )
 
 // SetCommandLine does nothing outside Windows, where Node's spawn and os/exec
 // both pass cmd.Args to execve unchanged.
 func SetCommandLine(*exec.Cmd) {}
+
+// start is cmd.Start: SetProgram arranges the trampoline for an environment
+// that os/exec would change.
+func start(cmd *exec.Cmd) error { return cmd.Start() }
 
 // HideWindow does nothing outside Windows, where libuv ignores windowsHide.
 func HideWindow(*exec.Cmd, ...Stdio) {}
@@ -30,7 +35,11 @@ func HideWindow(*exec.Cmd, ...Stdio) {}
 // Call it after the last change to cmd.Args, cmd.Dir, and cmd.Env.
 func SetProgram(cmd *exec.Cmd) {
 	setProgram(cmd)
+	// The linker starts a program and, for a trampoline, the copy of PiG that
+	// starts it.
+	linkerexec.Prepare(cmd)
 	useTrampoline(cmd)
+	linkerexec.Prepare(cmd)
 }
 
 func setProgram(cmd *exec.Cmd) {

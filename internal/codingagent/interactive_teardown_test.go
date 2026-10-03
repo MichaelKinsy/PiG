@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -58,6 +59,7 @@ func TestStopInteractiveTuiNilTranscriptView(t *testing.T) {
 	}
 }
 
+// TestStopInteractiveTuiFullscreenExitOutput mirrors upstream stopInteractiveTui: a transcript exit hides every overlay, leaves the alternate screen, paints the component tree on the main screen, and stops there; a resume-hint exit leaves the alternate screen without the transcript.
 func TestStopInteractiveTuiFullscreenExitOutput(t *testing.T) {
 	for _, test := range []struct {
 		name           string
@@ -69,23 +71,42 @@ func TestStopInteractiveTuiFullscreenExitOutput(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			var output bytes.Buffer
-			renderer := tui.NewTuiAltScreenWithOutput(&output, 80, 24, tui.TuiAltScreenOptions{})
-			renderer.Add(tui.NewText("transcript row"))
-			renderer.Start()
+			model := &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
+			mode := newUnmountedSwitchTuiProbe(t, InteractiveOptions{
+				CWD: t.TempDir(), Model: model, AgentDir: t.TempDir(),
+				Settings: Settings{TuiMode: "fullscreen", FullscreenExitOutput: test.exitOutput},
+			}, &output)
+			mode.mountInteractiveTui(true)
+			mode.chatContainer.Add(tui.NewText("transcript row"))
+			mode.tuiInst.OpenOverlay(tui.NewText("overlay row"), tui.OverlayOptions{})
+			mode.tuiInst.Render()
 			output.Reset()
-			mode := &InteractiveMode{
-				tuiInst:   renderer,
-				altScreen: renderer,
-				opts: InteractiveOptions{Settings: Settings{
-					TuiMode: "fullscreen", FullscreenExitOutput: test.exitOutput,
-				}},
-			}
 
 			mode.stopInteractiveTui()
 
 			got := output.String()
-			if strings.Contains(got, "transcript row") != test.wantTranscript {
-				t.Fatalf("stop output contains transcript = %t, want %t; output=%q", strings.Contains(got, "transcript row"), test.wantTranscript, got)
+			leave := strings.Index(got, "\x1b[?1049l")
+			if leave < 0 {
+				t.Fatalf("stop output did not leave the alternate screen; output=%q", got)
+			}
+			if strings.Contains(got, "overlay row") {
+				t.Fatalf("stop output repainted a mounted overlay; output=%q", got)
+			}
+			row := strings.Index(got, "transcript row")
+			if (row >= 0) != test.wantTranscript {
+				t.Fatalf("stop output contains transcript = %t, want %t; output=%q", row >= 0, test.wantTranscript, got)
+			}
+			if !test.wantTranscript {
+				return
+			}
+			if row < leave {
+				t.Fatalf("transcript painted before leaving the alternate screen; output=%q", got)
+			}
+			if mode.altScreen != nil || mode.transcriptScrollView != nil {
+				t.Fatal("transcript exit kept the fullscreen renderer")
+			}
+			if !strings.HasSuffix(strings.TrimSuffix(got, "\x1b[?25h"), "\r\n") {
+				t.Fatalf("main-screen stop did not end with the cursor-park newline; output=%q", got)
 			}
 		})
 	}

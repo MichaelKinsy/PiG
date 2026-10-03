@@ -2,7 +2,7 @@ import net from "node:net";
 import { resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { importExtension } from "./jiti-loader.mjs";
-import { invalidFactory, loadFailure, reportLoadFailure, Runtime } from "./runtime.mjs";
+import { invalidFactory, isHostCancellation, loadFailure, reportLoadFailure, Runtime } from "./runtime.mjs";
 import { runWithRuntime } from "./state.mjs";
 
 // Ports packages/coding-agent/src/core/extensions/loader.ts: extensionCache, useExtensionCacheCwd, loadExtensionModule.
@@ -91,6 +91,7 @@ export class Generations {
     this.live++;
     this.loaded++;
     const run = runWithRuntime(runtime, () => runtime.run()).catch((error) => {
+      if (isHostCancellation(error)) return;
       console.error(`extension "${runtime.name}" runtime failed: ${error?.stack || error}`);
       process.exitCode = 1;
     }).finally(() => {

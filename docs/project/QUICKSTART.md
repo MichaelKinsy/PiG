@@ -94,7 +94,7 @@ pig --tui-mode fullscreen --model test-faux/faux-1
 The screen includes:
 
 ```text
-Ready. Type a message and press Enter (or Shift+Enter for newline). Ctrl+O toggles all tool details.
+Ready. Type a message and press Enter (or Shift+Enter for newline). Ctrl+O toggles all tool output.
 Ctrl+D to exit.
 ```
 

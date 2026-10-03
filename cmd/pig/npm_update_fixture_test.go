@@ -5,9 +5,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
 // managerLogEnv makes a copy of this test binary a package manager that
@@ -38,7 +41,8 @@ func runLoggingManager(log string) int {
 const npmUpdateFixtureRootEnv = "PIG_TEST_NPM_UPDATE_ROOT"
 
 // runNpmUpdateFixture runs the program this binary was copied to be: pig runs
-// `pig update`, and npm answers `npm root -g` and replaces root/pig on install.
+// `pig update`, and npm answers `npm root -g` and replaces the launcher under
+// root on install.
 // It reports false for any other name.
 func runNpmUpdateFixture(root string) (int, bool) {
 	exe, err := os.Executable()
@@ -55,8 +59,18 @@ func runNpmUpdateFixture(root string) (int, bool) {
 	return 0, false
 }
 
-// runFakeNpm removes the installed package directory and writes the new
-// package's pig.exe, recording the install arguments as its content.
+// npmNestedPlatformPackageDir is where a global npm install puts the platform
+// package that holds pig.exe: nested inside the launcher package under root,
+// the global node_modules.
+func npmNestedPlatformPackageDir(root string) string {
+	cpu := map[string]string{"amd64": "x64", "arm64": "arm64"}[runtime.GOARCH]
+	launcher := filepath.Join(root, filepath.FromSlash(codingagent.PackageName))
+	return filepath.Join(launcher, "node_modules", filepath.FromSlash(codingagent.PackageName+"-win32-"+cpu))
+}
+
+// runFakeNpm removes the installed launcher's whole tree, as npm does, and
+// writes the new release's nested pig.exe, recording the install arguments as
+// its content.
 func runFakeNpm(root string, args []string) int {
 	if slices.Equal(args, []string{"root", "-g"}) {
 		fmt.Println(root)
@@ -66,17 +80,16 @@ func runFakeNpm(root string, args []string) int {
 		fmt.Fprintf(os.Stderr, "fake npm: unexpected arguments %q\n", args)
 		return 2
 	}
-	pkg := filepath.Join(root, "pig")
-	if err := os.RemoveAll(pkg); err != nil {
+	if err := os.RemoveAll(filepath.Join(root, filepath.FromSlash(codingagent.PackageName))); err != nil {
 		fmt.Fprintln(os.Stderr, "fake npm:", err)
 		return 1
 	}
-	bin := filepath.Join(pkg, "bin")
-	if err := os.MkdirAll(bin, 0o755); err != nil {
+	platform := npmNestedPlatformPackageDir(root)
+	if err := os.MkdirAll(platform, 0o755); err != nil {
 		fmt.Fprintln(os.Stderr, "fake npm:", err)
 		return 1
 	}
-	if err := os.WriteFile(filepath.Join(bin, "pig.exe"), []byte(strings.Join(args, " ")), 0o755); err != nil {
+	if err := os.WriteFile(filepath.Join(platform, "pig.exe"), []byte(strings.Join(args, " ")), 0o755); err != nil {
 		fmt.Fprintln(os.Stderr, "fake npm:", err)
 		return 1
 	}

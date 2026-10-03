@@ -23,3 +23,14 @@ for (const [source, actual] of Object.entries({ declared, development, locked })
     throw new Error(`${source} Pi version ${JSON.stringify(actual)} does not match ${expected}`);
   }
 }
+
+const readme = await readFile(resolve(here, "../README.md"), "utf8");
+const readmeVersions = [...readme.matchAll(/(?:\bPi\s+|pi-coding-agent@)(\d+\.\d+\.\d+)/g)].map((found) => found[1]);
+if (readmeVersions.length === 0) {
+  throw new Error(`README does not name Pi version ${expected}`);
+}
+for (const actual of readmeVersions) {
+  if (actual !== expected) {
+    throw new Error(`README Pi version ${JSON.stringify(actual)} does not match ${expected}`);
+  }
+}

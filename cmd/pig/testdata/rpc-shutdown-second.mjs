@@ -16,4 +16,12 @@ export default function (pi) {
       appendFileSync(process.env.RPC_SHUTDOWN_REPORT, "micro2\n");
     },
   });
+  // ns2 replaces the Session from this extension, so its response travels on this connection while the runtime_drained report of a never-settling quit handler goes out on the first runtime's connection.
+  pi.registerCommand("ns2", {
+    description: "Replace the Session",
+    handler: async (_args, ctx) => {
+      await ctx.newSession();
+      appendFileSync(process.env.RPC_SHUTDOWN_REPORT, "ns2-done\n");
+    },
+  });
 }

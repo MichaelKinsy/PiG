@@ -548,7 +548,7 @@ func validateToolAllowlist(location string, values *[]string, allowed []string) 
 		}
 		if len(allowedSet) > 0 {
 			if _, ok := allowedSet[name]; !ok {
-				return fmt.Errorf("%s[%d] names unknown built-in tool %q", location, i, name)
+				return fmt.Errorf("%s[%d]: %q is not a built-in tool (built-ins: %s); list extension tools under extensions[].tools", location, i, name, strings.Join(allowed, ", "))
 			}
 		}
 		if _, exists := seen[name]; exists {

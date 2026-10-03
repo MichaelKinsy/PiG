@@ -6,16 +6,14 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/agentharness"
-	"github.com/MichaelKinsy/PiG/agent/harness/session"
-	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/chord"
+	"github.com/MichaelKinsy/PiG/internal/experimental/durabletest"
 	"github.com/MichaelKinsy/PiG/internal/experimental/services"
 )
 
 func TestPortWave07ExperimentalPluginReload(t *testing.T) {
 	t.Parallel()
-	// upstream: packages/coding-agent/test/experimental-plugin-reload.test.ts:8.
+	// upstream: packages/coding-agent/test/experimental-plugin-reload.test.ts:9. The faux conversation is the stand-in of internal/experimental/durabletest for experimental-durable-support.ts openFauxConversation.
 	t.Run("loads and cuts over a fresh Session facet generation", func(t *testing.T) {
 		t.Parallel()
 		var activations, disposals []int
@@ -30,14 +28,10 @@ func TestPortWave07ExperimentalPluginReload(t *testing.T) {
 				Dispose: func(context.Context) error { disposals = append(disposals, current); return nil },
 			}, nil
 		})
-		snapshot := agentharness.LaneSnapshot{
-			Lane: "main", Transcript: []session.Entry{}, TipID: nil,
-			Configuration: session.LaneConfiguration{Model: session.ModelRef{Provider: "test", ModelID: "model"}, ThinkingLevel: ai.ThinkingOff, ActiveToolNames: []string{}},
-			Stats:         session.SessionStats{MessageCount: 0, Usage: ai.Usage{}},
-			Operation:     nil, Queues: []agentharness.LaneQueuedItem{}, Faulted: false,
-		}
+		durable := durabletest.OpenFauxConversation()
+		t.Cleanup(func() { _ = durable.Harness.Close(context.Background()) })
 		worker, err := services.CreateSessionWorkerServices(services.SessionWorkerServicesOptions{
-			Lane: &sessionPluginTestLane{snapshot: snapshot}, FacetLoader: loader,
+			Harness: durable.Harness, Conversation: durable.Conversation, FacetLoader: loader,
 			Publish: func(context.Context, services.WorkerServiceScope, string, chord.ServiceProviderUpdate) error {
 				return nil
 			},
@@ -82,27 +76,3 @@ type sessionPluginTestLoader func(context.Context) (chord.LoadedFacets, error)
 func (loader sessionPluginTestLoader) Load(ctx context.Context) (chord.LoadedFacets, error) {
 	return loader(ctx)
 }
-
-// The upstream mock supplies only watch/getModel/getThinkingLevel. Embedded nil contracts make unexpected command or setter calls fail rather than returning fabricated results.
-type sessionPluginTestLane struct {
-	services.AgentLane
-	services.ModelsServiceLane
-	snapshot agentharness.LaneSnapshot
-}
-
-func (lane *sessionPluginTestLane) Watch(context.Context) (agentharness.WatchHandle[agentharness.LaneSnapshot], error) {
-	return &sessionPluginTestWatch{snapshot: lane.snapshot}, nil
-}
-func (*sessionPluginTestLane) GetModel(context.Context) (*ai.Model, error) { return nil, nil }
-func (*sessionPluginTestLane) GetThinkingLevel(context.Context) (ai.ThinkingLevel, error) {
-	return ai.ThinkingOff, nil
-}
-
-type sessionPluginTestWatch struct{ snapshot agentharness.LaneSnapshot }
-
-func (watch *sessionPluginTestWatch) Snapshot() agentharness.LaneSnapshot { return watch.snapshot }
-func (*sessionPluginTestWatch) Start(agentharness.EventListener) error    { return nil }
-func (watch *sessionPluginTestWatch) Resnapshot(context.Context) (agentharness.LaneSnapshot, error) {
-	return watch.snapshot, nil
-}
-func (*sessionPluginTestWatch) Unsubscribe() {}

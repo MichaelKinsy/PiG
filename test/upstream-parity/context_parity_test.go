@@ -12,24 +12,24 @@ import (
 
 // upstreamContextMembers lists the pinned upstream ExtensionContext surface.
 var upstreamContextMembers = []string{
-	"ui",                 // types.ts:295: ExtensionUIContext
-	"mode",               // types.ts:304: ExtensionMode
-	"hasUI",              // types.ts:297
-	"cwd",                // types.ts:299
-	"sessionManager",     // types.ts:301: ReadonlySessionManager
-	"modelRegistry",      // types.ts:303: ModelRegistry
-	"model",              // types.ts:305: Model<any> | undefined
-	"isIdle",             // types.ts:307: () => boolean
-	"signal",             // handler context.Context carries cancellation
-	"abort",              // types.ts:311: () => void
-	"hasPendingMessages", // types.ts:313: () => boolean
-	"shutdown",           // types.ts:315: () => void
-	"getContextUsage",    // types.ts:317: () => ContextUsage | undefined
-	"compact",            // types.ts:319: (options?: CompactOptions) => void
-	"getSystemPrompt",    // types.ts:321: () => string
-	"isProjectTrusted",   // types.ts: () => boolean
-	"scopedModels",       // types.ts: readonly ScopedModel[]
-	"thinkingLevel",      // types.ts: ThinkingLevel | undefined
+	"ui",                 // types.ts:327: ExtensionUIContext
+	"mode",               // types.ts:329: ExtensionMode
+	"hasUI",              // types.ts:331
+	"cwd",                // types.ts:333
+	"sessionManager",     // types.ts:335: ReadonlySessionManager
+	"modelRegistry",      // types.ts:337: ModelRegistry
+	"model",              // types.ts:339: Model<any> | undefined
+	"isIdle",             // types.ts:348: () => boolean
+	"signal",             // types.ts:352: AbortSignal | undefined
+	"abort",              // types.ts:354: () => void
+	"hasPendingMessages", // types.ts:356: () => boolean
+	"shutdown",           // types.ts:358: () => void
+	"getContextUsage",    // types.ts:360: () => ContextUsage | undefined
+	"compact",            // types.ts:362: (options?: CompactOptions) => void
+	"getSystemPrompt",    // types.ts:364: () => string
+	"isProjectTrusted",   // types.ts:350: () => boolean
+	"scopedModels",       // types.ts:344: readonly ScopedModel[]
+	"thinkingLevel",      // types.ts:346: ThinkingLevel | undefined
 }
 
 // upstreamToContextGoName converts a camelCase upstream member name to
@@ -43,13 +43,13 @@ func upstreamToContextGoName(camel string) string {
 		"modelRegistry":      "ModelRegistry",
 		"model":              "Model",
 		"isIdle":             "IsIdle",
+		"signal":             "Signal",
 		"abort":              "Abort",
 		"hasPendingMessages": "HasPendingMessages",
 		"shutdown":           "Shutdown",
 		"getContextUsage":    "GetContextUsage",
 		"compact":            "Compact",
 		"getSystemPrompt":    "GetSystemPrompt",
-		// signal is carried by the handler context.Context.
 	}
 	if v, ok := overrides[camel]; ok {
 		return v
@@ -63,10 +63,9 @@ var deferredContextMembers = map[string]string{
 }
 
 // translatedContextMembers records upstream members represented outside the
-// public Go Context type.
-var translatedContextMembers = map[string]string{
-	"signal": "handler context.Context carries cancellation",
-}
+// public Go Context type. Every current upstream member is a Go Context member
+// or deferred.
+var translatedContextMembers = map[string]string{}
 
 // pigOnlyContextMembers records Go Context members without a direct upstream
 // Context member.
@@ -81,6 +80,15 @@ var pigOnlyContextMembers = map[string]string{
 	"SetActiveTools": "D23",
 
 	"SendUserMessage": "upstream ExtensionAPI method placed on Go handler Context",
+
+	// Pi's ExtensionAPI.getMcpServers (types.ts:1845, loader.ts:488-491) reads the runtime registry. A Go handler
+	// reaches the API only through its Context, so the method sits there as SendUserMessage does.
+	"GetMcpServers": "upstream ExtensionAPI method placed on Go handler Context (pi.getMcpServers, types.ts:1845)",
+
+	// Pi's registerTool calls runtime.refreshTools() after storing the tool (loader.ts:299, bound by
+	// agent-session.ts through ExtensionActions.refreshTools, types.ts:2082 and 2142). A Go in-process extension
+	// stores the tool with Extension.SetRegisteredTool, so the refresh is a separate Context call.
+	"RefreshTools": "Go binding of the runtime.refreshTools action that upstream registerTool runs (loader.ts:299, types.ts:2142)",
 }
 
 func goContextPublicMembers() map[string]bool {

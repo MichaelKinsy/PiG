@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -256,5 +257,82 @@ func TestRadiusOAuthIsRegisteredForTheDefaultGateway(t *testing.T) {
 	radius, isRadius := provider.(*RadiusOAuth)
 	if !ok || !isRadius || radius.Name() != "Radius" || radius.Gateway() != DefaultRadiusGateway || radius.redirectURI() != "http://127.0.0.1:1456/oauth/callback" {
 		t.Fatalf("radius OAuth provider = %#v, %t", provider, ok)
+	}
+}
+
+// .upstream/v0.99.1/packages/ai/test/radius-oauth.test.ts:131
+func TestRadiusOAuthExchangesBrowserCodeBeforeShowingSignInPageUpstream(t *testing.T) {
+	var mu sync.Mutex
+	tokenStatus := 400
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		_ = request.ParseForm()
+		switch request.URL.Path {
+		case "/v1/oauth":
+			writeRadiusJSON(writer, 200, map[string]any{"authorizationEndpoint": "http://" + request.Host + "/authorize"})
+		case "/v1/oauth/token":
+			if request.PostForm.Get("code") != "browser-code" {
+				t.Errorf("token form = %v", request.PostForm)
+			}
+			mu.Lock()
+			status := tokenStatus
+			mu.Unlock()
+			if status == 200 {
+				writeRadiusJSON(writer, 200, map[string]any{"access_token": "access", "refresh_token": "refresh", "expires_in": 3600})
+			} else {
+				writeRadiusJSON(writer, status, map[string]any{"error": "invalid_grant", "error_description": "code expired"})
+			}
+		default:
+			t.Errorf("unexpected request %s", request.URL.Path)
+		}
+	}))
+	defer server.Close()
+	oauth := newTestRadiusOAuth(server.URL, time.Now())
+	type outcome struct {
+		credentials OAuthCredentials
+		err         error
+		status      int
+		page        string
+	}
+	login := func() outcome {
+		oauth.callbackAddress = freeLoopbackAddress(t)
+		pages := make(chan outcome, 1)
+		credentials, err := oauth.LoginContext(t.Context(), OAuthLoginCallbacks{
+			OnSelect: selectRadiusMethod(RadiusLoginMethodBrowser),
+			OnAuth: func(info OAuthAuthInfo) {
+				authorize, err := url.Parse(info.URL)
+				if err != nil {
+					t.Error(err)
+					return
+				}
+				callback := authorize.Query().Get("redirect_uri") + "?code=browser-code&state=" + url.QueryEscape(authorize.Query().Get("state"))
+				go func() {
+					response, err := oauthNativeClient.Get(callback)
+					if err != nil {
+						t.Error(err)
+						pages <- outcome{}
+						return
+					}
+					defer func() { _ = response.Body.Close() }()
+					body, _ := io.ReadAll(response.Body)
+					pages <- outcome{status: response.StatusCode, page: string(body)}
+				}()
+			},
+		})
+		got := <-pages
+		got.credentials, got.err = credentials, err
+		return got
+	}
+
+	failed := login()
+	if failed.err == nil || !strings.Contains(failed.err.Error(), "invalid_grant: code expired") || failed.status != 502 || !strings.Contains(failed.page, "code expired") {
+		t.Fatalf("failed=%+v", failed)
+	}
+
+	mu.Lock()
+	tokenStatus = 200
+	mu.Unlock()
+	succeeded := login()
+	if succeeded.err != nil || succeeded.credentials.Access != "access" || succeeded.status != 200 || !strings.Contains(succeeded.page, "Signed in to Radius.") {
+		t.Fatalf("succeeded=%+v", succeeded)
 	}
 }

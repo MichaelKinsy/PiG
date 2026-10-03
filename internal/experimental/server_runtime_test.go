@@ -16,8 +16,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/env"
-	"github.com/MichaelKinsy/PiG/agent/harness/session"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/experimental/client"
 	"github.com/MichaelKinsy/PiG/internal/experimental/protocol"
@@ -242,18 +240,25 @@ func TestRunningServerRoutesServicesAndJoinsClose(t *testing.T) {
 	if !slices.Equal(catalogue, wantCatalogue) {
 		t.Fatalf("server catalogue = %#v, want %#v", catalogue, wantCatalogue)
 	}
-	// upstream: server.ts:400 spreads createOptions into repo.create; packages/agent/src/harness/session/jsonl/repo.ts:154,212 (`id ?? uuidv7`) keeps an explicit "".
+	// upstream: server.ts:395-396 passes createOptions to createCatalogSession, which uses `options.id ?? randomUUID()` and rejects an explicit "" (session-catalog.ts:53-56).
 	for _, selection := range []struct {
-		input string
-		id    *string
+		input   string
+		id      *string
+		invalid bool
 	}{
 		{input: `{}`},
 		{input: `{"id":"named-session"}`, id: new("named-session")},
-		{input: `{"id":""}`, id: new("")},
+		{input: `{"id":""}`, id: new(""), invalid: true},
 	} {
 		result, requestErr := peer.Request(t.Context(), target, chord.ServiceCall{
 			ServiceId: "pi.session-management", Member: "create", Args: []json.RawMessage{json.RawMessage(selection.input)},
 		})
+		if selection.invalid {
+			if requestErr == nil {
+				t.Fatalf("create %s succeeded; want the catalog's Invalid session ID error", selection.input)
+			}
+			continue
+		}
 		if requestErr != nil {
 			t.Fatal(requestErr)
 		}
@@ -266,8 +271,8 @@ func TestRunningServerRoutesServicesAndJoinsClose(t *testing.T) {
 		}
 		if selection.id == nil {
 			id, parseErr := uuid.Parse(created.SessionId)
-			if parseErr != nil || id.Version() != 7 {
-				t.Fatalf("omitted ID generated %q, want UUIDv7: %v", created.SessionId, parseErr)
+			if parseErr != nil || id.Version() != 4 {
+				t.Fatalf("omitted ID generated %q, want UUIDv4 (session-catalog.ts randomUUID): %v", created.SessionId, parseErr)
 			}
 		} else if created.SessionId != *selection.id {
 			t.Fatalf("explicit ID %q became %q", *selection.id, created.SessionId)
@@ -446,25 +451,10 @@ func BenchmarkServerGeneration(b *testing.B) {
 	}
 	b.Cleanup(lease.Close)
 	sessionDirectory := filepath.Join(directory, "sessions")
-	filesystem := env.NewNodeExecutionEnv(env.NodeExecutionEnvOptions{Cwd: directory})
-	b.Cleanup(func() { filesystem.Cleanup(context.Background()) })
-	repo := session.NewJsonlSessionRepo(session.JsonlSessionRepoOptions{FileSystem: filesystem, SessionsRoot: sessionDirectory})
-	b.Cleanup(func() {
-		if err := repo.Close(context.Background()); err != nil {
-			b.Error(err)
-		}
-	})
 	for range 2 {
-		created, err := repo.Create(b.Context(), session.SessionCreateOptions{Cwd: directory})
-		if err != nil {
+		if _, err := CreateSession(sessionDirectory, CreateSessionOptions{Cwd: directory}); err != nil {
 			b.Fatal(err)
 		}
-		if err := created.Close(b.Context()); err != nil {
-			b.Fatal(err)
-		}
-	}
-	if err := repo.Close(b.Context()); err != nil {
-		b.Fatal(err)
 	}
 	options := StartServerOptions{
 		Directory: &directory, ServerId: &serverId, SessionDir: &sessionDirectory,

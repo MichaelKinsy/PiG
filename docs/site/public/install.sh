@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 #
-# PiG installer for macOS and Linux.
+# PiG installer for macOS, Linux and Android (Termux).
 #
 #   curl -fsSL https://pi-in-go.dev/install.sh | sh
 #
@@ -14,12 +14,15 @@
 #
 # Environment:
 #   PIG_VERSION        install this version (for example 0.2.0) instead of the latest
-#   PIG_INSTALL_DIR    install directory (default: $HOME/.local/bin)
+#   PIG_INSTALL_DIR    install directory (default: $HOME/.local/bin, or $PREFIX/bin in Termux)
 #   PIG_API_BASE       API that names the latest release (default: https://pi-in-go.dev/api)
 #   PIG_LATEST_RELEASE_URL  page that redirects to the latest release, used when the API does not answer (default: https://github.com/MichaelKinsy/PiG/releases/latest)
 #   PIG_DOWNLOAD_BASE  release download root (default: https://github.com/MichaelKinsy/PiG/releases/download)
 #   PIG_UPDATE_URL     update manifest `pig update` should use (default: the latest release's update.json)
 #   PIG_HOME           PiG's settings directory, where the install receipt goes (default: ~/.pig)
+#
+# On Android (Termux) it installs the android-arm64 release, never linux-arm64,
+# into $PREFIX/bin. Other Android CPUs have no release.
 #
 # After installing, it records an owner-only receipt (<settings>/install-receipt)
 # naming the installed executable, its release, its SHA-256, and its update
@@ -34,13 +37,13 @@ main() {
   api_base=${PIG_API_BASE:-https://pi-in-go.dev/api}
   latest_release_url=${PIG_LATEST_RELEASE_URL:-https://github.com/MichaelKinsy/PiG/releases/latest}
   download_base=${PIG_DOWNLOAD_BASE:-https://github.com/MichaelKinsy/PiG/releases/download}
-  install_dir=${PIG_INSTALL_DIR:-${HOME:?HOME is not set}/.local/bin}
 
   need uname
   need tar
   need mktemp
   downloader=$(pick_downloader)
   platform=$(detect_platform)
+  install_dir=${PIG_INSTALL_DIR:-$(default_install_dir)}
 
   version=${PIG_VERSION:-}
   if [ -z "$version" ]; then
@@ -161,9 +164,32 @@ fetch() {
   esac
 }
 
+# default_install_dir prints where pig goes without PIG_INSTALL_DIR: Termux's
+# bin directory, which is on PATH and has no /usr/local, on Android, and
+# ~/.local/bin elsewhere.
+default_install_dir() {
+  if is_android && [ -n "${PREFIX:-}" ]; then
+    echo "${PREFIX}/bin"
+    return
+  fi
+  echo "${HOME:?HOME is not set}/.local/bin"
+}
+
+# is_android reports Android's userland (Termux): uname -s says Linux and
+# uname -o says Android. BSD and macOS uname has no -o.
+is_android() {
+  [ "$(uname -o 2>/dev/null)" = Android ]
+}
+
+# detect_platform prints OS-ARCH as release archives name them. Termux reports
+# uname -s Linux, but it needs the android build: that one is a position
+# independent executable linked to bionic, which Termux's loader runs and which
+# resolves DNS and trusts certificates through Android.
 detect_platform() {
   case "$(uname -s)" in
-    Linux) os=linux ;;
+    Linux)
+      if is_android; then os=android; else os=linux; fi
+      ;;
     Darwin) os=darwin ;;
     *) fail "unsupported operating system $(uname -s); download a release archive from GitHub instead" ;;
   esac
@@ -172,6 +198,9 @@ detect_platform() {
     arm64 | aarch64) arch=arm64 ;;
     *) fail "unsupported CPU architecture $(uname -m)" ;;
   esac
+  if is_android && [ "$arch" != arm64 ]; then
+    fail "PiG publishes Android binaries for arm64 only, not $(uname -m)"
+  fi
   # A Rosetta 2 shell on Apple silicon reports x86_64; install the native binary.
   if [ "$os" = darwin ] && [ "$arch" = amd64 ] &&
     [ "$(sysctl -n sysctl.proc_translated 2>/dev/null || echo 0)" = 1 ]; then

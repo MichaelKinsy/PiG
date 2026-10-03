@@ -15,6 +15,7 @@ import (
 // conventional directories for invalid JSON. package-manager.ts:2153-2202
 // keeps valid siblings and the other Packages; vendor manifests are not read.
 func TestRPCStartupMalformedPackageManifests(t *testing.T) {
+	t.Parallel()
 	binary := buildPigBinaryForSignalTest(t)
 	fixtures := "../../test/parity/scenarios/extensions-runtime/testdata/package-manifests/agent"
 	entries, err := os.ReadDir(filepath.Join(fixtures, "packages"))

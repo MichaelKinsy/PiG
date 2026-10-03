@@ -33,7 +33,7 @@ func TestRPCInputEndAfterCommandReplacementKeepsPendingQuitShutdownQuiet(t *test
 			}
 			want := []rpcRecord{
 				{"type": "extension_ui_request", "method": "notify", "message": "session_shutdown started", "notifyType": "info"},
-				{"type": "response", "id": "c", "command": "prompt", "success": true},
+				handledPromptResponse("c"),
 			}
 			if !reflect.DeepEqual(out, want) {
 				t.Fatalf("stdout = %v, want the replacement notify and the command response only", out)

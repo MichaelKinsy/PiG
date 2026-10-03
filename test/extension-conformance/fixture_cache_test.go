@@ -31,6 +31,7 @@ func TestSDKFixtureBuildsHavePackageLifetime(t *testing.T) {
 }
 
 func TestPackedUIFixturesReuseArtifacts(t *testing.T) {
+	t.Parallel()
 	for _, language := range []string{"go", "python", "rust"} {
 		t.Run(language, func(t *testing.T) {
 			for i := range 2 {

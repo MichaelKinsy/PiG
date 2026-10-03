@@ -22,6 +22,7 @@ import (
 )
 
 func TestInteractiveSignalsRetainHandlersThroughDisposalAndDrain(t *testing.T) {
+	t.Parallel()
 	binary := os.Getenv("PIG_SIGNAL_REFERENCE_BIN")
 	if binary == "" {
 		binary = buildPigBinaryForSignalTest(t)
@@ -52,6 +53,7 @@ func TestInteractiveSignalsRetainHandlersThroughDisposalAndDrain(t *testing.T) {
 			if err := os.WriteFile(extension, []byte(script), 0o600); err != nil {
 				t.Fatal(err)
 			}
+			seedFirstRunDone(t, agent)
 			master, slave := openPTY(t, 40, 160)
 			initial, err := unix.IoctlGetTermios(int(master.Fd()), unix.TCGETS)
 			if err != nil {

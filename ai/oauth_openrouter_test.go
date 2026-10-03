@@ -19,38 +19,55 @@ import (
 
 // upstream: packages/ai/test/openrouter-oauth.test.ts:29,37.
 func TestOpenRouterOAuthProvidersUpstream(t *testing.T) {
-	textAuth, err := BuiltinProviderAuth("openrouter")
+	auth, err := BuiltinProviderAuth("openrouter")
 	if err != nil {
 		t.Fatal(err)
 	}
-	text := CreateProvider(CreateProviderOptions{ID: "openrouter", Auth: textAuth})
-	images := OpenrouterImagesProvider()
-	for _, auth := range []ProviderAuth{text.Auth, images.Auth} {
+	// .upstream/v0.99.1/packages/ai/test/openrouter-oauth.test.ts:29
+	t.Run("is exposed alongside API-key auth", func(t *testing.T) {
 		if auth.APIKey == nil || auth.OAuth == nil || auth.OAuth.LoginLabel != "Sign in with OpenRouter" {
 			t.Fatalf("OpenRouter auth = %#v", auth)
 		}
-	}
-	credentials := NewInMemoryCredentialStore()
-	defer credentials.operations.Wait()
-	_, err = credentials.Modify(t.Context(), "openrouter", func(*Credential) (*Credential, error) {
-		return &Credential{Type: CredentialOAuth, Access: "sk-or-stored", Refresh: "", Expires: 9007199254740991}, nil
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	textModels := CreateModels(CreateModelsOptions{Credentials: credentials})
-	textModels.SetProvider(text)
-	imageModels := CreateImagesModels(CreateModelsOptions{Credentials: credentials})
-	imageModels.SetProvider(images)
-	for _, get := range []func() (*AuthResult, error){
-		func() (*AuthResult, error) { return textModels.GetAuth(t.Context(), "openrouter") },
-		func() (*AuthResult, error) { return imageModels.GetAuth(t.Context(), "openrouter") },
-	} {
-		auth, err := get()
-		if err != nil || auth == nil || auth.Auth.APIKey != "sk-or-stored" {
-			t.Fatalf("stored OpenRouter OAuth key = %#v, %v", auth, err)
+	// .upstream/v0.99.1/packages/ai/test/openrouter-oauth.test.ts:34
+	t.Run("resolves the same stored OAuth key for chat and image models", func(t *testing.T) {
+		credentials := NewInMemoryCredentialStore()
+		defer credentials.operations.Wait()
+		_, err := credentials.Modify(t.Context(), "openrouter", func(*Credential) (*Credential, error) {
+			return &Credential{Type: CredentialOAuth, Access: "sk-or-stored", Refresh: "", Expires: 9007199254740991}, nil
+		})
+		if err != nil {
+			t.Fatal(err)
 		}
+		models := CreateModels(CreateModelsOptions{Credentials: credentials})
+		models.SetProvider(openRouterTestProvider(auth))
+		chat := models.GetModels("openrouter")
+		images := models.GetModelsOfType(ModelTypeImage, "openrouter")
+		if len(chat) == 0 || len(images) == 0 {
+			t.Fatalf("chat=%d image=%d models", len(chat), len(images))
+		}
+		for _, model := range []AnyModel{chat[0], images[0]} {
+			result, err := models.GetModelAuth(t.Context(), model)
+			if err != nil || result == nil || result.Auth.APIKey != "sk-or-stored" {
+				t.Fatalf("stored OpenRouter OAuth key for %s = %#v, %v", GetModelType(model), result, err)
+			}
+		}
+	})
+}
+
+// openRouterTestProvider is the OpenRouter provider with its chat and image models under one credential.
+func openRouterTestProvider(auth ProviderAuth) *ModelsProvider {
+	var list []AnyModel
+	for _, m := range ListModels("openrouter") {
+		list = append(list, m.ToModel())
 	}
+	for _, image := range GetImageModels(ProviderImagesOpenRouter) {
+		list = append(list, &image)
+	}
+	return CreateProvider(CreateProviderOptions{ID: "openrouter", Name: new("OpenRouter"), Auth: auth, Models: list,
+		Images: ProviderImageAPIMap{APIImagesOpenRouter: {GenerateImages: func(ctx context.Context, model *ImageModel, request ImagesContext, options ImagesOptions) (AssistantImages, error) {
+			return GenerateImagesOpenRouter(ctx, *model, request, options), nil
+		}}}})
 }
 
 type openRouterHTTPResult struct {
@@ -130,7 +147,7 @@ func TestOpenRouterOAuthPKCEUpstream(t *testing.T) {
 				workers.Go(func() { response <- requestOpenRouterCallback(ctx, callback.String()) })
 			}
 		},
-	})
+	}, LoginOptions{})
 	want := Credential{Type: CredentialOAuth, Access: "sk-or-test", Refresh: "", Expires: 9007199254740991}
 	if err != nil || !reflect.DeepEqual(credential, want) {
 		t.Errorf("login = %#v, %v; want %#v", credential, err, want)
@@ -192,7 +209,7 @@ func TestOpenRouterOAuthCallbackErrorsUpstream(t *testing.T) {
 						workers.Go(func() { response <- requestOpenRouterCallback(ctx, callback.String()) })
 					}
 				},
-			})
+			}, LoginOptions{})
 			if err == nil || err.Error() != tc.want {
 				t.Errorf("login error = %v, want %s", err, tc.want)
 			}
@@ -239,7 +256,7 @@ func TestOpenRouterOAuthOneShotUpstream(t *testing.T) {
 				})
 			}
 		},
-	})
+	}, LoginOptions{})
 	workers.Wait()
 	if err != nil || credential.Access != "sk-or-test" || exchanges.Load() != 1 {
 		t.Errorf("login = %#v, %v; exchanges=%d", credential, err, exchanges.Load())
@@ -288,7 +305,7 @@ func TestOpenRouterOAuthManualUpstream(t *testing.T) {
 						_, callback = openRouterCallbackFromAuth(t, event, "")
 					}
 				},
-			})
+			}, LoginOptions{})
 			if tc.want != "" {
 				if err == nil || err.Error() != tc.want || exchanges.Load() != 0 {
 					t.Fatalf("login error = %v, exchanges = %d; want %s without exchange", err, exchanges.Load(), tc.want)
@@ -495,31 +512,6 @@ func TestOpenRouterExchangeInvalidJSON(t *testing.T) {
 	_, err := exchangeOpenRouterCode(t.Context(), "c", "v")
 	if err == nil || !strings.Contains(err.Error(), "invalid JSON") {
 		t.Fatalf("expected invalid-JSON error, got %v", err)
-	}
-}
-
-// TestOpenRouterCancelWaitRespectsClaim is the claimed-vs-manual guard: a
-// claimed callback must not be handed to manual paste, and an unclaimed one
-// must be.
-func TestOpenRouterCancelWaitRespectsClaim(t *testing.T) {
-	claimed := &openRouterCallback{resultCh: make(chan openRouterResult, 1), done: make(chan struct{})}
-	claimed.claimed = true
-	claimed.cancelWait()
-	select {
-	case <-claimed.resultCh:
-		t.Fatal("cancelWait handed a claimed callback to manual")
-	default:
-	}
-
-	unclaimed := &openRouterCallback{resultCh: make(chan openRouterResult, 1), done: make(chan struct{})}
-	unclaimed.cancelWait()
-	select {
-	case r := <-unclaimed.resultCh:
-		if r.cred != nil || r.err != nil {
-			t.Fatalf("manual hand-off must be a nil result, got %+v", r)
-		}
-	default:
-		t.Fatal("cancelWait did not hand an unclaimed callback to manual")
 	}
 }
 

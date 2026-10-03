@@ -316,6 +316,9 @@ var settingRuntimeEffectConcepts = map[string][]runtimeEffectConcept{
 	"fullscreen-copy-on-select": {
 		{sourceAny: []string{"this.renderer.setCopyOnSelect"}, targetAny: []string{"m.altScreen.SetCopyOnSelect"}},
 	},
+	"fullscreen-wheel-scroll-lines": {
+		{sourceAny: []string{"this.renderer.setWheelScrollLines"}, targetAny: []string{"m.altScreen.SetWheelScrollLines"}},
+	},
 	"theme": {
 		{sourceAny: []string{"this.themeController.setThemeSetting"}, targetAny: []string{"m.applyThemeFromSettings"}},
 	},

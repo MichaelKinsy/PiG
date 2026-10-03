@@ -1,4 +1,4 @@
-# Real Pi 0.87.1 is driven through RPC with a local OpenAI-compatible server.
+# Real Pi (the pinned release) is driven through RPC with a local OpenAI-compatible server.
 # Complete tool_execution_end, tool message start/end, direct bash response, queried message/entry and on-disk entry records are compared.
 # Shared typed aliases preserve eight-hex entry identities, complete path suffixes and timestamp types. The probe checks clock range and cross-surface timestamp identity without rewriting records.
 # The raw RPC stream and child stderr are retained as an artifact; stderr also reaches the comparator unchanged.
@@ -45,3 +45,8 @@ reason = "Tool errors may include the private fixture path; retain complete surr
 paths = ["/**/timestamp"]
 kind = "timestamp"
 reason = "Clocks are independent; retain numeric/string type and syntax. The probe separately validates range and repeated message/entry timestamps across all surfaces."
+
+[[assert.json_aliases]]
+paths = ["/**/wall_time_seconds"]
+kind = "duration"
+reason = "bash.ts:392 measures the command's wall clock and rounds it to 0.1 s, so a loaded host reports 0 or 0.1 for the same command; retain the field's presence, its position and Pi's one-decimal number spelling."

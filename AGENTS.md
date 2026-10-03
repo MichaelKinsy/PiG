@@ -273,41 +273,40 @@ make async-contracts` or `make verify` from `docs/parity/PORT_MAP.md` and `test/
   port. Everything else is invariant rule, not progress narrative.
 -->
 
-**Porting:** 424 / 564 intended-portable entries ✅ (75.2%); **Verification:** 407 behavioral (96.0%), 3 weak-only (no behavioral verification), 14 untested.
-Raw PORT_MAP rows: 622. Breakdown: 58 n/a (designed out) · 108 🟡 partial · 32 ⬜ not started. See docs/parity/DIVERGENCES.md for the documented exceptions.
+**Porting:** 376 / 489 intended-portable entries ✅ (76.9%); **Verification:** 355 behavioral (94.4%), 3 weak-only (no behavioral verification), 18 untested.
+Raw PORT_MAP rows: 547. Breakdown: 58 n/a (designed out) · 101 🟡 partial · 12 ⬜ not started. See docs/parity/DIVERGENCES.md for the documented exceptions.
 Behavioral evidence includes paired scenarios and reviewed mutation-proven unit tests; the family table below counts paired scenarios only.
 Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registration-only, 1 smoke-only.
 
 | family | scenarios | behavioral | boot-only | weak | deferred | upstream behavioral covered | last run |
 |---|---:|---:|---:|---:|---:|---:|---|
 | `_top` | 1 | 1 | 0 | 0 | 0 | 1 | not run |
-| `ai-sdk` | 3 | 3 | 0 | 0 | 0 | 93 | not run |
+| `ai-sdk` | 3 | 3 | 0 | 0 | 0 | 90 | not run |
 | `autocomplete` | 13 | 13 | 0 | 0 | 0 | 5 | not run |
-| `cli-utils` | 24 | 24 | 0 | 0 | 0 | 13 | not run |
+| `cli-utils` | 25 | 25 | 0 | 0 | 0 | 13 | not run |
 | `clipboard-images` | 7 | 7 | 0 | 0 | 2 | 11 | not run |
-| `compaction` | 15 | 15 | 0 | 0 | 0 | 14 | not run |
-| `experimental-pico3` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
+| `compaction` | 14 | 14 | 0 | 0 | 0 | 10 | not run |
 | `export-html` | 6 | 6 | 0 | 0 | 0 | 1 | not run |
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
-| `extensions-runtime` | 94 | 93 | 0 | 1 | 0 | 62 | not run |
+| `extensions-runtime` | 95 | 94 | 0 | 1 | 0 | 57 | not run |
 | `footer` | 11 | 11 | 0 | 0 | 0 | 9 | not run |
-| `fullscreen` | 10 | 10 | 0 | 0 | 0 | 7 | not run |
+| `fullscreen` | 11 | 11 | 0 | 0 | 0 | 9 | not run |
 | `interactive-rendering` | 46 | 45 | 1 | 0 | 0 | 34 | not run |
-| `json` | 4 | 4 | 0 | 0 | 0 | 5 | not run |
-| `model-resolver-selector` | 22 | 22 | 0 | 0 | 0 | 13 | not run |
-| `model-runtime-store-catalog` | 25 | 25 | 0 | 0 | 0 | 26 | not run |
-| `oauth` | 24 | 24 | 0 | 0 | 0 | 17 | not run |
+| `json` | 10 | 10 | 0 | 0 | 0 | 7 | not run |
+| `model-resolver-selector` | 23 | 23 | 0 | 0 | 0 | 14 | not run |
+| `model-runtime-store-catalog` | 25 | 25 | 0 | 0 | 0 | 24 | not run |
+| `oauth` | 29 | 29 | 0 | 0 | 0 | 18 | not run |
 | `print` | 7 | 7 | 0 | 0 | 0 | 6 | not run |
 | `project-trust` | 23 | 23 | 0 | 0 | 0 | 18 | not run |
 | `providers-faux-streaming` | 64 | 63 | 0 | 1 | 0 | 47 | not run |
 | `providers-registry` | 7 | 4 | 0 | 3 | 0 | 26 | not run |
-| `rpc` | 47 | 47 | 0 | 0 | 0 | 23 | not run |
+| `rpc` | 49 | 49 | 0 | 0 | 0 | 23 | not run |
 | `selectors` | 14 | 14 | 0 | 0 | 1 | 15 | not run |
-| `session` | 40 | 40 | 0 | 0 | 0 | 20 | not run |
+| `session` | 40 | 40 | 0 | 0 | 0 | 19 | not run |
 | `settings` | 14 | 14 | 0 | 0 | 0 | 19 | not run |
-| `slash-commands` | 16 | 15 | 1 | 0 | 0 | 18 | not run |
-| `startup` | 16 | 15 | 1 | 0 | 0 | 9 | not run |
-| `tools` | 30 | 30 | 0 | 0 | 0 | 39 | not run |
+| `slash-commands` | 16 | 15 | 1 | 0 | 0 | 16 | not run |
+| `startup` | 18 | 17 | 1 | 0 | 0 | 10 | not run |
+| `tools` | 29 | 29 | 0 | 0 | 0 | 31 | not run |
 | `tree` | 8 | 7 | 1 | 0 | 0 | 5 | not run |
 | `tui-components` | 26 | 26 | 0 | 0 | 0 | 27 | not run |
 

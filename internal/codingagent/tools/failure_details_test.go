@@ -10,8 +10,13 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 )
 
-// Pi 0.87.1 agent-loop.ts:863-867 turns built-in throws into content plus details:{}.
-// These built-ins represent the same throws with IsError rather than a Go error.
+// Pi 0.99.1 agent-loop.ts:906-910 turns built-in throws into content plus details:{}, and that result has no isError.
+// These built-ins represent the same throws with IsError and Thrown rather than a Go error: the agent reports the call as
+// failed and drops the result's own isError (agent.AgentToolResult.Thrown).
+// The one exception is a shell command that exits non-zero: since upstream 0.99.1
+// (.upstream/v0.99.1/packages/coding-agent/src/core/tools/bash.ts:401-407) it is a
+// returned isError result, not a throw, so it keeps its own (absent) details and
+// carries structuredContent.
 func TestBuiltinFailureDetails(t *testing.T) {
 	cwd := t.TempDir()
 	if err := os.WriteFile(filepath.Join(cwd, "file"), []byte("unchanged"), 0600); err != nil {
@@ -46,6 +51,18 @@ func TestBuiltinFailureDetails(t *testing.T) {
 				result, err := tc.tool.Execute(ctx, "call", json.RawMessage(args), nil)
 				if err != nil || !result.IsError {
 					t.Fatalf("result=%+v err=%v", result, err)
+				}
+				if tc.name == "bash" && !abort {
+					if result.Details != nil || result.StructuredContent == nil {
+						t.Fatalf("returned error result: details=%#v structured=%s; want no details and structuredContent", result.Details, result.StructuredContent)
+					}
+					if result.Thrown {
+						t.Fatal("a non-zero exit is a returned isError result, not a thrown error (bash.ts:403-409)")
+					}
+					return
+				}
+				if !result.Thrown {
+					t.Fatalf("result=%+v: a thrown error must be marked Thrown so its isError stays out of the result (agent-loop.ts:906-910)", result)
 				}
 				data, err := json.Marshal(result.Details)
 				if err != nil || string(data) != "{}" {

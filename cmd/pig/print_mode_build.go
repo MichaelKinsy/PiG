@@ -22,23 +22,20 @@ type printStartup struct {
 
 // printHost builds print and JSON mode's runtime inputs from a build. A replacement Session rebuilds through the same builder for its destination cwd.
 func (b *cliRuntimeBuilder) printHost(build *cliBuild, startup *printStartup) printModeRuntime {
-	promptResult := codingagent.LoadPromptTemplates("", "", build.PromptPaths...)
 	registryAllowed, registryExcluded := toolRegistryFilters(build.Flags)
 	host := printModeRuntime{
 		UnknownFlags: build.Flags.UnknownFlags,
-		Commands: headlessCommandCatalog{
-			promptTemplates: promptResult.Templates,
-			skills:          rpcResolvedSkills(build.skills(), b.activePiglet),
-			cwd:             build.CWD,
-			agentDir:        b.agentDir,
-			sourceInfo:      build.SkillCatalog.SourceInfo,
-			llama:           build.Llama,
+		Commands:     b.printCommands(build),
+		Resources:    func() headlessCommandCatalog { return b.printCommands(build) },
+		Reload: func(call, owner context.Context, session *coding.Session, rebind headlessRebind) error {
+			return b.reloadHeadless(call, owner, build, session, rebind)
 		},
 		ToolRegistryAllowed:  registryAllowed,
 		ToolRegistryExcluded: registryExcluded,
 		Services:             build.Services,
 		Extensions:           build.Extensions,
 		Bridge:               build.Bridge,
+		Host:                 build.Host,
 		Session: coding.SessionStartOptions{
 			ScopedModels:          extensionScopedModels(build.Services, build.Settings.EnabledModels),
 			Model:                 build.Model,
@@ -90,6 +87,18 @@ func (b *cliRuntimeBuilder) printHost(build *cliBuild, startup *printStartup) pr
 		return b.printHost(next, nil), nil
 	}
 	return host
+}
+
+// printCommands is the command catalog print and JSON mode build from a build's prompt templates and skills.
+func (b *cliRuntimeBuilder) printCommands(build *cliBuild) headlessCommandCatalog {
+	return headlessCommandCatalog{
+		promptTemplates: codingagent.LoadPromptTemplates("", "", build.PromptPaths...).Templates,
+		skills:          rpcResolvedSkills(build.skills(), b.activePiglet),
+		cwd:             build.CWD,
+		agentDir:        b.agentDir,
+		sourceInfo:      build.SkillCatalog.SourceInfo,
+		llama:           build.Llama,
+	}
 }
 
 // rebuild constructs the destination cwd's build for a replacement Session.

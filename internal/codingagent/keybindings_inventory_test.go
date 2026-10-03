@@ -67,12 +67,7 @@ func TestAppKeybindingDefinitionsMatchUpstreamInventory(t *testing.T) {
 				continue
 			}
 			upstream[binding.ID] = true
-			description := binding.Description
-			if binding.ID == "app.tools.expand" {
-				// pig divergence (D59): Ctrl+O reveals generic arguments as well as output.
-				description = "Toggle tool details"
-			}
-			expected := KeybindingDefinition{DefaultKeys: binding.Defaults[string(platform)], Description: description}
+			expected := KeybindingDefinition{DefaultKeys: binding.Defaults[string(platform)], Description: binding.Description}
 			got, exists := gotDefinitions[binding.ID]
 			switch {
 			case !exists:

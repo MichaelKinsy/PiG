@@ -10,11 +10,11 @@ import (
 	"slices"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding"
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 // upstream: packages/coding-agent/src/core/agent-session.ts:916-923; packages/coding-agent/src/modes/rpc/rpc-mode.ts:354-363.
@@ -91,7 +91,7 @@ func TestRPCObservationDuringHeldAgentSink(t *testing.T) {
 	for _, api := range []ai.API{ai.APIOpenAICompletions, ai.APIOpenAIResponses} {
 		t.Run(string(api), func(t *testing.T) {
 			t.Parallel()
-			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), testbudget.Wait(t))
 			defer cancel()
 			release := make(chan struct{})
 			releaseBody := sync.OnceFunc(func() { close(release) })

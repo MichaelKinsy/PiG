@@ -1,23 +1,19 @@
 /**
  * OpenAI Codex (ChatGPT OAuth) flow
  *
- * NOTE: This module uses Node.js crypto and http for the OAuth callback.
+ * NOTE: This module uses Node.js crypto and http (via callback-server.ts) for the OAuth callback.
  * It is only intended for CLI use, not browser environments.
  */
 // NEVER convert to top-level imports - breaks browser/Vite builds
 let _randomBytes = null;
-let _http = null;
 if (typeof process !== "undefined" && (process.versions?.node || process.versions?.bun)) {
     import("node:crypto").then((m) => {
         _randomBytes = m.randomBytes;
     });
-    import("node:http").then((m) => {
-        _http = m;
-    });
 }
 import { getProviderEnvValue } from "../../utils/provider-env.js";
+import { startOAuthCallbackServer, waitForCallbackOrManualInput } from "./callback-server.js";
 import { pollOAuthDeviceCodeFlow } from "./device-code.js";
-import { oauthErrorHtml, oauthSuccessHtml } from "./oauth-page.js";
 import { generatePKCE } from "./pkce.js";
 const CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann";
 const AUTH_BASE_URL = "https://auth.openai.com";
@@ -242,81 +238,6 @@ async function createAuthorizationFlow(originator = "pig") {
     url.searchParams.set("originator", originator);
     return { verifier, state, url: url.toString() };
 }
-function startLocalOAuthServer(state) {
-    if (!_http) {
-        throw new Error("OpenAI Codex OAuth is only available in Node.js environments");
-    }
-    let settleWait;
-    const waitForCodePromise = new Promise((resolve) => {
-        let settled = false;
-        settleWait = (value) => {
-            if (settled)
-                return;
-            settled = true;
-            resolve(value);
-        };
-    });
-    const server = _http.createServer((req, res) => {
-        try {
-            const url = new URL(req.url || "", "http://localhost");
-            if (url.pathname !== "/auth/callback") {
-                res.statusCode = 404;
-                res.setHeader("Content-Type", "text/html; charset=utf-8");
-                res.end(oauthErrorHtml("Callback route not found."));
-                return;
-            }
-            if (url.searchParams.get("state") !== state) {
-                res.statusCode = 400;
-                res.setHeader("Content-Type", "text/html; charset=utf-8");
-                res.end(oauthErrorHtml("State mismatch."));
-                return;
-            }
-            const code = url.searchParams.get("code");
-            if (!code) {
-                res.statusCode = 400;
-                res.setHeader("Content-Type", "text/html; charset=utf-8");
-                res.end(oauthErrorHtml("Missing authorization code."));
-                return;
-            }
-            res.statusCode = 200;
-            res.setHeader("Content-Type", "text/html; charset=utf-8");
-            res.end(oauthSuccessHtml("OpenAI authentication completed. You can close this window."));
-            settleWait?.({ code });
-        }
-        catch {
-            res.statusCode = 500;
-            res.setHeader("Content-Type", "text/html; charset=utf-8");
-            res.end(oauthErrorHtml("Internal error while processing OAuth callback."));
-        }
-    });
-    return new Promise((resolve) => {
-        server
-            .listen(1455, getCallbackHost(), () => {
-            resolve({
-                close: () => server.close(),
-                cancelWait: () => {
-                    settleWait?.(null);
-                },
-                waitForCode: () => waitForCodePromise,
-            });
-        })
-            .on("error", (_err) => {
-            settleWait?.(null);
-            resolve({
-                close: () => {
-                    try {
-                        server.close();
-                    }
-                    catch {
-                        // ignore
-                    }
-                },
-                cancelWait: () => { },
-                waitForCode: async () => null,
-            });
-        });
-    });
-}
 function getAccountId(accessToken) {
     const payload = decodeJwt(accessToken);
     const auth = payload?.[JWT_CLAIM_PATH];
@@ -353,67 +274,42 @@ async function loginOpenAICodexDeviceCode(interaction) {
 }
 async function loginOpenAICodex(interaction) {
     const { verifier, state, url } = await createAuthorizationFlow();
-    const server = await startLocalOAuthServer(state);
-    const manualAbort = new AbortController();
-    const onAbort = () => server.cancelWait();
-    interaction.signal.addEventListener("abort", onAbort, { once: true });
-    if (interaction.signal.aborted)
-        onAbort();
-    let code;
-    let manualCode;
-    let manualError;
+    // Port 1455 is shared with the Codex CLI; when it is taken, fall back to the pasted redirect URL.
+    const callback = await startOAuthCallbackServer({
+        providerName: "OpenAI",
+        host: getCallbackHost(),
+        port: 1455,
+        path: "/auth/callback",
+        state,
+        complete: async (code) => code,
+        signal: interaction.signal,
+    }).catch(() => undefined);
     interaction.notify({
         type: "auth_url",
         url,
         instructions: "A browser window should open. Complete login to finish.",
     });
     try {
-        const manualPromise = interaction
-            .prompt({
-            type: "manual_code",
+        const result = await waitForCallbackOrManualInput(interaction, callback, {
             message: "Complete login in your browser, or paste the authorization code / redirect URL here:",
             placeholder: REDIRECT_URI,
-            signal: manualAbort.signal,
-        })
-            .then((input) => {
-            manualCode = input;
-            server.cancelWait();
-        })
-            .catch((error) => {
-            manualError = error instanceof Error ? error : new Error(String(error));
-            server.cancelWait();
         });
-        const result = await server.waitForCode();
-        if (manualError)
-            throw manualError;
-        if (result?.code) {
-            code = result.code;
+        let code;
+        if (result.type === "callback") {
+            code = result.value;
         }
-        else if (manualCode) {
-            const parsed = parseAuthorizationInput(manualCode);
+        else {
+            const parsed = parseAuthorizationInput(result.input);
             if (parsed.state && parsed.state !== state)
                 throw new Error("State mismatch");
             code = parsed.code;
         }
-        if (!code) {
-            await manualPromise;
-            if (manualError)
-                throw manualError;
-            if (manualCode) {
-                const parsed = parseAuthorizationInput(manualCode);
-                if (parsed.state && parsed.state !== state)
-                    throw new Error("State mismatch");
-                code = parsed.code;
-            }
-        }
         if (!code)
             throw new Error("Missing authorization code");
-        return exchangeAuthorizationCodeForCredentials(code, verifier, REDIRECT_URI, interaction.signal);
+        return await exchangeAuthorizationCodeForCredentials(code, verifier, REDIRECT_URI, interaction.signal);
     }
     finally {
-        interaction.signal.removeEventListener("abort", onAbort);
-        manualAbort.abort();
-        server.close();
+        callback?.close();
     }
 }
 /**

@@ -49,7 +49,15 @@ func TestCompareCurrentPin(t *testing.T) {
 	for _, table := range source.Tables {
 		wantMappings += len(table.Items) + len(rules.AdditiveTableItems[rules.TableTargets[table.ID]])
 	}
-	if len(report.Mappings) != wantMappings || len(report.Findings) != len(knownCorrespondenceGaps(t, root)) {
+	known := knownCorrespondenceGaps(t, root)
+	// A Pi table item the Pig table lacks yields a missing-table-item finding
+	// and no mapping, so each listed one leaves the mapping denominator.
+	for key := range known {
+		if strings.HasPrefix(key, "finding:table-item:missing:") {
+			wantMappings--
+		}
+	}
+	if len(report.Mappings) != wantMappings || len(report.Findings) != len(known) {
 		t.Fatalf("report mappings=%d findings=%d", len(report.Mappings), len(report.Findings))
 	}
 }
@@ -78,13 +86,13 @@ func TestPacketCurrentPin(t *testing.T) {
 	if err := packet.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	// The reviewed current settings inventory has 33 rows (independently
+	// The reviewed current settings inventory has 34 rows (independently
 	// counted from settings-selector.ts; see TestCompareCurrentPin above),
 	// and closing the correspondence gaps places every row in the work
 	// packet. Reproduce with:
-	//   go run ./test/parity/cmd/correspondence packet -root . -upstream-version 0.87.1 -target-commit <commit> -node "$(command -v node)"
-	if len(packet.Questions) != 33 || len(packet.Functions) != 10 {
-		t.Fatalf("packet settings/functions = %d/%d, want 33/10", len(packet.Questions), len(packet.Functions))
+	//   go run ./test/parity/cmd/correspondence packet -root . -upstream-version 0.99.2 -target-commit <commit> -node "$(command -v node)"
+	if len(packet.Questions) != 34 || len(packet.Functions) != 10 {
+		t.Fatalf("packet settings/functions = %d/%d, want 34/10", len(packet.Questions), len(packet.Functions))
 	}
 	foundPersistence := false
 	for _, question := range packet.Functions {
@@ -139,11 +147,14 @@ func TestWorkPacketCurrentPinKeepsAgentReadOnly(t *testing.T) {
 			runtimeCandidates = append(runtimeCandidates, edge)
 		}
 	}
-	// Including the full 33-row settings inventory (see TestCompareCurrentPin)
+	// Including the full 34-row settings inventory (see TestCompareCurrentPin)
 	// adds three alignment questions and their five obligations to the
-	// previous reviewed packet. Reproduce with:
-	//   go run ./test/parity/cmd/correspondence work-packet -root . -upstream-version 0.87.1 -target-commit <commit> -role adversary -snapshot-id snapshot:test
-	if packet.Role != correspondence.AdversaryRole || packet.SnapshotID != "snapshot:test" || len(packet.Questions) != 43 || len(packet.ObligationIDs) != 208 || len(packet.UnresolvedEdges) != 11 || !slices.Equal(runtimeCandidates, wantRuntimeCandidates) || len(packet.WritePaths) != 0 {
+	// previous reviewed packet, plus the fullscreen-wheel-scroll-lines row:
+	// one question and the five obligations every settings row carries
+	// (current-state, dispatch, persistence, runtime-effects, value-domain).
+	// Reproduce with:
+	//   go run ./test/parity/cmd/correspondence work-packet -root . -upstream-version 0.99.2 -target-commit <commit> -role adversary -snapshot-id snapshot:test
+	if packet.Role != correspondence.AdversaryRole || packet.SnapshotID != "snapshot:test" || len(packet.Questions) != 44 || len(packet.ObligationIDs) != 213 || len(packet.UnresolvedEdges) != 11 || !slices.Equal(runtimeCandidates, wantRuntimeCandidates) || len(packet.WritePaths) != 0 {
 		t.Fatalf("work packet = role %s snapshot %s questions %d obligations %d unresolved %v writes %d", packet.Role, packet.SnapshotID, len(packet.Questions), len(packet.ObligationIDs), packet.UnresolvedEdges, len(packet.WritePaths))
 	}
 }
@@ -243,4 +254,27 @@ func packetBlockedByKnownGaps(t *testing.T, root string, err error, stderr strin
 		t.Log("listed correspondence gaps block the alignment packet")
 	}
 	return blocked
+}
+
+// A signal cancels main's context. run must still remove the worktree snapshot directory it made under the temporary directory, as it does on success and on every other error.
+func TestWorktreeSnapshotDirectoryRemovedWhenCancelled(t *testing.T) {
+	root, err := filepath.Abs("../../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	scratch := t.TempDir()
+	for _, key := range []string{"TMPDIR", "TMP", "TEMP"} {
+		t.Setenv(key, scratch)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	var stdout, stderr bytes.Buffer
+	err = run(ctx, []string{"compare", "-root", root, "-upstream-version", coding.UpstreamVersion, "-target-worktree"}, &stdout, &stderr)
+	if err == nil {
+		t.Fatal("run succeeded with a cancelled context")
+	}
+	left, readErr := os.ReadDir(scratch)
+	if readErr != nil || len(left) != 0 {
+		t.Fatalf("snapshot scratch left behind: %v, %v", left, readErr)
+	}
 }

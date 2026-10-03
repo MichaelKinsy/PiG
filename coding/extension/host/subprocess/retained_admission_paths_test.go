@@ -29,6 +29,7 @@ func TestFactoryAdmissionCarriesAnyPathInItsEntryAndCwd(t *testing.T) {
 }
 
 func TestNodeReloadReinvokesFactoryFromAPathWithControlCharacters(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("Windows paths cannot hold these characters")
 	}
@@ -158,6 +159,7 @@ func controlRuntimeDir(t *testing.T) string {
 }
 
 func TestNodeFactoryWithControlCharacterBasenameLoadsAndReloads(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("Windows paths cannot hold these characters")
 	}

@@ -19,111 +19,15 @@ func restoreStartupTheme(t *testing.T) {
 	previousName := tui.ActiveTheme().Name
 	t.Cleanup(func() {
 		tui.SetThemeRegistry(previousRegistry)
+		tui.SetTerminalColors(tui.TerminalColors{})
+		tui.SetTerminalColorScheme("")
 		tui.SetThemeByName(previousName)
 	})
 }
 
-const terminalBackgroundQuery = "\x1b]11;?\x07"
+// terminalColorQueryPrefix begins the OSC 10 request that starts a terminal color query.
+const terminalColorQueryPrefix = "\x1b]10;?"
 
-func startThemeDetectionTest(t *testing.T, detection *startupThemeDetection) {
-	t.Helper()
-	detection.start(func(string) error { return nil })
-}
-
-func TestStartupThemeDetectionColorSchemeReplyWins(t *testing.T) {
-	var output bytes.Buffer
-	detection := newStartupThemeDetection(nil, map[string]string{"COLORFGBG": "0;15"}, tui.NewWithOutput(&output, 80, 24))
-	detection.start(func(sequence string) error { _, err := output.WriteString(sequence); return err })
-	if got := output.String(); got != "\x1b[?996n\x1b]11;?\x07" {
-		t.Fatalf("queries = %q", got)
-	}
-	consumed, settled := detection.consume("\x1b]11;rgb:0000/0000/0000\x07")
-	if !consumed || settled {
-		t.Fatalf("OSC 11 reply consumed=%v settled=%v; want consumed, not settled", consumed, settled)
-	}
-	consumed, settled = detection.consume("\x1b[?997;2n")
-	if !consumed || !settled {
-		t.Fatalf("color-scheme reply consumed=%v settled=%v", consumed, settled)
-	}
-	if got := detection.themeName(); got != "light" {
-		t.Fatalf("theme = %q; the color-scheme reply outranks the dark background", got)
-	}
-	if detection.timeout() {
-		t.Fatal("timeout after settling must not reapply")
-	}
-	if consumed, settled := detection.consume("\x1b[?997;1n"); !consumed || settled {
-		t.Fatalf("later scheme report consumed=%v settled=%v; want consumed only", consumed, settled)
-	}
-}
-
-func TestStartupThemeDetectionFallsBackToBackgroundThenEnvironment(t *testing.T) {
-	detection := newStartupThemeDetection(nil, map[string]string{"COLORFGBG": "15;0"}, tui.NewWithOutput(io.Discard, 80, 24))
-	startThemeDetectionTest(t, detection)
-	if consumed, _ := detection.consume("\x1b]11;#ffffff\x1b\\"); !consumed {
-		t.Fatal("ST-terminated OSC 11 reply not consumed")
-	}
-	if !detection.timeout() {
-		t.Fatal("timeout did not settle")
-	}
-	if got := detection.themeName(); got != "light" {
-		t.Fatalf("theme = %q; want the light OSC 11 background", got)
-	}
-
-	silent := newStartupThemeDetection(nil, map[string]string{"COLORFGBG": "0;15"}, tui.NewWithOutput(io.Discard, 80, 24))
-	startThemeDetectionTest(t, silent)
-	silent.timeout()
-	if got := silent.themeName(); got != "light" {
-		t.Fatalf("theme = %q; want COLORFGBG light background", got)
-	}
-
-	unparsable := newStartupThemeDetection(nil, map[string]string{}, tui.NewWithOutput(io.Discard, 80, 24))
-	startThemeDetectionTest(t, unparsable)
-	if consumed, _ := unparsable.consume("\x1b]11;garbage\x07"); !consumed {
-		t.Fatal("unparsable OSC 11 reply must still be consumed")
-	}
-	unparsable.timeout()
-	if got := unparsable.themeName(); got != "dark" {
-		t.Fatalf("theme = %q; want the dark fallback", got)
-	}
-}
-
-func TestStartupThemeDetectionConsumesOnlyRepliesItAwaits(t *testing.T) {
-	detection := newStartupThemeDetection(nil, nil, tui.NewWithOutput(io.Discard, 80, 24))
-	if consumed, _ := detection.consume("\x1b]11;rgb:ffff/ffff/ffff\x07"); consumed {
-		t.Fatal("OSC 11 reply consumed before a query was sent")
-	}
-	startThemeDetectionTest(t, detection)
-	detection.timeout()
-	// A reply arriving after the timeout is still swallowed.
-	if consumed, settled := detection.consume("\x1b]11;rgb:ffff/ffff/ffff\x07"); !consumed || settled {
-		t.Fatalf("late reply consumed=%v settled=%v", consumed, settled)
-	}
-	if consumed, _ := detection.consume("\x1b]11;rgb:ffff/ffff/ffff\x07"); consumed {
-		t.Fatal("second reply to one query consumed")
-	}
-	for _, key := range []string{"a", "\r", "\x1b[A", "\x1b"} {
-		if consumed, _ := detection.consume(key); consumed {
-			t.Fatalf("key %q consumed", key)
-		}
-	}
-}
-
-func TestStartupThemeDetectionHonorsThemeSetting(t *testing.T) {
-	if newStartupThemeDetection(new("dark"), nil, nil) != nil || newStartupThemeDetection(new("custom"), nil, nil) != nil {
-		t.Fatal("a fixed theme must not query the terminal")
-	}
-	detection := newStartupThemeDetection(new("paper/night"), nil, tui.NewWithOutput(io.Discard, 80, 24))
-	if detection == nil {
-		t.Fatal("automatic setting must query the terminal")
-	}
-	startThemeDetectionTest(t, detection)
-	detection.consume("\x1b[?997;1n")
-	if got := detection.themeName(); got != "night" {
-		t.Fatalf("theme = %q; want the dark half of the automatic setting", got)
-	}
-}
-
-// fakeStartupTerminal records writes and feeds framed input events after the queries are written.
 type fakeStartupTerminal struct {
 	mu      sync.Mutex
 	writes  []string
@@ -178,77 +82,108 @@ func (f *fakeStartupTerminal) Write(data string) {
 	}()
 }
 
-// startupBackgroundWriter replaces the otherwise discarded renderer output only for OSC 11 control writes.
-type startupBackgroundWriter struct{ terminal *fakeStartupTerminal }
+// startupQueryWriter forwards the terminal color query, the only control write the renderer makes here, to the fake terminal so it can reply.
+type startupQueryWriter struct{ terminal *fakeStartupTerminal }
 
-func (w startupBackgroundWriter) Write(data []byte) (int, error) {
-	if string(data) == terminalBackgroundQuery {
+func (w startupQueryWriter) Write(data []byte) (int, error) {
+	if bytes.HasPrefix(data, []byte(terminalColorQueryPrefix)) {
 		w.terminal.Write(string(data))
 	}
 	return len(data), nil
 }
 
-func TestStartupPromptAppliesTerminalReplyAndKeepsItOutOfInput(t *testing.T) {
+// whiteTerminalReplies answers a color query for a black-on-white terminal without a palette; the DA1 reply ends the query.
+func whiteTerminalReplies() [][]byte {
+	return [][]byte{
+		[]byte("\x1b]10;rgb:0000/0000/0000\x07"),
+		[]byte("\x1b]11;rgb:ffff/ffff/ffff\x07"),
+		[]byte("\x1b[?62c"),
+	}
+}
+
+// upstream 0.99.1 startup-ui.ts startStartupTui and theme-controller.ts requestTerminalColors: the prompt renders at once, the replies record the terminal's colors, and none reaches the prompt as input.
+func TestStartupPromptAppliesTerminalColorsAndKeepsRepliesOutOfInput(t *testing.T) {
 	restoreStartupTheme(t)
 	tui.SetThemeRegistry(tui.NewThemeRegistry())
-	tui.SetTheme("dark")
-	terminal := &fakeStartupTerminal{replies: [][]byte{
-		[]byte("\x1b]11;rgb:ffff/ffff/ffff\x07"),
-		[]byte("\x1b[?997;2n"),
-		[]byte("h"),
-		[]byte("i"),
-		[]byte("\r"),
-	}}
+	configureStartupTheme(Settings{}, nil)
+	terminal := &fakeStartupTerminal{replies: append(whiteTerminalReplies(), []byte("h"), []byte("i"), []byte("\r"))}
 	input := tui.NewExtensionInputComponent("Name", "")
-	opts := StartupUIOptions{Settings: Settings{}}
-	completed, err := runStartupComponentWith(input, opts, false, tui.NewWithOutput(startupBackgroundWriter{terminal}, 80, 24), terminal, map[string]string{})
+	completed, err := runStartupComponentWith(input, StartupUIOptions{Settings: Settings{}}, false, tui.NewWithOutput(startupQueryWriter{terminal}, 80, 24), terminal)
 	if err != nil || !completed {
 		t.Fatalf("completed=%v err=%v", completed, err)
 	}
 	if got := input.Text(); got != "hi" {
 		t.Fatalf("input = %q; terminal replies leaked into the prompt", got)
 	}
-	if got := tui.ActiveTheme().Name; got != "light" {
-		t.Fatalf("theme = %q; want the light color-scheme reply", got)
+	if got := tui.ActiveTheme().Name; got != tui.SystemThemeName {
+		t.Fatalf("theme = %q; want the system theme", got)
 	}
-	if writes := terminal.written(); len(writes) != 2 || writes[0] != terminalColorSchemeQuery || writes[1] != terminalBackgroundQuery {
-		t.Fatalf("writes = %q", writes)
+	if got := tui.GetTerminalTheme(); got != "light" {
+		t.Fatalf("terminal theme = %q; want the light reported background", got)
+	}
+	if writes := terminal.written(); len(writes) != 1 || writes[0][:len(terminalColorQueryPrefix)] != terminalColorQueryPrefix {
+		t.Fatalf("writes = %q; want one color query", writes)
 	}
 }
 
-func TestStartupPromptFallsBackToBackgroundReplyAtTimeout(t *testing.T) {
+// upstream 0.99.1 theme-controller.ts requestTerminalColors passes onLateReply: colors that arrive after the timeout still apply.
+func TestStartupPromptAppliesColorsThatArriveAfterTheTimeout(t *testing.T) {
 	restoreStartupTheme(t)
 	tui.SetThemeRegistry(tui.NewThemeRegistry())
-	tui.SetTheme("dark")
+	configureStartupTheme(Settings{}, nil)
 	selector := tui.NewExtensionSelector("Pick", []string{"a", "b"})
-	terminal := &fakeStartupTerminal{replies: [][]byte{[]byte("\x1b]11;rgb:ffff/ffff/ffff\x07")}}
+	terminal := &fakeStartupTerminal{}
 	done := make(chan error, 1)
-	ui := tui.NewWithOutput(startupBackgroundWriter{terminal}, 80, 24)
+	ui := tui.NewWithOutput(startupQueryWriter{terminal}, 80, 24)
 	go func() {
-		_, err := runStartupComponentWith(selector, StartupUIOptions{}, false, ui, terminal, map[string]string{})
+		_, err := runStartupComponentWith(selector, StartupUIOptions{}, false, ui, terminal)
 		done <- err
 	}()
-	// Answer only after the 100 ms query timeout has settled detection.
-	time.Sleep(3 * startupThemeQueryTimeout)
+	time.Sleep(3 * terminalColorQueryTimeout)
+	if got := tui.GetTerminalTheme(); got == "light" {
+		t.Fatal("the terminal theme was light before any reply arrived")
+	}
+	for _, reply := range whiteTerminalReplies() {
+		terminal.send(t, string(reply))
+	}
 	terminal.send(t, "\r")
 	if err := <-done; err != nil {
 		t.Fatal(err)
 	}
-	if got := tui.ActiveTheme().Name; got != "light" {
-		t.Fatalf("theme = %q; want the light OSC 11 background after the timeout", got)
+	if got := tui.GetTerminalTheme(); got != "light" {
+		t.Fatalf("terminal theme = %q; want the late light background", got)
 	}
 	if selector.SelectedIndex() != 0 {
 		t.Fatalf("selected %d", selector.SelectedIndex())
 	}
 }
 
-func TestStartupPromptWithFixedThemeSendsNoQuery(t *testing.T) {
+// upstream 0.99.1 startup-ui.ts startStartupTui queries the terminal whatever the setting is, and re-resolves the setting with the reported appearance.
+func TestStartupPromptWithFixedThemeQueriesAndKeepsTheTheme(t *testing.T) {
+	restoreStartupTheme(t)
+	tui.SetThemeRegistry(tui.NewThemeRegistry())
+	settings := Settings{Theme: "dark"}
+	configureStartupTheme(settings, nil)
+	terminal := &fakeStartupTerminal{replies: append(whiteTerminalReplies(), []byte("\r"))}
+	selector := tui.NewExtensionSelector("Pick", []string{"a"})
+	if _, err := runStartupComponentWith(selector, StartupUIOptions{Settings: settings}, false, tui.NewWithOutput(startupQueryWriter{terminal}, 80, 24), terminal); err != nil {
+		t.Fatal(err)
+	}
+	if got := tui.ActiveTheme().Name; got != "dark" {
+		t.Fatalf("theme = %q; a fixed theme does not follow the terminal", got)
+	}
+	if writes := terminal.written(); len(writes) != 1 {
+		t.Fatalf("writes = %q; want one color query", writes)
+	}
+}
+
+func TestStartupPromptFlushesALoneEscape(t *testing.T) {
 	restoreStartupTheme(t)
 	terminal := &fakeStartupTerminal{}
 	selector := tui.NewExtensionSelector("Pick", []string{"a"})
 	done := make(chan error, 1)
 	go func() {
-		_, err := runStartupComponentWith(selector, StartupUIOptions{Settings: Settings{Theme: "dark"}}, false, tui.NewWithOutput(io.Discard, 80, 24), terminal, nil)
+		_, err := runStartupComponentWith(selector, StartupUIOptions{Settings: Settings{Theme: "dark"}}, false, tui.NewWithOutput(io.Discard, 80, 24), terminal)
 		done <- err
 	}()
 	terminal.send(t, "\x1b")
@@ -259,9 +194,6 @@ func TestStartupPromptWithFixedThemeSendsNoQuery(t *testing.T) {
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("a lone Escape was not flushed to the prompt")
-	}
-	if writes := terminal.written(); len(writes) != 0 {
-		t.Fatalf("writes = %q; a fixed theme must not query the terminal", writes)
 	}
 	if !selector.Cancelled() {
 		t.Fatal("Escape did not cancel the selector")

@@ -106,12 +106,11 @@ Extensions can observe or replace compaction and branch summaries. The events us
 |---|---|---|
 | `session_before_compact` | Before PiG summarizes. The event has `preparation`, `branchEntries`, `customInstructions`, `reason` and `willRetry`. | `{"cancel": true}` to stop the compaction, or `{"compaction": {...}}` with `summary`, `firstKeptEntryId`, `tokensBefore` and optional `details` to use that result without a model call. |
 | `session_compact` | After PiG saves the compaction entry. The event has `compactionEntry`, `fromExtension`, `reason` and `willRetry`. | Nothing. |
+| `session_compact_failed` | After a compaction fails or is aborted, once the `compaction_end` listeners have returned. The event has `reason`, `errorMessage` (absent when the compaction was aborted), `aborted`, `willRetry` and `fromExtension`. | Nothing. |
 | `session_before_tree` | Before `/tree` moves and summarizes. The event has `preparation`. | `{"cancel": true}`, a `summary` object with `summary` and optional `details`, `customInstructions`, `replaceInstructions`, or a `label`. |
 | `session_tree` | After the move. The event has `newLeafId`, `oldLeafId`, `summaryEntry` and `fromExtension`. | Nothing. |
 
 `reason` is `manual` for `/compact`, `threshold` when the context passed its limit, and `overflow` when the provider rejected a request as too large.
-
-Pi 0.87.1 also emits `session_compact_failed` when a compaction fails. PiG does not emit that event.
 
 See [extensions](/docs/latest/extensions#session-compaction-events) for the extension API.
 

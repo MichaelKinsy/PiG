@@ -6,13 +6,47 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
+	"strings"
 	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
 )
+
+// proper-lockfile 4.1.2 reports a held lock as Error("Lock file is already being held") with code ELOCKED (lib/lockfile.js:53,68), and Pi's stores rethrow it unchanged (auth-storage.ts:82,141; settings-manager.ts:254; trust-manager.ts:152). PiG's contention error carries the same message, and errors.Is still matches ErrLocked. The oracle runs Pi's pinned proper-lockfile on the same held directory.
+func TestErrLockedCarriesProperLockfileMessageUpstream(t *testing.T) {
+	for _, row := range []struct {
+		api string
+		a   acquirer
+	}{{"sync", linkAcquirers[0]}, {"async", linkAcquirers[1]}} {
+		t.Run(row.api, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "auth.json")
+			if err := os.Mkdir(path+".lock", 0o777); err != nil {
+				t.Fatal(err)
+			}
+			pi := runProperLockfile(t, path, row.api)
+			message, ok := strings.CutPrefix(pi, "code=ELOCKED message=")
+			if !ok {
+				t.Fatalf("proper-lockfile %s on a held lock: %q, want ELOCKED", row.api, pi)
+			}
+			lock, err := row.a.run(path)
+			if lock != nil {
+				_ = lock.Release()
+				t.Fatal("acquired a held lock")
+			}
+			if !errors.Is(err, ErrLocked) || errors.Is(err, ErrLegacyLocked) {
+				t.Fatalf("err = %v, want ErrLocked", err)
+			}
+			if err.Error() != message {
+				t.Fatalf("message = %q, want proper-lockfile's %q", err.Error(), message)
+			}
+		})
+	}
+}
 
 func TestLockStaleAndCompromisedOwnership(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "auth.json")
@@ -29,7 +63,12 @@ func TestLockStaleAndCompromisedOwnership(t *testing.T) {
 	}
 	// An external replacement must be surfaced before commit and must not be
 	// removed by the former owner's release (Pi onCompromised contract).
-	changed := time.Now().Add(time.Second)
+	// The replacement mtime derives from the recorded one. The acquisition probe records an mtime up to a second ahead
+	// (lib/mtime-precision.js), so a wall-clock offset from time.Now() equals it in the same millisecond about once in a
+	// thousand runs and Check then cannot tell the replacement from the owner's own mtime (lockfile.js:129).
+	lock.mu.Lock()
+	changed := time.UnixMilli(nodeDateMs(lock.mtime)).Add(time.Second)
+	lock.mu.Unlock()
 	if err := os.Chtimes(path+".lock", changed, changed); err != nil {
 		t.Fatal(err)
 	}
@@ -219,6 +258,143 @@ func TestAcquireWithOptionsRechecksContextAfterAcquisition(t *testing.T) {
 	}
 }
 
+// runPiAcquireThenAbort runs Pi's FileAuthStorageBackend.withLockAsync on file with an AbortSignal that aborts right after proper-lockfile has taken the lock, so acquireLockAsync finds the signal aborted (auth-storage.ts:149-152). whileHeld, when not nil, runs in this process on the lock directory before the abort. It returns the rejection as "<name>: <message>", or "resolved".
+func runPiAcquireThenAbort(t *testing.T, file string, whileHeld func(lock string)) string {
+	t.Helper()
+	const script = `(async () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const [root, file, markers, handshake] = process.argv.slice(1);
+  const lockfile = require(path.join(root, 'node_modules', 'proper-lockfile'));
+  const { FileAuthStorageBackend } = await import(require('node:url').pathToFileURL(path.join(root, 'dist', 'core', 'auth-storage.js')).href);
+  const controller = new AbortController();
+  const lock = lockfile.lock;
+  lockfile.lock = async (...args) => {
+    const release = await lock(...args);
+    if (handshake === 'yes') {
+      // Written whole, then renamed, so the test never reads a partly written path.
+      fs.writeFileSync(path.join(markers, 'held.tmp'), file + '.lock');
+      fs.renameSync(path.join(markers, 'held.tmp'), path.join(markers, 'held'));
+      const sleeper = new Int32Array(new SharedArrayBuffer(4));
+      while (!fs.existsSync(path.join(markers, 'go'))) Atomics.wait(sleeper, 0, 0, 1);
+    }
+    controller.abort();
+    return release;
+  };
+  try {
+    await new FileAuthStorageBackend(file).withLockAsync(async () => ({ result: undefined }), { signal: controller.signal });
+    console.log('resolved');
+  } catch (err) {
+    console.log(err.name + ': ' + err.message);
+  }
+})()`
+	markers := filepath.Join(t.TempDir(), "markers")
+	if err := os.Mkdir(markers, 0o777); err != nil {
+		t.Fatal(err)
+	}
+	handshake := "no"
+	if whileHeld != nil {
+		handshake = "yes"
+	}
+	root := filepath.Join(filepath.Dir(properLockfileModule(t)), "..")
+	cmd := exec.CommandContext(t.Context(), "node", "-e", script, root, file, markers, handshake)
+	var out strings.Builder
+	cmd.Stdout, cmd.Stderr = &out, &out
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if whileHeld != nil {
+		deadline := time.Now().Add(30 * time.Second)
+		for {
+			if lock, err := os.ReadFile(filepath.Join(markers, "held")); err == nil {
+				whileHeld(string(lock))
+				break
+			}
+			if time.Now().After(deadline) {
+				_ = cmd.Process.Kill()
+				t.Fatalf("Pi's store did not take its lock: %s", out.String())
+			}
+			time.Sleep(time.Millisecond)
+		}
+		if err := os.WriteFile(filepath.Join(markers, "go"), nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := cmd.Wait(); err != nil {
+		t.Fatalf("node: %v\n%s", err, out.String())
+	}
+	return strings.TrimSpace(out.String())
+}
+
+// Pi's acquireLockAsync, finding the signal aborted once it holds the lock, releases the lock and throws the abort (auth-storage.ts:149-152): one error, and the lock directory is gone. PiG's Acquire returns the cancellation alone; it joined it with a second copy that Release added. AcquireWithOptions keeps the same contract.
+func TestAcquireAbortedAfterAcquisitionReturnsTheAbortUpstream(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "auth.json")
+	if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got := runPiAcquireThenAbort(t, path, nil); got != "AbortError: This operation was aborted" {
+		t.Fatalf("Pi withLockAsync aborted after acquisition: %q, want the AbortError alone", got)
+	}
+	if _, err := os.Lstat(path + ".lock"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("Pi's lock after the abort: %v", err)
+	}
+	for _, acquire := range []struct {
+		name string
+		run  func(context.Context, string) (*Lock, error)
+	}{
+		{"Acquire", Acquire},
+		{"AcquireWithOptions", func(ctx context.Context, path string) (*Lock, error) {
+			return AcquireWithOptions(ctx, path, AcquireOptions{Stale: asyncStale, Update: asyncStale / 2, Retry: time.Millisecond})
+		}},
+	} {
+		t.Run(acquire.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			stubMkdir(t, func(_ int, real func() error) error {
+				err := real()
+				cancel()
+				return err
+			})
+			lock, err := acquire.run(ctx, path)
+			if lock != nil {
+				_ = lock.Release()
+				t.Fatal("returned a lock to a cancelled caller")
+			}
+			if !errors.Is(err, context.Canceled) || err.Error() != context.Canceled.Error() {
+				t.Fatalf("err = %q, want the cancellation alone", err)
+			}
+			if _, err := os.Lstat(path + ".lock"); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("lock after the cancelled acquisition: %v", err)
+			}
+		})
+	}
+}
+
+// nodeSystemErrno is the errno Node reports (error.errno) for a libuv error code on this platform, from util.getSystemErrorMap.
+func nodeSystemErrno(t *testing.T, code string) int {
+	t.Helper()
+	errno, _ := nodeSystemError(t, code)
+	return errno
+}
+
+// nodeSystemError is the errno and uv_strerror description Node reports for a libuv error code on this platform, from util.getSystemErrorMap.
+func nodeSystemError(t *testing.T, code string) (int, string) {
+	t.Helper()
+	const script = `const [code] = process.argv.slice(1);
+const entry = [...require('node:util').getSystemErrorMap()].find(([, [name]]) => name === code);
+console.log(entry ? entry[0] + ' ' + entry[1][1] : 'none');`
+	out, err := exec.CommandContext(t.Context(), "node", "-e", script, code).CombinedOutput()
+	if err != nil {
+		t.Fatalf("node: %v\n%s", err, out)
+	}
+	number, description, _ := strings.Cut(strings.TrimSpace(string(out)), " ")
+	errno, err := strconv.Atoi(number)
+	if err != nil {
+		t.Fatalf("Node has no errno for %s: %q", code, out)
+	}
+	return errno, description
+}
+
 // proper-lockfile reports a missing lock directory as the fs error itself with code ECOMPROMISED (lib/lockfile.js:119-121) and a replaced lock as `Unable to update lock within the stale threshold` (lib/lockfile.js:129-138).
 func TestCompromisedErrorsCarryProperLockfileMessages(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "owned.lock")
@@ -235,7 +411,9 @@ func TestCompromisedErrorsCarryProperLockfileMessages(t *testing.T) {
 		// os.Stat on Windows names the Win32 call that failed; Node names it stat.
 		{"windows stat", &CompromisedError{Cause: &fs.PathError{Op: "GetFileAttributesEx", Path: "/p", Err: syscall.ENOENT}}, "ENOENT: no such file or directory, stat '/p'", ""},
 		{"windows stat handle", &CompromisedError{Cause: &fs.PathError{Op: "CreateFile", Path: "/p", Err: syscall.ENOENT}}, "ENOENT: no such file or directory, stat '/p'", ""},
-		{"unmapped", &CompromisedError{Cause: &fs.PathError{Op: "stat", Path: "/p", Err: syscall.EMFILE}}, "stat /p: " + syscall.EMFILE.Error(), ""},
+		// Any errno Node names carries its code, uv_strerror text and libuv errno. Node never shows Go's text.
+		{"emfile", &CompromisedError{Cause: &fs.PathError{Op: "stat", Path: "/p", Err: syscall.EMFILE}}, "EMFILE: too many open files, stat '/p'", "[Error: EMFILE: too many open files, stat '/p'] {\n  errno: " + strconv.Itoa(nodeSystemErrno(t, "EMFILE")) + ",\n  code: 'ECOMPROMISED',\n  syscall: 'stat',\n  path: '/p'\n}"},
+		{"e2big", &CompromisedError{Cause: &fs.PathError{Op: "stat", Path: "/p", Err: syscall.E2BIG}}, "E2BIG: argument list too long, stat '/p'", "[Error: E2BIG: argument list too long, stat '/p'] {\n  errno: " + strconv.Itoa(nodeSystemErrno(t, "E2BIG")) + ",\n  code: 'ECOMPROMISED',\n  syscall: 'stat',\n  path: '/p'\n}"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if got := test.err.Error(); got != test.message {

@@ -89,6 +89,19 @@ them. Discovery controls ambient additions only. In an active Piglet, omitted
 or empty discovery lists mean no ambient Resources; bare Pig keeps ordinary
 upstream discovery.
 
+Read-only role with extension tools:
+
+```yaml
+name: researcher
+tools: [read]
+extensions:
+  - name: search
+    origins: [local:./extensions/search]
+    tools: [web_search]
+```
+
+Root `tools` restricts built-in tools only, so this role cannot write, edit, or run bash. Extension tools are listed per extension under `extensions[].tools`; here the active tools are exactly `read` and `web_search`.
+
 A Piglet selects ordinary extensions. This includes an extension that calls
 `SetLogin`. Packages make Resources available. Installing a Package does not
 activate a Piglet.
@@ -195,6 +208,10 @@ pig piglet build <name> --format binary --out <path>
 Owned verbs use full words; `ls`, `rm`, and `check` are not aliases.
 
 Binary builds report real phases and elapsed time on stderr (D18). A terminal shows a spinner and dim step text. CI and pipes receive plain phase lines. Add `--verbose` to stream toolchain output with member labels. Packed members share one compiler invocation; fused Go members compile with the final binary. Failures show the current phase, a diagnostic tail, and a hint. The final summary gives the binary path, size, and time after verification and record publication. `--json` keeps stdout as one JSON result. `pig build [--verbose]` uses the same display when building Stock PiG from its source checkout.
+
+The native builder compiles PiG from source with the host Go toolchain. It uses the PiG checkout that contains the current directory, or `PIG_SOURCE_ROOT`. A release binary without a checkout fetches the source of exactly its own version with `go mod download github.com/MichaelKinsy/PiG@v<version>` and prints `fetching PiG v<version> source (cached after first build)`. `GOPROXY` and `GOSUMDB` verify the download, and later builds reuse the Go module cache and a staged copy under `~/.pig/cache/pig-source/`. The fetch needs no Git and no checkout. A development build has no published source for its version, so it reports `source-unavailable` and asks for a checkout or `PIG_SOURCE_ROOT` (D18).
+
+Without a ready native builder, auto selection uses the built-in `container` builder; `--builder container` selects it explicitly. It runs the build in Podman or Docker: `PIG_CONTAINER_ENGINE=docker|podman` selects the engine, and otherwise Podman wins when both are on `PATH`. It pulls the digest-pinned public Go image of PiG's ci-go CI image, installs exactly the running PiG release in it with `go install`, and runs that release's native builder. The host needs no Go and no PiG source, and the target can be any `linux/<arch>` the engine runs; another architecture needs the engine's emulation. Go modules and build output are cached under `~/.pig/cache/container-go/`. The image contains only the Go toolchain, so a Piglet with packed or isolated Rust extensions needs a configured builder image that also has Cargo. A development build cannot install itself in the container, and the container builder does not sign (D18).
 
 Piglet YAML is authored directly with a user editor or coding agent. `schema`,
 `validate`, `show`, direct `pig --piglet <path>`, and `build` all use the same

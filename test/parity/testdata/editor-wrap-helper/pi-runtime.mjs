@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 
 const root = new URL("../../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url);
-if (JSON.parse(readFileSync(new URL("package.json", root), "utf8")).version !== "0.87.1") {
-  throw new Error("Expected Pi 0.87.1");
+if (JSON.parse(readFileSync(new URL("package.json", root), "utf8")).version !== "1.0.0") {
+  throw new Error("Expected Pi 1.0.0");
 }
 const dist = new URL("node_modules/@earendil-works/pi-tui/dist/", root);
 export const { Editor, wordWrapLine } = await import(new URL("components/editor.js", dist));

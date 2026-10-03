@@ -87,7 +87,7 @@ func (m *Markdown) applyDefaultStyle(s string) string {
 	style := m.defaultTextStyle
 	if m.defaultColorSet {
 		if m.defaultColor != "" {
-			s = m.defaultColor + s + SGRFgReset
+			s = m.defaultColor + s + FgClose(m.defaultColor)
 		}
 	} else if style != nil && style.Color != nil {
 		s = style.Color(s)

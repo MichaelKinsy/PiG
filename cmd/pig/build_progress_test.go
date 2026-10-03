@@ -49,7 +49,8 @@ func TestBuildCommandReportsRelativeTargetFromNestedCheckout(t *testing.T) {
 	if code := runBuildCommand([]string{"build"}, &stdout, &stderr); code != 0 {
 		t.Fatalf("exit=%d: %s", code, &stderr)
 	}
-	if !strings.Contains(stderr.String(), "Built "+filepath.Join(root, "out", "pig")) {
+	// The build reports the canonical long path; on Windows t.TempDir can be an 8.3 short path (RUNNER~1).
+	if !strings.Contains(stderr.String(), "Built "+filepath.Join(canonicalTestPath(t, root), "out", "pig")) {
 		t.Fatalf("wrong output path: %s", &stderr)
 	}
 }

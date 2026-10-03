@@ -2,6 +2,7 @@
 # provisionally at item start/end, before the terminal response replaces it.
 # The exact output records the event-time stop reason, not the final mutable
 # message pointer. Both probes exercise all four upstream phase combinations.
+# Pig consumes each stream in the producer's synchronous prefix (RunStreamContinuation owns the turn), as Pi's caller attaches before any provider I/O completes; an unowned goroutine attached late under CPU load and read the later stop reason (13/300 runs at 4 CPUs under 64 busy loops). runs = 20 keeps that load-dependent ordering visible.
 name = "13-responses-message-phases"
 description = "Responses partial events expose provisional final-answer stop before terminal incomplete overrides it."
 covers = ["packages/ai/src/api/openai-responses-shared.ts"]
@@ -23,4 +24,4 @@ timeout_seconds = 60
 exit_code = 0
 output_equal = true
 both_contain = ["commentary/final_answer/completed start:pending end:stop terminal:stop", "final_answer/final_answer/incomplete start:stop end:stop terminal:length"]
-runs = 3
+runs = 20

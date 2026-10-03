@@ -41,7 +41,7 @@ func TestSessionSelectorAsyncOwnerLoops(t *testing.T) {
 				terminal := &fakeStartupTerminal{}
 				send = func(input string) { terminal.send(t, input) }
 				go func() {
-					completed, err := runStartupComponentWith(s, StartupUIOptions{Settings: Settings{Theme: "dark"}}, false, ui, terminal, nil)
+					completed, err := runStartupComponentWith(s, StartupUIOptions{Settings: Settings{Theme: "dark"}}, false, ui, terminal)
 					if err == nil && !completed {
 						err = fmt.Errorf("startup loop did not complete")
 					}

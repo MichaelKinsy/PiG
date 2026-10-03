@@ -47,7 +47,8 @@ func RequireDirectoryLink(t testing.TB, oldname, newname string) {
 
 // Symlink creates newname as a symbolic link to oldname. When the host does
 // not let this process create symbolic links (Windows without Developer Mode
-// or elevation), the test is skipped; any other error fails it.
+// or elevation), the test is skipped; any other error fails it. Use it for
+// file links, and RequireDirectoryLink for a directory link.
 func Symlink(t testing.TB, oldname, newname string) {
 	t.Helper()
 	err := os.Symlink(oldname, newname)

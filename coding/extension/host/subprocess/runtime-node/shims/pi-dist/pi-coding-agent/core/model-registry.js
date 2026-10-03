@@ -24,6 +24,10 @@ export class ModelRegistry {
     find(provider, modelId) {
         return this.runtime.getModel(provider, modelId);
     }
+    /** Find a model of a non-chat type, e.g. `findOfType("classifier", "typesafe", "jev-latest")`. */
+    findOfType(type, provider, modelId) {
+        return this.runtime.getModelOfType(type, provider, modelId);
+    }
     hasConfiguredAuth(model) {
         return this.runtime.hasConfiguredAuth(model.provider);
     }
@@ -73,6 +77,25 @@ export class ModelRegistry {
     complete(model, context, options) {
         return this.runtime.complete(model, context, options);
     }
+    /** Every known model of a type (chat, image, classifier), optionally for one provider. */
+    getModelsOfType(type, provider) {
+        return this.runtime.getModelsOfType(type, provider);
+    }
+    /** Models of a type whose provider has working credentials. */
+    getAvailableOfType(type, provider, options) {
+        return this.runtime.getAvailableOfType(type, provider, options);
+    }
+    getModelOfType(type, provider, modelId) {
+        return this.runtime.getModelOfType(type, provider, modelId);
+    }
+    /** Classify structured state with request-time authentication. Never rejects. */
+    classify(model, context, options) {
+        return this.runtime.classify(model, context, options);
+    }
+    /** Generate images with request-time authentication. Never rejects. */
+    generateImages(model, context, options) {
+        return this.runtime.generateImages(model, context, options);
+    }
     getProviderDisplayName(provider) {
         return this.runtime.getProvider(provider)?.name ?? provider;
     }
@@ -101,6 +124,12 @@ export class ModelRegistry {
     }
     unregisterProvider(providerName) {
         this.runtime.unregisterProvider(providerName);
+    }
+    registerVirtualModel(definition) {
+        this.runtime.registerVirtualModel(definition);
+    }
+    unregisterVirtualModel(providerName, id) {
+        this.runtime.unregisterVirtualModel(providerName, id);
     }
     getRegisteredProviderConfig(providerName) {
         return this.runtime.getRegisteredProviderConfig(providerName);

@@ -99,8 +99,8 @@ func (r *ModelRegistry) configuredModelHeaders(model *ai.Model) []orderedHeaderE
 		headers = overlayHeaders(headers, orderedHeaders(definition.Headers, definition.headerEntries))
 	}
 	if input != nil {
-		for _, definition := range input.Models {
-			if definition.ID == model.ID {
+		for _, entry := range input.Models {
+			if definition, ok := entry.(*ai.Model); ok && ai.IsModelType(definition, ai.ModelTypeChat) && definition.ID == model.ID {
 				values := make(map[string]*string, len(definition.ProviderMeta.Headers))
 				for name, value := range definition.ProviderMeta.Headers {
 					values[name] = new(value)

@@ -210,9 +210,8 @@ func renderNoticeBytes(t *testing.T, show func(*InteractiveMode), width int) []s
 	})
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
 	tui.RefreshActiveThemeColorMode()
-	if name := tui.ActiveTheme().Name; name != "dark" {
-		t.Fatalf("active theme = %q, want dark", name)
-	}
+	restoreStartupTheme(t)
+	tui.SetThemeByName("dark")
 	m := &InteractiveMode{chatContainer: tui.NewContainer(), tuiInst: tui.NewWithOutput(io.Discard, width, 24)}
 	show(m)
 	return m.chatContainer.Render(width)
@@ -230,18 +229,18 @@ func TestNewVersionNotificationBytesMatchPi(t *testing.T) {
 	}, 48)
 	want := []string{
 		"",
-		"\x1b[38;2;255;255;0m────────────────────────────────────────────────\x1b[39m",
-		" \x1b[1m\x1b[38;2;255;255;0mUpdate Available\x1b[39m\x1b[22m                               ",
-		" \x1b[38;2;128;128;128mNew version 1.2.3 is available. Run \x1b[39m\x1b[38;2;138;190;183mpig update\x1b[39m ",
-		" \x1b[38;2;128;128;128mChangelog: \x1b[39m\x1b[38;2;138;190;183mhttps://example.test/c\x1b[39m              ",
-		"\x1b[38;2;255;255;0m────────────────────────────────────────────────\x1b[39m",
+		"\x1b[38;2;205;154;34m────────────────────────────────────────────────\x1b[39m",
+		" \x1b[1m\x1b[38;2;205;154;34mUpdate Available\x1b[39m\x1b[22m                               ",
+		" \x1b[38;2;157;165;169mNew version 1.2.3 is available. Run \x1b[39m\x1b[38;2;167;152;215mpig update\x1b[39m ",
+		" \x1b[38;2;157;165;169mChangelog: \x1b[39m\x1b[38;2;167;152;215mhttps://example.test/c\x1b[39m              ",
+		"\x1b[38;2;205;154;34m────────────────────────────────────────────────\x1b[39m",
 	}
 	if !slices.Equal(got, want) {
 		t.Fatalf("notice rows:\n got: %q\nwant: %q", got, want)
 	}
 }
 
-// upstream: interactive-mode.ts:4504-4520. Real Pi 0.87.1 output of
+// upstream: interactive-mode.ts:4504-4520. Real upstream 0.99.1 output of
 // showPackageUpdateNotification(["alpha", "beta"]) at width 60, rendered as
 // above.
 func TestPackageUpdateNotificationBytesMatchPi(t *testing.T) {
@@ -250,13 +249,13 @@ func TestPackageUpdateNotificationBytesMatchPi(t *testing.T) {
 	}, 60)
 	want := []string{
 		"",
-		"\x1b[38;2;255;255;0m────────────────────────────────────────────────────────────\x1b[39m",
-		" \x1b[1m\x1b[38;2;255;255;0mPackage Updates Available\x1b[39m\x1b[22m                                  ",
-		" \x1b[38;2;128;128;128mPackage updates are available. Run \x1b[39m\x1b[38;2;138;190;183mpig update --extensions\x1b[39m ",
-		" \x1b[38;2;128;128;128mPackages:\x1b[39m                                                  ",
+		"\x1b[38;2;205;154;34m────────────────────────────────────────────────────────────\x1b[39m",
+		" \x1b[1m\x1b[38;2;205;154;34mPackage Updates Available\x1b[39m\x1b[22m                                  ",
+		" \x1b[38;2;157;165;169mPackage updates are available. Run \x1b[39m\x1b[38;2;167;152;215mpig update --extensions\x1b[39m ",
+		" \x1b[38;2;157;165;169mPackages:\x1b[39m                                                  ",
 		" - alpha                                                    ",
 		" - beta                                                     ",
-		"\x1b[38;2;255;255;0m────────────────────────────────────────────────────────────\x1b[39m",
+		"\x1b[38;2;205;154;34m────────────────────────────────────────────────────────────\x1b[39m",
 	}
 	if !slices.Equal(got, want) {
 		t.Fatalf("notice rows:\n got: %q\nwant: %q", got, want)

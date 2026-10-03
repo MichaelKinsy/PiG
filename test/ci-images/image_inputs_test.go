@@ -98,7 +98,16 @@ esac
 	t.Setenv("SOURCE_REVISION", strings.Repeat("a", 40))
 	t.Setenv("CI_BASE_DIR", "")
 	// The mocked docker runs the parity validation with the host's python3,
-	// so the lock pins that interpreter's version.
+	// so the lock pins that interpreter's version. Windows has python.exe
+	// only, so the mocks carry a python3 that runs it. That mock execs the
+	// interpreter's own path, sys.executable: a version-manager shim (mise,
+	// pyenv, asdf) looks python3 up on PATH again and would exec the mock forever.
+	executable, err := exec.CommandContext(t.Context(), hostPython(), "-c", "import sys; print(sys.executable)").Output()
+	interpreter := strings.TrimSpace(string(executable))
+	if err != nil || !filepath.IsAbs(interpreter) {
+		t.Fatalf("host Python interpreter %s: %q, %v", hostPython(), interpreter, err)
+	}
+	writeCIFixture(t, root, "bin/python3", "#!/bin/sh\nexec '"+filepath.ToSlash(interpreter)+"' \"$@\"\n")
 	version, err := mockedBash(t, bin, "-c", `python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])'`).Output()
 	if err != nil {
 		t.Fatalf("python3 version: %v", err)

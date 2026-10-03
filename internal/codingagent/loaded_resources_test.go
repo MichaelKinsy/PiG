@@ -286,7 +286,7 @@ func TestLoadedResourcesContextMatchesUpstream(t *testing.T) {
 // startup is verbose, which also starts it expanded.
 func TestLoadedResourcesQuietAndVerboseStartup(t *testing.T) {
 	m := upstreamListingMode(t, false, []upstreamExtensionFixture{upstreamMixedExtensionFixtures()[0]})
-	m.opts.Settings.QuietStartup = true
+	m.opts.Settings.QuietStartup = QuietStartupTrue
 	if got := renderedListing(m); got != "" {
 		t.Fatalf("quiet startup listing = %q", got)
 	}

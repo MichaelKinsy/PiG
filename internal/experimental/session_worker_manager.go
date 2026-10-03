@@ -16,7 +16,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/session"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/experimental/services"
 )
@@ -48,7 +47,7 @@ func (e *SessionPluginSelectionConflictError) Error() string { return e.Message 
 
 type workerRecord struct {
 	peerID, token          string
-	metadata               session.SessionMetadata
+	metadata               SessionCatalogMetadata
 	pid                    int
 	pluginManifestPaths    []string
 	terminated             chan struct{}
@@ -137,21 +136,21 @@ func (m *SessionWorkerManager) WorkerPids() map[string]int {
 	defer m.mu.Unlock()
 	return maps.Clone(m.workerPids)
 }
-func (m *SessionWorkerManager) TrackedSessions() []session.SessionMetadata {
+func (m *SessionWorkerManager) TrackedSessions() []SessionCatalogMetadata {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	result := make([]session.SessionMetadata, 0, len(m.workerOrder))
+	result := make([]SessionCatalogMetadata, 0, len(m.workerOrder))
 	for _, worker := range m.workerOrder {
 		result = append(result, worker.metadata)
 	}
 	return result
 }
-func (m *SessionWorkerManager) AssertSessionPluginManifestPaths(metadata session.SessionMetadata, paths []string) error {
+func (m *SessionWorkerManager) AssertSessionPluginManifestPaths(metadata SessionCatalogMetadata, paths []string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.assertPluginPaths(metadata, paths)
 }
-func (m *SessionWorkerManager) assertPluginPaths(metadata session.SessionMetadata, paths []string) error {
+func (m *SessionWorkerManager) assertPluginPaths(metadata SessionCatalogMetadata, paths []string) error {
 	if worker := m.workersBySession[metadata.Path]; worker != nil && !slices.Equal(worker.pluginManifestPaths, paths) {
 		return &SessionPluginSelectionConflictError{fmt.Sprintf("Session %s is active with a different plugin selection", metadata.ID)}
 	}
@@ -219,7 +218,7 @@ func (h *RoutedSessionHandle) AttachClient(ctx context.Context) (*RoutedSessionA
 	return h.manager.attachClient(h.worker, ctx)
 }
 
-func (m *SessionWorkerManager) OpenSession(ctx context.Context, metadata session.SessionMetadata, pluginManifestPaths []string) (*RoutedSessionHandle, error) {
+func (m *SessionWorkerManager) OpenSession(ctx context.Context, metadata SessionCatalogMetadata, pluginManifestPaths []string) (*RoutedSessionHandle, error) {
 	m.mu.Lock()
 	if m.detached || m.shuttingDown {
 		m.mu.Unlock()
@@ -250,7 +249,7 @@ func (m *SessionWorkerManager) OpenSession(ctx context.Context, metadata session
 	}
 	return &RoutedSessionHandle{m, pending.worker}, nil
 }
-func (m *SessionWorkerManager) CloseSession(ctx context.Context, metadata session.SessionMetadata) error {
+func (m *SessionWorkerManager) CloseSession(ctx context.Context, metadata SessionCatalogMetadata) error {
 	m.mu.Lock()
 	worker, pending := m.workersBySession[metadata.Path], m.pending[metadata.Path]
 	m.mu.Unlock()
@@ -654,15 +653,15 @@ func (m *SessionWorkerManager) writeQueued(peerID string, payload map[string]any
 	return m.coordinator.Send(peerID, payload)
 }
 
-func (m *SessionWorkerManager) launch(metadata session.SessionMetadata, paths []string) (*workerLaunch, error) {
+func (m *SessionWorkerManager) launch(metadata SessionCatalogMetadata, paths []string) (*workerLaunch, error) {
 	peerID, token := "worker-"+uuid.NewString(), uuid.NewString()
 	options := struct {
-		SessionDir          string                `json:"sessionDir"`
-		Metadata            sessionWorkerMetadata `json:"metadata"`
-		PluginManifestPaths []string              `json:"pluginManifestPaths"`
-		Provider            *string               `json:"provider,omitempty"`
-		Model               *string               `json:"model,omitempty"`
-	}{SessionDir: m.sessionDir, Metadata: newSessionWorkerMetadata(metadata), PluginManifestPaths: append([]string{}, paths...)}
+		SessionDir          string                 `json:"sessionDir"`
+		Metadata            SessionCatalogMetadata `json:"metadata"`
+		PluginManifestPaths []string               `json:"pluginManifestPaths"`
+		Provider            *string                `json:"provider,omitempty"`
+		Model               *string                `json:"model,omitempty"`
+	}{SessionDir: m.sessionDir, Metadata: metadata, PluginManifestPaths: append([]string{}, paths...)}
 	if m.model != nil {
 		options.Provider = m.model.Provider
 		options.Model = &m.model.Model

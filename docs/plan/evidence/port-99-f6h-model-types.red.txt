@@ -1,0 +1,161 @@
+$ go test ./coding -run TestModelRuntimeClassifiersUpstream|TestExtensionRegistryStateListsTypedModels|TestExtensionGetAvailableOfTypeAction|TestExtensionClassifyAction|TestExtensionProviderConfigKeepsTypedModelsAndImplementations
+--- FAIL: TestExtensionRegistryStateListsTypedModels (0.10s)
+--- FAIL: TestExtensionGetAvailableOfTypeAction (0.00s)
+    extension_model_types_wire_test.go:136: unconfigured = [], getAvailableOfType is not implemented
+--- FAIL: TestExtensionClassifyAction (0.00s)
+    extension_model_types_wire_test.go:188: unconfigured = map[], classify is not implemented
+--- FAIL: TestExtensionProviderConfigKeepsTypedModelsAndImplementations (0.00s)
+--- FAIL: TestModelRuntimeClassifiersUpstream (0.01s)
+    --- FAIL: TestModelRuntimeClassifiersUpstream/lists_Jev_separately_and_classifies_with_runtime-resolved_auth (0.00s)
+    --- FAIL: TestModelRuntimeClassifiersUpstream/registers_extension_image_and_classifier_models_with_their_implementations (0.00s)
+        model_runtime_classifiers_upstream_test.go:108: classifier result = {API:test-classifier Provider:extension-operations Model:shared Answers:[] Usage:<nil> StopReason:error ErrorMessage:classification is not imple
+    --- FAIL: TestModelRuntimeClassifiersUpstream/does_not_add_classification_to_composed_chat-only_providers (0.00s)
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/coding	0.198s
+FAIL
+
+$ go test ./coding/extension -run TestAnyModelInfo
+--- FAIL: TestAnyModelInfoProjectsImageAndClassifierModels (0.00s)
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/coding/extension	0.022s
+FAIL
+
+$ go test ./coding/extension/host/subprocess -run TestGetAvailableOfType|TestClassifyCall|TestTypedModelCalls
+--- FAIL: TestGetAvailableOfTypeCallPassesTypeAndProviderToTheAction (0.00s)
+    model_types_calls_test.go:21: getAvailableOfType is not implemented
+--- FAIL: TestGetAvailableOfTypeCallFailsWithTheActionsError (0.00s)
+    model_types_calls_test.go:42: error = getAvailableOfType is not implemented
+--- FAIL: TestClassifyCallPassesModelContextAndOptionsToTheAction (0.00s)
+    model_types_calls_test.go:63: classify is not implemented
+--- FAIL: TestClassifyCallWithoutAnActionAnswersAnErrorResult (0.00s)
+    model_types_calls_test.go:88: classify rejected: classify is not implemented
+--- FAIL: TestTypedModelCallsStartAsync (0.00s)
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/coding/extension/host/subprocess	0.054s
+FAIL
+
+$ go test . -run TestOrderedObject|TestModelRegistry|TestProviderConfigImpl|TestProviderObjectDecl
+--- FAIL: TestOrderedObjectKeepsKeyOrder (0.00s)
+    model_types_test.go:32: encoded = , json: error calling MarshalJSON for type *sdk.OrderedObject: model types are not implemented
+--- FAIL: TestModelRegistryTypedReadsUseTheHostState (0.00s)
+    model_types_test.go:101: read 0: model types are not implemented
+--- FAIL: TestModelRegistryGetAvailableOfTypeCallsTheHost (0.00s)
+    model_types_test.go:155: calls = [], response = &{Result:null Error:<nil>}
+--- FAIL: TestModelRegistryClassifyRoundTripsOrderedQuestionsAndAnswers (0.00s)
+    model_types_test.go:205: calls = [], response = &{Result:null Error:<nil>}
+--- FAIL: TestModelRegistryVirtualModelsReachTheHostLikeTheContextOnes (0.00s)
+    model_types_test.go:259: calls = [], response = &{Result:null Error:<nil>}
+--- FAIL: TestProviderConfigImplementationsAreDeclaredAndRunInTheExtension (0.00s)
+--- FAIL: TestProviderObjectDeclaresAndRunsGenerateImagesAndClassify (0.00s)
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/extensions/sdk	0.027s
+FAIL
+
+$ cargo test --quiet --test model_types_wire
+failures:
+model types are not implemented
+no text: {"error":{"message":"model types are not implemented"}}
+failures:
+    classify_round_trips_ordered_questions_and_answers
+    get_available_of_type_calls_the_host
+    provider_config_implementations_are_declared_and_run_in_the_extension
+    provider_object_declares_and_runs_generate_images_and_classify
+    registry_virtual_models_reach_the_host_like_the_context_ones
+    typed_reads_answer_from_the_registry_state
+test result: FAILED. 0 passed; 6 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+$ /tmp/f6h/venv/bin/python -m pytest tests/test_model_types.py -q
+E           AssertionError: {'type': 'response', 'id': 'r1', 'response': {'result': None, 'error': {'message': 'model types are not implemented'}}}
+E           assert {'message': 'model types are not implemented'} is None
+tests/test_model_types.py:67: AssertionError
+E           AssertionError: assert [] == ['getAvailabl...ilableOfType']
+tests/test_model_types.py:113: AssertionError
+E           AssertionError: assert [] == ['classify', 'classify']
+tests/test_model_types.py:147: AssertionError
+E           AssertionError: assert [] == [('registerVi...id': 'late'})]
+tests/test_model_types.py:195: AssertionError
+        (to raise a ``TypeError``).
+                except TypeError:
+                # Let the base class default method raise the TypeError
+>       raise TypeError(f'Object of type {o.__class__.__name__} '
+E       TypeError: Object of type function is not JSON serializable
+/usr/lib/python3.12/json/encoder.py:180: TypeError
+                raise RuntimeError("classifier failed")
+        except (TypeError, ValueError) as exc:
+>           raise TypeError(f"{what} must be JSON-serializable") from exc
+E           TypeError: provider config for ops must be JSON-serializable
+pig_sdk/__init__.py:615: TypeError
+>       with pytest.raises(TypeError, match="test-images"):
+E       Failed: DID NOT RAISE TypeError
+E           AssertionError: {'type': 'response', 'id': 'obj-1', 'response': {'result': None, 'error': {'message': "'dict' object has no attribute 'events'"}}}
+tests/test_model_types.py:290: AssertionError
+FAILED tests/test_model_types.py::test_typed_reads_answer_from_the_registry_state
+FAILED tests/test_model_types.py::test_get_available_of_type_calls_the_host
+FAILED tests/test_model_types.py::test_classify_round_trips_ordered_questions_and_answers
+FAILED tests/test_model_types.py::test_registry_virtual_models_reach_the_host_like_the_context_ones
+FAILED tests/test_model_types.py::test_provider_config_implementations_are_declared_and_run_in_the_extension
+FAILED tests/test_model_types.py::test_provider_config_rejects_a_non_callable_implementation
+FAILED tests/test_model_types.py::test_provider_object_declares_and_runs_generate_images_and_classify
+
+$ go test -run TestModelTypes .
+--- FAIL: TestModelTypesReadsAcrossSDKs (52.36s)
+    --- FAIL: TestModelTypesReadsAcrossSDKs/go-fused (0.00s)
+        model_types_test.go:437: typed_reads: model types are not implemented
+    --- FAIL: TestModelTypesReadsAcrossSDKs/go-strict (0.62s)
+        model_types_test.go:437: typed_reads: model types are not implemented
+    --- FAIL: TestModelTypesReadsAcrossSDKs/go-packed (0.60s)
+        model_types_test.go:437: typed_reads: model types are not implemented
+    --- FAIL: TestModelTypesReadsAcrossSDKs/rust-isolated (49.33s)
+    --- FAIL: TestModelTypesReadsAcrossSDKs/rust-packed (1.41s)
+    --- FAIL: TestModelTypesReadsAcrossSDKs/python-shared-ok (0.20s)
+    --- FAIL: TestModelTypesReadsAcrossSDKs/python-strict (0.20s)
+--- FAIL: TestModelTypesClassifyAcrossSDKs (3.02s)
+    --- FAIL: TestModelTypesClassifyAcrossSDKs/go-packed (0.51s)
+        model_types_test.go:460: classify_probe: no classifier model: model types are not implemented
+    --- FAIL: TestModelTypesClassifyAcrossSDKs/go-fused (0.00s)
+        model_types_test.go:460: classify_probe: no classifier model: model types are not implemented
+    --- FAIL: TestModelTypesClassifyAcrossSDKs/go-strict (0.48s)
+        model_types_test.go:460: classify_probe: no classifier model: model types are not implemented
+    --- FAIL: TestModelTypesClassifyAcrossSDKs/rust-isolated (0.82s)
+    --- FAIL: TestModelTypesClassifyAcrossSDKs/rust-packed (0.84s)
+    --- FAIL: TestModelTypesClassifyAcrossSDKs/python-strict (0.18s)
+    --- FAIL: TestModelTypesClassifyAcrossSDKs/python-shared-ok (0.19s)
+--- FAIL: TestModelTypesVirtualModelsAcrossSDKs (3.03s)
+    --- FAIL: TestModelTypesVirtualModelsAcrossSDKs/go-strict (0.48s)
+        model_types_test.go:494: virtual_probe = map[first:false refused:model types are not implemented]
+    --- FAIL: TestModelTypesVirtualModelsAcrossSDKs/go-packed (0.53s)
+        model_types_test.go:494: virtual_probe = map[first:false refused:model types are not implemented]
+    --- FAIL: TestModelTypesVirtualModelsAcrossSDKs/go-fused (0.00s)
+        model_types_test.go:494: virtual_probe = map[first:false refused:model types are not implemented]
+    --- FAIL: TestModelTypesVirtualModelsAcrossSDKs/rust-isolated (0.83s)
+    --- FAIL: TestModelTypesVirtualModelsAcrossSDKs/rust-packed (0.82s)
+    --- FAIL: TestModelTypesVirtualModelsAcrossSDKs/python-strict (0.18s)
+    --- FAIL: TestModelTypesVirtualModelsAcrossSDKs/python-shared-ok (0.19s)
+--- FAIL: TestModelTypesProviderConfigImplementationsAcrossSDKs (2.99s)
+    --- FAIL: TestModelTypesProviderConfigImplementationsAcrossSDKs/go-fused (0.00s)
+    --- FAIL: TestModelTypesProviderConfigImplementationsAcrossSDKs/go-strict (0.46s)
+    --- FAIL: TestModelTypesProviderConfigImplementationsAcrossSDKs/go-packed (0.48s)
+    --- FAIL: TestModelTypesProviderConfigImplementationsAcrossSDKs/rust-isolated (0.83s)
+    --- FAIL: TestModelTypesProviderConfigImplementationsAcrossSDKs/rust-packed (0.83s)
+    --- FAIL: TestModelTypesProviderConfigImplementationsAcrossSDKs/python-shared-ok (0.19s)
+    --- FAIL: TestModelTypesProviderConfigImplementationsAcrossSDKs/python-strict (0.19s)
+--- FAIL: TestModelTypesProviderObjectAcrossSDKs (3.00s)
+    --- FAIL: TestModelTypesProviderObjectAcrossSDKs/go-fused (0.00s)
+    --- FAIL: TestModelTypesProviderObjectAcrossSDKs/go-strict (0.47s)
+    --- FAIL: TestModelTypesProviderObjectAcrossSDKs/go-packed (0.49s)
+    --- FAIL: TestModelTypesProviderObjectAcrossSDKs/rust-isolated (0.83s)
+    --- FAIL: TestModelTypesProviderObjectAcrossSDKs/rust-packed (0.83s)
+    --- FAIL: TestModelTypesProviderObjectAcrossSDKs/python-strict (0.18s)
+    --- FAIL: TestModelTypesProviderObjectAcrossSDKs/python-shared-ok (0.19s)
+--- FAIL: TestModelTypesProviderOperationCancellationAcrossSDKs (3.15s)
+    --- FAIL: TestModelTypesProviderOperationCancellationAcrossSDKs/go-fused (0.00s)
+    --- FAIL: TestModelTypesProviderOperationCancellationAcrossSDKs/go-strict (0.50s)
+    --- FAIL: TestModelTypesProviderOperationCancellationAcrossSDKs/go-packed (0.50s)
+    --- FAIL: TestModelTypesProviderOperationCancellationAcrossSDKs/rust-isolated (0.88s)
+    --- FAIL: TestModelTypesProviderOperationCancellationAcrossSDKs/rust-packed (0.87s)
+    --- FAIL: TestModelTypesProviderOperationCancellationAcrossSDKs/python-strict (0.20s)
+    --- FAIL: TestModelTypesProviderOperationCancellationAcrossSDKs/python-shared-ok (0.21s)
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/test/extension-conformance	67.617s
+FAIL
+

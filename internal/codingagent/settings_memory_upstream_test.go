@@ -53,6 +53,7 @@ func assertMemorySettings3616(t *testing.T, sm *SettingsManager, want string) {
 }
 
 func TestInMemorySettingsReloadUpstream(t *testing.T) {
+	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
 	t.Chdir(t.TempDir())
 	const initial = `{"defaultThinkingLevel":"high","images":{"autoResize":false},"compaction":{"enabled":false}}`
 	// .upstream/v0.87.1/packages/coding-agent/test/suite/regressions/3616-settings-inmemory-reload.test.ts:24

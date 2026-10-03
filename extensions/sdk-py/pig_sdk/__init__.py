@@ -10,6 +10,8 @@ returned extension over a host-provided subprocess socket.
 
 from __future__ import annotations
 
+import copy
+import dataclasses
 import decimal
 import json
 import math
@@ -17,8 +19,10 @@ import os
 import queue
 import socket
 import struct
+import sys
 import threading
 import time
+import traceback
 import weakref
 from collections import deque
 from contextvars import ContextVar
@@ -26,6 +30,8 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Literal, NotRequired, Protocol, TypeAlias, TypedDict
 from .autocomplete import AutocompleteProvider as AutocompleteProvider, AutocompleteProviderFactory, _AutocompleteRegistry
 from .session_manager import SessionManager
+from ._color import color_ansi, parse_color, style_text_with_ansi
+from .event_bus import EventBus as EventBus, EventBusHandler as EventBusHandler, _EventBusHub
 from .provider import (
     Provider, ProviderSignal,
     ProviderAuth as ProviderAuth, APIKeyAuth as APIKeyAuth, OAuthAuth as OAuthAuth,
@@ -33,8 +39,10 @@ from .provider import (
     AuthCheck as AuthCheck, AuthInteraction as AuthInteraction,
     ModelsPublication as ModelsPublication, RefreshModelsContext as RefreshModelsContext,
     ProviderStreamOptions as ProviderStreamOptions,
+    ProviderOperationOptions as ProviderOperationOptions,
     register_native as _register_native, remote_provider as _remote_provider,
     dispatch_provider as _dispatch_provider, dispatch_callback as _dispatch_provider_callback,
+    dispatch_operation as _dispatch_provider_operation,
 )
 
 # Maximum frame size (128 MB). Bounds a single length-prefixed frame to guard
@@ -138,6 +146,8 @@ EVENT_TOOL_CALL = "tool_call"
 EVENT_TOOL_RESULT = "tool_result"
 EVENT_USER_BASH = "user_bash"
 EVENT_INPUT = "input"
+EVENT_PROVIDER_STREAM_EVENT = "provider_stream_event"
+EVENT_MCP_SERVERS_CHANGE = "mcp_servers_change"
 
 
 Schema: TypeAlias = dict[str, Any]
@@ -159,6 +169,60 @@ class ProjectTrustResult(TypedDict):
 ProjectTrustHandler: TypeAlias = Callable[["Context", dict[str, Any]], ProjectTrustResult]
 ShortcutHandler: TypeAlias = Callable[["Context"], None]
 RendererHandler: TypeAlias = Callable[["Context", dict[str, Any], dict[str, Any], int], list[str]]
+
+
+# Upstream 0.99.1 extension API additions (types.ts:509-607, 1708-1855, 2161-2169).
+ToolExposure: TypeAlias = Literal["direct", "model-only", "codemode", "deferred", "hidden"]
+_TOOL_EXPOSURES = ("direct", "model-only", "codemode", "deferred", "hidden")
+
+
+class ToolAnnotations(TypedDict, total=False):
+    """Upstream ToolAnnotations: hints with the meaning of MCP tool annotations."""
+
+    readOnlyHint: bool
+    destructiveHint: bool
+    idempotentHint: bool
+    openWorldHint: bool
+
+
+class ToolNamespace(TypedDict):
+    """Upstream ToolNamespace: a group of related tools, such as one MCP server's tools."""
+
+    name: str
+    description: NotRequired[str]
+    instructions: NotRequired[str]
+
+
+class ToolLoadoutChanges(TypedDict, total=False):
+    """Upstream ToolLoadoutChanges."""
+
+    descriptions: dict[str, str]
+    hiddenDeclarations: list[str]
+
+
+@dataclass(frozen=True)
+class ToolLoadout:
+    """Upstream ToolLoadout: the tools of a session as ``prepare_loadout`` sees them.
+
+    ``declared``, ``callable`` and ``registered`` are AgentTool dicts.
+    """
+
+    declared: list[dict[str, Any]]
+    callable: list[dict[str, Any]]
+    registered: list[dict[str, Any]]
+    exposures: dict[str, str] = field(default_factory=dict)
+    namespaces: dict[str, ToolNamespace] = field(default_factory=dict)
+
+    def get_exposure(self, name: str) -> ToolExposure:
+        """The tool's exposure; a tool without a definition is ``"direct"`` (agent-session.ts:1480-1482)."""
+        return self.exposures.get(name, "direct")  # type: ignore[return-value]
+
+    def get_namespace(self, name: str) -> ToolNamespace | None:
+        """The tool's namespace, or None (agent-session.ts:1520)."""
+        return self.namespaces.get(name)
+
+
+ToolPrepareLoadoutHandler: TypeAlias = Callable[[ToolLoadout], "ToolLoadoutChanges | None"]
 
 
 @dataclass
@@ -220,6 +284,12 @@ class ToolDefinition:
     execute: ToolHandler
     render_call: ToolRenderCallHandler | None = None
     render_result: ToolRenderResultHandler | None = None
+    output_schema: Schema | None = None
+    exposure: ToolExposure | None = None
+    namespace: ToolNamespace | None = None
+    annotations: ToolAnnotations | None = None
+    default_active: bool | None = None
+    prepare_loadout: ToolPrepareLoadoutHandler | None = None
 
 
 # pig additive (D60): Python extensions provide typed data for Pig's native
@@ -248,6 +318,32 @@ class LoginDefinition:
         }
 
 
+# pig divergence (D2): Python extensions add a sprite to PiG's /sprite catalogue.
+@dataclass(frozen=True)
+class SpriteDefinition:
+    """One sprite for PiG's /sprite catalogue.
+
+    ``mascot`` is the 16-by-14 pig the startup header draws and /sprite
+    preview shows beside the wordmark; ``palette`` colors it. Grid
+    cells are printable ASCII palette symbols; ``.`` is transparent.
+    """
+
+    id: str
+    name: str
+    tagline: str
+    mascot: list[str]
+    palette: dict[str, str]
+
+    def _to_wire(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "tagline": self.tagline,
+            "mascot": list(self.mascot),
+            "palette": dict(self.palette),
+        }
+
+
 @dataclass(frozen=True)
 class ExecResult:
     """Outcome of a host-executed command."""
@@ -257,6 +353,46 @@ class ExecResult:
     exit_code: int = 0
     # Upstream ExecResult.killed: the process was killed (timeout or abort).
     killed: bool = False
+
+
+@dataclass(kw_only=True)
+class ExecuteToolOptions:
+    """Upstream ExecuteToolOptions, the options of :meth:`Context.execute_tool`.
+
+    ``signal`` defaults to the calling tool's own cancellation; a signal given
+    here replaces it, so cancelling the calling tool then leaves the nested
+    call running (runner.ts:980). ``on_update``
+    receives each partial result of the nested tool as an AgentToolResult dict.
+    """
+
+    signal: ProviderSignal | None = None
+    on_update: Callable[[dict[str, Any]], None] | None = None
+
+
+VirtualModelRouteHandler: TypeAlias = Callable[["Context", dict[str, Any]], dict[str, Any]]
+
+
+@dataclass(kw_only=True)
+class VirtualModel:
+    """Upstream ExtensionVirtualModel, the argument of :meth:`Extension.register_virtual_model`.
+
+    ``route`` is ``(ctx, request) -> route``. ``request`` is upstream's
+    ModelRouteRequest as a dict (``model``, ``thinkingLevel``, ``reason``,
+    ``previous``, ``failed``, ``state``, ``messages``) plus ``signal``, the
+    cancellation of the request. The route is a dict with the physical
+    ``model``, ``thinkingLevel`` and optionally ``state``. A ``state`` that is
+    absent or None keeps the current state, as upstream's undefined does, so
+    returning ``request.get("state")`` never stores a null state.
+    """
+
+    provider: str
+    id: str
+    name: str
+    route: VirtualModelRouteHandler
+    thinking_levels: list[str] | None = None
+    context_window: int | None = None
+    max_tokens: int | None = None
+    input: list[Literal["text", "image"]] | None = None
 
 
 def message_role(data: dict[str, Any]) -> str:
@@ -663,6 +799,74 @@ class ModelRegistry:
     def get_error(self) -> str | None:
         return self._state().get("error")
 
+    def get_models_of_type(self, model_type: str, provider: str | None = None) -> list[dict[str, Any]]:
+        """Every known model of a type (``chat``, ``image`` or ``classifier``), optionally for one provider (``getModelsOfType``).
+
+        Chat models come from the registry state's ``models`` and the others from its ``typedModels``, in the host's order.
+        """
+        state = self._state()
+        return [
+            model for model in [*state["models"], *state.get("typedModels", [])]
+            if (model.get("type") or "chat") == model_type and (provider is None or model.get("provider") == provider)
+        ]
+
+    def get_model_of_type(self, model_type: str, provider: str, model_id: str) -> dict[str, Any] | None:
+        """One model of a type by provider and id, or None (``getModelOfType``)."""
+        return next((model for model in self.get_models_of_type(model_type, provider) if model.get("id") == model_id), None)
+
+    def find_of_type(self, model_type: str, provider: str, model_id: str) -> dict[str, Any] | None:
+        """One model of a type by provider and id, or None (``findOfType``)."""
+        return self.get_model_of_type(model_type, provider, model_id)
+
+    def get_available_of_type(self, model_type: str, provider: str | None = None) -> list[dict[str, Any]]:
+        """The models of a type whose provider has working credentials. It awaits the host (``getAvailableOfType``)."""
+        args: dict[str, Any] = {"type": model_type}
+        if provider is not None:
+            args["provider"] = provider
+        return self._context._call("getAvailableOfType", args).get("result")
+
+    def classify(self, model: dict[str, Any], context: dict[str, Any], options: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Classify structured state with request-time authentication (``classify``).
+
+        It never raises: a failure, and a cancelled request, are a result with ``stopReason`` ``error`` or ``aborted`` that names the model.
+        ``context`` is ``{"state", "questions"}``; the questions and the answers keep their order.
+        """
+        args: dict[str, Any] = {"model": model, "context": context}
+        if options is not None:
+            args["options"] = options
+        try:
+            return self._context._call("classify", args).get("result")
+        except Exception as error:  # noqa: BLE001 - classify reports every failure as a result
+            return {
+                "api": model.get("api"), "provider": model.get("provider"), "model": model.get("id"), "answers": {},
+                "stopReason": "aborted" if self._context._cancelled.is_set() else "error", "errorMessage": str(error), "timestamp": int(time.time() * 1000),
+            }
+
+    def generate_images(self, model: dict[str, Any], context: dict[str, Any], options: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Generate images with request-time authentication (``generateImages``).
+
+        It never raises: a failure, and a cancelled request, are a result with ``stopReason`` ``error`` or ``aborted`` that names the model.
+        ``context`` is ``{"input": [...]}`` with text and image blocks; the result's ``output`` holds the generated blocks.
+        """
+        args: dict[str, Any] = {"model": model, "context": context}
+        if options is not None:
+            args["options"] = options
+        try:
+            return self._context._call("generateImages", args).get("result")
+        except Exception as error:  # noqa: BLE001 - generateImages reports every failure as a result
+            return {
+                "api": model.get("api"), "provider": model.get("provider"), "model": model.get("id"), "output": [],
+                "stopReason": "aborted" if self._context._cancelled.is_set() else "error", "errorMessage": str(error), "timestamp": int(time.time() * 1000),
+            }
+
+    def register_virtual_model(self, model: "VirtualModel") -> None:
+        """Register a virtual model, as :meth:`Context.register_virtual_model` does (``registerVirtualModel``)."""
+        self._context.register_virtual_model(model)
+
+    def unregister_virtual_model(self, provider: str, model_id: str) -> None:
+        """Remove a virtual model (``unregisterVirtualModel``)."""
+        self._context.unregister_virtual_model(provider, model_id)
+
     def has_configured_auth(self, model: dict[str, Any]) -> bool:
         return self._state()["providers"].get(model["provider"], {}).get("configured", False)
 
@@ -723,13 +927,15 @@ class ModelRegistry:
         self._context._call("registerProvider", {"name": provider.id, "config": {}, "native": declaration})
 
     def register_provider(self, name: str | Provider, config: dict[str, Any] | None = None) -> None:
+        """Apply a provider config at once, as Pi's pi.registerProvider does after the factory finished (types.ts:1766-1803, runner.ts:517-523). The config carries its callables (streamSimple, images, classifiers) as a factory registration does: they stay in the extension and the call names them. A registration the host refuses leaves the callables the provider had."""
         if isinstance(name, Provider):
             self.register_native_provider(name)
-        else:
-            self._context._call("registerProvider", {"name": name, "config": config})
+            return
+        self._context.extension._register_provider_now(name, config, self._context._call)
 
     def unregister_provider(self, name: str) -> None:
-        self._context._call("unregisterProvider", {"name": name})
+        """Remove a provider and, once the host removed it, drop the callables the extension held for it."""
+        self._context.extension._unregister_provider_now(name, self._context._call)
 
     def refresh(self, options: dict[str, Any] | None = None) -> dict[str, Any]:
         result = self._context._call("refreshModelRegistry", options or {}).get("result")
@@ -793,6 +999,9 @@ def _theme_text(text: Any) -> str:
     return "" if text is None else str(text)
 
 
+_FAINT_SGR = "\x1b[2m"
+
+
 class Theme:
     """Upstream Theme (``ctx.ui.theme``) over the host's active palette.
 
@@ -814,6 +1023,8 @@ class Theme:
         self._backgrounds: dict[str, str] = {}
         self._modifiers = True
         self._mode: str | None = None
+        self._appearance: str | None = None
+        self._colors: dict[str, dict[str, Any]] = {}
 
     def _set_palette(self, palette: Any) -> None:
         palette = palette if isinstance(palette, dict) else {}
@@ -827,15 +1038,24 @@ class Theme:
         source_path = palette.get("sourcePath")
         self.source_path = source_path if isinstance(source_path, str) and source_path != "" else None
         self._mode = "256color" if palette.get("mode") == "256color" else "truecolor"
+        appearance = palette.get("appearance")
+        self._appearance = appearance if appearance in ("light", "dark") else None
+        colors = palette.get("colors")
+        parsed = {token: parse_color(value) for token, value in colors.items()} if isinstance(colors, dict) else {}
+        self._colors = {token: color for token, color in parsed.items() if color is not None}
 
-    def _style(self, open_seq: str, close_seq: str, text: Any) -> str:
+    def _modifier(self, open_seq: str, close_seq: str, text: Any) -> str:
         value = _theme_text(text)
         return f"{open_seq}{value}{close_seq}" if self._modifiers else value
 
     def fg(self, token: str, text: Any) -> str:
         value = _theme_text(text)
         open_seq = self._foregrounds.get(token) or ""
-        return f"{open_seq}{value}\x1b[39m" if open_seq else value
+        if not open_seq:
+            return value
+        # The host opens a faint token with SGR 2 (theme.ts:399-402); Pi's fg closes it with SGR 22;39 (theme.ts:363).
+        close_seq = "\x1b[22;39m" if open_seq.endswith("\x1b[2m") else "\x1b[39m"
+        return f"{open_seq}{value}{close_seq}"
 
     def bg(self, token: str, text: Any) -> str:
         value = _theme_text(text)
@@ -843,19 +1063,19 @@ class Theme:
         return f"{open_seq}{value}\x1b[49m" if open_seq else value
 
     def bold(self, text: Any) -> str:
-        return self._style("\x1b[1m", "\x1b[22m", text)
+        return self._modifier("\x1b[1m", "\x1b[22m", text)
 
     def italic(self, text: Any) -> str:
-        return self._style("\x1b[3m", "\x1b[23m", text)
+        return self._modifier("\x1b[3m", "\x1b[23m", text)
 
     def underline(self, text: Any) -> str:
-        return self._style("\x1b[4m", "\x1b[24m", text)
+        return self._modifier("\x1b[4m", "\x1b[24m", text)
 
     def inverse(self, text: Any) -> str:
-        return self._style("\x1b[7m", "\x1b[27m", text)
+        return self._modifier("\x1b[7m", "\x1b[27m", text)
 
     def strikethrough(self, text: Any) -> str:
-        return self._style("\x1b[9m", "\x1b[29m", text)
+        return self._modifier("\x1b[9m", "\x1b[29m", text)
 
     def get_fg_ansi(self, token: str) -> str:
         ansi = self._foregrounds.get(token)
@@ -869,6 +1089,40 @@ class Theme:
             raise ValueError(f"Unknown theme background color: {token}")
         return ansi
 
+    @property
+    def appearance(self) -> str | None:
+        """The background the theme is designed for, ``"light"`` or ``"dark"``, or ``None`` before the host has sent a palette. The host resolves it with the palette (upstream ``Theme.appearance``)."""
+        return self._appearance
+
+    @property
+    def colors(self) -> dict[str, dict[str, Any]]:
+        """A concrete color for every theme token (upstream ``Theme.colors``): ``{"kind": "indexed", "index"}``, ``{"kind": "rgb", "r", "g", "b"}`` or ``{"kind": "oklch", "l", "c", "h"}``. The host resolves them with the palette; the dict is a copy."""
+        return copy.deepcopy(self._colors)
+
+    def style(self, text: Any, options: dict[str, Any]) -> str:
+        """Render ``text`` in ``options`` (upstream ``Theme.style``): ``fg`` and ``bg`` are a theme token, accepted only in its own slot, or a color from :attr:`colors`; ``bold``, ``dim``, ``italic``, ``underline``, ``inverse`` and ``strikethrough`` are attributes, drawn whatever the host's chalk level is. An unknown token raises ``ValueError("Unknown theme color: <token>")``."""
+        attributes = dict(options)
+        fg_ansi = self._slot_ansi(options.get("fg"), self._foregrounds, False)
+        if isinstance(options.get("fg"), str) and fg_ansi.endswith(_FAINT_SGR):
+            # The palette's foreground appends SGR 2 to a faint token's color; a color never ends in it.
+            fg_ansi = fg_ansi[: -len(_FAINT_SGR)]
+            attributes["dim"] = True
+        bg_ansi = self._slot_ansi(options.get("bg"), self._backgrounds, True)
+        return style_text_with_ansi(_theme_text(text), fg_ansi, bg_ansi, attributes)
+
+    def _slot_ansi(self, value: Any, tokens: dict[str, str], background: bool) -> str:
+        if value is None:
+            return ""
+        if isinstance(value, str):
+            ansi = tokens.get(value)
+            if not ansi:
+                raise ValueError(f"Unknown theme color: {value}")
+            return ansi
+        color = parse_color(value)
+        if color is None:
+            raise ValueError(f"Invalid theme color: {value!r}")
+        return color_ansi(color, self.get_color_mode(), background)
+
     def get_color_mode(self) -> str:
         """``"truecolor"`` or ``"256color"``."""
         return self._mode or "truecolor"
@@ -879,6 +1133,82 @@ class Theme:
 
     def get_bash_mode_border_color(self) -> Callable[[Any], str]:
         return lambda text: self.fg("bashMode", text)
+
+
+# Host calls whose reply lists every registered MCP server (protocol_extension_api.go McpServersResult).
+_MCP_REGISTRY_CALLS = frozenset({"registerMcpServer", "unregisterMcpServer"})
+
+
+class _NestedUpdate:
+    """One partial result of a nested call and the answer the host waits for."""
+
+    def __init__(self, partial: Any) -> None:
+        self.partial = partial
+        self.done = threading.Event()
+        self.error: Exception | None = None
+
+
+class _NestedCall:
+    """The partial results of one ``execute_tool`` call. The host sends each as a request and waits for the answer; the request handler queues it here and the caller's thread runs ``on_update`` for it, in order."""
+
+    def __init__(self) -> None:
+        self._cond = threading.Condition()
+        self._updates: deque[_NestedUpdate] = deque()
+        self._done = False
+        self._closed = False
+
+    def submit(self, partial: Any) -> Exception | None:
+        """Queue one partial result and wait until ``on_update`` ran for it. Return what it raised, which is the answer to the host; an update for a call that already returned is dropped."""
+        update = _NestedUpdate(partial)
+        with self._cond:
+            if self._closed:
+                return None
+            self._updates.append(update)
+            self._cond.notify_all()
+        update.done.wait()
+        return update.error
+
+    def finish(self) -> None:
+        with self._cond:
+            self._done = True
+            self._cond.notify_all()
+
+    def deliver(self, on_update: Callable[[dict[str, Any]], None] | None) -> BaseException | None:
+        """Run ``on_update`` for each partial result until the call finished, and return the first error it raised. A raising callback still sees every later partial result (nested-tool-calls.ts:219-231, agent-loop.ts:833-845); each error is the answer to its own request and the first one rejects the call."""
+        failure: BaseException | None = None
+        while True:
+            with self._cond:
+                while not self._updates and not self._done:
+                    self._cond.wait()
+                batch = list(self._updates)
+                self._updates.clear()
+                done = self._done
+                if done:
+                    self._closed = True
+            for update in batch:
+                try:
+                    if on_update is not None:
+                        on_update(update.partial)
+                except Exception as exc:  # noqa: BLE001 - the callback's throw is the answer to its request
+                    update.error = exc
+                    if failure is None:
+                        failure = exc
+                finally:
+                    update.done.set()
+            if done:
+                return failure
+
+
+class _NestedCallEvent(threading.Event):
+    """The completion event of an ``executeTool`` host call: whoever completes the call (result, cancel or shutdown) also wakes the caller's update loop."""
+
+    def __init__(self, nested: _NestedCall) -> None:
+        super().__init__()
+        self._nested = nested
+
+    def set(self) -> None:
+        super().set()
+        self._nested.finish()
 
 
 # pig additive (D19): normal completion retires the request parent while retained Contexts keep the same socket generation.
@@ -965,6 +1295,106 @@ class _SurfaceRenderer:
                 pass
 
 
+class _ToolStart:
+    """One tool_call request's place in the order the handlers start. ``begin`` returns when every earlier request began its handler or ended without one."""
+
+    def __init__(self, previous: threading.Event | None) -> None:
+        self._previous = previous
+        self.done = threading.Event()
+
+    def begin(self) -> None:
+        if self._previous is not None:
+            self._previous.wait()
+        self.done.set()
+
+    def end(self) -> None:
+        """Hand the place on when the request's thread ends, also for a request that failed before it reached its handler. Like ``begin`` it waits for the earlier requests first, so a request without a handler cannot let a later handler start before an earlier one. Idempotent."""
+        self.begin()
+
+    def release(self) -> None:
+        """Hand the place on at once, for a request whose thread never started. The reader calls it, so it must not wait for the earlier requests. Idempotent."""
+        self.done.set()
+
+
+class _ToolStartOrder:
+    """Starts the handlers of tool_call requests in the order the requests arrive.
+
+    Pi starts every call of a parallel batch through ``Promise.all(calls.map(...))`` and each reaches tool.execute synchronously, so the handlers start in source order (agent-loop.ts:619-647, 820-837). The host writes a batch's tool_call requests in source order, but each request runs on its own thread, and the scheduler is free to run a later thread first.
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._tail: threading.Event | None = None
+
+    def reserve(self) -> _ToolStart:
+        """Take the next place. The reader calls this in arrival order, before it starts the request's thread."""
+        with self._lock:
+            start = _ToolStart(self._tail)
+            self._tail = start.done
+            return start
+
+
+@dataclass
+class _ReplacementState:
+    """The values a withSession context answers locally, from the replacement Session's ready payload."""
+
+    cwd: str = ""
+    mode: str = ""
+    has_ui: bool = False
+    model: str = ""
+
+
+class _WithSessionEntry:
+    def __init__(self, callback: Callable[[Any], Any]) -> None:
+        self.callback = callback
+        self.error: BaseException | None = None
+
+
+class _WithSessionRegistry:
+    """The withSession callbacks of replacement calls in flight, by the handle each call names."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._next = 0
+        self._entries: dict[str, _WithSessionEntry] = {}
+
+    def add(self, prefix: str, callback: Callable[[Any], Any]) -> tuple[str, _WithSessionEntry]:
+        with self._lock:
+            self._next += 1
+            handle = f"{prefix}:{self._next}"
+            entry = _WithSessionEntry(callback)
+            self._entries[handle] = entry
+            return handle, entry
+
+    def remove(self, handle: str) -> None:
+        with self._lock:
+            self._entries.pop(handle, None)
+
+    def dispatch(self, ctx: "Context", args: dict[str, Any]) -> None:
+        """Run the callback a with_session request names with a context of the replacement Session (agent-session-runtime.ts:187-194)."""
+        handle = str(args.get("handle") or "")
+        with self._lock:
+            entry = self._entries.get(handle)
+        if entry is None:
+            raise RuntimeError(f"unknown withSession callback {handle}")
+        ready = args.get("ready") or {}
+        state = ready.get("state") or {}
+        model = state.get("model") if isinstance(state.get("model"), dict) else {}
+        replacement = _ReplacementState(
+            cwd=str(ready.get("cwd") or ""),
+            mode=str(ready.get("mode") or ""),
+            has_ui=state.get("hasUI") is True,
+            model=str(model.get("id") or model.get("name") or ""),
+        )
+        replaced = ReplacedSessionContext(**{item.name: getattr(ctx, item.name) for item in dataclasses.fields(Context)})
+        replaced._replacement = replacement
+        try:
+            entry.callback(replaced)
+        except BaseException as error:
+            entry.error = error
+            raise
+
+
 @dataclass
 class Context:
     extension: "Extension"
@@ -974,6 +1404,12 @@ class Context:
     _cancel_reason: str | None = None
     _reason_provider: Callable[[], str | None] | None = None
     _parent: _RequestParent | None = None
+    # A tool_call request: the context has `tools` and `execute_tool` (runner.ts:952-985).
+    _tool_context: bool = False
+    # A tool_call request: its place in the order the handlers start.
+    _tool_start: "_ToolStart | None" = None
+    # A withSession context: the replacement Session's locally answered values.
+    _replacement: "_ReplacementState | None" = None
 
     @property
     def session_manager(self) -> "SessionManager":
@@ -982,6 +1418,21 @@ class Context:
     @property
     def model_registry(self) -> ModelRegistry:
         return ModelRegistry(self)
+
+    @property
+    def events(self) -> EventBus:
+        """Upstream's ``pi.events`` for calls made from this request."""
+        return EventBus(self.extension, self)
+
+    @property
+    def signal(self) -> ProviderSignal | None:
+        """Upstream's ``ctx.signal``: the cancellation of the run in progress, or None while no run is active.
+
+        Every read during one run returns the same signal, and aborting the run sets it, including for a handler
+        still in flight. It is the run's, not the request's: ``is_cancelled()`` reports the request.
+        """
+        with self.extension._run_signal_lock:
+            return None if self.extension._run_signal is None else self.extension._run_signal[1]
 
     def is_cancelled(self) -> bool:
         if self._parent is not None:
@@ -1037,6 +1488,70 @@ class Context:
 
     def call_host(self, method: str, args: Any = None) -> Any:
         return self._call(method, args).get("result")
+
+    # Upstream 0.99.1 extension API ------------------------------------------
+
+    def register_mcp_server(self, name: str, config: dict[str, Any]) -> None:
+        """Register an MCP server, as ``pi.registerMcpServer`` does."""
+        self.extension._register_mcp_server(name, config, self._call)
+
+    def unregister_mcp_server(self, name: str) -> None:
+        """Remove an MCP server this extension registered."""
+        self.extension._unregister_mcp_server(name, self._call)
+
+    def get_mcp_servers(self) -> list[dict[str, Any]]:
+        """Every registered MCP server, as ``pi.getMcpServers()`` returns them.
+
+        Each entry is ``{"name", "config", "extensionPath"}``. The list is the
+        registry as of the host's last state push or this extension's last
+        registration call.
+        """
+        return self.extension._get_mcp_servers()
+
+    def register_virtual_model(self, model: VirtualModel) -> None:
+        """Register a virtual model, as ``pi.registerVirtualModel`` does."""
+        self.extension._register_virtual_model(model, self._call)
+
+    def unregister_virtual_model(self, provider: str, model_id: str) -> None:
+        """Remove a virtual model registered with :meth:`register_virtual_model`."""
+        self.extension._unregister_virtual_model(provider, model_id, self._call)
+
+    def get_settings(self) -> dict[str, Any]:
+        """The effective settings, as ``pi.getSettings()`` returns them.
+
+        Raises ``RuntimeError`` until the host has sent them, as upstream's
+        ``getSettings`` throws before the runner binds.
+        """
+        return self.extension._get_settings()
+
+    @property
+    def tools(self) -> list[dict[str, Any]]:
+        """The tools :meth:`execute_tool` can call, as AgentTool dicts. Only available while a tool runs."""
+        self._require_tool_context("tools")
+        return list(self._reply_field("getCallableTools", "tools"))
+
+    def execute_tool(self, name: str, args: Any, options: ExecuteToolOptions | None = None) -> dict[str, Any]:
+        """Run another tool for the calling tool, as ``ctx.executeTool`` does.
+
+        The call gets the id ``<calling id>/<n>``; its ``tool_call``,
+        ``tool_result`` and ``tool_execution_*`` events carry
+        ``parentToolCallId``. Returns upstream's AgentToolCallOutcome as a dict
+        (``toolCall``, ``result``, ``isError``). Tool failures come back with
+        ``isError`` true rather than raising; a transport failure or the
+        cancellation of the calling request raises. ``options.signal`` defaults
+        to the calling tool's cancellation, and a given signal replaces it, as
+        upstream's ``options.signal ?? signal`` does; ``options.on_update`` runs on this
+        thread, in order, before the call returns. Only available while a tool
+        runs.
+        """
+        self._require_tool_context("execute_tool")
+        return self.extension._execute_tool(self, name, args, options or ExecuteToolOptions())
+
+    def _require_tool_context(self, what: str) -> None:
+        if not self._tool_context or not self.tool_call_id or not self.request_id:
+            raise RuntimeError(f"{what} is only available while a tool runs")
+
+
 
     # Notifications/status ---------------------------------------------------
 
@@ -1144,11 +1659,20 @@ class Context:
 
     @property
     def model(self) -> str:
+        if self._replacement is not None:
+            # This process replicates only the requesting Session's model.
+            try:
+                info = self._call("getModelInfo").get("result") or {}
+            except HostCallError:
+                return self._replacement.model
+            return str(info.get("id") or info.get("name") or "") if isinstance(info, dict) else ""
         with self.extension._state_lock:
             return self.extension._model
 
     @property
     def cwd(self) -> str:
+        if self._replacement is not None:
+            return self._replacement.cwd
         with self.extension._state_lock:
             return self.extension._cwd
 
@@ -1156,6 +1680,8 @@ class Context:
     def mode(self) -> str:
         """Run mode: "tui", "rpc", "json", or "print". Guard terminal-only
         UI on "tui". Defaults to "print" when unspecified."""
+        if self._replacement is not None and self._replacement.mode:
+            return self._replacement.mode
         with self.extension._state_lock:
             return self.extension._mode or "print"
 
@@ -1226,8 +1752,10 @@ class Context:
     def get_all_tools(self) -> list[dict[str, Any]]:
         """Every tool in the session's registry, active or not, as upstream's
         ``pi.getAllTools()`` returns them: ``ToolInfo`` dicts with ``name``,
-        ``description``, ``parameters``, ``promptGuidelines`` (when set) and
-        ``sourceInfo``. Built-in tools come first."""
+        ``description``, ``parameters``, ``promptGuidelines`` (when set),
+        ``exposure`` (always present upstream, ``"direct"`` by default),
+        ``namespace`` and ``annotations`` (when set), and ``sourceInfo``.
+        Built-in tools come first."""
         return list(self._reply_field("getAllTools", "tools"))
 
     def set_active_tools(self, tools: list[str]) -> None:
@@ -1266,10 +1794,15 @@ class Context:
         return result if isinstance(result, dict) and result.get("id") else None
 
     def get_branch(self) -> list[dict[str, Any]]:
+        if self._replacement is not None:
+            # The local mirror replicates the Session that requested the replacement.
+            return self.session_manager.get_branch() or []
         self.extension._ensure_session_log()
         return self.extension._session_mirror.get_branch()
 
     def get_entries(self) -> list[dict[str, Any]]:
+        if self._replacement is not None:
+            return self.session_manager.get_entries() or []
         self.extension._ensure_session_log()
         return self.extension._session_mirror.get_entries()
 
@@ -1288,6 +1821,8 @@ class Context:
 
     def has_ui(self) -> bool:
         """Whether the host binds a UI context: interactive and RPC, not print/JSON."""
+        if self._replacement is not None:
+            return self._replacement.has_ui
         with self.extension._state_lock:
             return self.extension._has_ui
 
@@ -1356,6 +1891,16 @@ class Context:
         :class:`HostCallError` and leaves the current header unchanged.
         """
         self._call("ui.setLogin", definition._to_wire())
+
+    def register_sprite(self, definition: SpriteDefinition) -> None:
+        """Add a sprite to /sprite, where the user can choose and save it.
+
+        Pig validates the definition; a rejected definition raises
+        :class:`HostCallError`. Registering the same ID again replaces this
+        extension's sprite, and the sprite leaves /sprite when the extension
+        unloads.
+        """
+        self._call("ui.registerSprite", definition._to_wire())
 
     def set_header(self, lines: list[str] | None) -> None:
         """Replace the header with pre-rendered lines, or clear it for None.
@@ -1449,12 +1994,15 @@ class Context:
         width; this is that trigger. :meth:`set_footer_renderer` and
         :meth:`set_header_renderer` follow a resize with no handler.
 
-        The handler is called after ``width()`` is updated, so it observes the
-        new value. Handlers run on the loop that reads host replies, so a
-        handler must not wait for a host call: a string list
-        :meth:`set_widget` returns without waiting, but footer or header rows
-        must be sent from another thread. Returns an idempotent unsubscribe
-        callable.
+        The handler is called after ``width()`` is updated, so it observes that
+        width or a newer one. Handlers run on a worker thread, one at a time in
+        the order the host sent the widths, never on the thread that reads the
+        host's replies, so a handler can make a blocking host call such as
+        :meth:`set_footer`. A slow handler delays the later deliveries, not the
+        extension's other handlers. A handler that raises is reported on stderr
+        and does not stop the others. Returns an idempotent unsubscribe
+        callable; a delivery already queued still reaches the handlers that
+        were subscribed when the width arrived.
         """
         if not callable(handler):
             raise TypeError("on_width_change requires a callable handler")
@@ -1571,12 +2119,14 @@ class Context:
         self._call("waitForIdle")
 
     def new_session(self, opts: dict[str, Any] | None = None) -> Any:
-        return self._call("newSession", opts or {}).get("result")
+        """Start a new session. ``opts`` may hold ``parentSession`` and a ``withSession`` callable taking a ReplacedSessionContext."""
+        return self._call_replacement("newSession", dict(opts or {}))
 
     def fork(self, entry_id: str, opts: dict[str, Any] | None = None) -> Any:
+        """Fork at an entry. ``opts`` may hold ``position`` and a ``withSession`` callable taking a ReplacedSessionContext."""
         args = dict(opts or {})
         args["entryId"] = entry_id
-        return self._call("fork", args).get("result")
+        return self._call_replacement("fork", args)
 
     def navigate_tree(self, target_id: str, opts: dict[str, Any] | None = None) -> Any:
         args = dict(opts or {})
@@ -1584,9 +2134,28 @@ class Context:
         return self._call("navigateTree", args).get("result")
 
     def switch_session(self, session_path: str, opts: dict[str, Any] | None = None) -> Any:
+        """Switch to a session file. ``opts`` may hold a ``withSession`` callable taking a ReplacedSessionContext."""
         args = dict(opts or {})
         args["sessionPath"] = session_path
-        return self._call("switchSession", args).get("result")
+        return self._call_replacement("switchSession", args)
+
+    def _call_replacement(self, method: str, args: dict[str, Any]) -> Any:
+        """A withSession callback cannot cross the process boundary, so the call names it by handle and the host runs it with a with_session request before the call returns. A callback exception fails the call with that exception, as Pi's awaited callback rejects the call."""
+        callback = args.pop("withSession", None)
+        if callback is None:
+            return self._call(method, args).get("result")
+        if not callable(callback):
+            raise TypeError("withSession must be callable")
+        handle, entry = self.extension._with_sessions.add(self.extension.name, callback)
+        args["withSession"] = handle
+        try:
+            return self._call(method, args).get("result")
+        except HostCallError:
+            if entry.error is not None:
+                raise entry.error from None
+            raise
+        finally:
+            self.extension._with_sessions.remove(handle)
 
     def reload(self) -> None:
         self._call("reload")
@@ -1602,6 +2171,14 @@ _OAUTH_METHODS = frozenset(
         "oauth_delete_credentials",
     }
 )
+
+
+@dataclass
+class ReplacedSessionContext(Context):
+    """Pi's ReplacedSessionContext (types.ts:442-452): the command context of the replacement Session that new_session, fork and switch_session pass to their ``withSession`` callback.
+
+    Its host calls act on the replacement Session, and send_message and send_user_message return after the Session operation, including the turn they trigger. cwd, mode, has_ui and model answer for the replacement Session.
+    """
 
 
 @dataclass
@@ -1842,6 +2419,10 @@ class Extension:
         self._term_input_seq = 0
         self._width_change: list[tuple[int, Any]] = []
         self._width_change_seq = 0
+        # Width deliveries wait here for their worker thread: handlers run off the thread that reads the host's replies (see _dispatch_width_change).
+        self._width_deliveries: deque[tuple[int, list[Any]]] = deque()
+        self._width_worker_running = False
+        self._width_dispatch_lock = threading.Lock()
         self._surface_lock = threading.Lock()
         self._surfaces: dict[str, _SurfaceRenderer] = {}
         self._commands: list[dict[str, Any]] = []
@@ -1856,6 +2437,7 @@ class Extension:
         self._provider_updates = {}
         self._remote_providers = {}
         self._provider_streams: dict[str, Callable] = {}
+        self._provider_operations: dict[str, dict[str, dict[str, Callable]]] = {}
         self._provider_active: dict[str, ModelEventStream] = {}
         self._renderers: list[dict[str, Any]] = []
         self._entry_renderers: list[dict[str, Any]] = []
@@ -1863,7 +2445,9 @@ class Extension:
         self._oauth_providers: dict[str, OAuthProvider] = {}
         self._tool_handlers: dict[str, ToolHandler] = {}
         self._tool_prepare_handlers: dict[str, ToolPrepareArguments] = {}
+        self._tool_starts = _ToolStartOrder()
         self._command_handlers: dict[str, CommandHandler] = {}
+        self._with_sessions = _WithSessionRegistry()
         self._command_completions: dict[str, ArgumentCompletionsHandler] = {}
         self._event_handlers: dict[int, EventHandler] = {}
         self._shortcut_handlers: dict[str, ShortcutHandler] = {}
@@ -1908,6 +2492,26 @@ class Extension:
         self._overlays: dict[str, _RemoteOverlayState] = {}
         self._overlay_lock = threading.Lock()
         self._shutdown = ProviderSignal()
+        # The replicated signal of the run in progress: (host run number, signal), None while no run is active (Context.signal).
+        self._run_signal: tuple[int, ProviderSignal] | None = None
+        self._run_signal_lock = threading.Lock()
+        # Upstream 0.99.1 extension API. Registrations made while the factory
+        # runs are queued and travel in the register frame, as loader.ts queues
+        # them until the factory succeeds; afterwards each is a host call.
+        self._mcp_servers_pending: list[dict[str, Any]] = []
+        self._virtual_models_pending: list[dict[str, Any]] = []
+        # The unregistrations made before the register frame, in call order. Pi filters the runtime-wide queue of models registered before the runner binds (loader.ts:228-232); the host applies these to it.
+        self._virtual_model_unregistrations: list[dict[str, str]] = []
+        self._virtual_model_routes: dict[tuple[str, str], VirtualModelRouteHandler] = {}
+        self._tool_loadout_handlers: dict[str, ToolPrepareLoadoutHandler] = {}
+        # State the host replicates (StatePayload.settings, mcpServers), guarded by _state_lock. ctx.tools asks the host when it is read.
+        self._settings: dict[str, Any] | None = None
+        self._mcp_servers: list[dict[str, Any]] = []
+        self._execute_seq = 0
+        self._nested_calls: dict[str, _NestedCall] = {}
+        # Ids of the MCP registration calls in flight, guarded by _state_lock. The read loop applies each reply's server list in frame order, so a later state push is never replaced by an older reply.
+        self._mcp_calls: set[str] = set()
+        self._bus = _EventBusHub(self)
 
     @property
     def name(self) -> str:
@@ -1930,8 +2534,12 @@ class Extension:
             td["source"] = source
         self._register_tool(td, handler, prepare_arguments)
 
-    def _register_tool(self, declaration, handler, prepare=None, render_call=None, render_result=None):
+    def _register_tool(self, declaration, handler, prepare=None, render_call=None, render_result=None, prepare_loadout=None):
         name = declaration["name"]
+        # agent-loop.ts:707-716: the host validates, so it asks the extension for the prepared arguments (tool_prepare_arguments).
+        declaration = {key: value for key, value in declaration.items() if key != "prepares_arguments"}
+        if prepare is not None:
+            declaration["prepares_arguments"] = True
         with self._tool_registration_lock:
             index = next((i for i, tool in enumerate(self._tools) if tool["name"] == name), None)
             if index is None:
@@ -1939,7 +2547,7 @@ class Extension:
             else:
                 self._tools[index] = declaration
             self._tool_handlers[name] = handler
-            for handlers, callback in ((self._tool_prepare_handlers, prepare), (self._tool_call_renderers, render_call), (self._tool_result_renderers, render_result)):
+            for handlers, callback in ((self._tool_prepare_handlers, prepare), (self._tool_call_renderers, render_call), (self._tool_result_renderers, render_result), (self._tool_loadout_handlers, prepare_loadout)):
                 if callback is None:
                     handlers.pop(name, None)
                 else:
@@ -1958,22 +2566,213 @@ class Extension:
             raise ValueError("render_shell must be 'default' or 'self'")
         if definition.execution_mode not in {None, "sequential", "parallel"}:
             raise ValueError("execution_mode must be 'sequential' or 'parallel'")
+        if definition.exposure is not None and definition.exposure not in _TOOL_EXPOSURES:
+            raise ValueError("exposure must be one of " + ", ".join(repr(e) for e in _TOOL_EXPOSURES))
+        if definition.prepare_loadout is not None and not callable(definition.prepare_loadout):
+            raise TypeError("prepare_loadout must be callable")
         declaration = {
             "name": name, "label": definition.label, "description": definition.description,
             "parameters": definition.parameters, "prompt_snippet": definition.prompt_snippet,
             "prompt_guidelines": definition.prompt_guidelines, "execution_mode": definition.execution_mode,
             "constrained_sampling": definition.constrained_sampling, "render_shell": definition.render_shell,
             "renders_call": definition.render_call is not None, "renders_result": definition.render_result is not None,
+            "output_schema": definition.output_schema, "exposure": definition.exposure, "namespace": definition.namespace,
+            "annotations": definition.annotations, "default_active": definition.default_active,
+            "prepares_loadout": True if definition.prepare_loadout is not None else None,
         }
         declaration = {key: value for key, value in declaration.items() if value is not None}
         _ensure_jsonable(declaration, f"tool definition for {name}")
-        self._register_tool(declaration, definition.execute, definition.prepare_arguments, definition.render_call, definition.render_result)
+        self._register_tool(declaration, definition.execute, definition.prepare_arguments, definition.render_call, definition.render_result, definition.prepare_loadout)
+
+    def register_mcp_server(self, name: str, config: dict[str, Any]) -> None:
+        """Register an MCP server, as ``pi.registerMcpServer`` does (loader.ts:456-465).
+
+        While the factory runs the registration is queued and applied when the
+        host accepts this extension; afterwards it applies at once. The host
+        validates ``config`` and rejects a name another extension owns: that
+        raises :class:`HostCallError` here after load, and fails the load when
+        it happens in the factory.
+        """
+        self._register_mcp_server(name, config, self._call)
+
+    def unregister_mcp_server(self, name: str) -> None:
+        """Remove an MCP server this extension registered (loader.ts:472-475)."""
+        self._unregister_mcp_server(name, self._call)
+
+    def _register_mcp_server(self, name: str, config: dict[str, Any], call: Callable[[str, Any], dict[str, Any]]) -> None:
+        _ensure_jsonable(config, f"MCP server config for {name}")
+        declaration = {"name": name, "config": config}
+        with self._tool_registration_lock:
+            if not self._tools_live:
+                # A replaced server keeps its position, as a JavaScript Map does (mcp-servers.ts:212-215).
+                index = next((i for i, server in enumerate(self._mcp_servers_pending) if server["name"] == name), None)
+                if index is None:
+                    self._mcp_servers_pending.append(declaration)
+                else:
+                    self._mcp_servers_pending[index] = declaration
+                return
+        call("registerMcpServer", declaration)
+
+    def _unregister_mcp_server(self, name: str, call: Callable[[str, Any], dict[str, Any]]) -> None:
+        with self._tool_registration_lock:
+            if not self._tools_live:
+                self._mcp_servers_pending = [server for server in self._mcp_servers_pending if server["name"] != name]
+                return
+        call("unregisterMcpServer", {"name": name})
+
+    def _get_mcp_servers(self) -> list[dict[str, Any]]:
+        with self._state_lock:
+            return copy.deepcopy(self._mcp_servers)
+
+    def register_virtual_model(self, model: VirtualModel) -> None:
+        """Register a virtual model, as ``pi.registerVirtualModel`` does (loader.ts:480-490).
+
+        ``model.route`` runs in this extension each time the host routes a
+        request to the model.
+        """
+        self._register_virtual_model(model, self._call)
+
+    def unregister_virtual_model(self, provider: str, model_id: str) -> None:
+        """Remove a virtual model registered with :meth:`register_virtual_model` (loader.ts:492-495)."""
+        self._unregister_virtual_model(provider, model_id, self._call)
+
+    def _register_virtual_model(self, model: VirtualModel, call: Callable[[str, Any], dict[str, Any]]) -> None:
+        if not callable(model.route):
+            raise TypeError("virtual model route must be callable")
+        declaration: dict[str, Any] = {"provider": model.provider, "id": model.id, "name": model.name}
+        for key, value in (("thinkingLevels", model.thinking_levels), ("contextWindow", model.context_window), ("maxTokens", model.max_tokens), ("input", model.input)):
+            if value is not None:
+                declaration[key] = value
+        _ensure_jsonable(declaration, f"virtual model {model.provider}/{model.id}")
+        key = (model.provider, model.id)
+        with self._tool_registration_lock:
+            previous = self._virtual_model_routes.get(key)
+            self._virtual_model_routes[key] = model.route
+            if not self._tools_live:
+                self._virtual_models_pending.append(declaration)
+                return
+        try:
+            call("registerVirtualModel", declaration)
+        except BaseException:
+            with self._tool_registration_lock:
+                if previous is None:
+                    self._virtual_model_routes.pop(key, None)
+                else:
+                    self._virtual_model_routes[key] = previous
+            raise
+
+    def _unregister_virtual_model(self, provider: str, model_id: str, call: Callable[[str, Any], dict[str, Any]]) -> None:
+        key = (provider, model_id)
+        with self._tool_registration_lock:
+            if not self._tools_live:
+                self._virtual_models_pending = [m for m in self._virtual_models_pending if (m["provider"], m["id"]) != key]
+                self._virtual_model_unregistrations.append({"provider": provider, "id": model_id})
+                self._virtual_model_routes.pop(key, None)
+                return
+        call("unregisterVirtualModel", {"provider": provider, "id": model_id})
+        with self._tool_registration_lock:
+            self._virtual_model_routes.pop(key, None)
+
+    def _get_settings(self) -> dict[str, Any]:
+        with self._state_lock:
+            settings = self._settings
+        if settings is None:
+            raise RuntimeError("settings are not available: the host has not sent them")
+        return copy.deepcopy(settings)
+
+
+    def _load_call(self, method: str, args: dict[str, Any]) -> dict[str, Any]:
+        """One host call before the register frame, when the read loop has not started: this thread reads until the call's result arrived."""
+        call_id, event = self._begin_call(method, args)
+        while not event.is_set():
+            env = self._read_during_load(event)
+            if env is not None:
+                raise RuntimeError(f"expected a {method} result, got {env.get('type')}")
+        return self._wait_call(call_id, event, method)
+
+    def _read_during_load(self, waiting: threading.Event | None = None) -> dict[str, Any] | None:
+        """Read the next message while the extension loads. Pings, call results and listener dispatches are served as the main loop serves them, as a node runtime serves a dispatch during its factory; any other message is returned. With ``waiting`` given, return None once that call's result has arrived."""
+        while True:
+            env = self._read()
+            kind = env.get("type")
+            if kind == "ping":
+                self._send({"type": "pong", "pong": {"nonce": (env.get("ping") or {}).get("nonce", "")}})
+            elif kind == "call_result":
+                self._deliver_call_result(env)
+                if waiting is not None and waiting.is_set():
+                    return None
+            elif kind == "request" and (env.get("request") or {}).get("method") == "events.dispatch":
+                self._start_request(env)
+            else:
+                return env
+
+    # ctx.execute_tool (runner.ts:966-983) -------------------------------------
+
+    def _execute_tool(self, ctx: Context, name: str, args: Any, options: ExecuteToolOptions) -> dict[str, Any]:
+        _ensure_jsonable(args, f"arguments of tool {name}")
+        if options.on_update is not None and not callable(options.on_update):
+            raise TypeError("on_update must be callable")
+        if options.signal is not None and not callable(getattr(options.signal, "subscribe", None)):
+            raise TypeError("signal must be a ProviderSignal")
+        with self._state_lock:
+            self._execute_seq += 1
+            execute_id = f"e{self._execute_seq}"
+            nested = _NestedCall()
+            self._nested_calls[execute_id] = nested
+        payload: dict[str, Any] = {"callerId": ctx.tool_call_id, "name": name, "args": args, "executeId": execute_id}
+        if options.on_update is not None:
+            payload["wantsUpdates"] = True
+        if options.signal is not None:
+            payload["ownSignal"] = True
+        unsubscribe: Callable[[], None] | None = None
+        ctx._report_request_state("blocked", "host_call")
+        try:
+            if options.signal is None:
+                call_id, event = self._begin_call("executeTool", payload, ctx.request_id, ctx._parent, event=_NestedCallEvent(nested))
+            else:
+                # An explicit signal replaces the calling tool's (runner.ts:980, `options.signal ?? signal`): the call is not tied to the calling request, so cancelling that request neither cancels it on the host nor ends this wait.
+                call_id, event = self._begin_call("executeTool", payload, event=_NestedCallEvent(nested))
+            if options.signal is not None:
+                # After the call is sent: the host applies a cancel only after the call it names started.
+                unsubscribe = options.signal.subscribe(lambda: self._cancel_nested(execute_id))
+            failure = nested.deliver(options.on_update)
+            try:
+                reply = self._wait_call(call_id, event, "executeTool")
+            except BaseException:
+                # The host rejects a call whose on_update raised, after the tool returned (nested-tool-calls.ts:219-248); the call raises what the callback raised, as Pi's rejection carries that error.
+                if failure is not None:
+                    raise failure from None
+                raise
+            if failure is not None:
+                raise failure
+            return reply.get("result") or {}
+        finally:
+            if unsubscribe is not None:
+                unsubscribe()
+            with self._state_lock:
+                self._nested_calls.pop(execute_id, None)
+            ctx._report_request_state("progress")
+
+    def _cancel_nested(self, execute_id: str) -> None:
+        """Send the cancel of one nested call from a thread of its own, so the signal's setter never waits for the host."""
+        def cancel() -> None:
+            try:
+                self._call("executeTool.cancel", {"executeId": execute_id})
+            except Exception:  # noqa: BLE001 - the call ended or the connection closed: nothing is left to cancel  # nosec B110
+                pass
+
+        threading.Thread(target=cancel, name=f"pig-execute-cancel-{execute_id}", daemon=True).start()
 
     def command(self, name: str, description: str, handler: CommandHandler, *, get_argument_completions: ArgumentCompletionsHandler | None = None) -> None:
         """Register a slash command, as upstream ``pi.registerCommand`` does.
 
-        ``get_argument_completions`` is upstream's ``getArgumentCompletions``.
+        ``get_argument_completions`` is upstream's ``getArgumentCompletions``. A command without a non-empty string name or a
+        callable handler is rejected before it registers (loader.ts:302-311), so the extension fails to load.
         """
+        if not isinstance(name, str) or name == "":
+            raise ValueError(f'Command registered by extension "{self._name}" must have a non-empty string name. Use pi.registerCommand("name", {{ description, handler }}).')
+        if not callable(handler):
+            raise ValueError(f'Command "/{name}" registered by extension "{self._name}" must define handler().')
         declaration: dict[str, Any] = {"name": name, "description": description}
         if get_argument_completions is not None:
             declaration["argument_completions"] = True
@@ -1998,27 +2797,100 @@ class Extension:
 
     def register_native_provider(self, provider: Provider) -> None:
         declaration = _register_native(self, provider)
-        self.unregister_provider(provider.id)
+        self._drop_queued_provider(provider.id)
         self._providers.append({"name": provider.id, "config": {}, "native": declaration})
 
     def register_provider(self, name: str | Provider, config: dict[str, Any] | None = None) -> None:
+        """Register or override a model provider. Before :meth:`run` registers the extension the registration is queued; after that it takes effect at once through the host, as Pi's pi.registerProvider does once the runner is bound (types.ts:1766-1803, runner.ts:517-523), and a registration the host refuses raises."""
         if isinstance(name, Provider):
             self.register_native_provider(name)
             return
+        with self._tool_registration_lock:
+            if not self._tools_live:
+                self._providers.append(self._take_provider_declaration(name, config))
+                return
+        self._register_provider_now(name, config, self._call)
+
+    def _register_provider_now(self, name: str, config: dict[str, Any], call: Callable[[str, Any], dict[str, Any]]) -> None:
+        """Send a provider registration through the host. A registration the host refuses leaves the callables the provider had."""
+        with self._provider_lock:
+            kept = self._held_provider_callbacks(name)
+            declaration = self._take_provider_declaration(name, config)
+        try:
+            call("registerProvider", declaration)
+        except BaseException:
+            with self._provider_lock:
+                self._restore_provider_callbacks(name, kept)
+            raise
+
+    def _unregister_provider_now(self, name: str, call: Callable[[str, Any], dict[str, Any]]) -> None:
+        """Remove a provider through the host, then drop the callables the extension held for it."""
+        call("unregisterProvider", {"name": name})
+        with self._provider_lock:
+            self._restore_provider_callbacks(name, (None, None))
+            self._oauth_providers.pop(name, None)
+
+    def _take_provider_declaration(self, name: str, config: dict[str, Any]) -> dict[str, Any]:
+        """Keep the callables of a provider config in the extension and return the declaration the host receives: the register payload's entry and the registerProvider call after the factory carry the same one."""
         config = dict(config)
         callback = config.pop("streamSimple", None)
         if callback is not None:
             if not callable(callback):
                 raise TypeError("streamSimple must be callable")
-            self._provider_streams[name] = callback
+        operations: dict[str, dict[str, Any]] = {}
+        for kind in ("images", "classifiers"):
+            implementations = config.pop(kind, None)
+            if implementations is None:
+                continue
+            for api, implementation in implementations.items():
+                if not callable(implementation):
+                    raise TypeError(f"provider {kind} implementation for {api} must be callable")
+            operations[kind] = dict(implementations)
         _ensure_jsonable(config, f"provider config for {name}")
+        if callback is not None:
+            self._provider_streams[name] = callback
+        # A re-registration replaces only the kinds it defines, as registerProvider merges defined values (model-runtime.ts registerProvider) and the host keeps the APIs it wired.
+        kept = self._provider_operations.setdefault(name, {})
+        for kind, implementations in operations.items():
+            if implementations:
+                kept[kind] = implementations
+        if not kept:
+            self._provider_operations.pop(name, None)
         declaration = {"name": name, "config": config}
         if callback is not None:
             declaration["stream_simple"] = True
-        self._providers.append(declaration)
+        if operations.get("images"):
+            declaration["image_apis"] = sorted(operations["images"])
+        if operations.get("classifiers"):
+            declaration["classifier_apis"] = sorted(operations["classifiers"])
+        return declaration
+
+    def _held_provider_callbacks(self, name: str) -> tuple[Callable | None, dict[str, dict[str, Callable]] | None]:
+        operations = self._provider_operations.get(name)
+        return self._provider_streams.get(name), None if operations is None else {kind: dict(implementations) for kind, implementations in operations.items()}
+
+    def _restore_provider_callbacks(self, name: str, kept: tuple[Callable | None, dict[str, dict[str, Callable]] | None]) -> None:
+        stream, operations = kept
+        if stream is None:
+            self._provider_streams.pop(name, None)
+        else:
+            self._provider_streams[name] = stream
+        if operations is None:
+            self._provider_operations.pop(name, None)
+        else:
+            self._provider_operations[name] = operations
 
     def unregister_provider(self, name: str) -> None:
+        """Remove a provider registration. Before :meth:`run` registers the extension it drops the queued registration; after that the host removes the provider at once, as Pi's pi.unregisterProvider does (types.ts:1805-1819), and a removal the host refuses raises."""
+        with self._tool_registration_lock:
+            if not self._tools_live:
+                self._drop_queued_provider(name)
+                return
+        self._unregister_provider_now(name, self._call)
+
+    def _drop_queued_provider(self, name: str) -> None:
         self._provider_streams.pop(name, None)
+        self._provider_operations.pop(name, None)
         self._providers = [provider for provider in self._providers if provider.get("name") != name]
 
     def register_oauth_provider(self, name: str, config: dict[str, Any], provider: OAuthProvider) -> None:
@@ -2039,8 +2911,24 @@ class Extension:
             oauth["has_credential_store"] = True
         config["oauth"] = oauth
         _ensure_jsonable(config, f"provider config for {name}")
-        self._providers.append({"name": name, "config": config})
-        self._oauth_providers[name] = provider
+        with self._tool_registration_lock:
+            if not self._tools_live:
+                self._providers.append({"name": name, "config": config})
+                self._oauth_providers[name] = provider
+                return
+        # After run the registration takes effect at once, as Pi's pi.registerProvider does with an oauth config (types.ts:1766-1803); a refused one keeps the OAuth provider held before.
+        with self._provider_lock:
+            previous = self._oauth_providers.get(name)
+            self._oauth_providers[name] = provider
+        try:
+            self._call("registerProvider", {"name": name, "config": config})
+        except BaseException:
+            with self._provider_lock:
+                if previous is None:
+                    self._oauth_providers.pop(name, None)
+                else:
+                    self._oauth_providers[name] = previous
+            raise
 
     def tool_renderers(self, name: str, *, render_call: ToolRenderCallHandler | None = None, render_result: ToolRenderResultHandler | None = None, render_shell: str = "default") -> None:
         """Set tool renderers and publish the updated definition in a running Session."""
@@ -2110,6 +2998,11 @@ class Extension:
         """Register an awaited pre-runtime project_trust handler."""
         self.on_event("project_trust", handler)
 
+    @property
+    def events(self) -> EventBus:
+        """Upstream's ``pi.events``, shared with every other realm of the session."""
+        return EventBus(self)
+
     def on_event(self, event: str, handler: EventHandler, can_block: bool = False) -> None:
         handler_id = len(self._handlers) + 1
         self._handlers.append({"event": event, "can_block": can_block, "handler_id": handler_id})
@@ -2133,9 +3026,10 @@ class Extension:
                 pass
 
     def _serve(self) -> None:
+        self._bus.register_pending()
         with self._tool_registration_lock:
-            self._send({"type": "register", "register": {"name": self._name, "tools": self._tools, "commands": self._commands, "shortcuts": self._shortcuts, "handlers": self._handlers, "flags": self._flags, "providers": self._providers, "message_renderers": self._renderers, "entry_renderers": self._entry_renderers, **({"markdown_transformer": True} if self._markdown_transformer is not None else {})}})
-            ready = self._read()
+            self._send({"type": "register", "register": {"name": self._name, "tools": self._tools, "commands": self._commands, "shortcuts": self._shortcuts, "handlers": self._handlers, "flags": self._flags, "providers": self._providers, "message_renderers": self._renderers, "entry_renderers": self._entry_renderers, **({"markdown_transformer": True} if self._markdown_transformer is not None else {}), **({"mcp_servers": self._mcp_servers_pending} if self._mcp_servers_pending else {}), **({"virtual_models": self._virtual_models_pending} if self._virtual_models_pending else {}), **({"unregister_virtual_models": self._virtual_model_unregistrations} if self._virtual_model_unregistrations else {})}})
+            ready = self._read_during_load()
             if ready.get("type") != "ready":
                 raise RuntimeError(f"expected ready, got {ready.get('type')}")
             self._tools_live = True
@@ -2165,39 +3059,12 @@ class Extension:
                 self._send({"type": "pong", "pong": {"nonce": ping.get("nonce", "")}})
                 continue
             if env.get("type") == "call_result":
-                cid = env.get("id", "")
-                with self._state_lock:
-                    event = self._pending.pop(cid, None)
-                    self._pending_parents.pop(cid, None)
-                    if event:
-                        self._pending_results[cid] = env.get("call_result") or {}
-                if event:
-                    event.set()
+                self._deliver_call_result(env)
                 continue
             if env.get("type") == "notify":
                 self._handle_notify(env)
             elif env.get("type") == "request":
-                ctx = self._arm_request(env)
-                self._request_state(env.get("id", ""), "started")
-                worker = threading.Thread(
-                    target=self._handle_request_thread,
-                    args=(env, ctx),
-                    name=f"pig-request-{env.get('id', '')}",
-                    daemon=True,
-                )
-                with self._request_threads_lock:
-                    self._request_threads.add(worker)
-                try:
-                    worker.start()
-                except Exception as exc:
-                    with self._request_threads_lock:
-                        self._request_threads.discard(worker)
-                    self._respond(
-                        env.get("id", ""),
-                        None,
-                        {"message": f"start extension handler: {exc}"},
-                    )
-                    continue
+                self._start_request(env)
             elif env.get("type") == "cancel":
                 req_id = (env.get("cancel") or {}).get("request_id") or env.get("id")
                 reason = (env.get("cancel") or {}).get("reason")
@@ -2219,6 +3086,48 @@ class Extension:
             elif env.get("type") == "shutdown":
                 self._stop_runtime()
                 return
+
+    def _deliver_call_result(self, env: dict[str, Any]) -> None:
+        cid = env.get("id", "")
+        result = env.get("call_result") or {}
+        with self._state_lock:
+            event = self._pending.pop(cid, None)
+            self._pending_parents.pop(cid, None)
+            if event:
+                self._pending_results[cid] = result
+            if cid in self._mcp_calls:
+                self._mcp_calls.discard(cid)
+                servers = (result.get("result") or {}).get("servers")
+                if isinstance(servers, list):
+                    self._mcp_servers = servers
+        if event:
+            event.set()
+
+    def _start_request(self, env: dict[str, Any]) -> None:
+        ctx = self._arm_request(env)
+        if (env.get("request") or {}).get("method") == "tool_call":
+            ctx._tool_start = self._tool_starts.reserve()
+        self._request_state(env.get("id", ""), "started")
+        worker = threading.Thread(
+            target=self._handle_request_thread,
+            args=(env, ctx),
+            name=f"pig-request-{env.get('id', '')}",
+            daemon=True,
+        )
+        with self._request_threads_lock:
+            self._request_threads.add(worker)
+        try:
+            worker.start()
+        except Exception as exc:
+            with self._request_threads_lock:
+                self._request_threads.discard(worker)
+            if ctx._tool_start is not None:
+                ctx._tool_start.release()
+            self._respond(
+                env.get("id", ""),
+                None,
+                {"message": f"start extension handler: {exc}"},
+            )
 
     def _stop_runtime(self) -> None:
         self._shutdown.set()
@@ -2256,6 +3165,19 @@ class Extension:
             with self._request_threads_lock:
                 self._request_threads.discard(threading.current_thread())
 
+    def _apply_run_signal(self, frame: dict) -> None:
+        """Install the host's run_signal frame: one signal for the whole run, set when the run aborts."""
+        with self._run_signal_lock:
+            if not frame.get("active"):
+                self._run_signal = None
+                return
+            run = int(frame.get("run") or 0)
+            if self._run_signal is None or self._run_signal[0] != run:
+                self._run_signal = (run, ProviderSignal())
+            signal = self._run_signal[1]
+        if frame.get("aborted"):
+            signal.set()
+
     def _handle_notify(self, env: dict[str, Any]) -> None:
         notify = env.get("notify") or {}
         method = notify.get("method", "")
@@ -2270,6 +3192,12 @@ class Extension:
         if method == "provider_release":
             with self._provider_lock:
                 self._native_providers.pop(args.get("key"), None)
+            return
+        if method == "events.release":
+            self._bus.release(str(args.get("handlerId") or ""))
+            return
+        if method == "run_signal":
+            self._apply_run_signal(args)
             return
         if method == "model_stream_event":
             stream_id = str(args.get("streamId") or "")
@@ -2328,15 +3256,67 @@ class Extension:
         if width_changed:
             # After the store, so a handler that reads width() sees the new value.
             with self._state_lock:
-                width_subs = [h for _, h in self._width_change]
                 new_width = self._width
-            for handler in width_subs:
-                handler(new_width)
+            self._dispatch_width_change(new_width)
             self._refresh_surfaces()
             with self._overlay_lock:
                 overlays = list(self._overlays.values())
             for overlay in overlays:
                 overlay.request_render()
+
+    def _dispatch_width_change(self, width: int) -> None:
+        """Queue one width delivery for the handlers subscribed now. They run on a worker thread in delivery order, so a handler that blocks on a host call never stops the thread that reads the reply."""
+        with self._state_lock:
+            handlers = [h for _, h in self._width_change]
+        if not handlers:
+            return
+        with self._width_dispatch_lock:
+            if self._shutdown.is_set():
+                return
+            self._width_deliveries.append((width, handlers))
+            if self._width_worker_running:
+                return
+            self._width_worker_running = True
+            worker = threading.Thread(target=self._run_width_deliveries, name="pig-width-change", daemon=True)
+            with self._request_threads_lock:
+                self._request_threads.add(worker)
+        try:
+            worker.start()
+        except Exception as exc:  # noqa: BLE001 - as the Rust SDK's WidthDeliveries::submit, a worker that cannot start drops the queued widths and the reader keeps serving
+            with self._request_threads_lock:
+                self._request_threads.discard(worker)
+            with self._width_dispatch_lock:
+                self._width_deliveries.clear()
+                self._width_worker_running = False
+            print(f"pig: start width change handlers: {exc}", file=sys.stderr)
+
+    def _run_width_deliveries(self) -> None:
+        try:
+            self._deliver_widths()
+        except BaseException:
+            # A handler exception that is not an Exception (SystemExit) ends this worker; the next width starts a new one.
+            with self._width_dispatch_lock:
+                self._width_deliveries.clear()
+                self._width_worker_running = False
+            raise
+        finally:
+            with self._request_threads_lock:
+                self._request_threads.discard(threading.current_thread())
+
+    def _deliver_widths(self) -> None:
+        while True:
+            with self._width_dispatch_lock:
+                if not self._width_deliveries or self._shutdown.is_set():
+                    self._width_deliveries.clear()
+                    self._width_worker_running = False
+                    return
+                width, handlers = self._width_deliveries.popleft()
+            for handler in handlers:
+                try:
+                    handler(width)
+                except Exception:  # noqa: BLE001 - one handler's failure must not stop the others, as a thrown handler error rejects one call in upstream
+                    if not self._shutdown.is_set():
+                        print(f"pig: width change handler failed:\n{traceback.format_exc()}", file=sys.stderr, end="")
 
     def _apply_ui_state(self, state: dict[str, Any]) -> None:
         """Record the snapshot's hasUI and theme. Caller holds _state_lock."""
@@ -2346,6 +3326,12 @@ class Extension:
         theme = state.get("theme")
         if isinstance(theme, dict):
             self._theme._set_palette(theme)
+        settings = state.get("settings")
+        if isinstance(settings, dict):
+            self._settings = settings
+        mcp_servers = state.get("mcpServers")
+        if isinstance(mcp_servers, list):
+            self._mcp_servers = mcp_servers
 
     def _arm_request(self, env: dict[str, Any]) -> Context:
         req_id = env.get("id", "")
@@ -2355,7 +3341,7 @@ class Extension:
         with self._state_lock:
             self._active[req_id] = (cancel, None)
             self._request_parents[req_id] = parent
-        ctx = Context(self, req.get("tool_call_id"), req_id, cancel, _parent=parent)
+        ctx = Context(self, req.get("tool_call_id"), req_id, cancel, _parent=parent, _tool_context=req.get("method") == "tool_call")
         ctx._reason_provider = lambda: self._active.get(req_id, (None, None))[1]
         return ctx
 
@@ -2373,6 +3359,8 @@ class Extension:
                 self._respond(req_id, _dispatch_provider(self, ctx, req), None)
             elif method in {"provider_object_callback", "provider_object_callback_sync"}:
                 self._respond(req_id, _dispatch_provider_callback(self, req), None)
+            elif method == "provider_operation":
+                self._respond(req_id, _dispatch_provider_operation(self, ctx, req), None)
             elif method == "provider_stream_simple":
                 cancel = ctx._cancelled
                 args = req.get("args") or {}
@@ -2396,15 +3384,67 @@ class Extension:
                 name = req.get("tool", "")
                 params = req.get("args") or {}
                 with self._tool_registration_lock:
-                    prepare = self._tool_prepare_handlers.get(name)
                     handler = self._tool_handlers[name]
-                if prepare is not None:
-                    params = prepare(params)
-                    if not isinstance(params, dict):
-                        raise TypeError("prepare_arguments must return a mapping")
+                # agent-loop.ts:619-647: the handlers of a batch start in source order.
+                if ctx._tool_start is not None:
+                    ctx._tool_start.begin()
                 result = handler(ctx, params)
                 payload = result if isinstance(result, dict) else {"content": str(result)}
                 self._respond(req_id, payload, None)
+            elif method == "tool_prepare_arguments":
+                name = req.get("tool", "")
+                with self._tool_registration_lock:
+                    prepare = self._tool_prepare_handlers.get(name)
+                if prepare is None:
+                    raise RuntimeError(f"tool {name!r} has no prepare_arguments")
+                prepared = prepare(req.get("args") or {})
+                if not isinstance(prepared, dict):
+                    raise TypeError("prepare_arguments must return a mapping")
+                self._respond(req_id, prepared, None)
+            elif method == "tool_prepare_loadout":
+                name = req.get("tool", "")
+                with self._tool_registration_lock:
+                    hook = self._tool_loadout_handlers.get(name)
+                if hook is None:
+                    raise RuntimeError(f"tool {name!r} has no prepare_loadout")
+                payload = req.get("args") or {}
+                changes = hook(ToolLoadout(
+                    declared=list(payload.get("declared") or []), callable=list(payload.get("callable") or []),
+                    registered=list(payload.get("registered") or []), exposures=dict(payload.get("exposures") or {}),
+                    namespaces=dict(payload.get("namespaces") or {}),
+                ))
+                if changes is not None and not isinstance(changes, dict):
+                    raise TypeError("prepare_loadout must return a mapping or None")
+                self._respond(req_id, changes, None)
+            elif method == "execute_tool_update":
+                # The host waits for this answer before it sends the next partial result or the call's outcome; an exception from on_update is the answer.
+                args = req.get("args") or {}
+                with self._state_lock:
+                    nested = self._nested_calls.get(str(args.get("executeId") or ""))
+                failure = nested.submit(args.get("result") or {}) if nested is not None else None
+                self._respond(req_id, None, None if failure is None else {"message": str(failure)})
+            elif method == "virtual_model_route":
+                args = req.get("args") or {}
+                provider, model_id = str(args.get("provider") or ""), str(args.get("id") or "")
+                with self._tool_registration_lock:
+                    route = self._virtual_model_routes.get((provider, model_id))
+                if route is None:
+                    raise RuntimeError(f"unknown virtual model {provider}/{model_id}")
+                request = dict(args.get("request") or {})
+                request["signal"] = ctx._cancelled
+                routed = route(ctx, request)
+                if not isinstance(routed, dict) or not isinstance(routed.get("model"), dict):
+                    raise TypeError("virtual model route must return a mapping with a model and a thinkingLevel")
+                if "state" in routed and routed["state"] is None:
+                    # None is Python's spelling of upstream's undefined state, and of request.state before the first state: both keep the current state (virtual-models.ts:77-83) instead of storing null.
+                    routed = {key: value for key, value in routed.items() if key != "state"}
+                self._respond(req_id, routed, None)
+            elif method == "events.dispatch":
+                self._bus.dispatch(ctx, req.get("args") or {})
+                self._respond(req_id, None, None)
+            elif method == "with_session":
+                self._with_sessions.dispatch(ctx, req.get("args") or {})
+                self._respond(req_id, None, None)
             elif method == "command":
                 name = req.get("tool", "")
                 args = req.get("args") or ""
@@ -2455,8 +3495,13 @@ class Extension:
                     return
                 if req.get("event") == "before_agent_start":
                     options = data["systemPromptOptions"]
-                    # Pi's normalized options always carry a selectedTools list; the host omits an empty one.
+                    # Pi's normalized options always carry every collection; the host omits an empty one.
                     options.setdefault("selectedTools", [])
+                    options.setdefault("toolSnippets", {})
+                    options.setdefault("toolGuidelines", {})
+                    options.setdefault("promptGuidelines", [])
+                    options.setdefault("contextFiles", [])
+                    options.setdefault("skills", [])
                     result = None
                     error = None
                     try:
@@ -2465,7 +3510,7 @@ class Extension:
                         error = {"message": str(exc)}
                     self._respond(
                         req_id,
-                        {"_pigPromptSections": options["sections"], "_pigPromptSelectedTools": options.get("selectedTools"), "_pigPromptResult": result},
+                        {"_pigPromptSections": options["sections"], "_pigPromptSelectedTools": options.get("selectedTools"), "_pigPromptOptions": options, "_pigPromptResult": result},
                         error,
                     )
                     return
@@ -2514,6 +3559,8 @@ class Extension:
         except Exception as exc:  # noqa: BLE001 - SDK boundary reports handler errors.
             self._respond(req_id, None, {"message": str(exc)})
         finally:
+            if ctx._tool_start is not None:
+                ctx._tool_start.end()
             with self._state_lock:
                 self._active.pop(req_id, None)
                 self._request_parents.pop(req_id, None)
@@ -2654,8 +3701,8 @@ class Extension:
         call_id, event = self._begin_call(method, args, parent_request_id, parent)
         return self._wait_call(call_id, event, method)
 
-    def _begin_call(self, method: str, args: Any = None, parent_request_id: str = "", parent: _RequestParent | None = None) -> tuple[str, threading.Event]:
-        event = threading.Event()
+    def _begin_call(self, method: str, args: Any = None, parent_request_id: str = "", parent: _RequestParent | None = None, event: threading.Event | None = None) -> tuple[str, threading.Event]:
+        event = event if event is not None else threading.Event()
         with self._write_lock:
             with self._state_lock:
                 if self._shutdown.is_set() or (parent is not None and parent.socket is not self._sock):
@@ -2667,6 +3714,8 @@ class Extension:
                 self._call_id += 1
                 call_id = f"c{self._call_id}"
                 self._pending[call_id] = event
+                if method in _MCP_REGISTRY_CALLS:
+                    self._mcp_calls.add(call_id)
                 if parent_request_id:
                     self._pending_parents[call_id] = parent_request_id
             call = {"method": method, "args": args}
@@ -2678,6 +3727,7 @@ class Extension:
                 with self._state_lock:
                     self._pending.pop(call_id, None)
                     self._pending_parents.pop(call_id, None)
+                    self._mcp_calls.discard(call_id)
                 raise
         return call_id, event
 
@@ -2906,9 +3956,10 @@ class Extension:
                     parent.finished = True
                     if parent.state == "active":
                         parent.state = "completed"
-                cancelled_calls = self._cancel_parent_calls_locked(req_id)
-            for event in cancelled_calls:
-                event.set()
+                # Pi's host calls belong to no request: a call the handler left running when it returned continues until it ends. A cancelled request's calls were cancelled by the cancel frame. A completed request's pending calls are no longer scoped to it, so a later cancel frame for it does not reach them.
+                for call_id, parent_id in list(self._pending_parents.items()):
+                    if parent_id == req_id:
+                        self._pending_parents[call_id] = ""
             self._send_locked({"type": "request_state", "request_state": {"request_id": req_id, "state": "completed"}})
             self._send_locked({"type": "response", "id": req_id, "response": {"result": result, "error": error}})
 

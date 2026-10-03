@@ -23,6 +23,12 @@ const (
 	Connected    ConnectionState = "connected"
 )
 
+// Unsubscribe removes the listener a registration added.
+type Unsubscribe = func()
+
+// ListenerErrorHandler receives listener failures without letting them change client state.
+type ListenerErrorHandler = func(error)
+
 // ConnectionStateChange is delivered after committing the connection's state.
 type ConnectionStateChange struct {
 	State ConnectionState

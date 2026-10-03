@@ -10,9 +10,16 @@ export function createFileOps() {
     };
 }
 /**
- * Extract file operations from tool calls in an assistant message.
+ * Extract file operations from tool calls in an assistant message, or from the nested calls
+ * recorded on a tool result.
  */
 export function extractFileOpsFromMessage(message, fileOps) {
+    if (message.role === "toolResult") {
+        // Calls made from codemode scripts are recorded on the script's result.
+        for (const call of message.nestedCalls?.calls ?? [])
+            addFileOp(call.name, call.arguments, fileOps);
+        return;
+    }
     if (message.role !== "assistant")
         return;
     if (!("content" in message) || !Array.isArray(message.content))
@@ -24,23 +31,23 @@ export function extractFileOpsFromMessage(message, fileOps) {
             continue;
         if (!("arguments" in block) || !("name" in block))
             continue;
-        const args = block.arguments;
-        if (!args)
-            continue;
-        const path = typeof args.path === "string" ? args.path : undefined;
-        if (!path)
-            continue;
-        switch (block.name) {
-            case "read":
-                fileOps.read.add(path);
-                break;
-            case "write":
-                fileOps.written.add(path);
-                break;
-            case "edit":
-                fileOps.edited.add(path);
-                break;
-        }
+        addFileOp(block.name, block.arguments, fileOps);
+    }
+}
+function addFileOp(toolName, args, fileOps) {
+    const path = typeof args?.path === "string" ? args.path : undefined;
+    if (!path)
+        return;
+    switch (toolName) {
+        case "read":
+            fileOps.read.add(path);
+            break;
+        case "write":
+            fileOps.written.add(path);
+            break;
+        case "edit":
+            fileOps.edited.add(path);
+            break;
     }
 }
 /**

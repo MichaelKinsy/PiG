@@ -846,13 +846,9 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 		return nil, loadErr
 	}
 	me.flagDefaults = reg.flagDefaults
-	readyWidth := 120
-	if h.widthFunc != nil {
-		if w := h.widthFunc(); w > 0 {
-			readyWidth = w
-		}
-	}
-	readyPayload := &ReadyPayload{Cwd: h.cwd, Mode: h.mode, Width: readyWidth}
+	h.joinRoutedBus(ctx, me)
+	// sendReady, or activateNode for a deferred Node payload, fills the geometry.
+	readyPayload := &ReadyPayload{Cwd: h.cwd, Mode: h.mode}
 	if h.uiBridge != nil {
 		// Same contract as the isolated path: a registering extension gets the
 		// whole log once, then only what is new.
@@ -866,7 +862,7 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 	}
 	if me.packedProcess.node {
 		me.pendingReady = &Envelope{Type: MsgReady, Ready: readyPayload}
-	} else if err := conn.Send(&Envelope{Type: MsgReady, Ready: readyPayload}); err != nil {
+	} else if err := h.sendReady(me, conn, &Envelope{Type: MsgReady, Ready: readyPayload}); err != nil {
 		loadErr := newLoadError(me.config.Name, "ready", "send_ready_failed", fmt.Errorf("send ready: %w", err))
 		loadErr.StderrLog = me.stderrLogPath
 		return nil, loadErr
@@ -888,9 +884,7 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 		// Model-provider registration and OAuth registration are independent
 		// concerns: an extension may contribute an OAuth login with no
 		// model-provider callback wired, so gate only the model-provider hook.
-		if provider.StreamSimple {
-			cfg.StreamSimple = h.providerStreamCallback(me, provider.Name)
-		}
+		h.attachProviderOperations(me, provider, &cfg)
 		if err := h.providerRuntime.RegisterProvider(provider.Name, cfg, extConfigOrigin(me.config)); err != nil {
 			return nil, err
 		}
@@ -906,6 +900,11 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 			loadErr.StderrLog = me.stderrLogPath
 			return nil, loadErr
 		}
+	}
+	if err := h.registerExtensionAPI(me, reg); err != nil {
+		loadErr := newLoadError(me.config.Name, "register", "registration_invalid", err)
+		loadErr.StderrLog = me.stderrLogPath
+		return nil, loadErr
 	}
 	if len(reg.Providers) > 0 {
 		me.releaseLiveness = conn.holdLiveness()

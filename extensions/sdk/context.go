@@ -239,6 +239,9 @@ type Context struct {
 	requestID  string
 	parent     *requestParent
 	ctx        context.Context
+	start      *toolStart // set for a tool_call request: its place in the order the handlers start
+	// replacement is set for a withSession context: the replacement Session's locally answered values.
+	replacement *replacementState
 }
 
 // RegisterTool registers a model-callable tool and waits for the host registry refresh. It shares Extension.RegisterTool's validation and panic behavior.
@@ -281,12 +284,26 @@ func (c Context) Err() error {
 }
 
 func (c Context) callHost(method string, args any) (*callResultMsg, error) {
+	return c.callHostAfterBegin(method, args, false, nil)
+}
+
+// callHostAfterBegin is callHost that runs sent once the call's frame is written and before it waits for the result, so a follow-up call of the caller is ordered after the call. A detached call is not tied to the handler's request: cancelling the request neither cancels it on the host nor ends the wait.
+func (c Context) callHostAfterBegin(method string, args any, detached bool, sent func()) (*callResultMsg, error) {
 	if method != "ui.select" && method != "ui.confirm" && method != "ui.input" && method != "ui.editor" && method != "ui.custom" {
 		c.reportRequestState("blocked", "host_call")
 	}
-	pending, err := c.beginHostCall(method, args)
+	var pending pendingCall
+	var err error
+	if detached {
+		pending, err = c.hostConnection().beginCallFor("", method, args)
+	} else {
+		pending, err = c.beginHostCall(method, args)
+	}
 	if err != nil {
 		return nil, err
+	}
+	if sent != nil {
+		sent()
 	}
 	result, err := c.hostConnection().waitCall(pending)
 	c.reportRequestState("progress", "")
@@ -691,6 +708,11 @@ type ToolInfo struct {
 	// PromptGuidelines is nil when the definition has none.
 	PromptGuidelines []string   `json:"promptGuidelines,omitempty"`
 	SourceInfo       SourceInfo `json:"sourceInfo"`
+	// Exposure, Namespace and Annotations are the tool definition's fields; Exposure is never empty in upstream.
+	// upstream: types.ts:2063 (ToolInfo)
+	Exposure    ToolExposure     `json:"exposure,omitempty"`
+	Namespace   *ToolNamespace   `json:"namespace,omitempty"`
+	Annotations *ToolAnnotations `json:"annotations,omitempty"`
 	// Source is PiG's per-tool source attribution: "builtin", the
 	// registering extension's name, or the source a tool declares with
 	// ToolWithSource.
@@ -1056,6 +1078,20 @@ type ToolCallInfo struct {
 // Nested fields are shared with the decoded mirror and must be treated as read-only.
 // GetBranch returns nil without a session.
 func (c Context) GetBranch() ([]BranchEntry, error) {
+	if c.replacement != nil {
+		raw, err := sessionValue[[]json.RawMessage](c.SessionManager(), "getBranch", map[string]any{"fromId": nil})
+		if err != nil || len(raw) == 0 {
+			return nil, err
+		}
+		branch := make([]BranchEntry, 0, len(raw))
+		for _, entry := range raw {
+			var decoded BranchEntry
+			if json.Unmarshal(entry, &decoded) == nil {
+				branch = append(branch, decoded)
+			}
+		}
+		return branch, nil
+	}
 	if err := c.ext.ensureSessionLog(); err != nil {
 		return nil, err
 	}
@@ -1076,6 +1112,9 @@ func (c Context) GetBranch() ([]BranchEntry, error) {
 
 // GetEntries returns all session entries.
 func (c Context) GetEntries() ([]json.RawMessage, error) {
+	if c.replacement != nil {
+		return sessionValue[[]json.RawMessage](c.SessionManager(), "getEntries", nil)
+	}
 	if err := c.ext.ensureSessionLog(); err != nil {
 		return nil, err
 	}
@@ -1505,6 +1544,15 @@ func (c Context) SetLogin(definition LoginDefinition) error {
 	return callResultError(result, err)
 }
 
+// RegisterSprite adds a sprite to /sprite, where the user can choose and save
+// it. The host validates the definition; registering the same ID again replaces
+// this extension's sprite, and the sprite leaves /sprite when the extension
+// unloads.
+func (c Context) RegisterSprite(definition SpriteDefinition) error {
+	result, err := c.ext.conn.call("ui.registerSprite", definition)
+	return callResultError(result, err)
+}
+
 // SetHeader replaces the default header with pre-rendered lines when lines
 // is a non-empty []string, or clears a previously set header when lines is nil.
 // Component factories (non-string values) cannot be serialized across the
@@ -1698,6 +1746,9 @@ func (c Context) ConfigHome() string {
 
 // Cwd returns the working directory (from the ready message).
 func (c Context) Cwd() string {
+	if c.replacement != nil {
+		return c.replacement.cwd
+	}
 	c.ext.mu.RLock()
 	defer c.ext.mu.RUnlock()
 	return c.ext.cwd
@@ -1707,6 +1758,9 @@ func (c Context) Cwd() string {
 // "print" (from the ready message). Guard terminal-only UI on "tui".
 // Defaults to "print" when the host did not specify one.
 func (c Context) Mode() string {
+	if c.replacement != nil && c.replacement.mode != "" {
+		return c.replacement.mode
+	}
 	c.ext.mu.RLock()
 	defer c.ext.mu.RUnlock()
 	if c.ext.mode == "" {
@@ -1717,6 +1771,9 @@ func (c Context) Mode() string {
 
 // HasUI reports whether the host has bound a UI context. Print and JSON modes have no UI; interactive and RPC modes do.
 func (c Context) HasUI() bool {
+	if c.replacement != nil {
+		return c.replacement.hasUI
+	}
 	c.ext.mu.RLock()
 	defer c.ext.mu.RUnlock()
 	return c.ext.hasUI
@@ -1740,6 +1797,10 @@ func (c Context) Height() int {
 // Model returns the active provider model ID when the host exposes one, falling
 // back to the model name from the ready/state message.
 func (c Context) Model() string {
+	if c.replacement != nil {
+		id, _ := c.replacementModel()
+		return id
+	}
 	c.ext.mu.RLock()
 	defer c.ext.mu.RUnlock()
 	return c.ext.model
@@ -1749,6 +1810,10 @@ func (c Context) Model() string {
 // "anthropic"). Returns "" if unknown. Use with Model() to build a
 // provider-qualified model string: provider + "/" + model.
 func (c Context) ModelProvider() string {
+	if c.replacement != nil {
+		_, provider := c.replacementModel()
+		return provider
+	}
 	c.ext.mu.RLock()
 	defer c.ext.mu.RUnlock()
 	return c.ext.modelProvider
@@ -1757,6 +1822,13 @@ func (c Context) ModelProvider() string {
 // ModelQualified returns the provider-qualified model string
 // ("provider/model"). If the provider is unknown, returns just the model name.
 func (c Context) ModelQualified() string {
+	if c.replacement != nil {
+		id, provider := c.replacementModel()
+		if provider != "" {
+			return provider + "/" + id
+		}
+		return id
+	}
 	c.ext.mu.RLock()
 	defer c.ext.mu.RUnlock()
 	if c.ext.modelProvider != "" {
@@ -1902,26 +1974,18 @@ func (c Context) WaitForIdle() error {
 	return callResultError(result, err)
 }
 
-// NewSession starts a new session.
+// NewSession starts a new session. opts may hold "parentSession" and a "withSession" WithSessionFunc.
 func (c Context) NewSession(opts map[string]any) (CancelledResult, error) {
-	result, err := c.callHost("newSession", opts)
-	if err := callResultError(result, err); err != nil {
-		return CancelledResult{}, err
-	}
-	return decodeCancelledResult(result), nil
+	return c.callReplacement("newSession", opts)
 }
 
-// Fork creates a new branch from an entry.
+// Fork creates a new branch from an entry. opts may hold "position" and a "withSession" WithSessionFunc.
 func (c Context) Fork(entryID string, opts map[string]any) (CancelledResult, error) {
 	args := map[string]any{"entryId": entryID}
 	for k, v := range opts {
 		args[k] = v
 	}
-	result, err := c.callHost("fork", args)
-	if err := callResultError(result, err); err != nil {
-		return CancelledResult{}, err
-	}
-	return decodeCancelledResult(result), nil
+	return c.callReplacement("fork", args)
 }
 
 // NavigateTree moves to a different point in the session tree.
@@ -1937,17 +2001,13 @@ func (c Context) NavigateTree(targetID string, opts map[string]any) (CancelledRe
 	return decodeCancelledResult(result), nil
 }
 
-// SwitchSession switches to a different session file.
+// SwitchSession switches to a different session file. opts may hold a "withSession" WithSessionFunc.
 func (c Context) SwitchSession(sessionPath string, opts map[string]any) (CancelledResult, error) {
 	args := map[string]any{"sessionPath": sessionPath}
 	for k, v := range opts {
 		args[k] = v
 	}
-	result, err := c.callHost("switchSession", args)
-	if err := callResultError(result, err); err != nil {
-		return CancelledResult{}, err
-	}
-	return decodeCancelledResult(result), nil
+	return c.callReplacement("switchSession", args)
 }
 
 // Reload reloads extensions, skills, prompts, and themes.
@@ -1967,9 +2027,14 @@ func (c Context) Reload() error {
 // [Context.SetFooterRenderer] and [Context.SetHeaderRenderer] follow a resize
 // with no handler.
 //
-// Handlers run on the message loop, so they must not block. A string list
-// [Context.SetWidget] returns without waiting for the host; send footer or
-// header rows from a goroutine. The returned unsubscribe is idempotent.
+// Handlers run on their own goroutine, one at a time in the order the host
+// sent the widths, never on the message loop or the goroutine that reads the
+// host's replies, so a handler can make a blocking host call such as
+// SetFooter. A slow handler delays the later deliveries, not the extension's
+// other handlers. A handler that panics is recovered and does not stop the
+// others. Context.Width in a handler is that width or a newer one. The
+// returned unsubscribe is idempotent; a delivery already queued still reaches
+// the handlers that were subscribed when the width arrived.
 func (c Context) OnWidthChange(handler WidthChangeHandler) (func(), error) {
 	if handler == nil {
 		return func() {}, fmt.Errorf("OnWidthChange: handler must not be nil")

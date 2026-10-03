@@ -16,7 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-const upstreamDarkTheme = "../../.upstream/v0.87.1/packages/coding-agent/src/modes/interactive/theme/dark.json"
+const upstreamDarkTheme = "../../.upstream/current/packages/coding-agent/src/modes/interactive/theme/dark.json"
 
 func resourceLoaderFixture(t *testing.T) (root, cwd, agentDir string) {
 	t.Helper()

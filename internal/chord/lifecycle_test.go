@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
+	"github.com/MichaelKinsy/PiG/internal/chord/delta"
 )
 
-var keyedCounterDefinition = pico3.DefineService[Counter]("test.keyed-counter")
+var keyedCounterDefinition = DefineService[Counter]("test.keyed-counter")
 
 // countingEndpoint wraps the real endpoint and counts control calls.
 type countingEndpoint struct {
@@ -99,7 +99,7 @@ func TestProviderSnapshotCoherenceAndActivationBuffering(t *testing.T) {
 	}
 	snapshot := subscription.Snapshot()
 	state := snapshot.Instances[0].Members[2]
-	if state.Name != "state" || state.Sequence != 1 || !pico3.IsBase(state.Ops) {
+	if state.Name != "state" || state.Sequence != 1 || !delta.IsBase(state.Ops) {
 		t.Fatalf("snapshot state member = %+v", state)
 	}
 	for _, label := range []string{"b1", "b2"} {
@@ -141,23 +141,23 @@ func TestProviderSnapshotCoherenceAndActivationBuffering(t *testing.T) {
 func TestReplicaRejectsGapsAndUpdatesBeforeHydration(t *testing.T) {
 	ctx := context.Background()
 	replica := newReplica(nil)
-	if err := replica.update(ctx, 1, []pico3.Op{{"s", []any{"a"}, 1.0}}, nil); err == nil {
+	if err := replica.update(ctx, 1, []Op{{"s", []any{"a"}, 1.0}}, nil); err == nil {
 		t.Fatal("update before hydration accepted")
 	}
-	if err := replica.hydrate(ctx, 1, []pico3.Op{{"s", []any{"a"}, 1.0}}, nil); err == nil {
+	if err := replica.hydrate(ctx, 1, []Op{{"s", []any{"a"}, 1.0}}, nil); err == nil {
 		t.Fatal("non-base hydration accepted")
 	}
-	if err := replica.hydrate(ctx, 1, []pico3.Op{{"r", map[string]any{"a": 0.0}}}, nil); err != nil {
+	if err := replica.hydrate(ctx, 1, []Op{{"r", map[string]any{"a": 0.0}}}, nil); err != nil {
 		t.Fatal(err)
 	}
 	first, _ := replica.snapshotValue()
-	if err := replica.update(ctx, 2, []pico3.Op{{"s", []any{"a"}, 1.0}}, nil); err != nil {
+	if err := replica.update(ctx, 2, []Op{{"s", []any{"a"}, 1.0}}, nil); err != nil {
 		t.Fatal(err)
 	}
 	if first.(map[string]any)["a"] != 0.0 {
 		t.Fatalf("retained value mutated by update: %v", first)
 	}
-	if err := replica.update(ctx, 4, []pico3.Op{{"s", []any{"a"}, 2.0}}, nil); err == nil || !strings.Contains(err.Error(), "gap") {
+	if err := replica.update(ctx, 4, []Op{{"s", []any{"a"}, 2.0}}, nil); err == nil || !strings.Contains(err.Error(), "gap") {
 		t.Fatalf("gap error = %v", err)
 	}
 	if _, hydrated := replica.snapshotValue(); hydrated {
@@ -165,11 +165,15 @@ func TestReplicaRejectsGapsAndUpdatesBeforeHydration(t *testing.T) {
 	}
 }
 
-func TestStateListenerFailureIsReturnedAfterCommit(t *testing.T) {
+// upstream: services/state.ts StateSubscriber.drain (1.0.0) reports a callback failure to the state's error reporter in isolation and keeps delivering; change() commits first and never throws it.
+func TestStateListenerFailureIsReportedAfterCommit(t *testing.T) {
 	ctx := context.Background()
+	reports := captureUncaught(t)
 	counter := newCounter(t)
 	failure := errors.New("listener failed")
-	unsubscribe, err := counter.state.Subscribe(func(_ *counterState, _ context.Context, info pico3.ReplicatedStateDelivery) {
+	var received []int
+	unsubscribe, err := counter.state.Subscribe(func(value *counterState, _ context.Context, info ReplicatedStateDelivery) {
+		received = append(received, value.Count)
 		if info.Kind == DeliveryUpdate {
 			panic(failure)
 		}
@@ -178,16 +182,49 @@ func TestStateListenerFailureIsReturnedAfterCommit(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer unsubscribe()
-	if _, err := counter.Add(ctx, 5, "x"); !errors.Is(err, failure) {
-		t.Fatalf("Change error = %v, want listener failure", err)
+	if _, err := counter.Add(ctx, 5, "x"); err != nil {
+		t.Fatalf("Change error = %v, want the commit to succeed", err)
 	}
 	if counter.state.Value().Count != 5 || counter.state.Sequence() != 1 {
 		t.Fatalf("value was not committed: %+v", counter.state.Value())
 	}
-	// A failing hydration unregisters and returns the error.
-	if _, err := counter.state.Subscribe(func(*counterState, context.Context, pico3.ReplicatedStateDelivery) { panic(failure) }); !errors.Is(err, failure) {
+	if got := reports(); len(got) != 1 || !errors.Is(got[0], failure) {
+		t.Fatalf("reports = %v", got)
+	}
+	// A failing hydration is reported and keeps the subscription.
+	hydrationFailure := errors.New("hydration failed")
+	var seen []int
+	if _, err := counter.state.Subscribe(func(value *counterState, _ context.Context, info ReplicatedStateDelivery) {
+		seen = append(seen, value.Count)
+		if info.Kind == DeliveryHydrate {
+			panic(hydrationFailure)
+		}
+	}); err != nil {
 		t.Fatalf("hydrate failure = %v", err)
 	}
+	if got := reports(); len(got) != 2 || !errors.Is(got[1], hydrationFailure) {
+		t.Fatalf("reports = %v", got)
+	}
+	if _, err := counter.Add(ctx, 1, "y"); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(seen, []int{5, 6}) {
+		t.Fatalf("seen = %v, want delivery to continue after a hydration failure", seen)
+	}
+}
+
+// captureUncaught replaces the uncaught error reporter for one test and returns the failures it receives.
+func captureUncaught(t *testing.T) func() []error {
+	t.Helper()
+	var mu sync.Mutex
+	reports := []error{}
+	previous := SetUncaughtErrorReporter(func(err error) {
+		mu.Lock()
+		defer mu.Unlock()
+		reports = append(reports, err)
+	})
+	t.Cleanup(func() { SetUncaughtErrorReporter(previous) })
+	return func() []error { mu.Lock(); defer mu.Unlock(); return append([]error(nil), reports...) }
 }
 
 func TestReentrantPublicationIsQueuedInOrder(t *testing.T) {
@@ -195,7 +232,7 @@ func TestReentrantPublicationIsQueuedInOrder(t *testing.T) {
 	counter := newCounter(t)
 	rec := newRecorder()
 	var once sync.Once
-	if _, err := counter.state.Subscribe(func(value *counterState, listenerCtx context.Context, info pico3.ReplicatedStateDelivery) {
+	if _, err := counter.state.Subscribe(func(value *counterState, listenerCtx context.Context, info ReplicatedStateDelivery) {
 		rec.listen(value, listenerCtx, info)
 		if info.Kind == DeliveryUpdate {
 			once.Do(func() {
@@ -240,7 +277,7 @@ func TestConcurrentChangesReachReplicaGapFree(t *testing.T) {
 	}
 	var mu sync.Mutex
 	var sequences []int
-	if _, err := TypedReplica[*counterState](replica).Subscribe(func(_ *counterState, _ context.Context, info pico3.ReplicatedStateDelivery) {
+	if _, err := TypedReplica[*counterState](replica).Subscribe(func(_ *counterState, _ context.Context, info ReplicatedStateDelivery) {
 		mu.Lock()
 		sequences = append(sequences, info.Sequence)
 		mu.Unlock()
@@ -515,7 +552,7 @@ func TestEndpointDisposeReleasesProviderSubscriptions(t *testing.T) {
 
 func TestBindingAllowlistAndModeValidation(t *testing.T) {
 	fixture := newRemoteFixture(t, SingletonService(counterDefinition))
-	other := pico3.DefineService[Counter]("test.other")
+	other := DefineService[Counter]("test.other")
 	if _, err := UseRemote(fixture.binding, other); !IsRemoteServiceErrorCode(err, ErrServiceNotAllowed) {
 		t.Fatalf("non-allowlisted use = %v", err)
 	}
@@ -546,7 +583,7 @@ func TestSubscribeDuringDeliveryHydratesBeforeLaterUpdates(t *testing.T) {
 	counter := newCounter(t)
 	late := newRecorder()
 	var once sync.Once
-	if _, err := counter.state.Subscribe(func(_ *counterState, _ context.Context, info pico3.ReplicatedStateDelivery) {
+	if _, err := counter.state.Subscribe(func(_ *counterState, _ context.Context, info ReplicatedStateDelivery) {
 		if info.Kind != DeliveryUpdate {
 			return
 		}

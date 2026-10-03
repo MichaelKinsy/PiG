@@ -58,3 +58,8 @@ reason = "D2: the selector subtitle names the host configuration directory."
 pattern = '(User \()/[^\n)]*/parity-snap-(?:PIG_HOME-[0-9]+/agent|PI_CODING_AGENT_DIR-[0-9]+)/'
 with = '${1}<agent>/'
 reason = "D2: separate agent roots vary by host and run. Preserve the complete label suffix, row structure and resource names."
+
+[[assert.normalize_replace]]
+pattern = '\n {6}\[x\] pig-login *'
+with    = ""
+reason = "D2: PiG's built-in pig-login extension (the /sprite command) is listed with the other built-in extensions; Pi has no such entry. Only that one row is removed; the others, their order and the selector chrome stay compared."

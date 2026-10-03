@@ -1,20 +1,36 @@
 package codingagent
 
 import (
-	"errors"
+	"os"
 
 	"github.com/MichaelKinsy/PiG/internal/pilock"
 )
 
-// acquireSyncLockWithRetry shares Pi's settings/auth/trust directory-lock
-// protocol with independently imported Node stores.
-func acquireSyncLockWithRetry(path string) (release func() error, locked bool, err error) {
+// pathExists is Node's fs.existsSync: whether the path, followed through links, can be read at all.
+func pathExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+// acquireSyncLockWithRetry shares Pi's settings/trust directory-lock
+// protocol with independently imported Node stores. Like Pi's
+// acquireLockSyncWithRetry (settings-manager.ts:241-265) and
+// acquireTrustLockSync (trust-manager.ts:137-164), it returns
+// proper-lockfile's error unchanged, ELOCKED included once the retries are
+// spent.
+var acquireSyncLockWithRetry = func(path string) (release func() error, err error) {
 	lease, err := pilock.AcquireSync(path)
-	if errors.Is(err, pilock.ErrLocked) && !errors.Is(err, pilock.ErrLegacyLocked) {
-		return nil, false, nil
-	}
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
-	return lease.Release, true, nil
+	return lease.Release, nil
+}
+
+// releaseSyncLock releases a settings or trust lock as Pi's finally blocks do
+// (settings-manager.ts:291-295, trust-manager.ts:169-176): a release failure
+// replaces the operation's result or error.
+func releaseSyncLock(release func() error, err *error) {
+	if releaseErr := release(); releaseErr != nil {
+		*err = releaseErr
+	}
 }

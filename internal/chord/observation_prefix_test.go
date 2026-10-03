@@ -3,6 +3,8 @@ package chord
 import (
 	"context"
 	"errors"
+	"fmt"
+	"slices"
 	"sync"
 	"testing"
 	"testing/synctest"
@@ -155,4 +157,90 @@ func TestContinueObservationReportsOnlyLiveRejection(t *testing.T) {
 			t.Fatal("an observation cancelled before invocation ran its handler")
 		}
 	})
+}
+
+// upstream: packages/chord/src/facets/host.ts:FacetLifecycle.activate starts an isolated facet's in-host keyed observation synchronously, and the loopback KeyedBinding.#start resumes at activate's first await. Pi 1.0.0 (node .upstream/v1.0.0/packages/chord/src) traces ["activate provider","observe","activate later","host created","observe","spawned one"] without callbacks and ["activate provider","activate observer 1","observe","activate observer 2","activate later","host created","observe","spawned one"] with two.
+//
+// PiG starts the loopback subscription on a goroutine when the observation starts and joins it after the first callback, so its snapshot observer can run before or during that callback; Pi runs it only after the callback's synchronous prefix. That pair is the open review finding of rev-facet-observer-order-100; every other position is Pi's.
+func TestIsolatedFacetKeyedObservationJoinsActivation(t *testing.T) {
+	for _, tc := range []struct {
+		callbacks int
+		want      []string
+		// unorderedBefore names the trace entry that may follow the first "observe" in PiG although Pi records it first.
+		unorderedBefore string
+	}{
+		{0, []string{"activate provider", "observe", "activate later", "host created", "observe", "spawned one"}, ""},
+		{2, []string{"activate provider", "activate observer 1", "observe", "activate observer 2", "activate later", "host created", "observe", "spawned one"}, "activate observer 1"},
+	} {
+		t.Run(fmt.Sprintf("%d activation callbacks", tc.callbacks), func(t *testing.T) {
+			ctx := context.Background()
+			trace := &locked[string]{}
+			var spawner *ServiceSpawner[Reader]
+			observer := Facet{Id: "observer", Setup: func(env *FacetEnvironment) error {
+				if err := ObserveFacetService(env, keyedValueDefinition.Id(), false, func(context.Context, *FacetService) error {
+					trace.add("observe")
+					return nil
+				}); err != nil {
+					return err
+				}
+				if err := ProvideService(env, sourceDefinition, constReader("source")); err != nil {
+					return err
+				}
+				for index := range tc.callbacks {
+					if err := env.OnActivate(func(context.Context) error {
+						trace.add(fmt.Sprintf("activate observer %d", index+1))
+						return nil
+					}); err != nil {
+						return err
+					}
+				}
+				return nil
+			}}
+			later := Facet{Id: "later", Setup: func(env *FacetEnvironment) error {
+				if _, err := UseService(env, sourceDefinition); err != nil {
+					return err
+				}
+				return env.OnActivate(func(context.Context) error {
+					trace.add("activate later")
+					return nil
+				})
+			}}
+			provider := Facet{Id: "provider", Setup: func(env *FacetEnvironment) error {
+				var err error
+				if spawner, err = ProvideMany(env, keyedValueDefinition); err != nil {
+					return err
+				}
+				return env.OnActivate(func(context.Context) error {
+					trace.add("activate provider")
+					_, err := spawner.Spawn("zero", constReader("zero"))
+					return err
+				})
+			}}
+			host, err := CreateFacetHost(ctx, FacetOptions{Facets: []Facet{later, observer, provider}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if err := host.Dispose(ctx); err != nil {
+					t.Error(err)
+				}
+			})
+			trace.add("host created")
+			if _, err := spawner.Spawn("one", constReader("one")); err != nil {
+				t.Fatal(err)
+			}
+			trace.add("spawned one")
+			got := trace.get()
+			if tc.unorderedBefore != "" {
+				observe := slices.Index(got, "observe")
+				if observe > 0 && got[observe-1] == "activate provider" && observe+1 < len(got) && got[observe+1] == tc.unorderedBefore {
+					got = slices.Clone(got)
+					got[observe], got[observe+1] = got[observe+1], got[observe]
+				}
+			}
+			if !slices.Equal(got, tc.want) {
+				t.Fatalf("trace = %q, want %q", trace.get(), tc.want)
+			}
+		})
+	}
 }

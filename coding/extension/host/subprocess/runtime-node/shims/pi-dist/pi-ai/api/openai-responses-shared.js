@@ -208,12 +208,13 @@ export function convertResponsesMessages(model, context, allowedToolCallProvider
                     const customInputProperty = options?.grammarToolInputProperties?.get(toolCall.name);
                     let itemId = itemIdRaw;
                     // For different-model messages, set id to undefined to avoid pairing validation.
-                    // OpenAI tracks which fc_xxx IDs were paired with rs_xxx reasoning items.
+                    // OpenAI tracks which item IDs were paired with rs_xxx reasoning items.
                     // By omitting the id, we avoid triggering that validation (like cross-provider does).
-                    // When replaying custom-tool calls as a function_call, also drop non-fc_* ids such as
-                    // ctc_* custom-tool ids because function_call item ids must be fc_*.
-                    if ((isDifferentModel && itemId?.startsWith("fc_")) ||
-                        (customInputProperty === undefined && !itemId?.startsWith("fc_"))) {
+                    // Also drop ids that do not match the replayed item type: function_call ids must be fc_*
+                    // and custom_tool_call ids must be ctc_*. Foreign tool call ids are normalized to fc_*, and
+                    // a call can switch between the two types when grammar tool support differs.
+                    const itemIdPrefix = customInputProperty === undefined ? "fc_" : "ctc_";
+                    if (isDifferentModel || !itemId?.startsWith(itemIdPrefix)) {
                         itemId = undefined;
                     }
                     if (customInputProperty !== undefined) {
@@ -475,6 +476,7 @@ export async function processResponsesStream(openaiStream, output, stream, model
         }
     };
     for await (const event of openaiStream) {
+        await options?.onProviderStreamEvent?.(event, model);
         if (event.type === "response.created") {
             output.responseId = event.response.id;
         }
@@ -655,6 +657,19 @@ export async function processResponsesStream(openaiStream, output, stream, model
     }
     if (!sawTerminalResponseEvent) {
         throw new Error("OpenAI Responses stream ended before a terminal response event");
+    }
+    // The agent runs every tool call in the final message. Refuse to hand over calls whose
+    // output_item.done never arrived: their arguments may be cut off or mixed up, e.g. when a
+    // non-compliant server omits output_index. Finished calls have their scratch buffers removed.
+    if (output.stopReason === "toolUse") {
+        for (const block of output.content) {
+            if (block.type !== "toolCall")
+                continue;
+            const toolCall = block;
+            if (toolCall.partialJson !== undefined || toolCall.customInput !== undefined) {
+                throw new Error(`OpenAI Responses stream completed with an unfinished tool call: ${toolCall.name} (${toolCall.id})`);
+            }
+        }
     }
 }
 function mapStopReason(status, incompleteReason) {

@@ -45,22 +45,30 @@ func TestGitCheckoutPathOnThisPlatform(t *testing.T) {
 	}
 }
 
-// Every platform's checkout rule, on any host.
+// Every platform's checkout rule. GitCheckoutRelative resolves with the host's
+// Node path semantics, and Node's win32 resolver reads a "C:" segment as a
+// drive and drops it, so the linux rule with a drive-shaped segment needs a
+// non-Windows host. A ':' elsewhere in a segment, as in the darwin rule, is an
+// ordinary name to that resolver and runs on every host.
 func TestGitCheckoutRelativePerPlatform(t *testing.T) {
 	for _, tc := range []struct {
 		goos, source string
 		want         []string
 		refused      bool
+		driveSegment bool
 	}{
-		{"windows", "git:file://localhost/C:/Users/me/owner/piglet.git", []string{"localhost", "C", "Users", "me", "owner", "piglet"}, false},
-		{"windows", "git:file://localhost/d:/src/owner/piglet", []string{"localhost", "d", "src", "owner", "piglet"}, false},
-		{"windows", "git:https://example.com/owner/repo", []string{"example.com", "owner", "repo"}, false},
-		{"windows", "git:https://example.com/owner/repo:stream", nil, true},
-		{"windows", "git:https://example.com/C:/owner/repo", nil, true},
-		{"windows", "git:file://localhost/src/C:/owner/piglet", nil, true},
-		{"linux", "git:file://localhost/C:/Users/me/owner/piglet.git", []string{"localhost", "C:", "Users", "me", "owner", "piglet"}, false},
-		{"darwin", "git:https://example.com/owner/repo:stream", []string{"example.com", "owner", "repo:stream"}, false},
+		{"windows", "git:file://localhost/C:/Users/me/owner/piglet.git", []string{"localhost", "C", "Users", "me", "owner", "piglet"}, false, false},
+		{"windows", "git:file://localhost/d:/src/owner/piglet", []string{"localhost", "d", "src", "owner", "piglet"}, false, false},
+		{"windows", "git:https://example.com/owner/repo", []string{"example.com", "owner", "repo"}, false, false},
+		{"windows", "git:https://example.com/owner/repo:stream", nil, true, false},
+		{"windows", "git:https://example.com/C:/owner/repo", nil, true, false},
+		{"windows", "git:file://localhost/src/C:/owner/piglet", nil, true, false},
+		{"linux", "git:file://localhost/C:/Users/me/owner/piglet.git", []string{"localhost", "C:", "Users", "me", "owner", "piglet"}, false, true},
+		{"darwin", "git:https://example.com/owner/repo:stream", []string{"example.com", "owner", "repo:stream"}, false, false},
 	} {
+		if tc.driveSegment && runtime.GOOS == "windows" {
+			continue
+		}
 		ref, err := sourceref.Parse(tc.source, sourceref.Options{Bare: sourceref.BareReject})
 		if err != nil {
 			t.Fatalf("parse %s: %v", tc.source, err)

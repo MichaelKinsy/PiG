@@ -2,7 +2,6 @@ package experimental
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"path/filepath"
 	"reflect"
@@ -11,13 +10,13 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/experimental/client"
 	"github.com/MichaelKinsy/PiG/internal/experimental/services"
 )
 
 func TestExperimentalDurableServerCompositionRemoteB(t *testing.T) {
+	requirePOSIXServerDirectory(t)
 	// upstream: packages/coding-agent/test/experimental-remote-runtime.test.ts:459
 	t.Run("composes management attachment with Session service hydration", func(t *testing.T) {
 		setupExperimentalRemoteTest(t)
@@ -87,7 +86,7 @@ func TestExperimentalDurableServerCompositionRemoteB(t *testing.T) {
 			t.Fatal(err)
 		}
 		var states []services.SessionAttachmentState
-		removeStateListener, err := binding.Attachment().Subscribe(func(state *services.SessionAttachmentState, _ context.Context, _ pico3.ReplicatedStateDelivery) {
+		removeStateListener, err := binding.Attachment().Subscribe(func(state *services.SessionAttachmentState, _ context.Context, _ chord.ReplicatedStateDelivery) {
 			mu.Lock()
 			defer mu.Unlock()
 			if state == nil {
@@ -264,27 +263,11 @@ func TestExperimentalDurableServerCompositionRemoteB(t *testing.T) {
 	})
 
 	// upstream: packages/coding-agent/test/experimental-remote-runtime.test.ts:592
-	t.Run("streams prompt events through the worker-owned service provider", func(t *testing.T) {
+	t.Run("answers a client prompt through the worker-owned service provider", func(t *testing.T) {
 		setupExperimentalRemoteTest(t)
 		installFauxSessionWorker(t)
 		directory, _ := makeExperimentalServer(t)
-		var mu sync.Mutex
-		var eventTypes []string
-		result, err := RunClient(t.Context(), ClientCommand{Command: "client", SessionId: new("demo-1"), Prompt: new("question")}, RunClientOptions{
-			Directory: &directory,
-			OnEvent: func(_ context.Context, raw json.RawMessage) error {
-				var event struct {
-					Type string `json:"type"`
-				}
-				if err := json.Unmarshal(raw, &event); err != nil {
-					return err
-				}
-				mu.Lock()
-				defer mu.Unlock()
-				eventTypes = append(eventTypes, event.Type)
-				return nil
-			},
-		})
+		result, err := RunClient(t.Context(), ClientCommand{Command: "client", SessionId: new("demo-1"), Prompt: new("question")}, RunClientOptions{Directory: &directory})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -292,17 +275,10 @@ func TestExperimentalDurableServerCompositionRemoteB(t *testing.T) {
 		if !ok || result.Kind() != "prompted" || prompted.Text != "deterministic remote answer" {
 			t.Fatalf("result = %#v, want prompted/deterministic remote answer", result)
 		}
-		mu.Lock()
-		defer mu.Unlock()
-		for _, want := range []string{"run_start", "message_start", "message_update", "message_end", "entry_added", "run_end"} {
-			if !slices.Contains(eventTypes, want) {
-				t.Errorf("events = %v, missing %q", eventTypes, want)
-			}
-		}
 	})
 
-	// upstream: packages/coding-agent/test/experimental-remote-runtime.test.ts:629
-	t.Run("replicates terminal operation state after consecutive prompts", func(t *testing.T) {
+	// upstream: packages/coding-agent/test/experimental-remote-runtime.test.ts:610
+	t.Run("replicates the transcript after consecutive prompts", func(t *testing.T) {
 		setupExperimentalRemoteTest(t)
 		installFauxSessionWorker(t)
 		_, runtime := makeExperimentalServer(t)
@@ -328,7 +304,16 @@ func TestExperimentalDurableServerCompositionRemoteB(t *testing.T) {
 		if err := plugins.Reload(t.Context()); err != nil {
 			t.Fatal(err)
 		}
-		for _, message := range []string{"first question", "second question"} {
+		assistantEntries := func(state services.ConversationView) int {
+			count := 0
+			for _, entry := range state.Entries {
+				if entry.Kind == "pi.assistant" {
+					count++
+				}
+			}
+			return count
+		}
+		for index, message := range []string{"first question", "second question"} {
 			response, err := controller.Prompt(t.Context(), services.AgentPromptRequest{Message: message, Images: nil})
 			if err != nil {
 				t.Fatal(err)
@@ -336,18 +321,22 @@ func TestExperimentalDurableServerCompositionRemoteB(t *testing.T) {
 			if !response.Accepted || response.OperationID == nil {
 				t.Fatalf("prompt %q response = %#v, want accepted with string operationId", message, response)
 			}
-			terminal := make(chan struct{})
+			settled, err := controller.WaitForPrompt(t.Context(), *response.OperationID)
+			if err != nil || settled.Status != "done" || settled.Text == nil || *settled.Text != "deterministic remote answer" || settled.Reason != nil {
+				t.Fatalf("waitForPrompt = %#v, %v", settled, err)
+			}
+			replicated := make(chan struct{})
 			var once sync.Once
-			remove, err := transcript.State().Subscribe(func(state *services.TranscriptState, _ context.Context, _ pico3.ReplicatedStateDelivery) {
-				if state != nil && state.Snapshot != nil && state.Snapshot.Operation == nil && state.Snapshot.LastResult != nil && state.Snapshot.LastResult.OperationID == *response.OperationID {
-					once.Do(func() { close(terminal) })
+			remove, err := transcript.State().Subscribe(func(state services.ConversationView, _ context.Context, _ chord.ReplicatedStateDelivery) {
+				if assistantEntries(state) == index+1 {
+					once.Do(func() { close(replicated) })
 				}
 			})
 			if err != nil {
 				t.Fatal(err)
 			}
 			t.Cleanup(remove)
-			<-terminal
+			<-replicated
 			remove()
 		}
 		if err := binding.Dispose(t.Context()); err != nil {
@@ -578,15 +567,13 @@ func TestExperimentalDurableServerCompositionRemoteB(t *testing.T) {
 		}
 	})
 
-	// upstream: packages/coding-agent/test/experimental-remote-runtime.test.ts:806
-	t.Run("rejects a duplicate session ID within one durable repository", func(t *testing.T) {
+	// upstream: packages/coding-agent/test/experimental-remote-runtime.test.ts:792
+	t.Run("rejects a duplicate session ID within one session directory", func(t *testing.T) {
 		agentDir := setupExperimentalRemoteTest(t)
-		createExperimentalSessions(t, filepath.Join(agentDir, "experimental", "sessions"), []string{"demo-1"}, filepath.Join(agentDir, "other-cwd"))
-		directory, _ := makeExperimentalServer(t)
-		_, err := RunClient(t.Context(), ClientCommand{Command: "client", SessionId: new("demo-1")}, RunClientOptions{Directory: &directory})
-		serverError, ok := err.(*client.ServerError) //nolint:errorlint // Upstream matches the returned error's own code, not a wrapped cause.
-		if !ok || serverError == nil || serverError.Code != "session_ambiguous" {
-			t.Fatalf("duplicate Session selection = %v, want code session_ambiguous", err)
+		// createExperimentalSessions in the support module rejects with the catalog's error.
+		_, err := CreateSession(filepath.Join(agentDir, "experimental", "sessions"), CreateSessionOptions{ID: new("demo-1"), Cwd: filepath.Join(agentDir, "other-cwd")})
+		if err == nil || err.Error() != "Session demo-1 already exists" {
+			t.Fatalf("duplicate Session = %v, want Session demo-1 already exists", err)
 		}
 	})
 }

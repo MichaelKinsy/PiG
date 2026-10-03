@@ -273,6 +273,8 @@ async function streamAssistantResponse(context, config, signal, emit, streamFunc
         apiKey: resolvedApiKey,
         signal,
     });
+    // Record the requested level, whichever stream function answered.
+    const result = async () => Object.assign(await response.result(), { thinkingLevel: config.reasoning ?? "off" });
     let partialMessage = null;
     let addedPartial = false;
     for await (const event of response) {
@@ -304,7 +306,7 @@ async function streamAssistantResponse(context, config, signal, emit, streamFunc
                 break;
             case "done":
             case "error": {
-                const finalMessage = await response.result();
+                const finalMessage = await result();
                 if (addedPartial) {
                     context.messages[context.messages.length - 1] = finalMessage;
                 }
@@ -319,7 +321,7 @@ async function streamAssistantResponse(context, config, signal, emit, streamFunc
             }
         }
     }
-    const finalMessage = await response.result();
+    const finalMessage = await result();
     if (addedPartial) {
         context.messages[context.messages.length - 1] = finalMessage;
     }
@@ -389,7 +391,7 @@ async function executeToolCallsSequential(currentContext, assistantMessage, tool
             };
         }
         else {
-            const executed = await executePreparedToolCall(preparation, signal, emit);
+            const executed = await executePreparedToolCall(preparation, signal, emitToolExecutionUpdate(toolCall, emit));
             finalized = await finalizeExecutedToolCall(currentContext, assistantMessage, preparation, executed, config, signal);
         }
         await emitToolExecutionEnd(finalized, emit);
@@ -439,7 +441,7 @@ async function executeToolCallsParallel(currentContext, assistantMessage, toolCa
                 await emitToolExecutionEnd(finalized, emit);
                 return finalized;
             }
-            const executed = await executePreparedToolCall(preparation, signal, emit);
+            const executed = await executePreparedToolCall(preparation, signal, emitToolExecutionUpdate(toolCall, emit));
             const finalized = await finalizeExecutedToolCall(currentContext, assistantMessage, preparation, executed, config, signal);
             await emitToolExecutionEnd(finalized, emit);
             return finalized;
@@ -476,8 +478,8 @@ function prepareToolCallArguments(tool, toolCall) {
         arguments: preparedArguments,
     };
 }
-async function prepareToolCall(currentContext, assistantMessage, toolCall, config, signal) {
-    const tool = currentContext.tools?.find((t) => t.name === toolCall.name);
+async function prepareToolCall(currentContext, assistantMessage, toolCall, config, signal, tools = currentContext.tools ?? []) {
+    const tool = tools.find((t) => t.name === toolCall.name);
     if (!tool) {
         return {
             kind: "immediate",
@@ -536,24 +538,45 @@ async function prepareToolCall(currentContext, assistantMessage, toolCall, confi
         };
     }
 }
-async function executePreparedToolCall(prepared, signal, emit) {
+function emitToolExecutionUpdate(toolCall, emit) {
+    return (partialResult) => emit({
+        type: "tool_execution_update",
+        toolCallId: toolCall.id,
+        toolName: toolCall.name,
+        args: toolCall.arguments,
+        partialResult,
+    });
+}
+/**
+ * Run one tool call through the same steps as a model-issued call: argument preparation, schema
+ * validation, `beforeToolCall`, execution, and `afterToolCall`. Emits no events and adds no
+ * messages. Tools that call other tools use this so the hooks (for example permission checks)
+ * apply to those calls too.
+ *
+ * Never rejects for tool failures: unknown tools, validation errors, blocked calls, and thrown
+ * errors come back as `isError: true`.
+ */
+export async function runToolCall(toolCall, options) {
+    const { assistantMessage, context, signal } = options;
+    const preparation = await prepareToolCall(context, assistantMessage, toolCall, options, signal, options.tools);
+    if (preparation.kind === "immediate") {
+        return { toolCall, result: preparation.result, isError: preparation.isError };
+    }
+    const executed = await executePreparedToolCall(preparation, signal, options.onUpdate ?? (() => { }));
+    return finalizeExecutedToolCall(context, assistantMessage, preparation, executed, options, signal);
+}
+async function executePreparedToolCall(prepared, signal, onUpdate) {
     const updateEvents = [];
     let acceptingUpdates = true;
     try {
         const result = await prepared.tool.execute(prepared.toolCall.id, prepared.args, signal, (partialResult) => {
             if (!acceptingUpdates)
                 return;
-            updateEvents.push(Promise.resolve(emit({
-                type: "tool_execution_update",
-                toolCallId: prepared.toolCall.id,
-                toolName: prepared.toolCall.name,
-                args: prepared.toolCall.arguments,
-                partialResult,
-            })));
+            updateEvents.push(Promise.resolve(onUpdate(partialResult)));
         });
         acceptingUpdates = false;
         await Promise.all(updateEvents);
-        return { result, isError: false };
+        return { result, isError: result.isError === true };
     }
     catch (error) {
         acceptingUpdates = false;
@@ -581,6 +604,8 @@ async function finalizeExecutedToolCall(currentContext, assistantMessage, prepar
                 context: currentContext,
             }, signal);
             if (afterResult) {
+                // Structured content not replaced along with the content may no longer match it.
+                const structuredContent = afterResult.structuredContent ?? (afterResult.content ? undefined : result.structuredContent);
                 result = {
                     ...result,
                     content: afterResult.content ?? result.content,
@@ -588,6 +613,10 @@ async function finalizeExecutedToolCall(currentContext, assistantMessage, prepar
                     usage: afterResult.usage ?? result.usage,
                     terminate: afterResult.terminate ?? result.terminate,
                 };
+                if (structuredContent === undefined)
+                    delete result.structuredContent;
+                else
+                    result.structuredContent = structuredContent;
                 isError = afterResult.isError ?? isError;
             }
         }

@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 )
@@ -151,7 +150,7 @@ type presentationReloadRecorder struct {
 	failure error
 }
 
-func (plugins presentationReloadRecorder) Reload(context.Context) (pico3.JsonValue, error) {
+func (plugins presentationReloadRecorder) Reload(context.Context) (chord.JsonValue, error) {
 	*plugins.calls = append(*plugins.calls, "presentation")
 	return map[string]any{"generation": "candidate"}, plugins.failure
 }
@@ -213,7 +212,7 @@ func TestBuiltinFacetReloadStopsAtFirstFailure(t *testing.T) {
 			}}
 			host, err := chord.CreateFacetHost(t.Context(), chord.FacetOptions{Facets: []chord.Facet{
 				CreateSlashCommandsRuntimeFacet(registry), provide,
-				CreateBuiltInSlashCommandsFacet(BuiltInSlashCommandsOptions{ReloadPresentationPlugins: func(_ context.Context, data pico3.JsonValue) error {
+				CreateBuiltInSlashCommandsFacet(BuiltInSlashCommandsOptions{ReloadPresentationPlugins: func(_ context.Context, data chord.JsonValue) error {
 					if !reflect.DeepEqual(data, map[string]any{"generation": "candidate"}) {
 						t.Errorf("local reload data = %#v", data)
 					}
@@ -274,7 +273,7 @@ func TestBuiltinFacetReloadStopsAtFirstFailure(t *testing.T) {
 	}
 }
 
-func (models *presentationModelsRecorder) State() pico3.ReplicatedStateOf[*ModelsState] {
+func (models *presentationModelsRecorder) State() chord.ReplicatedStateOf[*ModelsState] {
 	return models.state
 }
 func (models *presentationModelsRecorder) GetThinkingLevels(context.Context) ([]ai.ThinkingLevel, error) {

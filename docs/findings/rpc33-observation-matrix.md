@@ -19,7 +19,7 @@ The matrix derives its denominator from the Cartesian product of the probe's axe
 
 The product has 216 combinations. The test checks the oracle's length, every case identity and the complete axis order before comparison. `inputs.json` is exported by the Node probe's actual HTTP-body function. Go serves those exact bodies from `httptest.Server` and invokes the real providers, `ai.LazyStream`, Model Runtime and Agent. No fake provider or synthesized partial message supplies expected content.
 
-The probe pins Pi 0.87.1 and OpenAI 6.40.0. The maintained probe preserves the retained probe's operations and observations. It adds version checks, a body/axis export and terminal/result identity assertions. It does not alter continuation timing. Fresh outputs match all three retained `rpc33-pi-final-{1,2,3}.json` runs and the parent's `pi-matrix.json` after message-clock canonicalization. The checked-in `pi.json` is the first fresh unmodified retained-probe execution, not Go output.
+The probe pins Pi 1.0.0 and OpenAI 7.19.0. The maintained probe preserves the retained probe's operations and observations. It adds version checks, a body/axis export and terminal/result identity assertions. It does not alter continuation timing. Fresh outputs match all three retained `rpc33-pi-final-{1,2,3}.json` runs and the parent's `pi-matrix.json` after message-clock canonicalization. The checked-in `pi.json` is the first execution of the maintained probe against the real Pi 1.0.0 package, not Go output.
 
 ## Observations and ownership
 

@@ -29,6 +29,8 @@ type ExtensionActions struct {
 	GetActiveTools any
 	// upstream: types.ts:1596: GetAllToolsHandler
 	GetAllTools any
+	// upstream: types.ts:2135: GetSettingsHandler
+	GetSettings func() Settings
 	// upstream: types.ts:1597: SetActiveToolsHandler
 	SetActiveTools any
 	// upstream: types.ts:1598: RefreshToolsHandler
@@ -58,4 +60,8 @@ type SendUserMessageHandler func(content any, options *SendUserMessageOptions) e
 type ProviderActions struct {
 	RegisterProvider   func(name string, config ProviderConfig) error
 	UnregisterProvider func(name string)
+	// RegisterVirtualModel and UnregisterVirtualModel apply virtual-model registrations; the model registry's own ones apply when unset.
+	// upstream: runner.ts:413-417 (providerActions.registerVirtualModel, unregisterVirtualModel)
+	RegisterVirtualModel   func(definition VirtualModelDefinition) error
+	UnregisterVirtualModel func(provider, id string)
 }

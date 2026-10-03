@@ -2,12 +2,16 @@ package experimental
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
+	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/harness"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/experimental/services"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -73,7 +77,7 @@ func (source *clientTuiLoopbackServerSource) Catalogue(context.Context) ([]chord
 func (source *clientTuiLoopbackServerSource) Open(chord.RemoteServiceSourceOpenOptions) (chord.RemoteServices, error) {
 	return &clientTuiLoopbackScope{RemoteServiceBinding: source.binding, rebind: true}, nil
 }
-func (source *clientTuiLoopbackServerSource) Connection() pico3.ReplicatedStateOf[*services.ServerConnectionState] {
+func (source *clientTuiLoopbackServerSource) Connection() chord.ReplicatedStateOf[*services.ServerConnectionState] {
 	return source.connection
 }
 func (source *clientTuiLoopbackServerSource) Dispose(ctx context.Context) error {
@@ -92,7 +96,7 @@ func (*clientTuiLoopbackSessionSource) Catalogue(context.Context) ([]chord.Servi
 func (source *clientTuiLoopbackSessionSource) Open(chord.RemoteServiceSourceOpenOptions) (chord.RemoteServices, error) {
 	return &clientTuiLoopbackScope{RemoteServiceBinding: source.binding}, nil
 }
-func (source *clientTuiLoopbackSessionSource) Attachment() pico3.ReplicatedStateOf[*services.SessionAttachmentState] {
+func (source *clientTuiLoopbackSessionSource) Attachment() chord.ReplicatedStateOf[*services.SessionAttachmentState] {
 	return source.attachment
 }
 func (source *clientTuiLoopbackSessionSource) Dispose(ctx context.Context) error {
@@ -198,4 +202,45 @@ func (observation *clientTuiObservation) Wait(ctx context.Context, component tui
 		case <-observation.changed:
 		}
 	}
+}
+
+// userEntry, assistantEntry and conversationView build the durable ConversationView the chat view renders (packages/durable/src/harness/view.ts).
+func userEntry(id durable.EntryId, text string) durable.EntryRecord {
+	return durable.EntryRecord{Id: id, ConversationId: durable.ROOT_CONVERSATION_ID, Kind: "pi.user", Model: []ai.Message{ai.UserMessage{Content: ai.UserText(text)}}}
+}
+
+func assistantEntry(id durable.EntryId, message ai.AssistantMessage) durable.EntryRecord {
+	return durable.EntryRecord{Id: id, ConversationId: durable.ROOT_CONVERSATION_ID, Kind: "pi.assistant", Model: []ai.Message{message}}
+}
+
+func resetEntry(id durable.EntryId) durable.EntryRecord {
+	return durable.EntryRecord{Id: id, ConversationId: durable.ROOT_CONVERSATION_ID, Kind: "pi.reset"}
+}
+
+// conversationView is a view with the given entries and documents; a nil document is absent.
+func conversationView(entries []durable.EntryRecord, live *harness.LiveState, inbox *harness.InboxState) services.ConversationView {
+	docs := map[string]durable.JsonObject{}
+	for kind, document := range map[string]any{services.LiveDocKind: live, services.InboxDocKind: inbox} {
+		if reflect.ValueOf(document).IsNil() {
+			continue
+		}
+		docs[kind] = jsonObjectOf(document)
+	}
+	return services.ConversationView{Conversation: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}, Entries: entries, Docs: docs}
+}
+
+func jsonObjectOf(value any) durable.JsonObject {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		panic(err)
+	}
+	var object durable.JsonObject
+	if err := json.Unmarshal(encoded, &object); err != nil {
+		panic(err)
+	}
+	return object
+}
+
+func generationOf(message ai.AssistantMessage) *harness.LiveGeneration {
+	return &harness.LiveGeneration{Message: jsonObjectOf(message)}
 }

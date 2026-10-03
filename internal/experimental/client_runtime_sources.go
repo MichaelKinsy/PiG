@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/experimental/client"
@@ -184,9 +183,9 @@ func (transport initiatedClientTransport) Invoke(ctx context.Context, call chord
 type sourceStateReplica[T comparable] struct{ source *services.SourceState[T] }
 
 func (replica sourceStateReplica[T]) Value() *T { return new(replica.source.Value()) }
-func (replica sourceStateReplica[T]) Subscribe(listener func(*T, context.Context, pico3.ReplicatedStateDelivery)) (func(), error) {
+func (replica sourceStateReplica[T]) Subscribe(listener func(*T, context.Context, chord.ReplicatedStateDelivery)) (func(), error) {
 	return replica.source.Subscribe(func(value T, ctx context.Context, delivery services.ReplicatedStateDelivery) {
-		listener(&value, ctx, pico3.ReplicatedStateDelivery{Kind: delivery.Kind, Sequence: delivery.Sequence})
+		listener(&value, ctx, chord.ReplicatedStateDelivery{Kind: delivery.Kind, Sequence: delivery.Sequence})
 	}), nil
 }
 
@@ -242,7 +241,7 @@ func NewClientServerServiceSource(peer *client.Client, options ClientServiceSour
 func (source *ClientServerServiceSource) AcceptsUnavailableServices() bool {
 	return source.source.AcceptsUnavailableServices()
 }
-func (source *ClientServerServiceSource) Connection() pico3.ReplicatedStateOf[*services.ServerConnectionState] {
+func (source *ClientServerServiceSource) Connection() chord.ReplicatedStateOf[*services.ServerConnectionState] {
 	return sourceStateReplica[services.ServerConnectionState]{source: source.source.Connection}
 }
 func (source *ClientServerServiceSource) Catalogue(ctx context.Context) ([]chord.ServiceCatalogueEntry, error) {
@@ -277,7 +276,7 @@ func NewClientSessionServiceSource(peer *client.Client, options ClientServiceSou
 func (source *ClientSessionServiceSource) AcceptsUnavailableServices() bool {
 	return source.source.AcceptsUnavailableServices()
 }
-func (source *ClientSessionServiceSource) Attachment() pico3.ReplicatedStateOf[*services.SessionAttachmentState] {
+func (source *ClientSessionServiceSource) Attachment() chord.ReplicatedStateOf[*services.SessionAttachmentState] {
 	return sourceStateReplica[services.SessionAttachmentState]{source: source.source.Attachment}
 }
 func (source *ClientSessionServiceSource) Catalogue(ctx context.Context) ([]chord.ServiceCatalogueEntry, error) {

@@ -1238,14 +1238,15 @@ func TestSettings_084DisplaySettingsRoundTripAndDefaults(t *testing.T) {
 	if got := defaultManager.GetMermaidRenderingMode(); got != "streaming" {
 		t.Fatalf("default Mermaid mode = %q, want streaming", got)
 	}
-	if got := defaultManager.GetTuiMode(); got != "regular" {
-		t.Fatalf("default TUI mode = %q, want regular", got)
+	// settings-manager.ts:1348-1350 (Pi 1.0.0): fullscreen is the default.
+	if got := defaultManager.GetTuiMode(); got != "fullscreen" {
+		t.Fatalf("default TUI mode = %q, want fullscreen", got)
 	}
 	if got := defaultManager.GetFullscreenScrollbar(); got != "auto" {
 		t.Fatalf("default fullscreen scrollbar = %q, want auto", got)
 	}
 
-	input := []byte(`{"markdown":{"mermaid":"final"},"tuiMode":"fullscreen","fullscreenScrollbar":"always"}`)
+	input := []byte(`{"markdown":{"mermaid":"final"},"tuiMode":"regular","fullscreenScrollbar":"always"}`)
 	var settings Settings
 	if err := json.Unmarshal(input, &settings); err != nil {
 		t.Fatal(err)
@@ -1254,8 +1255,8 @@ func TestSettings_084DisplaySettingsRoundTripAndDefaults(t *testing.T) {
 	if got := manager.GetMermaidRenderingMode(); got != "final" {
 		t.Fatalf("Mermaid mode = %q, want final", got)
 	}
-	if got := manager.GetTuiMode(); got != "fullscreen" {
-		t.Fatalf("TUI mode = %q, want fullscreen", got)
+	if got := manager.GetTuiMode(); got != "regular" {
+		t.Fatalf("TUI mode = %q, want regular", got)
 	}
 	if got := manager.GetFullscreenScrollbar(); got != "always" {
 		t.Fatalf("fullscreen scrollbar = %q, want always", got)
@@ -1264,7 +1265,7 @@ func TestSettings_084DisplaySettingsRoundTripAndDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`"mermaid":"final"`, `"tuiMode":"fullscreen"`, `"fullscreenScrollbar":"always"`} {
+	for _, want := range []string{`"mermaid":"final"`, `"tuiMode":"regular"`, `"fullscreenScrollbar":"always"`} {
 		if !strings.Contains(string(encoded), want) {
 			t.Fatalf("encoded settings missing %s: %s", want, encoded)
 		}
@@ -1454,7 +1455,7 @@ func TestSettingsManager_Setters(t *testing.T) {
 	check("DefaultThinkingLevel", sm.SetDefaultThinkingLevel("high"))
 	check("HideThinkingBlock", sm.SetHideThinkingBlock(true))
 	check("ShellPath", sm.SetShellPath("/bin/zsh"))
-	check("QuietStartup", sm.SetQuietStartup(true))
+	check("QuietStartup", sm.SetQuietStartup(QuietStartupTrue))
 	check("ShellCommandPrefix", sm.SetShellCommandPrefix("set -e; "))
 	check("NpmCommand", sm.SetNpmCommand([]string{"pnpm"}))
 	check("CollapseChangelog", sm.SetCollapseChangelog(true))
@@ -1495,7 +1496,7 @@ func TestSettingsManager_Setters(t *testing.T) {
 	if sm2.GetEnableInstallTelemetry() != false {
 		t.Error("EnableInstallTelemetry should be false")
 	}
-	if sm2.GetQuietStartup() != true {
+	if sm2.GetQuietStartup() != QuietStartupTrue {
 		t.Error("QuietStartup should be true")
 	}
 	if !sm2.GetShowHardwareCursor() {
@@ -1532,7 +1533,7 @@ func TestSettings_JSONUsesUpstreamWireShape(t *testing.T) {
 	autoResize := false
 	block := true
 	hide := false
-	quiet := true
+	quiet := QuietStartupTrue
 	collapse := false
 	s := Settings{
 		CommandPrefix:        "set -e; ",
@@ -1599,7 +1600,7 @@ func TestSettings_UnmarshalAcceptsUpstreamAndLegacyShapes(t *testing.T) {
 	if s.GetImageAutoResize() != false || !s.GetBlockImages() {
 		t.Fatalf("image settings not decoded correctly: %+v", s)
 	}
-	if s.GetHideThinkingBlock() != false || s.GetQuietStartup() != true || s.GetCollapseChangelog() != false {
+	if s.GetHideThinkingBlock() != false || s.GetQuietStartup() != QuietStartupTrue || s.GetCollapseChangelog() != false {
 		t.Fatalf("bool settings not decoded correctly: %+v", s)
 	}
 
@@ -1627,8 +1628,8 @@ func TestMergeSettings_DeepMergeAndFalseOverride(t *testing.T) {
 	projectAuto := false
 	globalHide := true
 	projectHide := false
-	globalQuiet := true
-	projectQuiet := false
+	globalQuiet := QuietStartupTrue
+	projectQuiet := QuietStartupFalse
 	globalCollapse := true
 	projectCollapse := false
 	globalBlock := true
@@ -1670,7 +1671,7 @@ func TestMergeSettings_DeepMergeAndFalseOverride(t *testing.T) {
 		Markdown:             &MarkdownSettings{CodeBlockIndent: "\t"},
 	}
 	merged := mergeSettings(global, project)
-	if merged.GetHideThinkingBlock() != false || merged.GetQuietStartup() != false || merged.GetCollapseChangelog() != false {
+	if merged.GetHideThinkingBlock() != false || merged.GetQuietStartup() != QuietStartupFalse || merged.GetCollapseChangelog() != false {
 		t.Fatalf("false overrides failed: %+v", merged)
 	}
 	if merged.GetShowImages() != false || merged.GetImageAutoResize() != false || merged.GetBlockImages() != false {

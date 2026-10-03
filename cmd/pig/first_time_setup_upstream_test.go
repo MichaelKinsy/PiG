@@ -23,7 +23,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
-// Pi startup-ui.ts:32-47,122-140 excludes non-official distributions before the other gates. These keep the original inputs and use real Pi's fork result, not its official-distribution result.
+// Pi startup-ui.ts:32-47,122-140 excludes non-official distributions before the other gates. These keep the original inputs; PiG's own gate (D88) shows setup on an interactive start in the default agent directory exactly when settings.json does not exist, regardless of PI_EXPERIMENTAL; a custom agent directory skips it as in Pi (startup-ui.ts:144-146).
 func TestFirstTimeSetupOriginalCasesAsFork(t *testing.T) {
 	if codingagent.PackageName == "@earendil-works/pi-coding-agent" && codingagent.AppName == "pi" && codingagent.CONFIG_DIR_NAME == ".pi" {
 		t.Fatal("this test requires the actual non-official PiG distribution")
@@ -49,8 +49,8 @@ func TestFirstTimeSetupOriginalCasesAsFork(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			shown := firstTimeStartupShowsSetup(t, binary, tc.experimental, tc.custom, tc.existing)
-			if shown {
-				t.Fatal("PiG startup displayed setup; real Pi with fork metadata returns false")
+			if want := !tc.existing && !tc.custom; shown != want {
+				t.Fatalf("PiG startup displayed setup = %v with settings.json present = %v and a custom agent dir = %v; PiG's gate (D88) shows it exactly when settings.json is missing in the default agent dir", shown, tc.existing, tc.custom)
 			}
 			observed.Cases = append(observed.Cases, tc.line)
 			observed.Results = append(observed.Results, shown)
@@ -118,7 +118,8 @@ func firstTimeStartupShowsSetup(t *testing.T, binary string, experimental, custo
 	defer slave.Close()
 	ctx, cancel := context.WithTimeout(t.Context(), testbudget.Wait(t))
 	defer cancel()
-	cmd := exec.CommandContext(ctx, binary, "--offline", "--no-extensions", "--no-session", "--model", "test-faux/faux-1")
+	// The reply is found as an output line, which the regular renderer writes; fullscreen is the default since Pi 1.0.0 (settings-manager.ts:1348-1350) and positions rows instead.
+	cmd := exec.CommandContext(ctx, binary, "--offline", "--no-extensions", "--no-session", "--model", "test-faux/faux-1", "--tui-mode", "regular")
 	cmd.Dir, cmd.Env = cwd, env
 	output, diagnostics := &ptyOutput{}, &ptyOutput{}
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = slave, slave, diagnostics

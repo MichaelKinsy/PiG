@@ -7,15 +7,13 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 )
 
 // upstream: packages/chord/src/facets/host.ts:562-573; packages/chord/src/services/handle.ts:26-35.
 func TestFacetServiceFollowsLocalCutover(t *testing.T) {
 	t.Parallel()
 	type value struct{ generation string }
-	def := pico3.DefineServiceWithOptions[*value]("test.facet-dynamic.local", pico3.ServiceOptions{Local: true})
+	def := DefineServiceWithOptions[*value]("test.facet-dynamic.local", ServiceOptions{Local: true})
 	provider := func(generation string) Facet {
 		return Facet{Id: "provider", Setup: func(env *FacetEnvironment) error {
 			return ProvideService(env, def, &value{generation})
@@ -64,7 +62,7 @@ func TestFacetServiceFollowsLocalCutover(t *testing.T) {
 // upstream: packages/chord/src/facets/host.ts:710-733. Runtime-only consumers use the actual loopback facade and leave unrelated typed adapter configuration untouched.
 func TestFacetDynamicConsumerUsesLoopback(t *testing.T) {
 	t.Parallel()
-	def := pico3.DefineService[*FacetServiceImplementation]("test.facet-dynamic.loopback")
+	def := DefineService[*FacetServiceImplementation]("test.facet-dynamic.loopback")
 	state, err := NewFacetState(map[string]any{"generation": "A"}, 0)
 	if err != nil {
 		t.Fatal(err)
@@ -113,7 +111,7 @@ func TestFacetDynamicConsumerUsesLoopback(t *testing.T) {
 	if err != nil || !hydrated || !reflect.DeepEqual(initial, map[string]any{"generation": "A"}) {
 		t.Fatalf("state = %#v, hydrated=%v, error=%v", initial, hydrated, err)
 	}
-	if err := state.Apply(t.Context(), 1, []pico3.Op{{"r", map[string]any{"generation": "B"}}}); err != nil {
+	if err := state.Apply(t.Context(), 1, []Op{{"r", map[string]any{"generation": "B"}}}); err != nil {
 		t.Fatal(err)
 	}
 	updated, hydrated, err := replica.Load()
@@ -140,7 +138,7 @@ func TestFacetMemberSortUsesUTF16(t *testing.T) {
 // upstream: packages/chord/src/services/provider.ts:209-236,566-593 and services/state.ts:87-126.
 func TestFacetRuntimeMembersUseExistingProvider(t *testing.T) {
 	t.Parallel()
-	def := pico3.DefineService[*FacetServiceImplementation]("test.facet-dynamic.remote")
+	def := DefineService[*FacetServiceImplementation]("test.facet-dynamic.remote")
 	state, err := NewFacetState(map[string]any{"count": float64(7)}, 3)
 	if err != nil {
 		t.Fatal(err)
@@ -178,7 +176,7 @@ func TestFacetRuntimeMembersUseExistingProvider(t *testing.T) {
 	}
 	want := ServiceSubscriptionSnapshot{ServiceId: def.Id(), Mode: ServiceSingleton, Instances: []ServiceInstanceSnapshot{{Members: []ServiceMemberSnapshot{
 		{Name: "echo", Kind: MemberMethod},
-		{Name: "state", Kind: MemberState, Sequence: 3, Ops: []pico3.Op{{"r", map[string]any{"count": float64(7)}}}},
+		{Name: "state", Kind: MemberState, Sequence: 3, Ops: []Op{{"r", map[string]any{"count": float64(7)}}}},
 		{Name: "void", Kind: MemberMethod},
 	}}}}
 	if got := subscription.Snapshot(); !reflect.DeepEqual(got, want) {
@@ -187,7 +185,7 @@ func TestFacetRuntimeMembersUseExistingProvider(t *testing.T) {
 	if err := subscription.Activate(); err != nil {
 		t.Fatal(err)
 	}
-	ops := []pico3.Op{{"r", map[string]any{"count": float64(9)}}}
+	ops := []Op{{"r", map[string]any{"count": float64(9)}}}
 	if err := state.Apply(t.Context(), 4, ops); err != nil {
 		t.Fatal(err)
 	}

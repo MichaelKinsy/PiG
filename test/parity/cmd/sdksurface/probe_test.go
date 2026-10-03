@@ -34,7 +34,8 @@ export class Unsafe { constructor() { writeFileSync(%q, "side effect"); this.fie
 	}
 }
 
-// Pi's virtual-modules.ts exposes pi-agent-core. HStack/VStack implement
+// Pi's virtual-modules.ts exposes pi-agent-core; its 1.0.0 index exports the
+// agent loop only (packages/agent/src/index.ts). HStack/VStack implement
 // LAYOUT_NODE inherited from Stack (packages/tui/src/components/stack.ts).
 func TestProbeFindsVendoredPackageAndSymbolMembers(t *testing.T) {
 	packages, err := packageExports(repoRoot)
@@ -47,9 +48,6 @@ func TestProbeFindsVendoredPackageAndSymbolMembers(t *testing.T) {
 	}
 	for _, test := range []struct{ pkg, name, member string }{
 		{"pi-agent-core", "Agent", "abort"},
-		{"pi-agent-core", "LaneBusy", "lane"},
-		{"pi-agent-core", "LaneBusy", "cause"},
-		{"pi-agent-core", "FileError", "cause"},
 		{"pi-ai", "ModelsError", "cause"},
 		{"pi-tui", "HStack", "[Symbol.LAYOUT_NODE]"},
 		{"pi-tui", "VStack", "[Symbol.LAYOUT_NODE]"},

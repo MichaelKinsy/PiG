@@ -8,6 +8,7 @@ import (
 )
 
 func TestAddProviderWireBehaviorsGeneratesPinnedMappingHypotheses(t *testing.T) {
+	parallelHeavy(t)
 	root, err := filepath.Abs("../../..")
 	if err != nil {
 		t.Fatalf("repository root: %v", err)
@@ -125,6 +126,7 @@ func TestAddProviderWireBehaviorsGeneratesPinnedMappingHypotheses(t *testing.T) 
 }
 
 func TestProviderWireMappingsRequireReviewedDecisions(t *testing.T) {
+	parallelHeavy(t)
 	root, err := filepath.Abs("../../..")
 	if err != nil {
 		t.Fatalf("repository root: %v", err)

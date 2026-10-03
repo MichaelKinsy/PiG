@@ -70,7 +70,12 @@ func installArchiveName() (name, archive string) {
 	if runtime.GOARCH == "arm64" {
 		arch = "arm64"
 	}
-	name = "pig-" + installVersion + "-" + goos + "-" + arch
+	return archiveNameFor(goos + "-" + arch)
+}
+
+// archiveNameFor names the release archive for a platform such as linux-arm64.
+func archiveNameFor(platform string) (name, archive string) {
+	name = "pig-" + installVersion + "-" + platform
 	return name, name + ".tar.gz"
 }
 
@@ -113,11 +118,17 @@ func releaseArchive(t *testing.T, name string) []byte {
 
 func newInstallFixture(t *testing.T) installFixture {
 	t.Helper()
+	name, archive := installArchiveName()
+	return newInstallFixtureFor(t, name, archive)
+}
+
+// newInstallFixtureFor serves one release archive, so a test can install a platform other than the host's.
+func newInstallFixtureFor(t *testing.T, name, archive string) installFixture {
+	t.Helper()
 	if runtime.GOOS == "windows" {
 		t.Skip("install.sh installs Linux and macOS releases; TestInstallShRefusesWindows covers Windows")
 	}
 	root := t.TempDir()
-	name, archive := installArchiveName()
 	fixtures := filepath.Join(root, "fixtures")
 	release := filepath.Join(fixtures, strings.TrimPrefix(installDownload, "https://"), "v"+installVersion)
 	data := releaseArchive(t, name)
@@ -320,6 +331,150 @@ func TestInstallShRecordsAnOwnerOnlyReceiptForPigUpdate(t *testing.T) {
 			}
 			if string(data) != want {
 				t.Fatalf("receipt =\n%s\nwant\n%s", data, want)
+			}
+		})
+	}
+}
+
+// fakeUname answers uname -s, -m and -o from FAKE_UNAME_S, FAKE_UNAME_M and FAKE_UNAME_O. An unset FAKE_UNAME_O makes -o fail, as BSD and macOS uname does.
+const fakeUname = `#!/bin/sh
+case "$1" in
+  -s) echo "$FAKE_UNAME_S" ;;
+  -m) echo "$FAKE_UNAME_M" ;;
+  -o) if [ -n "${FAKE_UNAME_O:-}" ]; then echo "$FAKE_UNAME_O"; else echo "uname: illegal option -- o" >&2; exit 1; fi ;;
+  *) exit 2 ;;
+esac
+`
+
+// runOn runs install.sh as if uname reported the given -s, -m and -o values, with the default install directory.
+func (f installFixture) runOn(t *testing.T, unameS, unameM, unameO string, extraEnv ...string) installResult {
+	t.Helper()
+	writeFile(t, filepath.Join(f.root, "fakebin", "uname"), []byte(fakeUname), 0o755)
+	return f.run(t, append([]string{"PIG_INSTALL_DIR=", "FAKE_UNAME_S=" + unameS, "FAKE_UNAME_M=" + unameM, "FAKE_UNAME_O=" + unameO}, extraEnv...)...)
+}
+
+func (f installFixture) requested(t *testing.T) string {
+	t.Helper()
+	requests, err := os.ReadFile(filepath.Join(f.root, "fixtures", ".requests"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(requests)
+}
+
+// Termux reports uname -s Linux, uname -o Android and uname -m aarch64. It installs the android-arm64 release, never linux-arm64, into $PREFIX/bin, which is on PATH, and records the receipt for that executable.
+func TestInstallShInstallsTheAndroidReleaseIntoTermuxPrefixBin(t *testing.T) {
+	name, archive := archiveNameFor("android-arm64")
+	f := newInstallFixtureFor(t, name, archive)
+	prefix := filepath.Join(f.root, "data", "data", "com.termux", "files", "usr")
+	termuxPath := filepath.Join(prefix, "bin") + ":" + filepath.Join(f.root, "fakebin") + ":/usr/bin:/bin"
+	got := f.runOn(t, "Linux", "aarch64", "Android", "PREFIX="+prefix, "PATH="+termuxPath)
+	if got.status != 0 {
+		t.Fatalf("status %d:\n%s", got.status, got.stderr)
+	}
+	if !strings.Contains(got.stdout, "PiG "+installVersion+" for android-arm64") {
+		t.Fatalf("stdout does not name the android-arm64 release:\n%s", got.stdout)
+	}
+	if !strings.Contains(f.requested(t), "/v"+installVersion+"/"+archive) {
+		t.Fatalf("install.sh did not request %s:\n%s", archive, f.requested(t))
+	}
+	installed := filepath.Join(prefix, "bin", "pig")
+	if out, err := exec.Command(installed, "--version").Output(); err != nil || !strings.Contains(string(out), installVersion) {
+		t.Fatalf("%s --version = %q, %v", installed, out, err)
+	}
+	if strings.Contains(got.stdout, "Add ") {
+		t.Fatalf("install.sh asks to add a directory to PATH although $PREFIX/bin is on it:\n%s", got.stdout)
+	}
+	receipt, err := os.ReadFile(filepath.Join(f.home, ".pig", "install-receipt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	exe, err := filepath.EvalSymlinks(installed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(receipt), "executable="+exe+"\n") {
+		t.Fatalf("receipt does not name %s:\n%s", exe, receipt)
+	}
+}
+
+// A release without an android-arm64 archive fails on Termux. linux-arm64 is a static executable that Termux's loader cannot start, so the installer does not substitute it.
+func TestInstallShNeverSubstitutesLinuxArm64OnTermux(t *testing.T) {
+	name, archive := archiveNameFor("linux-arm64")
+	f := newInstallFixtureFor(t, name, archive)
+	prefix := filepath.Join(f.root, "usr")
+	assertFailure(t, f.runOn(t, "Linux", "aarch64", "Android", "PREFIX="+prefix), "android-arm64.tar.gz")
+	if _, err := os.Stat(filepath.Join(prefix, "bin")); !os.IsNotExist(err) {
+		t.Fatalf("failed install created %s/bin: %v", prefix, err)
+	}
+}
+
+func TestInstallShInstallsAndroidToHomeWhenThereIsNoPrefix(t *testing.T) {
+	name, archive := archiveNameFor("android-arm64")
+	f := newInstallFixtureFor(t, name, archive)
+	got := f.runOn(t, "Linux", "arm64", "Android", "PREFIX=")
+	if got.status != 0 {
+		t.Fatalf("status %d:\n%s", got.status, got.stderr)
+	}
+	if _, err := os.Stat(filepath.Join(f.home, ".local", "bin", "pig")); err != nil {
+		t.Fatalf("pig is not in ~/.local/bin: %v\n%s", err, got.stdout)
+	}
+}
+
+func TestInstallShPigInstallDirOverridesTermuxPrefix(t *testing.T) {
+	name, archive := archiveNameFor("android-arm64")
+	f := newInstallFixtureFor(t, name, archive)
+	got := f.runOn(t, "Linux", "aarch64", "Android", "PREFIX="+filepath.Join(f.root, "usr"), "PIG_INSTALL_DIR="+f.installDir)
+	if got.status != 0 {
+		t.Fatalf("status %d:\n%s", got.status, got.stderr)
+	}
+	if _, err := os.Stat(filepath.Join(f.installDir, "pig")); err != nil {
+		t.Fatalf("pig is not in PIG_INSTALL_DIR: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(f.root, "usr", "bin", "pig")); !os.IsNotExist(err) {
+		t.Fatalf("pig was also installed into $PREFIX/bin: %v", err)
+	}
+}
+
+// Android CPUs other than arm64 have no release. The refusal names the CPU and writes nothing.
+func TestInstallShRefusesAndroidCPUsWithoutARelease(t *testing.T) {
+	for _, tc := range []struct{ machine, want string }{
+		{"armv8l", "unsupported CPU architecture armv8l"},
+		{"armv7l", "unsupported CPU architecture armv7l"},
+		{"x86_64", "Android binaries for arm64 only, not x86_64"},
+		{"i686", "unsupported CPU architecture i686"},
+	} {
+		t.Run(tc.machine, func(t *testing.T) {
+			f := newInstallFixture(t)
+			prefix := filepath.Join(f.root, "usr")
+			assertFailure(t, f.runOn(t, "Linux", tc.machine, "Android", "PREFIX="+prefix), tc.want)
+			if _, err := os.Stat(filepath.Join(prefix, "bin")); !os.IsNotExist(err) {
+				t.Fatalf("refused install created %s/bin: %v", prefix, err)
+			}
+		})
+	}
+}
+
+// A GNU/Linux or macOS uname -o is not Android: with PREFIX set, pig still installs the linux or darwin release into ~/.local/bin, and macOS has no uname -o.
+func TestInstallShKeepsNonAndroidPlatformNames(t *testing.T) {
+	for _, tc := range []struct{ unameS, unameM, unameO, platform string }{
+		{"Linux", "aarch64", "GNU/Linux", "linux-arm64"},
+		{"Linux", "x86_64", "GNU/Linux", "linux-amd64"},
+		{"Linux", "aarch64", "", "linux-arm64"},
+		{"Darwin", "arm64", "", "darwin-arm64"},
+	} {
+		t.Run(tc.platform+"/"+tc.unameO, func(t *testing.T) {
+			name, archive := archiveNameFor(tc.platform)
+			f := newInstallFixtureFor(t, name, archive)
+			got := f.runOn(t, tc.unameS, tc.unameM, tc.unameO, "PREFIX="+filepath.Join(f.root, "usr"))
+			if got.status != 0 {
+				t.Fatalf("status %d:\n%s", got.status, got.stderr)
+			}
+			if !strings.Contains(f.requested(t), "/v"+installVersion+"/"+archive) {
+				t.Fatalf("install.sh did not request %s:\n%s", archive, f.requested(t))
+			}
+			if _, err := os.Stat(filepath.Join(f.home, ".local", "bin", "pig")); err != nil {
+				t.Fatalf("pig is not in ~/.local/bin: %v", err)
 			}
 		})
 	}

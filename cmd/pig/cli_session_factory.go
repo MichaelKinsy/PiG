@@ -36,8 +36,10 @@ type cliSessionFactory[S any] struct {
 	ctx     context.Context
 	rebuild cliRebuild[S]
 
-	mu           sync.Mutex
-	hosts        map[*subprocess.Host]struct{}
+	mu    sync.Mutex
+	hosts map[*subprocess.Host]struct{}
+	// latest is the extension host of the Session created last: the replacement Session while a withSession callback of the Session it replaced runs.
+	latest       *subprocess.Host
 	inputEnded   bool
 	holding      bool
 	initial      *cliSessionInputs
@@ -84,7 +86,12 @@ func (f *cliSessionFactory[S]) create(ctx context.Context, options coding.Create
 		}
 		inputs, state = &rebuilt, rebuiltState
 	}
+	f.mu.Lock()
+	f.latest = inputs.Host
+	f.mu.Unlock()
 	if inputs.Host != nil {
+		// Pi's withSession receives a context of the replacement Session (agent-session-runtime.ts:187-194); the outgoing host serves its calls through the replacement's host.
+		inputs.Host.SetReplacementHost(f.latestHost)
 		f.mu.Lock()
 		f.hosts[inputs.Host] = struct{}{}
 		ended := f.inputEnded
@@ -110,7 +117,11 @@ func (f *cliSessionFactory[S]) create(ctx context.Context, options coding.Create
 			f.mu.Unlock()
 		}
 	}
-	low, err := coding.NewRuntime(coding.RuntimeOptions{Services: inputs.Services, NewExtensions: inputs.Extensions, AbortContext: f.ctx})
+	var hostRuntime *extension.ExtensionRuntime
+	if inputs.Host != nil {
+		hostRuntime = inputs.Host.Runtime()
+	}
+	low, err := coding.NewRuntime(coding.RuntimeOptions{Services: inputs.Services, NewExtensions: inputs.Extensions, ExtensionRuntime: hostRuntime, AbortContext: f.ctx})
 	if err != nil {
 		release("construct runtime failed")
 		return coding.CreateAgentSessionRuntimeResult{}, err
@@ -138,13 +149,19 @@ func (f *cliSessionFactory[S]) create(ctx context.Context, options coding.Create
 			f.mu.Lock()
 			delete(f.states, session)
 			f.mu.Unlock()
-			// pig divergence (D30): the host rejects the replaced Session's later calls with Pi's stale message, but an SDK-local getter or a fire-and-forget call in the extension process does not throw.
+			// pig divergence (D30): the host rejects the replaced Session's later calls with Pi's stale message and notifies the extension processes, but a Go, Rust or Python SDK-local getter or fire-and-forget call does not throw.
 			if message := session.ExtensionRunner().StaleMessage(); message != "" && inputs.Invalidate != nil {
 				inputs.Invalidate(message)
 			}
 			f.retirement.retire(session.ExtensionRunner(), func() { release(reason) })
 		},
 	}, nil
+}
+
+func (f *cliSessionFactory[S]) latestHost() *subprocess.Host {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.latest
 }
 
 // liveHosts returns the extension hosts that have not been retired: the current Session's and those still finishing a command.

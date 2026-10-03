@@ -51,8 +51,9 @@ func TestResolvePigBinOverridesInheritedAgentDirectory(t *testing.T) {
 	if want := filepath.Join(home, "agent"); dir != want || dir == inherited {
 		t.Fatalf("resolved agent directory=%q; want %q", dir, want)
 	}
-	if _, err := os.Stat(filepath.Join(dir, "settings.json")); !os.IsNotExist(err) {
-		t.Fatalf("operator settings leaked: %v", err)
+	// The sandbox holds only the empty settings.json that skips PiG's first-time setup (D88).
+	if data, err := os.ReadFile(filepath.Join(dir, "settings.json")); err != nil || string(data) != "{}\n" {
+		t.Fatalf("operator settings leaked: %q, %v", data, err)
 	}
 }
 

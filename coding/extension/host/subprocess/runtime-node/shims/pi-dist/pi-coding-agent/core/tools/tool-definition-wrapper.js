@@ -5,10 +5,11 @@ export function wrapToolDefinition(definition, ctxFactory) {
         label: definition.label,
         description: definition.description,
         parameters: definition.parameters,
+        outputSchema: definition.outputSchema,
         constrainedSampling: definition.constrainedSampling,
         prepareArguments: definition.prepareArguments,
         executionMode: definition.executionMode,
-        execute: (toolCallId, params, signal, onUpdate, ctx) => definition.execute(toolCallId, params, signal, onUpdate, ctx ?? ctxFactory?.()),
+        execute: (toolCallId, params, signal, onUpdate, ctx) => definition.execute(toolCallId, params, signal, onUpdate, ctx ?? ctxFactory?.(toolCallId, signal)),
     };
 }
 /** Wrap multiple ToolDefinitions into AgentTools for the core runtime. */
@@ -27,6 +28,7 @@ export function createToolDefinitionFromAgentTool(tool) {
         label: tool.label,
         description: tool.description,
         parameters: tool.parameters,
+        outputSchema: tool.outputSchema,
         constrainedSampling: tool.constrainedSampling,
         prepareArguments: tool.prepareArguments,
         executionMode: tool.executionMode,

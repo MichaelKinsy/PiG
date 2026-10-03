@@ -1,4 +1,5 @@
 # Upstream evidence: Pi 0.87.1 interactive-mode.ts:5689-5755 scopes an exact provider argument to its declared methods and uses oauth.loginLabel for the subscription option.
+# Pi 1.0.0 interactive-mode.ts:405-417 and oauth-selector.ts:27-33 label a non-subscription OAuth sign-in "account": OpenRouter's oauth method sets no isSubscription (ai/src/providers/openrouter.ts), so the completion reads "OpenRouter · account/API key".
 # Wait for the argument-completion menu, then dismiss it before submitting the command. No OAuth network flow is started.
 name = "22-login-scoped-methods"
 description = "An exact multi-method provider argument opens the provider-scoped method selector"
@@ -18,7 +19,7 @@ settle_seconds = 1
 cwd = "../selectors/testdata/login-empty-project"
 [[tmux.steps]]
 keys = ["/login openrouter"]
-wait_contains = ["OpenRouter · subscription/API key"]
+wait_contains = ["OpenRouter · account/API key"]
 [[tmux.steps]]
 keys = ["Escape", "Enter"]
 wait_contains = ["Select authentication method for OpenRouter:", "Sign in with OpenRouter"]

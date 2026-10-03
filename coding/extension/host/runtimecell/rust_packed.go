@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -16,6 +15,7 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/MichaelKinsy/PiG/internal/buildprogress"
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 	"github.com/MichaelKinsy/PiG/internal/pigsdklock"
 )
 
@@ -89,7 +89,7 @@ func BuildRustPackedCell(ctx context.Context, cacheRoot, key string, extensions 
 			start := time.Now()
 			packageName := "pig-generated-packed-cell-" + hash[:16]
 			artifactName := packedRunnerName(runtime.GOOS, "rust")
-			entry, err := PublishArtifact(ctx, cellDir, artifactName, hash, "rust", func(scratch string) (string, error) {
+			entry, err := publishArtifactWithFailureCache(ctx, cellDir, artifactName, hash, "rust", func(scratch string) (string, error) {
 				if err := os.MkdirAll(filepath.Join(scratch, "src"), 0o755); err != nil {
 					return "", fmt.Errorf("create rust cell cache: %w", err)
 				}
@@ -108,7 +108,7 @@ func BuildRustPackedCell(ctx context.Context, cacheRoot, key string, extensions 
 					names[i] = ext.Name
 				}
 				buildprogress.Phase(ctx, "Compiling Rust members", strings.Join(names, ", ")+" (dependency resolution, compile, link)")
-				cmd := exec.CommandContext(ctx, "cargo", buildprogress.ToolArgs(ctx, "rust", []string{"build", "--release", "--quiet"})...)
+				cmd := linkerexec.CommandContext(ctx, "cargo", buildprogress.ToolArgs(ctx, "rust", []string{"build", "--release", "--quiet"})...)
 				cmd.Dir = scratch
 				cmd.Env = cacheBuildEnvironment(scratch)
 				if os.Getenv("CARGO_BUILD_JOBS") == "" {
@@ -120,7 +120,11 @@ func BuildRustPackedCell(ctx context.Context, cacheRoot, key string, extensions 
 					if explained, ok := explainMissingToolchain("rust", err); ok {
 						return "", explained
 					}
-					return "", fmt.Errorf("build generated Rust packed runner: %w\n%s", err, out)
+					failure, recordable := RustBuildFailure(cacheRoot, hash, scratch, err, out)
+					if ctx.Err() != nil || cmd.ProcessState == nil || cmd.ProcessState.ExitCode() < 0 || !recordable {
+						return "", failure
+					}
+					return "", cacheBuildFailure(failure)
 				}
 				return filepath.Join(cargoTargetDirectory(scratch), "release", packageName+strings.TrimPrefix(artifactName, "runner")), nil
 			})

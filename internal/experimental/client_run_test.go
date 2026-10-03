@@ -8,7 +8,6 @@ import (
 	"reflect"
 	"sync"
 	"testing"
-	"testing/synctest"
 
 	"github.com/MichaelKinsy/PiG/internal/experimental/services"
 )
@@ -55,97 +54,55 @@ func TestClientResultJSONShapes(t *testing.T) {
 	}
 }
 
-// upstream: packages/coding-agent/src/experimental/client.ts:80-132. Terminal event arrival and callback-tail completion are independent; user-string messages are not decoded as assistant content.
-func TestClientEventDeliveryWaitsForBoundaryAndOrderedCallbacks(t *testing.T) {
+// upstream: packages/coding-agent/src/experimental/client.ts:76-82. The prompt's text is the answer waitForPrompt settles with; a rejection or an unanswered prompt is an error with the reason.
+func TestPromptClientSessionWaitsForTheAnswer(t *testing.T) {
 	t.Parallel()
-	synctest.Test(t, func(t *testing.T) {
-		started, release := make(chan struct{}), make(chan struct{})
-		releaseOnce := sync.OnceFunc(func() { close(release) })
-		var observed []string
-		delivery := newClientEventDelivery(func(ctx context.Context, event json.RawMessage) error {
-			if ctx != context.Background() {
-				t.Error("callback Context changed")
+	for _, row := range []struct {
+		name     string
+		prompt   services.AgentOperationResponse
+		result   services.AgentPromptResult
+		wantText string
+		wantErr  string
+	}{
+		{"answered", services.AgentOperationResponse{Accepted: true, OperationID: new("7")}, services.AgentPromptResult{Status: "done", Text: new("answer")}, "answer", ""},
+		{"empty answer", services.AgentOperationResponse{Accepted: true, OperationID: new("7")}, services.AgentPromptResult{Status: "done", Text: new("")}, "", ""},
+		{"rejected", services.AgentOperationResponse{Error: &services.AgentOperationError{Code: "busy", Message: "Conversation 1 is busy"}}, services.AgentPromptResult{}, "", "Conversation 1 is busy"},
+		{"unanswered", services.AgentOperationResponse{Accepted: true, OperationID: new("7")}, services.AgentPromptResult{Status: "unanswered", Reason: new("aborted")}, "", "Prompt was not answered: aborted"},
+	} {
+		t.Run(row.name, func(t *testing.T) {
+			controller := &promptControllerStub{prompt: row.prompt, result: row.result}
+			text, err := promptClientSession(&ActivatedClientRuntimeServer{Agent: controller}, "question")
+			if row.wantErr != "" {
+				if err == nil || err.Error() != row.wantErr || text != "" {
+					t.Fatalf("prompt = %q, %v; want error %q", text, err, row.wantErr)
+				}
+			} else if err != nil || text != row.wantText {
+				t.Fatalf("prompt = %q, %v; want %q", text, err, row.wantText)
 			}
-			if len(observed) == 0 {
-				close(started)
-				<-release
+			if row.prompt.Accepted != (controller.waited != "") || (row.prompt.Accepted && controller.waited != "7") {
+				t.Fatalf("waited for %q after %+v", controller.waited, row.prompt)
 			}
-			observed = append(observed, string(event))
-			return nil
 		})
-		t.Cleanup(func() {
-			releaseOnce()
-			if err := delivery.close(); err != nil {
-				t.Error(err)
-			}
-		})
-		events := []string{
-			`{"type":"message_end","runId":"run","message":{"role":"user","content":"text"}}`,
-			`{"type":"message_end","runId":"run","message":{"role":"assistant","content":[{"type":"text","text":"first"},{"type":"thinking","thinking":"private"},{"type":"text","text":" second"}]}}`,
-			`{"type":"run_end","runId":"run"}`,
-		}
-		for _, event := range events {
-			delivery.enqueue(json.RawMessage(event))
-		}
-		<-started
-		if err := delivery.waitBoundary("run"); err != nil {
-			t.Fatal(err)
-		}
-		closed := make(chan error, 1)
-		go func() { closed <- delivery.close() }()
-		synctest.Wait()
-		select {
-		case err := <-closed:
-			t.Fatalf("delivery returned before callback completion: %v", err)
-		default:
-		}
-		releaseOnce()
-		if err := <-closed; err != nil {
-			t.Fatal(err)
-		}
-		if !reflect.DeepEqual(observed, events) {
-			t.Fatalf("events=%q, want %q", observed, events)
-		}
-		if got := delivery.completedText["run"]; got != "first second" {
-			t.Fatalf("completed text=%q", got)
-		}
-	})
+	}
 }
 
-// upstream: packages/coding-agent/src/experimental/client.ts:90-123. A rejected deliveryTail skips later callbacks but does not remove the accepted operation's terminal-boundary wait.
-func TestClientEventFailureDoesNotInventTerminalBoundary(t *testing.T) {
-	t.Parallel()
-	synctest.Test(t, func(t *testing.T) {
-		failure := errors.New("event callback failed")
-		calls := 0
-		delivery := newClientEventDelivery(func(context.Context, json.RawMessage) error { calls++; return failure })
-		t.Cleanup(func() {
-			delivery.enqueue(json.RawMessage(`{"type":"run_suspend","runId":"run"}`))
-			if err := delivery.close(); !errors.Is(err, failure) {
-				t.Errorf("close=%v", err)
-			}
-		})
-		delivery.enqueue(json.RawMessage(`{"type":"run_start","runId":"run"}`))
-		synctest.Wait()
-		boundary := make(chan error, 1)
-		go func() { boundary <- delivery.waitBoundary("run") }()
-		synctest.Wait()
-		select {
-		case err := <-boundary:
-			t.Fatalf("callback rejection bypassed terminal wait: %v", err)
-		default:
-		}
-		delivery.enqueue(json.RawMessage(`{"type":"run_suspend","runId":"run"}`))
-		if err := <-boundary; err != nil {
-			t.Fatal(err)
-		}
-		if err := delivery.close(); !errors.Is(err, failure) {
-			t.Fatalf("delivery failure=%v", err)
-		}
-		if calls != 1 {
-			t.Fatalf("callbacks after rejected tail=%d, want one", calls)
-		}
-	})
+type promptControllerStub struct {
+	services.AgentController
+	prompt services.AgentOperationResponse
+	result services.AgentPromptResult
+	waited string
+}
+
+func (stub *promptControllerStub) Prompt(_ context.Context, request services.AgentPromptRequest) (services.AgentOperationResponse, error) {
+	if request.Message != "question" || request.Images != nil {
+		return services.AgentOperationResponse{}, errors.New("unexpected prompt request")
+	}
+	return stub.prompt, nil
+}
+
+func (stub *promptControllerStub) WaitForPrompt(_ context.Context, operationID string) (services.AgentPromptResult, error) {
+	stub.waited = operationID
+	return stub.result, nil
 }
 
 // upstream: packages/coding-agent/src/experimental/client-runtime.ts:106-127. The first disposal settles same-phase resources concurrently in source order; the disposed flag makes subsequent or reentrant calls return immediately.

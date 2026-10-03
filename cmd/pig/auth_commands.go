@@ -126,7 +126,8 @@ func runLoginCommand(args []string) int {
 			}
 			var credential ai.Credential
 			if credential, err = ai.CredentialFromOAuth(cred); err == nil {
-				err = store.Set(provider.ID(), credential)
+				// As interactive login does, store through the cancellable lock, which waits for another process's lock like Pi's credentials.modify.
+				_, err = store.Modify(context.Background(), provider.ID(), func(*ai.Credential) (*ai.Credential, error) { return &credential, nil })
 			}
 		}
 		if err != nil {

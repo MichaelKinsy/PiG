@@ -127,7 +127,7 @@ func EvaluateOutcome(o *ScenarioOutcome) {
 	}
 	// both_match_regex
 	for _, pat := range a.BothMatchRegex {
-		re, err := regexp.Compile(pat)
+		re, err := regexp.Compile(regexVersionTokens.Replace(pat))
 		if err != nil {
 			o.Failures = append(o.Failures,
 				fmt.Sprintf("invalid regex %q: %v", pat, err))
@@ -481,6 +481,13 @@ func trunc(s string, n int) string {
 var versionTokens = strings.NewReplacer(
 	"{{VERSION}}", coding.Version,
 	"{{UPSTREAM_VERSION}}", coding.UpstreamVersion,
+)
+
+// regexVersionTokens expands the same tokens inside a regular expression. Each
+// pin is quoted so its dots stay literal.
+var regexVersionTokens = strings.NewReplacer(
+	"{{VERSION}}", regexp.QuoteMeta(coding.Version),
+	"{{UPSTREAM_VERSION}}", regexp.QuoteMeta(coding.UpstreamVersion),
 )
 
 // expandVersionTokens joins expectation lists and expands their version tokens.

@@ -168,6 +168,62 @@ func TestPaneSatisfiesWaitRequiresNewEvidenceAfterKeys(t *testing.T) {
 	}
 }
 
+// A repaint under load writes cursor addressing such as ESC[42;1H into the terminal transcript. The wait counts the transcript with the pane, so a control sequence that carries the digits of an expected answer must not satisfy it (session/66 and every wait on "42" passed before the answer arrived, and /clone then ran ahead of the first turn).
+func TestWaitIgnoresDigitsInTerminalControlSequences(t *testing.T) {
+	transcriptPath := filepath.Join(t.TempDir(), "terminal-transcript.log")
+	write := func(content string) {
+		t.Helper()
+		if err := os.WriteFile(transcriptPath, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	history := func() string {
+		return capturePaneHistory(t.Context(), "parity-no-such-session", transcriptPath)
+	}
+	patterns := []string{"42"}
+	write("ready\x1b[?25l")
+	baseline := history()
+
+	write("ready\x1b[?25l\x1b[42;1H\x1b[2K\x1b[38;5;42m\x1b]8;;http://host/42\x07 What is 20+22?\x1b]8;;\x1b\\")
+	if paneSatisfiesWait(history(), patterns, baseline, true) {
+		t.Fatal("digits inside control sequences satisfied the wait")
+	}
+
+	write("ready\x1b[?25l\x1b[42;1H 42")
+	if !paneSatisfiesWait(history(), patterns, baseline, true) {
+		t.Fatal("printed 42 did not satisfy the wait")
+	}
+}
+
+// The transcript is read while tmux pipe-pane is still appending to it, and Pi 1.0.0 fullscreen positions each row with ESC[row;1H and no line break (packages/tui/src/tui-alt-screen.ts:1732-1742). A wait must not see the parameters of a sequence cut off at the end of the file, the payload of a kitty graphics APC (terminal-image.ts:240), or text from two rows joined into one.
+func TestTranscriptTextKeepsOnlyDisplayedText(t *testing.T) {
+	for _, tc := range []struct {
+		name, raw, want string
+	}{
+		{"plain", "What is 20+22?\r\n42", "What is 20+22?\r\n42"},
+		{"style inside a line", "4\x1b[1m2\x1b[0m", "42"},
+		{"erase keeps the cursor", "\r\x1b[2K42\x1b[K", "\r42"},
+		{"csi cut off at the end", "ready\x1b[42", "ready"},
+		{"csi parameters cut off at the end", "ready\x1b[42;", "ready"},
+		{"lone escape at the end", "ready\x1b", "ready"},
+		{"osc cut off at the end", "ready\x1b]8;;http://host/42", "ready"},
+		{"osc hyperlink", "\x1b]8;;http://host/42\x07link\x1b]8;;\x1b\\", "link"},
+		{"osc aborted by another escape", "\x1b]8;;http://host/42\x1b[0mtext", "text"},
+		{"kitty graphics apc", "\x1b_Ga=T,f=100;QUJDNDJE\x1b\\done", "done"},
+		{"cursor marker apc", "ab\x1b_pi:c\x07cd", "abcd"},
+		{"alt-screen rows", "\x1b[1;1H\x1b[2Kcost 4\x1b[2;1H\x1b[2K2 tokens", "\ncost 4\n2 tokens"},
+		{"relative moves", "4\x1b[1A2\x1b[3B4\x1b[2C2", "4\n2\n4\n2"},
+		{"restore cursor", "4\x1b72\x1b84", "42\n4"},
+		{"charset designation", "\x1b(B42", "42"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := transcriptText([]byte(tc.raw)); got != tc.want {
+				t.Fatalf("transcriptText(%q) = %q, want %q", tc.raw, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestParityRunIDIsSafeForTmuxSessionName(t *testing.T) {
 	t.Setenv("PIG_PARITY_RUN_ID", "job / 42")
 	if got := parityRunID(); got != "job-42" {

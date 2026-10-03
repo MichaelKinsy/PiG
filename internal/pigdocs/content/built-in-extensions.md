@@ -2,7 +2,8 @@
 
 Stock PiG contains the Pi-compatible coding agent and generic support for
 extensions, Packages, Piglets, Piglet Binaries, and local reference documents.
-It does not activate product extensions or PiG artwork.
+It does not activate product extensions. Its startup header shows the PiG pig head
+(D2), and its built-in `pig-login` extension registers `/sprite`.
 
 ## Stock capabilities
 
@@ -41,12 +42,10 @@ select, or activate the PiG Standard Piglet.
 
 ## Login identity
 
-Stock PiG starts with its text header and has no built-in mascot catalogue.
-PiG Standard selects the `piglogin` extension. The extension installs its login
-through `ui.setLogin` and owns the `/sprite` command and selected-variant state.
+Stock PiG's startup header shows the sprite's 7-line pixel pig, with the version and hints beside it, where Pi shows its logo (D2). The built-in `pig-login` extension registers `/sprite`, which chooses one of fifteen built-in sprites or a sprite an extension registered with `ui.registerSprite`, and saves the choice in `$PIG_HOME/state/pig-standard/login.json`. Use `/sprite` to open a picker, `/sprite list` and `/sprite set <id>` for text-based control, and `/sprite preview [id]` to see a sprite's full art.
 
-Use `/sprite` in a PiG Standard session to select a variant. Use `/sprite list`
-or `/sprite set <id>` for text-based control.
+PiG Standard selects its own `piglogin` extension. That extension installs its
+login through `ui.setLogin` and replaces the built-in `/sprite` command.
 
 ## PiG Runner
 

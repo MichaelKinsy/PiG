@@ -3,9 +3,12 @@ package source
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 func TestResolveConventionalForms(t *testing.T) {
@@ -384,5 +387,97 @@ func TestResolveNodeDirectoryEntryImportsAsJiti(t *testing.T) {
 				t.Fatalf("Entrypoint = %s, want %s", def.Entrypoint, want)
 			}
 		})
+	}
+}
+
+// Upstream package-manager.ts collectAutoExtensionEntries stats a symbolic
+// link and treats a linked directory as a directory, and collectFilesFromPaths
+// stats each manifest entry the same way. A Go extension selected through a
+// directory link (extensions/x -> ../x/extension) resolves exactly like its
+// target, under the selected path. filepath.WalkDir does not traverse a link
+// used as its root, so the factory and main scans saw no sources.
+func TestResolveGoModuleThroughDirectoryLink(t *testing.T) {
+	for _, tc := range []struct {
+		name, file, source string
+		form               Form
+	}{
+		{name: "factory", file: "extension.go", source: "package x\nimport sdk \"github.com/MichaelKinsy/PiG/extensions/sdk\"\nfunc Extension() *sdk.Extension { return nil }\n", form: Factory},
+		{name: "standalone", file: "main.go", source: "package main\nfunc main() {}\n", form: Standalone},
+		{name: "nested factory", file: filepath.Join("ext", "extension.go"), source: "package ext\nimport sdk \"github.com/MichaelKinsy/PiG/extensions/sdk\"\nfunc Extension() *sdk.Extension { return nil }\n", form: Factory},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			parent := t.TempDir()
+			target := filepath.Join(parent, "x", "extension")
+			writeSourceTestFile(t, filepath.Join(target, "go.mod"), "module example.com/x\n\ngo 1.26\n")
+			writeSourceTestFile(t, filepath.Join(target, tc.file), tc.source)
+			link := filepath.Join(parent, "extensions", "x")
+			if err := os.MkdirAll(filepath.Dir(link), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			testenv.RequireDirectoryLink(t, target, link)
+
+			direct, err := Resolve(target)
+			if err != nil {
+				t.Fatalf("Resolve(target): %v", err)
+			}
+			linked, err := Resolve(link)
+			if err != nil {
+				t.Fatalf("Resolve(link): %v", err)
+			}
+			if linked.Language != "go" || linked.Form != tc.form || linked.Root != link {
+				t.Fatalf("linked definition = %#v, want go %s rooted at the selected link %s", linked, tc.form, link)
+			}
+			// The selected link stands in for the target as root and workspace member.
+			direct.Root = link
+			for i, module := range direct.GoWorkspaceModules {
+				if module == target {
+					direct.GoWorkspaceModules[i] = link
+				}
+			}
+			if !reflect.DeepEqual(direct, linked) {
+				t.Fatalf("linked definition = %#v, want the target's %#v", linked, direct)
+			}
+		})
+	}
+}
+
+// A linked module that is a member of a go.work around its target keeps that
+// workspace, so it builds against the same sibling modules as the target
+// selected directly. The selected link replaces the target among the members.
+func TestResolveGoModuleThroughDirectoryLinkKeepsTargetWorkspace(t *testing.T) {
+	// A physical parent keeps the member paths comparable where the temporary
+	// directory itself sits below a link, as /var does on macOS.
+	parent, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	workspace := filepath.Join(parent, "x")
+	writeSourceTestFile(t, filepath.Join(workspace, "go.work"), "go 1.26\n\nuse (\n\t./extension\n\t./lib\n)\n")
+	writeSourceTestFile(t, filepath.Join(workspace, "lib", "go.mod"), "module example.com/lib\n\ngo 1.26\n")
+	target := filepath.Join(workspace, "extension")
+	writeSourceTestFile(t, filepath.Join(target, "go.mod"), "module example.com/x\n\ngo 1.26\n")
+	writeSourceTestFile(t, filepath.Join(target, "extension.go"), "package x\nimport sdk \"github.com/MichaelKinsy/PiG/extensions/sdk\"\nfunc Extension() *sdk.Extension { return nil }\n")
+	link := filepath.Join(parent, "extensions", "x")
+	if err := os.MkdirAll(filepath.Dir(link), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	testenv.RequireDirectoryLink(t, target, link)
+
+	direct, err := Resolve(target)
+	if err != nil {
+		t.Fatalf("Resolve(target): %v", err)
+	}
+	linked, err := Resolve(link)
+	if err != nil {
+		t.Fatalf("Resolve(link): %v", err)
+	}
+	lib := filepath.Join(workspace, "lib")
+	if want := []string{target, lib}; !slices.Equal(direct.GoWorkspaceModules, want) {
+		t.Fatalf("direct workspace = %q, want %q", direct.GoWorkspaceModules, want)
+	}
+	want := []string{link, lib}
+	slices.Sort(want)
+	if linked.Root != link || !slices.Equal(linked.GoWorkspaceModules, want) {
+		t.Fatalf("linked root %q workspace %q, want root %q workspace %q", linked.Root, linked.GoWorkspaceModules, link, want)
 	}
 }

@@ -49,7 +49,7 @@ func run() error {
 	models := ai.CreateModels(ai.CreateModelsOptions{})
 	defer models.Close()
 	calls := []string{}
-	mixed := ai.CreateProvider(ai.CreateProviderOptions{ID: "mixed", Auth: auth(), Models: []*ai.Model{model("api-a", "model-a", "mixed"), model("api-b", "model-b", "mixed")}, API: ai.ProviderAPIMap{"api-a": recorder("a", &calls), "api-b": recorder("b", &calls)}})
+	mixed := ai.CreateProvider(ai.CreateProviderOptions{ID: "mixed", Auth: auth(), Models: []ai.AnyModel{model("api-a", "model-a", "mixed"), model("api-b", "model-b", "mixed")}, API: ai.ProviderAPIMap{"api-a": recorder("a", &calls), "api-b": recorder("b", &calls)}})
 	models.SetProvider(mixed)
 	for _, row := range [][2]string{{"api-a", "model-a"}, {"api-b", "model-b"}} {
 		result := models.CompleteSimple(ctx, model(ai.API(row[0]), row[1], "mixed"), request, ai.StreamOptions{})
@@ -102,13 +102,13 @@ func refresh(ctx context.Context, output map[string]any) error {
 	models := ai.CreateModels(ai.CreateModelsOptions{ModelsStore: store})
 	defer models.Close()
 	defer once.Do(func() { close(release) })
-	provider := ai.CreateProvider(ai.CreateProviderOptions{ID: "dynamic", Auth: auth(), Models: []*ai.Model{}, API: recorder("a", nil), FetchModels: func(ai.RefreshModelsContext) ([]*ai.Model, error) {
+	provider := ai.CreateProvider(ai.CreateProviderOptions{ID: "dynamic", Auth: auth(), Models: []ai.AnyModel{}, API: recorder("a", nil), FetchModels: func(ai.RefreshModelsContext) ([]ai.AnyModel, error) {
 		current := calls.Add(1)
 		if current == 1 {
 			close(started)
 			<-release
 		}
-		return []*ai.Model{model("api-a", fmt.Sprintf("listed-%d", current), "mixed")}, nil
+		return []ai.AnyModel{model("api-a", fmt.Sprintf("listed-%d", current), "mixed")}, nil
 	}})
 	models.SetProvider(provider)
 	go func() { first <- models.Refresh(ctx, ai.ModelsRefreshOptions{Providers: []string{"dynamic"}}) }()

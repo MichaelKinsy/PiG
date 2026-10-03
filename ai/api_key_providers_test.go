@@ -78,7 +78,8 @@ func TestAPIKeyProviderNameLookup(t *testing.T) {
 func TestAPIKeyProvidersOverlapOnlyForDualAuthProviders(t *testing.T) {
 	// Pi exposes both auth.apiKey and auth.oauth for these providers, including
 	// GitHub Copilot (providers/github-copilot.ts:15-16).
-	allowed := map[string]bool{"anthropic": true, "github-copilot": true, "meta": true, "kimi-coding": true, "openrouter": true, "radius": true, "xai": true}
+	// openai gained Sign in with ChatGPT alongside its API key (.upstream/v0.99.1/packages/ai/src/providers/openai.ts:15-18).
+	allowed := map[string]bool{"openai": true, "anthropic": true, "github-copilot": true, "meta": true, "kimi-coding": true, "openrouter": true, "radius": true, "xai": true}
 	oauth := map[string]bool{}
 	for _, p := range GetOAuthProviders() {
 		oauth[p.ID()] = true

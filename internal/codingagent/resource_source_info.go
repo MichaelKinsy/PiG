@@ -37,3 +37,28 @@ func (i ResourceSourceInfo) DisplayName() string {
 		return filepath.Base(i.Path)
 	}
 }
+
+// BuiltinPathPrefix is the prefix of built-in tool and extension paths, such as `builtin:read` or `builtin:mcp`.
+// Ports .upstream/v0.99.1/packages/coding-agent/src/core/source-info.ts:14-15.
+const BuiltinPathPrefix = "builtin:"
+
+// SyntheticPathSource is the source of a path that names no file: "builtin" for `builtin:<name>`, or the prefix of an angle-bracket path such as "inline" for `<inline:name>`. It is empty for file paths.
+// Ports .upstream/v0.99.1/packages/coding-agent/src/core/source-info.ts:17-25.
+func SyntheticPathSource(path string) string {
+	if strings.HasPrefix(path, BuiltinPathPrefix) {
+		return "builtin"
+	}
+	if strings.HasPrefix(path, "<") && strings.HasSuffix(path, ">") {
+		if source, _, _ := strings.Cut(path[1:len(path)-1], ":"); source != "" {
+			return source
+		}
+		return "temporary"
+	}
+	return ""
+}
+
+// IsSyntheticPath reports whether path names no file: `builtin:<name>` or an angle-bracket path.
+// Ports .upstream/v0.99.1/packages/coding-agent/src/core/source-info.ts:27-29.
+func IsSyntheticPath(path string) bool {
+	return strings.HasPrefix(path, BuiltinPathPrefix) || strings.HasPrefix(path, "<")
+}

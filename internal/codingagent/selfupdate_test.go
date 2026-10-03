@@ -300,6 +300,52 @@ func TestUpdateManifestScriptEmitsCurrentStrictShape(t *testing.T) {
 	}
 }
 
+// A Termux install records kind=standalone, and pig update then looks up android/arm64 (PlatformKey) in the manifest, so the release manifest must name the android archive.
+func TestUpdateManifestScriptNamesTheAndroidArchive(t *testing.T) {
+	python, err := exec.LookPath("python3")
+	if err != nil {
+		t.Skip("python3 is unavailable")
+	}
+	script := filepath.Join("..", "..", "automation", "release", "gen-update-manifest.py")
+	digest := func(target string) string { sum := sha256.Sum256([]byte(target)); return hex.EncodeToString(sum[:]) }
+	sumsFor := func(targets ...string) string {
+		var lines []string
+		for _, target := range targets {
+			lines = append(lines, digest(target)+"  pig-0.4.1-"+target+".tar.gz")
+		}
+		path := filepath.Join(t.TempDir(), "SHA256SUMS")
+		if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")+"\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	run := func(sums string) ([]byte, error) {
+		return exec.Command(python, script, "--version", "0.4.1", "--base-url", "https://updates.example/v0.4.1", "--sha256sums", sums).CombinedOutput()
+	}
+
+	out, err := run(sumsFor("android-arm64", "linux-amd64", "linux-arm64", "darwin-amd64", "darwin-arm64"))
+	if err != nil {
+		t.Fatalf("generate manifest: %v\n%s", err, out)
+	}
+	var manifest UpdateManifest
+	if err := json.Unmarshal(out, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	want := UpdateBinary{URL: "https://updates.example/v0.4.1/pig-0.4.1-android-arm64.tar.gz", SHA256: digest("android-arm64")}
+	if got := manifest.Binaries["android/arm64"]; got != want {
+		t.Fatalf("android/arm64 = %#v, want %#v", got, want)
+	}
+	// Termux must not be pointed at linux-arm64, which its loader cannot start.
+	if manifest.Binaries["android/arm64"] == manifest.Binaries["linux/arm64"] {
+		t.Fatal("android/arm64 names the linux-arm64 archive")
+	}
+
+	// A release without the android archive must not publish a manifest that leaves Termux installs with "no binary for android/arm64".
+	if out, err := run(sumsFor("linux-amd64", "linux-arm64", "darwin-amd64", "darwin-arm64")); err == nil || !strings.Contains(string(out), "pig-0.4.1-android-arm64.tar.gz") {
+		t.Fatalf("manifest without the android archive: err=%v\n%s", err, out)
+	}
+}
+
 func TestAC8AuthenticatedReleaseMetadata(t *testing.T) {
 	body := []byte(`{"version":"1.2.3","packageName":"@pi-in-go/pig","binaries":{}}`)
 

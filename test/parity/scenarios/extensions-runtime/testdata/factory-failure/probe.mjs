@@ -26,6 +26,13 @@ export async function probeFailedAPI(api, onLateEvent = () => {}) {
     ["setThinkingLevel", () => api.setThinkingLevel("high")],
     ["registerProvider", () => api.registerProvider("late-provider", { baseUrl: "https://provider.test/v1", apiKey: "provider-test-key" })],
     ["unregisterProvider", () => api.unregisterProvider("working-provider")],
+    // loader.ts:411-414, 456-497: the 0.99.1 methods reject after a failed factory like every other captured call.
+    ["getSettings", () => api.getSettings()],
+    ["registerMcpServer", () => api.registerMcpServer("late-server", { url: "https://mcp.test" })],
+    ["unregisterMcpServer", () => api.unregisterMcpServer("late-server")],
+    ["getMcpServers", () => api.getMcpServers()],
+    ["registerVirtualModel", () => api.registerVirtualModel({ provider: "late", id: "late", name: "Late", route: () => ({}) })],
+    ["unregisterVirtualModel", () => api.unregisterVirtualModel("late", "late")],
     ["events.emit", () => api.events.emit("factory-failure", undefined)],
     ["events.on", () => api.events.on("factory-failure", onLateEvent)],
   ];

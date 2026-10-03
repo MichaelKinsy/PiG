@@ -11,6 +11,7 @@ import (
 	"golang.org/x/mod/modfile"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 func TestResolveExtConfigMapsConventionalFactory(t *testing.T) {
@@ -62,6 +63,83 @@ func TestResolveExtConfigBuildsEachExactFactoryPackageInOneModule(t *testing.T) 
 		if _, err := os.Stat(cell.BinaryPath); err != nil {
 			t.Fatalf("%s binary: %v", name, err)
 		}
+	}
+}
+
+// A Go factory selected through a directory link keeps the link's name as its
+// identity and builds from the selected path, as the same module selected
+// directly does.
+func TestResolveExtConfigNamesLinkedGoFactoryBySelectedPath(t *testing.T) {
+	parent := t.TempDir()
+	sdkRoot, err := filepath.Abs(filepath.Join("..", "..", "..", "..", "extensions", "sdk"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(parent, "x", "extension")
+	writeResolverFile(t, filepath.Join(target, "go.mod"), fmt.Sprintf("module example.com/x/extension\n\ngo 1.26\n\nrequire github.com/MichaelKinsy/PiG/extensions/sdk v0.0.0\nreplace github.com/MichaelKinsy/PiG/extensions/sdk => %s\n", modfile.AutoQuote(sdkRoot)))
+	writeResolverFile(t, filepath.Join(target, "extension.go"), "package extension\nimport sdk \"github.com/MichaelKinsy/PiG/extensions/sdk\"\nfunc Extension() *sdk.Extension { return sdk.New(\"linked\") }\n")
+	link := filepath.Join(parent, "extensions", "linked")
+	if err := os.MkdirAll(filepath.Dir(link), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	testenv.RequireDirectoryLink(t, target, link)
+	config, _, err := ResolveExtConfig(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if config.Name != "linked" || config.Source != link || config.Package != "example.com/x/extension" || config.EntrypointKind != "factory" || config.Isolation != "shared-ok" {
+		t.Fatalf("config = %#v", config)
+	}
+	extension, err := goExtensionFromConfig(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cell, err := runtimecell.BuildGoPackedCell(context.Background(), t.TempDir(), "linked", []runtimecell.GoExtension{extension})
+	if err != nil {
+		t.Fatalf("build linked factory: %v", err)
+	}
+	if _, err := os.Stat(cell.BinaryPath); err != nil {
+		t.Fatalf("linked factory binary: %v", err)
+	}
+}
+
+// A linked Go factory whose target is a member of a go.work builds against
+// the workspace's sibling modules, as the target selected directly does.
+func TestResolveExtConfigBuildsLinkedGoFactoryInTargetWorkspace(t *testing.T) {
+	parent, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	sdkRoot, err := filepath.Abs(filepath.Join("..", "..", "..", "..", "extensions", "sdk"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	workspace := filepath.Join(parent, "x")
+	writeResolverFile(t, filepath.Join(workspace, "go.work"), "go 1.26\n\nuse (\n\t./extension\n\t./lib\n)\n")
+	writeResolverFile(t, filepath.Join(workspace, "lib", "go.mod"), "module example.com/lib\n\ngo 1.26\n")
+	writeResolverFile(t, filepath.Join(workspace, "lib", "lib.go"), "package lib\n\nconst Name = \"linked\"\n")
+	target := filepath.Join(workspace, "extension")
+	writeResolverFile(t, filepath.Join(target, "go.mod"), fmt.Sprintf("module example.com/x/extension\n\ngo 1.26\n\nrequire (\n\tgithub.com/MichaelKinsy/PiG/extensions/sdk v0.0.0\n\texample.com/lib v0.0.0\n)\n\nreplace github.com/MichaelKinsy/PiG/extensions/sdk => %s\n", modfile.AutoQuote(sdkRoot)))
+	writeResolverFile(t, filepath.Join(target, "extension.go"), "package extension\n\nimport (\n\t\"example.com/lib\"\n\tsdk \"github.com/MichaelKinsy/PiG/extensions/sdk\"\n)\n\nfunc Extension() *sdk.Extension { return sdk.New(lib.Name) }\n")
+	link := filepath.Join(parent, "extensions", "linked")
+	if err := os.MkdirAll(filepath.Dir(link), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	testenv.RequireDirectoryLink(t, target, link)
+	config, _, err := ResolveExtConfig(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	extension, err := goExtensionFromConfig(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cell, err := runtimecell.BuildGoPackedCell(context.Background(), t.TempDir(), "linked", []runtimecell.GoExtension{extension})
+	if err != nil {
+		t.Fatalf("build linked workspace member: %v", err)
+	}
+	if _, err := os.Stat(cell.BinaryPath); err != nil {
+		t.Fatalf("linked workspace member binary: %v", err)
 	}
 }
 

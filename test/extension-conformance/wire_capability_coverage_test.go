@@ -68,15 +68,6 @@ var nodeNotifyBackedCapabilities = map[string][]string{
 	"ui.setEditorComponent": {"ui.editor.install", "ui.editor.clear"},
 }
 
-// sessionMirroredCapabilities are capabilities all SDKs answer from a local
-// session mirror rather than a host call. The mirror is kept in sync by
-// incremental appends in the state_update notify, so the capability is
-// reachable but the wire call string does not appear in SDK source.
-var sessionMirroredCapabilities = map[string]bool{
-	"getBranch":  true,
-	"getEntries": true,
-}
-
 // hostOnlyCapabilities are dispatcher entries no SDK is expected to call.
 // Each names why the capability reaches extensions another way, or why it
 // cannot cross the process boundary at all.
@@ -95,9 +86,6 @@ var hostOnlyCapabilities = map[string]string{
 var knownCapabilityGaps = map[string]map[string]string{
 	"complete": {
 		"node": "host-backed completion is unavailable to Node extensions",
-	},
-	"getModelInfo": {
-		"node": "host model introspection is unavailable to Node extensions",
 	},
 }
 
@@ -232,10 +220,6 @@ func TestEverySDKCanReachEveryWireCapability(t *testing.T) {
 			t.Logf("%s: host-only (%s)", capability, reason)
 			continue
 		}
-		if sessionMirroredCapabilities[capability] {
-			t.Logf("%s: answered from session mirror in all SDKs", capability)
-			continue
-		}
 		for _, sdk := range sdkNames() {
 			if strings.Contains(sources[sdk], fmt.Sprintf("%q", capability)) {
 				continue
@@ -314,11 +298,6 @@ func TestCapabilityExemptionsAreCurrent(t *testing.T) {
 	for capability := range hostOnlyCapabilities {
 		if !known(capability) {
 			t.Errorf("hostOnlyCapabilities names %q, which the host dispatcher no longer accepts", capability)
-		}
-	}
-	for capability := range sessionMirroredCapabilities {
-		if !known(capability) {
-			t.Errorf("sessionMirroredCapabilities names %q, which the host dispatcher no longer accepts", capability)
 		}
 	}
 	for capability, gaps := range knownCapabilityGaps {

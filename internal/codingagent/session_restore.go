@@ -71,7 +71,7 @@ func newSessionFromEntries(cwd, id string, entries []json.RawMessage) (*Session,
 		entryID := base.ID
 		s.leafID = &entryID
 	}
-	s.hasAssistant = s.stats.stats.AssistantMessages > 0
+	s.hasConversation = s.stats.stats.UserMessages > 0 || s.stats.stats.AssistantMessages > 0
 	return s, nil
 }
 

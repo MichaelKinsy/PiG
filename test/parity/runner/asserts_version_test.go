@@ -4,6 +4,7 @@ package runner
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding"
@@ -30,5 +31,26 @@ func TestDivergeTokensAreEvaluatedAgainstOutput(t *testing.T) {
 	EvaluateOutcome(o)
 	if len(o.Failures) == 0 {
 		t.Fatal("a bare Pi version from pig must fail D63's diverge block")
+	}
+}
+
+func TestBothMatchRegexExpandsVersionTokensAsLiterals(t *testing.T) {
+	newOutcome := func(output string) *ScenarioOutcome {
+		o := &ScenarioOutcome{Scenario: &Scenario{Assert: AssertSpec{BothMatchRegex: []string{`^([0-9.]+\+)?{{UPSTREAM_VERSION}}$`}}}}
+		o.Pig.Runs = []Result{{Output: output}}
+		o.Pi.Runs = []Result{{Output: output}}
+		return o
+	}
+	o := newOutcome(coding.Version)
+	EvaluateOutcome(o)
+	if len(o.Failures) != 0 {
+		t.Fatalf("the composite version ends in the pin and must match: %q", o.Failures)
+	}
+	// The pin's dots are literal: a digit in a dot's place is another release.
+	other := strings.Replace(coding.UpstreamVersion, ".", "0", 1)
+	o = newOutcome(other)
+	EvaluateOutcome(o)
+	if len(o.Failures) == 0 {
+		t.Fatalf("%q is not the pinned release %q and must not match", other, coding.UpstreamVersion)
 	}
 }

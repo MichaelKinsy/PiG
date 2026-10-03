@@ -8,113 +8,6 @@ import (
 	"testing"
 )
 
-// TestCollectRowsAssemblesBarrel proves the 0.80 catalog layout (a barrel
-// that imports per-provider files with inline model literals) is parsed
-// equivalently to the old inline single-file format. It deliberately mixes a
-// tab-indented provider file (.ts mirror) and a 4-space-indented one (.js npm
-// dist) so the indentation normalization in the adapter is exercised on both.
-func TestCollectRowsAssemblesBarrel(t *testing.T) {
-	dir := t.TempDir()
-	provDir := filepath.Join(dir, "providers")
-	if err := os.MkdirAll(provDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	// Tab-indented provider (mirrors the .ts source).
-	anthropic := "" +
-		"export const ANTHROPIC_MODELS = {\n" +
-		"\t\"claude-x\": {\n" +
-		"\t\tid: \"claude-x\",\n" +
-		"\t\tname: \"Claude X\",\n" +
-		"\t\tapi: \"anthropic-messages\",\n" +
-		"\t\tprovider: \"anthropic\",\n" +
-		"\t\tbaseUrl: \"https://api.anthropic.com\",\n" +
-		"\t\tcontextWindow: 200000,\n" +
-		"\t} satisfies Model<\"anthropic-messages\">,\n" +
-		"} as const;\n"
-	writeFile(t, filepath.Join(provDir, "anthropic.models.ts"), anthropic)
-
-	// 4-space-indented provider (mirrors the compiled .js dist; no satisfies).
-	openai := "" +
-		"export const OPENAI_MODELS = {\n" +
-		"    \"gpt-z\": {\n" +
-		"        id: \"gpt-z\",\n" +
-		"        name: \"GPT Z\",\n" +
-		"        api: \"openai-responses\",\n" +
-		"        provider: \"openai\",\n" +
-		"        baseUrl: \"https://api.openai.com\",\n" +
-		"        contextWindow: 400000,\n" +
-		"    },\n" +
-		"} as const;\n"
-	writeFile(t, filepath.Join(provDir, "openai.models.ts"), openai)
-
-	barrel := "" +
-		"import { ANTHROPIC_MODELS } from \"./providers/anthropic.models.ts\";\n" +
-		"import { OPENAI_MODELS } from \"./providers/openai.models.ts\";\n" +
-		"export const MODELS = {\n" +
-		"\t\"anthropic\": ANTHROPIC_MODELS,\n" +
-		"\t\"openai\": OPENAI_MODELS,\n" +
-		"} as const;\n"
-	barrelPath := filepath.Join(dir, "models.generated.ts")
-	writeFile(t, barrelPath, barrel)
-
-	rows, err := collectRows(barrelPath)
-	if err != nil {
-		t.Fatalf("collectRows: %v", err)
-	}
-
-	if len(rows) != 2 {
-		t.Fatalf("parsed %d models, want 2", len(rows))
-	}
-	byID := map[string]modelRow{}
-	for _, row := range rows {
-		byID[row.ID] = row
-	}
-
-	ant, ok := byID["claude-x"]
-	if !ok {
-		t.Fatal("claude-x (tab-indented provider) not parsed")
-	}
-	if ant.Provider != "anthropic" || ant.API != "anthropic-messages" || ant.ContextWindow != 200000 {
-		t.Errorf("claude-x = %+v, want provider=anthropic api=anthropic-messages ctx=200000", ant)
-	}
-
-	oai, ok := byID["gpt-z"]
-	if !ok {
-		t.Fatal("gpt-z (4-space-indented provider) not parsed: indentation normalization failed")
-	}
-	if oai.Provider != "openai" || oai.API != "openai-responses" || oai.ContextWindow != 400000 {
-		t.Errorf("gpt-z = %+v, want provider=openai api=openai-responses ctx=400000", oai)
-	}
-}
-
-// TestCollectRowsInlinePassthrough proves the legacy single-file format
-// (no ./providers/ imports) is parsed directly, unchanged.
-func TestCollectRowsInlinePassthrough(t *testing.T) {
-	dir := t.TempDir()
-	inline := "" +
-		"export const MODELS = {\n" +
-		"\t\"anthropic\": {\n" +
-		"\t\t\"claude-y\": {\n" +
-		"\t\t\tid: \"claude-y\",\n" +
-		"\t\t\tapi: \"anthropic-messages\",\n" +
-		"\t\t\tprovider: \"anthropic\",\n" +
-		"\t\t\tbaseUrl: \"https://api.anthropic.com\",\n" +
-		"\t\t} satisfies Model<\"anthropic-messages\">,\n" +
-		"\t},\n" +
-		"} as const;\n"
-	path := filepath.Join(dir, "models.generated.ts")
-	writeFile(t, path, inline)
-
-	rows, err := collectRows(path)
-	if err != nil {
-		t.Fatalf("collectRows: %v", err)
-	}
-	if len(rows) != 1 || rows[0].ID != "claude-y" || rows[0].Provider != "anthropic" {
-		t.Fatalf("inline parse = %+v, want one anthropic/claude-y model", rows)
-	}
-}
-
 func writeFile(t *testing.T, path, content string) {
 	t.Helper()
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
@@ -126,8 +19,8 @@ func TestParseDataJSONRejectsUnknownModelFields(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "models.json")
 	writeFile(t, path, `{
 	  "api": {
-	    "model": {
-	      "id": "model", "name": "Model", "api": "openai-responses",
+	    "chat:model": {
+	      "type": "chat", "id": "model", "name": "Model", "api": "openai-responses",
 	      "provider": "provider", "baseUrl": "https://example.test",
 	      "reasoning": false, "input": ["text"], "contextWindow": 1000,
 	      "maxTokens": 100, "newUpstreamCapability": true
@@ -143,8 +36,8 @@ func TestParseDataJSONAcceptsInputLimits(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "models.json")
 	writeFile(t, path, `{
 	  "anthropic-messages": {
-	    "model": {
-	      "id": "model", "name": "Model", "api": "anthropic-messages",
+	    "chat:model": {
+	      "type": "chat", "id": "model", "name": "Model", "api": "anthropic-messages",
 	      "provider": "anthropic", "baseUrl": "https://example.test",
 	      "reasoning": true, "input": ["text", "image"], "contextWindow": 1000,
 	      "maxTokens": 100,
@@ -191,7 +84,7 @@ func TestInputLimitsPreserveOptionalNumericPresence(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "models.json")
-			writeFile(t, path, `{"anthropic-messages":{"model":{"id":"model","name":"Model","api":"anthropic-messages","provider":"anthropic","baseUrl":"https://example.test","reasoning":false,"input":["text"],"contextWindow":1000,"maxTokens":100,"inputLimits":`+tt.inputLimits+`}}}`)
+			writeFile(t, path, `{"anthropic-messages":{"chat:model":{"type": "chat", "id": "model","name":"Model","api":"anthropic-messages","provider":"anthropic","baseUrl":"https://example.test","reasoning":false,"input":["text"],"contextWindow":1000,"maxTokens":100,"inputLimits":`+tt.inputLimits+`}}}`)
 			rows, err := parseDataJSON(path)
 			if err != nil {
 				t.Fatal(err)
@@ -226,7 +119,7 @@ func TestInputLimitsRejectNonPositivePresentValues(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "models.json")
-			writeFile(t, path, `{"anthropic-messages":{"model":{"id":"model","name":"Model","api":"anthropic-messages","provider":"anthropic","baseUrl":"https://example.test","reasoning":false,"input":["text"],"contextWindow":1000,"maxTokens":100,"inputLimits":`+tt.inputLimits+`}}}`)
+			writeFile(t, path, `{"anthropic-messages":{"chat:model":{"type": "chat", "id": "model","name":"Model","api":"anthropic-messages","provider":"anthropic","baseUrl":"https://example.test","reasoning":false,"input":["text"],"contextWindow":1000,"maxTokens":100,"inputLimits":`+tt.inputLimits+`}}}`)
 			_, err := parseDataJSON(path)
 			if err == nil || !strings.Contains(err.Error(), tt.field) {
 				t.Fatalf("parseDataJSON() error = %v, want %s validation error", err, tt.field)
@@ -239,8 +132,8 @@ func TestParseDataJSONAcceptsCurrentUpstreamModelMetadata(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "models.json")
 	writeFile(t, path, `{
 	  "anthropic-messages": {
-	    "model": {
-	      "id": "model", "name": "Model", "api": "anthropic-messages",
+	    "chat:model": {
+	      "type": "chat", "id": "model", "name": "Model", "api": "anthropic-messages",
 	      "provider": "anthropic", "baseUrl": "https://example.test",
 	      "reasoning": true, "input": ["text"], "contextWindow": 1000,
 	      "maxTokens": 100, "promptCache": {"short": 300, "long": 3600},
@@ -258,8 +151,8 @@ func TestParseDataJSONAcceptsCurrentUpstreamModelMetadata(t *testing.T) {
 	    }
 	  },
 	  "pi-messages": {
-	    "radius-model": {
-	      "id": "radius-model", "name": "Radius Model", "api": "pi-messages",
+	    "chat:radius-model": {
+	      "type": "chat", "id": "radius-model", "name": "Radius Model", "api": "pi-messages",
 	      "provider": "radius", "baseUrl": "https://radius.example.test",
 	      "reasoning": false, "input": ["text"], "contextWindow": 1000,
 	      "maxTokens": 100, "enabled": true, "lab": "Example Lab",
@@ -301,16 +194,16 @@ func TestCollectRowsAPIGroupedJSONProvider(t *testing.T) {
 		"import values from \"./data/anthropic.json\" with { type: \"json\" };\n")
 	writeFile(t, filepath.Join(dataDir, "anthropic.json"), `{
 	  "anthropic-messages": {
-	    "claude-opus-5": {
-	      "id": "claude-opus-5", "name": "Claude Opus 5",
+	    "chat:claude-opus-5": {
+	      "type": "chat", "id": "claude-opus-5", "name": "Claude Opus 5",
 	      "api": "anthropic-messages", "provider": "anthropic",
 	      "baseUrl": "https://api.anthropic.com", "reasoning": true,
 	      "input": ["text", "image"], "contextWindow": 1000000, "maxTokens": 128000,
 	      "samplingParams": {"top_p": 0.8, "min_p": 0.1},
 	      "cost": {"input": 5, "output": 25, "cacheRead": 0.5, "cacheWrite": 6.25}
 	    },
-	    "claude-sonnet-5": {
-	      "id": "claude-sonnet-5", "name": "Claude Sonnet 5",
+	    "chat:claude-sonnet-5": {
+	      "type": "chat", "id": "claude-sonnet-5", "name": "Claude Sonnet 5",
 	      "api": "anthropic-messages", "provider": "anthropic",
 	      "baseUrl": "https://api.anthropic.com", "reasoning": true,
 	      "input": ["text", "image"], "contextWindow": 1000000, "maxTokens": 128000
@@ -318,17 +211,18 @@ func TestCollectRowsAPIGroupedJSONProvider(t *testing.T) {
 	  }
 	}`)
 	barrelPath := filepath.Join(dir, "models.generated.js")
-	writeFile(t, barrelPath, "import { ANTHROPIC_MODELS } from \"./providers/anthropic.models.js\";\n")
+	writeFile(t, barrelPath, "import { ANTHROPIC_CLASSIFIER_MODELS, ANTHROPIC_IMAGE_MODELS, ANTHROPIC_MODELS } from \"./providers/anthropic.models.js\";\n")
 
-	rows, err := collectRows(barrelPath)
+	catalog, err := collectCatalog(barrelPath)
 	if err != nil {
 		t.Fatal(err)
 	}
+	rows := catalog.Chat
 	if len(rows) != 2 || rows[0].ID != "claude-opus-5" || rows[1].ID != "claude-sonnet-5" || rows[0].API != "anthropic-messages" {
-		t.Fatalf("collectRows() order = %+v", rows)
+		t.Fatalf("collectCatalogRows() order = %+v", rows)
 	}
 	if rows[0].SamplingParams["top_p"] != 0.8 || rows[0].SamplingParams["min_p"] != 0.1 {
-		t.Fatalf("collectRows() sampling params = %v", rows[0].SamplingParams)
+		t.Fatalf("collectCatalogRows() sampling params = %v", rows[0].SamplingParams)
 	}
 }
 
@@ -349,9 +243,9 @@ func TestCollectRowsJSONBackedProvider(t *testing.T) {
 		"import values from \"./data/anthropic.json\" with { type: \"json\" };\n"+
 			"export const ANTHROPIC_MODELS = values;\n")
 	// Two models: one with cost/compat/thinking, one with an empty compat.
-	writeFile(t, filepath.Join(dataDir, "anthropic.json"), `{
-	  "claude-j": {
-	    "id": "claude-j", "name": "Claude J", "api": "anthropic-messages",
+	writeFile(t, filepath.Join(dataDir, "anthropic.json"), `{"anthropic-messages": {
+	  "chat:claude-j": {
+	    "type": "chat", "id": "claude-j", "name": "Claude J", "api": "anthropic-messages",
 	    "provider": "anthropic", "baseUrl": "https://api.anthropic.com",
 	    "reasoning": true, "input": ["text", "image"],
 	    "contextWindow": 200000, "maxTokens": 64000,
@@ -362,22 +256,23 @@ func TestCollectRowsJSONBackedProvider(t *testing.T) {
 	               "supportsThinkingTokenBudget": true},
 	    "thinkingLevelMap": {"off": null, "xhigh": "xhigh", "max": "max"}
 	  },
-	  "claude-k": {
-	    "id": "claude-k", "name": "Claude K", "api": "anthropic-messages",
+	  "chat:claude-k": {
+	    "type": "chat", "id": "claude-k", "name": "Claude K", "api": "anthropic-messages",
 	    "provider": "anthropic", "baseUrl": "https://api.anthropic.com",
 	    "contextWindow": 100000, "maxTokens": 8192, "compat": {}
 	  }
-	}`)
+	}}`)
 
-	barrel := "import { ANTHROPIC_MODELS } from \"./providers/anthropic.models.js\";\n" +
+	barrel := "import { ANTHROPIC_CLASSIFIER_MODELS, ANTHROPIC_IMAGE_MODELS, ANTHROPIC_MODELS } from \"./providers/anthropic.models.js\";\n" +
 		"export const MODELS = { \"anthropic\": ANTHROPIC_MODELS } as const;\n"
 	barrelPath := filepath.Join(dir, "models.generated.js")
 	writeFile(t, barrelPath, barrel)
 
-	rows, err := collectRows(barrelPath)
+	catalog, err := collectCatalog(barrelPath)
 	if err != nil {
-		t.Fatalf("collectRows: %v", err)
+		t.Fatalf("collectCatalog: %v", err)
 	}
+	rows := catalog.Chat
 	if len(rows) != 2 {
 		t.Fatalf("parsed %d models, want 2", len(rows))
 	}
@@ -474,5 +369,197 @@ func TestCompatLiteralNewFlags(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Errorf("compatLiteral missing %q\ngot: %s", want, got)
 		}
+	}
+}
+
+// writeTypedCatalog writes a 0.99.1 layout catalog: a barrel importing the three catalog names of each provider shard and one data/<provider>.json per shard.
+func writeTypedCatalog(t *testing.T, providers []string, data map[string]string) string {
+	t.Helper()
+	dir := t.TempDir()
+	dataDir := filepath.Join(dir, "providers", "data")
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	var barrel strings.Builder
+	for _, provider := range providers {
+		name := strings.ToUpper(strings.ReplaceAll(provider, "-", "_"))
+		barrel.WriteString("import { " + name + "_CLASSIFIER_MODELS, " + name + "_IMAGE_MODELS, " + name + "_MODELS } from \"./providers/" + provider + ".models.js\";\n")
+		writeFile(t, filepath.Join(dir, "providers", provider+".models.js"), "import values from \"./data/"+provider+".json\" with { type: \"json\" };\nimport { flattenChatModelCatalog, flattenClassifierModelCatalog, flattenImageModelCatalog } from \"../model-catalog.js\";\nexport const "+name+"_MODELS = flattenChatModelCatalog(\""+provider+"\", values);\n")
+		writeFile(t, filepath.Join(dataDir, provider+".json"), data[provider])
+	}
+	path := filepath.Join(dir, "models.generated.js")
+	writeFile(t, path, barrel.String())
+	return path
+}
+
+const typedChatFixture = `"chat:%[1]s": {"type": "chat", "id": "%[1]s", "name": "%[1]s", "api": "openai-completions", "provider": "%[2]s", "baseUrl": "https://example.test/v1", "reasoning": false, "input": ["text"], "cost": {"input": 1, "output": 2, "cacheRead": 0, "cacheWrite": 0}, "contextWindow": 1000, "maxTokens": 100}`
+
+func typedChat(id, provider string) string {
+	return strings.NewReplacer("%[1]s", id, "%[2]s", provider).Replace(typedChatFixture)
+}
+
+// Upstream flattenModelCatalog (model-catalog.ts:57-63) selects every API group's models by type and keeps
+// insertion order; the barrel (models.generated.ts) fixes the provider order.
+func TestCollectCatalogSplitsTypesInBarrelOrder(t *testing.T) {
+	image := `"image:img-1": {"type": "image", "id": "img-1", "name": "Image 1", "api": "test-images", "provider": "zeta", "baseUrl": "https://example.test/img", "headers": {"X-Test": "1"}, "input": ["text", "image"], "output": ["image", "text"], "cost": {"input": 3, "output": 4, "cacheRead": 5, "cacheWrite": 6}, "inputLimits": {"images": {"maxPerRequest": 4}}}`
+	classifier := `"classifier:cls-1": {"type": "classifier", "id": "cls-1", "name": "Classifier 1", "api": "test-classifier", "provider": "zeta", "baseUrl": "https://example.test/cls", "input": ["text"], "cost": {"input": 7, "output": 0, "cacheRead": 0, "cacheWrite": 0}, "contextWindow": 32000}`
+	path := writeTypedCatalog(t, []string{"zeta", "alpha"}, map[string]string{
+		"zeta":  `{"openai-completions": {` + typedChat("z-b", "zeta") + `, ` + typedChat("z-a", "zeta") + `}, "test-images": {` + image + `}, "test-classifier": {` + classifier + `}}`,
+		"alpha": `{"openai-completions": {` + typedChat("a-1", "alpha") + `}}`,
+	})
+	catalog, err := collectCatalog(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var chat []string
+	for _, row := range catalog.Chat {
+		chat = append(chat, row.Provider+"/"+row.ID)
+	}
+	if want := "zeta/z-b zeta/z-a alpha/a-1"; strings.Join(chat, " ") != want {
+		t.Fatalf("chat order = %v, want %s", chat, want)
+	}
+	if len(catalog.Image) != 1 || len(catalog.Classifier) != 1 {
+		t.Fatalf("image=%d classifier=%d, want 1 each", len(catalog.Image), len(catalog.Classifier))
+	}
+	img := catalog.Image[0]
+	if img.Type != "image" || img.API != "test-images" || img.Headers["X-Test"] != "1" || strings.Join(img.Inputs, ",") != "text,image" || strings.Join(img.Output, ",") != "image,text" || img.InputCost != 3 || img.CacheWrite != 6 || img.InputLimits == nil || img.InputLimits.Images.MaxPerRequest.Value != 4 {
+		t.Fatalf("image row = %+v", img)
+	}
+	cls := catalog.Classifier[0]
+	if cls.Type != "classifier" || cls.API != "test-classifier" || cls.ContextWindow != 32000 || cls.InputCost != 7 {
+		t.Fatalf("classifier row = %+v", cls)
+	}
+}
+
+// Upstream model-data.ts:279-281 rejects a key that is not type:id, model-data.ts:189-193 an unknown type, and
+// model-data.ts:270-273 the same key in two API groups; flatten would silently drop or replace those models.
+func TestParseDataJSONRejectsIdentityDrift(t *testing.T) {
+	for name, data := range map[string]struct{ json, want string }{
+		"key without type prefix": {`{"openai-completions": {"other": ` + typedChat("model", "p")[len(`"chat:model": `):] + `}}`, "type/id identity"},
+		"key names another id":    {`{"openai-completions": {"chat:other": ` + typedChat("model", "p")[len(`"chat:model": `):] + `}}`, "type/id identity"},
+		"missing type":            {`{"openai-completions": {"chat:model": {"id": "model", "name": "M", "api": "openai-completions", "provider": "p", "baseUrl": "u", "input": ["text"]}}}`, `expected "chat", "image", or "classifier"`},
+		"unknown type":            {`{"openai-completions": {"audio:model": {"type": "audio", "id": "model", "name": "M", "api": "openai-completions", "provider": "p", "baseUrl": "u", "input": ["text"]}}}`, `expected "chat", "image", or "classifier"`},
+		"duplicate across groups": {`{"openai-completions": {` + typedChat("model", "p") + `}, "openai-responses": {` + typedChat("model", "p") + `}}`, "more than one API group"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "p.json")
+			writeFile(t, path, data.json)
+			if _, err := parseDataJSON(path); err == nil || !strings.Contains(err.Error(), data.want) {
+				t.Fatalf("parseDataJSON() error = %v, want %q", err, data.want)
+			}
+		})
+	}
+}
+
+// A provider whose shard holds no chat model (typesafe holds only classifier models) is still a barrel key of MODELS, so
+// getBuiltinProviders (providers/all.ts:94-96) returns it and builtinProviders() constructs it (providers/all.ts:136-183).
+func TestCollectCatalogListsEveryBarrelProviderInBarrelOrder(t *testing.T) {
+	classifier := `"classifier:cls-1": {"type": "classifier", "id": "cls-1", "name": "Classifier 1", "api": "test-classifier", "provider": "zeta", "baseUrl": "https://example.test/cls", "input": ["text"], "cost": {"input": 7, "output": 0, "cacheRead": 0, "cacheWrite": 0}, "contextWindow": 32000}`
+	path := writeTypedCatalog(t, []string{"zeta", "alpha", "empty"}, map[string]string{
+		"zeta":  `{"test-classifier": {` + classifier + `}}`,
+		"alpha": `{"openai-completions": {` + typedChat("a-1", "alpha") + `}}`,
+		"empty": `{}`,
+	})
+	catalog, err := collectCatalog(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := strings.Join(catalog.Providers, " "), "zeta alpha empty"; got != want {
+		t.Fatalf("providers = %q, want %q", got, want)
+	}
+}
+
+func TestEmitProviders(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "providers_generated.go")
+	if err := emitProviders(path, "models.generated.js", []string{"zeta", "alpha"}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "// Code generated by cmd/gen-models. DO NOT EDIT.\n// Source: models.generated.js\n// Providers: 2\n\npackage ai\n\n// GeneratedProviders lists the catalog barrel's providers in barrel order (providers/all.ts getBuiltinProviders).\nvar GeneratedProviders = []string{\n\t\"zeta\",\n\t\"alpha\",\n}\n"
+	if string(got) != want {
+		t.Fatalf("providers file =\n%s\nwant\n%s", got, want)
+	}
+}
+
+// A shard's models carry the shard's provider id (model-data.ts:141-143).
+func TestCollectCatalogRejectsProviderMismatch(t *testing.T) {
+	path := writeTypedCatalog(t, []string{"alpha"}, map[string]string{"alpha": `{"openai-completions": {` + typedChat("m", "beta") + `}}`})
+	if _, err := collectCatalog(path); err == nil || !strings.Contains(err.Error(), `provider "beta"`) {
+		t.Fatalf("collectCatalog() error = %v, want provider mismatch", err)
+	}
+}
+
+func TestEmitImageAndClassifierModels(t *testing.T) {
+	dir := t.TempDir()
+	imagePath, classifierPath := filepath.Join(dir, "image_models_generated.go"), filepath.Join(dir, "classifier_models_generated.go")
+	images := []modelRow{{Type: "image", ID: "img-1", Name: "Image 1", API: "test-images", Provider: "zeta", BaseURL: "https://example.test/img", Headers: map[string]string{"B": "2", "A": "1"}, Inputs: []string{"text", "image"}, Output: []string{"image", "text"}, InputCost: 3, OutputCost: 4, CacheRead: 5, CacheWrite: 6, InputLimits: &jsonModelInputLimits{MaxRequestBytes: jsonOptionalInt{Value: 9, Present: true}}}}
+	classifiers := []modelRow{{Type: "classifier", ID: "cls-1", Name: "Classifier 1", API: "test-classifier", Provider: "zeta", BaseURL: "https://example.test/cls", Inputs: []string{"text"}, InputCost: 0.042, ContextWindow: 32000}}
+	if err := emitImages(imagePath, "models.generated.js", images); err != nil {
+		t.Fatal(err)
+	}
+	if err := emitClassifiers(classifierPath, "models.generated.js", classifiers); err != nil {
+		t.Fatal(err)
+	}
+	gotImage, err := os.ReadFile(imagePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantImage := "// Code generated by cmd/gen-models. DO NOT EDIT.\n// Source: models.generated.js\n// Models: 1\n\npackage ai\n\n// GeneratedImageModels is the static image model catalog (1 entries).\nvar GeneratedImageModels = []ImageModel{\n\t{ID: \"img-1\", Name: \"Image 1\", API: ImageAPI(\"test-images\"), Provider: \"zeta\", BaseURL: \"https://example.test/img\", Headers: map[string]string{\"A\": \"1\", \"B\": \"2\"}, Input: []string{\"text\", \"image\"}, InputLimits: &ModelInputLimits{MaxRequestBytes: 9}, Output: []string{\"image\", \"text\"}, Cost: ModelCost{Input: 3, Output: 4, CacheRead: 5, CacheWrite: 6}},\n}\n"
+	if string(gotImage) != wantImage {
+		t.Fatalf("image catalog =\n%s\nwant\n%s", gotImage, wantImage)
+	}
+	gotClassifier, err := os.ReadFile(classifierPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantClassifier := "// Code generated by cmd/gen-models. DO NOT EDIT.\n// Source: models.generated.js\n// Models: 1\n\npackage ai\n\n// GeneratedClassifierModels is the static classifier model catalog (1 entries).\nvar GeneratedClassifierModels = []ClassifierModel{\n\t{ID: \"cls-1\", Name: \"Classifier 1\", API: ClassifierAPI(\"test-classifier\"), Provider: \"zeta\", BaseURL: \"https://example.test/cls\", Input: []string{\"text\"}, Cost: ModelCost{Input: 0.042, Output: 0, CacheRead: 0, CacheWrite: 0}, ContextWindow: 32000},\n}\n"
+	if string(gotClassifier) != wantClassifier {
+		t.Fatalf("classifier catalog =\n%s\nwant\n%s", gotClassifier, wantClassifier)
+	}
+}
+
+// ImageModel and ClassifierModel carry the base fields plus output or contextWindow, and chat models carry no output
+// (model-data.ts:170-172); a catalog field beyond that must fail generation instead of vanishing from the Go catalog.
+func TestCollectCatalogRejectsFieldsTheGoModelsCannotCarry(t *testing.T) {
+	image := func(extra string) string {
+		return `{"test-images": {"image:img": {"type": "image", "id": "img", "name": "Img", "api": "test-images", "provider": "alpha", "baseUrl": "u", "input": ["text"], "output": ["image"], "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}` + extra + `}}}`
+	}
+	classifier := func(extra string) string {
+		return `{"test-classifier": {"classifier:cls": {"type": "classifier", "id": "cls", "name": "Cls", "api": "test-classifier", "provider": "alpha", "baseUrl": "u", "input": ["text"], "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}, "contextWindow": 10` + extra + `}}}`
+	}
+	for name, row := range map[string]struct{ data, want string }{
+		"image compat":          {image(`, "compat": {"supportsStore": false}`), "compat"},
+		"image max tokens":      {image(`, "maxTokens": 10`), "maxTokens"},
+		"image context window":  {image(`, "contextWindow": 10`), "contextWindow"},
+		"classifier thinking":   {classifier(`, "thinkingLevelMap": {"off": null}`), "thinkingLevelMap"},
+		"classifier output":     {classifier(`, "output": ["image"]`), "output"},
+		"classifier reasoning":  {classifier(`, "reasoning": true`), "reasoning"},
+		"chat output modalites": {`{"openai-completions": {` + typedChat("m", "alpha")[:len(typedChat("m", "alpha"))-1] + `, "output": ["text"]}}}`, "output"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			path := writeTypedCatalog(t, []string{"alpha"}, map[string]string{"alpha": row.data})
+			if _, err := collectCatalog(path); err == nil || !strings.Contains(err.Error(), "cannot carry") || !strings.Contains(err.Error(), row.want) {
+				t.Fatalf("collectCatalog() error = %v, want a field-loss error naming %q", err, row.want)
+			}
+		})
+	}
+}
+
+// flattenModelCatalog builds its record with Object.fromEntries, which enumerates canonical array-index ids first, ascending.
+func TestCollectCatalogOrdersNumericIDsLikeObjectFromEntries(t *testing.T) {
+	path := writeTypedCatalog(t, []string{"alpha"}, map[string]string{"alpha": `{"openai-completions": {` + typedChat("b", "alpha") + `, ` + typedChat("10", "alpha") + `, ` + typedChat("a", "alpha") + `, ` + typedChat("2", "alpha") + `, ` + typedChat("01", "alpha") + `}}`})
+	catalog, err := collectCatalog(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ids []string
+	for _, row := range catalog.Chat {
+		ids = append(ids, row.ID)
+	}
+	if want := "2 10 b a 01"; strings.Join(ids, " ") != want {
+		t.Fatalf("order = %v, want %s", ids, want)
 	}
 }

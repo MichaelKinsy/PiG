@@ -72,12 +72,12 @@ func TestBuiltinThemeOptionalColorsMatchPinnedThemes(t *testing.T) {
 		want map[string]string
 	}{
 		{name: "dark", want: map[string]string{
-			"text": "#d4d4d4", "scrollbarTrack": "#505050", "scrollbarThumb": "#d4d4d4",
-			"searchMatchBg": "#3a3a4a", "searchMatchText": "#d4d4d4", "thinkingMax": "#ff5fff",
+			"text": "#dee0e1", "scrollbarTrack": "#484e52", "scrollbarThumb": "#97a0a5",
+			"searchMatchBg": "#4e2f1b", "searchMatchText": "#9da5a9", "thinkingMax": "#fe5462",
 		}},
 		{name: "light", want: map[string]string{
-			"text": "#1f2328", "scrollbarTrack": "#b0b0b0", "scrollbarThumb": "#1f2328",
-			"searchMatchBg": "#d0d0e0", "searchMatchText": "#1f2328", "thinkingMax": "#af005f",
+			"text": "#3b3f41", "scrollbarTrack": "#e1e3e4", "scrollbarThumb": "#96a0a4",
+			"searchMatchBg": "#ede3dd", "searchMatchText": "#677176", "thinkingMax": "#fe7479",
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -144,33 +144,17 @@ func TestLoadThemeDir(t *testing.T) {
 
 func TestThemeRegistry(t *testing.T) {
 	r := NewThemeRegistry()
-	if len(r.Names()) != 2 {
-		t.Errorf("Names = %v, want [dark, light]", r.Names())
+	if len(r.Names()) != 3 {
+		t.Errorf("Names = %v, want [system, dark, light]", r.Names())
 	}
 
 	custom := &Theme{Name: "custom"}
 	r.Add(custom)
-	if len(r.Names()) != 3 {
+	if len(r.Names()) != 4 {
 		t.Errorf("Names = %v after Add", r.Names())
 	}
 	if r.Get("custom") != custom {
 		t.Error("Get(custom) should return added theme")
-	}
-}
-
-func TestHexToBgANSI(t *testing.T) {
-	got := hexToBgANSI("#343541")
-	want := "\x1b[48;2;52;53;65m"
-	if got != want {
-		t.Errorf("hexToBgANSI(#343541) = %q, want %q", got, want)
-	}
-}
-
-func TestHexToFgANSI(t *testing.T) {
-	got := hexToFgANSI("#8abeb7")
-	want := "\x1b[38;2;138;190;183m"
-	if got != want {
-		t.Errorf("hexToFgANSI(#8abeb7) = %q, want %q", got, want)
 	}
 }
 
@@ -200,6 +184,9 @@ func writeThemeWithSections(t *testing.T, name, vars, colorsFragment, export str
 // escapes of fgAnsi/bgAnsi (`38;5;N` / `48;5;N`); HTML export colors convert
 // it with ansi256ToHex (getResolvedThemeColors, getThemeExportColors).
 func TestLoadThemeFileIndexedColors(t *testing.T) {
+	// The hex color is emitted as 24-bit SGR only when the terminal reports truecolor.
+	preserveCapabilityState(t)
+	SetCapabilities(TerminalCapabilities{TrueColor: true})
 	path := writeThemeWithSections(t, "indexed",
 		`"idx":34,"alias":"idx","cardIdx":255`,
 		`"accent":123,"userMessageBg":236,"success":"idx","error":"alias","thinkingText":1.2e2`,
@@ -235,20 +222,27 @@ func TestLoadThemeFileIndexedColors(t *testing.T) {
 	}
 }
 
-// TestLoadThemeFileExplicitEmptyColors mirrors theme.ts: an explicit empty
-// color resolves to the terminal default reset, while CSS export receives the
-// light or dark default text color. An absent token still emits no escape.
+// TestLoadThemeFileExplicitEmptyColors mirrors theme.ts Theme: an explicit empty color resolves to the terminal default reset, while the color values the export reads are the terminal's default colors, or a guess by the theme's appearance (upstream 0.99.1 GUESSED_DEFAULT_COLORS) when the terminal reported none. An absent token still emits no escape.
 func TestLoadThemeFileExplicitEmptyColors(t *testing.T) {
+	SetTerminalColors(TerminalColors{})
 	for _, tc := range []struct {
-		name    string
-		wantCSS string
+		appearance     string
+		wantFg, wantBg string
 	}{
-		{name: "light", wantCSS: "#000000"},
-		{name: "custom-dark", wantCSS: "#e5e5e7"},
+		{appearance: "light", wantFg: "#000000", wantBg: "#ffffff"},
+		{appearance: "dark", wantFg: "#e5e5e7", wantBg: "#000000"},
 	} {
-		t.Run(tc.name, func(t *testing.T) {
-			path := writeThemeWithSections(t, tc.name, `"terminalDefault":""`,
+		t.Run(tc.appearance, func(t *testing.T) {
+			path := writeThemeWithSections(t, "custom-"+tc.appearance, `"terminalDefault":""`,
 				`"accent":"terminalDefault","userMessageBg":""`, "")
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			data = []byte(strings.Replace(string(data), `"vars"`, `"appearance":"`+tc.appearance+`","vars"`, 1))
+			if err := os.WriteFile(path, data, 0o600); err != nil {
+				t.Fatal(err)
+			}
 			theme, err := LoadThemeFile(path)
 			if err != nil {
 				t.Fatal(err)
@@ -259,8 +253,8 @@ func TestLoadThemeFileExplicitEmptyColors(t *testing.T) {
 				{name: "FgText", got: theme.FgText("accent", "x"), want: SGRFgReset + "x" + SGRFgReset},
 				{name: "UserMessageBg", got: theme.UserMessageBg, want: SGRBgReset},
 				{name: "Bg", got: theme.Bg("userMessageBg"), want: SGRBgReset},
-				{name: "Colors[accent]", got: theme.Colors()["accent"], want: tc.wantCSS},
-				{name: "Colors[userMessageBg]", got: theme.Colors()["userMessageBg"], want: tc.wantCSS},
+				{name: "Colors[accent]", got: theme.Colors()["accent"], want: tc.wantFg},
+				{name: "Colors[userMessageBg]", got: theme.Colors()["userMessageBg"], want: tc.wantBg},
 				{name: "missing Fg", got: theme.Fg("not-a-token"), want: ""},
 				{name: "missing Bg", got: theme.Bg("not-a-token"), want: ""},
 			} {

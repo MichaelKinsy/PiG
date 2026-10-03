@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	agenttools "github.com/MichaelKinsy/PiG/internal/codingagent/tools"
+
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
@@ -840,5 +842,36 @@ func TestBuildExtensionPigletCommandRejectsMutation(t *testing.T) {
 	}
 	if !strings.Contains(ui.notified, "read-only") || !strings.Contains(ui.notified, "separate invocation") {
 		t.Fatalf("notification = %q", ui.notified)
+	}
+}
+
+func TestParse_UnknownBuiltinToolMessage(t *testing.T) {
+	_, err := ParseBytes([]byte("name: x\ntools: [todo]\n"))
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	want := `tools[0]: "todo" is not a built-in tool (built-ins: ` + strings.Join(agenttools.BuiltinToolNames(), ", ") + `); list extension tools under extensions[].tools`
+	if !strings.Contains(err.Error(), want) {
+		t.Fatalf("error = %v, want containing %s", err, want)
+	}
+}
+
+func TestScopeToolsReadOnlyRoleWithExtensionTools(t *testing.T) {
+	builtins := []string{"read"}
+	search := []string{"web_search"}
+	piglet := &Piglet{
+		BuiltinTools: &builtins,
+		Extensions:   []ExtensionEntry{{Name: "search", Tools: &search}},
+	}
+	all := []ToolInfo{
+		{Name: "read", Source: "builtin"},
+		{Name: "write", Source: "builtin"},
+		{Name: "bash", Source: "builtin"},
+		{Name: "edit", Source: "builtin"},
+		{Name: "web_search", Source: "search"},
+	}
+	want := []string{"read", "web_search"}
+	if got := ScopeTools(piglet, all); !slices.Equal(got, want) {
+		t.Fatalf("ScopeTools = %v, want %v", got, want)
 	}
 }

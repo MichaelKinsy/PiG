@@ -21,7 +21,12 @@ func callArgumentCompletions(complete extension.ArgumentCompletionsFunc, prefix 
 
 // extensionCommandSlashEntry retains the command's awaited callback. Its first result is real, not a cache-miss stand-in followed by a second query.
 func (m *InteractiveMode) extensionCommandSlashEntry(command extension.ResolvedCommand) tui.SlashCommand {
-	entry := tui.SlashCommand{Name: strings.TrimPrefix(command.InvocationName, "/"), Description: command.Description}
+	var info *PiSourceInfo
+	if command.SourceInfo != nil {
+		converted := PiSourceInfoValue(command.SourceInfo)
+		info = &converted
+	}
+	entry := tui.SlashCommand{Name: strings.TrimPrefix(command.InvocationName, "/"), Description: prefixAutocompleteDescription(command.Description, info)}
 	if command.GetArgumentCompletions != nil {
 		entry.AwaitArgumentCompletions = func(prefix string) ([]tui.AutocompleteItem, error) {
 			items, err := callArgumentCompletions(command.GetArgumentCompletions, prefix)

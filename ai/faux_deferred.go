@@ -41,7 +41,7 @@ func (p *fauxProvider) makeDefinition() *ModelsProvider {
 	stream := func(ctx context.Context, model *Model, transcript TranscriptContext, options StreamOptions) (*AssistantMessageEventStream, error) {
 		return p.streamModel(ctx, model, transcript, options)
 	}
-	return CreateProvider(CreateProviderOptions{ID: p.ID(), Auth: ProviderAuth{APIKey: &APIKeyAuth{Name: "Faux", Resolve: func(context.Context, APIKeyAuthInput) (*AuthResult, error) { return &AuthResult{}, nil }}}, Models: p.models, API: &ProviderStreams{Stream: stream, StreamSimple: stream, FetchDeferred: p.fetchDeferred, CancelDeferred: p.cancelDeferred}})
+	return CreateProvider(CreateProviderOptions{ID: p.ID(), Auth: ProviderAuth{APIKey: &APIKeyAuth{Name: "Faux", Resolve: func(context.Context, APIKeyAuthInput) (*AuthResult, error) { return &AuthResult{}, nil }}}, Models: AnyModels(p.models), API: &ProviderStreams{Stream: stream, StreamSimple: stream, FetchDeferred: p.fetchDeferred, CancelDeferred: p.cancelDeferred}})
 }
 
 func (p *fauxProvider) submitDeferred(model *Model, request TranscriptContext, options StreamOptions, step FauxResponseStep) DeferredHandle {

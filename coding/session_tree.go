@@ -8,6 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 // treeNavigationTarget returns the leaf navigateTree moves to and the text it
@@ -180,11 +181,8 @@ func (s *Session) emitSessionBeforeTree(ctx context.Context, preparation *TreePr
 // extensionTreeSummary converts an extension-provided summary.
 func extensionTreeSummary(result *sessionBeforeTreeResult) (*treeBranchSummary, error) {
 	summary := &treeBranchSummary{Summary: result.Summary.Summary, Usage: result.Summary.Usage, FromExtension: true}
-	if len(result.Summary.Details) > 0 && string(result.Summary.Details) != "null" {
-		if err := json.Unmarshal(result.Summary.Details, &summary.Details); err != nil {
-			return nil, err
-		}
-	}
+	// The details are the value the extension wrote; keep its member order.
+	summary.Details = orderedjson.Value(result.Summary.Details)
 	return summary, nil
 }
 

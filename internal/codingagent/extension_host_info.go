@@ -32,17 +32,15 @@ type PiSlashCommand struct {
 	SourceInfo  PiSourceInfo `json:"sourceInfo"`
 }
 
-// LlamaExtensionPath is the source path upstream gives the built-in inline
-// llama.cpp extension (`<inline:${name}>`).
-const LlamaExtensionPath = "<inline:llama.cpp>"
+// LlamaExtensionPath is the source path upstream gives the built-in llama.cpp
+// extension (`builtin:${name}`).
+// Ports .upstream/v0.99.1/packages/coding-agent/src/extensions/index.ts:8 and core/resource-loader.ts:706-735.
+const LlamaExtensionPath = BuiltinPathPrefix + "llama.cpp"
 
-// LlamaSlashCommand is the /llama command of the built-in llama.cpp
-// extension, as getCommands lists it.
-func LlamaSlashCommand() PiSlashCommand {
-	return PiSlashCommand{
-		Name: llama.CommandName, Description: llama.CommandDescription, Source: "extension",
-		SourceInfo: PiSourceInfo{Path: LlamaExtensionPath, Source: "inline", Scope: "temporary", Origin: "top-level"},
-	}
+// IsLlamaCommand reports whether command is the /llama command of the built-in llama.cpp extension. A mode runs it with its own
+// command context instead of the extension handler.
+func IsLlamaCommand(command extension.ResolvedCommand) bool {
+	return command.Name == llama.CommandName && command.SourceInfo != nil && PiSourceInfoValue(command.SourceInfo).Path == LlamaExtensionPath
 }
 
 // ExtensionCommandLister is the extension runner surface the command catalog
@@ -55,12 +53,7 @@ type ExtensionCommandLister interface {
 // (agent-session.ts _bindExtensionCore) and RPC get_commands report:
 // extension commands, then prompt templates, then skills.
 type SlashCommandCatalog struct {
-	Runner ExtensionCommandLister
-	// Inline are the commands of upstream's inline built-in extensions
-	// (llama.cpp). Upstream loads inline extensions after every path
-	// extension (resource-loader.ts loadFinalExtensionSet), so their commands
-	// follow the runner's.
-	Inline          []PiSlashCommand
+	Runner          ExtensionCommandLister
 	PromptTemplates []PromptTemplate
 	Skills          []*SkillDef
 	CWD             string
@@ -79,7 +72,6 @@ func (c SlashCommandCatalog) Commands() []PiSlashCommand {
 			})
 		}
 	}
-	commands = append(commands, c.Inline...)
 	for _, template := range c.PromptTemplates {
 		commands = append(commands, PiSlashCommand{
 			Name: template.Name, Description: template.Description, Source: "prompt",
@@ -258,7 +250,8 @@ func ExtensionToolInfos(runner ExtensionToolLister, allowed, excluded map[string
 		out = append(out, subprocess.ToolInfo{
 			Name: schema.Name, Description: schema.Description, Parameters: parameters,
 			PromptGuidelines: schema.PromptGuidelines,
-			SourceInfo:       PiSourceInfo{Path: "<builtin:" + schema.Name + ">", Source: "builtin", Scope: "temporary", Origin: "top-level"},
+			SourceInfo:       PiSourceInfo{Path: BuiltinPathPrefix + schema.Name, Source: "builtin", Scope: "temporary", Origin: "top-level"},
+			Exposure:         extension.ToolExposureDirect,
 			Source:           "builtin",
 		})
 	}
@@ -274,7 +267,17 @@ func ExtensionToolInfos(runner ExtensionToolLister, allowed, excluded map[string
 		info := subprocess.ToolInfo{
 			Name: name, Description: tool.Definition.Description, Parameters: tool.Definition.Parameters,
 			PromptGuidelines: tool.Definition.PromptGuidelines, SourceInfo: PiSourceInfoValue(sourceInfo),
-			Source: toolSource(tool),
+			Exposure: tool.Definition.Exposure,
+			Source:   toolSource(tool),
+		}
+		if info.Exposure == "" {
+			info.Exposure = extension.ToolExposureDirect
+		}
+		if tool.Definition.Namespace != nil {
+			info.Namespace = new(*tool.Definition.Namespace)
+		}
+		if tool.Definition.Annotations != nil {
+			info.Annotations = new(*tool.Definition.Annotations)
 		}
 		if i, ok := index[name]; ok {
 			out[i] = info

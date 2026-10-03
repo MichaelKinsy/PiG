@@ -41,7 +41,7 @@ func TestSessionBlockedToolTerminatesWithoutAnotherResponse(t *testing.T) {
 			ends = append(ends, end)
 		}
 	}
-	if len(ends) != 1 || !ends[0].Result.Terminate || !ends[0].Result.IsError {
+	if len(ends) != 1 || !ends[0].Result.Terminate || !ends[0].IsError {
 		t.Fatalf("tool execution ends = %+v", ends)
 	}
 	for _, message := range messages {
@@ -86,7 +86,7 @@ func TestSessionParallelPreflightAbortPreventsPreparedEffects(t *testing.T) {
 			starts = append(starts, e.ToolCallID)
 		case agent.ToolExecutionEndEvent:
 			ends = append(ends, e.ToolCallID)
-			if !e.Result.IsError {
+			if !e.IsError {
 				t.Fatalf("non-error tool end: %+v", e)
 			}
 		}

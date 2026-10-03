@@ -52,9 +52,8 @@ func JSTrimEnd(s string) string {
 	return s
 }
 
-// JSTrim is String.prototype.trim.
-func JSTrim(s string) string {
-	s = JSTrimEnd(s)
+// JSTrimStart is String.prototype.trimStart.
+func JSTrimStart(s string) string {
 	for s != "" {
 		r, n := utf8.DecodeRuneInString(s)
 		if !IsJSSpace(r) {
@@ -64,6 +63,9 @@ func JSTrim(s string) string {
 	}
 	return s
 }
+
+// JSTrim is String.prototype.trim.
+func JSTrim(s string) string { return JSTrimStart(JSTrimEnd(s)) }
 
 // Grapheme_Cluster_Break values (bits 8..11).
 const (

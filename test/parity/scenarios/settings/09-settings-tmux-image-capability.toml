@@ -1,5 +1,5 @@
-# Upstream evidence: Pi 0.87.1 terminal-image.ts:77-85 rejects inherited image hints under tmux.
-# settings-selector.ts:727-763 hides Show images and Image width, but retains
+# Upstream evidence: Pi 0.99.1 terminal-image.ts:79-82 rejects inherited image hints under tmux.
+# settings-selector.ts:757-796 hides Show images and Image width, but retains
 # Auto-resize images and Block images. Reproduced with Herdr graphics forwarded
 # to the outer terminal; tmux is still the immediate terminal boundary.
 name = "09-settings-tmux-image-capability"
@@ -39,11 +39,11 @@ both_not_contain = ["Show images", "Image width"]
 output_equal = true
 escaped_output_equal = true
 runs = 3
-pig_contains = ["(1/32)"]
-pi_contains = ["(1/31)"]
+pig_contains = ["(1/33)"]
+pi_contains = ["(1/32)"]
 
 # normalize-rationale: D80 contributes exactly one non-image privacy row. Assert both raw counts while preserving the image-control and full-frame comparisons.
 [[assert.normalize_replace]]
-pattern = '\(1/32\)'
-with = '(1/31)'
-reason = "D80 adds one non-image settings row; Pi's 33-row catalog loses two image-only rows under tmux, and PiG adds one privacy row."
+pattern = '\(1/33\)'
+with = '(1/32)'
+reason = "D80 adds one non-image settings row; Pi 0.99.1's 34-row catalog loses two image-only rows under tmux, and PiG adds one privacy row."

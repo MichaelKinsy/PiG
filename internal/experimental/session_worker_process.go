@@ -20,9 +20,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/agentharness"
-	envpkg "github.com/MichaelKinsy/PiG/agent/harness/env"
-	"github.com/MichaelKinsy/PiG/agent/harness/session"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/experimental/services"
 	"github.com/MichaelKinsy/PiG/internal/pilock"
@@ -39,29 +36,35 @@ const (
 
 // SessionWorkerOptions describes the durable Session and selected plugins of one worker process.
 type SessionWorkerOptions struct {
-	SessionDir          string                  `json:"sessionDir"`
-	Metadata            session.SessionMetadata `json:"metadata"`
-	Provider            string                  `json:"provider,omitempty"`
-	Model               string                  `json:"model,omitempty"`
-	PluginManifestPaths []string                `json:"pluginManifestPaths"`
+	SessionDir          string                 `json:"sessionDir"`
+	Metadata            SessionCatalogMetadata `json:"metadata"`
+	Provider            string                 `json:"provider,omitempty"`
+	Model               string                 `json:"model,omitempty"`
+	PluginManifestPaths []string               `json:"pluginManifestPaths"`
 }
 
-// SessionWorkerHarness is the durable Harness boundary owned by a worker process. Lane returns the presentation adapter for the acquired durable lane.
+// SessionWorkerHarness is the Session's durable Harness as the worker owns it: the submission and agent-document boundary of the services, its task activity, and recovery of interrupted work. Close releases the storage.
 type SessionWorkerHarness interface {
-	Events() *agentharness.HarnessEventBus
-	Lane(context.Context, string) (services.SessionWorkerServiceLane, error)
+	services.AgentHarness
 	Close(context.Context) error
+	// TaskGraph observes the Harness's live tasks.
+	TaskGraph(context.Context) (services.TaskGraphActivity, error)
+	// Resume continues work an interrupted turn left behind.
+	Resume()
 }
 
-// SessionWorkerRuntime selects a Harness and its optional already-acquired lane and facet collaborators.
+// SessionWorkerRuntime is a Session's opened Harness with its root conversation and the optional collaborators of the services. Cleanup releases resources the Harness does not own, such as execution environments, after it closed.
 type SessionWorkerRuntime struct {
 	Harness         SessionWorkerHarness
-	Lane            services.SessionWorkerServiceLane
+	Conversation    services.SessionWorkerConversation
 	ModelRuntime    services.ModelsServiceModelRuntime
 	SettingsManager services.ModelsServiceSettingsManager
 	FacetLoader     chord.FacetLoader
+	Cleanup         func(context.Context) error
 }
-type CreateSessionWorkerHarness func(context.Context, session.Session, SessionWorkerOptions, *envpkg.NodeExecutionEnv) (SessionWorkerRuntime, error)
+
+// CreateSessionWorkerHarness opens the Session's Harness over databasePath and returns it with its root conversation. It runs while the worker holds the Session lock; on failure it closes whatever it opened.
+type CreateSessionWorkerHarness func(ctx context.Context, databasePath string, options SessionWorkerOptions) (SessionWorkerRuntime, error)
 
 type workerControlConnection struct {
 	socket                    net.Conn
@@ -294,11 +297,9 @@ func RunSessionWorkerWithHarness(ctx context.Context, args []string, createHarne
 	if err != nil {
 		return err
 	}
-	executionEnv := envpkg.NewNodeExecutionEnv(envpkg.NodeExecutionEnvOptions{Cwd: options.Metadata.Cwd})
-	repo := session.NewJsonlSessionRepo(session.JsonlSessionRepoOptions{FileSystem: executionEnv, SessionsRoot: options.SessionDir})
-	var stored session.Session
 	var runtime SessionWorkerRuntime
 	var workerServices *services.SessionWorkerServices
+	var taskGraph services.TaskGraphActivity
 	defer func() {
 		var failures []any
 		record := func(err error) {
@@ -311,11 +312,10 @@ func RunSessionWorkerWithHarness(ctx context.Context, args []string, createHarne
 		}
 		if runtime.Harness != nil {
 			record(runtime.Harness.Close(context.Background()))
-		} else if stored != nil {
-			record(stored.Close(context.Background()))
 		}
-		record(repo.Close(context.Background()))
-		executionEnv.Cleanup(context.Background())
+		if runtime.Cleanup != nil {
+			record(runtime.Cleanup(context.Background()))
+		}
 		if unreportedCleanup {
 			releaseAfterReport = ownership.Release
 		} else {
@@ -340,22 +340,17 @@ func RunSessionWorkerWithHarness(ctx context.Context, args []string, createHarne
 			result = &services.AggregateError{Message: "Session worker startup and cleanup failed", Errors: []any{result, cleanupError}}
 		}
 	}()
-	stored, err = repo.Open(context.Background(), options.Metadata)
+	runtime, err = createHarness(context.Background(), SessionStoragePath(options.Metadata), options)
 	if err != nil {
 		return err
 	}
-	runtime, err = createHarness(context.Background(), stored, options, executionEnv)
+	taskGraph, err = runtime.Harness.TaskGraph(context.Background())
 	if err != nil {
 		return err
 	}
-	lane := runtime.Lane
-	if lane == nil {
-		lane, err = runtime.Harness.Lane(context.Background(), "main")
-		if err != nil {
-			return err
-		}
-	}
-	workerServices, err = services.CreateSessionWorkerServices(services.SessionWorkerServicesOptions{Lane: lane, ModelRuntime: runtime.ModelRuntime, SettingsManager: runtime.SettingsManager, FacetLoader: runtime.FacetLoader, Publish: func(_ context.Context, scope services.WorkerServiceScope, subscriptionID string, update chord.ServiceProviderUpdate) error {
+	// The task graph is released on every exit: before the Harness closes on a startup failure, and with the lifecycle afterwards.
+	defer taskGraph.Dispose()
+	workerServices, err = services.CreateSessionWorkerServices(services.SessionWorkerServicesOptions{Harness: runtime.Harness, Conversation: runtime.Conversation, ModelRuntime: runtime.ModelRuntime, SettingsManager: runtime.SettingsManager, FacetLoader: runtime.FacetLoader, Publish: func(_ context.Context, scope services.WorkerServiceScope, subscriptionID string, update chord.ServiceProviderUpdate) error {
 		return control.send(map[string]any{"type": "service_update", "token": token, "sessionKey": sessionKey, "scope": WorkerOperationScope{ServerConnectionID: scope.ServerConnectionId, AttachmentID: scope.AttachmentId}, "subscriptionId": subscriptionID, "update": update})
 	}})
 	if err != nil {
@@ -377,11 +372,10 @@ func RunSessionWorkerWithHarness(ctx context.Context, args []string, createHarne
 	retire := func() { retireOnce.Do(func() { close(retired) }) }
 	lifecycle := NewWorkerLifecycle(WorkerLifecycleOptions{InitialServerConnectionID: control.initialServerConnectionID, InitialDemandGraceMs: initialGrace, OrphanDemandGraceMs: orphanGrace, OnRetire: retire})
 	defer lifecycle.Close()
-	remove, err := installWorkerLifecycle(runtime.Harness.Events(), lifecycle, retire)
-	if err != nil {
-		return err
-	}
-	defer remove()
+	// Every live task, background work included, keeps the worker and its Session open.
+	defer taskGraph.Subscribe(lifecycle.SetHarnessActive)()
+	// Recovered work from an interrupted turn continues now.
+	runtime.Harness.Resume()
 	requests := &workerActiveRequests{values: make(map[string]*workerActiveRequest)}
 	// session-worker.ts:579-599 cancels requests and closes resources before process.exit closes the control socket; the coordinator observes disconnection only after cleanup.
 	defer requests.close()
@@ -390,7 +384,7 @@ func RunSessionWorkerWithHarness(ctx context.Context, args []string, createHarne
 	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(signals)
 	announce := func() error {
-		return control.send(map[string]any{"type": "worker_ready", "token": token, "sessionKey": sessionKey, "sessionId": options.Metadata.ID, "pid": os.Getpid(), "metadata": newSessionWorkerMetadata(options.Metadata), "pluginManifestPaths": options.PluginManifestPaths})
+		return control.send(map[string]any{"type": "worker_ready", "token": token, "sessionKey": sessionKey, "sessionId": options.Metadata.ID, "pid": os.Getpid(), "metadata": options.Metadata, "pluginManifestPaths": options.PluginManifestPaths})
 	}
 	if err := announce(); err != nil {
 		return err
@@ -412,44 +406,4 @@ func RunSessionWorkerWithHarness(ctx context.Context, args []string, createHarne
 			}
 		}
 	}
-}
-
-func installWorkerLifecycle(events *agentharness.HarnessEventBus, lifecycle *WorkerLifecycle, retire func()) (func(), error) {
-	var removers []func()
-	remove := func() {
-		for _, fn := range removers {
-			fn()
-		}
-	}
-	for _, eventType := range []agentharness.HarnessEventType{agentharness.EventRunStart, agentharness.EventRunResume, agentharness.EventRunSuspend, agentharness.EventRunEnd, agentharness.EventCompactionStart, agentharness.EventCompactionEnd, agentharness.EventNavigationStart, agentharness.EventNavigationEnd, agentharness.EventFault} {
-		unsubscribe, err := events.On(eventType, func(_ context.Context, event agentharness.HarnessEvent) error {
-			switch payload := event.Payload.(type) {
-			case agentharness.RunStartPayload:
-				lifecycle.OperationStarted("run", event.Lane, payload.RunID)
-			case agentharness.RunResumePayload:
-				lifecycle.OperationStarted("run", event.Lane, payload.RunID)
-			case agentharness.RunSuspendPayload:
-				lifecycle.OperationStopped("run", event.Lane, payload.RunID)
-			case agentharness.RunEndPayload:
-				lifecycle.OperationStopped("run", event.Lane, payload.RunID)
-			case agentharness.CompactionStartPayload:
-				lifecycle.OperationStarted("compaction", event.Lane, payload.RunID)
-			case agentharness.CompactionEndPayload:
-				lifecycle.OperationStopped("compaction", event.Lane, payload.RunID)
-			case agentharness.NavigationStartPayload:
-				lifecycle.OperationStarted("navigation", event.Lane, payload.RunID)
-			case agentharness.NavigationEndPayload:
-				lifecycle.OperationStopped("navigation", event.Lane, payload.RunID)
-			case agentharness.FaultPayload:
-				retire()
-			}
-			return nil
-		})
-		if err != nil {
-			remove()
-			return nil, err
-		}
-		removers = append(removers, unsubscribe)
-	}
-	return remove, nil
 }

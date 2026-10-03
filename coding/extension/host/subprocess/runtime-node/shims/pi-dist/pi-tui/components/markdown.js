@@ -1,7 +1,7 @@
 import { Marked, Tokenizer } from "../../../marked/lib/marked.esm.js";
 import { renderLatex } from "../latex.js";
 import { getCapabilities, hyperlink, isImageLine } from "../terminal-image.js";
-import { applyBackgroundToLine, visibleWidth, wrapTextWithAnsi } from "../utils.js";
+import { applyBackgroundToLine, flattenLines, visibleWidth, wrapTextWithAnsi } from "../utils.js";
 const STRICT_STRIKETHROUGH_REGEX = /^(~~)(?=[^\s~])((?:\\.|[^\\])*?(?:\\.|[^\s~\\]))\1(?=[^~]|$)/;
 class StrictStrikethroughTokenizer extends Tokenizer {
     del(src) {
@@ -159,6 +159,10 @@ export class Markdown {
     cachedText;
     cachedWidth;
     cachedLines;
+    // Parsed tokens depend only on the source, so they survive theme and width invalidation. Held weakly: a token tree is
+    // about ten times the size of its source, and every message of a long transcript keeps a Markdown component. The
+    // tokens survive a burst of re-renders, such as a theme preview, and are collected afterwards.
+    cachedTokens;
     constructor(text, paddingX, paddingY, theme, defaultTextStyle, options) {
         this.text = text;
         this.paddingX = paddingX;
@@ -196,8 +200,13 @@ export class Markdown {
         // Replace tabs with 3 spaces for consistent rendering
         const normalizedText = text.replace(/\t/g, "   ");
         // Parse markdown to HTML-like tokens
-        const tokens = markdownParser.lexer(normalizedText);
-        trimPartialClosingFences(tokens);
+        const cached = this.cachedTokens?.deref();
+        let tokens = cached?.source === normalizedText ? cached.tokens : undefined;
+        if (!tokens) {
+            tokens = markdownParser.lexer(normalizedText);
+            trimPartialClosingFences(tokens);
+            this.cachedTokens = new WeakRef({ source: normalizedText, tokens });
+        }
         // Convert tokens to styled terminal output
         const renderedLines = [];
         for (let i = 0; i < tokens.length; i++) {
@@ -250,6 +259,7 @@ export class Markdown {
         }
         // Combine top padding, content, and bottom padding
         const result = emptyLines.concat(contentLines, emptyLines);
+        flattenLines(result);
         // Update cache
         this.cachedText = this.text;
         this.cachedWidth = width;

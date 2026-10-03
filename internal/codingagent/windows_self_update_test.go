@@ -3,6 +3,7 @@ package codingagent
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -69,5 +70,41 @@ func TestQuarantineNativeDependenciesOutsideNodeModulesIsANoOp(t *testing.T) {
 	}
 	if _, ok := getQuarantineRoot(""); ok {
 		t.Fatal("an unknown package directory has a quarantine root")
+	}
+}
+
+// npm nests the platform package that holds pig.exe inside the launcher
+// package PackageName, and an update replaces the launcher's whole tree, so
+// the quarantine lives in the node_modules that holds the installed launcher,
+// as upstream's lives in the node_modules that holds its installed package
+// (windows-self-update.ts getQuarantineRoot from getPackageDir). Hoisted
+// (yarn, bun, a local npm install) and pnpm layouts already keep the nearest
+// node_modules outside every package the update replaces.
+func TestQuarantineRootIsBesideTheInstalledLauncher(t *testing.T) {
+	top := filepath.Join(t.TempDir(), "node_modules")
+	launcher := filepath.Join(top, filepath.FromSlash(PackageName))
+	platform := filepath.FromSlash(PackageName + "-win32-x64")
+	store := filepath.Join(top, ".pnpm", strings.ReplaceAll(PackageName, "/", "+")+"-win32-x64@1.0.0", "node_modules")
+	cases := map[string]struct{ packageDir, want string }{
+		"npm nests the platform package in the launcher": {filepath.Join(launcher, "node_modules", platform), top},
+		"hoisted beside the launcher":                    {filepath.Join(top, platform), top},
+		"pnpm virtual store":                             {filepath.Join(store, platform), store},
+		"unscoped package with a bin directory":          {filepath.Join(top, "pig", "bin"), top},
+		"another package's nested dependency":            {filepath.Join(top, "other", "node_modules", "dep"), filepath.Join(top, "other", "node_modules")},
+	}
+	if runtime.GOOS == "windows" {
+		// Windows paths compare without case, and quarantineNativeDependencies
+		// passes the namespaced form normalizeWindowsPath returns.
+		upper := strings.ToUpper(top)
+		cases["npm nest spelled in another case"] = struct{ packageDir, want string }{filepath.Join(upper, strings.ToUpper(filepath.FromSlash(PackageName)), "Node_Modules", platform), upper}
+		cases["npm nest as a namespaced path"] = struct{ packageDir, want string }{`\\?\` + filepath.Join(launcher, "node_modules", platform), `\\?\` + top}
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			got, ok := getQuarantineRoot(tc.packageDir)
+			if want := filepath.Join(tc.want, quarantineDirName); !ok || got != want {
+				t.Fatalf("getQuarantineRoot(%s) = %q, %v; want %q", tc.packageDir, got, ok, want)
+			}
+		})
 	}
 }

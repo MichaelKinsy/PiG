@@ -3,6 +3,9 @@ package ai
 import (
 	"encoding/json"
 	"reflect"
+	"slices"
+	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -71,5 +74,35 @@ func TestSchemaOrderHandlesEscapedPropertyPathsAndDoesNotAliasStrictOutput(t *te
 	again := second["properties"].(map[string]any)["a/b~c"].(map[string]any)["anyOf"].([]any)[0].(map[string]any)
 	if !reflect.DeepEqual(again["required"], []string{"z", "a"}) {
 		t.Fatalf("aliased required=%#v", again["required"])
+	}
+}
+
+// A wide object, past the point where the duplicate-key search switches to a set, keeps JavaScript's enumeration order and the repeated key's first position.
+func TestSchemaOrderKeepsEveryKeyOfAWideObject(t *testing.T) {
+	count := 5000
+	var properties strings.Builder
+	want := make([]string, 0, count)
+	properties.WriteString("{")
+	for i := range count {
+		key := "k" + strconv.Itoa(count-i)
+		want = append(want, key)
+		if i > 0 {
+			properties.WriteString(",")
+		}
+		properties.WriteString(`"` + key + `":{"type":"string"}`)
+	}
+	// The repeated key keeps the position of its first occurrence.
+	properties.WriteString(`,"` + want[3] + `":{"type":"number"}}`)
+	var tool ToolSchema
+	input := `{"name":"wide","parameters":{"type":"object","properties":` + properties.String() + `,"required":[]}}`
+	if err := json.Unmarshal([]byte(input), &tool); err != nil {
+		t.Fatal(err)
+	}
+	schema, err := getJSONSchemaToolParameters(tool, new(true))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, ok := schema["required"].([]string); !ok || !slices.Equal(got, want) {
+		t.Fatalf("required has %d keys (%v), want the %d keys in source order", len(got), ok, len(want))
 	}
 }

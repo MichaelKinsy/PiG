@@ -126,11 +126,13 @@ def test_register_tool_declares_definition_and_runs_execute() -> None:
                 "render_shell": "self",
                 "renders_call": False,
                 "renders_result": True,
+                "prepares_arguments": True,
             },
         ]
+        # agent-loop.ts:707-716: the host prepares the arguments before it validates them, so tool_call carries prepared arguments and the runtime must not prepare them again.
         host.request("r1", {"method": "tool_call", "tool": "greet", "tool_call_id": "tc1", "args": {"who": " pi "}})
         response = host.read()
-        assert response["response"] == {"result": {"content": "hello pi (tc1)"}, "error": None}
+        assert response["response"] == {"result": {"content": "hello  pi  (tc1)"}, "error": None}
     finally:
         host.close()
 

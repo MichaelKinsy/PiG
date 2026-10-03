@@ -27,21 +27,40 @@ func (testExternalOAuthProvider) StoreOAuthCredentials(ai.OAuthCredentials) (str
 }
 func (testExternalOAuthProvider) DeleteOAuthCredentials() (bool, error) { return true, nil }
 
+// Pi 0.99.2 interactive-mode.ts:5668-5694 getLoginProviderOptions names every entry provider.name, never the OAuth
+// flow's own name: openai.ts:11 "OpenAI" (flow "OpenAI (ChatGPT subscription)"), openai-codex.ts:10 "OpenAI Codex
+// (legacy)" (flow "OpenAI (ChatGPT Plus/Pro)") and meta.ts "Meta" (flow "Meta (Muse subscription)"). The names come
+// from the provider catalog for every built-in provider, not from a per-provider override.
 func TestOAuthProviderListMatchesUpstreamAccountProviderNames(t *testing.T) {
 	m := &InteractiveMode{opts: InteractiveOptions{AgentDir: t.TempDir()}}
 
 	providers := m.oauthProviderList("login-oauth")
-	got, ok := findOAuthProvider(providers, "openai-codex")
-	if !ok {
-		t.Fatalf("openai-codex missing from account-login provider list: %+v", providers)
+	for _, id := range ai.GeneratedProviders {
+		got, ok := findOAuthProvider(providers, id)
+		if !ok {
+			continue
+		}
+		if want := ai.ProviderDisplayName(id); got.Name != want {
+			t.Errorf("%s picker name = %q, want the catalog provider name %q", id, got.Name, want)
+		}
 	}
-	if got.Name != "OpenAI Codex" {
-		t.Fatalf("openai-codex picker name = %q, want OpenAI Codex", got.Name)
+	for id, want := range map[string]string{"openai": "OpenAI", "openai-codex": "OpenAI Codex (legacy)", "meta": "Meta"} {
+		if got, ok := findOAuthProvider(providers, id); !ok || got.Name != want {
+			t.Errorf("%s picker entry = %+v (found %v), want name %q", id, got, ok, want)
+		}
 	}
-	// Pi 0.87.1 lists the provider name (providers/meta.ts), not the OAuth
-	// flow name "Meta (Muse subscription)".
-	if got, ok := findOAuthProvider(providers, "meta"); !ok || got.Name != "Meta" {
-		t.Fatalf("meta picker entry = %+v (found %v), want name Meta", got, ok)
+}
+
+// A provider outside the catalog (an extension's OAuth provider) keeps the name its OAuth flow declares, as Pi's
+// provider.name is whatever the registering extension named it.
+func TestOAuthProviderListKeepsTheFlowNameOfAProviderOutsideTheCatalog(t *testing.T) {
+	ai.RegisterOAuthProvider("external-oauth-test", testExternalOAuthProvider{})
+	defer ai.UnregisterOAuthProvider("external-oauth-test")
+
+	m := &InteractiveMode{opts: InteractiveOptions{AgentDir: t.TempDir()}}
+	got, ok := findOAuthProvider(m.oauthProviderList("login-oauth"), "external-oauth-test")
+	if !ok || got.Name != "ZZZ External OAuth" {
+		t.Fatalf("external picker entry = %+v (found %v), want the flow's own name", got, ok)
 	}
 }
 
@@ -67,4 +86,22 @@ func findOAuthProvider(providers []tui.OAuthProvider, id string) (tui.OAuthProvi
 		}
 	}
 	return tui.OAuthProvider{}, false
+}
+
+// Pi 0.99.2 getLoginProviderOptions (interactive-mode.ts:5668-5694) lists the composed runtime provider's name, which a
+// models.json `name` replaces over the catalog name (provider-composer.ts:588:
+// `extension?.name ?? config?.name ?? base?.name ?? ...`). A provider the runtime composes keeps its catalog name only
+// when nothing renames it.
+func TestOAuthProviderListUsesTheComposedRuntimeProviderName(t *testing.T) {
+	runtime := &RequestAuthRuntime{providers: []*RuntimeProvider{
+		{ID: "anthropic", Name: "Corp Anthropic", Auth: ai.ProviderAuth{OAuth: &ai.OAuthAuth{}}},
+		{ID: "github-copilot", Name: "GitHub Copilot", Auth: ai.ProviderAuth{OAuth: &ai.OAuthAuth{}}},
+	}}
+	m := &InteractiveMode{opts: InteractiveOptions{AgentDir: t.TempDir(), RequestAuthRuntime: runtime}}
+	providers := m.oauthProviderList("login-oauth", false)
+	for id, want := range map[string]string{"anthropic": "Corp Anthropic", "github-copilot": "GitHub Copilot", "meta": "Meta"} {
+		if got, ok := findOAuthProvider(providers, id); !ok || got.Name != want {
+			t.Errorf("%s picker entry = %+v (found %v), want name %q", id, got, ok, want)
+		}
+	}
 }

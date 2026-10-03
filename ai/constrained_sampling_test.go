@@ -24,22 +24,22 @@ func sampleGrammarTool(cfg *ConstrainedSamplingConfig) ToolSchema {
 // TestResolveJSONSchemaStrictSampling mirrors upstream resolveJsonSchemaStrictSampling.
 func TestResolveJSONSchemaStrictSampling(t *testing.T) {
 	// json_schema + supportsStrictMode → strict true.
-	got, err := resolveJSONSchemaStrictSampling(sampleGrammarTool(&ConstrainedSamplingConfig{Type: "json_schema", Strict: "prefer"}), true)
+	got, err := resolveJSONSchemaStrictSampling(sampleGrammarTool(&ConstrainedSamplingConfig{Type: "json_schema", Strict: "prefer"}), true, nil)
 	if err != nil || got == nil || *got != true {
 		t.Fatalf("prefer+supported: got %v err %v, want &true", got, err)
 	}
 	// prefer + !supportsStrictMode → nil (fall back silently).
-	got, err = resolveJSONSchemaStrictSampling(sampleGrammarTool(&ConstrainedSamplingConfig{Type: "json_schema", Strict: "prefer"}), false)
+	got, err = resolveJSONSchemaStrictSampling(sampleGrammarTool(&ConstrainedSamplingConfig{Type: "json_schema", Strict: "prefer"}), false, nil)
 	if err != nil || got != nil {
 		t.Fatalf("prefer+unsupported: got %v err %v, want nil", got, err)
 	}
 	// require + !supportsStrictMode → error.
-	_, err = resolveJSONSchemaStrictSampling(sampleGrammarTool(&ConstrainedSamplingConfig{Type: "json_schema", Strict: "require"}), false)
+	_, err = resolveJSONSchemaStrictSampling(sampleGrammarTool(&ConstrainedSamplingConfig{Type: "json_schema", Strict: "require"}), false, nil)
 	if err == nil || !strings.Contains(err.Error(), `Tool "sample_tool" requires JSON-schema constrained sampling`) {
 		t.Fatalf("require+unsupported err = %v, want the strict-required message", err)
 	}
 	// no config → nil.
-	got, err = resolveJSONSchemaStrictSampling(sampleGrammarTool(nil), true)
+	got, err = resolveJSONSchemaStrictSampling(sampleGrammarTool(nil), true, nil)
 	if err != nil || got != nil {
 		t.Fatalf("no config: got %v err %v, want nil", got, err)
 	}
@@ -191,12 +191,12 @@ func TestStrictJSONSchemaUnsupported(t *testing.T) {
 				t.Fatalf("makeStrictJSONSchema error = %v, want %q", err, test.wantError)
 			}
 			tool := ToolSchema{Name: "sample_tool", Parameters: test.parameters, ConstrainedSampling: &ConstrainedSamplingConfig{Type: "json_schema", Strict: "prefer"}}
-			strict, err := resolveJSONSchemaStrictSampling(tool, true)
+			strict, err := resolveJSONSchemaStrictSampling(tool, true, nil)
 			if err != nil || strict != nil {
 				t.Fatalf("prefer unsupported schema = %v, %v; want nil, nil", strict, err)
 			}
 			tool.ConstrainedSampling.Strict = "require"
-			if _, err := resolveJSONSchemaStrictSampling(tool, true); err == nil || !strings.Contains(err.Error(), test.wantError) {
+			if _, err := resolveJSONSchemaStrictSampling(tool, true, nil); err == nil || !strings.Contains(err.Error(), test.wantError) {
 				t.Fatalf("require unsupported schema error = %v, want %q", err, test.wantError)
 			}
 		})

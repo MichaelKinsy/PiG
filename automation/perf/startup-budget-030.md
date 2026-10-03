@@ -52,6 +52,8 @@ Two dependencies initialize eagerly and account for most of what remains of pack
 
 Building without the chroma lexers takes `--version` from 26 ms to 19 ms. Deferring either package needs an in-tree fork with a lazy registry: the module cannot be replaced (`go install` rejects `replace`), a nested module needs its own release, and the fork trips `go vet` composites on chroma's unkeyed `Rule` literals. That is a dependency-policy decision, so it is left open.
 
+The chroma row no longer applies: `tui/internal/hljs` ports highlight.js 10.7.3, which Pi uses, and decodes its embedded grammars on first use, so `pig` no longer links chroma.
+
 ## Guards
 
 `make startup-proxies` runs, by name and without wall-clock thresholds:

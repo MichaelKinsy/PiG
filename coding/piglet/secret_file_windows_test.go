@@ -38,8 +38,14 @@ func TestOwnerOnlySecretFileHasAProtectedCurrentUserDACL(t *testing.T) {
 	// Windows may add the auto-inherited (AI) flag; the protected flag is
 	// checked above, so compare the entries.
 	entries := strings.TrimPrefix(strings.TrimPrefix(descriptor.String(), "D:PAI"), "D:P")
-	if want := "(A;;FA;;;" + user.User.Sid.String() + ")"; entries != want {
-		t.Fatalf("secret file DACL = %s, want only %s", descriptor.String(), want)
+	// SDDL abbreviates well-known principals, so the current user can print as an alias: the built-in Administrator (RID 500) prints as LA. Compare resolved SIDs.
+	entry := strings.TrimSuffix(strings.TrimPrefix(entries, "(A;;FA;;;"), ")")
+	if !strings.HasPrefix(entries, "(A;;FA;;;") || !strings.HasSuffix(entries, ")") || strings.ContainsAny(entry, "();") {
+		t.Fatalf("secret file DACL = %s, want only one full-access entry for the current user", descriptor.String())
+	}
+	entrySID, err := windows.StringToSid(entry)
+	if err != nil || !entrySID.Equals(user.User.Sid) {
+		t.Fatalf("secret file DACL = %s, want only %s (err %v)", descriptor.String(), user.User.Sid, err)
 	}
 	if _, err := os.ReadFile(path); err != nil {
 		t.Fatalf("owner cannot read its secret file: %v", err)

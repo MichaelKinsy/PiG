@@ -29,7 +29,10 @@ model = "test-faux/faux-1"
 
 [env]
 pig = ["PIG_TEST_FAUX=1"]
-pig_args = ["--no-extensions"]
+# Fullscreen is the default TUI mode, so both binaries select the main-screen
+# renderer this scenario exercises.
+pig_args = ["--no-extensions", "--tui-mode", "regular"]
+pi_args = ["--tui-mode", "regular"]
 pig_extensions = ["testdata/ext/overflow-widget.mjs"]
 pi_extensions = [
   "../../testdata/test-faux-provider.ts",

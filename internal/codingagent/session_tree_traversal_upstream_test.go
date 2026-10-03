@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 func upstreamEntryIDs(entries []SessionEntry) []string {
@@ -51,7 +52,7 @@ func upstreamSummaryUsage() *ai.Usage {
 }
 
 func TestSessionTreeTraversalUpstream(t *testing.T) {
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:10
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:10
 	t.Run("appendMessage creates entry with correct parentId chain", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		a := upstreamSessionUser(t, s, "first")
@@ -67,7 +68,7 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 			t.Fatal("type")
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:31
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:31
 	t.Run("appendThinkingLevelChange integrates into tree", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		a := upstreamSessionUser(t, s, "hello")
@@ -79,7 +80,7 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 		requireEntryParent(t, s, b, &a)
 		requireEntryParent(t, s, c, &b)
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:49
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:49
 	t.Run("appendModelChange integrates into tree", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		a := upstreamSessionUser(t, s, "hello")
@@ -98,7 +99,7 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 		requireEntryParent(t, s, b, &a)
 		requireEntryParent(t, s, c, &b)
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:69
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:69
 	t.Run("appendCompaction integrates into tree", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		a := upstreamSessionUser(t, s, "1")
@@ -118,7 +119,7 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 		requireEntryParent(t, s, id, &b)
 		requireEntryParent(t, s, c, &id)
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:100
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:100
 	t.Run("appendCustomEntry integrates into tree", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		a := upstreamSessionUser(t, s, "hello")
@@ -128,13 +129,15 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 		if err := json.Unmarshal(requireSessionEntry(t, s, b).Raw(), &e); err != nil {
 			t.Fatal(err)
 		}
-		if e.Type != "custom" || e.CustomType != "my_data" || !reflect.DeepEqual(e.Data, map[string]any{"key": "value"}) {
+		// An object in `data` is held as raw JSON so its members keep their order; toEqual compares its members.
+		data, _ := orderedjson.Map(e.Data)
+		if e.Type != "custom" || e.CustomType != "my_data" || !reflect.DeepEqual(data, map[string]any{"key": "value"}) {
 			t.Fatal(e)
 		}
 		requireEntryParent(t, s, b, &a)
 		requireEntryParent(t, s, c, &b)
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:118
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:118
 	t.Run("leaf pointer advances after each append", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		if s.LeafID() != nil {
@@ -147,13 +150,13 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 			}
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:135
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:135
 	t.Run("getPath returns empty array for empty session", func(t *testing.T) {
 		if got := NewSession("test", "/project").GetBranch(); len(got) != 0 {
 			t.Fatal(got)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:140
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:140
 	t.Run("getPath returns single entry path", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		id := upstreamSessionUser(t, s, "hello")
@@ -161,7 +164,7 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 			t.Fatal("path")
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:149
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:149
 	t.Run("getPath returns full path from root to leaf", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		ids := []string{upstreamSessionUser(t, s, "1"), upstreamSessionAssistant(t, s, "2"), upstreamThinking(t, s), upstreamSessionUser(t, s, "3")}
@@ -169,7 +172,7 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 			t.Fatal("path")
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:162
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:162
 	t.Run("getPath returns path from specified entry to root", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		a := upstreamSessionUser(t, s, "1")
@@ -180,13 +183,13 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 			t.Fatal("path")
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:177
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:177
 	t.Run("getTree returns empty array for empty session", func(t *testing.T) {
 		if len(NewSession("test", "/project").Tree().Children) != 0 {
 			t.Fatal("tree")
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:182
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:182
 	t.Run("getTree returns single root for linear session", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		ids := []string{upstreamSessionUser(t, s, "1"), upstreamSessionAssistant(t, s, "2"), upstreamSessionUser(t, s, "3")}
@@ -201,7 +204,7 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 			t.Fatal("extra tree children")
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:201
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:201
 	t.Run("getTree returns tree with branches after branch", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		a := upstreamSessionUser(t, s, "1")
@@ -227,7 +230,7 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 			t.Fatal(got)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:228
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:228
 	t.Run("handles multiple branches at same point", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		upstreamSessionUser(t, s, "root")
@@ -250,7 +253,7 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 			t.Fatal("branches")
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:255
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:255
 	t.Run("handles deep branching", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		upstreamSessionUser(t, s, "1")
@@ -270,7 +273,7 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 			t.Fatal("deep tree")
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:288
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:288
 	t.Run("branch moves leaf pointer to specified entry", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		a := upstreamSessionUser(t, s, "1")
@@ -286,7 +289,7 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 			t.Fatal("leaf")
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:301
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:301
 	t.Run("branch throws for non-existent entry", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		upstreamSessionUser(t, s, "hello")
@@ -294,7 +297,7 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 			t.Fatalf("error=%v", err)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:308
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:308
 	t.Run("new appends become children of branch point", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		a := upstreamSessionUser(t, s, "1")
@@ -305,7 +308,7 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 		c := upstreamSessionUser(t, s, "branched")
 		requireEntryParent(t, s, c, &a)
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:324
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:324
 	t.Run("branchWithSummary inserts source destination and advances leaf", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		a := upstreamSessionUser(t, s, "1")
@@ -324,7 +327,7 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 		}
 		requireEntryParent(t, s, id, &a)
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:354
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:354
 	t.Run("branchWithSummary throws for non-existent entry", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		upstreamSessionUser(t, s, "hello")
@@ -333,14 +336,14 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:363
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:363
 	t.Run("getLeafEntry returns undefined for empty session", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		if s.LeafID() != nil {
 			t.Fatal("leaf")
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:368
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:368
 	t.Run("getLeafEntry returns current leaf entry", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		upstreamSessionUser(t, s, "1")
@@ -349,13 +352,13 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 			t.Fatal("leaf entry")
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:381
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:381
 	t.Run("getEntry returns undefined for non-existent id", func(t *testing.T) {
 		if _, ok := NewSession("test", "/project").EntryByID("nonexistent"); ok {
 			t.Fatal("unexpected entry")
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:386
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:386
 	t.Run("getEntry returns entry by id", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		a := upstreamSessionUser(t, s, "first")
@@ -369,7 +372,7 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 			t.Fatal("assistant")
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:408
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:408
 	t.Run("buildSessionContext returns messages from current branch only", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		upstreamSessionUser(t, s, "msg1")
@@ -387,7 +390,7 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 }
 
 func TestCreateBranchedSessionUpstream(t *testing.T) {
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:431
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:431
 	t.Run("throws for non-existent entry", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		upstreamSessionUser(t, s, "hello")
@@ -396,7 +399,7 @@ func TestCreateBranchedSessionUpstream(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:438
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:438
 	t.Run("creates new session with path to specified leaf in memory", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		a := upstreamSessionUser(t, s, "1")
@@ -412,7 +415,7 @@ func TestCreateBranchedSessionUpstream(t *testing.T) {
 			t.Fatal("memory fork")
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:462
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:462
 	t.Run("extracts correct path from branched tree", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		a := upstreamSessionUser(t, s, "1")
@@ -428,48 +431,49 @@ func TestCreateBranchedSessionUpstream(t *testing.T) {
 			t.Fatal("fork path")
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:483
-	t.Run("does not duplicate entries when forking from first user message", func(t *testing.T) {
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:483
+	t.Run("does not duplicate entries when forking from before the first user message", func(t *testing.T) {
 		sm := tempSessionMgr(t)
 		s, err := sm.Create("source", "")
 		if err != nil {
 			t.Fatal(err)
 		}
-		a := upstreamSessionUser(t, s, "first question")
+		if err := s.AppendModelSwitch("anthropic", "claude-sonnet-4-5", ""); err != nil {
+			t.Fatal(err)
+		}
+		modelChangeID := s.LeafID()
+		upstreamSessionUser(t, s, "first question")
 		upstreamSessionAssistant(t, s, "first answer")
-		upstreamSessionUser(t, s, "second question")
-		upstreamSessionAssistant(t, s, "second answer")
-		s, err = sm.Clone(s, a)
+
+		// Fork from a setup entry (no user or assistant message in the branched path)
+		s, err = sm.Clone(s, *modelChangeID)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if s.Path() == "" {
 			t.Fatal("missing fork path")
 		}
+
+		// Nothing to save yet, so the file is created later by the first user message
 		if _, err := os.Stat(s.Path()); !os.IsNotExist(err) {
 			t.Fatalf("fork should be deferred: %v", err)
 		}
+
+		upstreamSessionUser(t, s, "new question")
+		if _, err := os.Stat(s.Path()); err != nil {
+			t.Fatalf("the first user message should create the file: %v", err)
+		}
+
+		// Simulate extension adding entry before assistant (like preset on turn_start)
 		upstreamCustom(t, s, "preset-state", map[string]any{"name": "plan"})
 		upstreamSessionAssistant(t, s, "new answer")
-		rows := readJSONLLines(t, s.Path())
-		headers := 0
-		ids := map[string]bool{}
-		for _, row := range rows {
-			if row["type"] == "session" {
-				headers++
-				continue
-			}
-			id := row["id"].(string)
-			if ids[id] {
-				t.Fatal("duplicate entry ID")
-			}
-			ids[id] = true
-		}
-		if headers != 1 || len(ids) != 3 {
-			t.Fatalf("records=%v", rows)
+
+		// Exactly one header and each entry written once
+		if got := readSessionFileRoles(t, s.Path()); !slices.Equal(got, []string{"session", "model_change", "user", "custom", "assistant"}) {
+			t.Fatalf("roles = %v", got)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:527
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:515
 	t.Run("preserves tool and summary usage across a file-backed reload", func(t *testing.T) {
 		sm := tempSessionMgr(t)
 		s, err := sm.Create("source", "")
@@ -524,29 +528,27 @@ func TestCreateBranchedSessionUpstream(t *testing.T) {
 			t.Fatal("missing usage entries")
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:573
-	t.Run("writes file immediately when forking with assistant messages", func(t *testing.T) {
+	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:561
+	t.Run("writes file immediately when forking at a user message", func(t *testing.T) {
 		sm := tempSessionMgr(t)
 		s, err := sm.Create("source", "")
 		if err != nil {
 			t.Fatal(err)
 		}
-		upstreamSessionUser(t, s, "first question")
-		a := upstreamSessionAssistant(t, s, "first answer")
-		upstreamSessionUser(t, s, "second question")
-		upstreamSessionAssistant(t, s, "second answer")
-		s, err = sm.Clone(s, a)
+		id1 := upstreamSessionUser(t, s, "first question")
+		upstreamSessionAssistant(t, s, "first answer")
+
+		s, err = sm.Clone(s, id1)
 		if err != nil {
 			t.Fatal(err)
 		}
-		headers := 0
-		for _, row := range readJSONLLines(t, s.Path()) {
-			if row["type"] == "session" {
-				headers++
-			}
+		if _, err := os.Stat(s.Path()); err != nil {
+			t.Fatalf("a fork that already has a user message is written immediately: %v", err)
 		}
-		if headers != 1 {
-			t.Fatal("fork headers")
+
+		upstreamSessionAssistant(t, s, "new answer")
+		if got := readSessionFileRoles(t, s.Path()); !slices.Equal(got, []string{"session", "user", "assistant"}) {
+			t.Fatalf("roles = %v", got)
 		}
 	})
 }

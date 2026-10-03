@@ -150,25 +150,22 @@ async function readClipboardImageViaXclip() {
     const targets = await runClipboardCommand("xclip", ["-selection", "clipboard", "-t", "TARGETS", "-o"], {
         timeoutMs: DEFAULT_LIST_TIMEOUT_MS,
     });
-    let candidateTypes = [];
-    if (targets !== undefined) {
-        candidateTypes = targets
-            .toString("utf-8")
-            .split(/\r?\n/)
-            .map((t) => t.trim())
-            .filter(Boolean);
-    }
+    if (targets === undefined)
+        return undefined;
+    const candidateTypes = targets
+        .toString("utf-8")
+        .split(/\r?\n/)
+        .map((t) => t.trim())
+        .filter(Boolean);
     const preferred = selectPreferredImageMimeType(candidateTypes);
-    if (targets !== undefined && !preferred)
+    if (!preferred)
         return null;
-    const tryTypes = new Set(preferred ? [preferred, ...SUPPORTED_IMAGE_MIME_TYPES] : SUPPORTED_IMAGE_MIME_TYPES);
-    for (const mimeType of tryTypes) {
-        const data = await runClipboardCommand("xclip", ["-selection", "clipboard", "-t", mimeType, "-o"]);
-        if (data !== undefined && data.length > 0) {
-            return { bytes: data, mimeType: baseMimeType(mimeType) };
-        }
-    }
-    return undefined;
+    const data = await runClipboardCommand("xclip", ["-selection", "clipboard", "-t", preferred, "-o"]);
+    if (data === undefined)
+        return undefined;
+    if (data.length === 0)
+        return null;
+    return { bytes: data, mimeType: baseMimeType(preferred) };
 }
 async function readClipboardImageViaNativeClipboard() {
     const bytes = await getNativeClipboard()?.getImage();

@@ -103,6 +103,7 @@ func TestRPCSessionCommandsReplaceThroughTheRuntimeFactory(t *testing.T) {
 	if testing.Short() {
 		t.Skip("starts the pig binary and extension processes")
 	}
+	t.Parallel()
 	log := filepath.Join(t.TempDir(), "replace.log")
 	home := t.TempDir()
 	p := startRPCProcessAt(t, t.TempDir(), []string{
@@ -172,6 +173,7 @@ func TestRPCSwitchSessionRebuildsServicesForTheDestinationCWD(t *testing.T) {
 	if testing.Short() {
 		t.Skip("starts the pig binary and an extension process")
 	}
+	t.Parallel()
 	home := t.TempDir()
 	startup, destination := filepath.Join(home, "startup"), filepath.Join(home, "destination")
 	for dir, rules := range map[string]string{startup: "STARTUP-RULES\n", destination: "DESTINATION-RULES\n"} {
@@ -244,7 +246,7 @@ func TestRPCSwitchSessionRebuildsServicesForTheDestinationCWD(t *testing.T) {
 
 const piStaleMessage = "This extension ctx is stale after session replacement or reload. Do not use a captured pi or command ctx after ctx.newSession(), ctx.fork(), ctx.switchSession(), or ctx.reload(). For newSession, fork, and switchSession, move post-replacement work into withSession and use the ctx passed to withSession. For reload, do not use the old ctx after await ctx.reload()."
 
-// Pi agent-session-runtime.ts:167-177 invalidates the outgoing runner during teardown, so a captured pi or ctx throws runner.ts's stale message and never acts on the replacement Session (2860-replaced-session-context.test.ts:147-205). The replaced Session's extension process stays alive until its command returns, so its host calls must fail with that message. Reads a subprocess SDK answers from its own mirror, and host calls that return or raise an error or write to stderr instead of throwing at the call site, are recorded in D30.
+// Pi agent-session-runtime.ts:167-177 invalidates the outgoing runner during teardown, so a captured pi or ctx throws runner.ts's stale message and never acts on the replacement Session (2860-replaced-session-context.test.ts:147-205). The replaced Session's extension process stays alive until its command returns, so its host calls must fail with that message, and the host's invalidate notification makes the Node runtime's pi and ctx members throw it at the call site, including the fire-and-forget pi.sendUserMessage. Reads the Go, Rust and Python SDKs answer from their own state are recorded in D30.
 func TestPrintModeReplacedSessionHostCallsFailWithThePiStaleMessage(t *testing.T) {
 	if testing.Short() {
 		t.Skip("starts the pig binary and an extension process")
@@ -268,7 +270,7 @@ func TestPrintModeReplacedSessionHostCallsFailWithThePiStaleMessage(t *testing.T
 	want := []string{
 		"pi.getActiveTools threw " + piStaleMessage,
 		"pi.exec threw " + piStaleMessage,
-		"pi.sendUserMessage ok",
+		"pi.sendUserMessage threw " + piStaleMessage,
 		"pi.exec flush threw " + piStaleMessage,
 	}
 	if strings.Join(got, "\n") != strings.Join(want, "\n") {
@@ -385,7 +387,7 @@ func TestRPCSwitchSessionFailsForADestinationWithAnInvalidFileURLPackage(t *test
 		failure, _ = record["error"].(string)
 		return true
 	})
-	if !strings.Contains(failure, "must not include encoded / characters") {
+	if !strings.Contains(failure, strings.TrimPrefix(invalidFileURLMessage(), "File URL path ")) {
 		t.Fatalf("switch_session error = %q, want fileURLToPath's invalid file: URL error", failure)
 	}
 	p.closeAndWait("after the failed switch")

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 """Generate and pack PiG's npm packages from verified release archives.
 
-PiG ships on npm as `@pi-in-go/pig`, a tiny Node launcher, plus six platform
+PiG ships on npm as `@pi-in-go/pig`, a tiny Node launcher, plus seven platform
 packages `@pi-in-go/pig-<os>-<cpu>` that each carry one native binary (the
 esbuild/biome optionalDependencies pattern; nothing is downloaded at install
 time). Binaries come ONLY from the release archives that release-candidate.yml
@@ -14,7 +14,7 @@ Usage:
   pack_npm.py --archives DIR --version 0.2.0 --out DIR [--no-pack]
 
 DIR must hold SHA256SUMS and pig-<version>-<goos>-<goarch>.{tar.gz,zip} for all
-six targets. The output directory receives one package directory per package
+seven targets. The output directory receives one package directory per package
 and, unless --no-pack, the `npm pack` tarballs plus `publish-order.txt`
 ("<package name> <tarball>" per line; platform packages first, launcher last).
 """
@@ -49,6 +49,7 @@ PIGVERSION_GO = HERE.parents[2] / "internal" / "coding" / "pigversion" / "pigver
 
 # (goos, goarch) in release archive names -> (npm os, npm cpu).
 TARGETS = {
+    ("android", "arm64"): ("android", "arm64"),
     ("darwin", "amd64"): ("darwin", "x64"),
     ("darwin", "arm64"): ("darwin", "arm64"),
     ("linux", "amd64"): ("linux", "x64"),
@@ -218,7 +219,7 @@ npm uninstall -g {LAUNCHER}   # uninstall
 `pig` is a native binary. npm installs the one matching your platform
 (`@pi-in-go/pig-<os>-<cpu>`, as an optional dependency) and this package's small
 Node.js (>= 18) launcher runs it. Supported: macOS, Linux and Windows on x64
-and arm64. Installing with `--no-optional`/`--omit=optional` leaves the binary
+and arm64, and Android on arm64 through Termux. Installing with `--no-optional`/`--omit=optional` leaves the binary
 out; reinstall without that flag.
 
 Other install methods, documentation and source: {HOMEPAGE} and
@@ -227,7 +228,7 @@ https://github.com/MichaelKinsy/PiG.
 
 
 def generate(archives: pathlib.Path, release_version: str, out: pathlib.Path, pi_base: str | None) -> list[pathlib.Path]:
-    """Emit the seven package directories into out; return them in publish order."""
+    """Emit the eight package directories into out; return them in publish order."""
     version = npm_version(release_version)
     archive_version = release_version.removeprefix("v")
     sums_path = archives / "SHA256SUMS"
@@ -294,7 +295,7 @@ def npm_pack(pkg_dir: pathlib.Path, out: pathlib.Path) -> pathlib.Path:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--archives", required=True, type=pathlib.Path, help="directory with SHA256SUMS and the six archives")
+    parser.add_argument("--archives", required=True, type=pathlib.Path, help="directory with SHA256SUMS and the seven archives")
     parser.add_argument("--version", required=True, help="PiG release version, e.g. 0.2.0")
     parser.add_argument("--out", required=True, type=pathlib.Path, help="output directory")
     parser.add_argument("--pi-base", default=None, help="Pi base version for descriptions (default: internal/coding/pigversion)")

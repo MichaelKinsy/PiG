@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"io"
 	"net"
+	"slices"
+	"sync"
 	"testing"
 	"testing/synctest"
 
@@ -268,6 +270,117 @@ func TestResponseAfterADroppedSuspensionOfARetiredGeneration(t *testing.T) {
 		}
 		if suspended {
 			t.Error("a retired generation's suspension was applied")
+		}
+	})
+}
+
+// A Node process writes a command's response before it reports the drain of its loop, and the peer's frames may arrive in one segment. The read loop marks the command answered as it routes the response and reads the next frame only after the mark returned, so the drain notification cannot reach the host's frame loop while the mark runs; a mark on another goroutine, such as the one that waits for the response, would not hold it back.
+func TestRequestAnsweredRunsBeforeTheNextFrameReachesTheHost(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		hostSide, extSide := net.Pipe()
+		conn := NewConn("answered-order", hostSide)
+		conn.Start(t.Context())
+		go func() { _, _ = io.Copy(io.Discard, extSide) }()
+		defer func() {
+			_ = conn.Close("test done")
+			_ = extSide.Close()
+		}()
+		entered := make(chan struct{})
+		release := make(chan struct{})
+		var releaseOnce sync.Once
+		releaseMark := func() { releaseOnce.Do(func() { close(release) }) }
+		defer releaseMark()
+		dispatched := make(chan struct{})
+		conn.onDispatch = func() { close(dispatched) }
+		ctx := withRequestAnswered(t.Context(), func() {
+			close(entered)
+			<-release
+		})
+		go func() { _, _ = conn.request(ctx, &Envelope{ID: "r1", Type: MsgRequest}, 0, "test") }()
+		<-dispatched
+		var frames []byte
+		for _, env := range []Envelope{
+			{Type: MsgResponse, ID: "r1", Response: &ResponsePayload{}},
+			{Type: MsgNotify, Notify: &NotifyPayload{Method: "runtime_drained"}},
+		} {
+			data, err := json.Marshal(env)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var length [4]byte
+			binary.BigEndian.PutUint32(length[:], uint32(len(data)))
+			frames = append(append(frames, length[:]...), data...)
+		}
+		go func() { _, _ = extSide.Write(frames) }()
+		synctest.Wait()
+		select {
+		case <-entered:
+		default:
+			t.Fatal("the command was not marked answered when its response was routed")
+		}
+		select {
+		case env := <-conn.Incoming():
+			t.Fatalf("a frame reached the host while the answered mark ran: %+v", env)
+		default:
+		}
+		releaseMark()
+		notify := <-conn.Incoming()
+		if notify.Notify == nil || notify.Notify.Method != "runtime_drained" {
+			t.Fatalf("first unsolicited frame = %+v, want the drain notification", notify)
+		}
+	})
+}
+
+// A Node process's drain report covers the requests it had started when its loop drained: the runtime writes a request's started state as it reads the request, so that state precedes the report on the connection. A request the runtime reads after the report is not covered; it may keep the loop alive, and the process reports again if it cannot answer.
+func TestDrainReportCoversOnlyRequestsTheRuntimeStarted(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		hostSide, extSide := net.Pipe()
+		conn := NewConn("drain-coverage", hostSide)
+		conn.Start(t.Context())
+		go func() { _, _ = io.Copy(io.Discard, extSide) }()
+		defer func() {
+			_ = conn.Close("test done")
+			_ = extSide.Close()
+		}()
+		dispatched := make(chan struct{}, 2)
+		conn.onDispatch = func() { dispatched <- struct{}{} }
+		var mu sync.Mutex
+		var drained []string
+		for _, id := range []string{"before", "after"} {
+			ctx := withRequestDrained(t.Context(), func() {
+				mu.Lock()
+				drained = append(drained, id)
+				mu.Unlock()
+			})
+			go func() { _, _ = conn.request(ctx, &Envelope{ID: id, Type: MsgRequest}, 0, "test") }()
+			<-dispatched
+		}
+		write := func(env Envelope) {
+			t.Helper()
+			data, err := json.Marshal(env)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var length [4]byte
+			binary.BigEndian.PutUint32(length[:], uint32(len(data)))
+			if _, err := extSide.Write(append(length[:], data...)); err != nil {
+				t.Fatal(err)
+			}
+		}
+		write(Envelope{Type: MsgRequestState, RequestState: &RequestStatePayload{RequestID: "before", State: "started"}})
+		write(Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: notifyRuntimeCommandsDrained}})
+		write(Envelope{Type: MsgRequestState, RequestState: &RequestStatePayload{RequestID: "after", State: "started"}})
+		synctest.Wait()
+		notify := <-conn.Incoming()
+		if notify.Notify == nil || notify.Notify.Method != notifyRuntimeCommandsDrained {
+			t.Fatalf("first unsolicited frame = %+v, want the drain report", notify)
+		}
+		// The host handles the report after the read loop read the frames that follow it; the coverage must not depend on that.
+		conn.requestsDrained(notify)
+		mu.Lock()
+		defer mu.Unlock()
+		if want := []string{"before"}; !slices.Equal(drained, want) {
+			t.Fatalf("drained requests = %v, want %v: only the request the runtime started before its report", drained, want)
 		}
 	})
 }

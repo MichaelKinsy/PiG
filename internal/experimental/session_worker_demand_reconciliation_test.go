@@ -8,7 +8,6 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/session"
 	"github.com/MichaelKinsy/PiG/internal/experimental/services"
 )
 
@@ -25,7 +24,7 @@ func TestSessionWorkerDemandReconciliationAggregateError(t *testing.T) {
 		t.Run(row.name, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				directory := t.TempDir()
-				metadata := session.SessionMetadata{ID: "session-1", CreatedAt: 1, StorageVersion: 1, Cwd: directory, Path: filepath.Join(directory, "session-1.jsonl"), ModifiedAt: 1}
+				metadata := SessionCatalogMetadata{ID: "session-1", CreatedAt: 1, Cwd: directory, Path: filepath.Join(directory, "session-1.jsonl")}
 				coordinator := &workerManagerCoordinator{metadata: metadata}
 				manager := NewSessionWorkerManager(coordinator, directory, nil, nil)
 				manager.kill = func(int) error { return row.killError }

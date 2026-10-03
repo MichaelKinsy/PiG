@@ -1,0 +1,77 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+#
+# Documents that keep the number of an earlier Pi release because they record
+# what was done, measured or probed against that release. check-public-claims.py
+# accepts the listed release in the listed files and nowhere else, so a new file
+# is checked against the pin until someone reviews it into this list. An entry
+# that excuses nothing fails the check: delete it when the text moves.
+#
+# A statement about how Pi behaves does not belong here. Verify it against the
+# pinned release and state the pin, as docs/parity/DIVERGENCES.md does.
+
+[[record]]
+version = "0.87.1"
+reason = "Investigation reports, performance measurements, release integration logs and test-closure notes. Their upstream paths, line numbers, probes and results describe the release they were written against. The reviewed mappings under test/parity/interfaces carry the evidence for the current pin."
+paths = [
+  "docs/design/rpc33-observation.md",
+  "docs/findings/0.3.0-known-gaps.md",
+  "docs/findings/d35-easter-eggs.md",
+  "docs/findings/exit-latency.md",
+  "docs/findings/fix-drift-rpc.md",
+  "docs/findings/fix-drift-tools.md",
+  "docs/findings/fix-export-html.md",
+  "docs/findings/fix-overlay-shim.md",
+  "docs/findings/fix-packed-provider-event.md",
+  "docs/findings/fix-print-session-id.md",
+  "docs/findings/fix-rigidity-b.md",
+  "docs/findings/fix-rpc-parity.md",
+  "docs/findings/fx-selected-tools.md",
+  "docs/findings/harness-strict-compare.md",
+  "docs/findings/issues-65-71.md",
+  "docs/findings/npmcommand-trust.md",
+  "docs/findings/pi-directories-opt-in.md",
+  "docs/findings/port-rpc-parity-public.md",
+  "docs/findings/post-login-model.md",
+  "docs/findings/post-login-model-public.md",
+  "docs/findings/pr70-steering-admission.md",
+  "docs/findings/rpc33-partial-observation-proposal.md",
+  "docs/findings/rpc-command-dispatch.md",
+  "docs/findings/rpc-h1-continuations.md",
+  "docs/findings/startup-corner-cases.md",
+  "docs/findings/startup-performance.md",
+  "docs/parity/cfg-2-test-closure.md",
+  "docs/parity/compaction-e2e-reference-failure.md",
+  "docs/parity/compaction-settings-closure.md",
+  "docs/parity/compaction-suite-closure.md",
+  "docs/parity/extension-callback-state.md",
+  "docs/parity/failed-factory-api.md",
+  "docs/parity/KNOWN-GAPS-0.3.x.md",
+  "docs/parity/markdown-autolink-scaling.md",
+  "docs/parity/markdown-discovery.md",
+  "docs/parity/model-availability-task-ownership.md",
+  "docs/parity/native-clipboard-linux.md",
+  "docs/parity/pending-tests-batches.md",
+  "docs/parity/pending-tests-triage.md",
+  "docs/parity/pt-nonhot-ext-cli-report.md",
+  "docs/parity/resource-loader-test-review.md",
+  "docs/parity/retained-context-lifetime.md",
+  "docs/parity/session-runtime-helper.md",
+  "docs/parity/session-selector-rename.md",
+  "docs/parity/session-selector-rename-refresh.md",
+  "docs/parity/session-selector-scope-loading.md",
+  "docs/parity/session-selector-search.md",
+  "docs/parity/shutdown-input-owner.md",
+  "docs/parity/suspend.md",
+  "docs/parity/user-message-content.md",
+  "docs/performance/go-extension-startup.md",
+  "docs/performance/node-extension-startup.md",
+  "docs/performance/startup-phase-analysis.md",
+  "docs/release/0.2.1-integration.md",
+  "docs/release/0.3.0-integration.md",
+]
+
+[[record]]
+version = "0.87.1"
+reason = "The upgrade plan and its progress ledgers describe the move from 0.87.1 to the current pin, so they name both."
+paths = ["docs/plan/"]

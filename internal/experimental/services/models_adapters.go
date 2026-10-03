@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 )
@@ -13,8 +12,8 @@ type modelsView struct {
 	resolve func() (Models, error)
 }
 
-func (view modelsView) State() pico3.ReplicatedStateOf[*ModelsState] {
-	return chord.StateView(func() (pico3.ReplicatedStateOf[*ModelsState], error) {
+func (view modelsView) State() chord.ReplicatedStateOf[*ModelsState] {
+	return chord.StateView(func() (chord.ReplicatedStateOf[*ModelsState], error) {
 		target, err := view.resolve()
 		if err != nil {
 			return nil, err
@@ -65,7 +64,7 @@ func (view modelsView) SelectThinking(ctx context.Context, level ai.ThinkingLeve
 
 type remoteModels struct{ service *chord.RemoteService }
 
-func (models remoteModels) State() pico3.ReplicatedStateOf[*ModelsState] {
+func (models remoteModels) State() chord.ReplicatedStateOf[*ModelsState] {
 	replica, err := models.service.State("state")
 	if err != nil {
 		panic(err)

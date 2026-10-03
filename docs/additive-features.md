@@ -36,13 +36,19 @@ Piglet and activates no product Resources by default.
 
 `add git:<repository>@<full-commit>#subdirectory=<escaped-path>` reads only the selected subdirectory's Piglet. It requires a matching clean commit, copies declared relative local Resources and prompt files into `<name>.source/<commit>/`, and rewrites only the corresponding registered YAML paths. It preserves explicit empty scopes and executable permissions. The origin binds original and registered Piglet digests and each copied file digest. Closure paths cannot escape the Piglet file's directory, traverse symlinks, include Git metadata, or copy special files. The in-memory closure is bounded to 4,096 visited entries and 32 MiB. Source removal owns only its recorded closure. Bundled source requires explicit YAML fields rather than aliases or merge keys. Other remote source forms retain their refusal of local Resource origins. These are required, inert distribution mechanisms; no optional product is selected.
 
-Evidence: `TestPublishGitHubNamedNamespace` and `TestNamedGitHubReferenceEscapesTag` fail on unprefixed-only publishing/pull; `TestAddMonorepoPinnedClosure` fails on the prior local-origin refusal; `TestUpdateCommandRoutesBeforeSession` fails on the absent update command. `TestMonorepoPublishPullUpdateIsolation` publishes two names at the same versions through fake `gh`, serves their exact uploaded bytes through a local HTTPS GitHub transport, and checks named updates, mismatched identities, tampering, signer rotation, revocation, rollback, and cancellation. `TestPigletAddPinnedMonorepoThroughCoreMaterializer` uses a real local bare Git repository and removes the materialized checkout before verifying both registered closures. Pi 0.87.1 has no Piglet release counterpart: `packages/coding-agent/src/package-manager-cli.ts:375-385` recognizes only install/remove/uninstall/update/list as Package verbs, and `packages/coding-agent/src/cli/args.ts:253-254` puts other positional words into prompt messages. Piglet evidence is additive, not a paired Pi coverage claim. A compiling mutation that clears the discovery prefix makes `TestDiscoverGitHubVersionPagesNamespaceAndStableVersions` select unprefixed `7.0.0` instead of namespaced `2.0.0` and fails the publisher-to-update test. The restored code passes both. `TestUpdateUnprefixedRepositoryCannotInstallAnotherPiglet` reproduces an unprefixed update installing `beta` when `alpha` was requested; update now binds the installed name independently of the tag namespace before asset download. `TestPullCancellationAfterDownloadDoesNotPublish` also fails on a completed download that previously published after cancellation; pull now checks cancellation before verification and again under the publication lock. The cross-family `cli-utils/04-package-install-local` comparator is `output_equal` at three runs after probing Pi 0.87.1.
+Evidence: `TestPublishGitHubNamedNamespace` and `TestNamedGitHubReferenceEscapesTag` fail on unprefixed-only publishing/pull; `TestAddMonorepoPinnedClosure` fails on the prior local-origin refusal; `TestUpdateCommandRoutesBeforeSession` fails on the absent update command. `TestMonorepoPublishPullUpdateIsolation` publishes two names at the same versions through fake `gh`, serves their exact uploaded bytes through a local HTTPS GitHub transport, and checks named updates, mismatched identities, tampering, signer rotation, revocation, rollback, and cancellation. `TestPigletAddPinnedMonorepoThroughCoreMaterializer` uses a real local bare Git repository and removes the materialized checkout before verifying both registered closures. upstream 0.99.1 has no Piglet release counterpart: `packages/coding-agent/src/package-manager-cli.ts:375-385` recognizes only install/remove/uninstall/update/list as Package verbs, and `packages/coding-agent/src/cli/args.ts:253-254` puts other positional words into prompt messages. Piglet evidence is additive, not a paired Pi coverage claim. A compiling mutation that clears the discovery prefix makes `TestDiscoverGitHubVersionPagesNamespaceAndStableVersions` select unprefixed `7.0.0` instead of namespaced `2.0.0` and fails the publisher-to-update test. The restored code passes both. `TestUpdateUnprefixedRepositoryCannotInstallAnotherPiglet` reproduces an unprefixed update installing `beta` when `alpha` was requested; update now binds the installed name independently of the tag namespace before asset download. `TestPullCancellationAfterDownloadDoesNotPublish` also fails on a completed download that previously published after cancellation; pull now checks cancellation before verification and again under the publication lock. The cross-family `cli-utils/04-package-install-local` comparator is `output_equal` at three runs after probing Pi, then pinned at 0.87.1.
 
 Resource disposition: release HTTP requests own response bodies, use bounded reads, and inherit caller cancellation; staged Binary files and failed publication directories are removed. Source closure collection closes every file and directory, reads directories in bounded batches, caps retained file bytes, and installs no source file until validation completes. These operations run in explicit pre-session CLI commands, not on the TUI loop. `BenchmarkPigletClosure` covers sixteen 64-KiB files. A Linux/amd64 Go 1.27.1 sample reports 1.78 ms/op, 2.24 MB/op, and 624 allocations/op; CPU and allocation profiles identify runtime GC/syscalls and `io.ReadAll` respectively. This is a resource baseline, not a speedup claim. Reproduce with `go test ./coding/piglet -run '^$' -bench '^BenchmarkPigletClosure$' -benchmem -cpuprofile /tmp/piglet-closure-cpu.pprof -memprofile /tmp/piglet-closure-mem.pprof -o /tmp/piglet-closure.test`.
 
 Installed PiG Packages distribute Resources and never activate Piglets. An npm package used as a Piglet source is materialized directly and is not added to Package settings. Optional catalog and product transports must use public resolver contracts and must not be imported or registered by Stock Pig.
 
 Build diagnostics are product-neutral substrate. Explicit `pig build` and `pig piglet build --format binary` invocations report real phases and elapsed time on stderr. A terminal receives Pi's default loader frames and dim step text; redirected output receives plain phase lines. `--verbose` streams toolchain diagnostics with member labels. Packed members share a compiler invocation and label; fused members compile with the final Go binary. The build does not invent separate fetch or link phases inside a single toolchain invocation. Failure reports name the current phase, retain a bounded diagnostic tail, and suggest remediation. Success reports the artifact path, byte size, and elapsed time only after verification and record publication. The progress observer is absent from ordinary extension startup and does not change cache identity, compiler inputs, or extension APIs.
+
+The native builder compiles the PiG checkout that contains the working directory or `PIG_SOURCE_ROOT`. Without one, a release binary fetches exactly its own version, `github.com/MichaelKinsy/PiG@v<PigVersion>`, with `go mod download -json`. The running version is a release when its build info names that module version (`go install …@v<version>`) or when the release workflow stamped `coding/pigletbuild.releaseSourceVersion`, because release archives are built from source without VCS metadata. A development build keeps the `source-unavailable` result and its checkout remedy. `GOPROXY`/`GOSUMDB` verify the download and `GOMODCACHE` caches it; no Git clone or temporary checkout is made. The Go command refuses a build overlay beneath `GOMODCACHE`, so the module tree is staged once, by hard link or copy, under `~/.pig/cache/pig-source/<version>-<sum-key>` and published by rename. The build runs with `GOWORK=off` because the module zip omits the workspace's nested modules. Probe stays side-effect free: it reports ready with code `source-fetchable`, and Build performs the download and prints `fetching PiG <v> source (cached after first build)`. The Binary record's source revision is the proxy-reported commit, or the module version when the proxy reports none, and its source digest hashes the staged tree. Evidence: `TestNativeProbeReleaseWithoutCheckoutIsFetchableWithoutDownloading`, `TestNativeProbeDevBuildWithoutCheckoutIsSourceUnavailable`, `TestSelectBuilderAutoSelectsFetchableNative`, `TestResolveSourceFetchesExactlyTheRunningRelease`, `TestResolveSourceDevBuildKeepsSourceUnavailableRemedy`, `TestResolveSourceReportsDownloadFailureWithRemedy`, `TestResolveSourceRejectsAnotherModule`, and the network-gated `TestGoModDownloadFetchesPublishedPigSource`.
+
+The built-in `container` builder follows the native builder in auto selection and is selected explicitly with `--builder container`; a configured builder cannot take that name. `PIG_CONTAINER_ENGINE` selects `docker` or `podman`; otherwise Podman is preferred over Docker. It runs the digest-pinned public Go base image of `automation/images/ci-go/Dockerfile` with `--pull=missing`, mounts a host Go module/build cache from `~/.pig/cache/container-go`, installs exactly the running release with `go install github.com/MichaelKinsy/PiG/cmd/pig@v<PigVersion>`, and runs that release's native builder, which fetches its own source. The host needs neither Go nor PiG source, and any `linux/<arch>` the engine runs can be targeted. The image has only the Go toolchain, so Rust extension cells need a configured builder image with Cargo. Probe runs only `<engine> info`; it does not pull. A development build reports `source-unavailable` because no matching release can be installed. Like configured container builders, it refuses `--sign-key`. Nested input mountpoints are created in the host input directory because an engine cannot create them inside the read-only `/input` mount. Evidence: `TestDefaultContainerEngineSelection`, `TestDefaultContainerProbeIsReadyWithoutPulling`, `TestDefaultContainerProbeNotReady`, `TestSelectBuilderAutoUsesContainerWhenNativeIsNotReady`, `TestDefaultContainerBuildInstallsRunningRelease`, `TestDefaultContainerImageIsTheCIGoImageBase`, and `TestCreateContainerMountpointsUnderReadOnlyInput`.
+
+`pig piglet prune [--keep <n>] [--max-size <size>] [--dry-run]` removes built Piglet Binaries from the managed artifact store. Each build is kept forever otherwise, and a Go binary is tens of megabytes. The newest `n` builds of each Piglet and target (default 2, by record time) are never removed, because one build for several targets records one Binary per target. Without `--max-size` every other build goes, oldest first; with it they go oldest first only until the store is within the size, and the command reports that the limit is missed when protected builds alone exceed it. A removal takes the artifact, its Binary record, and its resolution record unless a remaining Binary uses it, together. Installs pulled from a signed release, which a `current` pointer names, are never touched. Nothing prunes this store automatically.
 
 Remove when: upstream Pi provides equivalent composition and immutable build
 artifacts, or Pig drops Piglet support.
@@ -60,7 +66,7 @@ Call-site markers:
 - `coding/extension/installresolver/registry.go`
 
 Tests:
-- `coding/piglet/`
+- `coding/piglet/` (`prune_test.go` for `pig piglet prune`)
 - `coding/pigletbuild/`
 - `cmd/pig/agent_environment_test.go`
 - `cmd/pig/build_command_test.go`
@@ -201,6 +207,12 @@ Generated Go cells read requirements, SDK pins, local replacements, and checksum
 
 Stock disposition: required substrate. Packing is a transparent host optimization and must remain behaviorally identical to isolated execution.
 
+Extension builds use one Go toolchain and report failures briefly. `internal/toolchain.ResolveGo` selects the go command once per process: the command on PATH, else the PiG-managed toolchain. A command inside its own installation is used as found. A version-manager shim or a distribution binary outside its GOROOT is asked for its root with the inherited GOROOT removed, and the installation's own binary is then pinned, because a shim chooses its version from the directory it runs in and a build runs in a generated directory. Every Go build passes `GoToolchain.Environ`, which replaces an inherited GOROOT with that installation's root. An inherited GOROOT of another release is what made `go` run one release's compiler under another's go command (`compile: version "go1.26.7" does not match go tool version "go1.26.1"`, repeated for every standard-library package). A mismatch that remains, a broken installation, is one line naming both releases and the fix. A cell's cache key includes the toolchain root and the compiler binary's identity, so repairing the installation is an input change.
+
+While cells compile in interactive mode on a terminal, one status line shows how many cells are finished and which extensions are compiling. It rewrites itself and is cleared when the load pass ends; a warm start prints nothing. A failed build is one line: `BuildFailure` holds the summary, a cause that failures of one kind share, and the path of a log under `<config-root>/cache/logs/` that holds the complete compiler output and the generated go.mod (newest 64 logs, each bounded). Extensions that fail for one cause are one line (`13 extensions failed to build: <cause> (names; details: <log>)`) in startup diagnostics and in `/reload` issues. At startup that line, like each member's `Failed to load extension` error in Pi, is followed by the `pig -ne` hint. A compiler diagnostic, and a mismatched toolchain, are recorded against the cell's inputs (sources, SDK, toolchain release, root and compiler identity), so an unchanged start reports the recorded failure without compiling; network, module and disk failures are never recorded. A recorded failure says how to retry: `pig extensions cache prune --failures`. Within a process a mismatched toolchain is met once, not once per cell.
+
+`pig extensions cache prune --failures` removes recorded failures, including those of current extensions. The automatic daily prune also enforces a 5 GiB size limit, evicting the entries used longest ago; entries the current extensions use are never evicted for it, so the cache can exceed the limit. Retention stays 30 days.
+
 What: pig adds an internal "runtime cell" planner and a set of generated
 packed runners that can host multiple subprocess extensions inside one
 shared OS process. Upstream pi has no equivalent because pi loads
@@ -283,6 +295,7 @@ Call-site markers:
 
 Tests:
 - `coding/extension/host/runtimecell/{go,rust,python}_packed_test.go`
+- `internal/toolchain/resolve_test.go`, `coding/extension/host/runtimecell/build_failure_report_test.go`, `coding/extension/host/subprocess/{build_line,build_failure_group}_test.go`, `cmd/pig/extension_build_diagnostics_test.go`, and `cmd/pig/extensions_cache_command_test.go` (`TestAutomaticExtensionCacheGCEnforcesTheSizeLimitOldestFirst`)
 - `coding/extension/host/subprocess/cell_plan_test.go`
 - `coding/extension/host/subprocess/packed_go_test.go`
   (`TestHost_ReloadPlansPacked{Go,Rust,Python}AndFissionsQuarantinedCell`)
@@ -336,6 +349,8 @@ standalone Pig binary cannot assume a source checkout exists.
 Current behavior: startup performs a best-effort content-addressed sync. The
 stock system prompt points at the materialized bundle so the agent can inspect
 the exact extension, Package, and Piglet contracts implemented by its binary.
+The `codemode` description and the argument errors of its `models` globals name
+the bundle's `codemode.md` where Pi names `CODEMODE_DOCS_PATH` in its package.
 This is distribution infrastructure, not an extension, and it activates no
 optional Product Resource.
 
@@ -346,11 +361,14 @@ Call-site markers:
 - `internal/pigdocs/pigdocs.go`
 - `cmd/pig/main.go`
 - `internal/codingagent/prompts/coding.go`
+- `coding/extension/builtin/codemode/description.go`
+- `internal/evals/harness.go`
 
 Tests:
 - `internal/pigdocs/pigdocs_test.go`
 - `internal/codingagent/auth_guidance_test.go`
 - `internal/codingagent/prompts/coding_test.go`
+- `coding/extension/builtin/codemode/docs_path_test.go`
 
 PORT_MAP path: n/a (standalone distribution support).
 SCRUTINIZED:approved
@@ -677,9 +695,15 @@ each SDK exposes live getters: Go `Context.Width()`/`Height()`, Python
 `RuntimeContext.width`/`height`. The ready payload carries the terminal
 geometry (width with a 120 fallback for the pre-TUI window, height as 0
 until the wiring layer reports it), and resize is broadcast so a widget
-can re-layout. `TestConformance_Geometry` asserts all four SDKs report the
-height delivered by a notification; the parity matrix records the surface
-as complete (pig-additive).
+can re-layout. Every ready path (isolated, packed, and the deferred packed
+Node ready) reads the current geometry. The host deduplicates
+notifications per extension, so one extension's handshake never suppresses
+a resize for the others. After a load or reload commits, the host sends
+the current geometry to each new extension that saw an older value, so a
+resize during `/reload` reaches every reloaded extension. A connection receives geometry in the order the host records it, so that resynchronization and a concurrent resize cannot leave an extension on the older value.
+`TestConformance_Geometry` asserts all four SDKs report the height
+delivered by a notification; the parity matrix records the surface as
+complete (pig-additive).
 
 Why: extension authors needed layout logic that depends on the terminal
 height (widgets that change their content or line count with the pane
@@ -696,7 +720,10 @@ Skip conditions:
   upstream implementation harder to port.
 
 Call sites: `coding/extension/host/subprocess/host.go`
-(`SetHeightFunc`, `readyGeometry`, `NotifyHeight`),
+(`SetHeightFunc`, `readyGeometry`, `readyGeometryFor`, `syncGeometry`,
+`NotifyHeight`), `coding/extension/host/subprocess/packed_go.go`
+(`acceptPackedExt`), `coding/extension/host/subprocess/cell_start.go`
+(`activateNode`),
 `internal/codingagent/interactive.go` (width/height callback registration
 and the startup kick), and the per-SDK context getters under
 `extensions/sdk*`.
@@ -710,8 +737,14 @@ Remove when: upstream delivers terminal height (or width height) to the
 extension SDK context, obsoleting the pig-additive geometry surface.
 
 Locked by: `TestConformance_Geometry`, which asserts all four SDKs report
-the height delivered by a notification; the parity matrix records the
-surface as complete (pig-additive).
+the height delivered by a notification;
+`TestPackedGoExtensionReceivesHeightThroughReload`,
+`TestReloadResizeDuringHandshakeReachesEveryExtension`, and
+`TestCrashRestartHandshakeDoesNotSuppressResizeForOthers` lock the ready
+geometry and per-extension delivery across reload and crash restart;
+`TestGeometryResyncAndResizeReachAConnectionInRecordedOrder` locks the
+delivery order; the
+parity matrix records the surface as complete (pig-additive).
 
 ## D60 Typed native login extension API
 
@@ -815,7 +848,7 @@ What: Pi starts one download per overlapping caller. PiG shares one in-flight do
 
 A caller rechecks the installed path while claiming a new flight, so completion between its initial lookup and its claim does not trigger another download. Only the owner reports download status. Completion removes the flight on success or failure.
 
-Pi source: `packages/coding-agent/src/utils/tools-manager.ts:353-356` returns an installed path without reporting status. Lines 377-382 start a download for every missing-tool call without a shared Promise or in-flight map. A direct probe of Pi 0.87.1's installed `dist/utils/tools-manager.js`, with two calls held at an asset-response barrier, produces two version lookups, two asset requests and two status sequences.
+Pi source: `packages/coding-agent/src/utils/tools-manager.ts:353-356` returns an installed path without reporting status. Lines 377-382 start a download for every missing-tool call without a shared Promise or in-flight map. A direct probe of the installed `dist/utils/tools-manager.js` (byte-identical in upstream 0.87.1 and 0.99.1, as is `src/utils/tools-manager.ts`), with two calls held at an asset-response barrier, produces two version lookups, two asset requests and two status sequences.
 
 Why: the owner classifies coalescing identical concurrent downloads as an additive robustness improvement. Shared work prevents competing writes to the same archive and binary. This adds no command, setting or product workflow.
 

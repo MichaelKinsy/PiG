@@ -122,7 +122,7 @@ func TestSessionCloneBootstrapSessionRefuses(t *testing.T) {
 	sess, _ := NewSession(svcs, SessionOptions{Model: fakeModel()})
 	defer func() { _ = sess.Close() }()
 	cloned, err := sess.Clone()
-	if err == nil || err.Error() != "This session has not been saved yet. Wait for the first assistant response before cloning or forking it." || cloned != nil {
+	if err == nil || err.Error() != "This session has not been saved yet. Send a message before cloning or forking it." || cloned != nil {
 		t.Fatalf("clone=%v error=%v", cloned, err)
 	}
 }
@@ -348,10 +348,10 @@ func TestDispatchSlashResumeFallsBackToListing(t *testing.T) {
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
-// flushSess persists a session by appending an assistant message,
-// upstream's disk-flush trigger (SessionManager._persist hasAssistant
-// gate). Tests asserting on-disk state must flush first; a fresh session
-// is not written until the model replies.
+// flushSess persists a session by appending an assistant message. A user
+// or assistant message is upstream's disk-flush trigger
+// (SessionManager._persist _hasConversation gate). Tests asserting on-disk
+// state must flush first; a fresh session has no file until then.
 func flushSess(t *testing.T, sess *Session) {
 	t.Helper()
 	if _, err := sess.Inner().AppendMessage(agent.AgentMessage{

@@ -108,7 +108,7 @@ Kitty supports the Kitty keyboard protocol. It needs no setup.
 
 The regular layout needs no setup.
 
-In fullscreen mode (`--tui-mode fullscreen` or the `tuiMode` setting), PiG captures the mouse, so iTerm2 sends wheel events to PiG instead of scrolling its own history. Fast trackpad gestures can then scroll only one line at a time. To change this, open **iTerm2 > Settings > Advanced**, find **Trackpad scrolls fast?** and set it to **No**. The setting applies to all of iTerm2.
+In fullscreen mode (the default; `--tui-mode regular` or the `tuiMode` setting selects the regular layout), PiG captures the mouse, so iTerm2 sends wheel events to PiG instead of scrolling its own history. Fast trackpad gestures can then scroll only one line at a time. To change this, open **iTerm2 > Settings > Advanced**, find **Trackpad scrolls fast?** and set it to **No**. The setting applies to all of iTerm2.
 
 ### Ghostty
 

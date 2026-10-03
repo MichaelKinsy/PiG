@@ -3,7 +3,6 @@ package codingagent
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -18,8 +17,8 @@ func TestSettingsReadHonorsPiWriterLock(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err := loadSettingsFile(path)
-	if err == nil || !strings.Contains(err.Error(), "failed to acquire settings lock") {
-		t.Fatalf("read parsed an active writer's partial JSON: %v", err)
+	if !isProperLockfileContention(err) {
+		t.Fatalf("read parsed an active writer's partial JSON: %v, want proper-lockfile's ELOCKED error", err)
 	}
 	if err := os.WriteFile(path, []byte(`{"theme":"light"}`), 0o600); err != nil {
 		t.Fatal(err)

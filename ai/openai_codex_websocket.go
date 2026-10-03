@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
@@ -478,7 +477,12 @@ func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context
 	}
 	requestID := ClampOpenAIPromptCacheKey(cacheSessionID)
 	if requestID == "" {
-		requestID = uuid.Must(uuid.NewV7()).String()
+		// upstream: packages/ai/src/api/openai-codex-responses.ts: websocketRequestId = codexSessionId || uuidv7()
+		id, err := UUIDv7(nil)
+		if err != nil {
+			return nil, err
+		}
+		requestID = id
 	}
 	headers := codexWebSocketHeaders(p.cfg.ExtraHeaders, opts.Headers, apiKey, accountID, requestID)
 	connectTimeout := codexWebSocketConnectTimeout
@@ -550,12 +554,25 @@ func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context
 		codexWebSocketSessions.mu.Unlock()
 	}
 
+	builder := newAssistantStreamBuilder(ctx, APIOpenAICodexResponses, p.cfg.ProviderID, p.cfg.Model)
+	builder.modelCost = opts.ModelCost
+	builder.requestServiceTier, _ = opts.SamplingParams["service_tier"].(string)
+	builder.setProviderEventObserver(opts, providerEventModel(p.cfg.ModelMetadata, APIOpenAICodexResponses, p.cfg.ProviderID, p.cfg.Model))
 	var messageType int
 	var first []byte
 	for {
 		messageType, first, err = readCodexWebSocket(ctx, acquired.connection, optionTimeout(opts.TimeoutMs))
 		if err != nil {
 			break
+		}
+		if messageType == websocket.TextMessage || messageType == websocket.BinaryMessage {
+			// mapCodexEvents observes every event, including one that ends this attempt with a retry. A failing observer is not a transport
+			// failure, so it ends the request without a retry or SSE fallback (openai-codex-responses.ts:749-755, ProviderStreamEventCallbackError).
+			if observeErr := builder.observeCodexFrame(first); observeErr != nil {
+				acquired.release(false)
+				builder.failUnfinished(StopReasonError, observeErr)
+				return builder.stream, nil
+			}
 		}
 		var event struct {
 			Type string `json:"type"`
@@ -606,9 +623,6 @@ func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context
 		return nil, nil
 	}
 
-	builder := newAssistantStreamBuilder(ctx, APIOpenAICodexResponses, p.cfg.ProviderID, p.cfg.Model)
-	builder.modelCost = opts.ModelCost
-	builder.requestServiceTier, _ = opts.SamplingParams["service_tier"].(string)
 	go p.consumeCodexWebSocket(ctx, acquired, first, fullBody, grammarProps, useCachedContext, builder, opts)
 	return builder.stream, nil
 }
@@ -625,6 +639,10 @@ func markCodexWebSocketFinishing(entry *codexWebSocketEntry) {
 func (p *openAIResponsesProvider) consumeCodexWebSocket(ctx context.Context, acquired *acquiredCodexWebSocket, first []byte, fullBody map[string]any, grammarProps map[string]string, useCachedContext bool, builder *assistantStreamBuilder, opts StreamOptions) {
 	reader, writer := io.Pipe()
 	feedDone := make(chan struct{})
+	parseDone := make(chan struct{})
+	// pull carries one token per record the parser asks for. mapCodexEvents observes an event only when processResponsesStream pulls it, after the previous event is
+	// normalized (openai-codex-responses.ts:749-751), so the feeder holds each frame's observation until the parser has finished the frame before it.
+	pull := make(chan struct{}, 1)
 	go func() {
 		defer close(feedDone)
 		defer func() { _ = writer.Close() }()
@@ -633,7 +651,25 @@ func (p *openAIResponsesProvider) consumeCodexWebSocket(ctx context.Context, acq
 		})
 		defer stopCancel()
 		message := first
+		// startCodexWebSocketAttempt observed the first frame.
+		observed := true
+		pulled := false
 		for {
+			if !pulled {
+				select {
+				case <-pull:
+					pulled = true
+				case <-parseDone:
+					return
+				}
+			}
+			if !observed {
+				if err := builder.observeCodexFrame(message); err != nil {
+					_ = writer.CloseWithError(err)
+					return
+				}
+			}
+			observed = false
 			mapped, mapErr := mapCodexWebSocketEventFrame(message)
 			if mapErr != nil {
 				_ = writer.CloseWithError(mapErr)
@@ -646,6 +682,7 @@ func (p *openAIResponsesProvider) consumeCodexWebSocket(ctx context.Context, acq
 				if _, err := fmt.Fprintf(writer, "data: %s\n\n", mapped.data); err != nil {
 					return
 				}
+				pulled = false
 				if mapped.terminal {
 					return
 				}
@@ -666,7 +703,16 @@ func (p *openAIResponsesProvider) consumeCodexWebSocket(ctx context.Context, acq
 		}
 	}()
 
-	p.parseResponsesSSE(ctx, reader, builder, grammarProps)
+	decoder := newSSEDecoder(reader)
+	decoder.beforeNext = func() {
+		builder.publish()
+		select {
+		case pull <- struct{}{}:
+		case <-feedDone:
+		}
+	}
+	p.parseResponses(ctx, decoder, builder, grammarProps)
+	close(parseDone)
 	_ = reader.Close()
 	<-feedDone
 	result := builder.stream.Result()

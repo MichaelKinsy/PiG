@@ -9,6 +9,7 @@ import (
 )
 
 func TestSessionModelExtensionLifecycleUpstream(t *testing.T) {
+	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
 	// .upstream/v0.87.1/packages/coding-agent/test/suite/agent-session-model-extension.test.ts:509
 	t.Run("bindExtensions emits session_start and reload emits session_shutdown then session_start", func(t *testing.T) {
 		var events []string

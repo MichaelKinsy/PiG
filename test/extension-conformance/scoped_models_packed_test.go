@@ -14,9 +14,6 @@ import (
 func makePackedScopeHarness(t *testing.T, language string) *harness {
 	t.Helper()
 	root := findModuleRoot(t)
-	t.Setenv("PIG_SDK_GO_ROOT", filepath.Join(root, "extensions", "sdk"))
-	t.Setenv("PIG_SDK_PY_ROOT", filepath.Join(root, "extensions", "sdk-py"))
-	t.Setenv("PIG_SDK_RS_ROOT", filepath.Join(root, "extensions", "sdk-rs"))
 	configs := []subprocess.ExtConfig{packedScopeFactory(t, root, language, "first", "scoped-models-probe"), packedScopeFactory(t, root, language, "second", "scoped-models-probe-two")}
 	h := subprocess.NewHostWithConfigRoot(t.TempDir(), t.TempDir())
 	t.Cleanup(func() { h.Shutdown("test done") })

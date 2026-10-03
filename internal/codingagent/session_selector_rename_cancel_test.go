@@ -128,7 +128,7 @@ func TestCancelledRenameRefreshWakesOwnerLoops(t *testing.T) {
 				terminal := &fakeStartupTerminal{}
 				send = func(input string) { terminal.send(t, input) }
 				go func() {
-					_, err := runStartupComponentWith(s, StartupUIOptions{Settings: Settings{Theme: "dark"}}, false, ui, terminal, nil)
+					_, err := runStartupComponentWith(s, StartupUIOptions{Settings: Settings{Theme: "dark"}}, false, ui, terminal)
 					done <- err
 				}()
 			} else {

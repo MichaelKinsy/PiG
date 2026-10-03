@@ -197,9 +197,10 @@ func (a *AuthStorage) Modify(ctx context.Context, providerID string, fn func(cur
 	defer a.mu.Unlock()
 	var result *Credential
 	err := a.withFileLock(ctx, true, func(lock *pilock.Lock) error {
+		// The lock's context carries a heartbeat compromise as its cause, which withLockAsync's throwIfCompromised throws before the caller's abort (auth-storage.ts:168-172,180-184).
 		ctx := lock.Context()
-		if err := ctx.Err(); err != nil {
-			return err
+		if ctx.Err() != nil {
+			return context.Cause(ctx)
 		}
 		credentials, err := a.loadLocked()
 		if err != nil {
@@ -213,8 +214,8 @@ func (a *AuthStorage) Modify(ctx context.Context, providerID string, fn func(cur
 		if err != nil {
 			return err
 		}
-		if err := ctx.Err(); err != nil {
-			return err
+		if ctx.Err() != nil {
+			return context.Cause(ctx)
 		}
 		if next == nil {
 			a.read.mu.Lock()

@@ -1,5 +1,5 @@
 {
-  "piVersion": "0.87.1",
+  "piVersion": "1.0.0",
   "node": "24.19.0",
   "apis": {
     "openai-completions": {
@@ -18,10 +18,8 @@
       ],
       "model": "strict",
       "provider": "p",
-      "rawStopReason": "tool_calls",
-      "responseId": "chatcmpl-strict",
       "role": "assistant",
-      "stopReason": "toolUse",
+      "stopReason": "pending",
       "timestamp": 0,
       "usage": {
         "cacheRead": 0,
@@ -33,10 +31,9 @@
           "output": 0,
           "total": 0
         },
-        "input": 10,
-        "output": 3,
-        "reasoning": 0,
-        "totalTokens": 13
+        "input": 0,
+        "output": 0,
+        "totalTokens": 0
       }
     },
     "openai-responses": {
@@ -44,7 +41,6 @@
       "content": [],
       "model": "strict",
       "provider": "p",
-      "responseId": "resp_1",
       "role": "assistant",
       "stopReason": "pending",
       "timestamp": 0,
@@ -194,7 +190,6 @@
       "content": [],
       "model": "strict",
       "provider": "p",
-      "responseId": "resp_1",
       "role": "assistant",
       "stopReason": "pending",
       "timestamp": 0,
@@ -215,15 +210,7 @@
     },
     "openai-codex-responses": {
       "api": "openai-codex-responses",
-      "content": [
-        {
-          "arguments": {},
-          "id": "call_1|fc_1",
-          "name": "read",
-          "partialJson": "",
-          "type": "toolCall"
-        }
-      ],
+      "content": [],
       "model": "strict",
       "provider": "p",
       "responseId": "resp_1",
@@ -259,9 +246,8 @@
       ],
       "model": "strict",
       "provider": "p",
-      "responseId": "msg-strict",
       "role": "assistant",
-      "stopReason": "toolUse",
+      "stopReason": "pending",
       "timestamp": 0,
       "usage": {
         "cacheRead": 0,
@@ -273,9 +259,9 @@
           "output": 0,
           "total": 0
         },
-        "input": 10,
-        "output": 3,
-        "totalTokens": 13
+        "input": 0,
+        "output": 0,
+        "totalTokens": 0
       }
     },
     "bedrock-converse-stream": {

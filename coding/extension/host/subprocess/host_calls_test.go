@@ -116,7 +116,12 @@ func (f *callOrderFixture) call(id, method, parent string, args any) {
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	data, err := json.Marshal(Envelope{Type: MsgCall, ID: id, Call: &CallPayload{Method: method, Args: raw, ParentRequestID: parent}})
+	f.send(Envelope{Type: MsgCall, ID: id, Call: &CallPayload{Method: method, Args: raw, ParentRequestID: parent}})
+}
+
+func (f *callOrderFixture) send(env Envelope) {
+	f.t.Helper()
+	data, err := json.Marshal(env)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -322,6 +327,9 @@ func runSlotOrder(t *testing.T, ui *orderedSlotUI, sends ...slotSend) (blocked, 
 	t.Helper()
 	bridge := NewUIBridge(func() {})
 	bridge.SetUIContext(ui)
+	bridge.SetWidgetRequestFunc(func(_ string, _ string, lines []string, _ extension.ExtensionWidgetOptions) {
+		ui.record("widget:" + strings.Join(lines, ","))
+	})
 	f = newBridgeCallOrderFixture(t, bridge)
 	f.conn.pendingMu.Lock()
 	f.conn.pending["r9"] = make(chan *Envelope, 1)
@@ -352,6 +360,12 @@ func TestReadLoopRunsSlotCallsInSendOrder(t *testing.T) {
 		}},
 		{"footer", func(*testing.T) []slotSend {
 			return []slotSend{footerSend("c1", "", "older"), footerSend("c2", "r9", "newer")}
+		}},
+		{"widget", func(*testing.T) []slotSend {
+			return []slotSend{
+				{"c1", "ui.setWidget", "", map[string]any{"key": "list", "lines": []string{"older"}, "width": 20}, "widget:older"},
+				{"c2", "ui.setWidget", "r9", map[string]any{"key": "list", "lines": []string{"newer"}, "width": 40}, "widget:newer"},
+			}
 		}},
 		{"header then login", func(t *testing.T) []slotSend {
 			return []slotSend{headerSend("c1", "", "older"), loginSend(t, "c2", "r9", "newer")}
@@ -390,6 +404,64 @@ func TestReadLoopDoesNotOrderFooterAgainstHeader(t *testing.T) {
 	blocked, released, _ := runSlotOrder(t, newOrderedSlotUI(), headerSend("c1", "", "older"), footerSend("c2", "r9", "newer"))
 	if want := []string{"footer:newer"}; !slices.Equal(blocked, want) || !slices.Equal(released, []string{"footer:newer", "header:older"}) {
 		t.Fatalf("applications = %v then %v, want the footer alone while the header lane was blocked", blocked, released)
+	}
+}
+
+// Pi's setExtensionWidget replaces synchronously, regardless of whether an SDK sends content as a host call or a no-reply push.
+func TestReadLoopWidgetPushOrdersAgainstQueuedSlotCalls(t *testing.T) {
+	for _, clear := range []bool{false, true} {
+		t.Run(fmt.Sprintf("clear=%t", clear), func(t *testing.T) {
+			ui := newOrderedSlotUI()
+			bridge := newTestBridge(ui)
+			bridge.SetWidgetSyncFunc(func(widgets map[string]*PushProxy) {
+				if proxy := widgets["order:list"]; proxy != nil {
+					ui.record("widget:" + strings.Join(proxy.Lines(), ","))
+				} else {
+					ui.record("widget:cleared")
+				}
+			})
+			f := newBridgeCallOrderFixture(t, bridge)
+			f.conn.pendingMu.Lock()
+			f.conn.pending["r9"] = make(chan *Envelope, 1)
+			f.conn.pendingMu.Unlock()
+			f.call("seed", "ui.setWidget", "r9", map[string]any{"key": "list", "content": []string{"seed"}})
+			f.result("seed")
+			f.call("gate", "ui.notify", "", map[string]any{"message": "gate"})
+			waitSignal(t, ui.entered, "gating notify")
+			var release sync.Once
+			defer release.Do(func() { close(ui.release) })
+			var content []string
+			if !clear {
+				content = []string{"older"}
+			}
+			f.call("older", "ui.setWidget", "", map[string]any{"key": "list", "content": content})
+			f.send(Envelope{Type: MsgWidgetPush, WidgetPush: &WidgetPushPayload{Key: "list", Lines: []string{"newer"}}})
+			f.result("older")
+			// A later slot call drains all earlier replacements, even while their original lane is blocked.
+			f.call("barrier", "ui.setWidget", "r9", map[string]any{"key": "barrier", "content": []string{}})
+			f.result("barrier")
+			want := []string{"widget:seed", "widget:older", "widget:newer", "widget:newer"}
+			if clear {
+				want[1] = "widget:cleared"
+			}
+			if got := ui.applied(); !slices.Equal(got, want) {
+				t.Fatalf("widget applications = %v, want %v", got, want)
+			}
+			if proxy := bridge.GetWidget("order", "list"); proxy == nil || !slices.Equal(proxy.Lines(), []string{"newer"}) {
+				t.Fatal("queued host call overwrote the later SDK push")
+			}
+			f.call("clear", "ui.setWidget", "r9", map[string]any{"key": "list", "content": nil})
+			f.result("clear")
+			if bridge.GetWidget("order", "list") != nil {
+				t.Fatal("an earlier SDK push survived the later clear")
+			}
+			release.Do(func() { close(ui.release) })
+			f.call("after", "ui.notify", "", map[string]any{"message": "after"})
+			waitSignal(t, ui.after, "the original lane to drain")
+			if got := ui.applied(); !slices.Equal(got, append(want, "widget:cleared")) {
+				t.Fatalf("draining the original lane reapplied a widget: %v", got)
+			}
+		})
 	}
 }
 

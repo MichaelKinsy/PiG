@@ -82,7 +82,7 @@ func (runtime *ModelRuntime) GetAvailable(ctx context.Context, providerID ...str
 	if err != nil {
 		return nil, err
 	}
-	return available, nil
+	return runtime.virtuals.overlayAvailable(available, runtime.services.Registry().GetProviderModelData, id), nil
 }
 
 // syncRegistration mirrors the synchronous part of Pi's registerProvider, registerNativeProvider and unregisterProvider. The queued local refresh that follows is owned by the registry (internal/codingagent/model_refresh_background.go).
@@ -183,8 +183,9 @@ func (runtime *ModelRuntime) configuredInSnapshot(providerID string) bool {
 func (runtime *ModelRuntime) GetAvailableSnapshot() []*ai.Model {
 	state := &runtime.availability
 	state.mu.RLock()
-	defer state.mu.RUnlock()
-	return slices.Clone(state.snapshot.available)
+	available := slices.Clone(state.snapshot.available)
+	state.mu.RUnlock()
+	return runtime.virtuals.overlayAvailable(available, runtime.services.Registry().GetProviderModelData)
 }
 
 // GetError joins model configuration errors and the latest non-cancelled availability failure.

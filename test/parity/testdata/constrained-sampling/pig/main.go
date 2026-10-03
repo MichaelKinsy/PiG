@@ -30,20 +30,30 @@ func run() error {
 	defer server.Close()
 	provider := ai.NewOpenAIResponsesProvider(ai.OpenAIResponsesConfig{APIKey: "test", Model: "gpt-test", ProviderID: "openai", BaseURL: server.URL, Compat: &ai.OpenAIResponsesCompat{SupportsOpenAIGrammarTools: new(true)}})
 	tools := []ai.ToolSchema{{Name: "sample_tool", Description: "Sample tool", Parameters: map[string]any{"type": "object", "properties": map[string]any{"payload": map[string]any{"type": "string"}}, "required": []string{"payload"}, "additionalProperties": false}, ConstrainedSampling: &ai.ConstrainedSamplingConfig{Type: "grammar", Variants: map[string]string{"openai_lark": "start: /[a-z]+/"}}}}
-	stream, err := provider.Stream(context.Background(), ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hi")}}, Tools: tools}), ai.StreamOptions{})
-	if err != nil {
-		return err
-	}
+	request := ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hi")}}, Tools: tools})
 	starts, partials := []ai.JsonObject{}, []ai.JsonObject{}
 	deltas := ""
-	for event := range stream.Events(context.Background()) {
-		switch event := event.(type) {
-		case ai.ToolCallStartEvent:
-			starts = append(starts, event.Partial.Observe().Content[event.ContentIndex].(ai.ToolCall).Arguments)
-		case ai.ToolCallDeltaEvent:
-			deltas += event.Delta
-			partials = append(partials, event.Partial.Observe().Content[event.ContentIndex].(ai.ToolCall).Arguments)
+	var stream *ai.AssistantMessageEventStream
+	// Pi creates the stream and attaches its consumer in one synchronous prefix, before any provider I/O can complete. A goroutine outside the continuation executor attaches whenever the scheduler runs it, so a response that arrives first lets the producer publish every event before the first read. RunStreamContinuation owns that prefix through iteration, as the Agent does (agent-loop.ts:402-414).
+	ctx := ai.WithStreamContinuations(context.Background())
+	if err := ai.RunStreamContinuation(ctx, func(observation *ai.StreamObservation) error {
+		inner, err := provider.Stream(observation.Context(ctx), request, ai.StreamOptions{})
+		if err != nil {
+			return err
 		}
+		for event := range inner.Events(observation.Context(ctx)) {
+			switch event := event.(type) {
+			case ai.ToolCallStartEvent:
+				starts = append(starts, event.Partial.Observe().Content[event.ContentIndex].(ai.ToolCall).Arguments)
+			case ai.ToolCallDeltaEvent:
+				deltas += event.Delta
+				partials = append(partials, event.Partial.Observe().Content[event.ContentIndex].(ai.ToolCall).Arguments)
+			}
+		}
+		stream = inner
+		return nil
+	}); err != nil {
+		return err
 	}
 	result := stream.Result()
 	if result.StopReason == ai.StopReasonError {

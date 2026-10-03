@@ -12,8 +12,8 @@ func TestNativeProviderInvalidRefreshDoesNotPublish(t *testing.T) {
 	// provider-composer.ts validates refreshed extension models before publishing its synchronous catalog.
 	services, _ := nativeCompatServices(t, "", nil)
 	runtime := services.ModelRuntime()
-	if err := runtime.RegisterProvider("invalid-refresh", ProviderConfigInput{BaseURL: "https://fixture.invalid", APIKey: "key", Models: []*ai.Model{nativeCompatModel("base", "invalid-refresh", "https://fixture.invalid")}, RefreshModels: func(ai.RefreshModelsContext) ([]*ai.Model, error) {
-		return []*ai.Model{{ID: "invalid", DisplayName: "Invalid"}}, nil
+	if err := runtime.RegisterProvider("invalid-refresh", ProviderConfigInput{BaseURL: "https://fixture.invalid", APIKey: "key", Models: []ai.AnyModel{nativeCompatModel("base", "invalid-refresh", "https://fixture.invalid")}, RefreshModels: func(ai.RefreshModelsContext) ([]ai.AnyModel, error) {
+		return []ai.AnyModel{&ai.Model{ID: "invalid", DisplayName: "Invalid"}}, nil
 	}}); err != nil {
 		t.Fatal(err)
 	}

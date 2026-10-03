@@ -8,6 +8,7 @@ package runner
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/BurntSushi/toml"
 )
@@ -167,12 +168,24 @@ type TmuxStep struct {
 	SettleSeconds       int      `toml:"settle_seconds"`
 	WaitContains        []string `toml:"wait_contains"`
 	WaitVisibleContains []string `toml:"wait_visible_contains"`
-	WaitNotContains     []string `toml:"wait_not_contains"`
+	// WaitVisibleContainsPig and WaitVisibleContainsPi add binary-specific rows to WaitVisibleContains, for a surface that
+	// differs by a numbered divergence (as ready_pattern_pig and ready_pattern_pi do for the ready pattern).
+	WaitVisibleContainsPig []string `toml:"wait_visible_contains_pig"`
+	WaitVisibleContainsPi  []string `toml:"wait_visible_contains_pi"`
+	WaitNotContains        []string `toml:"wait_not_contains"`
 	// WaitStableMilliseconds waits, after the other step waits, until the
 	// visible pane has not changed for this long. It is the completion barrier
 	// for an animation that emits no completion output.
 	WaitStableMilliseconds int `toml:"wait_stable_milliseconds"`
 	WaitTimeoutSeconds     int `toml:"wait_timeout_seconds"`
+}
+
+// visibleContains is the step's visible-state wait for the binary labeled label: the shared rows plus that binary's own.
+func (step TmuxStep) visibleContains(label string) []string {
+	if label == "pi" {
+		return slices.Concat(step.WaitVisibleContains, step.WaitVisibleContainsPi)
+	}
+	return slices.Concat(step.WaitVisibleContains, step.WaitVisibleContainsPig)
 }
 
 // EnvOverrides lets a scenario inject per-binary environment variables

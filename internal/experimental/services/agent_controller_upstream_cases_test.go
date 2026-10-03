@@ -1,4 +1,4 @@
-package services
+package services_test
 
 import (
 	"context"
@@ -6,185 +6,147 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/agent/harness"
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
-	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/durable/harness"
 	"github.com/MichaelKinsy/PiG/internal/chord"
+	"github.com/MichaelKinsy/PiG/internal/experimental/durableadapter"
+	"github.com/MichaelKinsy/PiG/internal/experimental/durabletest"
+	"github.com/MichaelKinsy/PiG/internal/experimental/services"
 )
 
+func controllerHost(t *testing.T, controller services.AgentController) *chord.FacetHost {
+	t.Helper()
+	// Go uses a typed token constructed from the production service ID; types and values cannot both be named AgentController.
+	definition := chord.DefineService[services.AgentController](services.AgentControllerID)
+	host, err := chord.CreateFacetHost(t.Context(), chord.FacetOptions{Facets: []chord.Facet{{Id: "test-agent-controller", Setup: func(env *chord.FacetEnvironment) error {
+		return chord.ProvideService[services.AgentController](env, definition, controller)
+	}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := host.Dispose(context.Background()); err != nil {
+			t.Error(err)
+		}
+	})
+	return host
+}
+
+func viewOf(t *testing.T, conversation *durableadapter.Session) services.ConversationView {
+	t.Helper()
+	state, err := conversation.ViewState(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer state.Dispose()
+	return state.Value()
+}
+
+func inboxModes(t *testing.T, view services.ConversationView) []string {
+	t.Helper()
+	var inbox harness.InboxState
+	encoded, err := json.Marshal(view.Docs[services.InboxDocKind])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(encoded, &inbox); err != nil {
+		t.Fatal(err)
+	}
+	modes := []string{}
+	for _, item := range inbox.Items {
+		modes = append(modes, string(item.Mode))
+	}
+	return modes
+}
+
 func TestUpstreamAgentController(t *testing.T) {
-	// .upstream/v0.87.1/packages/coding-agent/test/experimental-agent-controller.test.ts:44
-	t.Run("provides the presentation-safe AgentLane command surface", func(t *testing.T) {
-		ctx := t.Context()
-		var calls []string
-		lane := &controllerLane{
-			operation: func(got context.Context, text string, images []ai.ImageContent) (LaneOperation, error) {
-				if got != ctx || text != "hello" || images != nil {
-					t.Error("prompt arguments changed")
-				}
-				calls = append(calls, "prompt")
-				return LaneOperation{OperationID: "operation-1", Status: "completed"}, nil
-			},
-			abort: func(got context.Context, id string) error {
-				if got != ctx || id != "operation-1" {
-					t.Error("requestAbort arguments changed")
-				}
-				calls = append(calls, "requestAbort")
-				return nil
-			},
-			queue: func(got context.Context, text string, images []ai.ImageContent) (string, error) {
-				if got != ctx || images != nil {
-					t.Error("queue arguments changed")
-				}
-				calls = append(calls, text)
-				switch text {
-				case "later":
-					return "queue-1", nil
-				case "after":
-					return "queue-2", nil
-				default:
-					t.Errorf("unexpected queue message: %q", text)
-					return "", nil
-				}
-			},
-		}
-		// Go uses a typed token constructed from the production service ID; types and values cannot both be named AgentController.
-		definition := pico3.DefineService[AgentController](AgentControllerID)
-		host, err := chord.CreateFacetHost(ctx, chord.FacetOptions{Facets: []chord.Facet{{Id: "test-agent-controller", Setup: func(env *chord.FacetEnvironment) error {
-			return chord.ProvideService[AgentController](env, definition, CreateAgentController(lane))
-		}}}})
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(func() {
-			if err := host.Dispose(context.Background()); err != nil {
-				t.Error(err)
-			}
-		})
+	// packages/coding-agent/test/experimental-agent-controller.test.ts:11
+	t.Run("prompts the root conversation through the service catalogue", func(t *testing.T) {
+		durable := durabletest.OpenFauxConversation(durabletest.Text("hello back"))
+		t.Cleanup(func() { _ = durable.Close(context.Background()) })
+		host := controllerHost(t, services.CreateAgentController(durable.Harness, durable.Conversation))
 		if got := host.Services().Catalogue(); !reflect.DeepEqual(got, []chord.ServiceCatalogueEntry{{ServiceId: "pi.agent-controller", Mode: chord.ServiceSingleton}}) {
 			t.Fatalf("catalogue = %#v", got)
 		}
-		for _, call := range []struct{ member, arg, want string }{
-			{"prompt", `{"message":"hello","images":null}`, `{"accepted":true,"operationId":"operation-1","error":null}`},
-			{"requestAbort", `"operation-1"`, ""},
-			{"steer", `{"message":"later","images":null}`, `{"accepted":true,"entryId":"queue-1","error":null}`},
-			{"followUp", `{"message":"after","images":null}`, `{"accepted":true,"entryId":"queue-2","error":null}`},
-		} {
-			got, err := host.Services().Invoke(ctx, chord.ServiceCall{ServiceId: AgentControllerID, Member: call.member, Args: []json.RawMessage{json.RawMessage(call.arg)}})
-			if err != nil || string(got) != call.want {
-				t.Fatalf("%s = %s, %v, want %s", call.member, got, err, call.want)
-			}
+		raw, err := host.Services().Invoke(t.Context(), chord.ServiceCall{ServiceId: services.AgentControllerID, Member: "prompt", Args: []json.RawMessage{json.RawMessage(`{"message":"hello","images":null}`)}})
+		if err != nil {
+			t.Fatal(err)
 		}
-		if !reflect.DeepEqual(calls, []string{"prompt", "requestAbort", "later", "after"}) || !reflect.DeepEqual(lane.queueCalls, []string{"steer", "followUp"}) {
-			t.Fatalf("calls = %v, queues = %v", calls, lane.queueCalls)
+		var response services.AgentOperationResponse
+		if err := json.Unmarshal(raw, &response); err != nil {
+			t.Fatal(err)
+		}
+		if !response.Accepted || response.OperationID == nil || response.Error != nil {
+			t.Fatalf("response = %s", raw)
+		}
+		operationID, _ := json.Marshal(*response.OperationID)
+		settled, err := host.Services().Invoke(t.Context(), chord.ServiceCall{ServiceId: services.AgentControllerID, Member: "waitForPrompt", Args: []json.RawMessage{operationID}})
+		if err != nil || string(settled) != `{"status":"done","text":"hello back","reason":null}` {
+			t.Fatalf("waitForPrompt = %s, %v", settled, err)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/experimental-agent-controller.test.ts:95
-	t.Run("wraps queue, resume, compaction, and navigation lane operations", func(t *testing.T) {
+
+	// packages/coding-agent/test/experimental-agent-controller.test.ts:43
+	t.Run("rejects a prompt while busy and queues steering and follow-up input", func(t *testing.T) {
+		pending, reached := durabletest.Pending()
+		durable := durabletest.OpenFauxConversation(pending)
+		t.Cleanup(func() { _ = durable.Close(context.Background()) })
+		controller := services.CreateAgentController(durable.Harness, durable.Conversation)
 		ctx := t.Context()
-		var calls []string
-		lane := &controllerLane{
-			queue: func(got context.Context, text string, images []ai.ImageContent) (string, error) {
-				if got != ctx || text != "next" || images != nil {
-					t.Error("nextRun arguments changed")
-				}
-				calls = append(calls, "nextRun")
-				return "queue-3", nil
-			},
-			cancel: func(got context.Context, id string) (string, error) {
-				if got != ctx || id != "queue-3" {
-					t.Error("cancelQueued arguments changed")
-				}
-				calls = append(calls, "cancelQueued")
-				return "cancelled", nil
-			},
-			resume: func(got context.Context) (LaneOperation, error) {
-				if got != ctx {
-					t.Error("resume context changed")
-				}
-				calls = append(calls, "resume")
-				return LaneOperation{OperationID: "operation-1", Status: "completed"}, nil
-			},
-			compact: func(got context.Context, opts *LaneCompactionOptions) (LaneOperation, error) {
-				if got != ctx || !reflect.DeepEqual(opts, &LaneCompactionOptions{CustomInstructions: new("short")}) {
-					t.Errorf("compact arguments changed: %#v", opts)
-				}
-				calls = append(calls, "compact")
-				return LaneOperation{OperationID: "compact-1", Status: "completed"}, nil
-			},
-			navigate: func(got context.Context, id *string, opts LaneNavigateOptions) (LaneOperation, error) {
-				if got != ctx || id == nil || *id != "entry-1" || !reflect.DeepEqual(opts, LaneNavigateOptions{Summarize: true, Label: new("branch")}) {
-					t.Errorf("navigate arguments changed: %v %#v", id, opts)
-				}
-				calls = append(calls, "navigateTree")
-				return LaneOperation{OperationID: "navigation-1", Status: "completed"}, nil
-			},
+
+		first, err := controller.Prompt(ctx, services.AgentPromptRequest{Message: "first"})
+		if err != nil || !first.Accepted {
+			t.Fatalf("first prompt = %#v, %v", first, err)
 		}
-		controller := CreateAgentController(lane)
-		queue, err := controller.NextRun(ctx, AgentPromptRequest{Message: "next"})
-		if err != nil || !reflect.DeepEqual(queue, AgentQueueResponse{Accepted: true, EntryID: new("queue-3")}) {
-			t.Fatalf("nextRun = %#v, %v", queue, err)
+		<-reached
+
+		second, err := controller.Prompt(ctx, services.AgentPromptRequest{Message: "second"})
+		if err != nil || second.Accepted || second.OperationID != nil || second.Error == nil || second.Error.Code != "busy" || second.Error.Message == "" {
+			t.Fatalf("second prompt = %#v, %v", second, err)
 		}
-		cancel, err := controller.CancelQueued(ctx, "queue-3")
-		if err != nil || cancel.Outcome != "cancelled" {
-			t.Fatalf("cancelQueued = %#v, %v", cancel, err)
+		steer, err := controller.Steer(ctx, services.AgentPromptRequest{Message: "steer"})
+		if err != nil || !steer.Accepted || steer.EntryID == nil || steer.Error != nil {
+			t.Fatalf("steer = %#v, %v", steer, err)
 		}
-		resume, err := controller.Resume(ctx)
-		if err != nil || resume.OperationID == nil || *resume.OperationID != "operation-1" {
-			t.Fatalf("resume = %#v, %v", resume, err)
+		followUp, err := controller.FollowUp(ctx, services.AgentPromptRequest{Message: "later"})
+		if err != nil || !followUp.Accepted || followUp.EntryID == nil || followUp.Error != nil {
+			t.Fatalf("followUp = %#v, %v", followUp, err)
 		}
-		compact, err := controller.Compact(ctx, AgentCompactionRequest{CustomInstructions: new("short")})
-		if err != nil || compact.OperationID == nil || *compact.OperationID != "compact-1" {
-			t.Fatalf("compact = %#v, %v", compact, err)
+		if got := inboxModes(t, viewOf(t, durable.Conversation)); !reflect.DeepEqual(got, []string{"steer", "followUp"}) {
+			t.Fatalf("inbox modes = %v", got)
 		}
-		navigate, err := controller.Navigate(ctx, AgentNavigationRequest{TargetID: new("entry-1"), Summarize: true, Label: new("branch")})
-		if err != nil || navigate.OperationID == nil || *navigate.OperationID != "navigation-1" {
-			t.Fatalf("navigate = %#v, %v", navigate, err)
-		}
-		if !reflect.DeepEqual(calls, []string{"nextRun", "cancelQueued", "resume", "compact", "navigateTree"}) {
-			t.Fatalf("calls = %v", calls)
-		}
-	})
-	// .upstream/v0.87.1/packages/coding-agent/test/experimental-agent-controller.test.ts:140
-	t.Run("reports accepted successful and failed operations", func(t *testing.T) {
-		for _, operation := range []LaneOperation{
-			{OperationID: "operation-1", Status: "completed"},
-			{OperationID: "operation-2", Status: "failed", Error: &AgentOperationError{Code: "provider", Message: "failed"}},
-		} {
-			controller := CreateAgentController(&controllerLane{operation: func(context.Context, string, []ai.ImageContent) (LaneOperation, error) { return operation, nil }})
-			got, err := controller.Prompt(t.Context(), AgentPromptRequest{Message: "hello"})
-			want := AgentOperationResponse{Accepted: true, OperationID: new(operation.OperationID), Error: operation.Error}
-			if err != nil || !reflect.DeepEqual(got, want) {
-				t.Fatalf("prompt = %#v, %v, want %#v", got, err, want)
+
+		for _, step := range []struct{ id, outcome string }{{*followUp.EntryID, "cancelled"}, {*followUp.EntryID, "already_consumed"}, {"999", "not_found"}, {"not-an-id", "not_found"}} {
+			got, err := controller.CancelQueued(ctx, step.id)
+			if err != nil || got.Outcome != step.outcome {
+				t.Fatalf("cancelQueued(%s) = %#v, %v; want %s", step.id, got, err, step.outcome)
 			}
 		}
+
+		if err := controller.Abort(ctx); err != nil {
+			t.Fatal(err)
+		}
+		var live harness.LiveState
+		encoded, err := json.Marshal(viewOf(t, durable.Conversation).Docs[services.LiveDocKind])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(encoded, &live); err != nil || live.Run != nil {
+			t.Fatalf("live run after abort = %+v, %v", live.Run, err)
+		}
+		unanswered, err := controller.WaitForPrompt(ctx, *first.OperationID)
+		if err != nil || unanswered.Status != "unanswered" || unanswered.Text != nil || unanswered.Reason == nil {
+			t.Fatalf("waitForPrompt = %#v, %v", unanswered, err)
+		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/experimental-agent-controller.test.ts:168; table rows :17-29.
-	for _, tt := range []struct {
-		name string
-		err  error
-		id   *string
-	}{
-		// .upstream/v0.87.1/packages/coding-agent/test/experimental-agent-controller.test.ts:17 — LaneBusy table row.
-		{"lane_busy", &harness.LaneBusy{Lane: "main", OperationID: "operation-1", OperationKind: "run", Message: "busy"}, new("operation-1")},
-		// .upstream/v0.87.1/packages/coding-agent/test/experimental-agent-controller.test.ts:26 — InvalidMessage table row.
-		{"invalid_message", &harness.InvalidMessage{Lane: "main", Reason: "invalid", Message: "invalid"}, nil},
-		// .upstream/v0.87.1/packages/coding-agent/test/experimental-agent-controller.test.ts:27 — UnknownSkill table row.
-		{"unknown_skill", &harness.UnknownSkill{Name: "skill", Message: "unknown"}, nil},
-		// .upstream/v0.87.1/packages/coding-agent/test/experimental-agent-controller.test.ts:28 — UnknownTemplate table row.
-		{"unknown_template", &harness.UnknownTemplate{Name: "template", Message: "unknown"}, nil},
-		// .upstream/v0.87.1/packages/coding-agent/test/experimental-agent-controller.test.ts:29 — Closed table row.
-		{"closed", &harness.Closed{Message: "closed"}, nil},
-	} {
-		t.Run("maps admission error to a stable response/"+tt.name, func(t *testing.T) {
-			controller := CreateAgentController(&controllerLane{operation: func(context.Context, string, []ai.ImageContent) (LaneOperation, error) {
-				return LaneOperation{}, tt.err
-			}})
-			got, err := controller.Prompt(t.Context(), AgentPromptRequest{Message: "hello"})
-			want := AgentOperationResponse{OperationID: tt.id, Error: &AgentOperationError{Code: tt.name, Message: tt.err.Error()}}
-			if err != nil || !reflect.DeepEqual(got, want) {
-				t.Fatalf("prompt = %#v, %v, want %#v", got, err, want)
-			}
-		})
-	}
+
+	// packages/coding-agent/test/experimental-agent-controller.test.ts:100
+	t.Run("starts a compaction task", func(t *testing.T) {
+		durable := durabletest.OpenFauxConversation()
+		t.Cleanup(func() { _ = durable.Close(context.Background()) })
+		controller := services.CreateAgentController(durable.Harness, durable.Conversation)
+		got, err := controller.Compact(t.Context(), services.AgentCompactionRequest{CustomInstructions: new("short")})
+		if err != nil || !got.Accepted || got.OperationID == nil || got.Error != nil {
+			t.Fatalf("compact = %#v, %v", got, err)
+		}
+	})
 }

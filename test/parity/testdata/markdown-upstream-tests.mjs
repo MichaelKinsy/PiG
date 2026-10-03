@@ -3,7 +3,7 @@
 // Terminal-cell, callback-lifecycle and heterogeneous table cases use explicit Go ports named below.
 import { readFileSync } from 'node:fs';
 import ts from '../../../extensions/sdk-ts/node_modules/typescript/lib/typescript.js';
-const path='.upstream/v0.87.1/packages/tui/test/markdown.test.ts';
+const path='.upstream/current/packages/tui/test/markdown.test.ts';
 const src=ts.createSourceFile(path,readFileSync(path,'utf8'),ts.ScriptTarget.Latest,true);
 const q=JSON.stringify;
 let types=new Map();

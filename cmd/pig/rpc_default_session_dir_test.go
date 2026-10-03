@@ -74,7 +74,7 @@ func TestRPCSessionReplacementUsesDefaultSessionDir(t *testing.T) {
 			files = append(files, file)
 		}
 	}
-	const unsaved = "This session has not been saved yet. Wait for the first assistant response before cloning or forking it."
+	const unsaved = "This session has not been saved yet. Send a message before cloning or forking it."
 	if response := responses["clone"]; response == nil || response["success"] != false || response["error"] != unsaved {
 		t.Fatalf("clone of an unsaved Session = %v, want the Pi error %q", response, unsaved)
 	}

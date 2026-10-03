@@ -1,1 +1,0 @@
-- Preserve CLI provenance for extensions selected with `-e` from temporary Git and npm sources. Their commands report `cli`/`temporary`/`top-level` metadata without a Package base directory.

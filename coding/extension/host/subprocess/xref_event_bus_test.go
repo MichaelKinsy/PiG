@@ -72,6 +72,7 @@ func xrefTool(name, body string) string {
 
 // Pi event-bus.ts:15-27: emit passes the same object to each listener and runs each synchronous prefix before emit returns, so the emitter observes a foreign listener's increment. Strict isolation joins the shared bus (owner decision Q1 = B).
 func TestXrefEventBusForeignPrefixMutationMatchesPi(t *testing.T) {
+	t.Parallel()
 	for _, isolation := range [][]string{{"isolated", "isolated"}, {"", "isolated"}, {"isolated", ""}} {
 		t.Run(fmt.Sprintf("%q", isolation), func(t *testing.T) {
 			_, exts := xrefFixture(t, isolation,
@@ -173,6 +174,7 @@ var xrefBusScenario = []string{
 
 // Pi event-bus.ts:12-33 with one heap: identity, synchronous prefixes, reentrant emit, post-await and retained mutations, and non-JSON contents (private fields, accessors, Map/Date methods, symbols, non-configurable properties, callbacks with receivers). Every realm topology must produce Pi's exact observation.
 func TestXrefEventBusMatchesPiAcrossRealms(t *testing.T) {
+	t.Parallel()
 	want := piEventBusOracle(t, "probe", xrefBusScenario...)
 	for _, isolation := range [][]string{{"", "", ""}, {"isolated", "isolated", "isolated"}, {"", "isolated", ""}, {"isolated", "", ""}} {
 		t.Run(fmt.Sprintf("%q", isolation), func(t *testing.T) {
@@ -218,6 +220,7 @@ var xrefBusOrderScenario = []string{
 
 // EventEmitter semantics behind Pi's bus: newListener before adding, removeListener after removing, a per-emit listener snapshot (a listener removed during an emit is still called by it), idempotent unsubscribe and the unhandled "error" rule, across realms.
 func TestXrefEventBusListenerOrderMatchesPi(t *testing.T) {
+	t.Parallel()
 	want := piEventBusOracle(t, "order", xrefBusOrderScenario...)
 	for _, isolation := range [][]string{{"", "", ""}, {"isolated", "isolated", "isolated"}, {"", "isolated", ""}} {
 		t.Run(fmt.Sprintf("%q", isolation), func(t *testing.T) {
@@ -261,6 +264,7 @@ export default pi => {
 
 // A retained foreign alias keeps the emitter's original alive and live; once every realm drops it, the owner's export, the Host lease and the Node proxy are all collectable, as the object is in Pi's single heap.
 func TestXrefEventBusPayloadLifetimeMatchesPi(t *testing.T) {
+	t.Parallel()
 	want := piEventBusOracle(t, "lifetime", xrefBusLifetimeScenario...)
 	if want != `{"alive":true,"seen":5,"collected":true}` {
 		t.Fatalf("oracle = %s", want)
@@ -311,6 +315,7 @@ export default pi => {
 
 // A unique symbol crossing realms follows an object's lifetime: a retained foreign alias keeps the owner's symbol alive and identical, and once every realm drops it the owner's export, the Host lease and the importer's symbol are all collectable, as in Pi's single heap.
 func TestXrefEventBusSymbolLifetimeMatchesPi(t *testing.T) {
+	t.Parallel()
 	want := piEventBusOracle(t, "symlife", xrefBusSymbolLifetimeScenario...)
 	if want != `{"alive":true,"seen":5,"collected":true}` {
 		t.Fatalf("oracle = %s", want)
@@ -349,6 +354,7 @@ var xrefBusReentrantScenario = []string{
 
 // Nested emits alternate between two realms four levels deep while each realm waits in its own emit; every level reads and writes the same original object, and a callback crosses back into its owner.
 func TestXrefEventBusReentrantDispatchMatchesPi(t *testing.T) {
+	t.Parallel()
 	want := piEventBusOracle(t, "reentrant", xrefBusReentrantScenario...)
 	for _, isolation := range [][]string{{"", ""}, {"isolated", "isolated"}, {"", "isolated"}} {
 		t.Run(fmt.Sprintf("%q", isolation), func(t *testing.T) {
@@ -734,6 +740,7 @@ export default pi => {
 
 // util.inspect and console.log of a foreign payload print exactly what Pi prints for the object in its own heap: Map, Set, Date, functions, classes, frozen and non-extensible objects, cycles, accessors, Promises, typed arrays, custom inspect hooks, with the caller's inspect options.
 func TestXrefEventBusInspectMatchesPi(t *testing.T) {
+	t.Parallel()
 	xrefInspectMatchesPi(t)
 }
 
@@ -845,6 +852,7 @@ export default pi => {
 
 // A foreign listener that clones, serializes or posts a payload gets what Pi's listener gets from the object in its own heap: structuredClone, v8.serialize, v8.Serializer and MessagePort or Worker postMessage all succeed on it, keep sharing and cycles, and fail with the same DataCloneError where Pi fails.
 func TestXrefEventBusCloneMatchesPi(t *testing.T) {
+	t.Parallel()
 	want := piEventBusOracle(t, "cloned", xrefBusCloneScenario...)
 	for _, isolation := range [][]string{{"", ""}, {"isolated", "isolated"}} {
 		t.Run(fmt.Sprintf("%q", isolation), func(t *testing.T) {
@@ -908,6 +916,7 @@ var xrefBusMaxListenersScenario = []string{
 
 // EventEmitter warns when more than ten listeners are added to one channel, but Pi's setupCli replaces process.emitWarning with a no-op before any extension loads (cli/setup.ts:8), so no extension observes MaxListenersExceededWarning in Pi. The Host registry counts listeners across realms and adds no warning of its own: neither a process 'warning' handler nor a stderr line appears, in one realm or several, while listeners come and go across the limit.
 func TestXrefEventBusMaxListenersWarningIsSilentLikePi(t *testing.T) {
+	t.Parallel()
 	want := piEventBusOracle(t, "warnings", xrefBusMaxListenersScenario...)
 	for _, isolation := range [][]string{{"", ""}, {"isolated", "isolated"}} {
 		t.Run(fmt.Sprintf("%q", isolation), func(t *testing.T) {
@@ -1134,6 +1143,7 @@ export default pi => {
 
 // Node reads at most maxArrayLength entries of an array, Map or Set, so the owner describes no more, and the output matches Pi for the sparse, long and padded cases.
 func TestXrefEventBusInspectReadsOnlyWhatNodePrints(t *testing.T) {
+	t.Parallel()
 	want := piEventBusOracle(t, "inspectedBounded", xrefBusInspectBoundedScenario...)
 	for _, isolation := range [][]string{{"", ""}, {"isolated", "isolated"}} {
 		t.Run(fmt.Sprintf("%q", isolation), func(t *testing.T) {

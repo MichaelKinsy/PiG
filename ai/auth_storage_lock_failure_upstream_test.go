@@ -195,7 +195,7 @@ func TestModelsGetAuthTranslatesCredentialStoreRefreshFailureUpstream(t *testing
 	store.failNext.Store(true)
 	provider := modelsRuntimeProvider(modelsRuntimeProviderInput{id: providerID, auth: &ProviderAuth{OAuth: &OAuthAuth{
 		Name: "OAuth",
-		Login: func(context.Context, AuthInteraction) (Credential, error) {
+		Login: func(context.Context, AuthInteraction, LoginOptions) (Credential, error) {
 			return Credential{}, errors.New("not used")
 		},
 		Refresh: func(_ context.Context, credential Credential) (Credential, error) {

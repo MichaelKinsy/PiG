@@ -27,7 +27,7 @@ DOC_MOVES = {
 }
 IMPORT = re.compile(re.escape(MODULE) + r"/((?:agent|ai|coding|tui)(?:/[\w.-]+)*)(?=$|[/#.\s\"`])")
 # These tools store repository paths, including synthetic repository fixtures.
-PATH_OWNERS = ("parity/", "automation/ci/", "automation/release/", "tests/docs-drift/", "tests/upstream-parity/", "tests/ci-images/", "cmd/gen-models/", "cmd/gen-image-models/", "coding/pigletbuild/", "coding/extension/host/subprocess/", "ai/registry_test.go")
+PATH_OWNERS = ("parity/", "automation/ci/", "automation/release/", "tests/docs-drift/", "tests/upstream-parity/", "tests/ci-images/", "cmd/gen-models/", "coding/pigletbuild/", "coding/extension/host/subprocess/", "ai/registry_test.go")
 REPO_PATH = re.compile(r'(?<!pkg:)(?<![\w/.-])(\./|/)?(agent|ai|coding|tui)/(?!src/|test/)([\w.*-][\w./*-]*)')
 # Directory-name literals in these files are repository scan roots, not Pi package names.
 ROOT_LITERALS = {

@@ -4,10 +4,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
+	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
 // A request for a handler the extension does not hold is host/extension state
@@ -34,7 +36,7 @@ func TestUnknownEventHandlerIsAnErrorInEverySDK(t *testing.T) {
 			return ExtConfig{Name: "node-unknown-handler", Source: filepath.Join(dir, "index.mjs"), Enabled: true}
 		}},
 		{"python", func(t *testing.T) ExtConfig {
-			requireTool(t, "python3")
+			requireTool(t, toolchain.PythonExecutable(runtime.GOOS, exec.LookPath))
 			path, err := filepath.Abs(filepath.Join(conformance, "python-sdk-fixture", "main.py"))
 			if err != nil {
 				t.Fatal(err)

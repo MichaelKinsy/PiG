@@ -17,7 +17,14 @@ pi_extensions = ["../../testdata/test-faux-provider.ts"]
 pig_args = ["--no-extensions"]
 
 [tmux]
-width = 100
+# 99 columns: after Ctrl+O both binaries rewrite each header row with the
+# same bytes (\x1b[2K, the hint, \x1b[39m, padding to the last column,
+# \x1b[0m), but tmux keeps the earlier row's used width, so its escaped
+# capture places the \x1b[39m before or after the newline depending on what
+# the row held before. Pi itself flips between 99 and 100 columns. PiG draws
+# its 7-line pig head here (D2), so its compact rows held other widths than
+# Pi's; the last two rules below drop that one reset at a line boundary.
+width = 99
 height = 45
 ready_pattern_pig = "(auto)"
 ready_pattern_pi = "(auto)"
@@ -47,3 +54,32 @@ reason = "D2: the onboarding sentence names the host product. Match only that se
 pattern = 'PiG can explain its own features'
 with = 'Pi can explain its own features'
 reason = "D2: the same onboarding sentence starts with the host product name; all remaining words, ANSI and spaces stay literal."
+
+# D2: PiG's 16-cell pig head takes Pi's logo slot, 7 lines tall where Pi's logo is 2, so its later lines sit
+# beside the lines Pi draws below its logo. These rules remove exactly those 16 head cells (the one-cell padding,
+# 16 half-block or transparent cells and their colors) and the cell that separates them from the text; every hint,
+# its ANSI styling and spacing stay compared byte for byte. The head's pixels are pinned by
+# coding/piglogin/testdata/head-*.golden and internal/codingagent/pi_logo_upstream_test.go.
+[[assert.normalize_replace]]
+pattern = '(?m)^ (?:(?:\x1b\[[0-9;]*m)*[▀▄ ]){1,16}(?:\x1b\[[0-9;]*m)*[ ]*$'
+with = ""
+reason = "D2: a head line with no text beside it (tmux trims its trailing transparent cells) is the blank line Pi draws below its 2-line logo."
+
+[[assert.normalize_replace]]
+pattern = '(?m)^ (?:(?:\x1b\[[0-9;]*m)*[▀▄ ]){16}(?:\x1b\[[0-9;]*m)* '
+with = " "
+reason = "D2: a head line with text beside it carries the line Pi draws at the padded margin below its 2-line logo."
+
+# D2: the expanded header replaces the compact one in place. The cells after a line's text keep the attributes the
+# previous frame left there, and PiG's compact frame is laid out beside the 7-line head where Pi's is beside its 2-line
+# logo, so tmux reports a line's closing foreground reset either at the end of that line or at the start of the next.
+# The rules drop a reset at either line boundary; every reset inside a line stays compared.
+[[assert.normalize_replace]]
+pattern = '\x1b\[39m\n'
+with = "\n"
+reason = "D2: a foreground reset at the end of a line, where the previous frame's trailing cells decide whether tmux reports it."
+
+[[assert.normalize_replace]]
+pattern = '\n\x1b\[39m'
+with = "\n"
+reason = "D2: the same foreground reset reported at the start of the next line."

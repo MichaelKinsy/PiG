@@ -6,8 +6,8 @@ import (
 
 func TestModelsRefreshCannotStartAReplacedProviderSnapshot(t *testing.T) {
 	create := func() *ModelsProvider {
-		return CreateProvider(CreateProviderOptions{ID: "dynamic", Auth: configuredTestAuth(), API: recordingProviderStreams("a", nil), FetchModels: func(RefreshModelsContext) ([]*Model, error) {
-			return []*Model{dispatchTestModel("api-a", "model")}, nil
+		return CreateProvider(CreateProviderOptions{ID: "dynamic", Auth: configuredTestAuth(), API: recordingProviderStreams("a", nil), FetchModels: func(RefreshModelsContext) ([]AnyModel, error) {
+			return []AnyModel{dispatchTestModel("api-a", "model")}, nil
 		}})
 	}
 	models := CreateModels(CreateModelsOptions{})

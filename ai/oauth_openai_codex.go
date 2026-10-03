@@ -13,10 +13,8 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -50,15 +48,6 @@ const (
 	OpenAICodexDeviceCodeLoginMethod = "device_code"
 )
 
-// codexCallbackHost is resolved at flow time so PI_OAUTH_CALLBACK_HOST
-// overrides take effect (mirrors upstream's `CALLBACK_HOST` env read).
-func codexCallbackHost() string {
-	if v := os.Getenv("PI_OAUTH_CALLBACK_HOST"); v != "" {
-		return v
-	}
-	return "127.0.0.1"
-}
-
 func codexCreateState() (string, error) {
 	buf := make([]byte, 16)
 	if _, err := rand.Read(buf); err != nil {
@@ -90,56 +79,6 @@ func parseCodexAuthorizationInput(input string) (code, state string) {
 		}
 	}
 	return v, ""
-}
-
-// startCodexCallbackServer starts a local HTTP server for the OAuth callback
-// on the loopback interface. Mirrors upstream startLocalOAuthServer
-// (openai-codex.ts:202-279).
-func startCodexCallbackServer(expectedState string) (srv *http.Server, listener net.Listener, resultCh chan *callbackResult, err error) {
-	resultCh = make(chan *callbackResult, 1)
-
-	mux := http.NewServeMux()
-	mux.HandleFunc(codexCallbackPath, func(w http.ResponseWriter, r *http.Request) {
-		q := r.URL.Query()
-		if q.Get("state") != expectedState {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = io.WriteString(w, OAuthErrorHTML("State mismatch.", ""))
-			return
-		}
-		code := q.Get("code")
-		if code == "" {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = io.WriteString(w, OAuthErrorHTML("Missing authorization code.", ""))
-			return
-		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = io.WriteString(w, OAuthSuccessHTML("OpenAI authentication completed. You can close this window."))
-		select {
-		case resultCh <- &callbackResult{Code: code, State: q.Get("state")}: // upstream: ai/src/auth/oauth/openai-codex.ts:settled
-		default:
-		}
-	})
-	// Anything else is a 404 with the error page.
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == codexCallbackPath {
-			return // handled above
-		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusNotFound)
-		_, _ = io.WriteString(w, OAuthErrorHTML("Callback route not found.", ""))
-	})
-
-	srv = &http.Server{Handler: mux}
-	listener, err = net.Listen("tcp", fmt.Sprintf("%s:%d", codexCallbackHost(), codexCallbackPort))
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("listen on port %d: %w", codexCallbackPort, err)
-	}
-	go func() {
-		_ = srv.Serve(listener) // returns on Shutdown
-	}()
-	return srv, listener, resultCh, nil
 }
 
 // codexTokenResponse holds the members readTokenResponse reads (openai-codex.ts:127-146). Each member stays raw: Pi tests truthiness and typeof on the parsed value, so a mistyped member is a missing field, not a decode error.
@@ -469,7 +408,9 @@ func LoginOpenAICodexDeviceCode(ctx context.Context, onDeviceCode func(OAuthDevi
 	return exchangeCodexAuthorizationCode(ctx, token.authorizationCode, token.codeVerifier, codexDeviceRedirectURI)
 }
 
-// LoginOpenAICodex runs the OpenAI Codex (ChatGPT) OAuth flow.
+// LoginOpenAICodex runs the OpenAI Codex (ChatGPT) OAuth flow. Port 1455 is shared with the Codex CLI; when it is taken,
+// the pasted redirect URL completes the login.
+// Ports loginOpenAICodex (.upstream/v0.99.1/packages/ai/src/auth/oauth/openai-codex.ts:359).
 func LoginOpenAICodex(ctx context.Context, callbacks OAuthLoginCallbacks) (OAuthCredentials, error) {
 	pkce, err := GeneratePKCE()
 	if err != nil {
@@ -479,27 +420,24 @@ func LoginOpenAICodex(ctx context.Context, callbacks OAuthLoginCallbacks) (OAuth
 	if err != nil {
 		return OAuthCredentials{}, fmt.Errorf("generate state: %w", err)
 	}
-
-	srv, _, resultCh, err := startCodexCallbackServer(state)
-	// A failed bind is silent upstream: waitForCode resolves null and the
-	// manual code prompt completes the login. A nil channel never delivers.
-	hasServer := err == nil
-	if hasServer {
-		defer func() {
-			shutCtx, shutCancel := context.WithTimeout(context.Background(), 2*time.Second)
-			defer shutCancel()
-			_ = srv.Shutdown(shutCtx)
-		}()
+	callback, err := StartOAuthCallbackServer(ctx, OAuthCallbackServerOptions[string]{
+		ProviderName: "OpenAI",
+		Host:         oauthCallbackHost(),
+		Port:         codexCallbackPort,
+		Path:         codexCallbackPath,
+		State:        &state,
+		Complete:     func(_ context.Context, code string) (string, error) { return code, nil },
+	})
+	if err != nil {
+		callback = nil
 	} else {
-		resultCh = nil
+		defer callback.Close()
 	}
 
 	// pig divergence (D26): PiG names itself as the OpenAI login's originator.
 	originator := pigidentity.CodexOriginator
-	// Build the authorize URL with the EXACT parameter order upstream
-	// uses (URLSearchParams preserves insertion order; Go's url.Values
-	// would alphabetize and diverge). See
-	// .upstream/current/packages/ai/src/utils/oauth/openai-codex.ts:193-204.
+	// Build the authorize URL with the exact parameter order upstream uses: URLSearchParams preserves insertion order and
+	// url.Values would alphabetize (openai-codex.ts:295-309).
 	authURL := codexAuthorizeURL +
 		"?response_type=code" +
 		"&client_id=" + url.QueryEscape(codexClientID) +
@@ -511,79 +449,28 @@ func LoginOpenAICodex(ctx context.Context, callbacks OAuthLoginCallbacks) (OAuth
 		"&id_token_add_organizations=true" +
 		"&codex_cli_simplified_flow=true" +
 		"&originator=" + url.QueryEscape(originator)
+	callbacks.OnAuth(OAuthAuthInfo{URL: authURL, Instructions: "A browser window should open. Complete login to finish."})
 
-	callbacks.OnAuth(OAuthAuthInfo{
-		URL:          authURL,
-		Instructions: "A browser window should open. Complete login to finish.",
+	result, err := WaitForCallbackOrManualInput(ctx, manualCodeInteraction(callbacks), callback, AuthManualCodePrompt{
+		Message:     "Complete login in your browser, or paste the authorization code / redirect URL here:",
+		Placeholder: codexRedirectURI,
 	})
-
+	if err != nil {
+		return OAuthCredentials{}, err
+	}
 	var code string
-	if callbacks.OnManualCodeInput != nil {
-		// Race the local callback against manual paste, mirroring upstream
-		// loginOpenAICodex, which prompts whether or not the server bound.
-		manualCh := make(chan struct {
-			val string
-			err error
-		}, 1)
-		go func() {
-			v, e := callbacks.OnManualCodeInput()
-			manualCh <- struct {
-				val string
-				err error
-			}{v, e}
-		}()
-
-		select {
-		case r := <-resultCh:
-			if r != nil {
-				code = r.Code
-				if r.State != state {
-					return OAuthCredentials{}, fmt.Errorf("OAuth state mismatch")
-				}
-			}
-		case m := <-manualCh:
-			if m.err != nil {
-				return OAuthCredentials{}, m.err
-			}
-			parsedCode, parsedState := parseCodexAuthorizationInput(m.val)
-			if parsedState != "" && parsedState != state {
-				return OAuthCredentials{}, errors.New("State mismatch")
-			}
-			code = parsedCode
-		case <-ctx.Done():
-			return OAuthCredentials{}, ctx.Err()
+	if result.Callback {
+		code = result.Value
+	} else {
+		parsedCode, parsedState := parseCodexAuthorizationInput(result.Input)
+		if parsedState != "" && parsedState != state {
+			return OAuthCredentials{}, errors.New("State mismatch")
 		}
-	} else if hasServer {
-		select {
-		case r := <-resultCh:
-			if r != nil {
-				code = r.Code
-				if r.State != state {
-					return OAuthCredentials{}, fmt.Errorf("OAuth state mismatch")
-				}
-			}
-		case <-ctx.Done():
-			return OAuthCredentials{}, ctx.Err()
-		}
+		code = parsedCode
 	}
-
-	// Callers without a manual code callback are prompted when the callback
-	// server failed to bind.
-	if !hasServer && callbacks.OnManualCodeInput == nil && callbacks.OnPrompt != nil {
-		input, promptErr := callbacks.OnPrompt(OAuthPrompt{
-			Message:     "Paste the authorization code or full redirect URL:",
-			Placeholder: codexRedirectURI,
-		})
-		if promptErr != nil {
-			return OAuthCredentials{}, promptErr
-		}
-		code, _ = parseCodexAuthorizationInput(input)
-	}
-
 	if code == "" {
 		return OAuthCredentials{}, errors.New("Missing authorization code")
 	}
-
 	return exchangeCodexAuthorizationCode(ctx, code, pkce.Verifier, codexRedirectURI)
 }
 

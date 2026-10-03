@@ -95,7 +95,11 @@ func (m *Models) GetModel(provider, id string) *Model {
 	return nil
 }
 
-func HasApi(model *Model, api API) bool { return model != nil && model.ProviderMeta.API == api }
+// HasApi reports whether model is a chat model on api. Non-chat models never match, even on an equal api string.
+func HasApi(model AnyModel, api API) bool {
+	chat, ok := model.(*Model)
+	return ok && chat != nil && IsModelType(chat, ModelTypeChat) && chat.ProviderMeta.API == api
+}
 
 func (m *Models) GetAuth(ctx context.Context, providerID string, overrides ...AuthResolutionOverrides) (*AuthResult, error) {
 	provider := m.GetProvider(providerID)
@@ -111,21 +115,23 @@ func (m *Models) GetAuth(ctx context.Context, providerID string, overrides ...Au
 	})
 }
 
-func (m *Models) GetModelAuth(ctx context.Context, model *Model, overrides ...AuthResolutionOverrides) (*AuthResult, error) {
-	if m.modelAuth != nil {
+func (m *Models) GetModelAuth(ctx context.Context, anyModel AnyModel, overrides ...AuthResolutionOverrides) (*AuthResult, error) {
+	model, isChat := anyModel.(*Model)
+	if m.modelAuth != nil && isChat {
 		var opts AuthResolutionOverrides
 		if len(overrides) > 0 {
 			opts = overrides[0]
 		}
 		return m.modelAuth(ctx, model, opts)
 	}
-	result, err := m.GetAuth(ctx, modelProviderID(model), overrides...)
-	if err != nil || result == nil || model.ProviderMeta.Headers == nil {
+	result, err := m.GetAuth(ctx, anyModel.ProviderID(), overrides...)
+	modelHeaders := anyModelHeaders(anyModel)
+	if err != nil || result == nil || modelHeaders == nil {
 		return result, err
 	}
 	result = new(*result)
-	headers := make(ProviderHeaders, len(model.ProviderMeta.Headers))
-	for key, value := range model.ProviderMeta.Headers {
+	headers := make(ProviderHeaders, len(modelHeaders))
+	for key, value := range modelHeaders {
 		headers[key] = new(value)
 	}
 	result.Auth.Headers = MergeProviderHeaders(result.Auth.Headers, headers)
@@ -145,58 +151,129 @@ func (m *Models) CheckAuth(ctx context.Context, providerID string) (*AuthCheck, 
 	})
 }
 
+// authenticatedProvider is a provider whose auth is complete, with the credential that satisfied the check.
+type authenticatedProvider struct {
+	provider   *ModelsProvider
+	credential *Credential
+}
+
+// authenticatedProviders checks provider auth in parallel and returns the configured providers in collection order.
+func (m *Models) authenticatedProviders(ctx context.Context, providerID []string) ([]authenticatedProvider, error) {
+	providers := m.GetProviders()
+	if len(providerID) > 0 && providerID[0] != "" {
+		providers = nil
+		if provider := m.GetProvider(providerID[0]); provider != nil {
+			providers = []*ModelsProvider{provider}
+		}
+	}
+	type checked struct {
+		index      int
+		credential *Credential
+		auth       *AuthCheck
+		err        error
+	}
+	checks := make([]checked, len(providers))
+	completed := make(chan checked, len(providers))
+	for i, provider := range providers {
+		m.operations.Go(func() {
+			credential, err := readProviderCredential(ctx, m.credentials, provider.ID)
+			if err != nil {
+				completed <- checked{index: i, err: err}
+				return
+			}
+			check, err := m.checkProviderAuth(ctx, provider, credential)
+			completed <- checked{i, credential, check, err}
+		})
+	}
+	for range providers {
+		check := <-completed
+		if check.err != nil {
+			return nil, check.err
+		}
+		checks[check.index] = check
+	}
+	out := []authenticatedProvider{}
+	for i, provider := range providers {
+		if checks[i].auth != nil {
+			out = append(out, authenticatedProvider{provider, checks[i].credential})
+		}
+	}
+	return out, nil
+}
+
 func (m *Models) GetAvailable(ctx context.Context, providerID ...string) ([]*Model, error) {
 	return awaitModelsOperation(ctx, &m.operations, func() ([]*Model, error) {
-		providers := m.GetProviders()
-		if len(providerID) > 0 && providerID[0] != "" {
-			providers = nil
-			if provider := m.GetProvider(providerID[0]); provider != nil {
-				providers = []*ModelsProvider{provider}
-			}
-		}
-		type checked struct {
-			index      int
-			credential *Credential
-			auth       *AuthCheck
-			err        error
-		}
-		checks := make([]checked, len(providers))
-		completed := make(chan checked, len(providers))
-		for i, provider := range providers {
-			m.operations.Go(func() {
-				credential, err := readProviderCredential(ctx, m.credentials, provider.ID)
-				if err != nil {
-					completed <- checked{index: i, err: err}
-					return
-				}
-				check, err := m.checkProviderAuth(ctx, provider, credential)
-				completed <- checked{i, credential, check, err}
-			})
-		}
-		for range providers {
-			check := <-completed
-			if check.err != nil {
-				return nil, check.err
-			}
-			checks[check.index] = check
+		authenticated, err := m.authenticatedProviders(ctx, providerID)
+		if err != nil {
+			return nil, err
 		}
 		out := []*Model{}
-		for i, provider := range providers {
-			check := checks[i]
-			if check.auth == nil {
-				continue
-			}
-			models, err := provider.GetModels()
+		for _, entry := range authenticated {
+			models, err := entry.provider.GetModels()
 			if err != nil {
 				return nil, err
 			}
-			if provider.FilterModels != nil {
-				models = provider.FilterModels(models, check.credential)
+			if entry.provider.FilterModels != nil {
+				models = entry.provider.FilterModels(models, entry.credential)
 			}
 			out = append(out, models...)
 		}
 		return out, nil
 	})
+}
+
+// GetAvailableOfType returns models of one type whose providers have complete auth configuration.
+func (m *Models) GetAvailableOfType(ctx context.Context, modelType ModelType, providerID ...string) ([]AnyModel, error) {
+	all, err := m.GetAllAvailable(ctx, providerID...)
+	if err != nil {
+		return nil, err
+	}
+	return slices.DeleteFunc(all, func(model AnyModel) bool { return !IsModelType(model, modelType) }), nil
+}
+
+// GetAllAvailable returns models of every type whose providers have complete auth configuration.
+// Without FilterAllModels, FilterModels applies to chat models and every other model is kept.
+func (m *Models) GetAllAvailable(ctx context.Context, providerID ...string) ([]AnyModel, error) {
+	return awaitModelsOperation(ctx, &m.operations, func() ([]AnyModel, error) {
+		authenticated, err := m.authenticatedProviders(ctx, providerID)
+		if err != nil {
+			return nil, err
+		}
+		out := []AnyModel{}
+		for _, entry := range authenticated {
+			models, err := providerAllModels(entry.provider)
+			if err != nil {
+				return nil, err
+			}
+			switch {
+			case entry.provider.FilterAllModels != nil:
+				models = entry.provider.FilterAllModels(models, entry.credential)
+			case entry.provider.FilterModels != nil:
+				chat, err := entry.provider.GetModels()
+				if err != nil {
+					return nil, err
+				}
+				availableChat := map[string]bool{}
+				for _, model := range entry.provider.FilterModels(chat, entry.credential) {
+					availableChat[model.ID] = true
+				}
+				models = slices.DeleteFunc(slices.Clone(models), func(model AnyModel) bool {
+					return IsModelType(model, ModelTypeChat) && !availableChat[model.ModelID()]
+				})
+			}
+			out = append(out, models...)
+		}
+		return out, nil
+	})
+}
+
+// providerAllModels lists a provider's models of every type, falling back to its chat models.
+func providerAllModels(provider *ModelsProvider) ([]AnyModel, error) {
+	if provider.GetAllModels != nil {
+		return provider.GetAllModels()
+	}
+	chat, err := provider.GetModels()
+	return AnyModels(chat), err
 }
 
 func (m *Models) checkProviderAuth(ctx context.Context, provider *ModelsProvider, credential *Credential) (*AuthCheck, error) {
@@ -227,7 +304,12 @@ func (m *Models) checkProviderAuth(ctx context.Context, provider *ModelsProvider
 	return &AuthCheck{Source: resolution.Source, Type: CredentialAPIKey}, nil
 }
 
-func (m *Models) Login(ctx context.Context, providerID string, authType AuthType, interaction AuthInteraction) (Credential, error) {
+// Login runs a provider-owned login flow and persists its returned credential.
+func (m *Models) Login(ctx context.Context, providerID string, authType AuthType, interaction AuthInteraction, options ...LoginOptions) (Credential, error) {
+	var loginOptions LoginOptions
+	if len(options) > 0 {
+		loginOptions = options[0]
+	}
 	if ctx.Err() != nil {
 		return Credential{}, context.Cause(ctx)
 	}
@@ -235,16 +317,19 @@ func (m *Models) Login(ctx context.Context, providerID string, authType AuthType
 	if provider == nil {
 		return Credential{}, NewModelsError(ModelsErrorProvider, "Unknown provider: "+providerID, nil)
 	}
-	var login func(context.Context, AuthInteraction) (Credential, error)
+	var login func(context.Context, AuthInteraction, LoginOptions) (Credential, error)
 	if authType == CredentialOAuth && provider.Auth.OAuth != nil {
 		login = provider.Auth.OAuth.Login
-	} else if authType != CredentialOAuth && provider.Auth.APIKey != nil {
-		login = provider.Auth.APIKey.Login
+	} else if authType != CredentialOAuth && provider.Auth.APIKey != nil && provider.Auth.APIKey.Login != nil {
+		apiKeyLogin := provider.Auth.APIKey.Login
+		login = func(ctx context.Context, interaction AuthInteraction, _ LoginOptions) (Credential, error) {
+			return apiKeyLogin(ctx, interaction)
+		}
 	}
 	if login == nil {
 		return Credential{}, NewModelsError(ModelsErrorAuth, fmt.Sprintf("%s does not support %s login", provider.Name, authType), nil)
 	}
-	credential, err := awaitModelsOperation(ctx, &m.operations, func() (Credential, error) { return login(ctx, interaction) })
+	credential, err := awaitModelsOperation(ctx, &m.operations, func() (Credential, error) { return login(ctx, interaction, loginOptions) })
 	if err != nil {
 		return Credential{}, err
 	}

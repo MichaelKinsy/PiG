@@ -3,6 +3,7 @@ package ciimages
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -10,7 +11,14 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/testenv"
+	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
+
+// hostPython is the interpreter PiG itself launches: python3, or on Windows
+// the python.exe that actions/setup-python installs and no python3.
+func hostPython() string {
+	return toolchain.PythonExecutable(runtime.GOOS, exec.LookPath)
+}
 
 func repoRoot(t *testing.T) string {
 	t.Helper()

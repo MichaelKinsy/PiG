@@ -3,7 +3,6 @@
 package codingagent
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -169,36 +168,10 @@ func TestCanonicalizePathResolvesRootedLinkTargetsBeyondVolumeMounts(t *testing.
 	}
 }
 
-// substDrive maps a free drive letter to dir for the test and returns the drive with a trailing separator.
-func substDrive(t *testing.T, dir string) string {
-	t.Helper()
-	mask, err := windows.GetLogicalDrives()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for letter := 'Z'; letter >= 'D'; letter-- {
-		if mask&(1<<(letter-'A')) != 0 {
-			continue
-		}
-		drive := string(letter) + ":"
-		if out, err := exec.CommandContext(t.Context(), "subst", drive, dir).CombinedOutput(); err != nil {
-			t.Fatalf("subst %s %s: %v\n%s", drive, dir, err, out)
-		}
-		t.Cleanup(func() {
-			if out, err := exec.CommandContext(context.WithoutCancel(t.Context()), "subst", drive, "/d").CombinedOutput(); err != nil {
-				t.Errorf("subst %s /d: %v\n%s", drive, err, out)
-			}
-		})
-		return drive + `\`
-	}
-	t.Fatal("no free drive letter for subst")
-	return ""
-}
-
-// Node resolves a rooted link target on the device of the path that reached the link. filepath.EvalSymlinks resolves it on the process drive instead, and a second absolute link there gives its result a volume, so the volume alone cannot show that the target was resolved on the right drive. The process drive, a second subst drive that is the current directory, holds decoys under the names the rooted targets use.
+// A rooted link target such as \inner names a path on a drive, and filepath.EvalSymlinks resolves it on the process drive, where a second absolute link gives its result a volume. The process drive, a subst drive that is the current directory, holds decoys under the names the rooted targets use. The links live on a second subst drive. There Windows resolves a rooted target on the drive's backing volume, where it does not exist: on Windows 10 19045, Node's realpathSync and realpathSync.native both throw ENOENT for such a link (probed with Node 24.19.0), and Pi's canonicalizePath (paths.ts:28-33) then returns the path it was given. Every PiG canonicalizer must return that path too, not a decoy. An absolute link on the link drive is the control that Node resolves.
 func TestCanonicalizePathResolvesRootedLinkOnLinkDriveNotProcessDrive(t *testing.T) {
-	processDrive := substDrive(t, t.TempDir())
-	linkDrive := substDrive(t, t.TempDir())
+	processDrive := testenv.SubstDrive(t, t.TempDir()) + `\`
+	linkDrive := testenv.SubstDrive(t, t.TempDir()) + `\`
 	t.Chdir(processDrive)
 	write := func(path string) {
 		t.Helper()
@@ -218,28 +191,39 @@ func TestCanonicalizePathResolvesRootedLinkOnLinkDriveNotProcessDrive(t *testing
 	testenv.RequireSymlink(t, linkDrive+"final.txt", linkDrive+"right2")
 	testenv.RequireSymlink(t, `\right2`, linkDrive+"inner2")
 	testenv.RequireSymlink(t, `\inner2`, linkDrive+"chain")
-	paths := []string{linkDrive + "outer", linkDrive + "chain"}
-	out, err := exec.CommandContext(t.Context(), "node", append([]string{"-e", `const fs=require('node:fs'); console.log(JSON.stringify(process.argv.slice(1).map(p=>{try{return fs.realpathSync(p)}catch{return p}})))`}, paths...)...).Output()
+	paths := []string{linkDrive + "outer", linkDrive + "chain", linkDrive + "inner"}
+	out, err := exec.CommandContext(t.Context(), "node", append([]string{"-e", `
+const fs = require("node:fs");
+const outcome = (realpath) => (p) => { try { return { path: realpath(p) }; } catch (error) { return { code: error.code }; } };
+const paths = process.argv.slice(1);
+console.log(JSON.stringify({ js: paths.map(outcome(fs.realpathSync)), native: paths.map(outcome(fs.realpathSync.native)) }));
+`}, paths...)...).Output()
 	if err != nil {
 		t.Fatal(err)
 	}
-	var want []string
-	if err := json.Unmarshal(out, &want); err != nil {
+	type outcome struct{ Path, Code string }
+	var node struct{ JS, Native []outcome }
+	if err := json.Unmarshal(out, &node); err != nil {
 		t.Fatal(err)
 	}
-	if len(want) != len(paths) {
-		t.Fatalf("oracle returned %q for %q", want, paths)
+	if len(node.JS) != len(paths) || len(node.Native) != len(paths) {
+		t.Fatalf("oracle returned %s for %q", out, paths)
 	}
-	expected := []string{linkDrive + "right.txt", linkDrive + "final.txt"}
+	expected := []outcome{{Code: "ENOENT"}, {Code: "ENOENT"}, {Path: linkDrive + "right.txt"}}
 	for i, path := range paths {
-		if !strings.EqualFold(want[i], expected[i]) {
-			t.Fatalf("Node realpathSync(%q)=%q; fixture expects %q", path, want[i], expected[i])
+		if node.JS[i].Code != expected[i].Code || !strings.EqualFold(node.JS[i].Path, expected[i].Path) || node.Native[i].Code != expected[i].Code {
+			t.Fatalf("Node realpathSync(%q)=%+v and realpathSync.native=%+v; fixture expects %+v", path, node.JS[i], node.Native[i], expected[i])
+		}
+		// Pi's canonicalizePath returns the path it was given when realpathSync throws.
+		want := node.JS[i].Path
+		if node.JS[i].Code != "" {
+			want = path
 		}
 		for name, canonicalize := range map[string]func(string) string{
 			"public": CanonicalizePath, "skills": canonicalizePath, "context": canonicalPath, "session": canonicalDir,
 		} {
-			if got := canonicalize(path); got != want[i] {
-				t.Errorf("%s(%q)=%q; Node=%q", name, path, got, want[i])
+			if got := canonicalize(path); got != want {
+				t.Errorf("%s(%q)=%q; Pi=%q", name, path, got, want)
 			}
 		}
 	}

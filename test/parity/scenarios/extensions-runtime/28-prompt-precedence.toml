@@ -63,3 +63,8 @@ reason = "D2: the isolated agent-root prefix varies; retain resource paths, prec
 pattern = '/[^"]*parity-snap-cwd-[0-9]+/\.pig?'
 with = '<project>'
 reason = "D2: the isolated project configuration root is .pig versus .pi; preserve all resource-relative paths."
+
+[[assert.normalize_replace]]
+pattern = '\{"(?:name":"sprite","description":"Select the PiG login sprite\.","source":"extension","sourceInfo":\{"path":"builtin:pig-login","source":"builtin","scope":"temporary","origin":"top-level"\}|description":"Select the PiG login sprite\.","name":"sprite","source":"extension","sourceInfo":\{"origin":"top-level","path":"builtin:pig-login","scope":"temporary","source":"builtin"\})\},?'
+with = ""
+reason = "D2: PiG's built-in pig-login extension registers /sprite, which Pi has no counterpart for. Only that one command entry is removed; every other command, its order and its sourceInfo stay compared."

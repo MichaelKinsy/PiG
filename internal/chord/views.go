@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 )
 
 // Upstream services/handle.ts hands facets a guarded proxy (ServiceSlot view)
@@ -22,7 +20,7 @@ var serviceViews sync.Map // service ID -> func(func() (any, error)) any
 // RegisterServiceView registers the guarded view for def. view must return a
 // T whose methods call resolve on every invocation and never cache its result.
 // Registering the same service twice panics.
-func RegisterServiceView[T any](def pico3.ServiceDefinition[T], view func(resolve func() (T, error)) T) {
+func RegisterServiceView[T any](def ServiceDefinition[T], view func(resolve func() (T, error)) T) {
 	factory := func(resolve func() (any, error)) any {
 		return view(func() (T, error) {
 			target, err := resolve()
@@ -51,12 +49,12 @@ func serviceView(serviceId string, resolve func() (any, error)) (any, error) {
 // Value panics with the resolution error (revoked access, disconnected
 // service) because upstream's value property throws and Value has no error
 // result; Subscribe returns the error.
-func StateView[T any](resolve func() (pico3.ReplicatedStateOf[T], error)) pico3.ReplicatedStateOf[T] {
+func StateView[T any](resolve func() (ReplicatedStateOf[T], error)) ReplicatedStateOf[T] {
 	return stateView[T]{resolve: resolve}
 }
 
 type stateView[T any] struct {
-	resolve func() (pico3.ReplicatedStateOf[T], error)
+	resolve func() (ReplicatedStateOf[T], error)
 }
 
 func (view stateView[T]) Value() T {
@@ -67,7 +65,7 @@ func (view stateView[T]) Value() T {
 	return state.Value()
 }
 
-func (view stateView[T]) Subscribe(listener func(T, context.Context, pico3.ReplicatedStateDelivery)) (func(), error) {
+func (view stateView[T]) Subscribe(listener func(T, context.Context, ReplicatedStateDelivery)) (func(), error) {
 	state, err := view.resolve()
 	if err != nil {
 		return nil, err

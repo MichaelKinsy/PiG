@@ -20,6 +20,15 @@ type ExtensionSelectorComponent struct {
 	done                  bool
 	cancel                bool
 	onToggleToolsExpanded func()
+
+	// The themed texts are built when they change, as upstream builds each Text with theme.fg: the title at
+	// construction and for a countdown tick, the description at construction, the hint at construction and the
+	// rows at construction and when the selection moves (updateList). A theme change leaves them as built; only
+	// the borders are drawn with the theme of the moment.
+	titleText       string
+	descriptionText string
+	hintText        string
+	rowTexts        []string
 }
 
 // NewExtensionSelector creates a generic selector overlay. The first
@@ -31,11 +40,33 @@ func NewExtensionSelector(title string, options []string, onToggleToolsExpanded 
 	if len(onToggleToolsExpanded) > 0 {
 		toggle = onToggleToolsExpanded[0]
 	}
-	return &ExtensionSelectorComponent{
+	e := &ExtensionSelectorComponent{
 		title:                 title,
 		baseTitle:             title,
 		options:               options,
 		onToggleToolsExpanded: toggle,
+	}
+	e.titleText = styledDialogTitle(title)
+	e.hintText = rawArrowHint() + "  " + extensionActionHint(KBSelectConfirm, "select") + "  " + extensionActionHint(KBSelectCancel, "cancel")
+	e.updateList()
+	return e
+}
+
+// styledDialogTitle is the title Text content of upstream's selector: theme.fg("accent", theme.bold(title)).
+func styledDialogTitle(title string) string {
+	return ActiveTheme().FgText("accent", boldText(title))
+}
+
+// updateList rebuilds the option rows with the current theme (extension-selector.ts updateList).
+func (e *ExtensionSelectorComponent) updateList() {
+	t := ActiveTheme()
+	e.rowTexts = make([]string, len(e.options))
+	for i, opt := range e.options {
+		if i == e.cursor {
+			e.rowTexts[i] = t.FgText("accent", "→ ") + t.FgText("accent", opt)
+		} else {
+			e.rowTexts[i] = "  " + t.FgText("text", opt)
+		}
 	}
 }
 
@@ -43,6 +74,10 @@ func NewExtensionSelector(title string, options []string, onToggleToolsExpanded 
 // the options. Mirrors upstream ExtensionSelectorOptions.description.
 func (e *ExtensionSelectorComponent) SetDescription(description string) {
 	e.description = description
+	e.descriptionText = ""
+	if description != "" {
+		e.descriptionText = ActiveTheme().FgText("text", description)
+	}
 	e.Invalidate()
 }
 
@@ -50,6 +85,7 @@ func (e *ExtensionSelectorComponent) SetDescription(description string) {
 // upstream's countdown sets the title to `${baseTitle} (${s}s)`.
 func (e *ExtensionSelectorComponent) SetCountdown(seconds int) {
 	e.title = countdownTitle(e.baseTitle, seconds)
+	e.titleText = styledDialogTitle(e.title)
 	e.Invalidate()
 }
 
@@ -97,28 +133,22 @@ func (e *ExtensionSelectorComponent) SelectedValue() string {
 // Every Text wraps within one cell of padding on each side and pads to width,
 // so no row is wider than the render width.
 func (e *ExtensionSelectorComponent) Render(width int) []string {
-	t := ActiveTheme()
 	border := NewDynamicBorder("")
 	text := func(content string) []string { return NewPaddedText(content, 1, 0, nil).Render(width) }
 
 	var lines []string
 	lines = append(lines, border.Render(width)...)
 	lines = append(lines, "")
-	lines = append(lines, text(t.FgText("accent", boldText(e.title)))...)
-	lines = append(lines, dialogDescriptionLines(e.description, width)...)
+	lines = append(lines, text(e.titleText)...)
+	lines = append(lines, styledDescriptionLines(e.descriptionText, width)...)
 	lines = append(lines, "")
 
-	for i, opt := range e.options {
-		if i == e.cursor {
-			lines = append(lines, text(t.FgText("accent", "→ ")+t.FgText("accent", opt))...)
-		} else {
-			lines = append(lines, text("  "+t.FgText("text", opt))...)
-		}
+	for _, row := range e.rowTexts {
+		lines = append(lines, text(row)...)
 	}
 
 	lines = append(lines, "")
-	hint := rawArrowHint() + "  " + extensionActionHint(KBSelectConfirm, "select") + "  " + extensionActionHint(KBSelectCancel, "cancel")
-	lines = append(lines, text(hint)...)
+	lines = append(lines, text(e.hintText)...)
 	lines = append(lines, "")
 	lines = append(lines, border.Render(width)...)
 	return lines
@@ -137,8 +167,10 @@ func (e *ExtensionSelectorComponent) HandleInput(data string) {
 		}
 	case kb.Matches(data, KBSelectUp) || data == "k":
 		e.cursor = max(0, e.cursor-1)
+		e.updateList()
 	case kb.Matches(data, KBSelectDown) || data == "j":
 		e.cursor = min(len(e.options)-1, e.cursor+1)
+		e.updateList()
 	case kb.Matches(data, KBSelectConfirm) || data == "\n":
 		if e.SelectedValue() != "" {
 			e.done = true
@@ -173,8 +205,15 @@ func dialogDescriptionLines(description string, width int) []string {
 	if description == "" {
 		return nil
 	}
-	t := ActiveTheme()
-	return append([]string{""}, NewPaddedText(t.FgText("text", description), 1, 0, nil).Render(width)...)
+	return styledDescriptionLines(ActiveTheme().FgText("text", description), width)
+}
+
+// styledDescriptionLines is dialogDescriptionLines for a description whose text color was already applied.
+func styledDescriptionLines(styledDescription string, width int) []string {
+	if styledDescription == "" {
+		return nil
+	}
+	return append([]string{""}, NewPaddedText(styledDescription, 1, 0, nil).Render(width)...)
 }
 
 func countdownTitle(title string, seconds int) string {

@@ -36,7 +36,6 @@ SPDX-License-Identifier = "MIT AND CC-BY-4.0"
 path = [
   "agent/**",
   "ai/**",
-  "cmd/gen-image-models/**",
   "cmd/gen-models/**",
   "cmd/pig/**",
   "coding/**",
@@ -187,6 +186,42 @@ SPDX-License-Identifier = "MIT AND BSD-3-Clause"
 # 0.87.1's highlightCode tokenizes code with.
 [[annotations]]
 path = "coding/extension/host/subprocess/runtime-node/shims/highlight.js/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) 2006, Ivan Sagalaev"
+SPDX-License-Identifier = "BSD-3-Clause"
+
+# The Go port of highlight.js 10.7.3, which Pi 1.0.0's highlightCode
+# tokenizes code with. The Go translation of lib/core.js and the language
+# callbacks is MIT-licensed PiG code that retains highlight.js's notice.
+[[annotations]]
+path = "tui/internal/hljs/*.go"
+precedence = "closest"
+SPDX-FileCopyrightText = [
+  "Copyright Hewlett Packard Enterprise Development LP",
+  "Copyright (c) 2006, Ivan Sagalaev",
+]
+SPDX-License-Identifier = "MIT AND BSD-3-Clause"
+
+# A Go translation of V8's TimSort (third_party/v8/builtins/array-sort.tq),
+# which V8 bases on CPython's Objects/listobject.c.
+[[annotations]]
+path = "internal/jsarray/sort.go"
+precedence = "closest"
+SPDX-FileCopyrightText = [
+  "Copyright Hewlett Packard Enterprise Development LP",
+  "Copyright (c) 2001-2018 Python Software Foundation",
+]
+SPDX-License-Identifier = "MIT AND PSF-2.0"
+
+# Language grammars and test inputs serialized from highlight.js 10.7.3 by
+# automation/gen/generate-highlight-grammars.mjs and
+# automation/gen/import-highlight-corpus.mjs, and Pi's output for them.
+[[annotations]]
+path = [
+  "tui/internal/hljs/grammars_*.json.gz",
+  "tui/internal/hljs/testdata/corpus.json",
+  "tui/internal/hljs/testdata/oracle.json.gz",
+]
 precedence = "override"
 SPDX-FileCopyrightText = "Copyright (c) 2006, Ivan Sagalaev"
 SPDX-License-Identifier = "BSD-3-Clause"
@@ -353,3 +388,22 @@ SPDX-FileCopyrightText = [
   "Copyright (c) 2013, LeRoy Benjamin Sharon",
 ]
 SPDX-License-Identifier = "MIT AND Unicode-3.0 AND LicenseRef-ICU-CJK AND LicenseRef-ICU-SEA"
+
+# The QuickJS WebAssembly module and the codemode prelude are Pi's, embedded byte for byte.
+[[annotations]]
+path = "codemode/assets/quickjs.wasm"
+precedence = "closest"
+SPDX-FileCopyrightText = [
+  "Copyright (c) 2026 Vercel, Inc.",
+  "Copyright (c) 2017-2021 Fabrice Bellard",
+  "Copyright (c) 2017-2021 Charlie Gordon",
+  "Copyright (c) 2023 Ben Noordhuis",
+  "Copyright (c) 2023 Saul Ibarra Corretge",
+]
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "codemode/assets/prelude.js"
+precedence = "closest"
+SPDX-FileCopyrightText = "Copyright (c) 2025 Mario Zechner"
+SPDX-License-Identifier = "MIT"

@@ -194,7 +194,7 @@ func TestTUIRender_StreamingToolCollapseDoesNotRetainHiddenRowsInScrollback(t *t
 			ui := NewWithOutput(&out, width, height)
 			tool := NewToolExecutionComponent(toolName, "long-running call")
 			if toolName == "extension_tool" {
-				tool.SetStructuredArgs(json.RawMessage(`{}`))
+				tool.SetDefinition(&ToolDefinitionRenderers{}, json.RawMessage(`{}`))
 			}
 			ui.Add(renderFuncComponent(func(renderWidth int) []string {
 				lines := tool.Render(renderWidth)

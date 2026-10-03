@@ -82,18 +82,21 @@ test-inventory: ## Test-inventory validates the reviewed disposition mapping ove
 	@go run ./test/parity/cmd/testinventorycheck
 
 # Release law: no pending/partial hot-path tests and no decrease from the committed ported baseline.
+# The committed baseline must be reachable from public main. CI's clone names it origin; set PUBLIC_MAIN_REF to the remote-tracking ref of public main in a clone that names that remote differently.
+PUBLIC_MAIN_REF ?= refs/remotes/origin/main
+
 test-porting-release: ## Enforce hot-path closure or explicit approved known gaps, without lowering the committed baseline
-	@go run ./test/parity/cmd/testinventorycheck -release-policy test/parity/interfaces/test-porting-policy-v$(UPSTREAM_VERSION).json
+	@go run ./test/parity/cmd/testinventorycheck -public-main-ref '$(PUBLIC_MAIN_REF)' -release-policy test/parity/interfaces/test-porting-policy-v$(UPSTREAM_VERSION).json
 
 # known-gaps regenerates the current-state block of the 0.3.x known-gaps ledger from the checker's own mapping and policy data; known-gaps-drift fails when the committed block differs.
 KNOWN_GAPS_DOC := docs/parity/KNOWN-GAPS-0.3.x.md
 KNOWN_GAPS_POLICY := test/parity/interfaces/test-porting-policy-v$(UPSTREAM_VERSION).json
 
 known-gaps: ## Regenerate the marked current-state block of docs/parity/KNOWN-GAPS-0.3.x.md
-	@go run ./test/parity/cmd/testinventorycheck -release-policy $(KNOWN_GAPS_POLICY) -write-known-gaps $(KNOWN_GAPS_DOC)
+	@go run ./test/parity/cmd/testinventorycheck -public-main-ref '$(PUBLIC_MAIN_REF)' -release-policy $(KNOWN_GAPS_POLICY) -write-known-gaps $(KNOWN_GAPS_DOC)
 
 known-gaps-drift: ## Fail when the KNOWN-GAPS-0.3.x.md current-state block differs from the checker's data
-	@go run ./test/parity/cmd/testinventorycheck -release-policy $(KNOWN_GAPS_POLICY) -check-known-gaps $(KNOWN_GAPS_DOC)
+	@go run ./test/parity/cmd/testinventorycheck -public-main-ref '$(PUBLIC_MAIN_REF)' -release-policy $(KNOWN_GAPS_POLICY) -check-known-gaps $(KNOWN_GAPS_DOC)
 	@echo "known-gaps-drift: clean"
 
 .PHONY: test-porting-release known-gaps known-gaps-drift
@@ -214,7 +217,7 @@ require-parity-ran:
 	  if [ "$$n" -eq 0 ]; then \
 	    echo "require-parity-ran: 0 parity scenarios ran (results file: $(RESULTS))." >&2; \
 	    echo "This means the parity suite skipped before comparing anything against real Pi -" >&2; \
-	    echo "check PIG_PARITY_PIG_BIN/PIG_BIN, tmux, and the pinned Pi 0.87.1 install." >&2; \
+	    echo "check PIG_PARITY_PIG_BIN/PIG_BIN, tmux, and the pinned Pi install." >&2; \
 	    echo "A green 'go test' exit code here is a skip, not a pass." >&2; \
 	    echo "Set PIG_PARITY_ALLOW_ZERO=1 to accept this on purpose." >&2; \
 	    exit 1; \
@@ -254,22 +257,30 @@ parity-fast: parity-bin ## One strict Pig/Pi pair per hermetic scenario for the 
 	    -args -pig-parity.tags=hermetic -pig-parity.runs=1 -pig-parity.group-limits=$(PARITY_GROUP_LIMITS) -pig-parity.results=$(RESULTS)
 	@$(MAKE) -s require-parity-ran RESULTS=$(RESULTS)
 
+# A scoped run writes its results file under this worktree, named for its selection, so a concurrent run in another worktree cannot supply the scenarios this run counts.
+parity-family: SCOPED_RESULTS = $(CURDIR)/tmp/parity-results/family-$(FAMILY).json
+parity-driver: SCOPED_RESULTS = $(CURDIR)/tmp/parity-results/driver-$(DRIVER).json
+
 parity-family: parity-bin ## Run one hermetic family and stop on the first failed pair
 	@test -n "$(FAMILY)" || (echo "FAMILY is required (for example: make parity-family FAMILY=compaction)" >&2; exit 2)
 	@test -d "test/parity/scenarios/$(FAMILY)" || (echo "unknown parity family: $(FAMILY)" >&2; exit 2)
+	@mkdir -p "$(dir $(SCOPED_RESULTS))" && rm -f "$(SCOPED_RESULTS)"
 	@run_id=$$$$; \
 	  cleanup_tmux() { tmux -L "pig-parity-$$run_id" list-sessions -F '#{session_name}' 2>/dev/null | xargs -I{} tmux -L "pig-parity-$$run_id" kill-session -t {} 2>/dev/null || true; }; \
 	  trap cleanup_tmux EXIT; \
 	  PIG_PARITY_RUN_ID="$$run_id" PIG_PARITY_PIG_BIN="$(PARITY_PIG_BIN)" go test -tags=parity -count=1 -timeout $(PARITY_TIMEOUT) -parallel $(PARITY_PARALLEL) ./test/parity/runner \
-	    -args -pig-parity.dir="$(CURDIR)/test/parity/scenarios/$(FAMILY)" -pig-parity.tags=hermetic -pig-parity.group-limits=$(PARITY_GROUP_LIMITS)
+	    -args -pig-parity.dir="$(CURDIR)/test/parity/scenarios/$(FAMILY)" -pig-parity.tags=hermetic -pig-parity.group-limits=$(PARITY_GROUP_LIMITS) -pig-parity.results=$(SCOPED_RESULTS)
+	@$(MAKE) -s require-parity-ran RESULTS=$(SCOPED_RESULTS)
 
 parity-driver: parity-bin ## Run one pair for selected execution modes
 	@test -n "$(DRIVER)" || (echo "DRIVER is required (for example: make parity-driver DRIVER=rpc-mode)" >&2; exit 2)
+	@mkdir -p "$(dir $(SCOPED_RESULTS))" && rm -f "$(SCOPED_RESULTS)"
 	@run_id=$$$$; \
 	  cleanup_tmux() { tmux -L "pig-parity-$$run_id" list-sessions -F '#{session_name}' 2>/dev/null | xargs -I{} tmux -L "pig-parity-$$run_id" kill-session -t {} 2>/dev/null || true; }; \
 	  trap cleanup_tmux EXIT; \
 	  PIG_PARITY_RUN_ID="$$run_id" PIG_PARITY_PIG_BIN="$(PARITY_PIG_BIN)" go test -tags=parity -count=1 -timeout $(PARITY_TIMEOUT) -parallel $(PARITY_PARALLEL) ./test/parity/runner \
-	    -args -pig-parity.tags=hermetic -pig-parity.drivers="$(DRIVER)" -pig-parity.runs=1 -pig-parity.group-limits=$(PARITY_GROUP_LIMITS)
+	    -args -pig-parity.tags=hermetic -pig-parity.drivers="$(DRIVER)" -pig-parity.runs=1 -pig-parity.group-limits=$(PARITY_GROUP_LIMITS) -pig-parity.results=$(SCOPED_RESULTS)
+	@$(MAKE) -s require-parity-ran RESULTS=$(SCOPED_RESULTS)
 
 # Scheduler stress repeats the complete suite twice with one pair per scenario.
 # parity-durable owns each scenario's declared multi-run durability separately.
@@ -461,8 +472,18 @@ interface-delta-strict:
 		-manifest test/parity/interfaces/delta-v$(UPSTREAM_REVIEWED_VERSION)-v$(UPSTREAM_VERSION).json \
 		-strict
 
+# go-stubs runs gen-go-stubs for one upstream package. It writes only *_stub.go and *_upstream_test.go files that carry its header, never a hand-written file. IMPORTS maps npm packages to Go import paths; SCOPE=module also stubs exports outside the public entry points; SUBPATH=./testing stubs only that public subpath into its own Go package (map the package itself in IMPORTS so its other types resolve; a `stubgen:subpath ./testing` comment in the root Go package leaves the subpath out of the root run); TEST_MAPPING=1 updates the package's rows in the test mapping. Third-party types (typebox) resolve through extensions/sdk-ts/node_modules when `make parity-deps` has installed it.
+go-stubs: interface-deps ## Generate Go API stubs and upstream test skeletons for one Pi package (PACKAGE=protocol OUT=internal/experimental/protocol)
+	@test -n "$(PACKAGE)" -a -n "$(OUT)" || { echo "usage: make go-stubs PACKAGE=<packages/ dir> OUT=<Go package dir> [IMPORTS=npm=go,...] [SCOPE=public|module] [SUBPATH=./testing] [TEST_MAPPING=1]" >&2; exit 2; }
+	@node test/parity/interface-extractor/src/gen-go-stubs.mjs --source-root .upstream/current --package "$(PACKAGE)" --out "$(OUT)" \
+		$(if $(IMPORTS),--import "$(IMPORTS)") $(if $(SCOPE),--scope "$(SCOPE)") $(if $(SUBPATH),--subpath "$(SUBPATH)") \
+		$(if $(TEST_MAPPING),--test-mapping test/parity/interfaces/test-mapping-v$(UPSTREAM_VERSION).json)
+
+# Run under a private temporary directory and fail on anything a test leaves in it, as test-grouped.sh does for Go packages.
 interface-inventory-test:
-	@cd test/parity/interface-extractor && npm test
+	@set -eu; tmp=$$($(MKTEMP_DIR)); trap 'rm -rf "$$tmp"' EXIT; \
+		(cd test/parity/interface-extractor && TMPDIR="$$tmp" TMP="$$tmp" TEMP="$$tmp" npm test); \
+		./automation/ci/assert-clean-tmp.sh "$$tmp"
 
 # The extraction (TypeScript compiler over the pinned upstream source tree and
 # the exact published Pi package) is expensive and its inputs almost never
@@ -589,5 +610,5 @@ parity-new: ## Scaffold a new parity scenario (optionally under FAMILY=...)
 	    $(if $(MODEL),-model '$(MODEL)',)
 	@echo "wrote test/parity/scenarios/$(if $(FAMILY),$(FAMILY)/,)$(NAME).toml"
 
-.PHONY: behavior-input-inventory interface-go interface-recommendations-generate test-inventory-generate
+.PHONY: go-stubs behavior-input-inventory interface-go interface-recommendations-generate test-inventory-generate
 .PHONY: async-contracts behavior-contracts sdk-surface-drift behavior-contracts-strict behavior-input-inventory-drift behavior-input-mapping-proposal check-contracts check-contracts-fast check-scratch-paths closure-check correspondence-check coverage coverage-drift coverage-strict custom-factory-ledger custom-factory-ledger-drift family-gaps format-version-inventory format-version-policy foundation-check interface-delta interface-delta-strict interface-go-drift interface-inventory interface-inventory-drift interface-inventory-test interface-mapping-quality interface-mapping-strict interface-proposal-check interface-proposals interface-recommendations interface-recommendations-drift lint-scenarios parity parity-bin parity-driver parity-durable parity-family parity-fast parity-flow-coverage parity-live parity-new parity-perf parity-stress port-groups port-map port-map-drift port-reconcile porter porter-campaign porter-check porter-smoke porter-task require-parity-ran schedule-report source-hygiene source-hygiene-full test-inventory test-inventory-drift test-inventory-strict typescript-extension-corpus upstream-delta

@@ -54,6 +54,7 @@ func (response *googleHTTPResponse) json(executor *continuationExecutor, rounds 
 			promise.reject(fmt.Errorf("google: invalid SSE JSON: %w", err))
 			return
 		}
+		chunk.raw = json.RawMessage(response.text)
 		promise.resolve(&chunk)
 	})
 	return promise

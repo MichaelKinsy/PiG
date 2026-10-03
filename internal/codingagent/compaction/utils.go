@@ -10,35 +10,114 @@ package compaction
 
 import (
 	"encoding/json"
+	"maps"
+	"slices"
 	"strings"
+	"unicode/utf16"
 
 	"github.com/MichaelKinsy/PiG/agent"
-	harnesscompaction "github.com/MichaelKinsy/PiG/agent/harness/compaction"
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
 // ─── File Operation Tracking ──────────────────────────────────────────────────
 
 // FileOperations tracks files read/written/edited during a session segment.
-// Mirrors upstream FileOperations (utils.ts).
-type FileOperations = harnesscompaction.FileOperations
+// Mirrors upstream FileOperations (utils.ts): three Sets of paths.
+type FileOperations struct {
+	Read    map[string]struct{}
+	Written map[string]struct{}
+	Edited  map[string]struct{}
+}
 
 // NewFileOps initializes the shared file-operation accumulator.
-func NewFileOps() FileOperations { return harnesscompaction.CreateFileOps() }
+func NewFileOps() FileOperations {
+	return FileOperations{Read: map[string]struct{}{}, Written: map[string]struct{}{}, Edited: map[string]struct{}{}}
+}
 
-// ExtractFileOpsFromMessage records read/write/edit tool calls.
+// MarshalJSON carries each Set on the subprocess wire as a sorted string array.
+func (ops FileOperations) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Read    []string `json:"read"`
+		Written []string `json:"written"`
+		Edited  []string `json:"edited"`
+	}{sortedPaths(ops.Read), sortedPaths(ops.Written), sortedPaths(ops.Edited)})
+}
+
+// sortedPaths returns the Set's paths in JavaScript sort order (UTF-16 code units).
+func sortedPaths(set map[string]struct{}) []string {
+	paths := slices.Collect(maps.Keys(set))
+	if paths == nil {
+		paths = []string{}
+	}
+	slices.SortFunc(paths, func(a, b string) int { return slices.Compare(utf16.Encode([]rune(a)), utf16.Encode([]rune(b))) })
+	return paths
+}
+
+// ExtractFileOpsFromMessage records read/write/edit tool calls in an assistant message, or the nested calls recorded on a tool result. Calls made from codemode scripts are recorded on the script's result.
+//
+// upstream: .upstream/current/packages/coding-agent/src/core/compaction/utils.ts (extractFileOpsFromMessage, addFileOp)
 func ExtractFileOpsFromMessage(msg agent.AgentMessage, ops *FileOperations) {
-	harnesscompaction.ExtractFileOpsFromMessage(msg, ops)
+	if result := msg.ToolResult; result != nil {
+		if result.NestedCalls == nil {
+			return
+		}
+		for _, call := range result.NestedCalls.Calls {
+			addFileOp(call.Name, call.Arguments, ops)
+		}
+		return
+	}
+	if msg.Assistant == nil {
+		return
+	}
+	for _, block := range msg.Assistant.Content {
+		if call, ok := block.(ai.ToolCall); ok {
+			addFileOp(call.Name, call.Arguments, ops)
+		}
+	}
+}
+
+func addFileOp(toolName string, arguments map[string]any, ops *FileOperations) {
+	path, _ := arguments["path"].(string)
+	if path == "" {
+		return
+	}
+	switch toolName {
+	case "read":
+		ops.Read[path] = struct{}{}
+	case "write":
+		ops.Written[path] = struct{}{}
+	case "edit":
+		ops.Edited[path] = struct{}{}
+	}
 }
 
 // ComputeFileLists returns read-only and modified paths in JavaScript sort order.
 func ComputeFileLists(ops FileOperations) (readFiles, modifiedFiles []string) {
-	return harnesscompaction.ComputeFileLists(ops)
+	modified := maps.Clone(ops.Edited)
+	if modified == nil {
+		modified = map[string]struct{}{}
+	}
+	maps.Copy(modified, ops.Written)
+	readOnly := maps.Clone(ops.Read)
+	for path := range modified {
+		delete(readOnly, path)
+	}
+	return sortedPaths(readOnly), sortedPaths(modified)
 }
 
 // FormatFileOperations renders the shared summary metadata tags.
 func FormatFileOperations(readFiles, modifiedFiles []string) string {
-	return harnesscompaction.FormatFileOperations(readFiles, modifiedFiles)
+	var sections []string
+	if len(readFiles) > 0 {
+		sections = append(sections, "<read-files>\n"+strings.Join(readFiles, "\n")+"\n</read-files>")
+	}
+	if len(modifiedFiles) > 0 {
+		sections = append(sections, "<modified-files>\n"+strings.Join(modifiedFiles, "\n")+"\n</modified-files>")
+	}
+	if len(sections) == 0 {
+		return ""
+	}
+	return "\n\n" + strings.Join(sections, "\n\n")
 }
 
 // ─── Message Serialization ────────────────────────────────────────────────────

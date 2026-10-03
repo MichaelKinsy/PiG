@@ -69,11 +69,19 @@ type BuilderBackend interface {
 	Build(context.Context, BuilderRequest) (BuilderResult, error)
 }
 
-type nativeBuilder struct{}
+// nativeBuilder compiles a Piglet Binary with the host Go toolchain from a local Pig checkout or,
+// for a release binary, from the running release's source fetched through the Go module proxy.
+type nativeBuilder struct {
+	// runningRelease reports the fetchable release version of the running binary; nil reads
+	// the binary's build identity.
+	runningRelease func() (string, bool)
+	// modDownload runs `go mod download -json <module@version>`; nil runs the Go toolchain.
+	modDownload func(context.Context, string) ([]byte, error)
+}
 
 func (nativeBuilder) Name() string { return "native" }
 
-func (nativeBuilder) Probe(_ context.Context, request BuilderRequest) BuilderReadiness {
+func (b nativeBuilder) Probe(_ context.Context, request BuilderRequest) BuilderReadiness {
 	result := BuilderReadiness{Builder: "native"}
 	if err := validateNativeTargets(request.Options.Targets); err != nil {
 		result.Code = "target-unavailable"
@@ -81,11 +89,16 @@ func (nativeBuilder) Probe(_ context.Context, request BuilderRequest) BuilderRea
 		result.Remedy = "configure a container or remote builder for non-host targets"
 		return result
 	}
+	fetchVersion := ""
 	if _, err := pigSourceRoot(); err != nil {
-		result.Code = "source-unavailable"
-		result.Message = err.Error()
-		result.Remedy = "run from a Pig checkout or set PIG_SOURCE_ROOT"
-		return result
+		version, ok := b.releaseFor()
+		if !ok {
+			result.Code = "source-unavailable"
+			result.Message = err.Error() + "; this PiG build is not a tagged release whose source can be fetched"
+			result.Remedy = sourceUnavailableRemedy
+			return result
+		}
+		fetchVersion = version
 	}
 	if _, err := toolchain.Go(); err != nil {
 		result.Code = "go-unavailable"
@@ -94,11 +107,17 @@ func (nativeBuilder) Probe(_ context.Context, request BuilderRequest) BuilderRea
 		return result
 	}
 	result.Ready = true
+	if fetchVersion != "" {
+		// pig additive (D18): Probe only reports the fetch; Build downloads the source.
+		result.Code = "source-fetchable"
+		result.Message = fmt.Sprintf("PiG %s source will be fetched through the Go module proxy", fetchVersion)
+	}
 	return result
 }
 
-func (nativeBuilder) Build(ctx context.Context, request BuilderRequest) (BuilderResult, error) {
-	artifact, record, err := buildNativeWithRecords(ctx, request.Piglet, request.Cells, request.Options, request.Output, request.Stdout, request.Stderr)
+func (b nativeBuilder) Build(ctx context.Context, request BuilderRequest) (BuilderResult, error) {
+	resolveSource := func(ctx context.Context) (pigSource, error) { return b.resolveSource(ctx, request.Stderr) }
+	artifact, record, err := buildNativeWithRecords(ctx, resolveSource, request.Piglet, request.Cells, request.Options, request.Output, request.Stdout, request.Stderr)
 	if err != nil {
 		return BuilderResult{}, err
 	}

@@ -55,6 +55,11 @@ func NewAssistantMessageEventStream() *AssistantMessageEventStream {
 // Push appends an event. Pushes after termination are ignored, matching Pi's
 // EventStream. Done and error may terminate without a start event. Missing data and invalid closed-union values return a payload error.
 func (s *AssistantMessageEventStream) Push(event AssistantMessageEvent) error {
+	return s.push(event, assistantMessageReplacements{})
+}
+
+// push is Push for a producer that assigned new nested objects to its partial since the last push. Earlier shallow copies keep the objects they retained.
+func (s *AssistantMessageEventStream) push(event AssistantMessageEvent, replacements assistantMessageReplacements) error {
 	if event == nil {
 		return errors.New("assistant message stream event is nil")
 	}
@@ -78,17 +83,19 @@ func (s *AssistantMessageEventStream) Push(event AssistantMessageEvent) error {
 	if err := s.validateLocked(event); err != nil {
 		return err
 	}
-	event = mapAssistantEventPartial(event, s.publishPartialLocked)
+	event = mapAssistantEventPartial(event, func(message *AssistantMessage) *AssistantMessage {
+		return s.publishPartialLocked(message, replacements)
+	})
 
 	terminal := false
 	switch event := event.(type) {
 	case DoneEvent:
-		s.publishTerminalLocked(event.Message)
+		s.publishTerminalLocked(event.Message, replacements)
 		s.terminal = true
 		s.result = event.Message
 		terminal = true
 	case ErrorEvent:
-		s.publishTerminalLocked(event.Error)
+		s.publishTerminalLocked(event.Error, replacements)
 		s.terminal = true
 		s.result = event.Error
 		terminal = true
@@ -214,7 +221,7 @@ func (s *AssistantMessageEventStream) End(result ...*AssistantMessage) {
 	}()
 	s.terminal = true
 	if len(result) > 0 && !s.resolved {
-		s.publishTerminalLocked(result[0])
+		s.publishTerminalLocked(result[0], assistantMessageReplacements{})
 		s.result = result[0]
 		continuations = append(continuations, s.resolveResultLocked()...)
 	}

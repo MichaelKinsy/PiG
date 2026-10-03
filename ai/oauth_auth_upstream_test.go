@@ -22,7 +22,7 @@ func oauthAuthCatalogProvider(t *testing.T, id string) *ModelsProvider {
 	for _, m := range ListModels(id) {
 		models = append(models, m.ToModel())
 	}
-	return CreateProvider(CreateProviderOptions{ID: id, Models: models, Auth: auth})
+	return CreateProvider(CreateProviderOptions{ID: id, Models: AnyModels(models), Auth: auth, API: typedChatStreams()})
 }
 
 // Ports packages/ai/test/oauth-auth.test.ts:21,30,37,42,47,53,58,64,83,101,130,148.
@@ -64,12 +64,20 @@ func TestOAuthAuthAdaptersUpstream(t *testing.T) {
 			}
 		}
 	})
+	// .upstream/v0.99.1/packages/ai/test/oauth-auth.test.ts:32 adds openaiChatGPTOAuth ("openai") to the subscription flows.
 	t.Run("identifies only subscription-backed OAuth flows as subscriptions", func(t *testing.T) {
-		for _, id := range []string{"anthropic", "openai-codex", "github-copilot", "kimi-coding", "xai", "openrouter"} {
+		for _, id := range []string{"anthropic", "openai", "openai-codex", "github-copilot", "kimi-coding", "xai", "openrouter"} {
 			method, ok := OAuthProviderAuth(id)
 			if !ok || method.IsSubscription != (id != "openrouter") {
 				t.Errorf("%s method=%+v present=%v", id, method, ok)
 			}
+		}
+	})
+	// .upstream/v0.99.1/packages/ai/test/oauth-auth.test.ts:51
+	t.Run("OpenAI exposes ChatGPT OAuth alongside API-key auth", func(t *testing.T) {
+		provider := oauthAuthCatalogProvider(t, "openai")
+		if provider.Auth.APIKey == nil || provider.Auth.OAuth == nil || provider.Auth.OAuth.Name != "OpenAI (ChatGPT subscription)" || !provider.Auth.OAuth.IsSubscription || provider.Auth.OAuth.LoginLabel != "Sign in with ChatGPT" {
+			t.Fatalf("auth=%+v oauth=%+v", provider.Auth, provider.Auth.OAuth)
 		}
 	})
 	for _, id := range []string{"anthropic", "openai-codex", "xai", "openrouter"} {

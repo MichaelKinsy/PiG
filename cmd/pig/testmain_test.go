@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // execEchoHelperEnv, when set to "1", makes this test binary behave like a
@@ -38,9 +40,14 @@ func TestMain(m *testing.M) {
 			os.Exit(code)
 		}
 	}
-	testRoot, err := os.MkdirTemp("", "pig-command-tests-")
+	testRoot, err := os.MkdirTemp("", "pig-cmd-")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "create isolated test home:", err)
+		os.Exit(2)
+	}
+	if err := testenv.ScopeTempDir(testRoot); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		_ = os.RemoveAll(testRoot)
 		os.Exit(2)
 	}
 	sourceRoot, err := filepath.Abs(filepath.Join("..", ".."))

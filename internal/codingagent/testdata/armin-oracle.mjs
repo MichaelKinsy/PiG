@@ -1,12 +1,24 @@
 // Execute the pinned source, not a second implementation. No real timers or user config.
+// pig divergence (D87): PiG draws a pig head labeled "pigsayhi", so the Go test passes its image as XBM bits (LSB first,
+// 0 is foreground, as armin.ts reads them) and its label, and they replace Armin's in the pinned source.
 import { readFileSync } from "node:fs";
 import { stripTypeScriptTypes } from "node:module";
 import vm from "node:vm";
 import { createHash } from "node:crypto";
 
-const source = readFileSync(new URL("../../../.upstream/current/packages/coding-agent/src/modes/interactive/components/armin.ts", import.meta.url), "utf8")
+const image = JSON.parse(process.argv[2]);
+let source = readFileSync(new URL(`../../../.upstream/v${image.upstream}/packages/coding-agent/src/modes/interactive/components/armin.ts`, import.meta.url), "utf8")
   .replace(/^import .*;\n/gm, "")
   .replace("export class ArminComponent", "class ArminComponent");
+const replaceOnce = (pattern, replacement) => {
+  const matches = source.match(new RegExp(pattern.source, "g")) ?? [];
+  if (matches.length !== 1) throw new Error(`expected one ${pattern}, found ${matches.length}`);
+  source = source.replace(pattern, replacement);
+};
+replaceOnce(/const WIDTH = \d+;/, `const WIDTH = ${image.width};`);
+replaceOnce(/const HEIGHT = \d+;/, `const HEIGHT = ${image.height};`);
+replaceOnce(/const BITS = \[[^\]]*\];/, `const BITS = ${JSON.stringify(image.bits)};`);
+replaceOnce(/const message = "ARMIN SAYS HI";/, `const message = ${JSON.stringify(image.label)};`);
 const effects = ["typewriter", "scanline", "rain", "fade", "crt", "glitch", "dissolve"];
 const results = [];
 for (const [effectIndex, effect] of effects.entries()) {

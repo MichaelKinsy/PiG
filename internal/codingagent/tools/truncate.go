@@ -330,3 +330,43 @@ func TruncateLine(line string, maxChars int) (string, bool) {
 	}
 	return b.String() + "... [truncated]", true
 }
+
+// MiddleTruncationResult mirrors upstream MiddleTruncationResult.
+type MiddleTruncationResult struct {
+	// Content is the start and end of the input with a `…N chars truncated…`
+	// marker between them.
+	Content      string
+	Truncated    bool
+	RemovedChars int
+	TotalBytes   int
+	TotalLines   int
+}
+
+// TruncateMiddle mirrors upstream truncateMiddle: keep the start and the end
+// of content, half of maxBytes each (the tail takes the odd byte), and replace
+// the middle with a `…N chars truncated…` marker, like Codex does for tool
+// output. It cuts only at character boundaries.
+func TruncateMiddle(content string, maxBytes int) MiddleTruncationResult {
+	totalLines := len(splitLinesForCounting(content))
+	if len(content) <= maxBytes {
+		return MiddleTruncationResult{Content: content, TotalBytes: len(content), TotalLines: totalLines}
+	}
+	// Continuation bytes (10xxxxxx) are not character starts.
+	isBoundary := func(index int) bool { return index >= len(content) || content[index]&0xc0 != 0x80 }
+	headEnd := maxBytes / 2
+	for headEnd > 0 && !isBoundary(headEnd) {
+		headEnd--
+	}
+	tailStart := len(content) - (maxBytes - maxBytes/2)
+	for tailStart < len(content) && !isBoundary(tailStart) {
+		tailStart++
+	}
+	removedChars := utf8.RuneCountInString(content[headEnd:tailStart])
+	return MiddleTruncationResult{
+		Content:      content[:headEnd] + "…" + itoa(removedChars) + " chars truncated…" + content[tailStart:],
+		Truncated:    true,
+		RemovedChars: removedChars,
+		TotalBytes:   len(content),
+		TotalLines:   totalLines,
+	}
+}

@@ -1,1 +1,0 @@
-- Match Pi's Mermaid fallback: preserve unsupported and naturally over-wide source without extra hints or label narrowing. Retain final partial-parse warnings and streaming diagrams.

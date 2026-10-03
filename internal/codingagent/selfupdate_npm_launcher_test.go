@@ -15,6 +15,7 @@ const npmLauncherPackage = "@pi-in-go/pig"
 // The npm platform packages, listed independently of the production table:
 // automation/release/npm/pack_npm.py TARGETS emits exactly these names.
 var npmPlatformPackages = []string{
+	"@pi-in-go/pig-android-arm64",
 	"@pi-in-go/pig-darwin-arm64",
 	"@pi-in-go/pig-darwin-x64",
 	"@pi-in-go/pig-linux-arm64",
@@ -111,6 +112,9 @@ func TestOwningPackageOfNpmPlatformBinaryIsTheLauncher(t *testing.T) {
 		{"npm nested", "linux", func(p string) string {
 			return "/home/u/.npm/lib/node_modules/@pi-in-go/pig/node_modules/" + p + "/pig"
 		}, "/home/u/.npm/lib/node_modules/@pi-in-go/pig"},
+		{"termux npm nested", "android", func(p string) string {
+			return "/data/data/com.termux/files/usr/lib/node_modules/@pi-in-go/pig/node_modules/" + p + "/pig"
+		}, "/data/data/com.termux/files/usr/lib/node_modules/@pi-in-go/pig"},
 		{"hoisted sibling", "linux", func(p string) string {
 			return "/home/u/.bun/install/global/node_modules/" + p + "/pig"
 		}, "/home/u/.bun/install/global/node_modules/@pi-in-go/pig"},
@@ -180,7 +184,7 @@ func TestNpmLauncherLayoutUpdatesTheScopedPackage(t *testing.T) {
 			if prov.PackageName != npmLauncherPackage {
 				t.Fatalf("PackageName = %q, want %q", prov.PackageName, npmLauncherPackage)
 			}
-			if want := realPathForTest(t, filepath.Join(root, "@pi-in-go", "pig")); prov.PackageDir != want {
+			if want := realPathForTest(t, filepath.Join(root, "@pi-in-go", "pig")); realPathForTest(t, prov.PackageDir) != want {
 				t.Fatalf("PackageDir = %q, want the launcher directory %q", prov.PackageDir, want)
 			}
 			command := prov.GetSelfUpdateCommand(nil, SelfUpdatePackageTarget{PackageName: PackageName, InstallSpec: PackageName + "@0.3.1"})

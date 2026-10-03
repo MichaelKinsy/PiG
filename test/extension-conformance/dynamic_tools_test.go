@@ -19,10 +19,8 @@ import (
 
 // Pi loader.ts:273-284 and agent-session.ts:3144-3235 require immediate publication, in-place replacement, and activation only for newly admitted names.
 func TestDynamicToolRegistrationAcrossSDKs(t *testing.T) {
+	t.Parallel()
 	root := findModuleRoot(t)
-	t.Setenv("PIG_SDK_GO_ROOT", filepath.Join(root, "extensions", "sdk"))
-	t.Setenv("PIG_SDK_PY_ROOT", filepath.Join(root, "extensions", "sdk-py"))
-	t.Setenv("PIG_SDK_RS_ROOT", filepath.Join(root, "extensions", "sdk-rs"))
 	for _, language := range []string{"go", "python", "rust", "node", "fused-go"} {
 		for _, isolation := range []string{"strict", "shared-ok"} {
 			if language == "fused-go" && isolation == "shared-ok" {

@@ -7,14 +7,13 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 )
 
 // PreparedSessionPlugins contains the resolved package selection and its presentation artifacts.
 type PreparedSessionPlugins struct {
 	PackagePaths        []string
-	PresentationPlugins pico3.JsonValue
+	PresentationPlugins chord.JsonValue
 }
 
 // ExperimentalServerServicesOptions supplies application-owned Session storage and plugin selection. Nil package paths select defaults; an empty slice selects no packages.
@@ -23,7 +22,7 @@ type ExperimentalServerServicesOptions struct {
 	Create                    func(context.Context, SessionCreateOptions) (SessionSummary, error)
 	Remove                    func(context.Context, string) error
 	PrepareSessionPlugins     func(context.Context, string, []string) (PreparedSessionPlugins, error)
-	ReloadPresentationPlugins func(context.Context, []string) (pico3.JsonValue, error)
+	ReloadPresentationPlugins func(context.Context, []string) (chord.JsonValue, error)
 }
 
 // RoutedServerPresentation supplies the presentation-scoped routing capabilities used by server management.
@@ -130,7 +129,7 @@ type serverSessionDirectory struct {
 	state *chord.MutableReplicatedState[*SessionDirectoryState]
 }
 
-func (directory serverSessionDirectory) State() pico3.ReplicatedStateOf[*SessionDirectoryState] {
+func (directory serverSessionDirectory) State() chord.ReplicatedStateOf[*SessionDirectoryState] {
 	return directory.state
 }
 
@@ -141,8 +140,8 @@ type serverPresentationServices struct {
 	prepared                   bool
 }
 
-func (service *serverPresentationServices) PrepareSession(ctx context.Context, request PrepareSessionPluginsRequest) (pico3.JsonValue, error) {
-	var result pico3.JsonValue
+func (service *serverPresentationServices) PrepareSession(ctx context.Context, request PrepareSessionPluginsRequest) (chord.JsonValue, error) {
+	var result chord.JsonValue
 	err := service.host.mutations.run(func() error {
 		selected, err := service.host.options.PrepareSessionPlugins(ctx, request.SessionId, request.PackagePaths)
 		if err != nil {
@@ -156,8 +155,8 @@ func (service *serverPresentationServices) PrepareSession(ctx context.Context, r
 	return result, err
 }
 
-func (service *serverPresentationServices) Reload(ctx context.Context) (pico3.JsonValue, error) {
-	var result pico3.JsonValue
+func (service *serverPresentationServices) Reload(ctx context.Context) (chord.JsonValue, error) {
+	var result chord.JsonValue
 	err := service.host.mutations.run(func() error {
 		if !service.prepared {
 			return errors.New("No Session plugin selection is prepared")

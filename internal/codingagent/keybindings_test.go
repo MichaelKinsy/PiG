@@ -42,6 +42,7 @@ func TestKeybindingsManagerDefaultsResolveCoreAppBindings(t *testing.T) {
 }
 
 func TestKeybindingsManagerLoadFromFileOverridesDefaults(t *testing.T) {
+	restoreTUIKeybindings(t)
 	dir := t.TempDir()
 	path := filepath.Join(dir, "keybindings.json")
 	if err := os.WriteFile(path, []byte(`{"app.tools.expand":"ctrl+g","app.model.select":["ctrl+p"]}`), 0o644); err != nil {
@@ -60,6 +61,7 @@ func TestKeybindingsManagerLoadFromFileOverridesDefaults(t *testing.T) {
 }
 
 func TestKeybindingsManagerMigratesLegacyNames(t *testing.T) {
+	restoreTUIKeybindings(t)
 	dir := t.TempDir()
 	path := filepath.Join(dir, "keybindings.json")
 	if err := os.WriteFile(path, []byte(`{"expandTools":"ctrl+g","selectModel":"ctrl+p"}`), 0o644); err != nil {
@@ -75,6 +77,7 @@ func TestKeybindingsManagerMigratesLegacyNames(t *testing.T) {
 }
 
 func TestKeybindingsManagerSaveRoundTrip(t *testing.T) {
+	restoreTUIKeybindings(t)
 	dir := t.TempDir()
 	path := filepath.Join(dir, "keybindings.json")
 	km := NewKeybindingsManager("")
@@ -99,6 +102,7 @@ func TestKeybindingsManagerSaveRoundTrip(t *testing.T) {
 }
 
 func TestKeybindingsManagerConflictDetection(t *testing.T) {
+	restoreTUIKeybindings(t)
 	km := NewKeybindingsManager("")
 	km.SetUserBindings(map[string][]KeyID{
 		"app.tools.expand": {"ctrl+g"},
@@ -114,6 +118,7 @@ func TestKeybindingsManagerConflictDetection(t *testing.T) {
 }
 
 func TestClassifyKeyWithBindingsUsesOverrides(t *testing.T) {
+	restoreTUIKeybindings(t)
 	km := NewKeybindingsManager("")
 	km.SetUserBindings(map[string][]KeyID{
 		"app.tools.expand": {"ctrl+g"},
@@ -131,6 +136,7 @@ func TestKeybindingsManagerUnknownInputReturnsEmpty(t *testing.T) {
 }
 
 func TestKeybindingsManagerSaveEncodesJSON(t *testing.T) {
+	restoreTUIKeybindings(t)
 	dir := t.TempDir()
 	path := filepath.Join(dir, "keybindings.json")
 	km := NewKeybindingsManager("")
@@ -302,6 +308,7 @@ func TestExplicitHistoryBindingTakesPrecedenceOverModelCycling(t *testing.T) {
 // (keys.ts matchesKittySequence): a non-Latin codepoint falls back to its
 // base-layout key, while a Latin codepoint stays authoritative.
 func TestKeybindingsManagerResolvesKittyBaseLayoutKey(t *testing.T) {
+	restoreTUIKeybindings(t)
 	km := otherColumnKeys()
 	cases := []struct {
 		input string
@@ -330,6 +337,7 @@ func TestKeybindingsManagerResolvesKittyBaseLayoutKey(t *testing.T) {
 }
 
 func TestKeybindingsManagerUsesModeAwareSharedMatcher(t *testing.T) {
+	restoreTUIKeybindings(t)
 	tui.SetKittyProtocolActive(false)
 	t.Cleanup(func() { tui.SetKittyProtocolActive(false) })
 	km := otherColumnKeys()
@@ -356,4 +364,16 @@ func TestKeybindingsManagerUsesModeAwareSharedMatcher(t *testing.T) {
 	if got := classifyKeyWithBindings("\x1b\r", km); got != actionNewline {
 		t.Fatalf("Kitty ESC CR classified as %v, want newline", got)
 	}
+}
+
+// restoreTUIKeybindings restores the process-wide keybindings a KeybindingsManager publishes, so a test that remaps a key does not change the hints later tests render.
+func restoreTUIKeybindings(t *testing.T) {
+	t.Helper()
+	previous := tui.GetTUIKeybindings()
+	t.Cleanup(func() {
+		tui.SetTUIKeybindings(previous)
+		// NewKeybindingsManager installs the process-wide key text resolver of the manager it builds.
+		_ = DefaultKeybindingsManager()
+		tui.SetTUIKeybindings(previous)
+	})
 }

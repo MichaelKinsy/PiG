@@ -70,9 +70,9 @@ func TestModelRegistryDynamicProvidersUpstream(t *testing.T) {
 		}
 		input := registryInput("https://provider.test/v1", "openai-completions", "demo-model")
 		input.Name = "Named Provider"
-		input.Models[0].DisplayName = "Demo Model"
-		input.Models[0].Capabilities.ContextWindow = 128000
-		input.Models[0].Capabilities.MaxOutputTokens = 4096
+		input.Models[0].(*ai.Model).DisplayName = "Demo Model"
+		input.Models[0].(*ai.Model).Capabilities.ContextWindow = 128000
+		input.Models[0].(*ai.Model).Capabilities.MaxOutputTokens = 4096
 		registerRegistryInput(t, s, "named-provider", input)
 		if got := s.Registry().GetProviderDisplayName("named-provider"); got != "Named Provider" {
 			t.Errorf("registered name=%q", got)
@@ -91,10 +91,10 @@ func TestModelRegistryDynamicProvidersUpstream(t *testing.T) {
 	t.Run("modelOverrides apply to dynamically registered provider models", func(t *testing.T) {
 		s := registryFromJSON(t, `{"extension-provider":{"modelOverrides":{"extension-model":{"name":"Overridden Extension Model","thinkingLevelMap":{"off":null,"minimal":null,"low":null,"medium":null,"xhigh":"max"},"headers":{"x-model-override":"enabled"}}}}}`)
 		input := registryInput("https://provider.test/v1", "openai-completions", "extension-model")
-		input.Models[0].DisplayName = "Extension Model"
-		input.Models[0].ProviderMeta.Reasoning = true
-		input.Models[0].Capabilities.ContextWindow = 128000
-		input.Models[0].Capabilities.MaxOutputTokens = 4096
+		input.Models[0].(*ai.Model).DisplayName = "Extension Model"
+		input.Models[0].(*ai.Model).ProviderMeta.Reasoning = true
+		input.Models[0].(*ai.Model).Capabilities.ContextWindow = 128000
+		input.Models[0].(*ai.Model).Capabilities.MaxOutputTokens = 4096
 		registerRegistryInput(t, s, "extension-provider", input)
 		m := mustRegistryModel(t, s, "extension-provider", "extension-model")
 		want := ai.ThinkingLevelMap{ai.ThinkingOff: nil, ai.ThinkingMinimal: nil, ai.ThinkingLow: nil, ai.ThinkingMedium: nil, ai.ThinkingXHigh: new("max")}
@@ -133,7 +133,7 @@ func TestModelRegistryDynamicProvidersUpstream(t *testing.T) {
 			input := registryInput("https://provider.test/v1", "openai-completions", "demo-model")
 			input.APIKey = "CUSTOM_NAME"
 			input.Headers = map[string]string{"Authorization": "BEARER"}
-			input.Models[0].ProviderMeta.Headers = map[string]string{"x-model-token": "MODEL_TOKEN"}
+			input.Models[0].(*ai.Model).ProviderMeta.Headers = map[string]string{"x-model-token": "MODEL_TOKEN"}
 			registerRegistryInput(t, s, "literal-provider", input)
 			if key := s.Registry().GetAPIKeyForProvider(t.Context(), "literal-provider"); key == nil || *key != "CUSTOM_NAME" {
 				t.Fatalf("key=%v", key)
@@ -163,16 +163,16 @@ func TestModelRegistryDynamicProvidersUpstream(t *testing.T) {
 	t.Run("failed registerProvider does not remove existing provider models", func(t *testing.T) {
 		s := registryTestServices(t, "", nil)
 		input := registryInput("https://provider.test/v1", "openai-completions", "demo-model")
-		input.Models[0].DisplayName = "Demo Model"
-		input.Models[0].Capabilities.ContextWindow = 128000
-		input.Models[0].Capabilities.MaxOutputTokens = 4096
+		input.Models[0].(*ai.Model).DisplayName = "Demo Model"
+		input.Models[0].(*ai.Model).Capabilities.ContextWindow = 128000
+		input.Models[0].(*ai.Model).Capabilities.MaxOutputTokens = 4096
 		registerRegistryInput(t, s, "demo-provider", input)
 		mustRegistryModel(t, s, "demo-provider", "demo-model")
 		input.BaseURL = "https://provider.test/v2"
 		input.API = ""
-		input.Models = []*ai.Model{new(*input.Models[0])}
-		input.Models[0].ID = "broken-model"
-		input.Models[0].DisplayName = "Broken Model"
+		input.Models = []ai.AnyModel{new(*input.Models[0].(*ai.Model))}
+		input.Models[0].(*ai.Model).ID = "broken-model"
+		input.Models[0].(*ai.Model).DisplayName = "Broken Model"
 		err := s.Registry().RegisterProviderConfig("demo-provider", input)
 		if err == nil || !strings.Contains(err.Error(), `Provider demo-provider, model broken-model: no "api" specified.`) {
 			t.Fatalf("error=%v", err)

@@ -11,6 +11,7 @@ import (
 	"io"
 	"maps"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf16"
@@ -289,7 +290,11 @@ type anthEventMessageDelta struct {
 		OutputTokens             *int `json:"output_tokens"`
 		CacheReadInputTokens     *int `json:"cache_read_input_tokens"`
 		CacheCreationInputTokens *int `json:"cache_creation_input_tokens"`
-		OutputTokensDetails      *struct {
+		// CacheCreation is the TTL breakdown. Vercel AI Gateway sends it in deltas, though the SDK only types it on message_start.
+		CacheCreation *struct {
+			Ephemeral1H *int `json:"ephemeral_1h_input_tokens"`
+		} `json:"cache_creation"`
+		OutputTokensDetails *struct {
 			ThinkingTokens *int `json:"thinking_tokens"`
 		} `json:"output_tokens_details,omitempty"`
 	} `json:"usage"`
@@ -497,15 +502,13 @@ func anthConvertMessagesDetailed(messages []Message, isOAuthToken, allowEmptySig
 						blocks = append(blocks, anthContentBlock{Type: "text", Text: sanitizeSurrogates(content.Thinking)})
 					}
 				case ToolCall:
-					arguments := content.Arguments
-					if arguments == nil {
-						arguments = JsonObject{}
-					}
+					// ArgumentsJSON writes the model's member order; a nil Arguments is {}.
+					arguments, _ := content.ArgumentsJSON()
 					name := content.Name
 					if isOAuthToken {
 						name = toClaudeCodeName(name)
 					}
-					blocks = append(blocks, anthContentBlock{Type: "tool_use", ID: normalizeAnthropicToolCallID(content.ID), Name: name, Input: arguments})
+					blocks = append(blocks, anthContentBlock{Type: "tool_use", ID: normalizeAnthropicToolCallID(content.ID), Name: name, Input: json.RawMessage(arguments)})
 				}
 			}
 			if len(blocks) > 0 {
@@ -611,10 +614,39 @@ func anthHTTPError(providerID string, status int, body []byte) error {
 	return fmt.Errorf("%s: HTTP %d: %s", providerID, status, string(body))
 }
 
+// anthropicStrictUnsupportedKeywords are the keywords Anthropic strict tool use rejects with a 400 for the whole request.
+// https://platform.claude.com/docs/en/build-with-claude/structured-outputs#json-schema-limitations
+// upstream: packages/ai/src/api/anthropic-messages.ts:1548-1580 (ANTHROPIC_STRICT_UNSUPPORTED_KEYWORDS)
+var anthropicStrictUnsupportedKeywords = []string{
+	"minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf",
+	"maxItems", "uniqueItems", "minContains", "maxContains", "minProperties", "maxProperties",
+}
+
+// anthropicStrictStringFormats are the string formats strict mode accepts (ANTHROPIC_STRICT_STRING_FORMATS).
+var anthropicStrictStringFormats = []string{"date-time", "time", "date", "duration", "email", "hostname", "uri", "ipv4", "ipv6", "uuid"}
+
+// anthropicStrictUnsupportedKeyword reports the schema keywords Anthropic strict tool use rejects, so a "prefer" tool that uses one is sent non-strict.
+// upstream: packages/ai/src/api/anthropic-messages.ts:1573-1577 (isAnthropicStrictUnsupportedKeyword)
+func anthropicStrictUnsupportedKeyword(key string, value any) bool {
+	if slices.Contains(anthropicStrictUnsupportedKeywords, key) {
+		return true
+	}
+	switch key {
+	case "minItems":
+		// JavaScript compares the parsed JSON value: only the numbers 0 and 1 pass.
+		number, ok := value.(float64)
+		return !ok || (number != 0 && number != 1)
+	case "format":
+		format, ok := value.(string)
+		return !ok || !slices.Contains(anthropicStrictStringFormats, format)
+	}
+	return false
+}
+
 func anthConvertTools(tools []ToolSchema, isOAuthToken, supportsEagerToolInputStreaming, supportsStrictTools bool, cacheControl *anthCacheControl) ([]anthTool, error) {
 	out := make([]anthTool, len(tools))
 	for i, tool := range tools {
-		strict, err := resolveJSONSchemaStrictSampling(tool, supportsStrictTools)
+		strict, err := resolveJSONSchemaStrictSampling(tool, supportsStrictTools, anthropicStrictUnsupportedKeyword)
 		if err != nil {
 			return nil, err
 		}
@@ -847,6 +879,7 @@ func (p *anthropicProvider) Stream(ctx context.Context, transcript TranscriptCon
 	// upstream: packages/ai/src/api/anthropic-messages.ts:stream
 	builder := newObservedProviderBuilder(ctx, APIAnthropicMessages, p.cfg.ProviderID, p.cfg.Model)
 	builder.modelCost = opts.ModelCost
+	builder.setProviderEventObserver(opts, model)
 	builder.setResponseMetadata("", "", "", anthropicProviderEffort(model, opts), nil)
 	request, err := p.prepareStream(ctx, transcript, opts, model)
 	if err != nil {
@@ -884,29 +917,55 @@ func (p *anthropicProvider) prepareStream(ctx context.Context, transcript Transc
 	}
 	modelHeaders := anthropicHeadersFromMap(p.cfg.ExtraHeaders)
 	// Upstream Models.applyAuth passes resolved auth headers, then model
-	// headers, then request headers as the request's options.headers.
-	optionsHeaders := mergeAnthropicHeaders(p.authTokenHeaders(apiKey, requestEnv), modelHeaders, anthropicHeadersFromProviderHeaders(opts.Headers))
+	// headers, then request headers as the request's options.headers. The
+	// auth resolver owns ANTHROPIC_AUTH_TOKEN: the API implementation never reads it
+	// (anthropic-messages.ts:331-341, 614-615), so a direct stream carries only what the caller passes.
+	optionsHeaders := mergeAnthropicHeaders(modelHeaders, anthropicHeadersFromProviderHeaders(opts.Headers))
 	var dynamicHeaders anthropicHeaders
 	if p.cfg.UseBearerAuth && p.cfg.DynamicHeaders != nil {
 		dynamicHeaders = anthropicHeadersFromMap(p.cfg.DynamicHeaders(transcript, opts))
 	}
-	client := p.createClient(apiKey, optionsHeaders, dynamicHeaders, p.sessionAffinityHeaders(opts.SessionID, resolveAnthropicCacheRetention(opts.CacheRetention, requestEnv)))
+	// upstream: packages/ai/src/api/anthropic-messages.ts:614-615 (getAnthropicFederation, assertRequestAuth)
+	var lease *anthropicFederationLease
+	if federation := getAnthropicFederation(p.cfg.ProviderID, apiKey, optionsHeaders, requestEnv); federation != nil {
+		lease = acquireAnthropicFederationClient(baseURL, *federation, opts.Fetch)
+	} else if !anthropicHasRequestAuth(apiKey, optionsHeaders) {
+		return nil, fmt.Errorf("No API key for provider: %s", p.cfg.ProviderID)
+	}
+	client := p.createClient(apiKey, optionsHeaders, dynamicHeaders, p.sessionAffinityHeaders(opts.SessionID, resolveAnthropicCacheRetention(opts.CacheRetention, requestEnv)), lease)
 	params, err := p.buildParams(model, transcript, client.isOAuthToken, modelHeaders, optionsHeaders, opts, requestEnv)
 	if err != nil {
+		lease.release()
 		return nil, fmt.Errorf("anthropic: build params: %w", err)
 	}
 	prepared := &anthropicStreamRequest{baseURL: baseURL, client: client, params: params}
 	prepared.first, err = p.prepareRequest(ctx, baseURL, client, params.request, model, opts)
 	if err != nil {
+		lease.release()
 		return nil, err
 	}
 	return prepared, nil
 }
 
+// send authorizes a prepared request with the federated token when the client has one, sends it, and invalidates the token on a 401.
+func (p *anthropicProvider) send(ctx, requestContext context.Context, client anthropicClient, httpRequest *http.Request, opts StreamOptions) (*http.Response, error) {
+	if client.federation != nil {
+		if err := client.federation.authorize(requestContext, httpRequest); err != nil {
+			return nil, err
+		}
+	}
+	resp, err := p.do(ctx, httpRequest, opts)
+	if err == nil {
+		client.federation.invalidateAfter401(resp.StatusCode)
+	}
+	return resp, err
+}
+
 // streamResponse sends the request, handles a non-success status, and runs the body pipeline on the provider's executor turn. The request context is canceled with the caller's and when the pipeline ends.
 func (p *anthropicProvider) streamResponse(ctx, requestContext context.Context, request *anthropicStreamRequest, opts StreamOptions, model *Model, builder *assistantStreamBuilder) error {
+	defer request.client.federation.release()
 	httpRequest := request.first.WithContext(requestContext)
-	resp, err := p.do(ctx, httpRequest, opts)
+	resp, err := p.send(ctx, requestContext, request.client, httpRequest, opts)
 	if err != nil {
 		return err
 	}
@@ -922,7 +981,7 @@ func (p *anthropicProvider) streamResponse(ctx, requestContext context.Context, 
 		if err != nil {
 			return err
 		}
-		resp, err = p.do(ctx, retry.WithContext(requestContext), opts)
+		resp, err = p.send(ctx, requestContext, request.client, retry.WithContext(requestContext), opts)
 		if err != nil {
 			return err
 		}
@@ -1440,6 +1499,12 @@ func (p *anthropicProvider) parseAnthropicSSE(ctx context.Context, r io.Reader, 
 		if !ok {
 			break
 		}
+		// The events reader already validated (and repaired) the payload.
+		event, _ := anthropicParseJSON(sse.Data)
+		if err := builder.observeProviderEvent([]byte(event)); err != nil {
+			throw(err)
+			return
+		}
 		switch sse.Event {
 		case "message_start":
 			var ev anthEventMessageStart
@@ -1543,7 +1608,7 @@ func (p *anthropicProvider) parseAnthropicSSE(ctx context.Context, r io.Reader, 
 			case "input_json_delta":
 				if block, ok := output.Content[index].(ToolCall); ok {
 					block.scratch.partialJson += ev.Delta.PartialJSON
-					block.Arguments = parseStreamingJsonObject(block.scratch.partialJson)
+					block.SetStreamingArguments(block.scratch.partialJson)
 					output.Content[index] = block
 					builder.push(ToolCallDeltaEvent{ContentIndex: index, Delta: ev.Delta.PartialJSON, Partial: output})
 				}
@@ -1577,7 +1642,7 @@ func (p *anthropicProvider) parseAnthropicSSE(ctx context.Context, r io.Reader, 
 				builder.push(ThinkingEndEvent{ContentIndex: index, Content: block.Thinking, Partial: output})
 			case ToolCall:
 				// Finalize in place and strip the scratch buffer so replay only carries parsed arguments.
-				block.Arguments = parseStreamingJsonObject(block.scratch.partialJson)
+				block.SetStreamingArguments(block.scratch.partialJson)
 				block.scratch = toolCallScratch{}
 				output.Content[index] = block
 				builder.push(ToolCallEndEvent{ContentIndex: index, ToolCall: block, Partial: output})
@@ -1621,6 +1686,9 @@ func (p *anthropicProvider) parseAnthropicSSE(ctx context.Context, r io.Reader, 
 			}
 			if ev.Usage.CacheCreationInputTokens != nil {
 				usage.CacheWrite = *ev.Usage.CacheCreationInputTokens
+			}
+			if ev.Usage.CacheCreation != nil && ev.Usage.CacheCreation.Ephemeral1H != nil {
+				usage.CacheWrite1h = new(*ev.Usage.CacheCreation.Ephemeral1H)
 			}
 			if ev.Usage.OutputTokensDetails != nil && ev.Usage.OutputTokensDetails.ThinkingTokens != nil {
 				usage.Reasoning = new(*ev.Usage.OutputTokensDetails.ThinkingTokens)

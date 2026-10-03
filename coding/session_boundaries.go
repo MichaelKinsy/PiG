@@ -45,6 +45,8 @@ func (s *Session) installAgentBoundaryHooks() {
 
 // handleAgentEvent is the Session's awaited Agent subscription. Queue consumption notifies listeners before message_start handlers. Synthetic failed turns have no FinishTurn dispatch, so their boundary runs here before public listeners.
 func (s *Session) handleAgentEvent(ctx context.Context, event agent.AgentEvent) error {
+	// Record the calls a tool made through ctx.executeTool() and their usage on its result message.
+	s.recordNestedCalls(event)
 	switch event := event.(type) {
 	case agent.MessageStartEvent:
 		if event.Message.User != nil {
@@ -67,6 +69,10 @@ func (s *Session) handleAgentEvent(ctx context.Context, event agent.AgentEvent) 
 	}
 	if _, turnEnd := event.(agent.TurnEndEvent); !turnEnd {
 		s.extensionEventHook(event)
+		// upstream: packages/coding-agent/src/core/agent-session.ts:1250-1327 `_emitExtensionEvent` awaits `runner.emit(...)` and returns, and `_handleAgentEvent` awaits that promise (:1098). Each await is one microtask, so the public listeners run two reactions after the emit call settles; emitSynchronousSessionEvent below is the second.
+		if observation := agent.EventObservation(event); observation != nil {
+			observation.Yield()
+		}
 	}
 	s.emitSynchronousSessionEvent(event, true)
 	var persistErr error
@@ -114,7 +120,8 @@ func (s *Session) dispatchTurnEndBoundary(ctx context.Context, event agent.TurnE
 	}
 	results := make([]extension.ToolResultMessage, len(event.ToolResults))
 	for i := range event.ToolResults {
-		results[i] = event.ToolResults[i]
+		// upstream: agent-session.ts _dispatchTurnEndBoundary hands the ToolResultMessage objects on, so JSON writes them as the session does, including details: null.
+		results[i] = agent.AgentMessage{ToolResult: &event.ToolResults[i]}
 	}
 	ids := make([]string, 0, len(event.ToolResultEntryIDs))
 	for _, id := range event.ToolResultEntryIDs {

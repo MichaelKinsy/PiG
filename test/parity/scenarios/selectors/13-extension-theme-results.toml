@@ -1,6 +1,6 @@
-# Upstream evidence: Pi 0.87.1 interactive-mode.ts:2572-2583 and theme.ts:570-575,790-815:
+# Upstream evidence: upstream 0.99.1 interactive-mode.ts:2575-2586 and theme.ts:772-790 (the failure fallback is the system theme, no longer dark):
 # lookup loads without selecting; missing lookup is absent; selection returns
-# the real synchronous result and exposes light or the dark failure fallback.
+# the real synchronous result and exposes light or the system failure fallback.
 # Compare every result row, with its theme escapes, excluding only the outer
 # DynamicBorder rows and unrelated startup identity.
 name = "13-extension-theme-results"
@@ -36,6 +36,6 @@ pi_args = ["--no-extensions", "--no-skills", "--no-prompt-templates", "--session
 
 [assert]
 both_reach_ready = true
-both_contain = ["lookup:light:function:light", "missing:true", 'set-light:{"success":true}', 'set-missing:{"success":false,"error":"Theme not found: rigidity-missing"}', "fallback:dark"]
+both_contain = ["lookup:light:function:light", "missing:true", 'set-light:{"success":true}', 'set-missing:{"success":false,"error":"Theme not found: rigidity-missing"}', "fallback:system"]
 escaped_output_equal = true
 runs = 3

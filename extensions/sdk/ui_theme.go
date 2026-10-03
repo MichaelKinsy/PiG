@@ -5,7 +5,11 @@ package sdk
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"maps"
+	"math"
+	"strings"
 )
 
 // UITheme is the host's active theme as extensions see it (upstream
@@ -30,6 +34,8 @@ type UITheme struct {
 	// italic, underline, inverse or strikethrough.
 	noModifiers bool
 	mode        string
+	appearance  ThemeAppearance
+	colors      map[string]Color
 }
 
 // themePalette is the wire shape of the host's theme palette.
@@ -40,6 +46,8 @@ type themePalette struct {
 	Backgrounds map[string]any `json:"backgrounds"`
 	Modifiers   *bool          `json:"modifiers"`
 	Mode        any            `json:"mode"`
+	Appearance  any            `json:"appearance"`
+	Colors      map[string]any `json:"colors"`
 }
 
 // decodeUITheme builds a UITheme from a host palette, as ThemeShim.setPalette
@@ -59,6 +67,10 @@ func decodeUITheme(raw json.RawMessage) (UITheme, bool) {
 		backgrounds: ansiTokens(palette.Backgrounds),
 		noModifiers: palette.Modifiers != nil && !*palette.Modifiers,
 		mode:        "truecolor",
+		colors:      decodeThemeColors(palette.Colors),
+	}
+	if appearance, ok := palette.Appearance.(string); ok && (appearance == "light" || appearance == "dark") {
+		theme.appearance = ThemeAppearance(appearance)
 	}
 	if name, ok := palette.Name.(string); ok {
 		theme.Name = name
@@ -70,6 +82,39 @@ func decodeUITheme(raw json.RawMessage) (UITheme, bool) {
 		theme.mode = mode
 	}
 	return theme, true
+}
+
+// decodeThemeColors keeps the colors whose wire object is a well-formed pi-tui Color; any other value is not a color and is dropped, as a token without an escape sequence is.
+func decodeThemeColors(values map[string]any) map[string]Color {
+	colors := make(map[string]Color, len(values))
+	for token, value := range values {
+		object, _ := value.(map[string]any)
+		channel := func(key string) (float64, bool) {
+			number, ok := object[key].(float64)
+			return number, ok
+		}
+		switch object["kind"] {
+		case "indexed":
+			if index, ok := channel("index"); ok && index == math.Trunc(index) && index >= 0 && index <= 255 {
+				colors[token] = IndexedColor{Index: int(index)}
+			}
+		case "rgb":
+			r, rok := channel("r")
+			g, gok := channel("g")
+			b, bok := channel("b")
+			if rok && gok && bok {
+				colors[token] = RgbColorValue{R: r, G: g, B: b}
+			}
+		case "oklch":
+			l, lok := channel("l")
+			c, cok := channel("c")
+			h, hok := channel("h")
+			if lok && cok && hok {
+				colors[token] = OklchColorValue{L: l, C: c, H: h}
+			}
+		}
+	}
+	return colors
 }
 
 // ansiTokens keeps the tokens whose escape sequence is a non-empty string; any
@@ -84,12 +129,19 @@ func ansiTokens(values map[string]any) map[string]string {
 	return tokens
 }
 
-// Fg colors text with the foreground of token and resets only the
-// foreground. An unknown token leaves text uncolored.
+// faintOpening is the SGR 2 suffix the host appends to the foreground of a faint token (theme.ts:399-402).
+const faintOpening = "\x1b[2m"
+
+// Fg colors text with the foreground of token and resets the foreground, and
+// the faint attribute of a faint token (upstream Theme.fg, theme.ts:363). An
+// unknown token leaves text uncolored.
 func (t UITheme) Fg(token, text string) string {
 	open := t.foregrounds[token]
 	if open == "" {
 		return text
+	}
+	if strings.HasSuffix(open, faintOpening) {
+		return open + text + "\x1b[22;39m"
 	}
 	return open + text + "\x1b[39m"
 }
@@ -180,6 +232,78 @@ func (t UITheme) GetThinkingBorderColor(level string) func(string) string {
 // GetBashModeBorderColor returns the editor border colorizer for bash mode.
 func (t UITheme) GetBashModeBorderColor() func(string) string {
 	return func(text string) string { return t.Fg("bashMode", text) }
+}
+
+// ThemeAppearance is the background a theme is designed for (upstream ThemeAppearance): "light" or "dark".
+type ThemeAppearance string
+
+// Color is a concrete color (upstream pi-tui Color): [IndexedColor], [RgbColorValue] or [OklchColorValue]. The union is closed; the unexported method seals it.
+type Color interface{ isColor() }
+
+// IndexedColor is an ANSI palette index, 0-255 (kind "indexed").
+type IndexedColor struct{ Index int }
+
+// RgbColorValue is an sRGB color with channels 0-255 (kind "rgb").
+type RgbColorValue struct{ R, G, B float64 }
+
+// OklchColorValue is an OKLCH color (kind "oklch"): lightness 0-1, chroma and hue in degrees.
+type OklchColorValue struct{ L, C, H float64 }
+
+func (IndexedColor) isColor()    {}
+func (RgbColorValue) isColor()   {}
+func (OklchColorValue) isColor() {}
+
+// TextAttributes are the text attributes theme.style applies (upstream pi-tui TextAttributes).
+type TextAttributes struct {
+	Bold, Dim, Italic, Underline, Inverse, Strikethrough bool
+}
+
+// ThemeStyle is the style [UITheme.Style] applies (upstream ThemeStyle): a foreground and a background, each a theme token or a concrete Color, and text attributes. Upstream's one `fg` field holds a token or a Color; Go uses a field per form. Setting both the token and the color of a slot is an error.
+type ThemeStyle struct {
+	TextAttributes
+	FgToken, BgToken string
+	Fg, Bg           Color
+}
+
+// Appearance is the background the theme is designed for: declared in the theme JSON, detected from its colors, or for a theme without usable colors the terminal's appearance. The host resolves it with the palette; it is empty before the host has sent one.
+func (t UITheme) Appearance() ThemeAppearance { return t.appearance }
+
+// Colors returns a concrete color for every theme token (upstream Theme.colors). A token set to the terminal default carries the terminal's reported color, or the host's guess from the appearance, and a faint token is mixed toward the background. The host resolves them with the palette. The map is a copy.
+func (t UITheme) Colors() map[string]Color { return maps.Clone(t.colors) }
+
+// Style renders text in style (upstream Theme.style). A token is accepted only in its own slot, because "" (terminal default) means the default foreground or background depending on the slot. An unknown token is upstream's "Unknown theme color" error. A color renders in the theme's color mode. Unlike [UITheme.Bold], the attributes are drawn whatever the host's chalk level is.
+func (t UITheme) Style(text string, style ThemeStyle) (string, error) {
+	if (style.FgToken != "" && style.Fg != nil) || (style.BgToken != "" && style.Bg != nil) {
+		return "", errors.New("theme style sets both a token and a color for one slot")
+	}
+	attributes := style.TextAttributes
+	var fgAnsi, bgAnsi string
+	switch {
+	case style.FgToken != "":
+		ansi := t.foregrounds[style.FgToken]
+		if ansi == "" {
+			return "", fmt.Errorf("Unknown theme color: %s", style.FgToken)
+		}
+		// The palette's foreground appends SGR 2 to a faint token's color; a color never ends in it.
+		if open, faint := strings.CutSuffix(ansi, faintOpening); faint {
+			ansi = open
+			attributes.Dim = true
+		}
+		fgAnsi = ansi
+	case style.Fg != nil:
+		fgAnsi = colorAnsi(style.Fg, t.GetColorMode(), false)
+	}
+	switch {
+	case style.BgToken != "":
+		ansi := t.backgrounds[style.BgToken]
+		if ansi == "" {
+			return "", fmt.Errorf("Unknown theme color: %s", style.BgToken)
+		}
+		bgAnsi = ansi
+	case style.Bg != nil:
+		bgAnsi = colorAnsi(style.Bg, t.GetColorMode(), true)
+	}
+	return styleTextWithAnsi(text, fgAnsi, bgAnsi, attributes), nil
 }
 
 // UITheme returns a snapshot of the host's active theme (upstream

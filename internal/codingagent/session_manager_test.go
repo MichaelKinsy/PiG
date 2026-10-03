@@ -86,10 +86,10 @@ func TestSessionManager_Create(t *testing.T) {
 	if sess.Path() == "" {
 		t.Fatal("session path is empty")
 	}
-	// Deferred flush: no file until the first assistant message
-	// (upstream _persist hasAssistant gate).
+	// Deferred flush: no file until the first user or assistant message
+	// (upstream _persist _hasConversation gate).
 	if _, err := os.Stat(sess.Path()); !os.IsNotExist(err) {
-		t.Fatalf("session file should not exist before first assistant message, stat err = %v", err)
+		t.Fatalf("session file should not exist before the first user or assistant message, stat err = %v", err)
 	}
 	flushSession(t, sess)
 	if _, err := os.Stat(sess.Path()); err != nil {
@@ -338,8 +338,8 @@ func TestSessionManager_SaveAndReload(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	// Append an entry via AppendEntry. Use an assistant role so the
-	// session flushes to disk (upstream _persist hasAssistant gate).
+	// Append an entry via AppendEntry. An assistant message makes the
+	// session flush to disk (upstream _persist _hasConversation gate).
 	entry := MessageEntry{
 		SessionEntryBase: SessionEntryBase{
 			Type:      "message",

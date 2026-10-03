@@ -42,6 +42,26 @@ func TestWindowsPythonLauncherUsesPythonExeWithoutShebang(t *testing.T) {
 	}
 }
 
+func TestWindowsPythonLauncherSkipsStoreAliasStub(t *testing.T) {
+	lookPath := func(name string) (string, error) {
+		switch name {
+		case "python":
+			return `C:\Users\dev\AppData\Local\Microsoft\WindowsApps\python.exe`, nil
+		case "python3":
+			return `C:\Python312\python3.exe`, nil
+		default:
+			return "", errors.New("not found")
+		}
+	}
+	cmd := buildExtCommandForGOOS(context.Background(), `C:\cache\runner.py`, "python", "windows", lookPath)
+	if cmd.Path != `C:\Python312\python3.exe` {
+		t.Fatalf("Windows Python command = %q, want the real python3 over the Store alias", cmd.Path)
+	}
+	if got := cmd.Args[1:]; len(got) != 1 || got[0] != `C:\cache\runner.py` {
+		t.Fatalf("Windows Python args = %q", got)
+	}
+}
+
 func TestWindowsPythonPathIsCaseInsensitiveAndUsesWindowsSeparator(t *testing.T) {
 	got := prependUniquePathForGOOS("windows", `C:\SDK`, `c:\sdk;C:\User`)
 	if got != `C:\SDK;C:\User` {

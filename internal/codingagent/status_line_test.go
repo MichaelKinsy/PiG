@@ -152,6 +152,15 @@ func TestFormatTokens(t *testing.T) {
 		{200_000, "200k"},
 		{1_500_000, "1.5M"},
 		{12_000_000, "12M"},
+		// footer.ts formatTokens rounds with Math.round (half up) and toFixed (the exact decimal expansion, half up),
+		// where truncation and Go's half-even formatting differ.
+		{1250, "1.3k"},
+		{9999, "10.0k"},
+		{10_500, "11k"},
+		{999_499, "999k"},
+		{999_500, "1000k"},
+		{1_250_000, "1.3M"},
+		{10_500_000, "11M"},
 	}
 	for _, tc := range cases {
 		if got := formatTokens(tc.in); got != tc.want {
@@ -446,6 +455,8 @@ func TestRenderFooterContextPercentUsesPerTurnTokens(t *testing.T) {
 // Upstream footer.ts uses theme.fg("dim", text) which emits the resolved
 // dim hex color. For the dark theme this is #666666 = \x1b[38;2;102;102;102m.
 func TestDimUsesThemeTruecolor(t *testing.T) {
+	restoreStartupTheme(t)
+	tui.SetThemeByName("dark")
 	previousCapabilities := tui.GetCapabilities()
 	t.Cleanup(func() {
 		tui.SetCapabilities(previousCapabilities)
@@ -463,6 +474,15 @@ func TestDimUsesThemeTruecolor(t *testing.T) {
 	// Must end with fg-only reset \x1b[39m, not full reset \x1b[0m
 	if !strings.HasSuffix(got, "\x1b[39m") {
 		t.Errorf("dim() must end with fg-only reset \\x1b[39m; got %q", got)
+	}
+}
+
+// upstream 0.99.1 theme.ts fg of a dim token: the system theme dims text with SGR faint over the default foreground and closes both.
+func TestDimOnSystemThemeIsFaintText(t *testing.T) {
+	restoreStartupTheme(t)
+	tui.SetThemeByName(tui.SystemThemeName)
+	if got, want := dim("hello"), "\x1b[39m\x1b[2mhello\x1b[22;39m"; got != want {
+		t.Errorf("dim() = %q, want %q", got, want)
 	}
 }
 

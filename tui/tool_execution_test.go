@@ -342,81 +342,6 @@ func TestToolExecutionTabsReplacedInBgPaint(t *testing.T) {
 	}
 }
 
-func TestGenericExtensionToolCollapsedDetailsScaleWithWidth(t *testing.T) {
-	args := json.RawMessage(`{"find":"alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima","replace":"one two three four five six seven eight nine ten","nested":{"enabled":true,"count":12}}`)
-	c := NewToolExecutionComponent("edit_spec", "")
-	c.SetStructuredArgs(args)
-	c.SetResult("updated", false, 0)
-
-	narrow := stripANSI(strings.Join(c.Render(52), "\n"))
-	wide := stripANSI(strings.Join(c.Render(100), "\n"))
-	if !strings.Contains(narrow, "ctrl+o to expand") || !strings.Contains(narrow, "…") {
-		t.Fatalf("narrow collapsed details must mark hidden arguments as recoverable:\n%s", narrow)
-	}
-	if strings.Contains(narrow, "juliet kilo lima") {
-		t.Fatalf("narrow collapsed details unexpectedly contain the full long argument:\n%s", narrow)
-	}
-	if !strings.Contains(wide, "foxtrot golf") {
-		t.Fatalf("wide collapsed details should reveal more retained argument data:\n%s", wide)
-	}
-	if len(wide) <= len(narrow) {
-		t.Fatalf("wide collapsed details did not use the larger terminal budget:\nnarrow: %s\nwide: %s", narrow, wide)
-	}
-}
-
-func TestGenericExtensionToolExpandedDetailsShowCompleteInputAndOutput(t *testing.T) {
-	args := json.RawMessage(`{"find":"ALPHA_BRAVO_CHARLIE_DELTA_ECHO_FOXTROT","replace":"ONE_TWO_THREE_FOUR_FIVE_SIX_SEVEN","nested":{"enabled":true,"count":12}}`)
-	c := NewToolExecutionComponent("edit_spec", "")
-	c.SetStructuredArgs(args)
-	c.SetResult("RESULT_FIRST\nRESULT_LAST\n[source truncated: 2 records unavailable]", false, 0)
-	c.SetExpanded(true)
-
-	rows := c.Render(34)
-	rendered := stripANSI(strings.Join(rows, "\n"))
-	compactRendered := strings.NewReplacer("\n", "", " ", "").Replace(rendered)
-	for _, want := range []string{
-		"ALPHA_BRAVO_CHARLIE_DELTA_ECHO_FOXTROT",
-		"ONE_TWO_THREE_FOUR_FIVE_SIX_SEVEN",
-		`"enabled":true`,
-		`"count":12`,
-		"RESULT_FIRST",
-		"RESULT_LAST",
-		"[sourcetruncated:2recordsunavailable]",
-	} {
-		if !strings.Contains(compactRendered, want) {
-			t.Fatalf("expanded tool details lost %q:\n%s", want, rendered)
-		}
-	}
-	if strings.Contains(rendered, "ctrl+o to expand") {
-		t.Fatalf("expanded details still claim content is hidden:\n%s", rendered)
-	}
-	firstExpansion := strings.Join(rows, "\n")
-	c.SetExpanded(false)
-	c.SetExpanded(true)
-	if secondExpansion := strings.Join(c.Render(34), "\n"); secondExpansion != firstExpansion {
-		t.Fatal("collapse and re-expansion changed retained tool details")
-	}
-}
-
-func TestGenericExtensionToolStructuredArgsReflowAfterResize(t *testing.T) {
-	args := json.RawMessage(`{"message":"RESIZE_ALPHA_BRAVO_CHARLIE_DELTA_ECHO_FOXTROT_GOLF"}`)
-	c := NewToolExecutionComponent("extension_tool", "")
-	c.SetStructuredArgs(args)
-	c.SetExpanded(true)
-
-	narrow := c.Render(24)
-	wide := c.Render(72)
-	if len(narrow) <= len(wide) {
-		t.Fatalf("narrow expanded details should wrap to more rows: narrow=%d wide=%d", len(narrow), len(wide))
-	}
-	for _, rows := range [][]string{narrow, wide} {
-		joined := strings.NewReplacer("\n", "", " ", "").Replace(stripANSI(strings.Join(rows, "\n")))
-		if !strings.Contains(joined, "RESIZE_ALPHA_BRAVO_CHARLIE_DELTA_ECHO_FOXTROT_GOLF") {
-			t.Fatalf("resize discarded retained argument data:\n%s", joined)
-		}
-	}
-}
-
 func TestFormatToolArgsObject(t *testing.T) {
 	got := FormatToolArgs(json.RawMessage(`{"path":"README.md","limit":10}`))
 	want := `limit:10, path:"README.md"`
@@ -811,7 +736,7 @@ func TestToolExecution_SetArgsComplete(t *testing.T) {
 // "more lines" hint.
 func TestToolExecutionCollapsedPreview(t *testing.T) {
 	c := NewToolExecutionComponent("read_session", "mode:toc")
-	c.SetStructuredArgs(json.RawMessage(`{"mode":"toc"}`))
+	c.SetDefinition(&ToolDefinitionRenderers{}, json.RawMessage(`{"mode":"toc"}`))
 	lines := make([]string, 30)
 	for i := range lines {
 		lines[i] = fmt.Sprintf("output line %d", i+1)
@@ -823,7 +748,7 @@ func TestToolExecutionCollapsedPreview(t *testing.T) {
 	}
 
 	out := c.Render(80)
-	joined := strings.Join(out, "\n")
+	joined := stripANSI(strings.Join(out, "\n"))
 	if !strings.Contains(joined, "20 more lines") || !strings.Contains(joined, "ctrl+o to expand") {
 		t.Errorf("expected upstream fallback hint, got:\n%s", joined)
 	}

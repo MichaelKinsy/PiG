@@ -103,8 +103,8 @@ func (sm *SessionManager) Create(id, parentSessionPath string) (*Session, error)
 
 	// Do not write the file yet. Mirrors upstream SessionManager.newSession,
 	// which sets the path but defers the first disk write to _persist on the
-	// first assistant message. This keeps abandoned sessions (opened but
-	// never answered) off disk instead of leaving empty .jsonl files.
+	// first user or assistant message. This keeps abandoned sessions (opened
+	// but never used) off disk instead of leaving empty .jsonl files.
 
 	sm.mu.Lock()
 	sm.current = sess
@@ -119,7 +119,7 @@ func fileTimestamp(ts string) string {
 	return r.Replace(ts)
 }
 
-// Load reads and migrates a session JSONL and makes it current. A missing path starts a fresh session at that exact path, with persistence deferred until an assistant message.
+// Load reads and migrates a session JSONL and makes it current. A missing path starts a fresh session at that exact path, with persistence deferred until the first user or assistant message.
 func (sm *SessionManager) Load(path string) (*Session, error) {
 	sess, err := loadSessionFile(path)
 	if errors.Is(err, os.ErrNotExist) {
@@ -182,7 +182,7 @@ func (sm *SessionManager) SessionDir() string { return sm.sessionDir }
 // CWD returns the working directory.
 func (sm *SessionManager) CWD() string { return sm.cwd }
 
-// Clone extracts the chosen root-to-leaf path with resolved labels into a fresh Session. In-memory sessions stay in memory. A persisted clone is written immediately only when its path contains an assistant; otherwise its first assistant flushes it.
+// Clone extracts the chosen root-to-leaf path with resolved labels into a fresh Session. In-memory sessions stay in memory. A persisted clone is written immediately only when its path contains a user or assistant message; otherwise its first such message creates the file.
 func (sm *SessionManager) Clone(source *Session, leafID string) (*Session, error) {
 	if source == nil {
 		return nil, fmt.Errorf("sessionmanager: Clone: nil source")
@@ -224,7 +224,7 @@ func (sm *SessionManager) Clone(source *Session, leafID string) (*Session, error
 		}
 		loaded.path = filepath.Join(sm.sessionDir, fileTimestamp(now)+"_"+newID+".jsonl")
 		loaded.sessionDir = sm.sessionDir
-		if loaded.hasAssistant {
+		if loaded.hasConversation {
 			lines := make([][]byte, len(records))
 			for i, raw := range records {
 				lines[i] = raw

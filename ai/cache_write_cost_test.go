@@ -139,3 +139,26 @@ func assertStreamCacheWriteCost(t *testing.T, stream *AssistantMessageEventStrea
 		t.Fatalf("terminal event = %#v, want DoneEvent with the priced result", terminal)
 	}
 }
+
+// .upstream/v0.99.1/packages/ai/test/anthropic-cache-write-1h-cost.test.ts:78 (regression for #9210): Vercel AI Gateway sends cache usage in message_delta, not message_start.
+func TestAnthropicStreamPricesCacheWrite1hReportedOnlyInMessageDelta(t *testing.T) {
+	model := mustGeneratedModel(t, "vercel-ai-gateway", "anthropic/claude-haiku-4.5").ToModel()
+	sse := `event: message_start
+data: {"type":"message_start","message":{"id":"msg_test","usage":{"input_tokens":0,"output_tokens":0}}}
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"input_tokens":3,"output_tokens":4,"cache_creation_input_tokens":6535,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":6535}}}
+
+event: message_stop
+data: {"type":"message_stop"}
+
+`
+	result, _, _ := streamAnthropicFixture(t, AnthropicConfig{ModelMetadata: model, Model: model.ID, ProviderID: model.ProviderMeta.ProviderID}, sse, StreamOptions{ModelCost: model.CostRates()})
+	if result.Usage.CacheWrite != 6535 || result.Usage.CacheWrite1h == nil || *result.Usage.CacheWrite1h != 6535 {
+		t.Fatalf("usage = %#v, want cacheWrite=6535 cacheWrite1h=6535 (error %q)", result.Usage, result.ErrorMessage)
+	}
+	want := float64(6535) * model.CostRates().Input * 2 / 1_000_000
+	if math.Abs(result.Usage.Cost.CacheWrite-want) >= 5e-11 {
+		t.Fatalf("cache write cost = %v, want %v", result.Usage.Cost.CacheWrite, want)
+	}
+}

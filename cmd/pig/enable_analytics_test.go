@@ -16,6 +16,7 @@ import (
 // proxy. As in Pi 0.87.1, enableAnalytics is settings plumbing only: setting
 // it true adds no outbound request compared with false.
 func TestEnableAnalyticsSendsNothing(t *testing.T) {
+	t.Parallel()
 	bin := buildPigBinaryForDiagnosticsTest(t)
 	run := func(enabled string) []string {
 		var mu sync.Mutex

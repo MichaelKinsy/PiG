@@ -82,8 +82,8 @@ func codexUpstreamText(result *AssistantMessage) string {
 	return ""
 }
 func TestCodexSSEAndPayloadUpstream(t *testing.T) {
-	// .upstream/v0.87.1/packages/ai/test/openai-codex-stream.test.ts:101
-	t.Run("streams SSE responses into AssistantMessageEventStream", func(t *testing.T) {
+	// .upstream/v0.99.1/packages/ai/test/openai-codex-stream.test.ts:101
+	t.Run("streams SSE responses and forwards raw provider events", func(t *testing.T) {
 		provider := codexUpstreamProvider(t, "gpt-5.1-codex", codexRoundTripper(func(r *http.Request) (*http.Response, error) {
 			if r.URL.String() != "https://chatgpt.com/backend-api/codex/responses" {
 				t.Errorf("URL=%s", r.URL)
@@ -99,7 +99,8 @@ func TestCodexSSEAndPayloadUpstream(t *testing.T) {
 			}
 			return codexUpstreamHTTP(codexUpstreamSSE("completed", nil)), nil
 		}))
-		stream, err := provider.Stream(t.Context(), codexUpstreamContext(), StreamOptions{Transport: TransportSSE})
+		recorder := &providerEventRecorder{}
+		stream, err := provider.Stream(t.Context(), codexUpstreamContext(), StreamOptions{Transport: TransportSSE, OnProviderStreamEvent: recorder.observe})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -118,6 +119,15 @@ func TestCodexSSEAndPayloadUpstream(t *testing.T) {
 		if !text || !done {
 			t.Fatalf("text=%t done=%t", text, done)
 		}
+		events, models := recorder.snapshot()
+		var types []string
+		for _, event := range events {
+			types = append(types, event.(map[string]any)["type"].(string))
+		}
+		if want := []string{"response.output_item.added", "response.content_part.added", "response.output_text.delta", "response.output_item.done", "response.completed"}; !reflect.DeepEqual(types, want) {
+			t.Fatalf("events = %v", types)
+		}
+		assertEventModels(t, models, provider.cfg.ModelMetadata, 5)
 	})
 	// .upstream/v0.87.1/packages/ai/test/openai-codex-stream.test.ts:217
 	t.Run("processes a terminal SSE event without a trailing blank line", func(t *testing.T) {

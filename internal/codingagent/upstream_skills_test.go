@@ -9,7 +9,7 @@ import (
 
 func upstreamSkillsFixture(t *testing.T, subdir string) string {
 	t.Helper()
-	root, err := filepath.Abs(filepath.Join("..", "..", ".upstream", "v0.87.1", "packages", "coding-agent", "test", "fixtures", subdir))
+	root, err := filepath.Abs(filepath.Join("..", "..", ".upstream", "current", "packages", "coding-agent", "test", "fixtures", subdir))
 	if err != nil {
 		t.Fatal(err)
 	}

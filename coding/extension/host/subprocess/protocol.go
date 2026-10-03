@@ -8,6 +8,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 // pig additive (D19): autocomplete callback handles stay on their owner connection. ui.addAutocompleteProvider names a factoryId; autocomplete.sync wraps it around current or invokes apply/trigger, while autocomplete.suggest awaits getSuggestions. Captured references use ui.autocomplete.invoke and one-way release notifications. Columns are UTF-16. Parent cancellation owns handler calls; queryId also cancels editor-owned calls without a parent.
@@ -135,6 +136,12 @@ type RegisterPayload struct {
 	// MarkdownTransformer reports that the extension registered a Markdown
 	// transformer. The host runs it with RequestMarkdownTransform.
 	MarkdownTransformer bool `json:"markdown_transformer,omitempty"`
+	// McpServers are the MCP servers the extension registered while loading. The host queues them like upstream's load-time registerMcpServer.
+	McpServers []McpServerDecl `json:"mcp_servers,omitempty"`
+	// VirtualModels are the virtual models the extension registered while loading. Routing calls back with RequestVirtualModelRoute.
+	VirtualModels []VirtualModelDecl `json:"virtual_models,omitempty"`
+	// UnregisterVirtualModels are the virtual models the extension unregistered while loading, in call order. Upstream's unregisterVirtualModel filters the runtime-wide queue of models registered before the runner binds, including another extension's (loader.ts:228-232), so the host applies them to that queue before it applies VirtualModels.
+	UnregisterVirtualModels []VirtualModelRef `json:"unregister_virtual_models,omitempty"`
 
 	// WantsSessionLog subscribes this extension to session-log replication from
 	// the handshake, before the ready state is built, so the log is present on
@@ -166,16 +173,28 @@ const CallRegisterTool = "registerTool"
 
 // ToolDecl declares a tool the extension provides.
 type ToolDecl struct {
-	Name                string            `json:"name"`
-	Label               string            `json:"label,omitempty"`
-	Description         string            `json:"description"`
-	Parameters          json.RawMessage   `json:"parameters"`                     // JSON Schema
-	ConstrainedSampling json.RawMessage   `json:"constrained_sampling,omitempty"` // false | ConstrainedSamplingConfig (ai.ConstrainedSamplingConfig JSON); false/null/absent all disable
-	ExecutionMode       string            `json:"execution_mode,omitempty"`       // "sequential" | "parallel"
-	PromptSnippet       string            `json:"prompt_snippet,omitempty"`
-	PromptGuidelines    []string          `json:"prompt_guidelines,omitempty"`
-	Annotations         map[string]string `json:"annotations,omitempty"`
-	Source              string            `json:"source,omitempty"` // pig additive (D23): per-tool source override; default: extension name
+	Name                string                     `json:"name"`
+	Label               string                     `json:"label,omitempty"`
+	Description         string                     `json:"description"`
+	Parameters          json.RawMessage            `json:"parameters"`                     // JSON Schema
+	ConstrainedSampling json.RawMessage            `json:"constrained_sampling,omitempty"` // false | ConstrainedSamplingConfig (ai.ConstrainedSamplingConfig JSON); false/null/absent all disable
+	ExecutionMode       string                     `json:"execution_mode,omitempty"`       // "sequential" | "parallel"
+	PromptSnippet       string                     `json:"prompt_snippet,omitempty"`
+	PromptGuidelines    []string                   `json:"prompt_guidelines,omitempty"`
+	Annotations         *extension.ToolAnnotations `json:"annotations,omitempty"` // upstream ToolDefinition.annotations
+	// OutputSchema is upstream ToolDefinition.outputSchema.
+	OutputSchema json.RawMessage `json:"output_schema,omitempty"`
+	// Exposure is upstream ToolDefinition.exposure; empty is "direct".
+	Exposure string `json:"exposure,omitempty"`
+	// Namespace is upstream ToolDefinition.namespace.
+	Namespace *extension.ToolNamespace `json:"namespace,omitempty"`
+	// DefaultActive is upstream ToolDefinition.defaultActive; nil is the exposure's default.
+	DefaultActive *bool `json:"default_active,omitempty"`
+	// PreparesLoadout reports that the tool defines prepareLoadout. The host asks with RequestPrepareLoadout.
+	PreparesLoadout bool `json:"prepares_loadout,omitempty"`
+	// PreparesArguments reports that the tool defines prepareArguments. The host asks with RequestPrepareArguments before it validates the arguments.
+	PreparesArguments bool   `json:"prepares_arguments,omitempty"`
+	Source            string `json:"source,omitempty"` // pig additive (D23): per-tool source override; default: extension name
 	// RenderShell is upstream ToolDefinition.renderShell: "self" when the
 	// tool's renderers draw their own framing, else empty for "default".
 	RenderShell string `json:"render_shell,omitempty"`
@@ -234,6 +253,9 @@ type ProviderDecl struct {
 	Name         string                     `json:"name"`
 	Config       json.RawMessage            `json:"config"`
 	Native       *NativeProviderDeclaration `json:"native,omitempty"`
+	// ImageAPIs and ClassifierAPIs name the APIs whose implementations (ProviderConfig images and classifiers) run in the extension.
+	ImageAPIs      []string `json:"image_apis,omitempty"`
+	ClassifierAPIs []string `json:"classifier_apis,omitempty"`
 }
 
 // NativeProviderDeclaration describes callback ownership, never executable code. Key identifies the owner's callback object; Handle identifies its host-owned reference lifetime. Methods lists the callable public members. Provider calls carry caller callbacks as request-scoped handles, and stream creation is acknowledged before ordered events.
@@ -459,6 +481,10 @@ type StatePayload struct {
 	Flags               map[string]json.RawMessage `json:"flags"`
 	HasUI               bool                       `json:"hasUI"`
 	FooterData          *FooterDataPayload         `json:"footerData,omitempty"`
+	// Settings is the effective settings object behind pi.getSettings() (global and project merged, with overrides).
+	Settings json.RawMessage `json:"settings,omitempty"`
+	// McpServers is every server registered by extensions, behind pi.getMcpServers().
+	McpServers []extension.RegisteredMcpServer `json:"mcpServers"`
 	// Always serialized: an emptied editor must clear the replicated value
 	// rather than leave the previous text in place.
 	EditorText    string         `json:"editorText"`
@@ -548,6 +574,27 @@ type RequestPayload struct {
 	Args       json.RawMessage `json:"args,omitempty"`         // Tool args or event payload
 	// SignalTimeoutMS, on oauth_refresh, asks a runtime whose refresh callback receives an AbortSignal to compose AbortSignal.timeout(SignalTimeoutMS) into it, as Pi's resolveStoredOAuth does (auth/resolve.ts:149-153). Absent, the signal follows only the caller (models.ts:474).
 	SignalTimeoutMS *float64 `json:"signal_timeout_ms,omitempty"`
+	// OwnSignal, on tool_call, reports a nested call that runs with the signal its caller passed in options.signal: the tool's signal parameter is that signal, not the run's.
+	OwnSignal bool `json:"own_signal,omitempty"`
+	// ExecuteID, with OwnSignal, names the executeTool call of the same connection that made this nested call, so its runtime can hand the tool the very signal object its caller passed.
+	ExecuteID string `json:"execute_id,omitempty"`
+}
+
+// RequestWithSession (host→ext) runs the withSession callback that a newSession, fork or switchSession call registered under WithSessionArgs.Handle. The call's args name that handle in their withSession field. The host sends it after the replacement Session is bound and before the call returns, as Pi's finishSessionReplacement awaits withSession (agent-session-runtime.ts:187-194). Host calls whose parent is this request act on the replacement Session; the response settles the callback, and its error rejects the call.
+const RequestWithSession = "with_session"
+
+// WithSessionArgs carries the callback handle and the replacement Session's ready payload. A runtime that answers context getters from local state answers the replacement context from Ready.
+type WithSessionArgs struct {
+	Handle string        `json:"handle"`
+	Ready  *ReadyPayload `json:"ready"`
+}
+
+// NotifyInvalidate (host→ext) carries the stale message after the host invalidated the extension's Session. A runtime that answers pi or ctx members locally throws InvalidateArgs.Message from them afterwards, as Pi's runner.invalidate makes them throw (runner.ts:679-690).
+const NotifyInvalidate = "invalidate"
+
+// InvalidateArgs is the NotifyInvalidate argument.
+type InvalidateArgs struct {
+	Message string `json:"message"`
 }
 
 // TerminalInputArgs carries an ordered input and the UI values visible before its listener runs. Data and EditorText preserve UTF-16 units using WTF-8 in Go and surrogate escapes in JSON. Runtimes with synchronous local UI getters refresh those values before invoking the listener; host-query SDKs read the same live UI through their existing calls.
@@ -567,10 +614,11 @@ type BoundaryEventResultPayload struct {
 	Continue *bool            `json:"continue,omitempty"`
 }
 
-// BeforeAgentStartResponsePayload carries per-run mutations even when a handler fails. SelectedTools retains the untyped value until the handler chain ends: non-string entries cannot name registered tools, and null rejects prompt admission. Result carries the handler's ordinary message/systemPrompt result.
+// BeforeAgentStartResponsePayload carries per-run mutations even when a handler fails. SelectedTools retains the untyped value until the handler chain ends: non-string entries cannot name registered tools, and null rejects prompt admission. Options is the handler's whole options object; the host applies every field except sections and selectedTools from it. Result carries the handler's ordinary message/systemPrompt result.
 type BeforeAgentStartResponsePayload struct {
 	Sections      ai.OrderedSections `json:"_pigPromptSections"`
 	SelectedTools json.RawMessage    `json:"_pigPromptSelectedTools"`
+	Options       json.RawMessage    `json:"_pigPromptOptions"`
 	Result        json.RawMessage    `json:"_pigPromptResult"`
 }
 
@@ -616,7 +664,7 @@ func (e *remoteError) ErrorStack() string { return e.stack }
 
 // ── Notify (bidirectional) ───────────────────────────────────────────────────
 
-// NotifyPayload carries a fire-and-forget notification. The host-only runtime_input_end notification removes stdin as a Node keepalive. runtime_drained reports a still-pending quit handler whose event loop drained. runtime_quit_yield reports a post-disposal boundary that suspended beyond its immediately fulfilled continuations. Command suspension travels as request_state. None completes an extension request.
+// NotifyPayload carries a fire-and-forget notification. The host-only runtime_input_end notification removes stdin as a Node keepalive and releases each command's suspension: a command's request_state suspended is sent only after it, as a re-evaluation of the command's closed window (a command that started or finished a host call since its window closed gets a fresh window). After it, a Node process reports when its event loop drained, without arguments, on each connection it hosts, and the host applies runtime_drained and runtime_quit_yield to the process after every connection it holds for that process reported or closed. runtime_drained reports a still-pending quit handler whose event loop drained: Pi's exit when its loop empties, which takes the host's loop-drain checkpoint. runtime_commands_drained reports, from a process with no pending quit handler, that its event loop drained with an unanswered command it had not reported: the process cannot answer the commands whose started request_state precedes the report on each connection, and the host does not end. A command read after a report is reported again if the loop drains with it unanswered. runtime_quit_yield reports a post-disposal boundary that suspended beyond its immediately fulfilled continuations: Pi's exit at the stdout flush, which applies the flush checkpoint. Command suspension travels as request_state, after runtime_input_end. None completes an extension request.
 type NotifyPayload struct {
 	Method string          `json:"method"` // e.g. "width_change", "widget_invalidate"
 	Args   json.RawMessage `json:"args,omitempty"`
@@ -663,7 +711,9 @@ type ToolUpdatePayload struct {
 const (
 	CallUICustom = "ui.custom"
 	// pig additive (D60): typed native login crosses the subprocess boundary.
-	CallUISetLogin       = "ui.setLogin"
+	CallUISetLogin = "ui.setLogin"
+	// pig divergence (D2): an extension's sprite joins /sprite.
+	CallUIRegisterSprite = "ui.registerSprite"
 	NotifyUICustomInput  = "ui.custom.input"
 	NotifyUICustomRender = "ui.custom.render"
 	NotifyUICustomClose  = "ui.custom.close"
@@ -780,9 +830,13 @@ type RequestStatePayload struct {
 
 // ToolResult retains the ordered text/image array returned by a subprocess tool. The SDK's text shorthand decodes as one text block, including an explicit empty string.
 type ToolResult struct {
-	Content []ai.ToolResultMessageContent `json:"-"`
-	Details json.RawMessage               `json:"details,omitempty"`
-	IsError bool                          `json:"is_error,omitempty"`
+	// MemberOrder names the AgentToolResult members of the wire object in the order the tool wrote them, with upstream's names (isError for is_error). Pi hands the tool's own object on, so the events and the JSON stream write its members in that order (agent-loop.ts:778-786, 912-919).
+	MemberOrder []string                      `json:"-"`
+	Content     []ai.ToolResultMessageContent `json:"-"`
+	Details     json.RawMessage               `json:"details,omitempty"`
+	IsError     bool                          `json:"is_error,omitempty"`
+	// StructuredContent is upstream AgentToolResult.structuredContent: the machine-readable result of a tool that declares an outputSchema.
+	StructuredContent json.RawMessage `json:"structured_content,omitempty"`
 	// Usage is upstream AgentToolResult.usage: the tool execution's own usage.
 	Usage *ai.Usage `json:"usage,omitempty"`
 	// Terminate mirrors upstream AgentToolResult.terminate: the agent stops
@@ -796,21 +850,24 @@ type ToolResult struct {
 
 func (r *ToolResult) UnmarshalJSON(data []byte) error {
 	var raw struct {
-		Content   json.RawMessage `json:"content,omitempty"`
-		Details   json.RawMessage `json:"details,omitempty"`
-		IsError   bool            `json:"is_error,omitempty"`
-		Usage     *ai.Usage       `json:"usage,omitempty"`
-		Terminate bool            `json:"terminate,omitempty"`
-		Preview   string          `json:"preview,omitempty"`
+		Content           json.RawMessage `json:"content,omitempty"`
+		Details           json.RawMessage `json:"details,omitempty"`
+		StructuredContent json.RawMessage `json:"structured_content,omitempty"`
+		IsError           bool            `json:"is_error,omitempty"`
+		Usage             *ai.Usage       `json:"usage,omitempty"`
+		Terminate         bool            `json:"terminate,omitempty"`
+		Preview           string          `json:"preview,omitempty"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
 	r.Details = raw.Details
+	r.StructuredContent = raw.StructuredContent
 	r.IsError = raw.IsError
 	r.Usage = raw.Usage
 	r.Terminate = raw.Terminate
 	r.Preview = raw.Preview
+	r.MemberOrder = toolResultMemberOrder(data)
 	r.Content = nil
 
 	if len(raw.Content) == 0 {
@@ -844,6 +901,26 @@ func (r *ToolResult) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 	return fmt.Errorf("tool result content must be a string or a block array, got %s", raw.Content)
+}
+
+// toolResultWireMembers maps the wire object's keys to the AgentToolResult members they carry. preview and any other key are not members of the object Pi writes.
+var toolResultWireMembers = map[string]string{
+	"content": "content", "details": "details", "is_error": "isError",
+	"structured_content": "structuredContent", "usage": "usage", "terminate": "terminate",
+}
+
+func toolResultMemberOrder(data []byte) []string {
+	object, err := orderedjson.Parse(data)
+	if err != nil {
+		return nil
+	}
+	var names []string
+	for _, key := range object.Keys() {
+		if name, ok := toolResultWireMembers[key]; ok {
+			names = append(names, name)
+		}
+	}
+	return names
 }
 
 // RenderResult is the structured result from a renderer execution.

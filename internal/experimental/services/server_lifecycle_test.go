@@ -13,7 +13,6 @@ import (
 	"testing"
 	"testing/synctest"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 )
 
@@ -230,7 +229,7 @@ func TestServerConcurrentAttachmentsRetainIndependentSelections(t *testing.T) {
 		PrepareSessionPlugins: func(_ context.Context, _ string, paths []string) (PreparedSessionPlugins, error) {
 			return PreparedSessionPlugins{PackagePaths: paths}, nil
 		},
-		ReloadPresentationPlugins: func(_ context.Context, paths []string) (pico3.JsonValue, error) { return paths, nil },
+		ReloadPresentationPlugins: func(_ context.Context, paths []string) (chord.JsonValue, error) { return paths, nil },
 	})
 	requireModelsOK(t, err)
 	const count = 128

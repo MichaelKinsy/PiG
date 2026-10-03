@@ -8,6 +8,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	json "github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 // Clone copies the message envelope and mutable top-level slices/maps. A streaming assistant becomes an independently owned current observation.
@@ -112,6 +113,8 @@ func (m AgentMessage) MarshalJSON() ([]byte, error) {
 			RawStopReason         string                          `json:"rawStopReason,omitempty"`
 			EndTurn               *bool                           `json:"endTurn,omitempty"`
 			Timestamp             int64                           `json:"timestamp"`
+			// thinkingLevel is assigned to the finished response after the provider built it, so it follows the provider's own keys.
+			ThinkingLevel ai.ModelThinkingLevel `json:"thinkingLevel,omitempty"`
 		}{
 			Role: RoleAssistant, Content: content, API: message.API,
 			Provider: message.Provider, Model: message.ModelID,
@@ -120,7 +123,7 @@ func (m AgentMessage) MarshalJSON() ([]byte, error) {
 			Diagnostics:           message.Diagnostics, Usage: usageToWire(message.Usage),
 			StopReason: message.StopReason, Deferred: message.Deferred,
 			ErrorMessage: message.ErrorMessage, RawStopReason: message.RawStopReason,
-			EndTurn: message.EndTurn, Timestamp: message.Timestamp,
+			EndTurn: message.EndTurn, Timestamp: message.Timestamp, ThinkingLevel: message.ThinkingLevel,
 		})
 	case m.ToolResult != nil:
 		content, err := marshalAgentContent(m.ToolResult.Content)
@@ -128,6 +131,10 @@ func (m AgentMessage) MarshalJSON() ([]byte, error) {
 			return nil, err
 		}
 		message := m.ToolResult
+		details := message.Details
+		if details == nil && message.DetailsNull {
+			details = json.RawMessage("null")
+		}
 		return json.Marshal(struct {
 			Role       string     `json:"role"`
 			ToolCallID string     `json:"toolCallId"`
@@ -137,18 +144,44 @@ func (m AgentMessage) MarshalJSON() ([]byte, error) {
 			Usage      *usageWire `json:"usage,omitempty"`
 			IsError    bool       `json:"isError"`
 			Timestamp  int64      `json:"timestamp"`
+			// nestedCalls follows timestamp, where upstream's agent session sets it on the message after creating it (agent-session.ts:1065-1066).
+			NestedCalls *ai.NestedToolCalls `json:"nestedCalls,omitempty"`
 		}{
 			Role: RoleToolResult, ToolCallID: message.ToolCallID, ToolName: message.ToolName,
-			Content: content, Details: message.Details, Usage: optionalUsageToWire(message.Usage),
-			IsError: message.IsError, Timestamp: message.Timestamp,
+			Content: content, Details: details, Usage: optionalUsageToWire(message.Usage),
+			IsError: message.IsError, Timestamp: message.Timestamp, NestedCalls: message.NestedCalls,
 		})
 	default:
 		role, ok := m.Custom["role"].(string)
 		if !ok || role == "" {
 			return nil, fmt.Errorf("custom AgentMessage requires a non-empty string role")
 		}
-		return json.Marshal(m.Custom)
+		return marshalCustomMessage(role, m.Custom)
 	}
+}
+
+// customMessageMemberOrder is the order Pi builds the members of each custom role's object in, which JSON.stringify keeps. A member outside the list follows, sorted; a role outside the table is sorted entirely. Content blocks are written in Pi's member order too (packages/ai/src/types.ts TextContent, ImageContent).
+// upstream: coding-agent/src/core/messages.ts:29-67 (shapes), 100-137 (createBranchSummaryMessage, createCompactionSummaryMessage, createCustomMessage), agent-session.ts:3781-3792 (recordBashResult)
+var customMessageMemberOrder = map[string][]string{
+	RoleCustom:            {"role", "customType", "content", "display", "details", "timestamp"},
+	"bashExecution":       {"role", "command", "output", "exitCode", "cancelled", "truncated", "fullOutputPath", "timestamp", "excludeFromContext"},
+	RoleBranchSummary:     {"role", "summary", "fromId", "timestamp"},
+	RoleCompactionSummary: {"role", "summary", "tokensBefore", "timestamp"},
+}
+
+// contentBlockMemberOrder is the order Pi's tools and extensions write a TextContent or ImageContent in (packages/ai/src/types.ts).
+var contentBlockMemberOrder = []string{"type", "text", "textSignature", "data", "mimeType"}
+
+func marshalCustomMessage(role string, members map[string]any) ([]byte, error) {
+	if blocks, ok := members["content"].([]any); ok {
+		ordered, err := orderedjson.MarshalArray(blocks, contentBlockMemberOrder...)
+		if err != nil {
+			return nil, err
+		}
+		members = maps.Clone(members)
+		members["content"] = json.RawMessage(ordered)
+	}
+	return orderedjson.MarshalMap(members, customMessageMemberOrder[role]...)
 }
 
 // UnmarshalJSON decodes the upstream flat role-discriminated AgentMessage union and retains lone UTF-16 units in user content as WTF-8.
@@ -186,7 +219,7 @@ func (m *AgentMessage) UnmarshalJSON(data []byte) error {
 			ProviderThinkingLevel: wire.ProviderThinkingLevel, Diagnostics: wire.Diagnostics,
 			Usage: wire.Usage.toAI(), StopReason: wire.StopReason, Deferred: wire.Deferred,
 			ErrorMessage: wire.ErrorMessage, RawStopReason: wire.RawStopReason,
-			EndTurn: wire.EndTurn, Timestamp: wire.Timestamp,
+			EndTurn: wire.EndTurn, Timestamp: wire.Timestamp, ThinkingLevel: wire.ThinkingLevel,
 		}
 	case RoleToolResult:
 		content, err := unmarshalToolResultContent(wire.Content)
@@ -195,13 +228,18 @@ func (m *AgentMessage) UnmarshalJSON(data []byte) error {
 		}
 		m.ToolResult = &ToolResultMessage{
 			Role: wire.Role, ToolCallID: wire.ToolCallID, ToolName: wire.ToolName, Content: content,
-			Details: wire.Details, Usage: wire.Usage.toAI(),
+			Details: orderedjson.Value(wire.Details), Usage: wire.Usage.toAI(), NestedCalls: wire.NestedCalls,
 			IsError: wire.IsError, Timestamp: wire.Timestamp,
 		}
+		m.ToolResult.DetailsNull = wire.Details != nil && m.ToolResult.Details == nil
 	default:
 		var custom map[string]any
 		if err := json.Unmarshal(data, &custom); err != nil {
 			return err
+		}
+		// `details` is the opaque value an extension wrote; keep its member order.
+		if _, present := custom["details"]; present {
+			custom["details"] = orderedjson.Value(wire.Details)
 		}
 		m.Custom = custom
 	}
@@ -218,6 +256,7 @@ type agentMessageWire struct {
 	ResponseModel         string                          `json:"responseModel"`
 	ResponseID            string                          `json:"responseId"`
 	ProviderThinkingLevel string                          `json:"providerThinkingLevel"`
+	ThinkingLevel         ai.ModelThinkingLevel           `json:"thinkingLevel"`
 	Diagnostics           []ai.AssistantMessageDiagnostic `json:"diagnostics"`
 	Usage                 *usageWire                      `json:"usage"`
 	StopReason            ai.StopReason                   `json:"stopReason"`
@@ -227,7 +266,8 @@ type agentMessageWire struct {
 	EndTurn               *bool                           `json:"endTurn"`
 	ToolCallID            string                          `json:"toolCallId"`
 	ToolName              string                          `json:"toolName"`
-	Details               any                             `json:"details"`
+	Details               json.RawMessage                 `json:"details"`
+	NestedCalls           *ai.NestedToolCalls             `json:"nestedCalls"`
 	IsError               bool                            `json:"isError"`
 }
 
@@ -409,20 +449,11 @@ func unmarshalAgentContent(data []byte) ([]ai.ContentBlock, error) {
 			}
 			block = value
 		case "toolCall":
-			var value struct {
-				ID               string        `json:"id"`
-				Name             string        `json:"name"`
-				Arguments        ai.JsonObject `json:"arguments"`
-				ThoughtSignature string        `json:"thoughtSignature"`
-				Namespace        string        `json:"namespace"`
-			}
+			var value ai.ToolCall
 			if err := json.Unmarshal(raw, &value); err != nil {
 				return nil, err
 			}
-			block = ai.ToolCall{
-				ID: value.ID, Name: value.Name, Arguments: value.Arguments,
-				ThoughtSignature: value.ThoughtSignature, Namespace: value.Namespace,
-			}
+			block = value
 		case "tool_use":
 			// Persisted PiG sessions before the closed transcript contract used
 			// Anthropic's provider spelling. Decode it at the persistence boundary.

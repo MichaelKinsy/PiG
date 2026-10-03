@@ -1,5 +1,5 @@
 {
-  "piVersion": "0.87.1",
+  "piVersion": "1.0.0",
   "node": "v24.19.0",
   "scenarios": [
     {
@@ -15,67 +15,67 @@
         ],
         [
           "push:start",
-          3
-        ],
-        [
-          "push:text_start",
-          5
+          4
         ],
         [
           "deliver:start",
-          6
+          7
         ],
         [
-          "push:text_delta",
+          "push:text_start",
           7
         ],
         [
           "deliver:text_start",
-          8
-        ],
-        [
-          "push:text_end",
-          9
-        ],
-        [
-          "deliver:text_delta",
           10
         ],
         [
-          "push:toolcall_start",
-          11
+          "push:text_delta",
+          10
         ],
         [
-          "deliver:text_end",
-          12
-        ],
-        [
-          "push:toolcall_delta",
+          "deliver:text_delta",
           13
         ],
         [
-          "deliver:toolcall_start",
-          14
+          "push:text_end",
+          13
         ],
         [
-          "push:toolcall_end",
-          15
-        ],
-        [
-          "deliver:toolcall_delta",
+          "deliver:text_end",
           16
         ],
         [
-          "push:done",
-          17
+          "push:toolcall_start",
+          16
+        ],
+        [
+          "deliver:toolcall_start",
+          19
+        ],
+        [
+          "push:toolcall_delta",
+          19
+        ],
+        [
+          "deliver:toolcall_delta",
+          22
+        ],
+        [
+          "push:toolcall_end",
+          22
         ],
         [
           "deliver:toolcall_end",
-          18
+          25
+        ],
+        [
+          "push:done",
+          25
         ],
         [
           "deliver:done",
-          20
+          28
         ]
       ],
       "stopReason": "toolUse",
@@ -137,95 +137,95 @@
         ],
         [
           "push:start",
-          3
+          4
         ],
         [
           "read:2",
-          3
+          4
         ],
         [
           "deliver:start",
-          6
+          7
         ],
         [
           "push:text_start",
-          6
+          8
         ],
         [
           "read:3",
-          6
+          8
         ],
         [
           "deliver:text_start",
-          9
+          11
         ],
         [
           "push:text_delta",
-          9
+          12
         ],
         [
           "read:4",
-          9
+          12
         ],
         [
           "deliver:text_delta",
-          12
+          15
         ],
         [
           "push:text_end",
-          12
+          16
         ],
         [
           "read:5",
-          12
+          16
         ],
         [
           "deliver:text_end",
-          15
+          19
         ],
         [
           "push:toolcall_start",
-          15
+          20
         ],
         [
           "read:6",
-          15
+          20
         ],
         [
           "deliver:toolcall_start",
-          18
+          23
         ],
         [
           "push:toolcall_delta",
-          18
+          24
         ],
         [
           "read:7",
-          18
+          24
         ],
         [
           "deliver:toolcall_delta",
-          21
+          27
         ],
         [
           "push:toolcall_end",
-          21
+          28
         ],
         [
           "read:8",
-          21
+          28
         ],
         [
           "deliver:toolcall_end",
-          24
+          31
         ],
         [
           "push:done",
-          24
+          32
         ],
         [
           "deliver:done",
-          27
+          35
         ]
       ],
       "stopReason": "toolUse",
@@ -394,463 +394,463 @@
         ],
         [
           "push:start",
-          6
-        ],
-        [
-          "read:5",
-          6
-        ],
-        [
-          "read:6",
           7
         ],
         [
-          "read:7",
+          "read:5",
+          7
+        ],
+        [
+          "read:6",
           8
         ],
         [
+          "read:7",
+          9
+        ],
+        [
           "deliver:start",
-          9
-        ],
-        [
-          "read:8",
-          9
-        ],
-        [
-          "read:9",
           10
         ],
         [
-          "read:10",
+          "read:8",
+          10
+        ],
+        [
+          "read:9",
           11
         ],
         [
+          "read:10",
+          12
+        ],
+        [
           "push:text_start",
-          14
-        ],
-        [
-          "read:11",
-          14
-        ],
-        [
-          "read:12",
-          15
-        ],
-        [
-          "read:13",
           16
         ],
         [
-          "deliver:text_start",
+          "read:11",
+          16
+        ],
+        [
+          "read:12",
           17
         ],
         [
-          "read:14",
-          17
-        ],
-        [
-          "read:15",
+          "read:13",
           18
         ],
         [
-          "read:16",
+          "deliver:text_start",
           19
         ],
         [
-          "read:17",
+          "read:14",
+          19
+        ],
+        [
+          "read:15",
           20
         ],
         [
-          "read:18",
+          "read:16",
           21
         ],
         [
-          "read:19",
+          "read:17",
           22
         ],
         [
-          "read:20",
+          "read:18",
           23
         ],
         [
-          "read:21",
+          "read:19",
           24
         ],
         [
+          "read:20",
+          25
+        ],
+        [
+          "read:21",
+          26
+        ],
+        [
           "push:text_delta",
-          27
+          30
         ],
         [
           "read:22",
-          27
+          30
         ],
         [
           "read:23",
-          28
-        ],
-        [
-          "read:24",
-          29
-        ],
-        [
-          "deliver:text_delta",
-          30
-        ],
-        [
-          "read:25",
-          30
-        ],
-        [
-          "read:26",
           31
         ],
         [
-          "read:27",
+          "read:24",
           32
         ],
         [
-          "read:28",
+          "deliver:text_delta",
           33
         ],
         [
-          "read:29",
+          "read:25",
+          33
+        ],
+        [
+          "read:26",
           34
         ],
         [
-          "read:30",
+          "read:27",
           35
         ],
         [
-          "read:31",
+          "read:28",
           36
         ],
         [
+          "read:29",
+          37
+        ],
+        [
+          "read:30",
+          38
+        ],
+        [
+          "read:31",
+          39
+        ],
+        [
           "push:text_end",
-          39
-        ],
-        [
-          "read:32",
-          39
-        ],
-        [
-          "read:33",
-          40
-        ],
-        [
-          "read:34",
-          41
-        ],
-        [
-          "deliver:text_end",
-          42
-        ],
-        [
-          "read:35",
-          42
-        ],
-        [
-          "read:36",
           43
         ],
         [
-          "read:37",
+          "read:32",
+          43
+        ],
+        [
+          "read:33",
           44
         ],
         [
-          "read:38",
+          "read:34",
           45
         ],
         [
-          "read:39",
+          "deliver:text_end",
           46
         ],
         [
-          "read:40",
+          "read:35",
+          46
+        ],
+        [
+          "read:36",
           47
         ],
         [
-          "read:41",
+          "read:37",
           48
         ],
         [
-          "read:42",
+          "read:38",
           49
         ],
         [
-          "read:43",
+          "read:39",
           50
         ],
         [
-          "push:toolcall_start",
+          "read:40",
+          51
+        ],
+        [
+          "read:41",
+          52
+        ],
+        [
+          "read:42",
           53
         ],
         [
-          "read:44",
-          53
-        ],
-        [
-          "read:45",
+          "read:43",
           54
         ],
         [
-          "read:46",
-          55
-        ],
-        [
-          "deliver:toolcall_start",
-          56
-        ],
-        [
-          "read:47",
-          56
-        ],
-        [
-          "read:48",
-          57
-        ],
-        [
-          "read:49",
+          "push:toolcall_start",
           58
         ],
         [
-          "read:50",
+          "read:44",
+          58
+        ],
+        [
+          "read:45",
           59
         ],
         [
-          "read:51",
+          "read:46",
           60
         ],
         [
-          "read:52",
+          "deliver:toolcall_start",
           61
         ],
         [
-          "read:53",
+          "read:47",
+          61
+        ],
+        [
+          "read:48",
           62
         ],
         [
-          "read:54",
+          "read:49",
           63
         ],
         [
-          "push:toolcall_delta",
+          "read:50",
+          64
+        ],
+        [
+          "read:51",
+          65
+        ],
+        [
+          "read:52",
           66
         ],
         [
-          "read:55",
-          66
-        ],
-        [
-          "read:56",
+          "read:53",
           67
         ],
         [
-          "read:57",
+          "read:54",
           68
         ],
         [
-          "deliver:toolcall_delta",
-          69
-        ],
-        [
-          "read:58",
-          69
-        ],
-        [
-          "read:59",
-          70
-        ],
-        [
-          "read:60",
-          71
-        ],
-        [
-          "read:61",
+          "push:toolcall_delta",
           72
         ],
         [
-          "read:62",
+          "read:55",
+          72
+        ],
+        [
+          "read:56",
           73
         ],
         [
-          "read:63",
+          "read:57",
           74
         ],
         [
-          "read:64",
+          "deliver:toolcall_delta",
           75
         ],
         [
-          "read:65",
+          "read:58",
+          75
+        ],
+        [
+          "read:59",
           76
         ],
         [
-          "read:66",
+          "read:60",
           77
         ],
         [
-          "read:67",
+          "read:61",
           78
         ],
         [
-          "read:68",
+          "read:62",
           79
         ],
         [
-          "read:69",
+          "read:63",
           80
         ],
         [
-          "read:70",
+          "read:64",
           81
         ],
         [
-          "read:71",
+          "read:65",
           82
         ],
         [
-          "read:72",
+          "read:66",
           83
         ],
         [
-          "read:73",
+          "read:67",
           84
         ],
         [
-          "read:74",
+          "read:68",
           85
         ],
         [
-          "push:toolcall_end",
+          "read:69",
+          86
+        ],
+        [
+          "read:70",
+          87
+        ],
+        [
+          "read:71",
           88
         ],
         [
-          "read:75",
-          88
-        ],
-        [
-          "read:76",
+          "read:72",
           89
         ],
         [
-          "read:77",
+          "read:73",
           90
         ],
         [
-          "deliver:toolcall_end",
+          "read:74",
           91
         ],
         [
-          "read:78",
-          91
-        ],
-        [
-          "read:79",
-          92
-        ],
-        [
-          "read:80",
-          93
-        ],
-        [
-          "read:81",
-          94
-        ],
-        [
-          "read:82",
+          "push:toolcall_end",
           95
         ],
         [
-          "read:83",
+          "read:75",
+          95
+        ],
+        [
+          "read:76",
           96
         ],
         [
-          "read:84",
+          "read:77",
           97
         ],
         [
-          "read:85",
+          "deliver:toolcall_end",
           98
         ],
         [
-          "read:86",
+          "read:78",
+          98
+        ],
+        [
+          "read:79",
           99
         ],
         [
-          "read:87",
+          "read:80",
           100
         ],
         [
-          "read:88",
+          "read:81",
           101
         ],
         [
-          "read:89",
+          "read:82",
           102
         ],
         [
-          "read:90",
+          "read:83",
           103
         ],
         [
-          "read:91",
+          "read:84",
           104
         ],
         [
-          "read:92",
+          "read:85",
           105
         ],
         [
-          "read:93",
+          "read:86",
           106
         ],
         [
-          "read:94",
+          "read:87",
           107
         ],
         [
-          "read:95",
+          "read:88",
           108
         ],
         [
-          "read:96",
+          "read:89",
           109
         ],
         [
-          "read:97",
+          "read:90",
           110
         ],
         [
-          "read:98",
+          "read:91",
           111
         ],
         [
-          "read:99",
+          "read:92",
           112
         ],
         [
-          "read:100",
+          "read:93",
           113
         ],
         [
-          "read:101",
+          "read:94",
           114
         ],
         [
-          "read:102",
+          "read:95",
           115
         ],
         [
-          "read:103",
+          "read:96",
           116
         ],
         [
-          "push:done",
+          "read:97",
+          117
+        ],
+        [
+          "read:98",
+          118
+        ],
+        [
+          "read:99",
           119
         ],
         [
-          "deliver:done",
+          "read:100",
+          120
+        ],
+        [
+          "read:101",
+          121
+        ],
+        [
+          "read:102",
           122
+        ],
+        [
+          "read:103",
+          123
+        ],
+        [
+          "push:done",
+          127
+        ],
+        [
+          "deliver:done",
+          130
         ]
       ],
       "stopReason": "toolUse",
@@ -906,71 +906,71 @@
         ],
         [
           "push:start",
-          3
-        ],
-        [
-          "push:text_start",
-          5
-        ],
-        [
-          "read:2",
-          5
+          4
         ],
         [
           "deliver:start",
-          6
+          7
+        ],
+        [
+          "push:text_start",
+          7
+        ],
+        [
+          "read:2",
+          7
         ],
         [
           "deliver:text_start",
-          8
-        ],
-        [
-          "push:text_delta",
-          8
-        ],
-        [
-          "push:text_end",
           10
         ],
         [
-          "deliver:text_delta",
+          "push:text_delta",
           11
         ],
         [
-          "push:toolcall_start",
-          12
-        ],
-        [
-          "deliver:text_end",
-          13
-        ],
-        [
-          "push:toolcall_delta",
+          "deliver:text_delta",
           14
         ],
         [
-          "deliver:toolcall_start",
-          15
+          "push:text_end",
+          14
         ],
         [
-          "push:toolcall_end",
-          16
-        ],
-        [
-          "deliver:toolcall_delta",
+          "deliver:text_end",
           17
         ],
         [
-          "push:done",
-          18
+          "push:toolcall_start",
+          17
+        ],
+        [
+          "deliver:toolcall_start",
+          20
+        ],
+        [
+          "push:toolcall_delta",
+          20
+        ],
+        [
+          "deliver:toolcall_delta",
+          23
+        ],
+        [
+          "push:toolcall_end",
+          23
         ],
         [
           "deliver:toolcall_end",
-          19
+          26
+        ],
+        [
+          "push:done",
+          26
         ],
         [
           "deliver:done",
-          21
+          29
         ]
       ],
       "stopReason": "toolUse",
@@ -1025,67 +1025,67 @@
         ],
         [
           "push:start",
-          3
-        ],
-        [
-          "push:text_start",
-          5
+          4
         ],
         [
           "deliver:start",
-          6
+          7
         ],
         [
-          "push:text_delta",
+          "push:text_start",
           7
         ],
         [
           "deliver:text_start",
-          8
-        ],
-        [
-          "push:text_end",
-          9
-        ],
-        [
-          "deliver:text_delta",
           10
         ],
         [
-          "push:toolcall_start",
-          11
+          "push:text_delta",
+          10
         ],
         [
-          "deliver:text_end",
-          12
-        ],
-        [
-          "push:toolcall_delta",
+          "deliver:text_delta",
           13
         ],
         [
-          "deliver:toolcall_start",
-          14
+          "push:text_end",
+          13
         ],
         [
-          "push:toolcall_end",
-          15
-        ],
-        [
-          "deliver:toolcall_delta",
+          "deliver:text_end",
           16
         ],
         [
-          "push:done",
-          17
+          "push:toolcall_start",
+          16
+        ],
+        [
+          "deliver:toolcall_start",
+          19
+        ],
+        [
+          "push:toolcall_delta",
+          19
+        ],
+        [
+          "deliver:toolcall_delta",
+          22
+        ],
+        [
+          "push:toolcall_end",
+          22
         ],
         [
           "deliver:toolcall_end",
-          18
+          25
+        ],
+        [
+          "push:done",
+          25
         ],
         [
           "deliver:done",
-          20
+          28
         ]
       ],
       "stopReason": "toolUse",
@@ -1145,39 +1145,39 @@
         ],
         [
           "push:start",
-          4
-        ],
-        [
-          "push:text_start",
-          6
+          5
         ],
         [
           "deliver:start",
-          7
-        ],
-        [
-          "push:text_delta",
           8
         ],
         [
-          "read:3",
+          "push:text_start",
           8
         ],
         [
           "deliver:text_start",
-          9
-        ],
-        [
-          "push:error",
-          10
-        ],
-        [
-          "deliver:text_delta",
           11
         ],
         [
-          "deliver:error",
+          "push:text_delta",
+          11
+        ],
+        [
+          "read:3",
+          11
+        ],
+        [
+          "push:error",
           13
+        ],
+        [
+          "deliver:text_delta",
+          14
+        ],
+        [
+          "deliver:error",
+          16
         ]
       ],
       "stopReason": "error",
@@ -1219,67 +1219,67 @@
         ],
         [
           "push:start",
-          3
-        ],
-        [
-          "push:text_start",
-          5
+          4
         ],
         [
           "deliver:start",
-          6
+          7
         ],
         [
-          "push:text_delta",
+          "push:text_start",
           7
         ],
         [
           "deliver:text_start",
-          8
-        ],
-        [
-          "push:text_end",
-          9
-        ],
-        [
-          "deliver:text_delta",
           10
         ],
         [
-          "push:toolcall_start",
-          11
+          "push:text_delta",
+          10
         ],
         [
-          "deliver:text_end",
-          12
-        ],
-        [
-          "push:toolcall_delta",
+          "deliver:text_delta",
           13
         ],
         [
-          "deliver:toolcall_start",
-          14
+          "push:text_end",
+          13
         ],
         [
-          "push:toolcall_end",
-          15
-        ],
-        [
-          "deliver:toolcall_delta",
+          "deliver:text_end",
           16
         ],
         [
-          "push:done",
-          17
+          "push:toolcall_start",
+          16
+        ],
+        [
+          "deliver:toolcall_start",
+          19
+        ],
+        [
+          "push:toolcall_delta",
+          19
+        ],
+        [
+          "deliver:toolcall_delta",
+          22
+        ],
+        [
+          "push:toolcall_end",
+          22
         ],
         [
           "deliver:toolcall_end",
-          18
+          25
+        ],
+        [
+          "push:done",
+          25
         ],
         [
           "deliver:done",
-          20
+          28
         ]
       ],
       "stopReason": "toolUse",
@@ -1344,67 +1344,67 @@
         ],
         [
           "push:start",
-          5
-        ],
-        [
-          "push:text_start",
-          7
+          6
         ],
         [
           "deliver:start",
-          8
+          9
         ],
         [
-          "push:text_delta",
+          "push:text_start",
           9
         ],
         [
           "deliver:text_start",
-          10
-        ],
-        [
-          "push:text_end",
-          11
-        ],
-        [
-          "deliver:text_delta",
           12
         ],
         [
-          "push:toolcall_start",
-          13
+          "push:text_delta",
+          12
         ],
         [
-          "deliver:text_end",
-          14
-        ],
-        [
-          "push:toolcall_delta",
+          "deliver:text_delta",
           15
         ],
         [
-          "deliver:toolcall_start",
-          16
+          "push:text_end",
+          15
         ],
         [
-          "push:toolcall_end",
-          17
-        ],
-        [
-          "deliver:toolcall_delta",
+          "deliver:text_end",
           18
         ],
         [
-          "push:done",
-          19
+          "push:toolcall_start",
+          18
+        ],
+        [
+          "deliver:toolcall_start",
+          21
+        ],
+        [
+          "push:toolcall_delta",
+          21
+        ],
+        [
+          "deliver:toolcall_delta",
+          24
+        ],
+        [
+          "push:toolcall_end",
+          24
         ],
         [
           "deliver:toolcall_end",
-          20
+          27
+        ],
+        [
+          "push:done",
+          27
         ],
         [
           "deliver:done",
-          22
+          30
         ]
       ],
       "stopReason": "toolUse",
@@ -1461,43 +1461,43 @@
         ],
         [
           "push:start",
-          3
-        ],
-        [
-          "push:text_start",
-          5
-        ],
-        [
-          "read:2",
-          5
+          4
         ],
         [
           "deliver:start",
-          6
+          7
+        ],
+        [
+          "push:text_start",
+          7
+        ],
+        [
+          "read:2",
+          7
         ],
         [
           "deliver:text_start",
-          8
+          10
         ],
         [
           "push:text_delta",
-          8
+          11
         ],
         [
           "read:3",
-          8
+          11
         ],
         [
           "deliver:text_delta",
-          11
+          14
         ],
         [
           "push:done",
-          11
+          15
         ],
         [
           "deliver:done",
-          14
+          18
         ]
       ],
       "stopReason": "toolUse",
@@ -1546,47 +1546,47 @@
         ],
         [
           "push:start",
-          3
-        ],
-        [
-          "push:text_start",
-          5
-        ],
-        [
-          "read:2",
-          5
+          4
         ],
         [
           "deliver:start",
-          6
+          7
+        ],
+        [
+          "push:text_start",
+          7
+        ],
+        [
+          "read:2",
+          7
         ],
         [
           "deliver:text_start",
-          8
+          10
         ],
         [
           "push:text_delta",
-          8
+          11
         ],
         [
           "read:3",
-          8
+          11
         ],
         [
           "read:4",
-          9
+          12
         ],
         [
           "deliver:text_delta",
-          11
+          14
         ],
         [
           "push:error",
-          11
+          14
         ],
         [
           "deliver:error",
-          14
+          17
         ]
       ],
       "stopReason": "error",
@@ -1629,35 +1629,35 @@
         ],
         [
           "push:start",
-          3
-        ],
-        [
-          "push:text_start",
-          5
-        ],
-        [
-          "read:2",
-          5
+          4
         ],
         [
           "deliver:start",
-          6
+          7
+        ],
+        [
+          "push:text_start",
+          7
+        ],
+        [
+          "read:2",
+          7
         ],
         [
           "read:3",
-          6
+          8
         ],
         [
           "deliver:text_start",
-          8
+          10
         ],
         [
           "push:error",
-          8
+          10
         ],
         [
           "deliver:error",
-          11
+          13
         ]
       ],
       "stopReason": "error",
@@ -1699,27 +1699,27 @@
         ],
         [
           "push:start",
-          3
-        ],
-        [
-          "push:text_start",
-          5
+          4
         ],
         [
           "deliver:start",
-          6
+          7
         ],
         [
-          "push:error",
+          "push:text_start",
           7
         ],
         [
           "deliver:text_start",
-          8
+          10
+        ],
+        [
+          "push:error",
+          10
         ],
         [
           "deliver:error",
-          10
+          13
         ]
       ],
       "stopReason": "error",
@@ -1767,39 +1767,39 @@
         ],
         [
           "push:start",
-          3
-        ],
-        [
-          "push:text_start",
-          5
+          4
         ],
         [
           "deliver:start",
-          6
-        ],
-        [
-          "push:text_delta",
           7
         ],
         [
-          "read:2",
+          "push:text_start",
           7
         ],
         [
           "deliver:text_start",
-          8
-        ],
-        [
-          "push:error",
-          9
-        ],
-        [
-          "deliver:text_delta",
           10
         ],
         [
-          "deliver:error",
+          "push:text_delta",
+          10
+        ],
+        [
+          "read:2",
+          10
+        ],
+        [
+          "push:error",
           12
+        ],
+        [
+          "deliver:text_delta",
+          13
+        ],
+        [
+          "deliver:error",
+          15
         ]
       ],
       "stopReason": "error",
@@ -1841,31 +1841,31 @@
         ],
         [
           "push:start",
-          3
-        ],
-        [
-          "push:text_start",
-          5
-        ],
-        [
-          "read:2",
-          5
+          4
         ],
         [
           "deliver:start",
-          6
+          7
+        ],
+        [
+          "push:text_start",
+          7
+        ],
+        [
+          "read:2",
+          7
         ],
         [
           "deliver:text_start",
-          8
+          10
         ],
         [
           "push:done",
-          8
+          11
         ],
         [
           "deliver:done",
-          11
+          14
         ]
       ],
       "stopReason": "toolUse",
@@ -1912,27 +1912,27 @@
         ],
         [
           "push:start",
-          3
-        ],
-        [
-          "push:text_start",
-          5
+          4
         ],
         [
           "deliver:start",
-          6
+          7
+        ],
+        [
+          "push:text_start",
+          7
         ],
         [
           "push:error",
-          6
-        ],
-        [
-          "deliver:text_start",
           8
         ],
         [
-          "deliver:error",
+          "deliver:text_start",
           10
+        ],
+        [
+          "deliver:error",
+          12
         ]
       ],
       "stopReason": "error",
@@ -1974,27 +1974,27 @@
         ],
         [
           "push:start",
-          3
-        ],
-        [
-          "push:text_start",
-          5
+          4
         ],
         [
           "deliver:start",
-          6
+          7
+        ],
+        [
+          "push:text_start",
+          7
         ],
         [
           "push:error",
-          6
-        ],
-        [
-          "deliver:text_start",
           8
         ],
         [
-          "deliver:error",
+          "deliver:text_start",
           10
+        ],
+        [
+          "deliver:error",
+          12
         ]
       ],
       "stopReason": "error",
@@ -2036,27 +2036,27 @@
         ],
         [
           "push:start",
-          3
-        ],
-        [
-          "push:text_start",
-          5
+          4
         ],
         [
           "deliver:start",
-          6
+          7
         ],
         [
-          "push:done",
+          "push:text_start",
           7
         ],
         [
           "deliver:text_start",
-          8
+          10
+        ],
+        [
+          "push:done",
+          10
         ],
         [
           "deliver:done",
-          10
+          13
         ]
       ],
       "stopReason": "toolUse",
@@ -2103,19 +2103,19 @@
         ],
         [
           "push:start",
-          3
-        ],
-        [
-          "push:done",
-          5
+          4
         ],
         [
           "deliver:start",
-          6
+          7
+        ],
+        [
+          "push:done",
+          7
         ],
         [
           "deliver:done",
-          8
+          10
         ]
       ],
       "stopReason": "toolUse",
@@ -2157,39 +2157,39 @@
         ],
         [
           "push:start",
-          3
-        ],
-        [
-          "push:text_start",
-          5
+          4
         ],
         [
           "deliver:start",
-          6
-        ],
-        [
-          "push:text_delta",
           7
         ],
         [
-          "read:2",
+          "push:text_start",
           7
         ],
         [
           "deliver:text_start",
-          8
-        ],
-        [
-          "push:error",
-          9
-        ],
-        [
-          "deliver:text_delta",
           10
         ],
         [
-          "deliver:error",
+          "push:text_delta",
+          10
+        ],
+        [
+          "read:2",
+          10
+        ],
+        [
+          "push:error",
           12
+        ],
+        [
+          "deliver:text_delta",
+          13
+        ],
+        [
+          "deliver:error",
+          15
         ]
       ],
       "stopReason": "error",
@@ -2319,11 +2319,11 @@
         ],
         [
           "push:done",
-          3
+          4
         ],
         [
           "deliver:done",
-          6
+          7
         ]
       ],
       "stopReason": "toolUse",

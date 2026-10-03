@@ -1,7 +1,11 @@
-# Pi 0.87.1 loader.ts:490-501 serves one shared namespace per virtual module.
-# keybindings.ts:311-320 stores one manager; theme.ts:1078-1097,1186-1205 synchronously highlights code.
+# Pi 0.99.2 loader.ts:55-59,565-567 serves one shared namespace per virtual module.
+# keybindings.ts:311-320 stores one manager; theme.ts:1003-1022,1095-1115 synchronously highlights code.
 # Import the graph during a command, not factory registration. Compare the complete namespace inventory, values shared across aliases, mutable keybinding state, text layout, and highlight output.
 # The performance guard is TestNodeStartupDefersPresentationDependencies; this scenario preserves observable behavior rather than asserting a machine-dependent timing limit.
+# Highlight output depends on the global theme. main.ts:898 runs initTheme(settingsManager.getTheme()) in every mode, so
+# print mode uses the system theme (theme.ts:756-770, 611-623), whose palette entries render as 256-colour indexes: "not code" is
+# mdCodeBlock, "\u001b[38;5;2m" on the pinned Pi (re-probed 2026-10-01 with COLORTERM=truecolor, PI_TRUE_COLOR=1 and unset: identical).
+# Earlier releases printed the dark theme's #b5bd68 (38;2;181;189;104).
 name = "56-node-lazy-imports"
 description = "Deferred Node imports retain Pi exports, shared state, and synchronous rendering helpers"
 covers = [
@@ -26,6 +30,6 @@ timeout_seconds = 30
 [assert]
 exit_code = 0
 output_equal = true
-both_contain = ['"order":["factory","command","tui","theme"]', '"shared":true,"state":true', '"unknownLanguage":["\u001b[38;2;181;189;104mnot code\u001b[39m"]']
+both_contain = ['"order":["factory","command","tui","theme"]', '"shared":true,"state":true', '"unknownLanguage":["\u001b[38;5;2mnot code\u001b[39m"]']
 both_not_contain = ["Failed to load extension", "Command failed"]
 runs = 3

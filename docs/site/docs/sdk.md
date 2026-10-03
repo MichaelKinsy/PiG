@@ -173,7 +173,7 @@ defer session.Close()
 // session.SessionManager() == manager
 ```
 
-An explicit Services CWD wins over the manager's CWD. Without a manager override, new persisted Sessions use the selected Services agent directory. `GetSessionFile` returns nil in memory. A persisted manager selects a file path before the first assistant message flushes it, so `IsPersisted` does not imply that the file already exists. Forks and clones keep the source persistence mode. A retained branch without an assistant defers its file write. A factory-owned Runtime fork replaces the Session but retains the in-memory SessionManager object.
+An explicit Services CWD wins over the manager's CWD. Without a manager override, new persisted Sessions use the selected Services agent directory. `GetSessionFile` returns nil in memory. A persisted manager selects a file path before the first user or assistant message creates it, so `IsPersisted` does not imply that the file already exists. Forks and clones keep the source persistence mode. A retained branch without a user or assistant message defers its file write. A factory-owned Runtime fork replaces the Session but retains the in-memory SessionManager object.
 
 Direct calls to a Session's tools receive its current identity, model and thinking state. A tool call with an explicit ToolEnvironment keeps that context instead. Clones keep separate context bindings.
 

@@ -8,6 +8,7 @@ import { contentText, getCurrentSystemMessage, normalizeContext, retryAssistantC
 import { completeSimple } from "../../../pi-ai/sdk-bundle/compat.js";
 import { convertToLlm } from "../messages.js";
 import { buildSessionProjection, sessionEntryToContextMessages, } from "../session-manager.js";
+import { combineUsage } from "../usage-totals.js";
 import { computeFileLists, createFileOps, extractFileOpsFromMessage, formatFileOperations, SUMMARIZATION_SYSTEM_PROMPT, serializeConversation, } from "./utils.js";
 /**
  * Extract file operations from messages and previous compaction entries.
@@ -48,28 +49,6 @@ function getMessagesFromProjectedEntryForCompaction(entry) {
         return [];
     // System messages are prompt state, not conversation; the compaction entry carries their replay.
     return entry.messages.filter((message) => message.role !== "system");
-}
-function combineUsage(first, second) {
-    return {
-        input: first.input + second.input,
-        output: first.output + second.output,
-        cacheRead: first.cacheRead + second.cacheRead,
-        cacheWrite: first.cacheWrite + second.cacheWrite,
-        ...(first.cacheWrite1h !== undefined || second.cacheWrite1h !== undefined
-            ? { cacheWrite1h: (first.cacheWrite1h ?? 0) + (second.cacheWrite1h ?? 0) }
-            : {}),
-        ...(first.reasoning !== undefined || second.reasoning !== undefined
-            ? { reasoning: (first.reasoning ?? 0) + (second.reasoning ?? 0) }
-            : {}),
-        totalTokens: first.totalTokens + second.totalTokens,
-        cost: {
-            input: first.cost.input + second.cost.input,
-            output: first.cost.output + second.cost.output,
-            cacheRead: first.cost.cacheRead + second.cost.cacheRead,
-            cacheWrite: first.cost.cacheWrite + second.cost.cacheWrite,
-            total: first.cost.total + second.cost.total,
-        },
-    };
 }
 export const DEFAULT_COMPACTION_SETTINGS = {
     enabled: true,

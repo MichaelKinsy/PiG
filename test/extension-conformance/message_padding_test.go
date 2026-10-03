@@ -11,6 +11,7 @@ import (
 // The custom-message renderer receives the setting as a required number, not a
 // missing property or SDK default. Both settings differ from an absent field.
 func TestMessageOutputPadAcrossSDKs(t *testing.T) {
+	t.Parallel()
 	for _, tc := range allHarnessCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)

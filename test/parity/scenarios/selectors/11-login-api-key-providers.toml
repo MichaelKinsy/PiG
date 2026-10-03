@@ -12,6 +12,11 @@
 # opens on the same alphabetical prefix with the same provider labels and the
 # same (1/41) count. OPENAI_API_KEY only makes a model selectable, so startup
 # does not stall on the no-model picker; it does not change the first page.
+#
+# Pi 1.0.0 (oauth-selector.ts:37 formatAuthSelectorProviderStatus) labels an
+# option without credentials " • not configured" instead of " • unconfigured".
+# Re-probed against Pi 1.0.0: the first page reads "Amazon Bedrock • not
+# configured", "Ant Ling • not configured", ... with the same (1/41) count.
 
 name = "11-login-api-key-providers"
 description = "/login API-key provider picker lists every API-key-provider catalog entry with upstream labels."
@@ -56,10 +61,10 @@ both_reach_ready = true
 output_normalized_equal = true
 both_contain = [
   "Select provider to configure",
-  "Ant Ling • unconfigured",
-  "Anthropic • unconfigured",
-  "Azure OpenAI • unconfigured",
-  "Cloudflare Workers AI • unconfigured",
+  "Ant Ling • not configured",
+  "Anthropic • not configured",
+  "Azure OpenAI • not configured",
+  "Cloudflare Workers AI • not configured",
   "(1/41)",
 ]
 runs = 3

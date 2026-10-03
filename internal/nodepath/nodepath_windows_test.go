@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"golang.org/x/sys/windows"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // setDriveCwd sets the process's per-drive working directory the way libuv's
@@ -43,7 +45,11 @@ func setDriveCwd(t *testing.T, device, dir string) {
 // TestResolveReadsThePerDriveWorkingDirectoryOfTheProcess runs the host Resolve
 // against the real process state on Windows: C:relative and D:relative resolve
 // on the "=C:" / "=D:" variables the process holds, and agree with the
-// operating system's own GetFullPathName for names it does not rewrite.
+// operating system's own GetFullPathName for names it does not rewrite. The
+// other drive is a subst drive on which the per-drive directory exists:
+// GetFullPathName resets a per-drive directory that does not exist to the
+// drive's root, "=Z:" included, and Node's path.win32.resolve then reads that
+// root too.
 func TestResolveReadsThePerDriveWorkingDirectoryOfTheProcess(t *testing.T) {
 	process, err := os.Getwd()
 	if err != nil {
@@ -53,9 +59,9 @@ func TestResolveReadsThePerDriveWorkingDirectoryOfTheProcess(t *testing.T) {
 	if len(processDrive) != 2 {
 		t.Skipf("the process working directory %q is not on a drive", process)
 	}
-	other := "Z:"
-	if processDrive == other {
-		other = "Y:"
+	other := testenv.SubstDrive(t, t.TempDir())
+	if err := os.MkdirAll(other+`\perdrive\dir`, 0o755); err != nil {
+		t.Fatal(err)
 	}
 
 	if got, err := Resolve(other + "rel"); err != nil || got != other+`\rel` {

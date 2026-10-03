@@ -181,6 +181,12 @@ MB. Later appends use the same bounded path.
 
 `/reload` resolves the same extension inputs as startup and preserves their first-seen order. Pig reuses valid build artifacts, but it constructs a fresh factory and runtime for every configured, embedded, fused, and built-in extension so module and closure state reset as they do in Pi. It starts and validates replacements, checks registration, and publishes the successful set. A failed extension is removed and reported while other extensions load.
 
+## MCP servers, virtual models and tool exposure
+
+An extension in any supported language can register MCP servers (`registerMcpServer`), virtual models (`registerVirtualModel`) and tools with `exposure`, `namespace`, `annotations`, `outputSchema`, `defaultActive` and `prepareLoadout`, and a tool can call other tools through `ctx.executeTool()`. See [MCP servers](mcp.md#extensions), [virtual models](virtual-models.md) and [codemode](codemode.md).
+
+`namespace: { name, description, instructions }` groups related tools, as MCP servers do. Codemode lists a namespace under one heading with its `description`. `instructions` holds longer usage guidance, such as MCP server instructions. It is not listed, and codemode scripts read it with `describeNamespace(name)`. A server config given to `registerMcpServer` accepts the same `description` as an `mcpServers` entry in `mcp.json`.
+
 ## Product boundary
 
 `plugin.json` is cross-tool marketplace metadata. It does not contain Pig

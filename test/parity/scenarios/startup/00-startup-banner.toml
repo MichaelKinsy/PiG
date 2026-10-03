@@ -23,19 +23,38 @@ driver = "interactive-tmux"
 [tmux]
 width = 100
 height = 35
-ready_pattern_pig = "(auto)"
-ready_pattern_pi = "pi v"
+# Upstream 0.99.2 mounts the footer ("(auto)") before it awaits the terminal
+# colors and builds the header (interactive-mode.ts:951-1015), so the footer can
+# match while the header is still absent. The ready patterns wait for the
+# header's last line, which both binaries print only once the header exists.
+ready_pattern_pig = "PiG can explain"
+ready_pattern_pi = "Pi can explain"
 ready_timeout_seconds = 15
 
 [assert]
 runs = 3
 both_reach_ready = true
+# D2: PiG never draws Pi's logo (the "▀▀█" of its first line).
+pig_not_contain = ["▀▀█"]
 # pig should boot within 1.5x pi's wall clock. Generous tolerance for
 # the first scenario; we'll tighten as we baseline real numbers.
 runtime_ratio_max = 1.50
 
 [diverge]
-# Intentional naming divergence; banner text differs.
-pig_contains = ["pig"]
-pi_contains = ["pi v"]
-reason = "Intentional project naming. Locked here so any future banner drift trips this assertion."
+# Upstream 1.0.0 prints its 4-cell, 2-line logo with "v<version>" beside the
+# first line and the first hints beside the second (" ▀▀█  v1.0.0"). PiG draws
+# its 16-cell, 7-line pig head in that slot instead (D2, owner decisions
+# 2026-10-01): the composite version (D63) beside the head's first line, the
+# hints, the "Press" line, the blank line and the onboarding beside the next
+# ones. The head's lines with what Pi draws beside or below its logo are
+# asserted verbatim; Pi's logo must not appear. The hints are compared with Pi
+# in 02 and 03, and the head's pixels and colors against
+# coding/piglogin/testdata/head-*.golden.
+pig_contains = [
+  "    ▄▄▄▄  ▄▄▄▄    v{{VERSION}}\n",
+  "   ▄▀▀▀▀▄▄▀▀▀▀▄   escape interrupt",
+  "  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀  Press ctrl+o",
+  "  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀  PiG can explain",
+]
+pi_contains = ["▀▀█  v{{UPSTREAM_VERSION}}", "Pi can explain"]
+reason = "D2 replaces Pi's logo with PiG's pig head; D63 is the composite version; the onboarding names the product. Locked here so any future banner drift trips this assertion."

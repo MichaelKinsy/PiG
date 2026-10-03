@@ -380,10 +380,12 @@ func TestRunClipboardCommandEncodesJavaScriptUTF8(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// The deadline is not under test here. Starting the helper binary takes seconds on a loaded host (a race build also waits GORACE atexit_sleep_ms at exit), so use the generous deadline TestRunClipboardCommand uses; the default 3 s of clipboard-command.ts applies to Pi's callers, not to this child.
+	const slow = 30 * time.Second
 	for _, tc := range clipboardJavaScriptTextCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			args := []string{"-test.run=^TestClipboardHelperProcess$", "--", "stdin", tc.utf8}
-			if output, ok := runClipboardCommand(self, args, clipboardCommandOptions{input: &tc.text, timeout: 5 * time.Second}); !ok || len(output) != 0 {
+			if output, ok := runClipboardCommand(self, args, clipboardCommandOptions{input: &tc.text, timeout: slow}); !ok || len(output) != 0 {
 				t.Fatalf("command did not receive UTF-8 %x: output = %q, ok = %t", tc.utf8, output, ok)
 			}
 		})

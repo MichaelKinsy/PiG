@@ -13,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 type orderedImageTool struct {
@@ -132,7 +133,7 @@ func TestSessionOrderedToolResultImagesSurviveHooksEventsProviderAndReopen(t *te
 					if !reflect.DeepEqual(message.ToolResult.Content, want) {
 						t.Fatalf("reopened content=%#v, want %#v", message.ToolResult.Content, want)
 					}
-					if !reflect.DeepEqual(message.ToolResult.Details, map[string]any{"marker": "retained"}) {
+					if details, _ := orderedjson.Map(message.ToolResult.Details); !reflect.DeepEqual(details, map[string]any{"marker": "retained"}) {
 						t.Fatalf("details=%#v", message.ToolResult.Details)
 					}
 				}

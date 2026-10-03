@@ -78,6 +78,24 @@ Two or more factory-style Python extensions with `isolation: shared-ok`
 are automatically packed into a single generated runner subprocess by
 `PlanCells` (see [`docs/extension-runtime-cells.md`](../../docs/extension-runtime-cells.md)).
 
+## The upstream 0.99.1 extension API
+
+`Extension` and `Context` carry the extension API that upstream 0.99.1 added. Names follow the SDK convention (`registerMcpServer` is `register_mcp_server`); dicts keep upstream's key names (`extensionPath`, `thinkingLevel`, `structuredContent` of an outcome).
+
+| upstream | Python |
+|---|---|
+| `registerMcpServer`, `unregisterMcpServer` | `register_mcp_server(name, config)`, `unregister_mcp_server(name)` on `Extension` and `Context`. The host validates the config and the name's owner and raises `HostCallError`. |
+| `getMcpServers` | `ctx.get_mcp_servers()`, answered from the state the host replicates and from the replies of registration calls, applied in the order the host sent them. |
+| `registerVirtualModel`, `unregisterVirtualModel` | `register_virtual_model(VirtualModel(provider=..., id=..., name=..., route=route))`, `unregister_virtual_model(provider, id)`. `route(ctx, request)` returns `{"model": {"provider", "id"}, "thinkingLevel", "state"?}`; a `state` that is absent or `None` keeps the current state, as upstream's `undefined` does. `request["signal"]` is its cancellation. |
+| `getSettings` | `ctx.get_settings()`. It raises `RuntimeError` until the host has sent the settings. |
+| `ToolDefinition.outputSchema`, `exposure`, `namespace`, `annotations`, `defaultActive`, `prepareLoadout` | `ToolDefinition(output_schema=..., exposure=..., namespace=..., annotations=..., default_active=..., prepare_loadout=hook)`. `hook(loadout)` gets a `ToolLoadout` and returns `{"descriptions": ..., "hiddenDeclarations": ...}` or `None`. |
+| `structuredContent`, `isError` of a tool result | keys `structured_content` and `is_error` of the dict a tool returns. |
+| `ctx.tools`, `ctx.executeTool(name, args, options)` | `ctx.tools` and `ctx.execute_tool(name, args, ExecuteToolOptions(signal=..., on_update=...))`, available while a tool runs. The outcome is upstream's `AgentToolCallOutcome` as a dict; tool failures come back with `isError` true. `signal` defaults to the calling tool's cancellation; a given signal replaces it, so cancelling the calling tool leaves the nested call running (upstream `options.signal ?? signal`). `on_update` runs on the calling thread, in order, before the call returns. |
+| `provider_stream_event`, `mcp_servers_change` | `EVENT_PROVIDER_STREAM_EVENT`, `EVENT_MCP_SERVERS_CHANGE` with `on_event`. Tool events carry `parentToolCallId`. |
+| `pi.events` | `ext.events` and `ctx.events`: `on(channel, handler) -> unsubscribe` and `emit(channel, data)`. Payloads cross as JSON. A handler is `handler(ctx, data)` and may call `emit`. The unsubscribe function never raises; a host refusal is printed to stderr. |
+
+A registration made while the factory runs is queued and applied when the host accepts the extension; a failing factory leaves none behind. `Extension.replaceable` is not an extension API: only the resource loader sets it for an inline extension.
+
 ## Threading and cancellation
 
 The SDK uses one reader thread plus one worker thread per in-flight
@@ -95,6 +113,19 @@ def slow_tool(ctx, args):
 
 Cancellation is cooperative; a handler that never checks it will run until
 the process exits or shuts down.
+
+`is_cancelled()` reports the handler's own request. Pi's `ctx.signal` is the
+signal of the run in progress, so it is `ctx.signal`: one `ProviderSignal` for
+the whole run that is set when the run aborts, even while a handler is still in
+flight, and `None` while no run is active (a command or `session_start` while
+idle). Use it for work owned by the current turn:
+
+```python
+def on_turn_start(event, ctx):
+    signal = ctx.signal
+    if signal is not None:
+        signal.subscribe(stop_background_work)
+```
 
 ## Terminal strings
 

@@ -17,8 +17,10 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 	"github.com/MichaelKinsy/PiG/internal/text"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -239,25 +241,30 @@ type imageSettingsWire struct {
 // settingsWire mirrors upstream settings JSON while tolerating legacy pig
 // flattened fields during unmarshal.
 type settingsWire struct {
-	LastChangelogVersion   string                   `json:"lastChangelogVersion,omitempty"`
-	DefaultProvider        string                   `json:"defaultProvider,omitempty"`
-	DefaultModel           string                   `json:"defaultModel,omitempty"`
-	DefaultThinkingLevel   string                   `json:"defaultThinkingLevel,omitempty"`
-	Transport              string                   `json:"transport,omitempty"`
-	SteeringMode           string                   `json:"steeringMode,omitempty"`
-	FollowUpMode           string                   `json:"followUpMode,omitempty"`
-	TuiMode                string                   `json:"tuiMode,omitempty"`
-	FullscreenExitOutput   string                   `json:"fullscreenExitOutput,omitempty"`
-	FullscreenScrollbar    string                   `json:"fullscreenScrollbar,omitempty"`
-	FullscreenCopyOnSelect *bool                    `json:"fullscreenCopyOnSelect,omitempty"`
-	MaskSecretInput        *bool                    `json:"maskSecretInput,omitempty"`
-	Theme                  *string                  `json:"theme,omitempty"`
-	Compaction             *CompactionSettingsJSON  `json:"compaction,omitempty"`
-	BranchSummary          *branchSummaryWire       `json:"branchSummary,omitempty"`
-	Retry                  *RetrySettingsJSON       `json:"retry,omitempty"`
-	HideThinkingBlock      *bool                    `json:"hideThinkingBlock,omitempty"`
-	ShellPath              string                   `json:"shellPath,omitempty"`
-	QuietStartup           *bool                    `json:"quietStartup,omitempty"`
+	LastChangelogVersion   string `json:"lastChangelogVersion,omitempty"`
+	DefaultProvider        string `json:"defaultProvider,omitempty"`
+	DefaultModel           string `json:"defaultModel,omitempty"`
+	DefaultThinkingLevel   string `json:"defaultThinkingLevel,omitempty"`
+	Transport              string `json:"transport,omitempty"`
+	SteeringMode           string `json:"steeringMode,omitempty"`
+	FollowUpMode           string `json:"followUpMode,omitempty"`
+	TuiMode                string `json:"tuiMode,omitempty"`
+	FullscreenExitOutput   string `json:"fullscreenExitOutput,omitempty"`
+	FullscreenScrollbar    string `json:"fullscreenScrollbar,omitempty"`
+	FullscreenCopyOnSelect *bool  `json:"fullscreenCopyOnSelect,omitempty"`
+	// FullscreenWheelScrollLines keeps the authored JSON value, including null.
+	FullscreenWheelScrollLines json.RawMessage         `json:"fullscreenWheelScrollLines,omitempty"`
+	DeviceID                   string                  `json:"deviceId,omitempty"`
+	Codemode                   *CodemodeSettings       `json:"codemode,omitempty"`
+	MaskSecretInput            *bool                   `json:"maskSecretInput,omitempty"`
+	Theme                      *string                 `json:"theme,omitempty"`
+	Compaction                 *CompactionSettingsJSON `json:"compaction,omitempty"`
+	BranchSummary              *branchSummaryWire      `json:"branchSummary,omitempty"`
+	Retry                      *RetrySettingsJSON      `json:"retry,omitempty"`
+	HideThinkingBlock          *bool                   `json:"hideThinkingBlock,omitempty"`
+	ShellPath                  string                  `json:"shellPath,omitempty"`
+	// QuietStartup keeps the authored JSON value, including null, which replaces a lower layer's value as in upstream deepMergeSettings.
+	QuietStartup           json.RawMessage          `json:"quietStartup,omitempty"`
 	ShellCommandPrefix     string                   `json:"shellCommandPrefix,omitempty"`
 	LegacyCommandPrefix    string                   `json:"commandPrefix,omitempty"`
 	NpmCommand             []string                 `json:"npmCommand,omitzero"`
@@ -304,6 +311,30 @@ type settingsWire struct {
 
 const defaultHTTPIdleTimeoutMs = 300_000
 
+// WheelScrollLines is the number of lines a wheel event scrolls, or Auto for velocity-based acceleration (upstream `WheelScrollLines = number | "auto"`). Lines is 1 to 100 when read from settings.
+type WheelScrollLines struct {
+	Auto  bool
+	Lines float64
+}
+
+// CodemodeMode is how the codemode tool presents tools while it is active. Mirrors upstream CodemodeMode (settings-manager.ts:101).
+type CodemodeMode string
+
+const (
+	// CodemodeModeOn appends the codemode declaration to each callable tool's description and lists only tools without direct exposure in the codemode description.
+	CodemodeModeOn CodemodeMode = "on"
+	// CodemodeModeOnly lists every callable tool in the codemode description and does not declare active direct tools to the model.
+	CodemodeModeOnly CodemodeMode = "only"
+)
+
+// CodemodeSettings mirrors upstream CodemodeSettings (settings-manager.ts:103).
+type CodemodeSettings struct {
+	// Mode defaults to on.
+	Mode CodemodeMode `json:"mode,omitempty"`
+	// InlineBudget is the estimated tokens (characters / 4) the codemode description may spend on tool declarations. Default 3000.
+	InlineBudget *int `json:"inlineBudget,omitempty"`
+}
+
 // CacheWarmingMode selects when prompt caches are kept warm. Mirrors upstream
 // settings-manager.ts CacheWarmingMode.
 type CacheWarmingMode string
@@ -346,6 +377,51 @@ func parseHTTPIdleTimeoutMs(value any) (int, bool) {
 	}
 }
 
+// QuietStartup mirrors upstream QuietStartup (settings-manager.ts:111-112), the union boolean | "header": true hides all startup output, "header" keeps only the startup header.
+type QuietStartup uint8
+
+const (
+	// QuietStartupFalse is false: the startup header and details show. It is the default.
+	QuietStartupFalse QuietStartup = iota
+	// QuietStartupTrue is true: the startup header and details are hidden.
+	QuietStartupTrue
+	// QuietStartupHeader is "header": the startup header shows and the details are hidden.
+	QuietStartupHeader
+)
+
+// String returns the value as upstream's String(quietStartup) spells it: "false", "true" or "header".
+func (q QuietStartup) String() string {
+	switch q {
+	case QuietStartupTrue:
+		return "true"
+	case QuietStartupHeader:
+		return "header"
+	default:
+		return "false"
+	}
+}
+
+// MarshalJSON writes the upstream JSON value: false, true or "header".
+func (q QuietStartup) MarshalJSON() ([]byte, error) {
+	if q == QuietStartupHeader {
+		return []byte(`"header"`), nil
+	}
+	return []byte(q.String()), nil
+}
+
+// UnmarshalJSON reads a settings value as upstream getQuietStartup does (settings-manager.ts:1089-1092): true and "header" keep their meaning and every other value is false.
+func (q *QuietStartup) UnmarshalJSON(data []byte) error {
+	switch strings.TrimSpace(string(data)) {
+	case "true":
+		*q = QuietStartupTrue
+	case `"header"`:
+		*q = QuietStartupHeader
+	default:
+		*q = QuietStartupFalse
+	}
+	return nil
+}
+
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
 // Settings mirrors upstream Settings interface.
@@ -368,7 +444,7 @@ type Settings struct {
 	// CommandPrefix prepended to every bash tool invocation as a
 	// separate first line (e.g. "set -e\n" or "export PATH=...\n").
 	CommandPrefix                  string          `json:"commandPrefix,omitempty"`
-	QuietStartup                   bool            `json:"quietStartup,omitempty"`
+	QuietStartup                   QuietStartup    `json:"quietStartup,omitempty"`
 	quietStartupSet                bool            `json:"-"`
 	Packages                       []PackageSource `json:"packages,omitzero"`
 	Extensions                     []string        `json:"extensions,omitempty"`
@@ -440,7 +516,7 @@ type Settings struct {
 	// Mirrors upstream settings.followUpMode (settings-manager.ts:72).
 	FollowUpMode string `json:"followUpMode,omitempty"`
 
-	// TuiMode selects the regular or fullscreen terminal layout. Default: regular.
+	// TuiMode selects the regular or fullscreen terminal layout. Default: fullscreen.
 	TuiMode string `json:"tuiMode,omitempty"`
 
 	// FullscreenExitOutput controls whether fullscreen exit prints the transcript
@@ -454,6 +530,16 @@ type Settings struct {
 	// FullscreenCopyOnSelect controls automatic clipboard copy when a fullscreen
 	// text selection completes. Default: true; it has no effect in regular mode.
 	FullscreenCopyOnSelect *bool `json:"fullscreenCopyOnSelect,omitempty"`
+
+	// FullscreenWheelScrollLines holds the authored `fullscreenWheelScrollLines` JSON value, a line count or "auto". GetFullscreenWheelScrollLines validates it. A present JSON null is kept because it overrides a lower layer.
+	FullscreenWheelScrollLines json.RawMessage `json:"fullscreenWheelScrollLines,omitempty"`
+
+	// DeviceID is the stable UUID of this installation. Only the global layer is read for it: GetOrCreateDeviceID ignores project settings.
+	// Mirrors upstream settings.deviceId (settings-manager.ts:156).
+	DeviceID string `json:"deviceId,omitempty"`
+
+	// Codemode configures how the codemode tool presents tools. Mirrors upstream settings.codemode (settings-manager.ts:176).
+	Codemode *CodemodeSettings `json:"codemode,omitempty"`
 
 	// MaskSecretInput controls configurable login-input privacy. Nil means true; false restores Pi's plain-text prompts.
 	MaskSecretInput *bool `json:"maskSecretInput,omitempty"`
@@ -713,6 +799,31 @@ func cloneWarningSettings(v *WarningSettings) *WarningSettings {
 	return &WarningSettings{AnthropicExtraUsage: v.AnthropicExtraUsage, anthropicExtraUsageSet: v.anthropicExtraUsageSet}
 }
 
+func cloneCodemodeSettings(v *CodemodeSettings) *CodemodeSettings {
+	if v == nil {
+		return nil
+	}
+	return &CodemodeSettings{Mode: v.Mode, InlineBudget: cloneIntPtr(v.InlineBudget)}
+}
+
+// mergeCodemodeSettings merges the nested codemode object field by field, project over global (upstream deepMergeObjects).
+func mergeCodemodeSettings(global, project *CodemodeSettings) *CodemodeSettings {
+	if project == nil {
+		return global
+	}
+	merged := cloneCodemodeSettings(global)
+	if merged == nil {
+		merged = &CodemodeSettings{}
+	}
+	if project.Mode != "" {
+		merged.Mode = project.Mode
+	}
+	if project.InlineBudget != nil {
+		merged.InlineBudget = cloneIntPtr(project.InlineBudget)
+	}
+	return merged
+}
+
 func clonePackageSources(src []PackageSource) []PackageSource {
 	if src == nil {
 		return nil
@@ -774,6 +885,9 @@ func cloneSettings(s Settings) Settings {
 		FullscreenExitOutput:           s.FullscreenExitOutput,
 		FullscreenScrollbar:            s.FullscreenScrollbar,
 		FullscreenCopyOnSelect:         cloneBoolPtr(s.FullscreenCopyOnSelect),
+		FullscreenWheelScrollLines:     slices.Clone(s.FullscreenWheelScrollLines),
+		DeviceID:                       s.DeviceID,
+		Codemode:                       cloneCodemodeSettings(s.Codemode),
 		MaskSecretInput:                cloneBoolPtr(s.MaskSecretInput),
 		CollapseChangelog:              s.CollapseChangelog,
 		collapseChangelogSet:           s.collapseChangelogSet,
@@ -818,59 +932,61 @@ func (s Settings) themeSetting() *string {
 // internal flattened representation.
 func (s Settings) MarshalJSON() ([]byte, error) {
 	w := settingsWire{
-		LastChangelogVersion:      s.LastChangelogVersion,
-		DefaultProvider:           s.DefaultProvider,
-		DefaultModel:              s.DefaultModel,
-		DefaultThinkingLevel:      s.DefaultThinkingLevel,
-		Transport:                 s.Transport,
-		SteeringMode:              s.SteeringMode,
-		FollowUpMode:              s.FollowUpMode,
-		TuiMode:                   s.TuiMode,
-		FullscreenExitOutput:      s.FullscreenExitOutput,
-		FullscreenScrollbar:       s.FullscreenScrollbar,
-		FullscreenCopyOnSelect:    s.FullscreenCopyOnSelect,
-		MaskSecretInput:           s.MaskSecretInput,
-		Theme:                     s.themeSetting(),
-		Compaction:                s.Compaction,
-		Retry:                     s.Retry,
-		ShellPath:                 s.ShellPath,
-		NpmCommand:                s.NpmCommand,
-		EnableInstallTelemetry:    s.EnableInstallTelemetry,
-		EnableAnalytics:           s.EnableAnalytics,
-		TrackingID:                s.TrackingID,
-		Packages:                  s.Packages,
-		Extensions:                s.Extensions,
-		Skills:                    s.Skills,
-		Prompts:                   s.Prompts,
-		Themes:                    s.Themes,
-		EnableSkillCommands:       s.EnableSkillCommands,
-		EnabledModels:             s.EnabledModels,
-		DefaultTools:              s.DefaultTools,
-		ModelThinkingLevels:       s.ModelThinkingLevels,
-		DoubleEscapeAction:        s.DoubleEscapeAction,
-		TreeFilterMode:            s.TreeFilterMode,
-		DefaultProjectTrust:       s.DefaultProjectTrust,
-		ThinkingBudgets:           s.ThinkingBudgets,
-		EditorPaddingX:            s.EditorPaddingX,
-		OutputPad:                 s.OutputPad,
-		ExternalEditor:            s.ExternalEditor,
-		AutocompleteMaxVisible:    s.AutocompleteMaxVisible,
-		ShowHardwareCursor:        s.ShowHardwareCursor,
-		Markdown:                  s.Markdown,
-		Warnings:                  s.Warnings,
-		SessionDir:                s.SessionDir,
-		HTTPProxy:                 s.HTTPProxy,
-		WebSocketConnectTimeoutMs: webSocketConnectTimeoutWire(s),
-		HTTPIdleTimeoutMs:         httpIdleTimeoutWire(s),
-		CacheWarming:              s.CacheWarming,
+		LastChangelogVersion:       s.LastChangelogVersion,
+		DefaultProvider:            s.DefaultProvider,
+		DefaultModel:               s.DefaultModel,
+		DefaultThinkingLevel:       s.DefaultThinkingLevel,
+		Transport:                  s.Transport,
+		SteeringMode:               s.SteeringMode,
+		FollowUpMode:               s.FollowUpMode,
+		TuiMode:                    s.TuiMode,
+		FullscreenExitOutput:       s.FullscreenExitOutput,
+		FullscreenScrollbar:        s.FullscreenScrollbar,
+		FullscreenCopyOnSelect:     s.FullscreenCopyOnSelect,
+		FullscreenWheelScrollLines: s.FullscreenWheelScrollLines,
+		DeviceID:                   s.DeviceID,
+		Codemode:                   s.Codemode,
+		MaskSecretInput:            s.MaskSecretInput,
+		Theme:                      s.themeSetting(),
+		Compaction:                 s.Compaction,
+		Retry:                      s.Retry,
+		ShellPath:                  s.ShellPath,
+		NpmCommand:                 s.NpmCommand,
+		EnableInstallTelemetry:     s.EnableInstallTelemetry,
+		EnableAnalytics:            s.EnableAnalytics,
+		TrackingID:                 s.TrackingID,
+		Packages:                   s.Packages,
+		Extensions:                 s.Extensions,
+		Skills:                     s.Skills,
+		Prompts:                    s.Prompts,
+		Themes:                     s.Themes,
+		EnableSkillCommands:        s.EnableSkillCommands,
+		EnabledModels:              s.EnabledModels,
+		DefaultTools:               s.DefaultTools,
+		ModelThinkingLevels:        s.ModelThinkingLevels,
+		DoubleEscapeAction:         s.DoubleEscapeAction,
+		TreeFilterMode:             s.TreeFilterMode,
+		DefaultProjectTrust:        s.DefaultProjectTrust,
+		ThinkingBudgets:            s.ThinkingBudgets,
+		EditorPaddingX:             s.EditorPaddingX,
+		OutputPad:                  s.OutputPad,
+		ExternalEditor:             s.ExternalEditor,
+		AutocompleteMaxVisible:     s.AutocompleteMaxVisible,
+		ShowHardwareCursor:         s.ShowHardwareCursor,
+		Markdown:                   s.Markdown,
+		Warnings:                   s.Warnings,
+		SessionDir:                 s.SessionDir,
+		HTTPProxy:                  s.HTTPProxy,
+		WebSocketConnectTimeoutMs:  webSocketConnectTimeoutWire(s),
+		HTTPIdleTimeoutMs:          httpIdleTimeoutWire(s),
+		CacheWarming:               s.CacheWarming,
 	}
 	if s.hideThinkingBlockSet {
 		v := s.HideThinkingBlock
 		w.HideThinkingBlock = &v
 	}
 	if s.quietStartupSet {
-		v := s.QuietStartup
-		w.QuietStartup = &v
+		w.QuietStartup, _ = s.QuietStartup.MarshalJSON()
 	}
 	if s.CommandPrefix != "" {
 		w.ShellCommandPrefix = s.CommandPrefix
@@ -979,6 +1095,9 @@ func (s *Settings) UnmarshalJSON(data []byte) error {
 	s.FullscreenExitOutput = w.FullscreenExitOutput
 	s.FullscreenScrollbar = w.FullscreenScrollbar
 	s.FullscreenCopyOnSelect = w.FullscreenCopyOnSelect
+	s.FullscreenWheelScrollLines = w.FullscreenWheelScrollLines
+	s.DeviceID = w.DeviceID
+	s.Codemode = w.Codemode
 	s.MaskSecretInput = w.MaskSecretInput
 	s.Theme = ""
 	s.themeEmpty = w.Theme != nil && *w.Theme == ""
@@ -1007,7 +1126,7 @@ func (s *Settings) UnmarshalJSON(data []byte) error {
 	}
 	s.ShellPath = w.ShellPath
 	if w.QuietStartup != nil {
-		s.QuietStartup = *w.QuietStartup
+		_ = s.QuietStartup.UnmarshalJSON(w.QuietStartup)
 		s.quietStartupSet = true
 	}
 	s.CommandPrefix = firstNonEmpty(w.ShellCommandPrefix, w.LegacyCommandPrefix)
@@ -1322,8 +1441,8 @@ func (s Settings) GetHideThinkingBlock() bool { return s.HideThinkingBlock }
 // GetShowCacheMissNotices returns whether transcript cache-miss notices are shown.
 func (s Settings) GetShowCacheMissNotices() bool { return s.ShowCacheMissNotices }
 
-// GetQuietStartup returns whether startup output should be reduced.
-func (s Settings) GetQuietStartup() bool { return s.QuietStartup }
+// GetQuietStartup returns the quiet startup setting: true, "header" or false.
+func (s Settings) GetQuietStartup() QuietStartup { return s.QuietStartup }
 
 // GetCollapseChangelog returns whether changelog output is collapsed.
 func (s Settings) GetCollapseChangelog() bool { return s.CollapseChangelog }
@@ -1689,13 +1808,12 @@ func (sm *SettingsManager) GetFollowUpMode() string {
 	return m
 }
 
-// GetEnableSkillCommands returns whether skill commands are shown in autocomplete.
-// Default: true. Mirrors upstream getEnableSkillCommands (settings-manager.ts:847-849).
+// GetTuiMode returns the terminal UI mode: "regular" only when the setting says so, otherwise "fullscreen" (settings-manager.ts:1348-1350).
 func (sm *SettingsManager) GetTuiMode() string {
-	if sm.Get().TuiMode == "fullscreen" {
-		return "fullscreen"
+	if sm.Get().TuiMode == "regular" {
+		return "regular"
 	}
-	return "regular"
+	return "fullscreen"
 }
 
 func (sm *SettingsManager) GetFullscreenExitOutput() string {
@@ -1718,6 +1836,85 @@ func (sm *SettingsManager) GetFullscreenScrollbar() string {
 	return "auto"
 }
 
+// GetFullscreenWheelScrollLines returns the wheel line setting: a finite number floored and clamped to 1-100, otherwise auto.
+// Mirrors upstream getFullscreenWheelScrollLines (settings-manager.ts:1386-1391).
+func (sm *SettingsManager) GetFullscreenWheelScrollLines() WheelScrollLines {
+	raw := sm.Get().FullscreenWheelScrollLines
+	var lines float64
+	if len(raw) == 0 || string(raw) == "null" || json.Unmarshal(raw, &lines) != nil || math.IsNaN(lines) || math.IsInf(lines, 0) {
+		return WheelScrollLines{Auto: true}
+	}
+	return WheelScrollLines{Lines: clampWheelScrollLines(lines)}
+}
+
+// clampWheelScrollLines is Math.max(1, Math.min(100, Math.floor(lines))).
+func clampWheelScrollLines(lines float64) float64 {
+	return math.Max(1, math.Min(100, math.Floor(lines)))
+}
+
+// SetFullscreenWheelScrollLines saves the wheel line setting to global settings: auto, or a count floored and clamped to 1-100.
+// Mirrors upstream setFullscreenWheelScrollLines (settings-manager.ts:1394-1399).
+func (sm *SettingsManager) SetFullscreenWheelScrollLines(lines WheelScrollLines) error {
+	value := []byte(`"auto"`)
+	if !lines.Auto {
+		clamped := clampWheelScrollLines(lines.Lines)
+		if math.IsNaN(clamped) {
+			// JSON.stringify writes NaN as null, which reads back as auto.
+			value = []byte("null")
+		} else {
+			value = strconv.AppendFloat(nil, clamped, 'f', -1, 64)
+		}
+	}
+	return sm.UpdateGlobal(func(s *Settings) { s.FullscreenWheelScrollLines = value })
+}
+
+// GetOrCreateDeviceID returns the stable ID of this installation, e.g. sent to OpenAI as its agent host ID, and creates it on first use.
+// Project settings are ignored so a committed project settings file cannot give every clone the same ID.
+// A global file that does not parse keeps the new ID in memory only, as upstream's save() returns before writing then.
+// Mirrors upstream getOrCreateDeviceId (settings-manager.ts:1172-1179).
+func (sm *SettingsManager) GetOrCreateDeviceID() string {
+	sm.mu.RLock()
+	id := sm.global.DeviceID
+	sm.mu.RUnlock()
+	if id != "" {
+		return id
+	}
+	id = uuid.NewString()
+	setID := func(s *Settings) {
+		if s.DeviceID == "" {
+			s.DeviceID = id
+		}
+	}
+	if err := sm.UpdateGlobal(setID); err != nil {
+		sm.mu.Lock()
+		setID(&sm.global)
+		sm.merged = mergeSettings(sm.global, sm.project)
+		sm.mu.Unlock()
+	}
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+	return sm.global.DeviceID
+}
+
+// GetSettings returns a copy of the effective settings: global and project settings merged, with overrides.
+// Mirrors upstream getSettings (settings-manager.ts:564-566).
+func (sm *SettingsManager) GetSettings() Settings { return sm.Get() }
+
+// ExtensionSettings is GetSettings as the JSON object extensions read: a copy that a change does not reach back into the manager through.
+//
+// upstream: settings-manager.ts:562-564 (getSettings), loader.ts:411-414
+func (sm *SettingsManager) ExtensionSettings() extension.Settings {
+	encoded, err := json.Marshal(sm.Get())
+	if err != nil {
+		return extension.Settings{}
+	}
+	var settings extension.Settings
+	if err := json.Unmarshal(encoded, &settings); err != nil || settings == nil {
+		return extension.Settings{}
+	}
+	return settings
+}
+
 func (sm *SettingsManager) GetMermaidRenderingMode() string {
 	markdown := sm.Get().Markdown
 	if markdown != nil && (markdown.Mermaid == "off" || markdown.Mermaid == "final") {
@@ -1726,6 +1923,8 @@ func (sm *SettingsManager) GetMermaidRenderingMode() string {
 	return "streaming"
 }
 
+// GetEnableSkillCommands returns whether skill commands are shown in autocomplete.
+// Default: true. Mirrors upstream getEnableSkillCommands (settings-manager.ts:1264-1266).
 func (sm *SettingsManager) GetEnableSkillCommands() bool {
 	v := sm.Get().EnableSkillCommands
 	if v == nil {
@@ -1948,8 +2147,8 @@ func (sm *SettingsManager) GetShellPath() (string, error) {
 	return normalizeSettingsPath(sm.Get().ShellPath)
 }
 
-// GetQuietStartup returns whether startup messages should be suppressed.
-func (sm *SettingsManager) GetQuietStartup() bool { return sm.Get().QuietStartup }
+// GetQuietStartup returns the quiet startup setting: true, "header" or false (settings-manager.ts:1089-1092).
+func (sm *SettingsManager) GetQuietStartup() QuietStartup { return sm.Get().QuietStartup }
 
 // GetShellCommandPrefix returns the command prefix (e.g. "set -e; ").
 func (sm *SettingsManager) GetShellCommandPrefix() string { return sm.Get().CommandPrefix }
@@ -2096,7 +2295,25 @@ func (sm *SettingsManager) GetBlockImages() bool { return sm.Get().BlockImages }
 
 // GetDefaultTools returns the configured initial built-in tool selection, or
 // nil. Mirrors upstream SettingsManager.getDefaultTools.
-func (sm *SettingsManager) GetDefaultTools() []string { return slices.Clone(sm.Get().DefaultTools) }
+func (sm *SettingsManager) GetDefaultTools() []string { return sm.Get().GetDefaultTools() }
+
+// ResolvedDefaultTools returns the tools enabled at startup: the `defaultTools` setting, or the built-in defaults when no settings layer sets it.
+// Mirrors upstream `getDefaultTools() ?? DEFAULT_TOOL_NAMES` (agent-session.ts:3593).
+func (sm *SettingsManager) ResolvedDefaultTools() []string {
+	if tools := sm.GetDefaultTools(); tools != nil {
+		return tools
+	}
+	return slices.Clone(defaultToolNames)
+}
+
+// GetDefaultTools returns the resolved `defaultTools` selection, or nil when no settings layer sets it: plain names replace the built-in defaults, then `+name` and `-name` entries apply in order.
+// Mirrors upstream getDefaultTools (settings-manager.ts:1430-1434).
+func (s Settings) GetDefaultTools() []string {
+	if s.DefaultTools == nil {
+		return nil
+	}
+	return resolveDefaultTools(s.DefaultTools)
+}
 
 // GetModelThinkingLevel returns the per-model default thinking level for
 // provider/modelID, or "". Mirrors upstream getModelThinkingLevel.
@@ -2309,8 +2526,8 @@ func (sm *SettingsManager) SetShellPath(path string) error {
 	return sm.UpdateGlobal(func(s *Settings) { s.ShellPath = path })
 }
 
-// SetQuietStartup sets whether startup messages are suppressed.
-func (sm *SettingsManager) SetQuietStartup(quiet bool) error {
+// SetQuietStartup sets the global quiet startup setting.
+func (sm *SettingsManager) SetQuietStartup(quiet QuietStartup) error {
 	return sm.UpdateGlobal(func(s *Settings) {
 		s.QuietStartup = quiet
 		s.quietStartupSet = true
@@ -2431,52 +2648,50 @@ func (sm *SettingsManager) GlobalPath() string {
 	return filepath.Join(sm.agentDir, "settings.json")
 }
 
-// UpdateGlobal applies fn, saves to the selected backing storage, and refreshes the merged view.
+// UpdateGlobal applies fn and refreshes the merged view, then saves to the selected backing storage. Like Pi's setters (settings-manager.ts:668-682), the change stays in effect in memory when the global file had parse errors, which skips the save, or when the save fails.
 func (sm *SettingsManager) UpdateGlobal(fn func(*Settings)) error {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	if sm.globalLoadErr != nil {
-		return fmt.Errorf("global settings file has parse errors: %w", sm.globalLoadErr)
-	}
 	before := cloneSettings(sm.global)
 	fn(&sm.global)
+	sm.merged = mergeSettings(sm.global, sm.project)
 	if sm.memory != nil {
 		sm.memory.global = cloneSettings(sm.global)
-		sm.merged = mergeSettings(sm.global, sm.project)
 		return nil
+	}
+	if sm.globalLoadErr != nil {
+		return fmt.Errorf("global settings file has parse errors: %w", sm.globalLoadErr)
 	}
 	path := filepath.Join(sm.agentDir, "settings.json")
 	if err := saveSettingsPatch(path, before, sm.global); err != nil {
 		sm.errors = append(sm.errors, SettingsError{Scope: "global", Path: path, Error: err})
 		return err
 	}
-	sm.merged = mergeSettings(sm.global, sm.project)
 	return nil
 }
 
-// UpdateProject applies fn to trusted project settings, saves to the selected storage, and refreshes the merged view.
+// UpdateProject applies fn to trusted project settings and refreshes the merged view, then saves to the selected storage. Like Pi's saveProjectSettings (settings-manager.ts:684-698), an untrusted project refuses the change, and otherwise the change stays in effect in memory when the project file had parse errors, which skips the save, or when the save fails.
 func (sm *SettingsManager) UpdateProject(fn func(*Settings)) error {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 	if !sm.projectTrusted {
 		return errors.New("Project is not trusted; refusing to write project settings")
 	}
-	if sm.projectLoadErr != nil {
-		return fmt.Errorf("project settings file has parse errors: %w", sm.projectLoadErr)
-	}
 	before := cloneSettings(sm.project)
 	fn(&sm.project)
+	sm.merged = mergeSettings(sm.global, sm.project)
 	if sm.memory != nil {
 		sm.memory.project = cloneSettings(sm.project)
-		sm.merged = mergeSettings(sm.global, sm.project)
 		return nil
+	}
+	if sm.projectLoadErr != nil {
+		return fmt.Errorf("project settings file has parse errors: %w", sm.projectLoadErr)
 	}
 	path := filepath.Join(ProjectConfigDir(sm.cwd), "settings.json")
 	if err := saveSettingsPatch(path, before, sm.project); err != nil {
 		sm.errors = append(sm.errors, SettingsError{Scope: "project", Path: path, Error: err})
 		return err
 	}
-	sm.merged = mergeSettings(sm.global, sm.project)
 	return nil
 }
 
@@ -2535,14 +2750,11 @@ func loadSettingsFile(path string) (result Settings, err error) {
 	} else if err != nil {
 		return Settings{}, err
 	}
-	release, locked, err := acquireSyncLockWithRetry(path)
+	release, err := acquireSyncLockWithRetry(path)
 	if err != nil {
 		return Settings{}, err
 	}
-	if !locked {
-		return Settings{}, errors.New("failed to acquire settings lock")
-	}
-	defer func() { err = errors.Join(err, release()) }()
+	defer releaseSyncLock(release, &err)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -2591,31 +2803,31 @@ func parseSettingsJSON(data []byte) (Settings, error) {
 	return s, nil
 }
 
+// saveSettingsPatch is FileSettingsStorage.withLock with persistScopedSettings (settings-manager.ts:268-296,643-665): it creates the directory when existsSync does not find it, and returns Node's fs errors and JSON.parse's message for the current file unchanged.
 func saveSettingsPatch(path string, before, after Settings) (err error) {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if dir := filepath.Dir(path); !pathExists(dir) {
+		if err := nodeerrno.MkdirAll(dir, 0o755); err != nil {
+			return err
+		}
+	}
+	release, err := acquireSyncLockWithRetry(path)
+	if err != nil {
 		return err
 	}
-	release, locked, err := acquireSyncLockWithRetry(path)
-	if err != nil {
-		return fmt.Errorf("acquire settings lock: %w", err)
-	}
-	if !locked {
-		return errors.New("failed to acquire settings lock")
-	}
-	defer func() {
-		if unlockErr := release(); unlockErr != nil {
-			err = errors.Join(err, fmt.Errorf("release settings lock: %w", unlockErr))
-		}
-	}()
+	defer releaseSyncLock(release, &err)
 
 	current := map[string]json.RawMessage{}
 	data, readErr := os.ReadFile(path)
 	if readErr == nil {
-		if err := json.Unmarshal(text.StripBomBytes(data), &current); err != nil {
-			return fmt.Errorf("parse current settings: %w", err)
+		data = text.StripBomBytes(data)
+		if _, err := parseSettingsJSON(data); err != nil {
+			return err
+		}
+		if err := json.Unmarshal(data, &current); err != nil {
+			return err
 		}
 	} else if !errors.Is(readErr, os.ErrNotExist) {
-		return readErr
+		return nodeerrno.FromPathError(readErr)
 	}
 	beforeMap, err := settingsJSONMap(before)
 	if err != nil {
@@ -2632,7 +2844,10 @@ func saveSettingsPatch(path string, before, after Settings) (err error) {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, encoded, 0o644)
+	if err := os.WriteFile(path, encoded, 0o644); err != nil {
+		return nodeerrno.FromPathError(err)
+	}
+	return nil
 }
 
 func settingsJSONMap(settings Settings) (map[string]json.RawMessage, error) {
@@ -2756,7 +2971,7 @@ func mergeSettings(global, project Settings) Settings {
 		m.Themes = append([]string{}, project.Themes...)
 	}
 	if project.DefaultTools != nil {
-		m.DefaultTools = slices.Clone(project.DefaultTools)
+		m.DefaultTools = mergeDefaultTools(m.DefaultTools, project.DefaultTools)
 	}
 	if project.ModelThinkingLevels != nil {
 		// Upstream deep-merges nested objects: project keys override global.
@@ -2857,6 +3072,13 @@ func mergeSettings(global, project Settings) Settings {
 	if project.MaskSecretInput != nil {
 		m.MaskSecretInput = cloneBoolPtr(project.MaskSecretInput)
 	}
+	if project.FullscreenWheelScrollLines != nil {
+		m.FullscreenWheelScrollLines = slices.Clone(project.FullscreenWheelScrollLines)
+	}
+	if project.DeviceID != "" {
+		m.DeviceID = project.DeviceID
+	}
+	m.Codemode = mergeCodemodeSettings(m.Codemode, project.Codemode)
 	if project.FullscreenCopyOnSelect != nil {
 		m.FullscreenCopyOnSelect = cloneBoolPtr(project.FullscreenCopyOnSelect)
 	}

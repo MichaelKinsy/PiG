@@ -192,15 +192,13 @@ class DocsTests(unittest.TestCase):
         cases = {
             "agent/testdata/tool-validation-oracle.mjs": "const pi = new URL('../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/', import.meta.url);\n",
             "tui/testdata/color_detection.mjs": 'const root = realpathSync(new URL("../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url));\n',
-            "agent/harness/session/testdata/generate-fork-snapshots.mjs": "import {createForkSnapshot} from '../../../../.upstream/current/packages/agent/src/harness/session/fork.ts';\n",
-            "agent/harness/testdata/telemetry-schema.mjs": "const root = resolve(import.meta.dirname, '../../..');\nwriteFileSync(resolve(root, 'agent/harness/telemetry_schema_data.go'), json);\n",
         }
         for name, source in cases.items():
             self.put(docs.move_path(name), source)
         self.git("add", "--", *[docs.move_path(name) for name in cases])
         docs.apply(self.root)
         for name, source in cases.items():
-            expected = source.replace("../", "../../", 1).replace("'agent/harness/", "'internal/agent/harness/")
+            expected = source.replace("../", "../../", 1)
             self.assertEqual(self.read(docs.move_path(name)), expected)
         before = self.snapshot()
         self.assertEqual(docs.apply(self.root)["rewritten"], [])

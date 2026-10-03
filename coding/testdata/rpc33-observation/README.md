@@ -1,6 +1,6 @@
 # RPC33 exact-Pi fixtures
 
-`probe.mjs` runs the reference implementation. It pins Pi 0.87.1 and OpenAI 6.40.0 before constructing the matrix. `inputs.json` exports the probe's axes and exact HTTP response bodies. `pi.json` retains the complete raw first fresh oracle execution, including clocks. Do not replace it with Go output.
+`probe.mjs` runs the reference implementation. It pins Pi 1.0.0 and OpenAI 7.19.0 before constructing the matrix. `inputs.json` exports the probe's axes and exact HTTP response bodies. `pi.json` retains the complete raw first fresh oracle execution, including clocks. Do not replace it with Go output.
 
 The owning explanation is [`docs/findings/rpc33-observation-matrix.md`](../../../docs/findings/rpc33-observation-matrix.md). The Go differential test is `TestRPC33ObservationMatrix` in `coding/rpc33_observation_matrix_test.go`. Declared durability is three complete executions. No Node process or credentials are needed to replay the checked-in oracle against Go.
 
@@ -44,7 +44,7 @@ Preserve normal toolchain cache variables outside the private HOME if the local 
 
 The retained source probe is `rpc33-probe.mjs` in the `integrate-030-r2` evidence directory recorded in the maintainer handoff. Its original complete runs are `rpc33-pi-final-{1,2,3}.json` in that directory. Fresh evidence resides in the `rpc33-observation-h4` evidence directory.
 
-The checked-in raw oracle SHA-256 is `5ac0c80227e3761855e91e7393cc05ff32657148a9167e8ecda02b47549b0b6a`. It matches `pi-base.json`, produced by the unmodified retained probe. All three retained runs and the parent's independently reproduced matrix compare equal to this raw oracle after numeric assistant/tool-result timestamp canonicalization. Maintained-probe executions and the instrumented full matrix also compare equal.
+The checked-in raw oracle is the first execution of the maintained `probe.mjs` against the real Pi 1.0.0 package (Node 24.19.0), and its SHA-256 is `4d69deb7e8adcec414a138fb4242fe8fddd9cdd83a1584e6cd9c838f8e130420`. Two further executions compare equal to it after numeric assistant/tool-result timestamp canonicalization, and equal the previous Pi 0.99.2 oracle under the same canonicalization.
 
 The exact OpenAI source hashes used for continuation investigation are:
 

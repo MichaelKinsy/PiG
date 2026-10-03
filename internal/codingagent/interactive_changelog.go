@@ -12,7 +12,9 @@ func (m *InteractiveMode) handleChangelogCommand() {
 	body.AddChild(tui.NewMarkdown(changelogMarkdown(ParseChangelog(pig.Changelog))))
 	m.chatContainer.Add(tui.NewSpacer(1))
 	m.chatContainer.Add(tui.NewDynamicBorder(""))
-	m.chatContainer.Add(tui.NewPaddedText("\x1b[1m"+tui.ActiveTheme().FgText("accent", "What's New")+tui.SGRBoldDimReset, 1, 0, nil))
+	m.chatContainer.Add(tui.NewThemedText(func() string {
+		return "\x1b[1m" + tui.ActiveTheme().FgText("accent", "What's New") + tui.SGRBoldDimReset
+	}, 1, 0))
 	m.chatContainer.Add(tui.NewSpacer(1))
 	m.chatContainer.Add(body)
 	m.chatContainer.Add(tui.NewDynamicBorder(""))

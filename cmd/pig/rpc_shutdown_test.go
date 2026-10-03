@@ -21,6 +21,21 @@ import (
 // rpcShutdownSecondExtension in extraEnv also loads rpc-shutdown-second.mjs.
 const rpcShutdownSecondExtension = "RPC_SHUTDOWN_SECOND=1"
 
+// rpcShutdownQuarantinedExtension in extraEnv also loads rpc-shutdown-quarantine.mjs. Under pig its factory crashes the Node process once, so the host quarantines it into a Node process apart from the quit handler's; under Pi the crash marker exists already and every extension shares one process.
+const rpcShutdownQuarantinedExtension = "RPC_SHUTDOWN_QUARANTINE=1"
+
+// quarantineCrashMarker returns the environment entry naming the crash marker of rpc-shutdown-quarantine.mjs. precreate makes the extension skip its crash.
+func quarantineCrashMarker(t *testing.T, precreate bool) string {
+	t.Helper()
+	marker := filepath.Join(t.TempDir(), "crash-marker")
+	if precreate {
+		if err := os.WriteFile(marker, []byte("crashed"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return "RPC_SHUTDOWN_CRASH_MARKER=" + marker
+}
+
 func startRPCShutdownFixture(t *testing.T, extraEnv ...string) (*rpcProcess, string) {
 	t.Helper()
 	fixture, err := filepath.Abs(filepath.Join("testdata", "rpc-shutdown.mjs"))
@@ -37,6 +52,14 @@ func startRPCShutdownFixture(t *testing.T, extraEnv ...string) (*rpcProcess, str
 			t.Fatal(err)
 		}
 		args = append(args, "-e", second)
+	}
+	if slices.Contains(extraEnv, rpcShutdownQuarantinedExtension) {
+		quarantined, err := filepath.Abs(filepath.Join("testdata", "rpc-shutdown-quarantine.mjs"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		args = append(args, "-e", quarantined)
+		env = append(env, quarantineCrashMarker(t, false))
 	}
 	return startRPCProcessAt(t, t.TempDir(), env, args...), report
 }
@@ -55,7 +78,7 @@ func startPiRPCShutdownFixture(t *testing.T, extraEnv ...string) (*rpcProcess, s
 		t.Fatal(err)
 	}
 	var pkg struct{ Version string }
-	if err := json.Unmarshal(metadata, &pkg); err != nil || pkg.Version != "0.87.1" {
+	if err := json.Unmarshal(metadata, &pkg); err != nil || pkg.Version != "1.0.0" {
 		t.Fatalf("Pi version = %q, %v", pkg.Version, err)
 	}
 	node, err := exec.LookPath("node")
@@ -69,6 +92,10 @@ func startPiRPCShutdownFixture(t *testing.T, extraEnv ...string) (*rpcProcess, s
 		"-e", filepath.Join(root, "test", "parity", "testdata", "test-faux-provider.ts"), "-e", filepath.Join(root, "cmd", "pig", "testdata", "rpc-shutdown.mjs")}
 	if slices.Contains(extraEnv, rpcShutdownSecondExtension) {
 		args = append(args, "-e", filepath.Join(root, "cmd", "pig", "testdata", "rpc-shutdown-second.mjs"))
+	}
+	if slices.Contains(extraEnv, rpcShutdownQuarantinedExtension) {
+		args = append(args, "-e", filepath.Join(root, "cmd", "pig", "testdata", "rpc-shutdown-quarantine.mjs"))
+		env = append(env, quarantineCrashMarker(t, true))
 	}
 	return startJSONLProcessAt(t, t.TempDir(), env, node, args...), report
 }
@@ -175,6 +202,11 @@ func endInputMidPrompt(p *rpcProcess, report string) ([]rpcRecord, []string) {
 	afterEOF := drainRPCOutput(p)
 	p.waitForExit("with a prompt in flight")
 	return afterEOF, readRPCShutdownReport(p.t, report)
+}
+
+// handledPromptResponse is the response to a prompt an extension command consumed: rpc-mode.ts:403-407 reports the "handled" disposition.
+func handledPromptResponse(id string) rpcRecord {
+	return rpcRecord{"id": id, "type": "response", "command": "prompt", "success": true, "data": map[string]any{"disposition": "handled"}}
 }
 
 var rpcShutdownStartedNotify = rpcRecord{"type": "extension_ui_request", "method": "notify", "message": "session_shutdown started", "notifyType": "info"}
@@ -311,7 +343,7 @@ func TestRPCInputEndAfterExtensionCommandComparedWithPi(t *testing.T) {
 						want = append(want, rpcRecord{"type": "extension_ui_request", "method": "select", "title": "Ask", "options": []any{"yes"}})
 					}
 					if tc.response {
-						want = append(want, rpcRecord{"id": "c", "type": "response", "command": "prompt", "success": true})
+						want = append(want, handledPromptResponse("c"))
 					}
 					if handler {
 						want = append(want, rpcShutdownStartedNotify)
@@ -353,7 +385,7 @@ func TestRPCInputEndCommandSettlesDuringSlowShutdownHandler(t *testing.T) {
 				p.closeInput()
 				afterEOF := drainRPCOutput(p)
 				p.waitForExit("after the slow shutdown handler")
-				want := []rpcRecord{rpcShutdownStartedNotify, {"id": "c", "type": "response", "command": "prompt", "success": true}}
+				want := []rpcRecord{rpcShutdownStartedNotify, handledPromptResponse("c")}
 				if !reflect.DeepEqual(afterEOF, want) {
 					t.Fatalf("stdout after stdin ended = %v, want %v", afterEOF, want)
 				}
@@ -383,7 +415,7 @@ func TestRPCInputEndJoinsEachExtensionCommand(t *testing.T) {
 			p.closeInput()
 			afterEOF := drainRPCOutput(p)
 			p.waitForExit("after both commands")
-			want := []rpcRecord{{"id": "fast", "type": "response", "command": "prompt", "success": true}}
+			want := []rpcRecord{handledPromptResponse("fast")}
 			if !reflect.DeepEqual(afterEOF, want) {
 				t.Fatalf("stdout after stdin ended = %v, want %v", afterEOF, want)
 			}
@@ -471,7 +503,7 @@ func TestRPCExtensionShutdownRequestExits(t *testing.T) {
 			p.sendJSON(map[string]any{"id": "quit", "type": "prompt", "message": "/quit"})
 			records := drainRPCOutput(p)
 			p.waitForExit("after ctx.shutdown()")
-			response := rpcRecord{"id": "quit", "type": "response", "command": "prompt", "success": true}
+			response := handledPromptResponse("quit")
 			if want := []rpcRecord{rpcShutdownStartedNotify, response}; !reflect.DeepEqual(records, want) {
 				t.Fatalf("stdout = %v, want the prompt response and the session_shutdown notification", records)
 			}

@@ -2,12 +2,14 @@ package codingagent
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -45,6 +47,7 @@ func NewTestHarness(t testing.TB, opts InteractiveOptions, onEvent func(h *TestH
 	m.keybindings = DefaultKeybindingsManager()
 	m.slashRegistry = NewSlashRegistry()
 	m.agent = opts.SessionHandle.Agent()
+	m.installRunPromptTurnRefresh()
 	m.eventCh = opts.SessionHandle.Events()
 	ctx, cancel := context.WithCancel(context.Background())
 	m.runCtx = ctx
@@ -76,6 +79,14 @@ func NewTestHarness(t testing.TB, opts InteractiveOptions, onEvent func(h *TestH
 		<-done
 	})
 	return h
+}
+
+// RebindToReplacement moves the mode onto a replacement Session as the runtime host's rebind callback does after /new or a resume: it applies the replacement build, then rebinds the mode to the Session.
+func (h *TestHarness) RebindToReplacement(ctx context.Context, session InteractiveSessionHandle, replacement InteractiveReplacement) error {
+	h.Do(func() {
+		h.m.opts.ReplacementResources = func(InteractiveSessionHandle) InteractiveReplacement { return replacement }
+	})
+	return h.m.rebindFromRuntime(ctx, session)
 }
 
 // Do runs fn on the owner loop and waits for it.
@@ -173,4 +184,10 @@ func (h *TestHarness) QueuedMessages() (steering, followUp int) {
 		steering, followUp = len(s), len(f)
 	})
 	return steering, followUp
+}
+
+// ToolCard builds the pending card of one tool call, bound to definition as the interactive mode binds a registered definition (ToolExecutionComponent constructed with a definition), and returns its Render.
+func ToolCard(t *testing.T, name, toolCallID string, args json.RawMessage, definition extension.ToolDefinition) func(width int) []string {
+	t.Helper()
+	return toolComponentRaw(t, name, toolCallID, args, &definition).card.Render
 }

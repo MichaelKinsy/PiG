@@ -1,0 +1,83 @@
+# port-99-f6g red run: 15904a765 + stubs, 2026-09-30T00:51:37Z
+# go test ./internal/codingagent/tools -run TestToolsBashPort|TestToolsBashSignalsPort|TestShellTool|TestReadFullOutput|TestSanitizeBinary|TestTruncateMiddle -v
+--- PASS: TestShellToolIgnoresOutputAfterOperationsResolve (0.00s)
+--- PASS: TestShellToolWrapsCommandBeforeSpawn (0.00s)
+--- PASS: TestShellToolTimeoutValidationMirrorsResolveTimeoutMs (0.00s)
+--- PASS: TestShellToolTimeoutAndAbortStatus (0.71s)
+--- PASS: TestShellToolMissingWorkingDirectory (0.00s)
+--- PASS: TestShellToolTempFilePrefix (0.01s)
+--- PASS: TestShellToolPreservesTruncationSnapshot (0.01s)
+--- PASS: TestSanitizeBinaryOutput_PreservesPrintable (0.00s)
+--- PASS: TestSanitizeBinaryOutput_RemovesControlCharacters (0.00s)
+--- PASS: TestSanitizeBinaryOutput_PreservesUTF8 (0.00s)
+--- FAIL: TestShellToolStructuredResultForBothShells (0.00s)
+    --- FAIL: TestShellToolStructuredResultForBothShells/bash (0.00s)
+    --- FAIL: TestShellToolStructuredResultForBothShells/powershell (0.00s)
+--- PASS: TestShellToolThrownFailuresHaveNoStructuredContent (0.00s)
+    --- PASS: TestShellToolThrownFailuresHaveNoStructuredContent/null_exit_code (0.00s)
+    --- PASS: TestShellToolThrownFailuresHaveNoStructuredContent/aborted (0.00s)
+    --- PASS: TestShellToolThrownFailuresHaveNoStructuredContent/timeout (0.00s)
+--- FAIL: TestShellToolNonZeroExitKeepsTruncationDetails (0.00s)
+--- FAIL: TestShellToolWallTimeRoundsToTenthsOfASecond (0.12s)
+--- FAIL: TestShellToolOutputSchema (0.00s)
+    --- FAIL: TestShellToolOutputSchema/powershell (0.00s)
+    --- FAIL: TestShellToolOutputSchema/bash (0.00s)
+--- PASS: TestSanitizeBinaryOutputRemovesExactlyTheUpstreamClass (0.01s)
+--- FAIL: TestReadFullOutput (0.00s)
+    --- FAIL: TestReadFullOutput/keeps_everything_in_memory_when_no_temp_file_exists (0.00s)
+    --- PASS: TestReadFullOutput/empty_output (0.00s)
+    --- FAIL: TestReadFullOutput/returns_a_file_of_at_most_maxBytes_whole (0.00s)
+    --- FAIL: TestReadFullOutput/keeps_the_first_and_last_half_around_the_omission_marker (0.00s)
+    --- FAIL: TestReadFullOutput/cuts_multi-byte_characters_only_at_character_boundaries (0.00s)
+    --- FAIL: TestReadFullOutput/reports_a_missing_temp_file (0.00s)
+--- PASS: TestShellToolSignalExitCode (0.00s)
+--- FAIL: TestToolsBashPort (0.26s)
+    --- PASS: TestToolsBashPort/should_execute_simple_commands (0.00s)
+    --- FAIL: TestToolsBashPort/should_report_non-zero_exit_codes_as_error_results_with_structured_content (0.00s)
+    --- FAIL: TestToolsBashPort/should_return_up_to_1_MiB_of_output_in_structured_content (0.01s)
+    --- PASS: TestToolsBashPort/should_reject_a_null_exit_code_from_custom_operations (0.00s)
+    --- PASS: TestToolsBashPort/should_respect_timeout (0.05s)
+    --- PASS: TestToolsBashPort/should_include_full_output_path_for_truncated_timeout_and_abort_errors (0.03s)
+        --- PASS: TestToolsBashPort/should_include_full_output_path_for_truncated_timeout_and_abort_errors/timeout:5 (0.02s)
+        --- PASS: TestToolsBashPort/should_include_full_output_path_for_truncated_timeout_and_abort_errors/aborted (0.02s)
+    --- PASS: TestToolsBashPort/should_throw_error_when_cwd_does_not_exist (0.00s)
+    --- PASS: TestToolsBashPort/should_handle_process_spawn_errors (0.00s)
+    --- PASS: TestToolsBashPort/should_pass_shellPath_through_to_shell_resolution (0.00s)
+    --- PASS: TestToolsBashPort/should_send_commands_over_stdin_when_shell_resolution_requires_it (0.04s)
+    --- PASS: TestToolsBashPort/should_prepend_command_prefix_when_configured (0.00s)
+    --- PASS: TestToolsBashPort/should_include_output_from_both_prefix_and_command (0.00s)
+    --- PASS: TestToolsBashPort/should_work_without_command_prefix (0.00s)
+    --- PASS: TestToolsBashPort/should_coalesce_streaming_updates_for_chatty_output (0.06s)
+    --- PASS: TestToolsBashPort/should_not_count_a_trailing_newline_as_an_extra_truncated_bash_output_line (0.04s)
+    --- PASS: TestToolsBashPort/should_decode_UTF-8_characters_split_across_output_chunks (0.00s)
+    --- PASS: TestToolsBashPort/should_expose_local_bash_operations_for_extension_reuse (0.00s)
+    --- PASS: TestToolsBashPort/should_preserve_executeBash_sanitization_when_using_local_bash_operations (0.00s)
+    --- PASS: TestToolsBashPort/should_persist_full_output_when_truncation_happens_by_line_count_only (0.00s)
+    --- PASS: TestToolsBashPort/executeBash_should_persist_full_output_when_truncation_happens_by_line_count_only (0.00s)
+--- PASS: TestToolsBashSignalsPort (0.01s)
+    --- PASS: TestToolsBashSignalsPort/should_map_signal-killed_commands_to_128_plus_the_signal_number/KILL (0.00s)
+    --- PASS: TestToolsBashSignalsPort/should_report_signal-killed_commands_as_errors_while_preserving_partial_output/KILL (0.00s)
+    --- PASS: TestToolsBashSignalsPort/should_map_signal-killed_commands_to_128_plus_the_signal_number/TERM (0.00s)
+    --- PASS: TestToolsBashSignalsPort/should_report_signal-killed_commands_as_errors_while_preserving_partial_output/TERM (0.00s)
+--- FAIL: TestTruncateMiddle (0.00s)
+    --- FAIL: TestTruncateMiddle/returns_content_within_the_limit_unchanged (0.00s)
+    --- FAIL: TestTruncateMiddle/keeps_half_of_maxBytes_at_each_end (0.00s)
+    --- FAIL: TestTruncateMiddle/counts_lines_of_the_whole_content (0.00s)
+    --- FAIL: TestTruncateMiddle/does_not_split_a_four-byte_character (0.00s)
+    --- FAIL: TestTruncateMiddle/cuts_multi-byte_text_only_at_character_boundaries (0.00s)
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/internal/codingagent/tools	1.176s
+FAIL
+# go test ./tui -run TestReadHeadersTreatNullRangeAsOmitted -v
+--- PASS: TestReadHeadersTreatNullRangeAsOmitted (0.00s)
+ok  	github.com/MichaelKinsy/PiG/tui	0.035s
+
+# Reading the run
+# Failing (new or changed upstream behavior, all for the missing behavior; stubs return zero values):
+#   TestToolsBashPort/{non-zero exit codes ..., up to 1 MiB ...}   tools.test.ts:493, :513 (v0.99.1)
+#   TestShellTool{StructuredResultForBothShells,NonZeroExitKeepsTruncationDetails,WallTimeRoundsToTenthsOfASecond,OutputSchema}
+#   TestReadFullOutput/*                                            output-accumulator.ts:151 (readFullOutput)
+#   TestTruncateMiddle/*                                            truncate.ts:278 (truncateMiddle), mcp-extension.test.ts:289
+# Passing in red (Go already faithful): TestToolsBashSignalsPort (tools.test.ts:554, isError already returned),
+#   TestShellToolThrownFailuresHaveNoStructuredContent, TestSanitizeBinaryOutputRemovesExactlyTheUpstreamClass,
+#   TestReadHeadersTreatNullRangeAsOmitted (tui, JSON null decodes to a nil pointer).

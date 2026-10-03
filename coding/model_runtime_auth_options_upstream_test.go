@@ -220,7 +220,7 @@ func TestCreateModelRuntimeInjectedSubscriptionOAuthUpstream(t *testing.T) {
 // model-runtime-auth-options.test.ts:159 "constructs an API key method for an extension API-key provider".
 func TestExtensionAPIKeyProviderGetsAPIKeyMethodUpstream(t *testing.T) {
 	services := newRuntimeTestServices(t)
-	registerRefreshSignalProvider(t, services, "extension-api-key", ProviderConfigInput{Name: "Extension API Key", BaseURL: "https://example.test/v1", APIKey: "$EXTENSION_TEST_API_KEY", API: ai.APIOpenAICompletions, Models: []*ai.Model{authOptionsTestModel("extension-model")}})
+	registerRefreshSignalProvider(t, services, "extension-api-key", ProviderConfigInput{Name: "Extension API Key", BaseURL: "https://example.test/v1", APIKey: "$EXTENSION_TEST_API_KEY", API: ai.APIOpenAICompletions, Models: []ai.AnyModel{authOptionsTestModel("extension-model")}})
 	provider := services.Registry().NativeModels().GetProvider("extension-api-key")
 	if provider == nil || provider.Name != "Extension API Key" {
 		t.Fatalf("provider = %+v", provider)
@@ -233,7 +233,7 @@ func TestExtensionAPIKeyProviderGetsAPIKeyMethodUpstream(t *testing.T) {
 // model-runtime-auth-options.test.ts:179 "resolves configured auth from request-scoped environment overrides".
 func TestExtensionAuthResolvesRequestScopedEnvironmentUpstream(t *testing.T) {
 	services := newRuntimeTestServices(t)
-	registerRefreshSignalProvider(t, services, "request-env-provider", ProviderConfigInput{BaseURL: "https://example.test/v1", APIKey: "$REQUEST_SCOPED_API_KEY", Headers: map[string]string{"x-request-value": "$REQUEST_SCOPED_HEADER"}, API: ai.APIOpenAICompletions, Models: []*ai.Model{authOptionsTestModel("request-env-model")}})
+	registerRefreshSignalProvider(t, services, "request-env-provider", ProviderConfigInput{BaseURL: "https://example.test/v1", APIKey: "$REQUEST_SCOPED_API_KEY", Headers: map[string]string{"x-request-value": "$REQUEST_SCOPED_HEADER"}, API: ai.APIOpenAICompletions, Models: []ai.AnyModel{authOptionsTestModel("request-env-model")}})
 	result, err := services.Registry().NativeModels().GetAuth(t.Context(), "request-env-provider", ai.AuthResolutionOverrides{Env: map[string]string{"REQUEST_SCOPED_API_KEY": "request-key", "REQUEST_SCOPED_HEADER": "request-header"}})
 	if err != nil || result == nil {
 		t.Fatalf("GetAuth = %+v, %v", result, err)
@@ -254,7 +254,7 @@ func TestExplicitAuthorizationHeaderOverridesAuthHeaderUpstream(t *testing.T) {
 			captured = options
 			return nil, errors.New("captured")
 		},
-		Models: []*ai.Model{authOptionsTestModel("auth-header-model")},
+		Models: []ai.AnyModel{authOptionsTestModel("auth-header-model")},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -279,7 +279,7 @@ func TestExtensionHeadersAreTransformedOnceUpstream(t *testing.T) {
 			captured = options
 			return nil, errors.New("captured")
 		},
-		Models: []*ai.Model{func() *ai.Model {
+		Models: []ai.AnyModel{func() *ai.Model {
 			model := authOptionsTestModel("header-model")
 			model.ProviderMeta.Headers = map[string]string{"x-model": "model"}
 			return model
@@ -334,7 +334,7 @@ func formatProviderHeaders(headers ai.ProviderHeaders) string {
 // model-runtime-auth-options.test.ts:302 "does not fabricate an API key method for an extension OAuth-only provider".
 func TestExtensionOAuthOnlyProviderHasNoAPIKeyMethodUpstream(t *testing.T) {
 	services := newRuntimeTestServices(t)
-	registerRefreshSignalProvider(t, services, "extension-oauth", ProviderConfigInput{Name: "Extension OAuth", BaseURL: "https://example.test/v1", API: ai.APIOpenAICompletions, Models: []*ai.Model{authOptionsTestModel("extension-model")}, OAuth: &ExtensionOAuthConfig{
+	registerRefreshSignalProvider(t, services, "extension-oauth", ProviderConfigInput{Name: "Extension OAuth", BaseURL: "https://example.test/v1", API: ai.APIOpenAICompletions, Models: []ai.AnyModel{authOptionsTestModel("extension-model")}, OAuth: &ExtensionOAuthConfig{
 		Name: "Extension subscription", IsSubscription: true,
 		Login: func(context.Context, ai.OAuthLoginCallbacks) (ai.Credential, error) {
 			return ai.Credential{Type: ai.CredentialOAuth, Access: "access", Refresh: "refresh", Expires: time.Now().Add(time.Minute).UnixMilli()}, nil

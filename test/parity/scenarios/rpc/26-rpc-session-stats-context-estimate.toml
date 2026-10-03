@@ -73,6 +73,10 @@ paths = ["/**/timestamp"]
 kind = "timestamp"
 reason = "Message wall clocks vary per process; retain field presence and type."
 [[assert.json_aliases]]
+paths = ["/**/wall_time_seconds"]
+kind = "duration"
+reason = "bash.ts:392 measures the command's wall clock and rounds it to 0.1 s, so a loaded host reports 0 or 0.1 for the same command; retain the field's presence, its position and Pi's one-decimal number spelling."
+[[assert.json_aliases]]
 paths = ["/*/data/sessionId"]
 kind = "id"
 group = "session"

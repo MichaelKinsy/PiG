@@ -17,19 +17,26 @@ func TestDiscoverAsyncSources(t *testing.T) {
 	writeAsyncTestFile(t, root, "packages/agent/src/promise.ts", "type Loader = () => Promise<void>;")
 	writeAsyncTestFile(t, root, "packages/tui/src/sync.ts", "export function render() {}")
 	writeAsyncTestFile(t, root, "packages/coding-agent/src/ignored.test.ts", "async function test() {}")
+	writeAsyncTestFile(t, root, "packages/codemode/src/runtime/host.ts", "export async function run() {}")
+	writeAsyncTestFile(t, root, "packages/mcp/src/transports/streamable-http.ts", "const fetchOnce = (): Promise<void> => Promise.resolve();")
 
 	got, err := discoverAsyncSources(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"packages/agent/src/promise.ts", "packages/ai/src/awaited.ts"}
+	want := []string{
+		"packages/agent/src/promise.ts",
+		"packages/ai/src/awaited.ts",
+		"packages/codemode/src/runtime/host.ts",
+		"packages/mcp/src/transports/streamable-http.ts",
+	}
 	if !slices.Equal(got, want) {
 		t.Fatalf("discoverAsyncSources() = %v, want %v", got, want)
 	}
 }
 
 func TestDiscoverAsyncSourcesRejectsMisleadingMirror(t *testing.T) {
-	for _, pkg := range []string{"agent", "ai", "coding-agent", "tui"} {
+	for _, pkg := range []string{"agent", "ai", "coding-agent", "tui", "codemode", "mcp"} {
 		t.Run(pkg, func(t *testing.T) {
 			for _, test := range []struct {
 				name  string
@@ -37,7 +44,7 @@ func TestDiscoverAsyncSourcesRejectsMisleadingMirror(t *testing.T) {
 				value any
 			}{
 				{name: "wrong-name", field: "name", value: "@example/not-pi"},
-				{name: "other-tracked-name", field: "name", value: "@earendil-works/pi-" + map[string]string{"agent": "ai", "ai": "tui", "coding-agent": "agent-core", "tui": "coding-agent"}[pkg]},
+				{name: "other-tracked-name", field: "name", value: "@earendil-works/pi-" + map[string]string{"agent": "ai", "ai": "tui", "coding-agent": "agent-core", "tui": "coding-agent", "codemode": "mcp", "mcp": "codemode"}[pkg]},
 				{name: "missing-name", field: "name"},
 				{name: "version-prefix", field: "version", value: "v" + coding.UpstreamVersion},
 				{name: "version-range", field: "version", value: "^" + coding.UpstreamVersion},
@@ -81,6 +88,8 @@ func asyncSourceFixture(t *testing.T) string {
 		"ai":           "@earendil-works/pi-ai",
 		"coding-agent": "@earendil-works/pi-coding-agent",
 		"tui":          "@earendil-works/pi-tui",
+		"codemode":     "@earendil-works/pi-codemode",
+		"mcp":          "@earendil-works/pi-mcp",
 	} {
 		body, err := json.Marshal(map[string]string{"name": name, "version": coding.UpstreamVersion})
 		if err != nil {

@@ -15,10 +15,9 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
-	"github.com/MichaelKinsy/PiG/agent/harness/agentharness"
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
-	"github.com/MichaelKinsy/PiG/agent/harness/session"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/harness"
 	"github.com/MichaelKinsy/PiG/internal/chord"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/experimental/services"
@@ -29,11 +28,11 @@ type clientTuiDirectoryFixture struct {
 	state *chord.MutableReplicatedState[*services.SessionDirectoryState]
 }
 
-func (fixture clientTuiDirectoryFixture) State() pico3.ReplicatedStateOf[*services.SessionDirectoryState] {
+func (fixture clientTuiDirectoryFixture) State() chord.ReplicatedStateOf[*services.SessionDirectoryState] {
 	return fixture.state
 }
 
-// upstream: packages/coding-agent/src/experimental/client-tui-chat.ts:81-139
+// upstream: packages/coding-agent/src/experimental/client-tui-chat.ts:45-77,153-180. The streaming answer's component becomes its entry's; a changed entry prefix, or a partial that vanished, rebuilds the transcript.
 func TestClientChatViewReusesStreamingComponentAndRebasesDivergentPrefix(t *testing.T) {
 	observation := newClientTuiObservation(t)
 	view := NewExperimentalChatView(t.Context(), t.TempDir(), observation.RequestRender, observation.Executor.RunOnMain)
@@ -42,41 +41,51 @@ func TestClientChatViewReusesStreamingComponentAndRebasesDivergentPrefix(t *test
 			t.Error(err)
 		}
 	})
-	user := session.Entry{ID: "user", Type: session.EntryTypeMessage, Message: agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "before"}}}}}
-	assistant := &agent.AssistantMessage{Role: agent.RoleAssistant, Content: []ai.AssistantContentBlock{ai.TextContent{Text: "partial"}}}
-	snapshot := &agentharness.LaneSnapshot{Transcript: []session.Entry{user}, Operation: &agentharness.LaneSnapshotOperation{ID: "run", StreamingMessage: assistant}}
+	assistant := ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.TextContent{Text: "partial"}}}
+	streamingView := conversationView([]durable.EntryRecord{userEntry(1, "before")}, &harness.LiveState{Run: &harness.LiveRun{TaskId: 1}, Generation: generationOf(assistant)}, nil)
 	var streaming *tui.AssistantMessageBlock
 	var beforeChildren int
 	if err := observation.Executor.RunOnMain(t.Context(), func() {
-		if err := view.Apply(snapshot); err != nil {
+		if err := view.Apply(streamingView); err != nil {
 			t.Error(err)
 		}
 		streaming = view.streaming
 		beforeChildren = view.Transcript.ChildCount()
-		if err := view.Apply(snapshot); err != nil {
+		if err := view.Apply(streamingView); err != nil {
 			t.Error(err)
 		}
 		if view.streaming != streaming || view.Transcript.ChildCount() != beforeChildren {
-			t.Error("unchanged snapshot replayed transcript components")
+			t.Error("unchanged view replayed transcript components")
 		}
-		assistant.Content = []ai.AssistantContentBlock{ai.TextContent{Text: "settled"}}
-		snapshot.Transcript = append(snapshot.Transcript, session.Entry{ID: "assistant", Type: session.EntryTypeMessage, Message: agent.AgentMessage{Assistant: assistant}})
-		snapshot.Operation = nil
-		if err := view.Apply(snapshot); err != nil {
+		settled := ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.TextContent{Text: "settled"}}, StopReason: ai.StopReasonStop}
+		if err := view.Apply(conversationView([]durable.EntryRecord{userEntry(1, "before"), assistantEntry(2, settled)}, nil, nil)); err != nil {
 			t.Error(err)
 		}
 		if view.streaming != nil || view.Transcript.ChildCount() != beforeChildren || streaming.Text() != "settled" {
 			t.Error("settled assistant did not reuse the streaming component")
 		}
-		if !reflect.DeepEqual(view.renderedEntryIds, []string{"user", "assistant"}) {
+		if !reflect.DeepEqual(view.renderedEntryIds, []durable.EntryId{1, 2}) {
 			t.Errorf("rendered IDs = %#v", view.renderedEntryIds)
 		}
-		snapshot.Transcript = []session.Entry{{ID: "branch", Type: session.EntryTypeCustom, CustomType: "replacement"}}
-		if err := view.Apply(snapshot); err != nil {
+		if err := view.Apply(conversationView([]durable.EntryRecord{resetEntry(7)}, nil, nil)); err != nil {
 			t.Error(err)
 		}
-		if !reflect.DeepEqual(view.renderedEntryIds, []string{"branch"}) {
+		if !reflect.DeepEqual(view.renderedEntryIds, []durable.EntryId{7}) {
 			t.Errorf("rebase IDs = %#v", view.renderedEntryIds)
+		}
+		// A partial dropped without its entry, for example by a retry, renders the transcript again.
+		if err := view.Apply(conversationView([]durable.EntryRecord{userEntry(8, "retry")}, &harness.LiveState{Run: &harness.LiveRun{TaskId: 1}, Generation: generationOf(assistant)}, nil)); err != nil {
+			t.Error(err)
+		}
+		if view.streaming == nil {
+			t.Error("a new partial did not create a streaming component")
+		}
+		before := view.streaming
+		if err := view.Apply(conversationView([]durable.EntryRecord{userEntry(8, "retry")}, &harness.LiveState{Run: &harness.LiveRun{TaskId: 1}}, nil)); err != nil {
+			t.Error(err)
+		}
+		if view.streaming != nil || view.Transcript.ChildCount() != 2 || before == view.streaming {
+			t.Errorf("a dropped partial stayed rendered: children = %d", view.Transcript.ChildCount())
 		}
 	}); err != nil {
 		t.Fatal(err)
@@ -293,7 +302,8 @@ func TestClientTuiAdmitsPromptBeforeAbortWithoutOwningBackgroundCompletion(t *te
 	if err := observation.Executor.RunOnMain(t.Context(), func() {
 		component.initialize()
 		component.runPrompt("prompt")
-		component.snapshot = &agentharness.LaneSnapshot{Operation: &agentharness.LaneSnapshotOperation{ID: "run"}}
+		view := conversationView(nil, &harness.LiveState{Run: &harness.LiveRun{TaskId: 1}}, nil)
+		component.conversation = &view
 		component.interrupt()
 	}); err != nil {
 		t.Fatal(err)
@@ -346,7 +356,7 @@ func (probe *clientTuiInitiationProbe) BeginPrompt(ctx context.Context, _ servic
 		}
 	}), nil
 }
-func (probe *clientTuiInitiationProbe) BeginRequestAbort(ctx context.Context, _ string) (*chord.ServiceInvocation, error) {
+func (probe *clientTuiInitiationProbe) BeginAbort(ctx context.Context) (*chord.ServiceInvocation, error) {
 	*probe.contexts = append(*probe.contexts, ctx)
 	probe.entered <- "abort"
 	return chord.NewServiceInvocation(func(context.Context) (json.RawMessage, error) { return nil, nil }), nil
@@ -446,7 +456,7 @@ func TestClientTuiPublishedTurnPrecedesRecoveryDetachment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	remove, err := connection.Subscribe(func(state *services.ServerConnectionState, _ context.Context, _ pico3.ReplicatedStateDelivery) {
+	remove, err := connection.Subscribe(func(state *services.ServerConnectionState, _ context.Context, _ chord.ReplicatedStateDelivery) {
 		if err := observation.Executor.RunOnMain(t.Context(), func() { component.handleConnectionState("server", *state) }); err != nil {
 			t.Error(err)
 		}
@@ -485,22 +495,22 @@ type clientTuiStagedTranscript struct {
 	state *clientTuiStagedTranscriptState
 }
 
-func (transcript clientTuiStagedTranscript) State() pico3.ReplicatedStateOf[*services.TranscriptState] {
+func (transcript clientTuiStagedTranscript) State() chord.ReplicatedStateOf[services.ConversationView] {
 	return transcript.state
 }
 
 type clientTuiStagedTranscriptState struct {
-	state   *chord.MutableReplicatedState[*services.TranscriptState]
+	state   *chord.MutableReplicatedState[services.ConversationView]
 	entered chan struct{}
 	release chan struct{}
 	removed atomic.Bool
 }
 
-func (state *clientTuiStagedTranscriptState) Value() *services.TranscriptState {
+func (state *clientTuiStagedTranscriptState) Value() services.ConversationView {
 	return state.state.Value()
 }
 
-func (state *clientTuiStagedTranscriptState) Subscribe(listener func(*services.TranscriptState, context.Context, pico3.ReplicatedStateDelivery)) (func(), error) {
+func (state *clientTuiStagedTranscriptState) Subscribe(listener func(services.ConversationView, context.Context, chord.ReplicatedStateDelivery)) (func(), error) {
 	remove, err := state.state.Subscribe(listener)
 	if err != nil {
 		return nil, err
@@ -515,7 +525,7 @@ func TestClientTuiStagedLaneCommitFencesAndUpdates(t *testing.T) {
 	for _, mode := range []string{"update", "replacement", "close", "initialization error", "reconnect turn"} {
 		t.Run(mode, func(t *testing.T) {
 			observation := newClientTuiObservation(t)
-			state, err := chord.NewReplicatedState(&services.TranscriptState{Snapshot: &agentharness.LaneSnapshot{Transcript: []session.Entry{{ID: "initial", Type: session.EntryTypeCustom, CustomType: "initial"}}}})
+			state, err := chord.NewReplicatedState(conversationView([]durable.EntryRecord{userEntry(1, "initial")}, nil, nil))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -555,7 +565,7 @@ func TestClientTuiStagedLaneCommitFencesAndUpdates(t *testing.T) {
 			var closeError error
 			switch mode {
 			case "update":
-				if err := state.Replace(context.Background(), &services.TranscriptState{Snapshot: &agentharness.LaneSnapshot{Transcript: []session.Entry{{ID: "initial", Type: session.EntryTypeCustom, CustomType: "initial"}, {ID: "arrived", Type: session.EntryTypeCustom, CustomType: "arrived"}}}}); err != nil {
+				if err := state.Replace(context.Background(), conversationView([]durable.EntryRecord{userEntry(1, "initial"), userEntry(2, "arrived")}, nil, nil)); err != nil {
 					t.Fatal(err)
 				}
 			case "replacement":
@@ -570,7 +580,7 @@ func TestClientTuiStagedLaneCommitFencesAndUpdates(t *testing.T) {
 				t.Cleanup(func() { release(); <-closed })
 				<-lifetime.Done()
 			case "initialization error":
-				if err := state.Replace(context.Background(), &services.TranscriptState{Snapshot: nil}); err != nil {
+				if err := state.Replace(context.Background(), services.ConversationView{Docs: map[string]durable.JsonObject{services.LiveDocKind: {"run": "not a run"}}}); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -588,9 +598,9 @@ func TestClientTuiStagedLaneCommitFencesAndUpdates(t *testing.T) {
 						t.Error("updated staged lane did not become ready")
 						return
 					}
-					want := []string{"initial"}
+					want := []durable.EntryId{1}
 					if mode == "update" {
-						want = append(want, "arrived")
+						want = append(want, 2)
 					}
 					if ids := component.chatView.renderedEntryIds; !reflect.DeepEqual(ids, want) {
 						t.Errorf("staged update order = %#v", ids)
@@ -739,7 +749,7 @@ func TestClientTuiLoopbackSourcesRetainBindingsAcrossScopes(t *testing.T) {
 		t.Fatalf("scope disposed shared namespace: revision = %d, want 8", got)
 	}
 	var attachmentStates []services.SessionAttachmentState
-	remove, err := server.Session.Attachment().Subscribe(func(state *services.SessionAttachmentState, _ context.Context, _ pico3.ReplicatedStateDelivery) {
+	remove, err := server.Session.Attachment().Subscribe(func(state *services.SessionAttachmentState, _ context.Context, _ chord.ReplicatedStateDelivery) {
 		attachmentStates = append(attachmentStates, *state)
 	})
 	if err != nil {
@@ -829,7 +839,7 @@ func TestClientTuiCloseDoesNotJoinBlockedNoAdmissionCalls(t *testing.T) {
 	}
 }
 
-// blockedAdmissionController blocks BeginPrompt/BeginRequestAbort before admission until released.
+// blockedAdmissionController blocks BeginPrompt/BeginAbort before admission until released.
 type blockedAdmissionController struct {
 	services.AgentController
 	services.AgentControllerInitiator
@@ -855,7 +865,7 @@ func (probe *blockedAdmissionController) BeginPrompt(context.Context, services.A
 	}), nil
 }
 
-func (probe *blockedAdmissionController) BeginRequestAbort(context.Context, string) (*chord.ServiceInvocation, error) {
+func (probe *blockedAdmissionController) BeginAbort(context.Context) (*chord.ServiceInvocation, error) {
 	probe.enter("abort")
 	return chord.NewServiceInvocation(func(context.Context) (json.RawMessage, error) { return nil, nil }), nil
 }
@@ -875,7 +885,8 @@ func TestClientTuiCloseDoesNotJoinBlockedAdmissionOrAdmitQueuedOneAfterClose(t *
 	if err := observation.Executor.RunOnMain(t.Context(), func() {
 		component.initialize()
 		component.runPrompt("prompt")
-		component.snapshot = &agentharness.LaneSnapshot{Operation: &agentharness.LaneSnapshotOperation{ID: "run"}}
+		view := conversationView(nil, &harness.LiveState{Run: &harness.LiveRun{TaskId: 1}}, nil)
+		component.conversation = &view
 		component.interrupt()
 	}); err != nil {
 		t.Fatal(err)
@@ -919,7 +930,8 @@ func TestClientTuiCloseIssuesStartedAdmissionsBeforeDisposingFacets(t *testing.T
 	if err := observation.Executor.RunOnMain(t.Context(), func() {
 		component.initialize()
 		component.runPrompt("prompt")
-		component.snapshot = &agentharness.LaneSnapshot{Operation: &agentharness.LaneSnapshotOperation{ID: "run"}}
+		view := conversationView(nil, &harness.LiveState{Run: &harness.LiveRun{TaskId: 1}}, nil)
+		component.conversation = &view
 		component.interrupt()
 	}); err != nil {
 		t.Fatal(err)

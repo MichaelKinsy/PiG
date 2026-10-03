@@ -9,7 +9,7 @@ node agent/testdata/tool-validation-oracle.mjs > agent/testdata/tool-validation.
 go test ./agent -run 'TestValidateToolArguments|TestToolArgumentValidationPiOracle'
 ```
 
-The generator checks Pi 0.87.1 and TypeBox 1.3.27 before it runs. It calls Pi's `validateToolArguments`, not a duplicate validator. The fixture records schemas, model inputs, returned arguments, and complete error messages. Non-enumerable TypeBox kinds remain separate from provider schemas. TypeBox's own evaluator lowers intersections, enums, and template literals for the conversion representation.
+The generator checks Pi 0.99.1 and TypeBox 1.3.27 before it runs. It calls Pi's `validateToolArguments`, not a duplicate validator. The fixture records schemas, model inputs, returned arguments, and complete error messages. Non-enumerable TypeBox kinds remain separate from provider schemas. TypeBox's own evaluator lowers intersections, enums, and template literals for the conversion representation.
 
 The matrix covers `read`, `bash`, `edit`, `write`, `grep`, `find`, and `ls`, plus the opt-in `powershell` tool's schema. It also compares native TypeBox and serialized plain JSON schemas for numbers, integers, booleans, strings, nulls, arrays, tuples, unions, literals, enums, intersections, additional properties, records, defaults, constraints, and nested objects. Boundary probes cover numeric whitespace, radix strings, bigint-like strings, root unions, references, and the legacy `TypeBox.Kind` symbol gate. `TestBuiltinArgumentSchemasMatchPi` binds the built-in portion of the oracle to the production tool schemas.
 
@@ -17,7 +17,7 @@ The matrix covers `read`, `bash`, `edit`, `write`, `grep`, `find`, and `ls`, plu
 
 ## Upstream contract
 
-| Rule | Pi 0.87.1 source |
+| Rule | Pi 0.99.1 source |
 |---|---|
 | Clone the input; remove optional nulls only when the property's schema rejects null; do not delete referenced optional nulls | `packages/ai/src/utils/validation.ts:240-269,318-319` |
 | Run TypeBox conversion; ignore replacement of the root value but retain interior mutations | `packages/ai/src/utils/validation.ts:320` and TypeBox 1.3.27 `build/value/convert/convert.mjs` |
@@ -25,7 +25,7 @@ The matrix covers `read`, `bash`, `edit`, `write`, `grep`, `find`, and `ls`, plu
 | Preserve already-matching union arms; otherwise test converted clones in arm order | `packages/ai/src/utils/validation.ts:175-192` and TypeBox `build/value/convert/from_union.mjs` |
 | Do not insert defaults | `packages/ai/src/utils/validation.ts:318-338` calls normalization, Convert, and Check; it does not call Default |
 | Report dotted paths and the original received arguments | `packages/ai/src/utils/validation.ts:282-292,340-349` |
-| Give before-tool hooks and execution the returned arguments | `packages/agent/src/agent-loop.ts:721-727,762` |
+| Give before-tool hooks and execution the returned arguments | `packages/agent/src/agent-loop.ts:726-732,767` |
 | Keep pico3 validation strict, without conversion | `packages/agent/src/harness/pico3/kinds/tool.ts:68-70` |
 
 TypeBox's native conversion is not the plain-schema fallback. For example, native integer conversion truncates a fraction, native array conversion wraps a scalar, and native string conversion maps null to `"null"`. Plain-schema integer conversion rejects fractions, plain arrays do not wrap scalars, and plain string conversion maps null to an empty string. Optional non-nullable nulls disappear before either pass. These distinctions are observed by the oracle rather than inferred from JSON Schema syntax.

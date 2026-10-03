@@ -79,7 +79,7 @@ func modelsRuntimeEnvKey(key string) *APIKeyAuth {
 }
 
 func modelsRuntimeOAuth() *OAuthAuth {
-	return &OAuthAuth{Name: "Test OAuth", Login: func(context.Context, AuthInteraction) (Credential, error) {
+	return &OAuthAuth{Name: "Test OAuth", Login: func(context.Context, AuthInteraction, LoginOptions) (Credential, error) {
 		return Credential{}, errors.New("not used")
 	}, Refresh: func(_ context.Context, c Credential) (Credential, error) { return c, nil }, ToAuth: func(c Credential) (ModelAuth, error) { return ModelAuth{APIKey: c.Access}, nil }}
 }

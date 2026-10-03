@@ -23,7 +23,6 @@ type workerDemand struct {
 	timer      *time.Timer
 	generation uint64
 }
-type workerOperationKey struct{ kind, lane, operationID string }
 
 // WorkerLifecycle reconciles generation-scoped attachment demand with Harness activity. OnRetire runs inside the critical section that commits retirement, as upstream's synchronous #reconcile does, so it must be brief and must not call back into the lifecycle.
 type WorkerLifecycle struct {
@@ -32,7 +31,7 @@ type WorkerLifecycle struct {
 	orphanDemandGrace         time.Duration
 	onRetire                  func()
 	demands                   map[workerDemandKey]*workerDemand
-	activeOperations          map[workerOperationKey]struct{}
+	harnessActive             bool
 	initialTimer              *time.Timer
 	demandInitialized         bool
 	retirementHolds           int
@@ -48,7 +47,7 @@ func workerTimerDelay(milliseconds int) time.Duration {
 }
 
 func NewWorkerLifecycle(options WorkerLifecycleOptions) *WorkerLifecycle {
-	l := &WorkerLifecycle{currentServerConnectionID: options.InitialServerConnectionID, orphanDemandGrace: workerTimerDelay(options.OrphanDemandGraceMs), onRetire: options.OnRetire, demands: make(map[workerDemandKey]*workerDemand), activeOperations: make(map[workerOperationKey]struct{})}
+	l := &WorkerLifecycle{currentServerConnectionID: options.InitialServerConnectionID, orphanDemandGrace: workerTimerDelay(options.OrphanDemandGraceMs), onRetire: options.OnRetire, demands: make(map[workerDemandKey]*workerDemand)}
 	l.mu.Lock()
 	l.initialTimer = time.AfterFunc(workerTimerDelay(options.InitialDemandGraceMs), func() {
 		l.mu.Lock()
@@ -162,15 +161,14 @@ func (l *WorkerLifecycle) SetDemand(serverConnectionID, attachmentID string, att
 	return nil
 }
 
-func (l *WorkerLifecycle) OperationStarted(kind, lane, operationID string) {
+// SetHarnessActive records whether live Harness work, such as a run or a compaction, holds the worker. Only an inactive update reconciles, so repeated active updates never retire the worker.
+func (l *WorkerLifecycle) SetHarnessActive(active bool) {
 	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.activeOperations[workerOperationKey{kind, lane, operationID}] = struct{}{}
-}
-
-func (l *WorkerLifecycle) OperationStopped(kind, lane, operationID string) {
-	l.mu.Lock()
-	delete(l.activeOperations, workerOperationKey{kind, lane, operationID})
+	l.harnessActive = active
+	if active {
+		l.mu.Unlock()
+		return
+	}
 	l.reconcileUnlock()
 }
 
@@ -190,7 +188,7 @@ func (l *WorkerLifecycle) Close() {
 }
 
 func (l *WorkerLifecycle) reconcileUnlock() {
-	ready := !l.retiring && l.demandInitialized && l.retirementHolds == 0 && len(l.activeOperations) == 0 && len(l.demands) == 0
+	ready := !l.retiring && l.demandInitialized && l.retirementHolds == 0 && !l.harnessActive && len(l.demands) == 0
 	if ready {
 		l.retiring = true
 		// upstream: packages/coding-agent/src/experimental/session-worker.ts:#reconcile sets #retiring and calls #onRetire synchronously, so no operation can start between the commit and the callback.

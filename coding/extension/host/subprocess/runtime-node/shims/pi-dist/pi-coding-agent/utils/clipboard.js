@@ -73,6 +73,11 @@ export async function readClipboardText() {
         return null;
     }
 }
+/** Read file paths, such as Finder file copies, from the native clipboard. */
+export async function readClipboardFilePaths() {
+    const paths = await getNativeClipboard()?.getFilePaths?.();
+    return paths?.length ? paths : null;
+}
 export async function copyToClipboard(text) {
     const p = platform();
     const env = process.env;

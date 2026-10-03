@@ -5,6 +5,8 @@ import (
 	"os"
 	osexec "os/exec"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -33,16 +35,22 @@ func requireExtensionTool(t *testing.T, name string) string {
 // sdk.Context.Exec), not only the Node runtime.
 func buildExecSDKFixture(t *testing.T) string {
 	t.Helper()
-	binPath := testExecutable(filepath.Join(t.TempDir(), "exec-sdk-fixture"))
-	srcDir := filepath.Join("testdata", "exec-sdk-fixture")
+	return buildGoSDKFixture(t, "exec-sdk-fixture")
+}
+
+// buildGoSDKFixture compiles testdata/<name>, a Go SDK extension. The build is CGO-free, so it drops -race from an inherited GOFLAGS, which the run that builds a race-enabled pig sets.
+func buildGoSDKFixture(t *testing.T, name string) string {
+	t.Helper()
+	binPath := testExecutable(filepath.Join(t.TempDir(), name))
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 	cmd := osexec.CommandContext(ctx, "go", "build", "-o", binPath, ".")
-	cmd.Dir = srcDir
-	cmd.Env = append(os.Environ(), "CGO_ENABLED=0", "GOWORK=off")
+	cmd.Dir = filepath.Join("testdata", name)
+	flags := slices.DeleteFunc(strings.Fields(os.Getenv("GOFLAGS")), func(flag string) bool { return flag == "-race" })
+	cmd.Env = append(os.Environ(), "CGO_ENABLED=0", "GOWORK=off", "GOFLAGS="+strings.Join(flags, " "))
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("build exec-sdk-fixture: %v\n%s", err, out)
+		t.Fatalf("build %s: %v\n%s", name, err, out)
 	}
 	return binPath
 }

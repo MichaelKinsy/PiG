@@ -18,9 +18,8 @@ type PreparedPrompt struct {
 	content      []ai.UserContentBlock
 	messages     []extension.CustomMessageRef
 	systemPrompt *string
-	sections     ai.OrderedSections
-	// selectedTools is an explicit before_agent_start loadout edit; nil keeps the live active tools.
-	selectedTools []string
+	// run is the run's resolved before_agent_start result. Its options build the run's prompt (agent-session.ts:1747-1748); SelectedTools is an explicit loadout edit, and nil keeps the live active tools.
+	run icodingagent.BeforeAgentStartRun
 }
 
 // PreparePrompt awaits before_agent_start without holding the Session run lock. Hosts normalize images and admit the result after that await, so another prompt or queue operation may proceed while a handler is suspended.
@@ -66,7 +65,7 @@ func (s *Session) PreparePrompt(ctx context.Context, content []ai.UserContentBlo
 		s.applyPromptToolLoadout(s.admittedToolNames(run.SelectedTools))
 		return nil, err
 	}
-	p.sections, p.selectedTools, p.systemPrompt, p.messages = run.Sections, run.SelectedTools, run.SystemPrompt, run.Messages
+	p.run, p.systemPrompt, p.messages = run, run.SystemPrompt, run.Messages
 	return p, nil
 }
 
@@ -126,11 +125,11 @@ func (s *Session) BeginPreparedPrompt(ctx context.Context, p *PreparedPrompt) (*
 	}
 	finish := s.ownAgentRun(cancel)
 	s.pendingBashMu.Unlock()
-	s.applyPromptToolLoadout(s.admittedToolNames(p.selectedTools))
+	s.applyPromptToolLoadout(s.admittedToolNames(p.run.SelectedTools))
 	if p.systemPrompt != nil {
 		s.agent.SetSystemPrompt(*p.systemPrompt)
 	}
-	s.runSystemSections.Store(&p.sections)
+	s.runPrompt.Store(&p.run)
 	s.QueueAgentStartMessages(p.messages)
 	return &PreparedPromptRun{session: s, prompt: p, agentRun: run, ctx: runCtx, finish: finish}, nil
 }
@@ -143,27 +142,15 @@ func (s *Session) admittedToolNames(selected []string) []string {
 	return selected
 }
 
-// applyPromptToolLoadout makes an edited selectedTools list the executable and provider loadout before the run declares its tools. Like agent-session.ts:1409-1415 it leaves the base prompt options that before_agent_start receives unchanged.
+// applyPromptToolLoadout makes an edited selectedTools list the executable and provider loadout before the run declares its tools. Like agent-session.ts:1409-1415 it leaves the base prompt options that before_agent_start receives unchanged. Each prompt applies the whole loadout, so hidden tools stay inactive and prepareLoadout hooks run again.
+//
+// upstream: agent-session.ts:1661-1665,2020 (_preparePromptAndToolLoadout calls _applyToolLoadout)
 func (s *Session) applyPromptToolLoadout(names []string) {
+	s.loadout.applyMu.Lock()
+	defer s.loadout.applyMu.Unlock()
 	s.toolRegistryMu.Lock()
 	defer s.toolRegistryMu.Unlock()
-	s.agent.SetTools(s.selectToolsByName(names))
-}
-
-func (s *Session) selectToolsByName(names []string) []agent.AgentTool {
-	registry := make(map[string]agent.AgentTool, len(s.tools))
-	for _, tool := range s.tools {
-		registry[tool.Name()] = tool
-	}
-	active := make([]agent.AgentTool, 0, len(names))
-	seen := make(map[string]bool, len(names))
-	for _, name := range names {
-		if tool := registry[name]; tool != nil && !seen[name] {
-			seen[name] = true
-			active = append(active, s.bindTool(tool))
-		}
-	}
-	return active
+	s.agent.SetTools(s.applyToolLoadout(names))
 }
 
 func (s *Session) runPreparedPrompt(ctx context.Context, p *PreparedPrompt, run func() ([]agent.AgentMessage, error)) ([]agent.AgentMessage, error) {
@@ -183,7 +170,7 @@ func (s *Session) runPreparedPrompt(ctx context.Context, p *PreparedPrompt, run 
 	if p.systemPrompt != nil {
 		s.agent.ClearSystemPrompt()
 	}
-	s.runSystemSections.Store(nil)
+	s.runPrompt.Store(nil)
 	s.emitAgentSettled()
 	return messages, err
 }

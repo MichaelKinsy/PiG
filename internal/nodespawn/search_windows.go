@@ -10,11 +10,11 @@ package nodespawn
 import (
 	"errors"
 	"iter"
-	"regexp"
 	"strings"
 	"syscall"
 	"unicode/utf16"
 
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 )
 
@@ -54,7 +54,7 @@ func spawnFailure(file string, err error) error {
 // (src/util-inl.h): the last extension, ignoring trailing spaces and dots.
 // Node matches it with MSVC's std::regex, where \s is a C-locale space and $
 // also matches before a line feed.
-var windowsBatchFile = regexp.MustCompile(`\.([a-zA-Z0-9]+)[\t\n\v\f\r ]*[.\t\n\v\f\r ]*(?m:$)`)
+var windowsBatchFile = lazyregexp.New(`\.([a-zA-Z0-9]+)[\t\n\v\f\r ]*[.\t\n\v\f\r ]*(?m:$)`)
 
 // isWindowsBatchFile is Node's IsWindowsBatchFile. Node rejects a file it
 // matches before libuv searches for it: CreateProcessW would start a batch

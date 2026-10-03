@@ -52,15 +52,34 @@ func ExtensionModelRegistryState(registry *ModelRegistry, catalog []*ai.Model) m
 	if registry != nil {
 		registry.orderExtensionModels(models)
 	}
-	return extensionRegistryState(registry, models, providerIDs)
+	var typed any
+	var typedProviders []string
+	if registry != nil {
+		list := registry.extensionTypedModels()
+		typed, typedProviders = list, typedModelProviders(list)
+	}
+	return extensionRegistryState(registry, models, providerIDs, typed, typedProviders)
 }
 
-func extensionRegistryState(registry *ModelRegistry, models any, catalogProviders []string) map[string]any {
+// typedModelProviders lists the provider of each typed model.
+func typedModelProviders(typed []map[string]any) []string {
+	ids := make([]string, 0, len(typed))
+	for _, model := range typed {
+		providerID, _ := model["provider"].(string)
+		ids = append(ids, providerID)
+	}
+	return ids
+}
+
+// extensionRegistryState composes the wire state from registry's chat models, the providers they belong to, and registry's typed models (a list or its JSON encoding) with theirs.
+func extensionRegistryState(registry *ModelRegistry, models any, catalogProviders []string, typed any, typedProviders []string) map[string]any {
 	state := map[string]any{"models": models}
 	if registry == nil {
 		state["providers"] = map[string]any{}
 		return state
 	}
+	state["typedModels"] = typed
+	catalogProviders = append(catalogProviders, typedProviders...)
 	providerIDs := []string{}
 	seen := map[string]bool{}
 	for _, providerID := range append(catalogProviders, registry.extensionProviderIDs()...) {
@@ -78,6 +97,19 @@ func extensionRegistryState(registry *ModelRegistry, models any, catalogProvider
 		state["error"] = loadError
 	}
 	return state
+}
+
+// extensionTypedModels lists every image and classifier model, in provider order, as the extension wire carries them under "typedModels". The chat catalog stays under "models" because Pi's getAll is chat only (model-registry.ts:51-53); an extension's synchronous getModelsOfType, getModelOfType and findOfType answer from both lists (model-registry.ts:145-161).
+func (r *ModelRegistry) extensionTypedModels() []map[string]any {
+	typed := []map[string]any{}
+	for _, id := range r.typedModelProviderIDs() {
+		for _, model := range r.GetProviderAllModelData(id) {
+			if !ai.IsModelType(model, ai.ModelTypeChat) {
+				typed = append(typed, extension.AnyModelInfo(model))
+			}
+		}
+	}
+	return typed
 }
 
 // orderExtensionModels puts the models of providers only an extension
@@ -251,10 +283,7 @@ func (r *ModelRegistry) ExtensionProviderAuthStatus(providerID string) ai.AuthSt
 	if value != "" {
 		return configuredRequestAuthStatus(value, fromExtension)
 	}
-	if keys := ai.FindEnvKeys(providerID, nil); len(keys) > 0 {
-		return ai.AuthStatus{Configured: true, Source: ai.AuthSourceEnvironment, Label: keys[0]}
-	}
-	return ai.AuthStatus{}
+	return envAuthStatus(providerID)
 }
 
 // configuredRequestAuthStatus mirrors upstream provider-composer.ts

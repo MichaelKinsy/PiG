@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -220,13 +221,16 @@ func immediateToolCall(call pendingToolCall, result AgentToolResult) finalizedTo
 	return finalizedToolCall{call: call, result: result, isError: true}
 }
 
-// errorToolResult mirrors Pi's thrown-tool result, including its present empty details object.
+// errorToolResult is upstream createErrorToolResult: the text and an empty details object, and no isError. The
+// caller reports the failure separately, as finalizedToolCall.isError (agent-loop.ts:906-910).
 func errorToolResult(message string) AgentToolResult {
-	return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: message}}, Details: map[string]any{}, IsError: true}
+	return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: message}}, Details: map[string]any{}}
 }
 
-func (a *Agent) findTool(name string) AgentTool {
-	for _, t := range a.opts.Tools {
+func (a *Agent) findTool(name string) AgentTool { return findTool(a.toolList(), name) }
+
+func findTool(tools []AgentTool, name string) AgentTool {
+	for _, t := range tools {
 		if t.Name() == name {
 			return t
 		}
@@ -234,13 +238,25 @@ func (a *Agent) findTool(name string) AgentTool {
 	return nil
 }
 
+// toolCallHooks is the hook set every tool call of this agent runs through.
+func (a *Agent) toolCallHooks() ToolCallHooks {
+	return ToolCallHooks{BeforeToolCall: a.opts.BeforeToolCall, AfterToolCall: a.opts.AfterToolCall, PrepareToolResult: a.opts.PrepareToolResult}
+}
+
 // prepareToolCall looks the tool up, prepares and validates the arguments,
 // and runs the before hooks. Mirrors upstream prepareToolCall: hooks see the
 // validated arguments, arguments a hook returns execute without
 // revalidation, and a panic while preparing becomes an error result the way
 // upstream's catch turns a thrown error into one.
-func (a *Agent) prepareToolCall(ctx context.Context, call pendingToolCall) (outcome toolCallOutcome) {
-	tool := a.findTool(call.name)
+func (a *Agent) prepareToolCall(ctx context.Context, call pendingToolCall) toolCallOutcome {
+	return prepareToolCall(ctx, a.toolList(), a.toolCallHooks(), call)
+}
+
+// prepareToolCall resolves the call against tools; see Agent.prepareToolCall.
+// Mirrors upstream prepareToolCall, whose config is ToolCallHooks and whose
+// tools default to the context's (.upstream/v0.99.1/packages/agent/src/agent-loop.ts:707-716).
+func prepareToolCall(ctx context.Context, tools []AgentTool, hooks ToolCallHooks, call pendingToolCall) (outcome toolCallOutcome) {
+	tool := findTool(tools, call.name)
 	if tool == nil {
 		return immediateOutcome(call, errorToolResult("Tool "+call.name+" not found"))
 	}
@@ -268,7 +284,7 @@ func (a *Agent) prepareToolCall(ctx context.Context, call pendingToolCall) (outc
 	if validationErr != nil {
 		return immediateOutcome(call, errorToolResult(validationErr.Error()))
 	}
-	for _, hook := range a.opts.BeforeToolCall {
+	for _, hook := range hooks.BeforeToolCall {
 		hookResult := hook(ctx, call.id, call.name, args)
 		if ctx.Err() != nil {
 			return immediateOutcome(call, errorToolResult("Operation aborted"))
@@ -292,16 +308,38 @@ func (a *Agent) prepareToolCall(ctx context.Context, call pendingToolCall) (outc
 	return toolCallOutcome{prepared: &preparedToolCall{call: call, tool: tool, args: args}}
 }
 
-// executePreparedToolCall runs the tool. Progress updates are accepted only
-// while Execute runs, and every accepted update is delivered before the call
-// completes (upstream awaits its pending update emissions). A tool may call
-// onUpdate from its own goroutines.
+// executePreparedToolCall runs the tool for the loop: every accepted update
+// becomes a tool_execution_update event, and the call's duration is recorded.
 func (a *Agent) executePreparedToolCall(ctx context.Context, prepared preparedToolCall) finalizedToolCall {
 	rawArgs := json.RawMessage(prepared.call.args.String())
+	executed, _ := executePreparedToolCall(ctx, prepared, func(partial AgentToolResult) error {
+		a.emit(ToolExecutionUpdateEvent{
+			ToolCallID:    prepared.call.id,
+			ToolName:      prepared.call.name,
+			PartialResult: partial,
+			Args:          rawArgs,
+		})
+		return nil
+	})
+	a.timings.RecordTool(prepared.call.name, executed.duration)
+	return executed
+}
+
+// executePreparedToolCall runs the tool. Progress updates are accepted only
+// while Execute runs, and every accepted update is delivered to onUpdate
+// before the call completes (upstream awaits its pending update emissions). A
+// tool may call its update callback from its own goroutines. A returned error
+// is upstream's thrown one: createErrorToolResult without isError. A result with
+// IsError set is an error outcome that keeps its details and its own isError
+// (upstream `isError: result.isError === true`, agent-loop.ts:840).
+//
+// An update the sink rejects does not stop the tool or the later updates. Once the tool returned and every update settled, the first rejection is returned and the result is dropped: upstream awaits `Promise.all(updateEvents)` in the try body and again in the catch, so the rejection leaves the function either way (agent-loop.ts:833-845).
+func executePreparedToolCall(ctx context.Context, prepared preparedToolCall, onUpdate ToolUpdateSink) (finalizedToolCall, error) {
 	var mu sync.Mutex
 	accepting := true
+	var firstRejection error
 	var inflight sync.WaitGroup
-	onUpdate := func(content string, details any) {
+	sink := func(partial AgentToolResult) {
 		mu.Lock()
 		if !accepting {
 			mu.Unlock()
@@ -310,27 +348,36 @@ func (a *Agent) executePreparedToolCall(ctx context.Context, prepared preparedTo
 		inflight.Add(1)
 		mu.Unlock()
 		defer inflight.Done()
-		a.emit(ToolExecutionUpdateEvent{
-			ToolCallID: prepared.call.id,
-			ToolName:   prepared.call.name,
-			Content:    content,
-			Details:    details,
-			Args:       rawArgs,
-		})
+		if err := onUpdate(partial); err != nil {
+			mu.Lock()
+			if firstRejection == nil {
+				firstRejection = err
+			}
+			mu.Unlock()
+		}
 	}
 
 	start := time.Now()
-	result, err := executeTool(ctx, prepared, onUpdate)
+	result, err := executeTool(ctx, prepared, sink)
 	mu.Lock()
 	accepting = false
 	mu.Unlock()
 	inflight.Wait()
 	duration := time.Since(start)
-	a.timings.RecordTool(prepared.call.name, duration)
-	if err != nil {
-		result = errorToolResult(err.Error())
+	mu.Lock()
+	rejection := firstRejection
+	mu.Unlock()
+	if rejection != nil {
+		return finalizedToolCall{}, rejection
 	}
-	return finalizedToolCall{call: prepared.call, result: result, isError: result.IsError, executed: true, duration: duration}
+	isError := result.IsError
+	switch {
+	case err != nil:
+		result, isError = errorToolResult(err.Error()), true
+	case result.Thrown:
+		result.IsError, result.Thrown, isError = false, false, true
+	}
+	return finalizedToolCall{call: prepared.call, result: result, isError: isError, executed: true, duration: duration}, nil
 }
 
 // executeTool runs the tool. A panic becomes an error, as upstream's catch
@@ -364,18 +411,41 @@ func runAfterToolCallHook(ctx context.Context, hook AfterToolCallHook, prepared 
 	return hook(ctx, prepared.call.id, prepared.call.name, prepared.args, result), "", true
 }
 
+func (a *Agent) finalizeExecutedToolCall(ctx context.Context, prepared preparedToolCall, executed finalizedToolCall) finalizedToolCall {
+	return finalizeExecutedToolCall(ctx, a.toolCallHooks(), prepared, executed)
+}
+
 // finalizeExecutedToolCall applies the after hooks' overrides field by field.
 // Mirrors upstream finalizeExecutedToolCall, including its catch: a hook that
-// panics replaces the result with an error result.
-func (a *Agent) finalizeExecutedToolCall(ctx context.Context, prepared preparedToolCall, executed finalizedToolCall) finalizedToolCall {
-	result := executed.result
-	for _, hook := range a.opts.AfterToolCall {
-		result.IsError = executed.isError
-		override, message, ok := runAfterToolCallHook(ctx, hook, prepared, result)
+// panics replaces the result with an error result. Structured content that
+// the hook did not replace along with the content is dropped, because it may
+// no longer match it (agent-loop.ts:877-889); a JSON null counts as absent, as
+// `??` does.
+//
+// A hook's isError replaces the call's flag, not the result's own: the spread
+// keeps the tool's (agent-loop.ts:890). Hooks see the call's flag in
+// result.IsError, as upstream's context.isError beside the result. A hook that
+// returns an empty override leaves the result as it was, as a hook that returns
+// undefined does.
+func finalizeExecutedToolCall(ctx context.Context, hooks ToolCallHooks, prepared preparedToolCall, executed finalizedToolCall) finalizedToolCall {
+	result, isError := executed.result, executed.isError
+	for _, hook := range hooks.AfterToolCall {
+		seen := result
+		seen.IsError = isError
+		override, message, ok := runAfterToolCallHook(ctx, hook, prepared, seen)
 		if !ok {
-			result = errorToolResult(message)
-			executed.isError = true
+			result, isError = errorToolResult(message), true
 			break
+		}
+		if override.isZero() {
+			continue
+		}
+		structuredContent := override.StructuredContent
+		if isNullishJSON(structuredContent) {
+			structuredContent = nil
+			if override.Content == nil {
+				structuredContent = result.StructuredContent
+			}
 		}
 		if override.Content != nil {
 			result.Content = override.Content
@@ -389,17 +459,38 @@ func (a *Agent) finalizeExecutedToolCall(ctx context.Context, prepared preparedT
 		if override.Terminate != nil {
 			result.Terminate = *override.Terminate
 		}
+		hadStructuredContent := len(result.StructuredContent) > 0
+		result.StructuredContent = structuredContent
+		switch {
+		case len(structuredContent) == 0:
+			result.StructuredContentAppended = false
+		case !hadStructuredContent:
+			result.StructuredContentAppended = true
+		}
 		if override.IsError != nil {
-			executed.isError = *override.IsError
+			isError = *override.IsError
 		}
 	}
-	result.IsError = executed.isError
-	if a.opts.PrepareToolResult != nil {
-		result = a.opts.PrepareToolResult(ctx, result)
-		executed.isError = result.IsError
+	if hooks.PrepareToolResult != nil {
+		seen := result
+		seen.IsError = isError
+		prepared := hooks.PrepareToolResult(ctx, seen)
+		isError = prepared.IsError
+		prepared.IsError = result.IsError
+		result = prepared
 	}
-	executed.result = result
+	executed.result, executed.isError = result, isError
 	return executed
+}
+
+// isZero reports an override that changes nothing: upstream's hook returned undefined.
+func (r AfterToolCallResult) isZero() bool {
+	return r.Content == nil && r.Details == nil && r.IsError == nil && r.Usage == nil && r.Terminate == nil && len(r.StructuredContent) == 0
+}
+
+// isNullishJSON reports upstream's null-or-undefined for a structured-content value.
+func isNullishJSON(raw json.RawMessage) bool {
+	return len(raw) == 0 || string(bytes.TrimSpace(raw)) == "null"
 }
 
 func (a *Agent) emitToolExecutionStart(call pendingToolCall) {
@@ -411,9 +502,7 @@ func (a *Agent) emitToolExecutionStart(call pendingToolCall) {
 }
 
 func (a *Agent) emitToolExecutionEnd(finalized finalizedToolCall) {
-	result := finalized.result
-	result.IsError = finalized.isError
-	a.emit(ToolExecutionEndEvent{ToolCallID: finalized.call.id, ToolName: finalized.call.name, Result: result, Duration: finalized.duration})
+	a.emit(ToolExecutionEndEvent{ToolCallID: finalized.call.id, ToolName: finalized.call.name, Result: finalized.result, IsError: finalized.isError, Duration: finalized.duration})
 }
 
 // appendToolResult emits a finalized call's tool-result message and records it.
@@ -430,13 +519,14 @@ func createToolResultMessage(finalized finalizedToolCall, timestamp int64) ToolR
 		content = []ai.ToolResultMessageContent{}
 	}
 	return ToolResultMessage{
-		Role:       RoleToolResult,
-		ToolCallID: finalized.call.id,
-		ToolName:   finalized.call.name,
-		Content:    content,
-		Details:    result.Details,
-		Usage:      result.Usage,
-		IsError:    finalized.isError,
-		Timestamp:  timestamp,
+		Role:        RoleToolResult,
+		ToolCallID:  finalized.call.id,
+		ToolName:    finalized.call.name,
+		Content:     content,
+		Details:     result.Details,
+		DetailsNull: result.DetailsNull(),
+		Usage:       result.Usage,
+		IsError:     finalized.isError,
+		Timestamp:   timestamp,
 	}
 }

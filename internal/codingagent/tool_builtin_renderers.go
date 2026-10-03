@@ -308,7 +308,7 @@ func readRenderResult(result extension.AgentToolResult, options extension.ToolRe
 }
 
 func readTruncation(details any) *tools.TruncationResult {
-	switch value := details.(type) {
+	switch value := detailsObject(details).(type) {
 	case *tools.ReadDetails:
 		if value != nil {
 			return value.Truncation
@@ -548,7 +548,7 @@ func diffRows(diff string, width int) []string {
 
 // editResultDiff is the result's details.diff when it is a string.
 func editResultDiff(details any) (string, bool) {
-	switch value := details.(type) {
+	switch value := detailsObject(details).(type) {
 	case *tools.EditToolDetails:
 		if value != nil {
 			return value.Diff, true

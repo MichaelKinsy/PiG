@@ -81,7 +81,8 @@ func plainRender(component tui.Component) string {
 
 func waitForRender(t *testing.T, component tui.Component, want string) {
 	t.Helper()
-	deadline := time.Now().Add(5 * time.Second)
+	// Windows CI runners stall for seconds under load; the wait ends as soon as the text renders.
+	deadline := time.Now().Add(20 * time.Second)
 	for !strings.Contains(plainRender(component), want) {
 		if time.Now().After(deadline) {
 			t.Fatalf("never rendered %q; last render:\n%s", want, plainRender(component))
@@ -139,6 +140,8 @@ func TestLlamaLoginStoresServerAndKeyThenGuidesModelSelection(t *testing.T) {
 	go func() { handled <- m.loginAPIKeyProvider(llama.LlamaProviderID) }()
 	waitForRender(t, m.editorContainer, "llama.cpp server URL")
 	deliverModalInput(t, m, []byte(url))
+	// Submit only after the prompt shows the typed URL, so Enter cannot race the text it submits.
+	waitForRender(t, m.editorContainer, url)
 	deliverModalInput(t, m, []byte("\r"))
 	waitForRender(t, m.editorContainer, "API key (optional)")
 	deliverModalInput(t, m, []byte("secret"))
@@ -245,18 +248,7 @@ func TestLlamaAppearsInTheAPIKeyLoginList(t *testing.T) {
 	}
 }
 
-func TestLlamaSlashHandlerAndLoginRouting(t *testing.T) {
-	var appended []string
-	sc := &SlashContext{Append: func(text string) { appended = append(appended, text) }}
-	if err := llamaHandler(sc); err != nil || len(appended) != 1 {
-		t.Fatalf("llamaHandler without a host = %v, %v", err, appended)
-	}
-	called := false
-	sc.RunLlama = func() error { called = true; return nil }
-	if err := llamaHandler(sc); err != nil || !called {
-		t.Fatalf("llamaHandler = %v, called %v", err, called)
-	}
-
+func TestLlamaLoginRouting(t *testing.T) {
 	var routed string
 	provider := tui.OAuthProvider{ID: llama.LlamaProviderID, Name: "llama.cpp", AuthType: "api_key"}
 	login := &SlashContext{

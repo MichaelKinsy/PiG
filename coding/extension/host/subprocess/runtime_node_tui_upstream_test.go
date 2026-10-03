@@ -52,7 +52,7 @@ func TestNodeVendoredTuiUpstreamTests(t *testing.T) {
 					t.Fatal(err)
 				}
 				for _, fixture := range []string{"clipboard-reader.cjs", "clipboard-worker-test.c", "clipboard-worker-test.cjs", "clipboard-x11-test.c"} {
-					data, err := os.ReadFile(filepath.Join("../../../..", ".upstream/v0.87.1/packages/tui/test/fixtures", fixture))
+					data, err := os.ReadFile(filepath.Join("../../../..", ".upstream/current/packages/tui/test/fixtures", fixture))
 					if err != nil {
 						t.Fatal(err)
 					}

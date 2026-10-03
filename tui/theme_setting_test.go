@@ -30,7 +30,7 @@ func TestResolveThemeSetting(t *testing.T) {
 	}
 }
 
-// Pi 0.87.1 theme.ts:597-608 returns undefined only for an undefined or malformed slash setting; typeof "" is "string", so the empty name resolves to itself.
+// Upstream 0.99.1 theme.ts resolveThemeSetting returns undefined only for an undefined or malformed slash setting; typeof "" is "string", so the empty name resolves to itself.
 func TestResolveThemeSettingPresence(t *testing.T) {
 	for _, terminal := range []TerminalTheme{"light", "dark"} {
 		if got, ok := ResolveThemeSettingPresence(nil, terminal); ok || got != "" {
@@ -42,7 +42,7 @@ func TestResolveThemeSettingPresence(t *testing.T) {
 	}
 }
 
-// Pi 0.87.1 startup-ui.ts:86-87 applies initTheme(resolveThemeSetting(setting, detected) ?? detected), and theme.ts:774-788 falls back to dark for a name it cannot load.
+// Upstream 0.99.1 interactive-mode.ts initTheme applies resolveThemeSetting(setting, terminalTheme) ?? "system", and theme.ts setTheme falls back to the system theme for a name it cannot load.
 func TestSetThemeSettingPresence(t *testing.T) {
 	withTrueColor(t, true)
 	t.Setenv("COLORFGBG", "0;15")
@@ -53,17 +53,14 @@ func TestSetThemeSettingPresence(t *testing.T) {
 		setting *string
 		want    string
 	}{
-		{"unset follows the environment", nil, "light"},
-		{"malformed follows the environment", new("light/dark/extra"), "light"},
-		{"empty name falls back to dark", new(""), "dark"},
-		{"unknown name falls back to dark", new("no-such-theme"), "dark"},
+		{"unset selects the system theme", nil, "system"},
+		{"malformed selects the system theme", new("light/dark/extra"), "system"},
+		{"empty name falls back to system", new(""), "system"},
+		{"unknown name falls back to system", new("no-such-theme"), "system"},
 		{"automatic pair follows the environment", new("light/dark"), "light"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			SetTheme("dark")
-			if tc.want == "dark" {
-				SetTheme("light")
-			}
 			SetThemeSettingPresence(tc.setting)
 			if got := ActiveTheme().Name; got != tc.want {
 				t.Fatalf("theme = %q, want %q", got, tc.want)
@@ -88,11 +85,11 @@ func TestDeprecatedThemeSettingStringForms(t *testing.T) {
 	}
 	SetTheme("dark")
 	SetThemeSetting("")
-	if got := ActiveTheme().Name; got != "light" {
-		t.Fatalf("SetThemeSetting(\"\") theme = %q, want the light environment theme", got)
+	if got := ActiveTheme().Name; got != "system" {
+		t.Fatalf("SetThemeSetting(\"\") theme = %q, want the system theme", got)
 	}
 	SetThemeSetting("no-such-theme")
-	if got := ActiveTheme().Name; got != "dark" {
-		t.Fatalf("SetThemeSetting(unknown) theme = %q, want dark", got)
+	if got := ActiveTheme().Name; got != "system" {
+		t.Fatalf("SetThemeSetting(unknown) theme = %q, want system", got)
 	}
 }

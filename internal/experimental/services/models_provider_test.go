@@ -5,12 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
-	"slices"
 	"sync"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/chord"
 )
 
 type testModelsState struct {
@@ -36,8 +35,8 @@ func (s *testModelsState) Value() *ModelsState {
 	defer s.mu.Unlock()
 	return copyModelsState(s.value)
 }
-func (s *testModelsState) Subscribe(listener func(*ModelsState, context.Context, pico3.ReplicatedStateDelivery)) (func(), error) {
-	listener(s.Value(), context.Background(), pico3.ReplicatedStateDelivery{Kind: "hydrate"})
+func (s *testModelsState) Subscribe(listener func(*ModelsState, context.Context, chord.ReplicatedStateDelivery)) (func(), error) {
+	listener(s.Value(), context.Background(), chord.ReplicatedStateDelivery{Kind: "hydrate"})
 	return func() {}, nil
 }
 func (s *testModelsState) Change(_ context.Context, change func(*ModelsState) error) error {
@@ -58,59 +57,46 @@ func (s *testModelsState) Replace(ctx context.Context, value *ModelsState) error
 	return s.Change(ctx, func(draft *ModelsState) error { *draft = *copyModelsState(value); return nil })
 }
 
+// testModelsLane is a conversation and its pi.agent document in one: Configure applies the change to the document and tells its subscribers, as pi-durable's commit does.
 type testModelsLane struct {
-	mu          sync.Mutex
-	model       *ai.Model
-	thinking    ai.ThinkingLevel
-	models      []*ai.Model
-	getModel    func(context.Context) (*ai.Model, error)
-	getThinking func(context.Context) (ai.ThinkingLevel, error)
-	setError    error
+	mu             sync.Mutex
+	model          *ModelRef
+	thinking       ai.ThinkingLevel
+	configureError error
+	configured     []ConversationConfiguration
+	subscribers    []func(context.Context)
 }
 
-func (lane *testModelsLane) GetModel(ctx context.Context) (*ai.Model, error) {
-	if lane.getModel != nil {
-		return lane.getModel(ctx)
-	}
+func (lane *testModelsLane) Value() *AgentState {
 	lane.mu.Lock()
 	defer lane.mu.Unlock()
-	return lane.model, ctx.Err()
+	return &AgentState{Model: lane.model, ThinkingLevel: lane.thinking}
 }
-func (lane *testModelsLane) GetThinkingLevel(ctx context.Context) (ai.ThinkingLevel, error) {
-	if lane.getThinking != nil {
-		return lane.getThinking(ctx)
-	}
+func (lane *testModelsLane) Subscribe(listener func(context.Context)) func() {
 	lane.mu.Lock()
 	defer lane.mu.Unlock()
-	return lane.thinking, ctx.Err()
+	lane.subscribers = append(lane.subscribers, listener)
+	return func() {}
 }
-func (lane *testModelsLane) SetModel(ctx context.Context, ref ModelRef) error {
+func (lane *testModelsLane) Dispose() {}
+func (lane *testModelsLane) Configure(ctx context.Context, configuration ConversationConfiguration) error {
 	lane.mu.Lock()
-	defer lane.mu.Unlock()
-	if err := ctx.Err(); err != nil {
-		return err
+	if lane.configureError != nil {
+		defer lane.mu.Unlock()
+		return lane.configureError
 	}
-	if lane.setError != nil {
-		return lane.setError
+	lane.configured = append(lane.configured, configuration)
+	if configuration.Model != nil {
+		lane.model = configuration.Model
 	}
-	for _, model := range lane.models {
-		if model.ProviderMeta.ProviderID == ref.Provider && model.ID == ref.ModelId {
-			lane.model = model
-			return nil
-		}
+	if configuration.ThinkingLevel != nil {
+		lane.thinking = *configuration.ThinkingLevel
 	}
-	return errors.New("lane missing model")
-}
-func (lane *testModelsLane) SetThinkingLevel(ctx context.Context, level ai.ThinkingLevel) error {
-	lane.mu.Lock()
-	defer lane.mu.Unlock()
-	if err := ctx.Err(); err != nil {
-		return err
+	listeners := append([]func(context.Context){}, lane.subscribers...)
+	lane.mu.Unlock()
+	for _, listener := range listeners {
+		listener(ctx)
 	}
-	if lane.setError != nil {
-		return lane.setError
-	}
-	lane.thinking = level
 	return nil
 }
 
@@ -156,9 +142,9 @@ func testModel(provider, id string, reasoning bool) *ai.Model {
 	}
 	return model
 }
-func testService(lane ModelsServiceLane, models ModelsServiceModelRuntime, settings ModelsServiceSettingsManager) (*ModelsServiceRuntime, *testModelsState) {
+func testService(lane *testModelsLane, models ModelsServiceModelRuntime, settings ModelsServiceSettingsManager) (*ModelsServiceRuntime, *testModelsState) {
 	var state *testModelsState
-	runtime := CreateModelsService(lane, models, settings, func(initial *ModelsState) pico3.MutableReplicatedStateOf[*ModelsState] {
+	runtime := CreateModelsService(lane, lane, models, settings, func(initial *ModelsState) chord.MutableReplicatedStateOf[*ModelsState] {
 		state = &testModelsState{value: copyModelsState(initial)}
 		return state
 	})
@@ -177,7 +163,14 @@ func requireModelsOK(t *testing.T, err error) {
 	}
 }
 
-// models-provider.ts reads catalog/configuration together and appends only an absent selected identity.
+func refOf(model *ai.Model) *ModelRef {
+	if model == nil {
+		return nil
+	}
+	return &ModelRef{Provider: model.ProviderMeta.ProviderID, ModelId: model.ID}
+}
+
+// models-provider.ts:62-76 reads the catalog from the runtime and appends only an absent selected identity; the selected model is the agent document's reference resolved through the runtime.
 func TestModelsActivationCatalogAndRefreshWithoutRuntime(t *testing.T) {
 	selected := testModel("local", "selected", true)
 	for _, test := range []struct {
@@ -186,42 +179,39 @@ func TestModelsActivationCatalogAndRefreshWithoutRuntime(t *testing.T) {
 		available []*ai.Model
 		want      []ModelSummary
 	}{
-		{"empty", nil, nil, []ModelSummary{}},
-		{"selected only", selected, nil, []ModelSummary{{ModelRef: ModelRef{"local", "selected"}, Name: "name-selected", Reasoning: true}}},
+		{"empty", nil, []*ai.Model{}, []ModelSummary{}},
+		{"selected only", selected, []*ai.Model{}, []ModelSummary{{ModelRef: ModelRef{"local", "selected"}, Name: "name-selected", Reasoning: true}}},
 		{"same id different provider", selected, []*ai.Model{testModel("other", "selected", false)}, []ModelSummary{{ModelRef: ModelRef{"other", "selected"}, Name: "name-selected"}, {ModelRef: ModelRef{"local", "selected"}, Name: "name-selected", Reasoning: true}}},
 		{"no duplicate", selected, []*ai.Model{testModel("local", "selected", false)}, []ModelSummary{{ModelRef: ModelRef{"local", "selected"}, Name: "name-selected"}}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			lane := &testModelsLane{model: test.selected, thinking: ai.ThinkingHigh}
-			var models ModelsServiceModelRuntime
-			if test.available != nil {
-				models = &testModelsRuntime{available: test.available}
-			}
+			lane := &testModelsLane{model: refOf(test.selected), thinking: ai.ThinkingHigh}
+			models := &testModelsRuntime{available: test.available, all: []*ai.Model{selected}}
 			runtime, state := testService(lane, models, nil)
-			checkModelsEqual(t, state.Value(), &ModelsState{Catalog: ModelsCatalog{AvailableModels: []ModelSummary{}}, Configuration: ModelsConfiguration{ThinkingLevel: ai.ThinkingOff}, Refresh: ModelsRefresh{Status: "idle"}})
+			// The configuration starts from the agent document; the catalog waits for activation.
+			checkModelsEqual(t, state.Value(), &ModelsState{Catalog: ModelsCatalog{AvailableModels: []ModelSummary{}}, Configuration: ModelsConfiguration{Model: refOf(test.selected), ThinkingLevel: ai.ThinkingHigh}, Refresh: ModelsRefresh{Status: "idle"}})
 			requireModelsOK(t, runtime.Activate(t.Context()))
 			checkModelsEqual(t, state.Value().Catalog, ModelsCatalog{Revision: 1, AvailableModels: test.want})
-			if test.selected == nil {
-				checkModelsEqual(t, state.Value().Configuration.Model, (*ModelRef)(nil))
-			} else {
-				checkModelsEqual(t, state.Value().Configuration.Model, &ModelRef{"local", "selected"})
-			}
-			checkModelsEqual(t, state.Value().Configuration.ThinkingLevel, ai.ThinkingHigh)
-			if models == nil {
-				requireModelsOK(t, runtime.Service.Refresh(t.Context()))
-				checkModelsEqual(t, state.Value().Catalog.Revision, 2)
-				checkModelsEqual(t, state.changes[1].Refresh.Status, "refreshing")
-				checkModelsEqual(t, state.Value().Refresh.Status, "done")
-			}
+			checkModelsEqual(t, state.Value().Configuration.Model, refOf(test.selected))
 		})
 	}
+	t.Run("without a runtime", func(t *testing.T) {
+		runtime, state := testService(&testModelsLane{model: &ModelRef{"local", "selected"}, thinking: ai.ThinkingLow}, nil, nil)
+		requireModelsOK(t, runtime.Activate(t.Context()))
+		checkModelsEqual(t, state.Value().Catalog, ModelsCatalog{Revision: 1, AvailableModels: []ModelSummary{}})
+		requireModelsOK(t, runtime.Service.Refresh(t.Context()))
+		checkModelsEqual(t, state.Value().Catalog.Revision, 2)
+		checkModelsEqual(t, state.changes[1].Refresh.Status, "refreshing")
+		checkModelsEqual(t, state.Value().Refresh.Status, "done")
+	})
 }
 
+// models-provider.ts:68-81 and :102-119: cycling and selecting a level configure the conversation; the published configuration follows the agent document (:150-165), so it changes only when the document change is synced.
 func TestModelsThinkingValidationCycleAndNoPersistence(t *testing.T) {
 	model := testModel("local", "reasoner", true)
 	model.ThinkingLevelMap = ai.ThinkingLevelMap{ai.ThinkingMinimal: nil}
-	lane := &testModelsLane{model: model, thinking: ai.ThinkingHigh}
-	runtime, state := testService(lane, nil, nil)
+	lane := &testModelsLane{model: refOf(model), thinking: ai.ThinkingHigh}
+	runtime, state := testService(lane, &testModelsRuntime{all: []*ai.Model{model}}, nil)
 	levels, err := runtime.Service.GetThinkingLevels(t.Context())
 	requireModelsOK(t, err)
 	checkModelsEqual(t, levels, []ai.ThinkingLevel{ai.ThinkingOff, ai.ThinkingLow, ai.ThinkingMedium, ai.ThinkingHigh})
@@ -230,15 +220,20 @@ func TestModelsThinkingValidationCycleAndNoPersistence(t *testing.T) {
 	requireModelsOK(t, err)
 	checkModelsEqual(t, fresh[0], ai.ThinkingOff)
 	requireModelsOK(t, runtime.Service.CycleThinking(t.Context()))
+	off := ai.ThinkingOff
+	checkModelsEqual(t, lane.configured, []ConversationConfiguration{{ThinkingLevel: &off}})
+	checkModelsEqual(t, state.Value().Configuration.ThinkingLevel, ai.ThinkingHigh)
+	requireModelsOK(t, runtime.SyncConfiguration(t.Context()))
 	checkModelsEqual(t, state.Value().Configuration.ThinkingLevel, ai.ThinkingOff)
 	lane.thinking = "invalid"
 	requireModelsOK(t, runtime.Service.CycleThinking(t.Context()))
-	checkModelsEqual(t, state.Value().Configuration.ThinkingLevel, ai.ThinkingOff)
+	checkModelsEqual(t, lane.thinking, ai.ThinkingOff)
 	err = runtime.Service.SelectThinking(t.Context(), ai.ThinkingMax)
 	if err == nil || err.Error() != "Thinking level max is unavailable; choose one of: off, low, medium, high" {
 		t.Fatal(err)
 	}
 	requireModelsOK(t, runtime.Service.SelectThinking(t.Context(), ai.ThinkingMedium))
+	requireModelsOK(t, runtime.SyncConfiguration(t.Context()))
 	checkModelsEqual(t, state.Value().Configuration.ThinkingLevel, ai.ThinkingMedium)
 	checkModelsEqual(t, state.Value().Catalog.Revision, 0)
 	lane.model = nil
@@ -246,13 +241,14 @@ func TestModelsThinkingValidationCycleAndNoPersistence(t *testing.T) {
 	requireModelsOK(t, err)
 	checkModelsEqual(t, levels, []ai.ThinkingLevel{ai.ThinkingOff})
 	requireModelsOK(t, runtime.Service.CycleThinking(t.Context()))
-	checkModelsEqual(t, state.Value().Configuration.ThinkingLevel, ai.ThinkingOff)
+	checkModelsEqual(t, lane.thinking, ai.ThinkingOff)
 }
 
-func TestModelsSelectWaitsForSettingsBeforePublication(t *testing.T) {
-	model := testModel("local", "chosen", true)
-	lane := &testModelsLane{models: []*ai.Model{model}, thinking: ai.ThinkingLow}
-	models := &testModelsRuntime{all: lane.models}
+// models-provider.ts:88-101: selecting a model clamps the current level to it, configures both together, then persists the default and flushes. Publication follows the document.
+func TestModelsSelectConfiguresClampsAndPersists(t *testing.T) {
+	reasoner, plain := testModel("local", "chosen", true), testModel("other", "chosen", false)
+	lane := &testModelsLane{model: refOf(reasoner), thinking: ai.ThinkingHigh}
+	models := &testModelsRuntime{all: []*ai.Model{reasoner, plain}}
 	entered, release := make(chan struct{}), make(chan struct{})
 	settings := &testModelsSettings{flush: func() error { close(entered); <-release; return nil }}
 	runtime, state := testService(lane, models, settings)
@@ -260,11 +256,13 @@ func TestModelsSelectWaitsForSettingsBeforePublication(t *testing.T) {
 	if err == nil || err.Error() != "Unknown model: missing/unknown" {
 		t.Fatal(err)
 	}
+	checkModelsEqual(t, len(lane.configured), 0)
 	done := make(chan error, 1)
-	go func() { done <- runtime.Service.Select(t.Context(), ModelRef{"local", "chosen"}) }()
+	go func() { done <- runtime.Service.Select(t.Context(), ModelRef{"other", "chosen"}) }()
 	<-entered
-	checkModelsEqual(t, settings.selected, ModelRef{"local", "chosen"})
-	checkModelsEqual(t, state.Value().Configuration.Model, (*ModelRef)(nil))
+	checkModelsEqual(t, settings.selected, ModelRef{"other", "chosen"})
+	off := ai.ThinkingOff
+	checkModelsEqual(t, lane.configured, []ConversationConfiguration{{Model: &ModelRef{"other", "chosen"}, ThinkingLevel: &off}})
 	select {
 	case err := <-done:
 		t.Fatalf("returned before flush: %v", err)
@@ -272,9 +270,62 @@ func TestModelsSelectWaitsForSettingsBeforePublication(t *testing.T) {
 	}
 	close(release)
 	requireModelsOK(t, <-done)
-	checkModelsEqual(t, state.Value().Configuration, ModelsConfiguration{Model: &ModelRef{"local", "chosen"}, ThinkingLevel: ai.ThinkingLow})
+	requireModelsOK(t, runtime.SyncConfiguration(t.Context()))
+	checkModelsEqual(t, state.Value().Configuration, ModelsConfiguration{Model: &ModelRef{"other", "chosen"}, ThinkingLevel: ai.ThinkingOff})
 	checkModelsEqual(t, state.Value().Catalog.Revision, 0)
 	checkModelsEqual(t, state.Value().Refresh.Status, "idle")
+}
+
+func TestModelsSelectFailuresDoNotPersistOrPublish(t *testing.T) {
+	failure := errors.New("injected failure")
+	for _, mode := range []string{"configure", "settings", "flush", "no runtime"} {
+		t.Run(mode, func(t *testing.T) {
+			model := testModel("local", "chosen", true)
+			lane := &testModelsLane{thinking: ai.ThinkingOff}
+			settings := &testModelsSettings{flush: func() error { return nil }}
+			runtime, state := testService(lane, &testModelsRuntime{all: []*ai.Model{model}}, settings)
+			switch mode {
+			case "configure":
+				lane.configureError = failure
+			case "settings":
+				settings.setError = failure
+			case "flush":
+				settings.flush = func() error { return failure }
+			case "no runtime":
+				runtime, state = testService(lane, nil, settings)
+			}
+			err := runtime.Service.Select(t.Context(), ModelRef{"local", "chosen"})
+			if mode == "no runtime" {
+				if err == nil || err.Error() != "Unknown model: local/chosen" {
+					t.Fatal(err)
+				}
+			} else if !errors.Is(err, failure) {
+				t.Fatal(err)
+			}
+			if mode == "configure" && settings.selected != (ModelRef{}) {
+				t.Fatalf("persisted %+v after a configure failure", settings.selected)
+			}
+			checkModelsEqual(t, state.Value().Configuration.Model, (*ModelRef)(nil))
+			checkModelsEqual(t, len(state.changes), 0)
+		})
+	}
+}
+
+// models-provider.ts:150-165: a configuration that equals the published one publishes nothing.
+func TestModelsSyncConfigurationPublishesOnlyChanges(t *testing.T) {
+	lane := &testModelsLane{model: &ModelRef{"local", "a"}, thinking: ai.ThinkingLow}
+	runtime, state := testService(lane, nil, nil)
+	requireModelsOK(t, runtime.SyncConfiguration(t.Context()))
+	checkModelsEqual(t, len(state.changes), 0)
+	lane.model = &ModelRef{"local", "b"}
+	requireModelsOK(t, runtime.SyncConfiguration(t.Context()))
+	checkModelsEqual(t, len(state.changes), 1)
+	checkModelsEqual(t, state.Value().Configuration.Model, &ModelRef{"local", "b"})
+	requireModelsOK(t, runtime.SyncConfiguration(t.Context()))
+	checkModelsEqual(t, len(state.changes), 1)
+	lane.model, lane.thinking = nil, ""
+	requireModelsOK(t, runtime.SyncConfiguration(t.Context()))
+	checkModelsEqual(t, state.Value().Configuration, ModelsConfiguration{ThinkingLevel: ai.ThinkingOff})
 }
 
 func TestModelsRefreshWarningFailureAndCancellation(t *testing.T) {
@@ -339,30 +390,34 @@ func TestModelsRefreshWarningFailureAndCancellation(t *testing.T) {
 	}
 }
 
-func TestModelsActivationStartsAllReadsAndJoinsCancellation(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	started := make(chan string, 3)
-	lane := &testModelsLane{
-		getModel: func(ctx context.Context) (*ai.Model, error) { started <- "model"; <-ctx.Done(); return nil, ctx.Err() },
-		getThinking: func(ctx context.Context) (ai.ThinkingLevel, error) {
-			started <- "thinking"
-			<-ctx.Done()
-			return "", ctx.Err()
-		},
-	}
-	runtime, state := testService(lane, nil, nil)
-	done := make(chan error, 1)
-	go func() { done <- runtime.Activate(ctx) }()
-	reads := []string{<-started, <-started, <-started}
-	slices.Sort(reads)
-	checkModelsEqual(t, reads, []string{"model", "model", "thinking"})
-	cancel()
-	if err := <-done; !errors.Is(err, context.Canceled) {
+func TestModelsRefreshPublicationFailureDoesNotStartRuntime(t *testing.T) {
+	called := false
+	models := &testModelsRuntime{refresh: func(context.Context) (ModelsRefreshResult, error) { called = true; return ModelsRefreshResult{}, nil }}
+	runtime, state := testService(&testModelsLane{}, models, nil)
+	failure := errors.New("publication failed")
+	state.changeError = failure
+	if err := runtime.Service.Refresh(t.Context()); !errors.Is(err, failure) {
 		t.Fatal(err)
 	}
-	checkModelsEqual(t, state.Value().Catalog.Revision, 0)
-	checkModelsEqual(t, len(state.changes), 0)
+	if called {
+		t.Fatal("refresh started after publication rejected")
+	}
+	checkModelsEqual(t, state.Value().Refresh.Status, "idle")
+}
+
+func TestModelsConcurrentCatalogRevisionsAreDistinct(t *testing.T) {
+	runtime, state := testService(&testModelsLane{thinking: ai.ThinkingOff}, nil, nil)
+	var work sync.WaitGroup
+	const operations = 100
+	for range operations {
+		work.Go(func() {
+			if err := runtime.Activate(t.Context()); err != nil {
+				t.Error(err)
+			}
+		})
+	}
+	work.Wait()
+	checkModelsEqual(t, state.Value().Catalog.Revision, operations)
 }
 
 func TestModelsServiceProvidesBeforeActivation(t *testing.T) {

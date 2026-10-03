@@ -26,7 +26,7 @@ capture_end_regex = "─+"
 
 [[tmux.steps]]
 keys = ["/resume", "Enter"]
-wait_visible_contains = ["Resume Session (Current Folder)", "delta four", "alpha one", "bravo", "charlie", "golf seven"]
+wait_visible_contains = ["Resume Session (Current Folder)", "delta four", "alpha one", "bravo", "charlie", "golf seven", "◉ Current Folder"]
 wait_timeout_seconds = 5
 
 [[tmux.steps]]
@@ -48,7 +48,7 @@ wait_timeout_seconds = 5
 
 [[tmux.steps]]
 keys = ["/resume", "Enter"]
-wait_contains = ["Resume Session (Current Folder)"]
+wait_contains = ["Resume Session (Current Folder)", "◉ Current Folder"]
 wait_timeout_seconds = 5
 
 [[tmux.steps]]

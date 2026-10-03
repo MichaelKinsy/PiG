@@ -42,10 +42,9 @@ func mkAssistantMsg(text string) agent.AgentMessage {
 }
 
 // flushSession persists a freshly-created session by appending an
-// assistant message, which is upstream's disk-flush trigger
-// (SessionManager._persist hasAssistant gate). Tests asserting on-disk
-// state must flush first, mirroring real usage where a session is only
-// written once the model replies. Without it a fresh session has no file.
+// assistant message. A user or assistant message is upstream's disk-flush
+// trigger (SessionManager._persist _hasConversation gate). Tests asserting
+// on-disk state must flush first: without it a fresh session has no file.
 func flushSession(t *testing.T, sess *Session) {
 	t.Helper()
 	if _, err := sess.AppendMessage(mkAssistantMsg("ok")); err != nil {

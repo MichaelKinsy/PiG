@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -14,44 +13,89 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// interactiveThemeState keeps query completion and modal previews on the input loop.
-// Explicit extension selections publish their setting, active name, and opt-out atomically.
+// terminalColorQueryTimeout is how long the system theme stays grayscale before falling back to palette indices. Terminals answer the trailing DA1 request right after the color replies, so this only matters for terminals that answer neither. Replies arriving later still apply.
+const terminalColorQueryTimeout = 100 * time.Millisecond
+
+// inMemoryThemeName is the active theme name while a theme instance set through an extension is active.
+const inMemoryThemeName = "<in-memory>"
+
+// interactiveThemeState is the controller state that the owner loop mutates and other goroutines read.
 // Terminal input and lifecycle live in the driver rather than the paint-only renderer.
 type interactiveThemeState struct {
 	currentThemeSetting atomic.Pointer[string]
-	terminalTheme       tui.TerminalTheme
 	activeThemeName     atomic.Pointer[string]
 	autoSyncEnabled     atomic.Bool
 	output              io.Writer
-	queries             []*interactiveThemeQuery
-}
-
-type interactiveThemeQuery struct {
-	detection *startupThemeDetection
-	done      chan struct{}
-	// persistTheme records a high-confidence detected default for an owner that persists off-loop.
-	persistTheme *string
+	// terminalColors is the last reported colors; a query that times out keeps them instead of erasing them. Owner loop only.
+	terminalColors *tui.TerminalColors
+	// colorQuery is closed when the latest color query completed or timed out and its colors applied. Owner loop only.
+	colorQuery chan struct{}
 }
 
 // presentationTheme is the theme-controller state machine shared by InteractiveMode and standalone presentations. Every method runs on the presentation owner loop.
 type presentationTheme struct {
 	state      *interactiveThemeState
 	getSetting func() *string
-	// persist stores a detected default synchronously; nil defers persistence to the query owner.
-	persist   func(string)
-	output    func() io.Writer
-	renderer  func() tui.Renderer
-	showError func(string)
-	// changed replaces the default render request after a successful theme change.
+	output     func() io.Writer
+	renderer   func() tui.Renderer
+	showError  func(string)
+	// changed is onChanged: it runs after every applied theme, and the caller renders.
 	changed func()
+	// post queues fn on the owner loop; it fails when ctx ends first.
+	post func(ctx context.Context, fn func()) error
+	// spawn runs a task owned by the presentation's lifetime.
+	spawn func(func())
+	// ctx bounds work started by the controller. It is nil before the presentation owns background work, and no color query starts then.
+	ctx func() context.Context
 }
 
-// getThemeSelection preserves an initial or explicit selection; otherwise it reads the current settings. nil means no selection; an empty name is a selection.
-func (theme presentationTheme) getThemeSelection() *string {
+// getThemeSetting is the setting the controller applies: an initial or explicit selection, otherwise the current settings. nil means no setting; an empty name is a setting.
+func (theme presentationTheme) getThemeSetting() *string {
 	if setting := theme.state.currentThemeSetting.Load(); setting != nil {
 		return new(*setting)
 	}
 	return theme.getSetting()
+}
+
+// getThemeSelection is getThemeSetting, or the active theme when there is no setting.
+func (theme presentationTheme) getThemeSelection() *string {
+	if setting := theme.getThemeSetting(); setting != nil {
+		return setting
+	}
+	if active := theme.state.activeThemeName.Load(); active != nil {
+		return new(*active)
+	}
+	return nil
+}
+
+// resolveThemeName is the theme for the current setting and terminal appearance. Without a setting the system theme applies.
+func (theme presentationTheme) resolveThemeName() string {
+	if name, ok := tui.ResolveThemeSettingPresence(theme.getThemeSetting(), tui.GetTerminalTheme()); ok {
+		return name
+	}
+	return tui.SystemThemeName
+}
+
+// initTheme applies the initial theme, as the theme controller's constructor does. The system theme starts in grayscale; color follows once the terminal reports its colors.
+func (theme presentationTheme) initTheme() {
+	name := theme.resolveThemeName()
+	theme.state.activeThemeName.Store(&name)
+	tui.MarkTerminalColorsPending()
+	tui.SetThemeByName(name, true)
+}
+
+// applyFromSettings applies the theme setting now and queries the terminal's colors, which update the theme when they arrive. Theme pairs and the system theme follow terminal appearance changes.
+func (theme presentationTheme) applyFromSettings() {
+	setting := theme.getThemeSetting()
+	name := theme.resolveThemeName()
+	auto := false
+	if setting != nil {
+		_, _, auto = tui.ParseAutoThemeSetting(*setting)
+	}
+	theme.setAutoSync(auto || name == tui.SystemThemeName)
+	// upstream 0.99.1 theme-controller.ts applyFromSettings: applyThemeName reports a load failure itself, so the result is not needed here.
+	_ = theme.applyThemeName(name, setting != nil)
+	theme.queryTerminalColors()
 }
 
 func (theme presentationTheme) setAutoSync(enabled bool) {
@@ -69,176 +113,177 @@ func (theme presentationTheme) writeThemeNotifications(enabled bool) {
 	_, _ = io.WriteString(theme.output(), sequence)
 }
 
-func (theme presentationTheme) applyThemeName(name string, showError bool) bool {
-	found := tui.ActiveThemeRegistry().Get(name) != nil
-	tui.SetThemeByName(name, true)
-	activeName := tui.ActiveTheme().Name
-	theme.state.activeThemeName.Store(&activeName)
+// applyThemeName selects a theme, falling back to the system theme, and reports why it could not load it.
+func (theme presentationTheme) applyThemeName(name string, showError bool) error {
+	err := tui.SetThemeByNameChecked(name, true)
+	active := name
+	if err != nil {
+		active = tui.SystemThemeName
+	}
+	theme.state.activeThemeName.Store(&active)
+	theme.notifyChanged()
+	if err != nil && showError {
+		// The name appears verbatim, without Go quoting or escaping.
+		theme.showError("Failed to load theme \"" + name + "\": " + err.Error() + "\nFell back to the system theme.")
+	}
+	return err
+}
+
+func (theme presentationTheme) notifyChanged() {
 	if ui := theme.renderer(); ui != nil {
 		ui.Invalidate()
-		if theme.changed != nil {
-			theme.changed()
-		} else {
-			ui.RequestRender()
-		}
 	}
-	if !found && showError {
-		// The name appears verbatim, without Go quoting or escaping.
-		theme.showError("Failed to load theme \"" + name + "\": Theme not found: " + name + "\nFell back to dark theme.")
-	}
-	return found
-}
-
-func (theme presentationTheme) applyTerminalTheme(terminalTheme tui.TerminalTheme) {
-	if !theme.state.autoSyncEnabled.Load() {
-		return
-	}
-	theme.state.terminalTheme = terminalTheme
-	var light, dark string
-	ok := false
-	if selection := theme.getThemeSelection(); selection != nil {
-		light, dark, ok = tui.ParseAutoThemeSetting(*selection)
-	}
-	if !ok {
-		theme.setAutoSync(false)
-		return
-	}
-	name := dark
-	if terminalTheme == "light" {
-		name = light
-	}
-	activeName := theme.state.activeThemeName.Load()
-	if activeName == nil || name != *activeName {
-		theme.applyThemeName(name, false)
+	if theme.changed != nil {
+		theme.changed()
 	}
 }
 
+// setThemeName applies a theme selected by name, as an extension's setTheme does.
+func (theme presentationTheme) setThemeName(name string, showError bool) error {
+	theme.setAutoSync(name == tui.SystemThemeName)
+	err := theme.applyThemeName(name, showError)
+	if err == nil {
+		theme.state.currentThemeSetting.Store(&name)
+	}
+	return err
+}
+
+// previewTheme applies a setting or name without storing it.
 func (theme presentationTheme) previewTheme(setting string) {
-	terminalTheme := theme.state.terminalTheme
-	if terminalTheme == "" {
-		terminalTheme = tui.DetectTerminalBackground(tui.TerminalThemeDetectionOptions{}).Theme
-	}
-	name, ok := tui.ResolveThemeSettingPresence(&setting, terminalTheme)
+	name, ok := tui.ResolveThemeSettingPresence(&setting, tui.GetTerminalTheme())
 	if !ok {
 		if active := theme.state.activeThemeName.Load(); active != nil {
 			name = *active
 		}
 	}
-	if tui.ActiveThemeRegistry().Get(name) == nil {
+	if name == "" {
 		return
 	}
-	tui.SetThemeByName(name)
-	theme.renderer().Invalidate()
-	theme.renderer().RequestRender()
-}
-
-// beginThemeDetection applies any non-automatic selection, including an empty or malformed name, as a fixed theme without querying the terminal.
-// An automatic pair starts both queries together, and scheme reports take precedence.
-// OSC 11 can settle an unset selection immediately but an auto pair waits for the scheme deadline.
-func (theme presentationTheme) beginThemeDetection(output io.Writer) *interactiveThemeQuery {
-	if theme.state.output == nil {
-		theme.state.output = output
-	}
-	setting := theme.getThemeSelection()
-	if setting != nil {
-		if _, _, auto := tui.ParseAutoThemeSetting(*setting); !auto {
-			theme.setAutoSync(false)
-			theme.applyThemeName(*setting, true)
-			return nil
-		}
-	}
-	detection := newStartupThemeDetection(setting, nil, theme.renderer())
-	detection.backgroundOnly = setting == nil
-	if detection.backgroundOnly {
-		theme.setAutoSync(false)
-	}
-	query := &interactiveThemeQuery{detection: detection, done: make(chan struct{})}
-	theme.state.queries = append(theme.state.queries, query)
-	// theme.ts starts OSC 11 even when the scheme query fails, and otherwise awaits scheme precedence.
-	detection.start(func(sequence string) error { _, err := io.WriteString(output, sequence); return err })
-	if detection.readBackground() {
-		theme.finishThemeDetection(query)
-	}
-	return query
-}
-
-func (theme presentationTheme) finishThemeDetection(query *interactiveThemeQuery) {
-	select {
-	case <-query.done:
+	if err := tui.SetThemeByNameChecked(name, true); err != nil {
 		return
-	default:
 	}
-	detection := query.detection
-	theme.state.terminalTheme = detection.terminalTheme()
-	if !detection.backgroundOnly {
-		theme.setAutoSync(true)
+	if ui := theme.renderer(); ui != nil {
+		ui.Invalidate()
+		ui.RequestRender()
 	}
-	success := theme.applyThemeName(detection.themeName(), !detection.backgroundOnly)
-	if success && detection.backgroundOnly && (detection.background != nil || tui.DetectTerminalBackground(tui.TerminalThemeDetectionOptions{}).Confidence == "high") {
-		name := detection.themeName()
-		if theme.persist != nil {
-			theme.persist(name)
-		} else {
-			query.persistTheme = &name
-		}
-	}
-	close(query.done)
-	theme.pruneThemeQueries()
 }
 
-func (theme presentationTheme) pruneThemeQueries() {
-	theme.state.queries = slices.DeleteFunc(theme.state.queries, func(query *interactiveThemeQuery) bool {
-		return query.detection.settled
+// queryTerminalColors queries the terminal's colors without waiting for them; waitForTerminalColors waits for this query. The colors apply on the owner loop when the query completes or times out, and again if the terminal answers after the timeout.
+func (theme presentationTheme) queryTerminalColors() {
+	ui, ctx := theme.renderer(), theme.ctx()
+	if ui == nil || ctx == nil {
+		return
+	}
+	done := make(chan struct{})
+	theme.state.colorQuery = done
+	// Late replies arrive at the input boundary, which runs on the owner loop.
+	results := ui.QueryTerminalColors(tui.TerminalColorQueryOptions{TimeoutMs: float64(terminalColorQueryTimeout / time.Millisecond), OnLateReply: theme.applyTerminalColors})
+	theme.spawn(func() {
+		var result tui.TerminalColorsResult
+		select {
+		case result = <-results:
+		case <-ctx.Done():
+			close(done)
+			return
+		}
+		// A failed query applies no colors, like a terminal that does not report them.
+		colors := result.Colors
+		if result.Err != nil {
+			colors = tui.TerminalColors{}
+		}
+		if err := theme.post(ctx, func() {
+			theme.applyTerminalColors(colors)
+			close(done)
+		}); err != nil {
+			close(done)
+		}
 	})
 }
 
-// consumeInput precedes extension listeners, viewport input, and focused components.
-// Reports are consumed even without an outstanding query or automatic selection.
-func (theme presentationTheme) consumeInput(data string) bool {
-	if ui := theme.renderer(); ui != nil && ui.ConsumeOsc11BackgroundResponse(data) {
-		for _, query := range slices.Clone(theme.state.queries) {
-			if query.detection.readBackground() {
-				theme.finishThemeDetection(query)
-			}
+// applyTerminalColors records reported colors: themes use the default colors for tokens set to "", the system theme is generated from all of them, and light/dark detection uses them. It re-renders only when they changed.
+func (theme presentationTheme) applyTerminalColors(reported tui.TerminalColors) {
+	previous := theme.state.terminalColors
+	next := tui.TerminalColors{Foreground: reported.Foreground, Background: reported.Background, Palette: reported.Palette}
+	if previous != nil {
+		if next.Foreground == nil {
+			next.Foreground = previous.Foreground
 		}
+		if next.Background == nil {
+			next.Background = previous.Background
+		}
+		if next.Palette == nil {
+			next.Palette = previous.Palette
+		}
+		// Re-rendering rebuilds every component, so skip it when nothing changed (including timeouts).
+		if sameTerminalColors(*previous, next) {
+			return
+		}
+	}
+	theme.state.terminalColors = &next
+	tui.SetTerminalColors(next)
+	theme.reapplyForTerminal()
+	if ui := theme.renderer(); ui != nil {
+		ui.Invalidate()
+		ui.RequestRender()
+	}
+}
+
+func sameRgb(a, b *tui.RgbColor) bool { return a == b || (a != nil && b != nil && *a == *b) }
+
+func sameTerminalColors(a, b tui.TerminalColors) bool {
+	if !sameRgb(a.Foreground, b.Foreground) || !sameRgb(a.Background, b.Background) {
+		return false
+	}
+	if len(a.Palette) != len(b.Palette) || (a.Palette == nil) != (b.Palette == nil) {
+		return false
+	}
+	for i := range a.Palette {
+		if a.Palette[i] != b.Palette[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// reapplyForTerminal re-applies the setting after the terminal's colors or appearance changed: it regenerates the system theme, or switches the theme of a pair. Themes set through extensions or previews are left alone.
+func (theme presentationTheme) reapplyForTerminal() {
+	if active := theme.state.activeThemeName.Load(); active != nil && *active == inMemoryThemeName {
+		return
+	}
+	name := theme.resolveThemeName()
+	if active := theme.state.activeThemeName.Load(); name == tui.SystemThemeName || active == nil || name != *active {
+		_ = theme.applyThemeName(name, false)
+	}
+}
+
+// consumeInput consumes terminal color replies and appearance reports before extension listeners, viewport input, and focused components. Reports are consumed even without automatic selection.
+func (theme presentationTheme) consumeInput(data string) bool {
+	if ui := theme.renderer(); ui != nil && ui.ConsumeTerminalColorResponse(data) {
 		return true
 	}
 	if scheme := tui.ParseTerminalColorSchemeReport(data); scheme != "" {
-		theme.applyTerminalTheme(scheme)
-		// A report settles every outstanding scheme listener. Copy the pointers because
-		// finishing a query can remove it from the pending background-reply queue.
-		for _, query := range slices.Clone(theme.state.queries) {
-			if _, settled := query.detection.consume(data); settled {
-				theme.finishThemeDetection(query)
-			}
-		}
+		theme.applyTerminalColorSchemeChange(scheme)
 		return true
-	}
-	for _, query := range theme.state.queries {
-		if consumed, settled := query.detection.consume(data); consumed {
-			if settled {
-				theme.finishThemeDetection(query)
-			}
-			theme.pruneThemeQueries()
-			return true
-		}
 	}
 	return false
 }
 
-func (theme presentationTheme) dispose() {
-	theme.setAutoSync(false)
-	for _, query := range theme.state.queries {
-		select {
-		case <-query.done:
-		default:
-			close(query.done)
-		}
+// applyTerminalColorSchemeChange handles a light/dark switch report. The terminal's colors changed too, so they are queried again: they decide the appearance. The reported scheme only matters for terminals that do not report their background.
+func (theme presentationTheme) applyTerminalColorSchemeChange(scheme tui.TerminalTheme) {
+	if !theme.state.autoSyncEnabled.Load() {
+		return
 	}
-	theme.state.queries = nil
+	previous := tui.GetTerminalTheme()
+	tui.SetTerminalColorScheme(scheme)
+	if tui.GetTerminalTheme() != previous {
+		theme.reapplyForTerminal()
+	}
+	theme.queryTerminalColors()
 }
 
-// InteractiveThemeControllerOptions binds the shared theme state machine to a presentation owner and settings store. Callbacks run on the UI owner; settings persistence runs off-loop after detection completes.
+func (theme presentationTheme) dispose() { theme.setAutoSync(false) }
+
+// InteractiveThemeControllerOptions binds the shared theme state machine to a presentation owner and settings store. Callbacks run on the UI owner.
 type InteractiveThemeControllerOptions struct {
 	GetSettingsManager  func() *SettingsManager
 	ShowError           func(string)
@@ -248,7 +293,7 @@ type InteractiveThemeControllerOptions struct {
 	RunOnMain           func(context.Context, func()) error
 }
 
-// InteractiveThemeController consumes terminal reports on the owner loop while ApplyFromSettings waits off-loop for query completion. Dispose cancels and joins all admitted applications.
+// InteractiveThemeController consumes terminal reports on the owner loop. Dispose cancels and joins all admitted work.
 type InteractiveThemeController struct {
 	core         presentationTheme
 	options      InteractiveThemeControllerOptions
@@ -274,19 +319,24 @@ func NewInteractiveThemeController(ctx context.Context, ui tui.Renderer, options
 		getSetting: func() *string { return options.GetSettingsManager().GetThemeSetting() },
 		output:     func() io.Writer { return options.Output }, renderer: func() tui.Renderer { return ui },
 		showError: options.ShowError, changed: options.OnChanged,
+		post: func(ctx context.Context, fn func()) error {
+			return options.RunOnMain(ctx, fn)
+		},
+		spawn: func(task func()) {
+			controller.mu.Lock()
+			defer controller.mu.Unlock()
+			if controller.closed {
+				return
+			}
+			controller.tasks.Go(task)
+		},
+		ctx: func() context.Context { return lifetime },
 	}
 	if err := options.RunOnMain(ctx, func() {
 		if options.InitialThemeSetting != nil {
 			state.currentThemeSetting.Store(new(*options.InitialThemeSetting))
 		}
-		state.terminalTheme = tui.DetectTerminalBackground(tui.TerminalThemeDetectionOptions{}).Theme
-		name, ok := tui.ResolveThemeSettingPresence(controller.core.getThemeSelection(), state.terminalTheme)
-		if ok {
-			tui.SetThemeByName(name, true)
-			state.activeThemeName.Store(&name)
-		} else {
-			tui.SetThemeByName(tui.GetDefaultTheme(), true)
-		}
+		controller.core.initTheme()
 	}); err != nil {
 		cancel()
 		return nil, err
@@ -294,7 +344,7 @@ func NewInteractiveThemeController(ctx context.Context, ui tui.Renderer, options
 	return controller, nil
 }
 
-// ConsumeInput consumes terminal appearance reports before viewport or focused-component input. Call it on the owner loop.
+// ConsumeInput consumes terminal reports before viewport or focused-component input. Call it on the owner loop.
 func (controller *InteractiveThemeController) ConsumeInput(data string) bool {
 	return controller.core.consumeInput(data)
 }
@@ -302,7 +352,7 @@ func (controller *InteractiveThemeController) ConsumeInput(data string) bool {
 // DisableAutoSync stops terminal color-scheme notifications on the owner loop.
 func (controller *InteractiveThemeController) DisableAutoSync() { controller.core.setAutoSync(false) }
 
-// ApplyFromSettings starts detection on the owner loop, waits off-loop for its completion or deadline, and persists a high-confidence detected default.
+// ApplyFromSettings applies the theme setting on the owner loop and starts the terminal color query without waiting for it. WaitForTerminalColors waits for the colors.
 func (controller *InteractiveThemeController) ApplyFromSettings(ctx context.Context) error {
 	controller.mu.Lock()
 	if controller.closed {
@@ -312,44 +362,10 @@ func (controller *InteractiveThemeController) ApplyFromSettings(ctx context.Cont
 	controller.tasks.Add(1)
 	controller.mu.Unlock()
 	defer controller.tasks.Done()
-	ctx, cancel := context.WithCancel(ctx)
-	stop := context.AfterFunc(controller.ctx, cancel)
-	defer func() { stop(); cancel() }()
-	if controller.ctx.Err() != nil {
-		cancel()
-	}
-	var query *interactiveThemeQuery
-	if err := controller.options.RunOnMain(ctx, func() { query = controller.core.beginThemeDetection(controller.options.Output) }); err != nil {
-		return err
-	}
-	if query == nil {
-		return nil
-	}
-	timer := time.NewTimer(startupThemeQueryTimeout)
-	defer timer.Stop()
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-query.done:
-	case <-timer.C:
-		if err := controller.options.RunOnMain(ctx, func() { query.detection.timeout(); controller.core.finishThemeDetection(query) }); err != nil {
-			return err
-		}
-	}
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	if query.persistTheme != nil {
-		settings := controller.options.GetSettingsManager()
-		if err := settings.SetTheme(*query.persistTheme); err != nil {
-			return err
-		}
-		return settings.Flush()
-	}
-	return nil
+	return controller.options.RunOnMain(ctx, controller.core.applyFromSettings)
 }
 
-// Dispose runs off-loop while the owner executor is alive. It releases query waiters and joins settings applications before returning.
+// Dispose runs off-loop while the owner executor is alive. It releases query waiters and joins started work before returning.
 func (controller *InteractiveThemeController) Dispose() error {
 	controller.disposeOnce.Do(func() {
 		controller.mu.Lock()

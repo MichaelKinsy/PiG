@@ -1,0 +1,51 @@
+# Upstream evidence: Pi 1.0.0 interactive-mode.ts:5912-5914 passes onBack to startProviderLogin from the provider list; showLoginDialog (interactive-mode.ts:6257-6289) calls it when the login fails with "Login cancelled", which showAuthSelect (interactive-mode.ts:6168-6200) raises on Escape. onBack reopens showLoginProviderSelector with the list's initial search input (none here).
+# Probe (Pi 1.0.0, this fixture): /login, Enter (account), "radius", Enter, Escape at "Sign in to Radius:" reopens "Select provider to configure:" with the unfiltered (1/9) list. Pi 0.99.2 returned to the editor.
+# Radius is used because its method prompt is the first prompt of its flow in both binaries, so this scenario isolates the return path from the Anthropic method selector (25-anthropic-login-method-selector).
+name = "26-login-cancel-returns-to-provider-list"
+description = "Cancelling a login started from the provider list reopens the provider list"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 120
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Select provider to configure:"
+capture_end = "(1/9)"
+settle_seconds = 1
+cwd = "../selectors/testdata/login-empty-project"
+
+[[tmux.steps]]
+keys = ["/login", "Enter"]
+wait_contains = ["Select authentication method:"]
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Select provider to configure:", "Radius"]
+
+[[tmux.steps]]
+keys = ["radius"]
+wait_visible_contains = ["> radius", "→ Radius"]
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Sign in to Radius:"]
+
+[[tmux.steps]]
+keys = ["Escape"]
+wait_visible_contains = ["Select provider to configure:", "(1/9)"]
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/privacy-pi-compatible", "PI_CODING_AGENT_DIR=", "PIG_HOME=../selectors/testdata/pig-home-noauth", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pi = ["PI_CODING_AGENT_DIR=testdata/privacy-pi-compatible", "PIG_CODING_AGENT_DIR=", "PIG_HOME=", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["Select provider to configure:", "Anthropic • not configured", "Radius • not configured", "(1/9)"]
+escaped_output_equal = true
+runs = 3

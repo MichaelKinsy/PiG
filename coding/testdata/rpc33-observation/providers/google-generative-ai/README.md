@@ -1,4 +1,4 @@
-# Google Generative AI oracle (Pi 0.87.1, `@google/genai` 2.21.0)
+# Google Generative AI oracle (Pi 1.0.0, `@google/genai` 2.21.0)
 
 `probe.mjs` drives Pi's real `google-generative-ai` pipeline and records what each consumer observes and when. `inputs.json` exports the axes and the exact SSE bodies. `pi.json` is the raw oracle. Do not replace either with Go output.
 
@@ -32,7 +32,7 @@ Pi's provider reads the body through the real undici stream. `undici.mjs` measur
 
 ## Reproduce
 
-Node 24.19.0 (`.node-version`); Node 26.7.0 produces an identical file. `PI_PACKAGE_ROOT` is the installed `@earendil-works/pi-coding-agent` 0.87.1 with its dependency tree.
+Node 24.19.0 (`.node-version`); Node 26.7.0 produces an identical file. `PI_PACKAGE_ROOT` is the installed `@earendil-works/pi-coding-agent` 1.0.0 with its dependency tree.
 
 ```bash
 export PI_PACKAGE_ROOT="$(realpath extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent)"

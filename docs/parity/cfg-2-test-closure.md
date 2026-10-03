@@ -67,7 +67,7 @@ D79 changes user-scoped metadata cwd to managed storage instead of the invoking 
 
 The pre-fix `go test` compiled and failed both failed-install rows because only one event arrived. It also failed user/project traversal rows on `invalid Git package path` instead of the expected diagnostic. The source-addition boolean is a newly restored return contract; its no-op assertion is checked with a compiling mutation, not claimed as pre-fix runtime evidence.
 
-The real Pi 0.87.1 oracle confirms local-resolution silence, both failed-install event objects, all three traversal errors, and the true/false/true source-change sequence. The oracle uses temporary directories and mocked commands. Local raw evidence is under `/var/tmp/kinsy-pig/evidence/cfg-2/`.
+The real Pi 0.87.1 oracle confirms local-resolution silence, both failed-install event objects, all three traversal errors, and the true/false/true source-change sequence. The oracle uses temporary directories and mocked commands.
 
 Verification commands:
 

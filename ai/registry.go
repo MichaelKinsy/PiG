@@ -18,7 +18,6 @@ var (
 	registryByFQ       map[string]*GeneratedModel   // "<provider>/<model-id>"
 	registryByID       map[string][]*GeneratedModel // "<model-id>" → entries (multiple providers)
 	registryByProvider map[string][]*GeneratedModel
-	registryProviders  []string
 )
 
 func initRegistry() {
@@ -32,7 +31,6 @@ func initRegistry() {
 		registryByID[m.ID] = append(registryByID[m.ID], m)
 		registryByProvider[m.Provider] = append(registryByProvider[m.Provider], m)
 	}
-	registryProviders = slices.Sorted(maps.Keys(registryByProvider))
 }
 
 // LookupModel resolves a spec like "<provider>/<model-id>" or just
@@ -166,12 +164,12 @@ func ListModels(provider string) []GeneratedModel {
 	return out
 }
 
-// ListProviders returns the sorted list of unique provider names from
-// the generated static model catalog. Mirrors upstream
-// providers/all.ts:getBuiltinProviders and compat.ts:getProviders.
+// ListProviders returns the provider ids of the generated catalog barrel in
+// barrel order. Mirrors upstream providers/all.ts:getBuiltinProviders
+// (Object.keys(MODELS)) and compat.ts:getProviders; a provider with only image
+// or classifier models is included.
 func ListProviders() []string {
-	registryOnce.Do(initRegistry)
-	return slices.Clone(registryProviders)
+	return slices.Clone(GeneratedProviders)
 }
 
 // ListRuntimeProviders returns providers with an implemented runtime API.

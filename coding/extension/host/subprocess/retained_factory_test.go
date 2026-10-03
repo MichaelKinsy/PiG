@@ -90,6 +90,7 @@ func retainedNodeExtension(t *testing.T, root, file string, typed bool) (ExtConf
 
 // The probed Pi behavior: two reloads evaluate a .ts module three times and an .mjs module once, with a factory call for every load.
 func TestNodeReloadReinvokesFactoriesInTheRetainedProcessWithPiLoaderRules(t *testing.T) {
+	t.Parallel()
 	nodeCellRequireNode(t)
 	root := t.TempDir()
 	mjs, mjsLog := retainedNodeExtension(t, root, "keeps-module.mjs", false)
@@ -290,7 +291,7 @@ func TestIsolatedSessionReplacementKeepsTheCacheThroughASymlinkedCwd(t *testing.
 	ts.Isolation = "isolated"
 	configs := []ExtConfig{ts}
 	cwd := filepath.Join(t.TempDir(), "linked-cwd")
-	testenv.Symlink(t, t.TempDir(), cwd)
+	testenv.RequireDirectoryLink(t, t.TempDir(), cwd)
 	retention := NewRuntimeRetention()
 	t.Cleanup(retention.Close)
 	first := NewHost(cwd)
@@ -417,6 +418,7 @@ func TestNodeCrashAfterRetainedReloadRecoversWithoutReplay(t *testing.T) {
 
 // A strictly isolated extension that crashes after a retained reload restarts under its supervisor in a fresh process, and a later reload retains that one.
 func TestNodeIsolatedCrashAfterRetainedReloadRestarts(t *testing.T) {
+	t.Parallel()
 	nodeCellRequireNode(t)
 	root := t.TempDir()
 	entry := filepath.Join(root, "isolated-crash.mjs")
@@ -526,6 +528,7 @@ func retainedShareOf(h *Host, name string) *processShare {
 
 // Isolated Node extensions start concurrently, and each start claims from the retention every live process registered so far. A process must be complete when it becomes claimable: the race detector reports a claim that reads a spawner's exit channel while that spawner is still assigning it.
 func TestConcurrentIsolatedStartsClaimOnlyCompleteProcesses(t *testing.T) {
+	t.Parallel()
 	nodeCellRequireNode(t)
 	root := t.TempDir()
 	var configs []ExtConfig

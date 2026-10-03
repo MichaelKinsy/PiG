@@ -1,0 +1,58 @@
+# port-99-f6f-rs green run (Rust SDK, upstream 0.99.1 extension API)
+
+## Commands and results
+- `cargo test --offline` in extensions/sdk-rs: lib 45, `tests/extension_api_wire.rs` 14 (all new), `tests/*.rs` and doctests unchanged, all pass. `cargo check --offline --target x86_64-pc-windows-gnu` clean. `cargo clippy`: no new warning in the added code (the crate's earlier warnings remain).
+- `go test ./extensions/sdk-rs/ ./test/parity/cmd/sdksurface/` pass; `go vet ./...`, `GOOS=windows go vet ./test/extension-conformance/ ./extensions/sdk-rs/`, `gofmt -l`, `go fix -diff` on the touched packages are clean. `python3 automation/ci/check-public-claims.py` passes.
+- Real-host rows (`TestRustSDK*`, 8 tests x isolated and packed) need lane 6D's host. On this branch alone the host calls are the 6D contract stubs, so the green run is on an integration tree: this branch + merge of staging port-99-f6d (c73b7b8cd). There the whole `test/extension-conformance` package passes (`TestSelectedToolsPiContract` needs the untracked `extensions/sdk-ts/node_modules`, symlinked from the main worktree).
+- Load: `TestRustSDK` compiled with `-race`, `-test.count=24`, `GOMAXPROCS=4`, `taskset -c 0-3` with six busy loops on the same cores: pass. The Rust wire tests, 120 runs of the test binary with `--test-threads=8` under the same burners: 0 failures.
+- `make parity-family FAMILY=extension-host` passes. `FAMILY=extensions-runtime`: see the last section. `make parity-deps` refuses to run here (`refusing to install through shared path extensions/sdk-ts/node_modules`), so both used `make -o parity-deps -o interface-deps`.
+
+## Mutation checks (revert, see red, restore)
+Rust wire tests (`extension_api_wire.rs`): get_settings constant -> getters; apply_state ignores mcpServers -> getters; wants_updates always false -> execute_tool updates; callerId is the request id -> execute_tool updates; with_is_error no-op -> tool_result; register_tool drops exposure -> register frame; unregister keeps the route -> post-load virtual model; cancel never sent -> execute_tool signal; register_mcp_server appends duplicates -> register frame; hook result discarded -> prepare_loadout; getExposure default hidden -> prepare_loadout; no route for unknown model -> virtual model rows; post-load registerTool omits exposure / omits prepares_loadout / ignores registered_tools for the hook -> post-load registerTool.
+Three mutations survived the first tests and the tests were strengthened (commit "make the update-ordering and mcp_servers_change rows fail..."): dispatcher not joined (a slow onUpdate callback now proves every update precedes the return), mcp_servers_change replica not refreshed (the handler now reads get_mcp_servers), and an invalid mutation (does not compile, redone).
+Conformance rows (in the integration tree): get_settings constant, callerId = request id, ctx.tools ignoring the replica, load-time MCP servers not sent, virtual models not sent, structured_content dropped, provider config without model `type` -> each fails exactly the row that binds that value.
+
+## Smells
+Everything passed on the first green run; the red run had 11 of 13 wire tests and every conformance row failing for the stub, and the mutation table above is the evidence the tests can fail. Two wire tests passed in red because the declaration is the implementation (`ToolInfo` fields, event pass-through).
+
+## Behavior citations (upstream 0.99.1, packages/coding-agent/src/core)
+- Tool fields: `extensions/types.ts:509-607`, `2063`; loader wire `protocol.go ToolDecl`. `ToolLoadout.getExposure` default `direct`: `agent-session.ts:1481`. prepareLoadout hook failure changes nothing: `agent-session.ts:1523-1532`.
+- MCP: `extensions/loader.ts:456-478`, `types.ts:1833-1839`, `699-709`. Virtual models: `loader.ts:480-497`, `virtual-models.ts:29-101`, `types.ts:1852-1867`.
+- `getSettings` `types.ts:1711`; `ctx.tools`, `executeTool` `types.ts:367-395`, `runner.ts:952-985`.
+- structuredContent, isError: `packages/agent/src/types.ts:424-446`.
+- `provider_stream_event` `types.ts:884-890`, `1580`.
+
+## Not done, and why
+- `Extension.replaceable` (`types.ts:2209`): the subprocess wire has no field for it (RegisterPayload declares none), so no SDK can carry it. It marks the CLI's built-in extensions, which are in-process. Ask the lead whether a wire field is wanted; no code here.
+- `ProviderConfig.images` and `classifiers` (`types.ts:1896-1898`) are implementation objects (functions); the subprocess wire has no form for them. The Rust SDK carries the model entries (chat, image, classifier) through `register_provider`'s JSON (row `TestRustSDKProviderModelTypes`); the implementations are the host's `ProviderStreams` and the other lanes' concern.
+- The pi.events bridge (`Emit`/`On` for native SDKs) is lane 6F-events, which owns the host side and the wire. The Rust `Emit`/`On` waits for its wire; `events.rs` here only adds the two new event names.
+- 6D host observation for the integrator: `makeToolPrepareLoadout` returns no changes on a hook error, where upstream also reports an extension error `prepare_loadout` (`agent-session.ts:1524-1531`). It is 6D's code; noted, not edited.
+
+## Integrator row text (docs/extension-api-parity.md, docs/extension-sdk-surface.md, test/parity/sdk-surface.toml)
+One row per capability; the Rust realization and its conformance row. Naming follows the SDK rule (camelCase to snake_case).
+| Pi surface | Rust | conformance row |
+| `pi.registerMcpServer/unregisterMcpServer/getMcpServers` | `Extension::register_mcp_server` (load), `Context::register_mcp_server/unregister_mcp_server/get_mcp_servers` | `TestRustSDKMcpServerRegistration`, `TestRustSDKReplicatedGetters` |
+| `pi.registerVirtualModel/unregisterVirtualModel` | `Extension::register_virtual_model`, `Context::register_virtual_model/unregister_virtual_model`, `VirtualModel`, `ModelRouteRequest`, `ModelRoute` | `TestRustSDKVirtualModelRoute` |
+| `pi.getSettings` | `Context::get_settings` | `TestRustSDKReplicatedGetters` |
+| `ToolDefinition.outputSchema/exposure/namespace/annotations/defaultActive` | `ToolDefinition` fields, `ToolExposure`, `ToolNamespace`, `ToolAnnotations` | `TestRustSDKToolDefinitionFields` |
+| `ToolDefinition.prepareLoadout`, `ToolLoadout`, `ToolLoadoutChanges` | `ToolDefinition.prepare_loadout`, `ToolLoadout`, `ToolLoadoutChanges` | `TestRustSDKPrepareLoadout` |
+| `ExtensionToolContext.tools/executeTool`, `ExecuteToolOptions` | `Context::tools/execute_tool`, `ExecuteToolOptions`, `AgentToolCallOutcome` | `TestRustSDKReplicatedGetters`, `TestRustSDKExecuteTool` |
+| `AgentToolResult.structuredContent/isError` | `ToolResult::with_structured_content/with_details/with_is_error` | `TestRustSDKStructuredContentAndIsError` |
+| `ToolInfo.exposure/namespace/annotations` | `ToolInfo` fields | wire test `get_all_tools_reports_exposure_namespace_and_annotations` |
+| `provider_stream_event`, `mcp_servers_change` events | `EVENT_PROVIDER_STREAM_EVENT`, `EVENT_MCP_SERVERS_CHANGE` | wire test `mcp_servers_change_and_provider_stream_event_reach_handlers` |
+| `ProviderConfig` chat/image/classifier model entries | `Extension::register_provider` JSON | `TestRustSDKProviderModelTypes` |
+| `parentToolCallId` on tool events | event payload `Value` | host-side; no SDK code |
+
+## Async contract (Rust realization; record in docs/extension-api-parity.md and test/parity/async-contracts.toml)
+- registerMcpServer/registerVirtualModel/unregister*: Pi throws synchronously. Rust: one blocking host call on the caller's thread, `io::Result`; the host's validation message is the error. During load the registrations ride in the `register` frame, so a failure fails the load, as the factory's throw does.
+- getSettings/getMcpServers/tools: synchronous in Pi, answered from state the host replicates (ready state, `state_update`, MCP registration replies and `mcp_servers_change` events). A change the host has not yet pushed is not visible, as for every replicated getter.
+- executeTool (an awaited Promise): a blocking call that names the calling tool call and the calling request. Partial results go to `on_update` on a dispatcher thread that is joined before the call returns, so all updates precede the outcome, in order. `signal` sends `executeTool.cancel` after the call frame; without one the host cancels the nested call with the calling request. A tool failure is an outcome; only a lost connection, a cancelled request or a call outside a tool is `Err`.
+- route (Promise or value, awaited by the host): a blocking function on the request thread; its `Context` is cancelled with the request. A panic or an `Err` is the request's error.
+- prepareLoadout (synchronous in Pi): a host request the host awaits; a panic or a decode failure is an error response, which the host treats as no change.
+
+## make parity-family FAMILY=extensions-runtime
+88 of the 91 pairs pass; 3 fail, none of them loads a Rust extension (the scenario files and their testdata contain no Rust):
+- `52-interleaved-node-admission`: the packed Python member exits at start with `mise ERROR` (the run used a temporary HOME, which has no mise Python), an environment failure.
+- `29-export-tool-renderers`: `/20/message/thinkingLevel: field presence differs (pig=true pi=false)`. Family 2 records `thinkingLevel` on assistant messages and the oracle is still 0.87.1 until the pin move.
+- `56-failed-factory-api`: a Node factory-failure text differs from the 0.87.1 oracle; the host code that emits it is not in this lane.
+The same three are expected on the unchanged base; they were not re-run there (a base build of the family takes about 5 minutes and none touches sdk-rs). The `extension-host` family passes.

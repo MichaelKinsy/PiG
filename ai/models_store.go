@@ -12,6 +12,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"github.com/MichaelKinsy/PiG/internal/pilock"
 )
 
@@ -177,49 +178,59 @@ type storedModels struct {
 	raw        json.RawMessage
 }
 
-// withLock mirrors FileAuthStorageBackend.withLockAsync: it creates the file
-// as "{}" when missing, holds the lock across read-modify-write, and writes
-// only when fn returns entries.
+// withLock mirrors FileAuthStorageBackend.withLockAsync: it creates the
+// directory and the file as "{}" when existsSync finds neither, before it
+// waits for the lock (auth-storage.ts:55-68,158-163), holds the lock across
+// read-modify-write, writes only when fn returns entries, and returns Node's
+// fs errors.
 func (s *FileModelsStore) withLock(ctx context.Context, fn func([]storedModels) ([]storedModels, error)) (err error) {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(s.path), 0o700); err != nil {
-		return fmt.Errorf("models store: ensure dir: %w", err)
+	if dir := filepath.Dir(s.path); !pathExists(dir) {
+		if err := nodeerrno.MkdirAll(dir, 0o700); err != nil {
+			return err
+		}
 	}
-	return s.lock(ctx, s.path, func(check func() error) error {
+	if !pathExists(s.path) {
 		file, err := os.OpenFile(s.path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 		if err == nil {
 			_, writeErr := file.WriteString("{}")
 			closeErr := file.Close()
 			if err := errors.Join(writeErr, closeErr); err != nil {
-				return fmt.Errorf("models store: create: %w", err)
+				return nodeerrno.FromPathError(err)
 			}
 		} else if !errors.Is(err, fs.ErrExist) {
-			return fmt.Errorf("models store: create: %w", err)
+			return nodeerrno.FromPathError(err)
 		}
+	}
+	return s.lock(ctx, s.path, func(check func() error) error {
 		data, err := os.ReadFile(s.path)
 		if err != nil && !errors.Is(err, fs.ErrNotExist) {
-			return fmt.Errorf("models store: read: %w", err)
+			return nodeerrno.FromPathError(err)
 		}
 		entries, err := parseStoredModels(bytes.TrimPrefix(data, []byte("\xef\xbb\xbf")))
 		if err != nil {
 			return err
 		}
-		if err := ctx.Err(); err != nil {
-			return err
-		}
 		next, err := fn(entries)
-		if err != nil || next == nil {
+		if err != nil {
 			return err
 		}
-		if err := ctx.Err(); err != nil {
-			return err
-		}
+		// withLockAsync's checkpoints: after fn, the compromise and then the abort; after the write, the compromise alone (auth-storage.ts:183-189).
 		if err := check(); err != nil {
 			return err
 		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if next == nil {
+			return nil
+		}
 		if err := writeStoredModels(s.path, next); err != nil {
+			return err
+		}
+		if err := check(); err != nil {
 			return err
 		}
 		s.readState.mu.Lock()
@@ -284,7 +295,10 @@ func writeStoredModels(path string, entries []storedModels) error {
 	if err := json.Indent(&indented, object.Bytes(), "", "  "); err != nil {
 		return fmt.Errorf("models store: encode: %w", err)
 	}
-	return os.WriteFile(path, indented.Bytes(), 0o600)
+	if err := os.WriteFile(path, indented.Bytes(), 0o600); err != nil {
+		return nodeerrno.FromPathError(err)
+	}
+	return nil
 }
 
 func marshalStoreJSON(value any) ([]byte, error) {
@@ -297,15 +311,16 @@ func marshalStoreJSON(value any) ([]byte, error) {
 	return bytes.TrimSuffix(buffer.Bytes(), []byte("\n")), nil
 }
 
-// withSidecarLock holds the shared Pi directory lease and supplies its pre-commit ownership check.
+// withSidecarLock holds the shared Pi directory lease, checks it once acquired as withLockAsync does (compromise, then abort), and hands fn the lease's compromise check, withLockAsync's throwIfCompromised. Like FileAuthStorageBackend.withLockAsync (auth-storage.ts:191-198), it ignores a failure to release the lease.
 func withSidecarLock(ctx context.Context, path string, fn func(func() error) error) (err error) {
 	lock, err := pilock.Acquire(ctx, path)
 	if err != nil {
-		return fmt.Errorf("models store: acquire lock: %w", err)
+		// FileModelsStore locks through FileAuthStorageBackend, which rethrows proper-lockfile's error unchanged (auth-storage.ts:141).
+		return err
 	}
-	defer func() { err = errors.Join(err, lock.Release()) }()
+	defer func() { _ = lock.Release() }()
 	if err := lock.Check(); err != nil {
 		return err
 	}
-	return fn(lock.Check)
+	return fn(lock.Compromised)
 }

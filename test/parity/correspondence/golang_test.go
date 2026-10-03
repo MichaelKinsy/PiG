@@ -40,7 +40,7 @@ func TestExtractGoCurrentSettingsAndPrompts(t *testing.T) {
 		"terminal-progress", "steering-mode", "follow-up-mode", "transport", "http-idle-timeout", "cache-warming-mode",
 		"hide-thinking", "mermaid-rendering", "cache-miss-notices", "collapse-changelog", "quiet-startup", "install-telemetry",
 		"default-project-trust", "double-escape-action", "tree-filter-mode", "mask-secret-input", "warnings", "model-thinking", "tui-mode",
-		"fullscreen-exit-output", "fullscreen-scrollbar", "fullscreen-copy-on-select", "theme",
+		"fullscreen-exit-output", "fullscreen-scrollbar", "fullscreen-copy-on-select", "fullscreen-wheel-scroll-lines", "theme",
 	}
 	if !reflect.DeepEqual(ids, wantIDs) {
 		t.Fatalf("settings IDs = %v, want %v", ids, wantIDs)
@@ -233,7 +233,7 @@ func TestAddGoFunctionCallersRetainsAllReviewedCallSites(t *testing.T) {
 			}
 			// These are parser inputs for the reviewed caller paths, not runtime stubs.
 			for path, source := range map[string]string{
-				"coding/session.go":                              "package fixture\nfunc compact() { compaction.Compact() }\n",
+				"coding/session_summarization_auth.go":           "package fixture\nfunc runDefaultCompaction() { compaction.Compact() }\n",
 				"internal/codingagent/compaction/compaction.go":  "package fixture\nfunc Compact() { generateTurnPrefixSummary() }\n",
 				"internal/codingagent/settings.go":               "package fixture\nfunc Load() {\n" + tc.body + "}\nfunc UpdateGlobal() { saveSettingsPatch() }\nfunc SetProjectPackages() { sm.UpdateProject() }\n",
 				"cmd/pig/cli_runtime_build.go":                   "package fixture\ntype cliRuntimeBuilder struct{}\nfunc (b *cliRuntimeBuilder) buildResources() { services.SettingsManager().SetProjectTrusted(true) }\n",

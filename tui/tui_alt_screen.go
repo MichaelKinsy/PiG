@@ -65,6 +65,11 @@ type TuiAltScreen struct {
 	layoutRoot           Component
 	currentLayout        *LayoutFrame
 
+	// One worker coalesces pending geometry so slow callbacks cannot reorder resizes.
+	pendingWidth      int
+	pendingHeight     int
+	notifyingGeometry bool
+
 	implicitDocument   Component
 	implicitScrollView *ScrollView
 	flashes            *AltScreenFlashContainer
@@ -85,11 +90,11 @@ type TuiAltScreen struct {
 
 	fullRedrawCount int
 
-	wheelScrollLines int
-	mouseEnabled     bool
-	copyOnSelect     bool
-	copySelection    func(text string) error
-	openURL          func(url string)
+	wheelScroll   *WheelScrollAccelerator
+	mouseEnabled  bool
+	copyOnSelect  bool
+	copySelection func(text string) error
+	openURL       func(url string)
 
 	searchMatchStyle            func(text string) string
 	searchCurrentMatchStyle     func(text string) string
@@ -160,9 +165,10 @@ type TuiAltScreen struct {
 // TuiAltScreenOptions configures the alt-screen renderer. Mirrors upstream
 // TuiAltScreenOptions.
 type TuiAltScreenOptions struct {
-	// WheelScrollLines is the number of logical lines moved per wheel event
-	// (default 1).
-	WheelScrollLines int
+	// WheelScrollLines is the logical lines moved per wheel event (default 1);
+	// Auto accelerates fast wheel spins on terminals that send one event per notch.
+	// Alt+wheel moves five times as far.
+	WheelScrollLines WheelScrollLines
 	// Mouse captures mouse events for viewport scrolling and selection.
 	Mouse *bool
 	// CopyOnSelect copies a completed text selection. The default is true.
@@ -225,7 +231,7 @@ func newTuiAltScreen(out io.Writer, showHardwareCursor bool, options TuiAltScree
 			},
 		},
 		uploadedKittyImages: map[int]cachedKittyImage{},
-		wheelScrollLines:    max(1, options.WheelScrollLines),
+		wheelScroll:         NewWheelScrollAccelerator(options.WheelScrollLines),
 		mouseEnabled:        options.Mouse == nil || *options.Mouse,
 		copyOnSelect:        copyOnSelect,
 		copySelection:       options.CopySelection,
@@ -290,6 +296,9 @@ func (t *TuiAltScreen) GetCopyOnSelect() bool {
 	return t.copyOnSelect
 }
 
+// SetWheelScrollLines changes the wheel line setting at runtime and resets any acceleration gesture.
+func (t *TuiAltScreen) SetWheelScrollLines(lines WheelScrollLines) { t.wheelScroll.SetLines(lines) }
+
 // SetCopyOnSelect changes automatic selection copy without rebuilding the renderer.
 func (t *TuiAltScreen) SetCopyOnSelect(enabled bool) {
 	t.mu.Lock()
@@ -314,6 +323,13 @@ func (t *TuiAltScreen) CopyActiveSelectionToClipboard() bool {
 		return false
 	}
 	return t.copyTextToClipboard(text)
+}
+
+// GetScreenLines returns the lines of the last rendered frame, one per terminal row, as written to the terminal. The slice is a copy (tui-alt-screen.ts:315-318).
+func (t *TuiAltScreen) GetScreenLines() []string {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return slices.Clone(t.previousScreen)
 }
 
 // SetLayoutRoot installs the fullscreen layout tree (transcript scroll view +
@@ -442,6 +458,8 @@ func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
 	t.clearComponentMouseGesture()
 	t.mu.Lock()
 	t.stopped = true
+	t.pendingWidth = 0
+	t.pendingHeight = 0
 	if t.renderTimer != nil {
 		t.renderTimer.Stop()
 		t.renderTimer = nil
@@ -873,10 +891,42 @@ func (t *TuiAltScreen) doRender() {
 	buf.WriteString(altEndSynchronizedOutput)
 	_, _ = fmt.Fprint(t.out, buf.String())
 
+	if t.previousScreenWidth > 0 && t.previousScreenWidth != width && t.onWidthChange != nil {
+		t.pendingWidth = width
+	}
+	if t.previousScreenHeight > 0 && t.previousScreenHeight != height && t.onHeightChange != nil {
+		t.pendingHeight = height
+	}
+	if !t.notifyingGeometry && (t.pendingWidth != 0 || t.pendingHeight != 0) {
+		t.notifyingGeometry = true
+		go t.notifyGeometryChanges()
+	}
 	t.previousScreen = screen
 	t.previousScreenWidth = width
 	t.previousScreenHeight = height
 	t.currentLayout = &nextLayout
+}
+
+func (t *TuiAltScreen) notifyGeometryChanges() {
+	for {
+		t.mu.Lock()
+		if t.stopped || (t.pendingWidth == 0 && t.pendingHeight == 0) {
+			t.notifyingGeometry = false
+			t.mu.Unlock()
+			return
+		}
+		callback, size := t.onWidthChange, t.pendingWidth
+		if size != 0 {
+			t.pendingWidth = 0
+		} else {
+			callback, size = t.onHeightChange, t.pendingHeight
+			t.pendingHeight = 0
+		}
+		t.mu.Unlock()
+		if callback != nil {
+			callback(size)
+		}
+	}
 }
 
 // altScreenRow returns screen[row], or "" past the end (upstream's

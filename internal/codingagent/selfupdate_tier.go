@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/crossspawn"
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 )
 
 // pig divergence (D39): SelfUpdateTier selects one owner before mutation.
@@ -189,7 +190,7 @@ func (e *configuredNpmProbeError) Unwrap() error { return e.cause }
 // package-manager ownership, then writable standalone, then read-only/Windows/
 // unknown remediation.
 func ResolveSelfUpdateTier() (*SelfUpdateProvenance, error) {
-	exe, err := os.Executable()
+	exe, err := linkerexec.Executable()
 	if err != nil {
 		return nil, fmt.Errorf("locate pig executable: %w", err)
 	}
@@ -384,7 +385,7 @@ func owningPackageFromExecutable(goos, exe string) (string, string) {
 // The npm os and cpu names of the platform packages that carry the native
 // binary: automation/release/npm/pack_npm.py TARGETS.
 var (
-	npmPlatformOSes = []string{"darwin", "linux", "win32"}
+	npmPlatformOSes = []string{"android", "darwin", "linux", "win32"}
 	npmPlatformCPUs = []string{"arm64", "x64"}
 )
 

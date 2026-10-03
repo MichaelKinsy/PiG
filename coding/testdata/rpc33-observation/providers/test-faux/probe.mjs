@@ -1,4 +1,4 @@
-// Drives Pi 0.87.1 against PiG's paired test-faux fixture (test/parity/testdata/test-faux-provider.ts) for every scenario.
+// Drives Pi 1.0.0 against PiG's paired test-faux fixture (test/parity/testdata/test-faux-provider.ts) for every scenario.
 //  - `rpc`: the real CLI in `--mode rpc` (recorder.mjs records push/serialization interleaving).
 //  - `direct`: the fixture's stream function behind 0..2 pi-ai `lazyStream` layers, consumed by `for await` or by
 //    pi-agent-core's `runAgentLoop`; every delivered event is copied at its delivery tick with the number of pushes so far.
@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 
 const root = process.env.PI_PACKAGE_ROOT;
 assert.ok(root, 'PI_PACKAGE_ROOT must name the pinned pi-coding-agent package');
-assert.equal(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version, '0.87.1');
+assert.equal(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version, '1.0.0');
 const here = new URL('.', import.meta.url).pathname;
 const provider = join(here, '../../../../../test/parity/testdata/test-faux-provider.ts');
 const recorder = join(here, 'recorder.mjs');
@@ -129,4 +129,4 @@ for (const scenario of scenarios) {
   directRuns.push(await ticks(scenario));
   results.push({ scenario, rpc: rpcRuns, direct: directRuns });
 }
-writeFileSync(out, JSON.stringify({ pi: '0.87.1', node: process.version, results }, null, 1));
+writeFileSync(out, JSON.stringify({ pi: '1.0.0', node: process.version, results }, null, 1));

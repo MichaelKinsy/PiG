@@ -1,6 +1,7 @@
 package routing_test
 
 import (
+	"context"
 	"regexp"
 	"sync"
 	"testing"
@@ -8,22 +9,20 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/experimental/protocol"
 	"github.com/MichaelKinsy/PiG/internal/experimental/routing"
+	"github.com/MichaelKinsy/PiG/internal/experimental/routing/routingtest"
 )
 
-// wireClient is upstream ProtocolTestClient over an in-memory WireChannel (packages/server/test/protocol.test.ts:9-44).
+// wireClient is upstream ProtocolTestClient over the in-memory WireChannel and ByteConnection of conformance.test.ts:25-60 and protocol.test.ts:9-44, with fatal-on-error helpers bound to the test's wait context.
 type wireClient struct {
-	t        *testing.T
-	handler  routing.ByteConnectionHandler
-	decoder  *protocol.ServerMessageDecoder
-	mu       sync.Mutex
-	messages []protocol.ServerMessage
-	closed   bool
-	changed  chan struct{}
-	// attachment is the client's current Session attachment, as ProtocolTestClient tracks it from attachment envelopes.
-	attachment *protocol.SessionTarget
-	requests   int
+	*routingtest.ProtocolTestClient
+	t       *testing.T
+	ctx     context.Context
+	handler routing.ByteConnectionHandler
+	mu      sync.Mutex
+	closed  bool
 }
 
+// memoryConnection is the server side: sends reach the client's Receive, and a close delivers the final chunk before marking the client closed.
 type memoryConnection struct{ client *wireClient }
 
 func (connection memoryConnection) Closed() bool {
@@ -33,18 +32,59 @@ func (connection memoryConnection) Closed() bool {
 }
 
 func (connection memoryConnection) Send(chunk []byte) error {
-	connection.client.receive(chunk)
+	connection.client.Receive(chunk)
 	return nil
 }
 
 func (connection memoryConnection) Close(finalChunk []byte) error {
 	if finalChunk != nil {
-		connection.client.receive(finalChunk)
+		connection.client.Receive(finalChunk)
 	}
-	connection.client.markClosed()
+	connection.client.mu.Lock()
+	connection.client.closed = true
+	connection.client.mu.Unlock()
+	connection.client.MarkClosed()
 	return nil
 }
 
+// memoryChannel is the client side: sends reach the server handler, and the first close reports the close to the handler and marks the client closed.
+type memoryChannel struct{ client *wireClient }
+
+func (channel memoryChannel) Send(chunk []byte) error {
+	channel.client.handler.OnData(chunk)
+	return nil
+}
+
+func (channel memoryChannel) SendFragmented(chunk []byte, splitAt int) error {
+	channel.client.handler.OnData(chunk[:splitAt])
+	channel.client.handler.OnData(chunk[splitAt:])
+	return nil
+}
+
+func (channel memoryChannel) Close() error {
+	channel.client.mu.Lock()
+	if channel.client.closed {
+		channel.client.mu.Unlock()
+		return nil
+	}
+	channel.client.closed = true
+	channel.client.mu.Unlock()
+	channel.client.handler.OnClose()
+	channel.client.MarkClosed()
+	return nil
+}
+
+// connect is upstream connect(server): a ProtocolTestClient accepted by server over the in-memory channel.
+func connect(t *testing.T, server *routing.Server) *wireClient {
+	t.Helper()
+	client := &wireClient{t: t, ctx: waitContext(t)}
+	client.ProtocolTestClient = routingtest.NewProtocolTestClient(memoryChannel{client: client})
+	client.handler = server.Accept(memoryConnection{client: client})
+	t.Cleanup(client.closeWire)
+	return client
+}
+
+// connectWire is protocol.test.ts connect(): a client of a fresh listener-less server over TestServerHost.
 func connectWire(t *testing.T) *wireClient {
 	t.Helper()
 	server := newTestServer(t, routing.ServerOptions{Listeners: []routing.ServerListener{}})
@@ -53,47 +93,14 @@ func connectWire(t *testing.T) *wireClient {
 			t.Error(err)
 		}
 	})
-	decoder, err := protocol.NewServerMessageDecoder(protocol.FrameDecoderOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	client := &wireClient{t: t, decoder: decoder, changed: make(chan struct{})}
-	client.handler = server.Accept(memoryConnection{client: client})
-	return client
-}
-
-func (client *wireClient) receive(chunk []byte) {
-	messages, err := client.decoder.Push(chunk)
-	if err != nil {
-		client.t.Errorf("server sent an undecodable frame: %v", err)
-		return
-	}
-	client.mu.Lock()
-	for _, message := range messages {
-		if envelope, ok := message.(protocol.AttachmentEnvelope); ok {
-			client.attachment = envelope.Attachment
-		}
-	}
-	client.messages = append(client.messages, messages...)
-	client.wakeLocked()
-	client.mu.Unlock()
-}
-
-func (client *wireClient) markClosed() {
-	client.mu.Lock()
-	client.closed = true
-	client.wakeLocked()
-	client.mu.Unlock()
-}
-
-func (client *wireClient) wakeLocked() {
-	close(client.changed)
-	client.changed = make(chan struct{})
+	return connect(t, server)
 }
 
 func (client *wireClient) sendMessage(message protocol.ClientMessage) {
 	client.t.Helper()
-	client.handler.OnData(encodeClient(client.t, message))
+	if err := client.SendMessage(message); err != nil {
+		client.t.Fatal(err)
+	}
 }
 
 func encodeClient(t *testing.T, message protocol.ClientMessage) []byte {
@@ -108,56 +115,27 @@ func encodeClient(t *testing.T, message protocol.ClientMessage) []byte {
 // next returns the first received message the predicate accepts, waiting for the wire when needed.
 func (client *wireClient) next(match func(protocol.ServerMessage) bool) protocol.ServerMessage {
 	client.t.Helper()
-	deadline := time.After(30 * time.Second)
-	for {
-		client.mu.Lock()
-		for _, message := range client.messages {
-			if match(message) {
-				client.mu.Unlock()
-				return message
-			}
-		}
-		closed, changed := client.closed, client.changed
-		client.mu.Unlock()
-		if closed {
-			client.t.Fatal("wire client is closed")
-		}
-		select {
-		case <-changed:
-		case <-deadline:
-			client.t.Fatal("no matching server message")
-		}
+	message, err := client.Next(client.ctx, match)
+	if err != nil {
+		client.t.Fatal(err)
 	}
+	return message
 }
 
 func (client *wireClient) waitForClose() {
 	client.t.Helper()
-	deadline := time.After(30 * time.Second)
-	for {
-		client.mu.Lock()
-		closed, changed := client.closed, client.changed
-		client.mu.Unlock()
-		if closed {
-			return
-		}
-		select {
-		case <-changed:
-		case <-deadline:
-			client.t.Fatal("wire connection never closed")
-		}
+	if err := client.WaitForClose(client.ctx); err != nil {
+		client.t.Fatal(err)
 	}
 }
 
 func (client *wireClient) hello(version float64) protocol.ServerMessage {
 	client.t.Helper()
-	client.sendMessage(protocol.ClientHello{Version: version})
-	return client.next(func(message protocol.ServerMessage) bool {
-		switch message.(type) {
-		case protocol.ServerHello, protocol.ServerHelloError:
-			return true
-		}
-		return false
-	})
+	message, err := client.Hello(client.ctx, &version)
+	if err != nil {
+		client.t.Fatal(err)
+	}
+	return message
 }
 
 func isHelloError(message protocol.ServerMessage) bool {
@@ -219,15 +197,17 @@ func TestServerProtocolRejectsUnsupportedProtocolVersions(t *testing.T) {
 func TestServerProtocolAcceptsFragmentedHelloAndRequestFrames(t *testing.T) {
 	client := connectWire(t)
 	hello := encodeClient(t, protocol.ClientHello{Version: protocol.ProtocolVersion})
-	client.handler.OnData(hello[:len(hello)/2])
-	client.handler.OnData(hello[len(hello)/2:])
+	if err := client.SendFragmentedMessage(protocol.ClientHello{Version: protocol.ProtocolVersion}, len(hello)/2); err != nil {
+		t.Fatal(err)
+	}
 	reply, ok := client.next(isHello).(protocol.ServerHello)
 	if !ok || reply.ServerId != testServerID {
 		t.Fatalf("hello reply = %#v", reply)
 	}
 	request := encodeClient(t, directoryListRequest())
-	client.handler.OnData(request[:len(request)/2])
-	client.handler.OnData(request[len(request)/2:])
+	if err := client.SendFragmentedMessage(directoryListRequest(), len(request)/2); err != nil {
+		t.Fatal(err)
+	}
 	expectInternalErrorResponse(t, client.next(isResponse))
 }
 
@@ -254,7 +234,9 @@ func TestServerProtocolRejectsHostileFramedInput(t *testing.T) {
 	} {
 		t.Run(input.label, func(t *testing.T) {
 			client := connectWire(t)
-			client.handler.OnData(input.bytes)
+			if err := client.SendBytes(input.bytes); err != nil {
+				t.Fatal(err)
+			}
 			expectHelloError(t, client.next(isHelloError), "invalid_request")
 			client.waitForClose()
 		})
@@ -277,7 +259,9 @@ func TestServerProtocolRejectsASecondHelloAfterCompletingTheHandshake(t *testing
 func TestServerProtocolProcessesAHelloAndRequestCoalescedInOneByteChunk(t *testing.T) {
 	client := connectWire(t)
 	wire := append(encodeClient(t, protocol.ClientHello{Version: protocol.ProtocolVersion}), encodeClient(t, directoryListRequest())...)
-	client.handler.OnData(wire)
+	if err := client.SendBytes(wire); err != nil {
+		t.Fatal(err)
+	}
 	client.next(isHello)
 	response, ok := client.next(isResponse).(protocol.ResponseEnvelope)
 	if !ok || response.Id != "request-1" {

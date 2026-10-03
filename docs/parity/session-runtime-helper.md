@@ -1,6 +1,6 @@
 # Session runtime helper evidence
 
-This is the port of the five `pt-sessions-runtime-b` test files. `agent-session-runtime.test.ts` and `agent-session-branching.test.ts` are `ported`; `2860-replaced-session-context.test.ts` stays `partial` because no extension SDK exposes `withSession`. D30 and D61 remain for library callers of the Session-level replacement methods; the CLI modes no longer use them.
+This is the port of the five `pt-sessions-runtime-b` test files. `agent-session-runtime.test.ts`, `agent-session-branching.test.ts` and `2860-replaced-session-context.test.ts` are `ported`. D30 and D61 remain for library callers of the Session-level replacement methods; the CLI modes no longer use them.
 
 ## Reference and case inventory
 
@@ -11,7 +11,7 @@ All test paths below are under `packages/coding-agent/test/`.
 | File | Original sites | Current evidence |
 | --- | --- | --- |
 | `suite/agent-session-runtime.test.ts` | 125, 166, 216, 249, 294, 329, 378, 391, 431, 543, 548, 620 | All 12 native cases pass through real Runtime/Session construction. Session25 passes three exact-output pairs. Print, JSON, RPC and interactive mode replace through the factory-owned Runtime (Production modes below). |
-| `suite/regressions/2860-replaced-session-context.test.ts` | 147, 211, 243 | All three native cases pass through real new/fork/switch replacement. Session27 pairs the original assertions. Production-mode routing is closed; subprocess callback transport remains pending. |
+| `suite/regressions/2860-replaced-session-context.test.ts` | 147, 211, 243 | All three native cases pass through real new/fork/switch replacement. Session27 pairs the original assertions. `TestReplacedSession2860AcrossSDKs` runs the same bodies through the pig binary for Node, Go, Python and Rust extensions. |
 | `suite/regressions/5943-session-start-notify.test.ts` | 256, 276, 313, 368, 418, 451, 475 | All seven native cases pass. Session24 pairs resource ordering, Session28 pairs reload, and Session29 pairs replacement notification/message ordering. Production factory wiring is closed. |
 | `suite/regressions/startup-session-rebind-duplicate-subscription.test.ts` | 23 | The native overlapping-bind case passes through real Runtime replacement and the production startup/rebind owner. Session29 pairs the original assertions; The CLI now builds its startup Session through the same factory. |
 | `agent-session-branching.test.ts` | 90, 110, 131 | All three native prompt/selection cases pass through actual Runtime replacement. Session25 compares the implementation-based roles and file presence. The CLI modes replace through the factory-owned Runtime. |
@@ -80,9 +80,9 @@ All 26 assigned native original cases now have evidence, but the five file mappi
 
 ## Persistence fixes
 
-The first valid runtime red is `TestRuntimeOriginalDuplicateCurrentBranch/memory`: `SessionManager.Clone` unconditionally created a disk file. The shared clone path now constructs the retained log in memory, selects a path only for persisted sources, and writes only when the retained branch contains an assistant. The root-user fallback in `ForkToNewSession` also preserves memory-only storage.
+The first valid runtime red is `TestRuntimeOriginalDuplicateCurrentBranch/memory`: `SessionManager.Clone` unconditionally created a disk file. The shared clone path now constructs the retained log in memory, selects a path only for persisted sources, and writes only when the retained branch contains a user or assistant message (upstream 0.99.1 `session-manager.ts:1717-1725`). The root-user fallback in `ForkToNewSession` also preserves memory-only storage.
 
-The pure guard `TestClonePreservesPersistenceModeAndDefersAssistantFreeBranches` covers memory/disk and user-only/assistant-retaining branches. `TestForkBeforeRootUserKeepsMemoryOnlyStorage` covers the separate root fallback. The actual Runtime cases cover the caller boundary. The first-message branching cases assert that the selected disk path does not yet exist.
+The pure guard `TestClonePreservesPersistenceModeAndDefersConversationFreeBranches` covers memory/disk and setup-only/user/assistant-retaining branches. `TestForkBeforeRootUserKeepsMemoryOnlyStorage` covers the separate root fallback. The actual Runtime cases cover the caller boundary. The first-message branching cases assert that the selected disk path does not yet exist.
 
 Pi `src/core/agent-session-runtime.ts:335-352` retains the in-memory SessionManager object while replacing its owning Session. `session_branch_runtime.go` preserves that identity and clears the old log caches when it installs the new branch. `TestRuntimeOriginalDuplicateCurrentBranch/memory` checks both Session replacement and manager identity.
 
@@ -154,7 +154,7 @@ Disposition: no needless serial wait or double rebuild exists in this path. A re
 
 ## Remaining implementation blockers
 
-The CLI modes create and replace their Session through the factory-owned Runtime; see Production modes below. D30 (Part 2) and D61 remain for library callers of `Session.NewSession`, `SwitchSession`, `CloneInPlace`, `ForkToNewSession`, `ForkToNewSessionWithText`, the headless `Session.DispatchSlash` `/fork` path, `ImportFromJsonl` and the default `Session.ExtensionCommandActions` replacement actions. D30 (Part 1) remains for subprocess extensions in the CLI modes: their host rejects a replaced Session's later calls with Pi's stale message, but SDK-local getters return the outgoing Session's values and host calls do not throw at the call site (they return or raise an error, or write to stderr, by SDK). The subprocess SDKs still lack the scoped `withSession` callback transport, so a subprocess extension cannot pass that callback to `ctx.newSession`, `ctx.fork` or `ctx.switchSession`. Native `coding/extension` options and replacement contexts are implemented.
+The CLI modes create and replace their Session through the factory-owned Runtime; see Production modes below. D30 (Part 2) and D61 remain for library callers of `Session.NewSession`, `SwitchSession`, `CloneInPlace`, `ForkToNewSession`, `ForkToNewSessionWithText`, the headless `Session.DispatchSlash` `/fork` path, `ImportFromJsonl` and the default `Session.ExtensionCommandActions` replacement actions. D30 (Part 1) remains for Go, Rust and Python extensions in the CLI modes: their host rejects a replaced Session's later calls with Pi's stale message, but SDK-local getters return the outgoing Session's values and some fire-and-forget calls discard the error. The Node runtime receives the host's `invalidate` notification and throws Pi's stale message from a captured `pi` or `ctx`. Every SDK passes a `withSession` callback to `ctx.newSession`, `ctx.fork` and `ctx.switchSession`; the host runs it with a `with_session` request whose calls the replacement Session serves (`docs/extension-api-parity.md`, Replacement callback async contract). `setup` remains native-only.
 
 Pi `src/modes/interactive/interactive-mode.ts:2020-2043` captures Session identity across an awaited bind. Replacement subscribes before bind. Stale startup completion neither subscribes nor updates the title. Two independent bind completions are required to prove that case. The native #5943 and stale-rebind UI cases now have original-case guards and compiling paired mutations. Their production startup caller is wired; the CLI's actual replacement factory and mode wiring remain incomplete.
 

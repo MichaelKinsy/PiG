@@ -6,9 +6,9 @@ import (
 	"strings"
 )
 
-// customMsgLabelFg is the foreground color for the [compaction] label: the
-// active theme's "customMessageLabel" token (Pi compaction-summary-message.ts
-// theme.fg("customMessageLabel", ...)). The theme schema requires the token.
+// customMsgLabelFg is the foreground color for the [compaction] label.
+// It is the active theme's customMessageLabel token.
+// Fg colors do not need the delta-from-cardBg adjustment (only bg tints do).
 func customMsgLabelFg() string { return ActiveTheme().CustomMessageLabel }
 
 // CompactionSummaryComponent renders a collapsible compaction marker.

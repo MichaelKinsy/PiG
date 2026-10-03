@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { getEffortThinkingLevelMap } from '../../../../.upstream/v0.87.1/packages/ai/scripts/models-dev-reasoning-options.ts';
-import { getOpenRouterThinkingLevelMap } from '../../../../.upstream/v0.87.1/packages/ai/scripts/openrouter-reasoning-options.ts';
+import { getEffortThinkingLevelMap } from '../../../../.upstream/current/packages/ai/scripts/models-dev-reasoning-options.ts';
+import { getOpenRouterThinkingLevelMap } from '../../../../.upstream/current/packages/ai/scripts/openrouter-reasoning-options.ts';
 import { pathToFileURL } from 'node:url';
 const root=process.env.PI_PACKAGE_ROOT??resolve('extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent');
 const ai=join(root,'node_modules/@earendil-works/pi-ai/dist');

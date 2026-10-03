@@ -33,6 +33,39 @@ func (a *Agent) Subscribe(listener func(context.Context, AgentEvent) error) func
 	}
 }
 
+// runSignalWatcher retains an observer's identity independently of its callback value.
+type runSignalWatcher struct {
+	observe func()
+	removed atomic.Bool
+}
+
+// ObserveRunSignal registers observe to run after a run claims the agent, when Signal already returns the run's context, and after the run releases it, when Signal already returns nil. Pi's `agent.signal` is a getter (agent.ts:336-338), so an owner that replicates the signal elsewhere learns of both instants here.
+// observe runs on the goroutine that changes the run, after the agent's lock is released, so it may call Signal; the run waits for observe to return. The returned function removes the observer and can be called repeatedly.
+func (a *Agent) ObserveRunSignal(observe func()) func() {
+	watcher := &runSignalWatcher{observe: observe}
+	a.stateMu.Lock()
+	a.runSignalWatchers = append(a.runSignalWatchers, watcher)
+	a.stateMu.Unlock()
+	return func() {
+		watcher.removed.Store(true)
+		a.stateMu.Lock()
+		defer a.stateMu.Unlock()
+		a.runSignalWatchers = slices.DeleteFunc(a.runSignalWatchers, func(w *runSignalWatcher) bool { return w == watcher })
+	}
+}
+
+// notifyRunSignalObservers runs the observers registered when the run changed, in registration order, skipping one removed meanwhile.
+func (a *Agent) notifyRunSignalObservers() {
+	a.stateMu.RLock()
+	watchers := slices.Clone(a.runSignalWatchers)
+	a.stateMu.RUnlock()
+	for _, watcher := range watchers {
+		if !watcher.removed.Load() {
+			watcher.observe()
+		}
+	}
+}
+
 // Signal returns the active run's cancellation context, or nil when idle.
 func (a *Agent) Signal() context.Context {
 	a.stateMu.RLock()

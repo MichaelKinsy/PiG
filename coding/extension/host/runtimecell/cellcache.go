@@ -47,6 +47,8 @@ type cellFailureMeta struct {
 	InputDigest string `json:"inputDigest"`
 	Language    string `json:"language"`
 	Message     string `json:"message"`
+	Cause       string `json:"cause"`
+	Log         string `json:"log,omitempty"`
 	Created     int64  `json:"created"`
 }
 
@@ -62,14 +64,6 @@ func cacheBuildFailure(err error) error {
 		return nil
 	}
 	return &cacheableBuildFailure{err: err}
-}
-
-type cachedBuildFailureError struct {
-	message string
-}
-
-func (e *cachedBuildFailureError) Error() string {
-	return "cached build failure (inputs unchanged): " + e.message
 }
 
 // PublishedEntry is the result of resolving a content-addressed cache entry.
@@ -117,7 +111,7 @@ func readCellFailureMetadata(finalDir string) (cellFailureMeta, bool) {
 	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
 		return cellFailureMeta{}, false
 	}
-	if meta.InputDigest == "" || meta.Language == "" || meta.Message == "" || meta.Created <= 0 {
+	if meta.InputDigest == "" || meta.Language == "" || meta.Message == "" || meta.Cause == "" || meta.Created <= 0 {
 		return cellFailureMeta{}, false
 	}
 	return meta, true
@@ -129,10 +123,10 @@ func cachedBuildFailure(finalDir, inputDigest, language string) (error, bool) {
 		return nil, false
 	}
 	_ = TouchUsage(finalDir, time.Now())
-	return &cachedBuildFailureError{message: meta.Message}, true
+	return &BuildFailure{Summary: meta.Message, Cause: meta.Cause, Log: meta.Log, Cached: true}, true
 }
 
-func publishCellFailure(ctx context.Context, finalDir, inputDigest, language, message string) error {
+func publishCellFailure(ctx context.Context, finalDir, inputDigest, language string, failure *BuildFailure) error {
 	parent := filepath.Dir(finalDir)
 	scratch, err := os.MkdirTemp(parent, ".failed-*")
 	if err != nil {
@@ -142,7 +136,9 @@ func publishCellFailure(ctx context.Context, finalDir, inputDigest, language, me
 	data, err := json.Marshal(cellFailureMeta{
 		InputDigest: inputDigest,
 		Language:    language,
-		Message:     message,
+		Message:     failure.Summary,
+		Cause:       failure.Cause,
+		Log:         failure.Log,
 		Created:     time.Now().Unix(),
 	})
 	if err != nil {
@@ -309,8 +305,16 @@ func publishArtifact(ctx context.Context, finalDir, canonicalName, inputDigest, 
 	if err != nil {
 		var failure *cacheableBuildFailure
 		if cacheBuildFailures && errors.As(err, &failure) {
-			if cacheErr := publishCellFailure(ctx, finalDir, inputDigest, language, failure.Error()); cacheErr != nil {
+			record, isReport := errors.AsType[*BuildFailure](failure.err)
+			if !isReport {
+				summary := oneLine(failure.err.Error())
+				record = &BuildFailure{Summary: summary, Cause: summary, cause: failure.err}
+			}
+			if cacheErr := publishCellFailure(ctx, finalDir, inputDigest, language, record); cacheErr != nil {
 				return PublishedEntry{}, errors.Join(err, fmt.Errorf("cache build failure: %w", cacheErr))
+			}
+			if !isReport {
+				return PublishedEntry{}, record
 			}
 		}
 		return PublishedEntry{}, err

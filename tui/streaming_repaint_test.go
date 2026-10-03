@@ -195,7 +195,7 @@ func TestInteractiveOverlayCloseDoesNotReplayTranscript(t *testing.T) {
 	ui.Render()
 	beforeBytes := w.bytes
 	beforeClears := w.clears
-	ui.hideOverlay()
+	ui.HideOverlay()
 	ui.Render()
 	if got := w.clears - beforeClears; got != 0 {
 		t.Fatalf("closing interactive overlay caused %d full clears", got)

@@ -13,6 +13,8 @@ import (
 	"github.com/gofrs/flock"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
+	"github.com/MichaelKinsy/PiG/internal/bytesize"
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 func TestExtensionsCacheStatsAndPruneUseManagedRootsOnly(t *testing.T) {
@@ -77,16 +79,16 @@ func TestExtensionsCacheStatsAndPruneUseManagedRootsOnly(t *testing.T) {
 	}
 }
 
-func TestParseCacheSize(t *testing.T) {
+func TestCacheSizeFlagParses(t *testing.T) {
 	for input, want := range map[string]int64{"1KiB": 1024, "2MB": 2_000_000, "17": 17} {
-		got, err := parseCacheSize(input)
+		got, err := bytesize.Parse(input)
 		if err != nil || got != want {
-			t.Errorf("parseCacheSize(%q) = %d, %v; want %d", input, got, err, want)
+			t.Errorf("bytesize.Parse(%q) = %d, %v; want %d", input, got, err, want)
 		}
 	}
 	for _, input := range []string{"-1", "nope", "999999999999999999999GB"} {
-		if _, err := parseCacheSize(input); err == nil {
-			t.Errorf("parseCacheSize(%q) succeeded", input)
+		if _, err := bytesize.Parse(input); err == nil {
+			t.Errorf("bytesize.Parse(%q) succeeded", input)
 		}
 	}
 }
@@ -149,7 +151,7 @@ func TestAutomaticExtensionCacheGCNeverWaitsForAnotherCollector(t *testing.T) {
 		select {
 		case err := <-done:
 			return err
-		case <-time.After(10 * time.Second):
+		case <-time.After(testbudget.Wait(t)):
 			t.Fatal("automatic cache collection waited for another collector's lock")
 			return nil
 		}
@@ -169,5 +171,46 @@ func TestAutomaticExtensionCacheGCNeverWaitsForAnotherCollector(t *testing.T) {
 	}
 	if err := collect(); err != nil {
 		t.Fatalf("collection with a fresh marker: %v", err)
+	}
+}
+
+// The daily automatic prune keeps the extension cache within its size limit by
+// evicting the entries used longest ago; nothing else is touched.
+func TestAutomaticExtensionCacheGCEnforcesTheSizeLimitOldestFirst(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("PIG_HOME", home)
+	t.Setenv("PIG_CODING_AGENT_DIR", filepath.Join(home, "agent"))
+	cacheRoot := filepath.Join(home, "cache")
+	const entrySize = 1 << 20
+	now := time.Now()
+	var entries []string
+	for i := range 8 {
+		digest := strings.Repeat(string(rune('a'+i)), 8)
+		dir := filepath.Join(cacheRoot, "cells", "go", digest)
+		published, err := runtimecell.PublishArtifact(context.Background(), dir, "runner", digest, "go", func(scratch string) (string, error) {
+			artifact := filepath.Join(scratch, "runner")
+			return artifact, os.WriteFile(artifact, make([]byte, entrySize), 0o755)
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Entry 0 was used longest ago, entry 7 most recently.
+		if err := runtimecell.TouchUsage(published.Dir, now.Add(time.Duration(i-10)*time.Hour)); err != nil {
+			t.Fatal(err)
+		}
+		entries = append(entries, published.Dir)
+	}
+	previous := automaticCacheLimit
+	automaticCacheLimit = 3*entrySize + entrySize/2
+	t.Cleanup(func() { automaticCacheLimit = previous })
+
+	if err := runAutomaticExtensionCacheGC(nil); err != nil {
+		t.Fatal(err)
+	}
+	for i, dir := range entries {
+		_, err := os.Stat(dir)
+		if kept := err == nil; kept != (i >= 5) {
+			t.Errorf("entry %d kept=%v (%v), want kept=%v", i, kept, err, i >= 5)
+		}
 	}
 }

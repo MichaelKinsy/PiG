@@ -7,7 +7,7 @@ import hashlib
 from pathlib import Path
 import shutil
 
-TARGETS = ('linux-amd64', 'linux-arm64', 'darwin-amd64', 'darwin-arm64',
+TARGETS = ('android-arm64', 'linux-amd64', 'linux-arm64', 'darwin-amd64', 'darwin-arm64',
            'windows-amd64', 'windows-arm64', 'source')
 
 

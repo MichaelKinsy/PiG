@@ -15,6 +15,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
+	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
 func TestHost_LoadEmbeddedCellsStartsIsolatedBinaryWithoutSource(t *testing.T) {
@@ -226,7 +227,7 @@ func buildRustEmbeddedOwnerCell(t *testing.T) embeddedOwnerCellFixture {
 }
 
 func buildPythonEmbeddedOwnerCell(t *testing.T) embeddedOwnerCellFixture {
-	python := findPythonExecutable(runtime.GOOS, exec.LookPath)
+	python := toolchain.PythonExecutable(runtime.GOOS, exec.LookPath)
 	if _, err := exec.LookPath(python); err != nil {
 		t.Skipf("%s not found: %v", python, err)
 	}

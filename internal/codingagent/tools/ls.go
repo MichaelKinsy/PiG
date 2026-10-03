@@ -140,5 +140,5 @@ func (t *LsTool) Execute(ctx context.Context, _ string, rawParams json.RawMessag
 }
 
 func lsError(message string) agent.AgentToolResult {
-	return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: message}}, Details: map[string]any{}, IsError: true}
+	return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: message}}, Details: map[string]any{}, IsError: true, Thrown: true}
 }

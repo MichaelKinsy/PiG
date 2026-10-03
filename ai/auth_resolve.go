@@ -108,13 +108,21 @@ type APIKeyAuth struct {
 	Resolve func(ctx context.Context, input APIKeyAuthInput) (*AuthResult, error)
 }
 
+// LoginOptions is app-supplied context for Models.Login.
+type LoginOptions struct {
+	// GetDeviceID returns the stable ID of this app installation, for example sent to OpenAI as its agent host ID.
+	// Login flows call it only when they need it, so apps can create the ID on first use; it must return the same ID on
+	// every later call. Nil means the app supplies none.
+	GetDeviceID func() string
+}
+
 // OAuthAuth refreshes stored OAuth credentials and derives request auth
 // from them.
 type OAuthAuth struct {
 	Name           string
 	IsSubscription bool
 	LoginLabel     string
-	Login          func(context.Context, AuthInteraction) (Credential, error)
+	Login          func(context.Context, AuthInteraction, LoginOptions) (Credential, error)
 	Refresh        func(ctx context.Context, credential Credential) (Credential, error)
 	ToAuth         func(credential Credential) (ModelAuth, error)
 }
@@ -271,6 +279,19 @@ func overlayEnvAuthContext(base AuthContext, env map[string]string) AuthContext 
 // than the minimum validity remaining locks, re-checks expiry under the lock,
 // refreshes once, and persists the rotated credential before release.
 func resolveStoredOAuth(ctx context.Context, credentials CredentialStore, providerID string, oauth *OAuthAuth, stored Credential, minOAuthValidityMs *float64) (*AuthResult, error) {
+	credential, err := refreshStoredOAuth(ctx, credentials, providerID, oauth, stored, minOAuthValidityMs)
+	if err != nil || credential == nil {
+		return nil, err
+	}
+	auth, err := oauth.ToAuth(*credential)
+	if err != nil {
+		return nil, NewModelsError(ModelsErrorOAuth, fmt.Sprintf("OAuth auth derivation failed for %s", providerID), err)
+	}
+	return &AuthResult{Auth: auth, Source: "OAuth"}, nil
+}
+
+// refreshStoredOAuth is resolveStoredOAuth's refresh step: it returns the credential to derive auth from, refreshed under the store's lock when it expires within the minimum validity, or nil when the credential was removed or replaced by a non-OAuth one meanwhile.
+func refreshStoredOAuth(ctx context.Context, credentials CredentialStore, providerID string, oauth *OAuthAuth, stored Credential, minOAuthValidityMs *float64) (*Credential, error) {
 	minimumValidityMs := defaultOAuthMinimumValidityMs
 	if minOAuthValidityMs != nil {
 		minimumValidityMs = math.Max(minimumValidityMs, *minOAuthValidityMs)
@@ -307,11 +328,7 @@ func resolveStoredOAuth(ctx context.Context, credentials CredentialStore, provid
 			return nil, NewModelsError(ModelsErrorOAuth, fmt.Sprintf("OAuth refresh returned a token that expires too soon for %s", providerID), nil)
 		}
 	}
-	auth, err := oauth.ToAuth(credential)
-	if err != nil {
-		return nil, NewModelsError(ModelsErrorOAuth, fmt.Sprintf("OAuth auth derivation failed for %s", providerID), err)
-	}
-	return &AuthResult{Auth: auth, Source: "OAuth"}, nil
+	return &credential, nil
 }
 
 // refreshOAuthWithTimeout keeps the signal live through refresh settlement and GC. The caller or original fifteen-second deadline owns cancellation, including when only Done is retained.

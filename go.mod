@@ -12,13 +12,13 @@ require (
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/MichaelKinsy/PiG/extensions/sdk v0.3.1
 	github.com/Microsoft/go-winio v0.6.2
-	github.com/alecthomas/chroma/v2 v2.24.1
 	github.com/aws/aws-sdk-go-v2 v1.41.7
 	github.com/aws/aws-sdk-go-v2/config v1.32.17
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.16
 	github.com/aws/aws-sdk-go-v2/service/bedrockruntime v1.50.6
 	github.com/aws/smithy-go v1.25.1
 	github.com/clipperhouse/uax29/v2 v2.7.0
+	github.com/dlclark/regexp2 v1.12.0
 	github.com/evanw/esbuild v0.28.2
 	github.com/fsnotify/fsnotify v1.5.4
 	github.com/gofrs/flock v0.13.0
@@ -28,6 +28,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.23
 	github.com/rivo/uniseg v0.4.7
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
+	github.com/tetratelabs/wazero v1.12.0
 	github.com/yuin/goldmark v1.8.5
 	golang.org/x/net v0.58.0
 	golang.org/x/oauth2 v0.37.0
@@ -37,6 +38,7 @@ require (
 )
 
 require (
+	github.com/alecthomas/chroma/v2 v2.24.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
@@ -111,7 +113,6 @@ require (
 	github.com/dave/dst v0.27.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/denis-tingaikin/go-header v0.5.0 // indirect
-	github.com/dlclark/regexp2 v1.12.0 // indirect
 	github.com/ettle/strcase v0.2.0 // indirect
 	github.com/fatih/color v1.19.0 // indirect
 	github.com/fatih/structtag v1.2.0 // indirect

@@ -1,0 +1,43 @@
+port-99-f6d green evidence (host: linux, Go 1.27.1, temporary HOME/PIG_HOME/PIG_CODING_AGENT_DIR)
+
+1. Red tests now green
+   go test ./coding/extension/ ./coding/extension/host/inproc/ ./coding/extension/host/subprocess/ (new tests), ./coding -run 'TestSDK|TestSessionToolCallsGetAToolContext'  -> ok
+   Provider model config: TestProviderModelConfig* -> ok
+
+2. Load: GOMAXPROCS=4, taskset -c 0-3 with 6 busy loops on the same cores, -race
+   inproc  -count=24 -run 'Mcp|VirtualModel|ToolContext|StructuredContent'                       -> ok (4.5s)
+   subprocess -count=24 -run 'TestRegisterPayload|TestPrepareLoadout|TestRegisterMcpServerCalls|TestVirtualModel|
+     TestRegisterVirtualModelCalls|TestExecuteToolCall|TestSnapshotCarries|TestSubprocessToolResult|
+     TestStoppingAnExtension|TestReplacingAnExtension|TestDisabledMember'                         -> ok (76s)
+   First burner run FAILED: "Log in goroutine after TestExecuteToolCallRunsNestedCallsWithUpdatesAndCancellation has
+   completed: no result for call executeTool". Cause: harness handler goroutine called t.Fatal for a nested call whose
+   calling request was cancelled (the host drops the reply). Fix: callErr in goroutines; -count=60 -run TestExecuteToolCall
+   and the -count=24 set above then pass.
+
+3. Mutation checks (each reverted after the run)
+   structured content kept on content replace          -> TestEmitToolResultDropsStructuredContentWhenContentIsReplaced FAIL
+   structured content from handler ignored             -> TestEmitToolResultKeepsStructuredContentReturnedWithContent FAIL
+   MCP ownership check dropped                         -> TestRuntimeRegisterMcpServerValidatesChecksOwnership..., TestRegisterPayloadRejectsInvalidAndForeignMcpServers, TestRegisterMcpServerCalls FAIL
+   executeTool.cancel ignored                          -> TestExecuteToolCallRunsNestedCallsWithUpdatesAndCancellation FAIL
+   executeTool ignores the calling request's context   -> same test FAIL
+   route ignores the caller's context                  -> TestVirtualModelRouteCancellationAndErrors FAIL
+   snapshot mcpServers nil                             -> TestSnapshotCarriesSettingsMcpServersAndCallableTools FAIL
+   prepareLoadout result dropped                       -> TestPrepareLoadoutRunsInTheExtension FAIL
+   no release at stop / successor ignored / no release at disable -> TestStoppingAnExtension..., TestReplacingAnExtension..., TestDisabledMember... FAIL
+   per-call tool context replaced by DispatchContext   -> TestSessionToolCallsGetAToolContextForTheirCallID FAIL
+
+4. Gates
+   go build ./...; go vet ./... ; GOOS=windows go vet ./coding/... ./internal/... ; gofmt -l (empty); go fix -diff ./... (empty)
+   golangci-lint (integration,live,parity) ./coding/... ./internal/codingagent/... ./internal/orderedjson/... -> 0 issues
+   go test -race ./coding/extension/... ./internal/codingagent/... ./internal/orderedjson/... ./agent/...     -> ok except environment items below
+   go test -race ./coding ./cmd/pig -> only version-guarded oracle tests and stdout-backpressure frame tests fail (the latter fail identically on staging/porter/pi-0.99.1)
+   TestLinkedPackagesCompileNoRegexpAtInit caught a package-level regexp in the copied mcp_servers.go; fixed to lazyregexp.New as in port-99-f8-mcp.
+   python3 automation/ci/check-public-claims.py -> ok
+
+5. Environment failures, not this lane
+   TestNodeVendoredTuiUpstreamTests/native-clipboard-linux: Xvfb missing. internal/codingagent/tools grep tests: rg shim needs the real HOME.
+   Python/Rust subprocess tests need MISE_* variables pointing at the real mise dirs (added to /tmp/f6d.env).
+   make parity-family: unavailable here (see progress notes).
+
+6. Needed from the integrator (not committed by this lane)
+   make interface-go interface-recommendations-generate; PORT_MAP rows for the files this lane ports; docs/extension-api-parity.md rows; test-mapping hashes for sdk-stream-options.test.ts, extensions-runner.test.ts, image-resize-callers.test.ts.

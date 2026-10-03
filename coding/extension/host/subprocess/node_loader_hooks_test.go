@@ -36,6 +36,7 @@ if (typeof module.registerHooks === "function") {
 }
 
 func TestNodeIssuePackageForms(t *testing.T) {
+	t.Parallel()
 	entry := filepath.Join(findModuleRoot(t), "test/parity", "scenarios", "extensions-runtime", "testdata", "issue-package")
 	for _, isolation := range []string{"", "isolated"} {
 		t.Run("isolation="+isolation, func(t *testing.T) {

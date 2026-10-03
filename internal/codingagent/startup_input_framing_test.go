@@ -34,7 +34,7 @@ func TestStartupDoesNotReframeTerminalEvents(t *testing.T) {
 		defer takeStartupInput()
 		component := &startupInputRecorder{}
 		start := time.Now()
-		_, err := runStartupComponentWith(component, StartupUIOptions{Settings: Settings{Theme: "dark"}}, false, tui.NewWithOutput(io.Discard, 80, 24), framedStartupTerminal{event: "\x1b["}, nil)
+		_, err := runStartupComponentWith(component, StartupUIOptions{Settings: Settings{Theme: "dark"}}, false, tui.NewWithOutput(io.Discard, 80, 24), framedStartupTerminal{event: "\x1b["})
 		if err != nil {
 			t.Fatal(err)
 		}

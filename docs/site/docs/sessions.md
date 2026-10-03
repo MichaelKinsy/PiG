@@ -1,6 +1,6 @@
 # Sessions
 
-A session is one conversation with its full history. By default, PiG saves its log after the first assistant response. Use `--no-session` to keep the Session log in memory.
+A session is one conversation with its full history. By default, PiG saves its log from the first user message. Use `--no-session` to keep the Session log in memory.
 
 Every Session has an ID, including print (`-p`), JSON, RPC, and `--no-session` runs. A new Session gets a UUIDv7 unless you supply `--session-id`. Extensions can read the ID before the first model response. `--no-session` disables Session file persistence; it does not remove the ID or prevent an extension from keeping its own session-keyed data.
 
@@ -10,11 +10,11 @@ Sessions live under `~/.pig/agent/sessions/`, in a directory per project. The
 directory name is the project path with separators replaced, wrapped in `--`, so
 sessions for different projects never mix.
 
-Each persisted session uses a JSON Lines file. PiG selects its path when the Session is created, but the file does not exist until an assistant message is saved.
+Each persisted session uses a JSON Lines file. PiG selects its path when the Session is created, but the file does not exist until the session holds a user or assistant message. Setup entries alone, such as a model or thinking-level change, do not create it.
 
 Set `sessionDir` in [settings](/docs/latest/settings) to store sessions elsewhere.
 
-PiG saves a new session after its first assistant response. On exit, the resume hint uses `pig --session <id>`. It adds `--session-dir` only when the session directory differs from the default for the working directory, including after `-c`, `-r`, or `--session`.
+PiG saves a new session when the first user message is added, so the prompt stays on disk if the first turn never finishes. On exit, the resume hint uses `pig --session <id>`. It adds `--session-dir` only when the session directory differs from the default for the working directory, including after `-c`, `-r`, or `--session`.
 
 If `--session <id-or-prefix>` or `--fork <id-or-prefix>` finds no matching session, PiG writes `No session found matching '<id-or-prefix>'` to standard error and exits with status 1. It writes nothing to standard output and does not start a model request.
 
@@ -37,7 +37,7 @@ Use `--name <name>` to set the selected Session's initial name. PiG applies it b
 
 ## Cloning and forking
 
-Wait for the first assistant response before cloning a file-backed session. If the session is not saved yet, `/clone` reports an error and creates no file. A successful clone clears the editor and reports `Cloned to new session`.
+Send a message before cloning a file-backed session. If the session is not saved yet, `/clone` reports an error and creates no file. A successful clone clears the editor and reports `Cloned to new session`.
 
 If no user messages exist, `/fork` reports `No messages to fork from`. Cancelling the message selector leaves the session unchanged and emits no status message.
 
@@ -47,7 +47,7 @@ On an interactive quit, PiG prints a resume command only when stdout is a termin
 
 ## Fork storage
 
-Forks and clones of an in-memory Session stay in memory. A disk-backed fork with no retained assistant message selects a new path but defers creating the file until the next assistant response. Forking before the first user message can retain native system context even though it retains no user or assistant turns.
+Forks and clones of an in-memory Session stay in memory. A disk-backed fork with no retained user or assistant message selects a new path but defers creating the file until the next user or assistant message. Forking before the first user message can retain native system context even though it retains no user or assistant turns.
 
 ## Importing and exporting
 

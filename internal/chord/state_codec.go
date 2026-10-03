@@ -119,6 +119,21 @@ func (e *ServiceStateEncoder) EncodeUpdate(update ServiceProviderUpdate) (WireSe
 		}
 		out.Ops, err = codec.Encode(update.Ops)
 		return out, err
+	case UpdateReset:
+		if update.Reset == nil {
+			return out, fmt.Errorf("Invalid service subscription snapshot")
+		}
+		clear(e.codecs.entries)
+		reset := WireServiceSubscriptionSnapshot{ServiceId: update.Reset.ServiceId, Mode: update.Reset.Mode, Instances: make([]WireServiceInstanceSnapshot, 0, len(update.Reset.Instances))}
+		for _, instance := range update.Reset.Instances {
+			encoded, err := e.encodeInstance(instance)
+			if err != nil {
+				return out, err
+			}
+			reset.Instances = append(reset.Instances, encoded)
+		}
+		out.Reset = &reset
+		return out, nil
 	case UpdateReplaced, UpdateSpawned:
 		if update.Type == UpdateReplaced {
 			clear(e.codecs.entries)
@@ -192,6 +207,21 @@ func (d *ServiceStateDecoder) DecodeUpdate(update WireServiceProviderUpdate) (Se
 		}
 		out.Ops, err = codec.Decode(update.Ops)
 		return out, err
+	case UpdateReset:
+		if update.Reset == nil {
+			return out, fmt.Errorf("Invalid service subscription snapshot")
+		}
+		clear(d.codecs.entries)
+		reset := ServiceSubscriptionSnapshot{ServiceId: update.Reset.ServiceId, Mode: update.Reset.Mode, Instances: make([]ServiceInstanceSnapshot, 0, len(update.Reset.Instances))}
+		for _, instance := range update.Reset.Instances {
+			decoded, err := d.decodeInstance(instance)
+			if err != nil {
+				return out, err
+			}
+			reset.Instances = append(reset.Instances, decoded)
+		}
+		out.Reset = &reset
+		return out, nil
 	case UpdateReplaced, UpdateSpawned:
 		if update.Type == UpdateReplaced {
 			clear(d.codecs.entries)

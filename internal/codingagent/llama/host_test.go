@@ -94,7 +94,8 @@ func TestHostRefreshPersistsCatalogAndRestoresItCacheOnly(t *testing.T) {
 	if config.APIKey != "a$$b" || config.BaseURL != server.URL+"/v1" {
 		t.Fatalf("resolved registration = %+v", config)
 	}
-	if len(config.Models) != 1 || config.Models[0].ID != "loaded" || config.Models[0].ContextWindow != 4096 || config.Models[0].BaseURL != "" {
+	// The registered list is getAllModels: the chat model, then its classifier (provider.ts:204, llama-extension.test.ts:145-204).
+	if len(config.Models) != 2 || config.Models[0].ID != "loaded" || config.Models[0].ContextWindow != 4096 || config.Models[0].BaseURL != "" || config.Models[1].Type != ai.ModelTypeClassifier || config.Models[1].ID != "loaded" {
 		t.Fatalf("registered models = %+v", config.Models)
 	}
 
@@ -103,7 +104,7 @@ func TestHostRefreshPersistsCatalogAndRestoresItCacheOnly(t *testing.T) {
 	if result := restored.Refresh(context.Background(), false); result.Err != nil {
 		t.Fatalf("cache-only refresh = %+v", result)
 	}
-	if got := restoredRegistry.last().Models; len(got) != 1 || got[0].ID != "loaded" {
+	if got := restoredRegistry.last().Models; len(got) != 2 || got[0].ID != "loaded" || got[1].Type != ai.ModelTypeClassifier {
 		t.Fatalf("restored models = %+v", got)
 	}
 	if got := restored.Provider().GetModels(); len(got) != 1 || got[0].BaseURL != server.URL+"/v1" {

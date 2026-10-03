@@ -252,22 +252,49 @@ func goModuleRoots(root string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	if roots, found, err := enclosingGoWorkspaceModuleRoots(moduleRoot); err != nil || found {
+		return roots, err
+	}
+	// A module selected through a directory link builds in the workspace
+	// around its target, as the target selected directly does. The selected
+	// path stands in for the target among the members, so the definition
+	// keeps the selected root.
+	physical, err := filepath.EvalSymlinks(moduleRoot)
+	if err != nil {
+		return nil, err
+	}
+	if physical != moduleRoot {
+		roots, found, err := enclosingGoWorkspaceModuleRoots(physical)
+		if err != nil {
+			return nil, err
+		}
+		if found {
+			roots[slices.Index(roots, physical)] = moduleRoot
+			slices.Sort(roots)
+			return roots, nil
+		}
+	}
+	return []string{moduleRoot}, nil
+}
+
+// enclosingGoWorkspaceModuleRoots returns the members of the nearest go.work
+// above moduleRoot that uses it, and whether such a workspace exists.
+func enclosingGoWorkspaceModuleRoots(moduleRoot string) ([]string, bool, error) {
 	for dir := filepath.Dir(moduleRoot); ; dir = filepath.Dir(dir) {
 		if exists(filepath.Join(dir, "go.work")) {
-			roots, workErr := goWorkspaceModuleRoots(dir)
-			if workErr != nil {
-				return nil, workErr
+			roots, err := goWorkspaceModuleRoots(dir)
+			if err != nil {
+				return nil, false, err
 			}
 			if slices.Contains(roots, moduleRoot) {
-				return roots, nil
+				return roots, true, nil
 			}
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			break
+			return nil, false, nil
 		}
 	}
-	return []string{moduleRoot}, nil
 }
 
 func goWorkspaceModuleRoots(root string) ([]string, error) {
@@ -388,14 +415,23 @@ func scanGoModule(root string) ([]goFactory, bool, bool, error) {
 		return nil, false, false, fmt.Errorf("parse Go module %s: %w", root, err)
 	}
 	modulePath := module.Module.Mod.Path
+	// filepath.WalkDir does not traverse a symbolic link used as its root.
+	// Walk the link target, as upstream package-manager.ts
+	// collectAutoExtensionEntries and collectFilesFromPaths follow a linked
+	// extension directory with statSync, and keep package paths relative to it.
+	// Links below the root stay unfollowed, as in the go command.
+	walkRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return nil, false, false, err
+	}
 	var factories []goFactory
 	hasMain, nonstandard := false, false
-	err = filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
+	err = filepath.WalkDir(walkRoot, func(path string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
 		if entry.IsDir() {
-			if path != root && (entry.Name() == "vendor" || entry.Name() == "testdata" || strings.HasPrefix(entry.Name(), ".") || exists(filepath.Join(path, "go.mod"))) {
+			if path != walkRoot && (entry.Name() == "vendor" || entry.Name() == "testdata" || strings.HasPrefix(entry.Name(), ".") || exists(filepath.Join(path, "go.mod"))) {
 				return filepath.SkipDir
 			}
 			return nil
@@ -428,7 +464,7 @@ func scanGoModule(root string) ([]goFactory, bool, bool, error) {
 				continue
 			}
 			if sdkModulePath, ok := returnsSDKExtension(fn, aliases); ok {
-				relative, _ := filepath.Rel(root, filepath.Dir(path))
+				relative, _ := filepath.Rel(walkRoot, filepath.Dir(path))
 				packagePath := modulePath
 				if relative != "." {
 					packagePath += "/" + filepath.ToSlash(relative)

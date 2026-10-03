@@ -13,6 +13,9 @@ import (
 // ProtocolVersion is the exact pinned upstream protocol version, not a PiG-owned format version.
 const ProtocolVersion = 8
 
+// ProtocolErrorCode is the opaque routing error code; any non-empty string is valid.
+type ProtocolErrorCode = string
+
 // ProtocolError is the bounded routing error exposed on the wire.
 type ProtocolError struct{ Code, Message string }
 
@@ -111,6 +114,9 @@ func (message AttachmentEnvelope) serverObject() Object {
 func errorObject(err ProtocolError) Object {
 	return Object{{"code", err.Code}, {"message", err.Message}}
 }
+
+// ServerId is a logical server identity: a lowercase canonical UUIDv4 (IsServerId).
+type ServerId = string
 
 var canonicalServerId = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
 

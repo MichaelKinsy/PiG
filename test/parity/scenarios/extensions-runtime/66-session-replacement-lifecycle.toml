@@ -22,8 +22,8 @@ pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home", "LIFECYCLE_LOG={{TEMP}}/
 pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1", "LIFECYCLE_LOG={{TEMP}}/trace.json"]
 pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
 pi_args = ["--session-dir", "{{TEMP}}/sessions"]
-pig_extensions = ["testdata/ext/session-replacement-lifecycle.mjs", "../../../../.upstream/v0.87.1/packages/coding-agent/examples/extensions/rpc-demo.ts"]
-pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/session-replacement-lifecycle.mjs", "../../../../.upstream/v0.87.1/packages/coding-agent/examples/extensions/rpc-demo.ts"]
+pig_extensions = ["testdata/ext/session-replacement-lifecycle.mjs", "../../../../.upstream/current/packages/coding-agent/examples/extensions/rpc-demo.ts"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/session-replacement-lifecycle.mjs", "../../../../.upstream/current/packages/coding-agent/examples/extensions/rpc-demo.ts"]
 
 [tmux]
 width = 240

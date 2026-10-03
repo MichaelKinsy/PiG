@@ -101,6 +101,11 @@ func TestHeadlessNoModelOutputMatchesPi(t *testing.T) {
 					}
 					return
 				}
+				// PiG reports the long form of the cwd; t.TempDir keeps the runner's 8.3 short form (RUNNER~1) on Windows.
+				wantCWD, err := filepath.EvalSymlinks(root)
+				if err != nil {
+					t.Fatal(err)
+				}
 				var header struct {
 					Type      string `json:"type"`
 					Version   int    `json:"version"`
@@ -108,7 +113,7 @@ func TestHeadlessNoModelOutputMatchesPi(t *testing.T) {
 					Timestamp string `json:"timestamp"`
 					CWD       string `json:"cwd"`
 				}
-				if err := json.Unmarshal([]byte(run.stdout), &header); err != nil || header.Type != "session" || header.Version != 3 || header.ID == "" || header.Timestamp == "" || header.CWD != root || strings.Count(run.stdout, "\n") != 1 {
+				if err := json.Unmarshal([]byte(run.stdout), &header); err != nil || header.Type != "session" || header.Version != 3 || header.ID == "" || header.Timestamp == "" || header.CWD != wantCWD || strings.Count(run.stdout, "\n") != 1 {
 					t.Fatalf("stdout=%q: expected only a version-3 Session header: %v", run.stdout, err)
 				}
 			})

@@ -75,7 +75,7 @@ const catalogProviders = providersAll.getBuiltinProviders().sort();
 const runtimeProviderIDs = providersAll.builtinModels().getProviders().map((provider) => provider.id).sort();
 const compatProviderIDs = compat.getProviders().sort();
 const compatImageProviderIDs = compat.getImageProviders().sort();
-const runtimeImageProviderIDs = providersAll.builtinImagesModels().getProviders().map((provider) => provider.id).sort();
+const runtimeImageProviderIDs = providersAll.builtinModels().getProviders().filter((provider) => provider.generateImages).map((provider) => provider.id).sort();
 const catalog = {
   providers: catalogProviders,
   totalModels: catalogProviders.reduce((sum, provider) => sum + providersAll.getBuiltinModels(provider).length, 0),

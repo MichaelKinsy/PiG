@@ -4,6 +4,7 @@ import "testing"
 
 // Pi types.ts:484 explicitly accepts false independently of an omitted sampling value.
 func TestConstrainedSamplingFalseAcrossSDKs(t *testing.T) {
+	t.Parallel()
 	cases := allHarnessCases()
 	for _, language := range []string{"go", "python", "rust"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})

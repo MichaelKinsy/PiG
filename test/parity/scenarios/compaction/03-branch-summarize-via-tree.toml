@@ -29,7 +29,6 @@ description = "Tree navigation with 'Summarize' triggers branch summarization en
 covers = [
   "packages/coding-agent/src/core/compaction/branch-summarization.ts",
   "packages/coding-agent/src/core/compaction/utils.ts",
-  "packages/agent/src/harness/compaction/branch-summarization.ts",
 ]
 tags = ["hermetic", "tui"]
 driver = "interactive-tmux"

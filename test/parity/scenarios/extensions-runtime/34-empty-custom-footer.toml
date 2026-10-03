@@ -23,7 +23,12 @@ driver = "interactive-tmux"
 model = "test-faux/faux-1"
 
 [env]
-pig = ["PIG_TEST_FAUX=1"]
+# 256 colors in both binaries: PiG's header then takes Pi's two logo lines with
+# the PiG. text mark (D2), so the rows between the capture's first line and the
+# editor match. In truecolor PiG draws its 7-line pig head in Pi's 2-line logo
+# slot, which makes the header 2 rows taller and leaves 2 fewer blank rows.
+pig = ["PIG_TEST_FAUX=1", "COLORTERM="]
+pi = ["COLORTERM="]
 pig_args = ["--no-extensions"]
 pig_extensions = ["testdata/ext/empty-footer.mjs"]
 pi_extensions = [

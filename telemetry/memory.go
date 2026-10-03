@@ -26,7 +26,8 @@ type RecordedTelemetrySpan struct {
 	EndSequence *int
 }
 
-// InMemoryTelemetryContext records spans without an external backend. Its zero value is ready to use.
+// InMemoryTelemetryContext records spans without an external backend. Its zero value is ready to use, so a composite
+// literal is its constructor (stubgen:omit NewInMemoryTelemetryContext).
 type InMemoryTelemetryContext struct {
 	mu              sync.Mutex
 	spans           []*memorySpan
@@ -42,8 +43,12 @@ type memorySpan struct {
 func copyAttributes(attributes SpanAttributes) SpanAttributes {
 	copy := SpanAttributes{}
 	for name, value := range attributes {
+		if value == nil {
+			// A nil value is upstream's undefined: it is not recorded and does not overwrite a recorded value.
+			continue
+		}
 		v := reflect.ValueOf(value)
-		if v.IsValid() && v.Kind() == reflect.Slice {
+		if v.Kind() == reflect.Slice {
 			cloned := reflect.MakeSlice(v.Type(), v.Len(), v.Len())
 			reflect.Copy(cloned, v)
 			value = cloned.Interface()

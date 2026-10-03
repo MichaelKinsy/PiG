@@ -342,12 +342,18 @@ func extensionContentHash(abs string, definition *extsource.Definition) (string,
 		}
 		return hex.EncodeToString(h.Sum(nil)), nil
 	}
-	err = filepath.WalkDir(abs, func(path string, d fs.DirEntry, err error) error {
+	// filepath.WalkDir does not traverse a symbolic link used as its root.
+	// Walk the target the extension loads from.
+	root, err := filepath.EvalSymlinks(abs)
+	if err != nil {
+		return "", err
+	}
+	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if d.IsDir() {
-			if shouldSkipHashDir(d.Name()) {
+			if path != root && shouldSkipHashDir(d.Name()) {
 				return filepath.SkipDir
 			}
 			return nil
@@ -359,7 +365,7 @@ func extensionContentHash(abs string, definition *extsource.Definition) (string,
 		if !info.Mode().IsRegular() || shouldSkipHashFile(d.Name()) {
 			return nil
 		}
-		return hashFile(h, abs, path)
+		return hashFile(h, root, path)
 	})
 	if err != nil {
 		return "", err

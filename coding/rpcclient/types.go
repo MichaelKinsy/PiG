@@ -35,6 +35,42 @@ type ModelInfo struct {
 // "medium", "high", "xhigh", "max").
 type ThinkingLevel string
 
+// QueuedInputDisposition is what `steer` and `follow_up` did with their input:
+// an input handler consumed it ("handled") or it was queued ("queued").
+//
+// upstream: .upstream/v0.99.1/packages/coding-agent/src/core/agent-session.ts:289 (QueuedInputDisposition)
+type QueuedInputDisposition string
+
+// The dispositions of upstream's QueuedInputDisposition union.
+const (
+	QueuedInputDispositionHandled QueuedInputDisposition = "handled"
+	QueuedInputDispositionQueued  QueuedInputDisposition = "queued"
+)
+
+// PromptDisposition is what `prompt` did with its input: an extension command
+// or input handler consumed it ("handled"), it was queued behind a running turn
+// ("queued"), or a run started ("started").
+//
+// upstream: .upstream/v0.99.1/packages/coding-agent/src/core/agent-session.ts:290 (PromptDisposition)
+type PromptDisposition string
+
+// The dispositions of upstream's PromptDisposition union.
+const (
+	PromptDispositionHandled PromptDisposition = "handled"
+	PromptDispositionQueued  PromptDisposition = "queued"
+	PromptDispositionStarted PromptDisposition = "started"
+)
+
+// StreamingBehavior says how a prompt sent during a run is queued: "steer" or
+// "followUp".
+type StreamingBehavior string
+
+// The values of upstream's `streamingBehavior?: "steer" | "followUp"`.
+const (
+	StreamingBehaviorSteer    StreamingBehavior = "steer"
+	StreamingBehaviorFollowUp StreamingBehavior = "followUp"
+)
+
 // ImageContent is a pi-ai image block; it marshals with type "image".
 type ImageContent struct {
 	Data     string `json:"data"`

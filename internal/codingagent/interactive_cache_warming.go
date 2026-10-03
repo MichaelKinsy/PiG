@@ -13,7 +13,7 @@ func (m *InteractiveMode) addCacheWarmingUsage(entry UsageEntry) {
 		return
 	}
 	m.chatContainer.Add(tui.NewSpacer(1))
-	m.chatContainer.Add(tui.NewPaddedText(fg(tui.ActiveTheme().Dim, FormatCacheWarmingUsage(entry)), 1, 0, nil))
+	m.chatContainer.Add(themedNotice("dim", FormatCacheWarmingUsage(entry), 1))
 }
 
 // decodeUsageEntry decodes a "usage" session entry.

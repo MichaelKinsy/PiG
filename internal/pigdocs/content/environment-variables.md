@@ -112,6 +112,7 @@ Each has a setting that does the same thing. A `terminal.hyperlinks`,
 | `PIG_SDK_RS_ROOT` | Rust SDK used when building an extension |
 | `PIG_CELL_BUILD_TIMEOUT` | Time an extension build may take |
 | `PIG_BUILDERS_FILE` | Container builder configuration for `pig piglet build`. Default `$PIG_HOME/state/pigletbuild/builders.json` |
+| `PIG_CONTAINER_ENGINE` | Engine of the built-in `container` builder for `pig piglet build`: `docker` or `podman`. Default: Podman when on `PATH`, else Docker |
 | `PIG_LOGO_GLYPHFREE` | `1` renders the logo without special glyphs in `pig extension preview-login`, and `0` keeps the glyphs. Unset, Pig drops the glyphs only in Apple Terminal |
 
 The `PIG_SDK_*` variables point a build at an SDK checkout instead of the staged

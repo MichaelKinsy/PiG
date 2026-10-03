@@ -62,14 +62,14 @@ func TestEditorResetsCustomTriggerCharactersWhenProviderChanges(t *testing.T) {
 	})
 }
 
-// .upstream/v0.87.1/packages/tui/test/editor.test.ts:2170
+// .upstream/v0.99.2/packages/tui/test/editor.test.ts:2178
 func TestEditorDoesNotAutoTriggerAfterCJKLettersOrForUnprefixedPaths(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		editor := NewEditor()
 		defer editor.AutocompleteCancel()
 		provider := &editorRequestCounter{}
 		editor.SetAutocomplete(provider)
-		for _, text := range []string{"user@example.com", "张三@example.com", "查看@src", "あ@src", "カ@src", "한@src", "ㄅ@src", "𠮷@src", "か\u3099@src", "禰\U000e0100@src", "々@src", "Ａ@src", "文档@备份", "prefix#123", "问题#123", "查看，/path/", "查看，./文档/", "src/index.ts", "./文档/说明.md", "文档/说明.md", "查看src/index.ts"} {
+		for _, text := range []string{"user@example.com", "张三@example.com", "查看@src", "あ@src", "カ@src", "한@src", "ㄅ@src", "𠮷@src", "か\u3099@src", "禰\U000e0100@src", "々@src", "Ａ@src", "文档@备份", "prefix#123", "foo(@src", "问题#123", "查看，/path/", "查看，./文档/", "src/index.ts", "./文档/说明.md", "文档/说明.md", "查看src/index.ts"} {
 			editor.SetText("")
 			for _, char := range text {
 				editor.HandleInput(string(char))

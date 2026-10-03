@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/experimental/routing"
+	"github.com/MichaelKinsy/PiG/internal/experimental/routing/routingtest"
 )
 
 // upstream: packages/server/test/listener.test.ts TestListener.
@@ -38,6 +39,7 @@ func (listener *testListener) counts() (accepting bool, closes int) {
 	return listener.accept != nil, listener.closeCount
 }
 
+// newTestServer is new Server(new TestServerHost(), options) with the shared test server ID when options omit one.
 func newTestServer(t *testing.T, options routing.ServerOptions) *routing.Server {
 	t.Helper()
 	if options.ServerId == "" {
@@ -50,11 +52,21 @@ func newTestServer(t *testing.T, options routing.ServerOptions) *routing.Server 
 	return server
 }
 
+// createTestServer is upstream createTestServer(options).server; an option the server rejects fails the test.
+func createTestServer(t *testing.T, options routingtest.TestServerOptions) *routing.Server {
+	t.Helper()
+	created, err := routingtest.CreateTestServer(options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return created.Server
+}
+
 func TestServerListenerComposition(t *testing.T) {
 	// upstream: packages/server/test/listener.test.ts:28 "starts and closes every configured listener"
 	t.Run("starts and closes every configured listener", func(t *testing.T) {
 		first, second := &testListener{}, &testListener{}
-		server := newTestServer(t, routing.ServerOptions{Listeners: []routing.ServerListener{first, second}})
+		server := createTestServer(t, routingtest.TestServerOptions{Listeners: []routing.ServerListener{first, second}})
 		if err := server.Start(); err != nil {
 			t.Fatal(err)
 		}
@@ -78,7 +90,7 @@ func TestServerListenerComposition(t *testing.T) {
 		first := &testListener{}
 		failure := errors.New("listener failed")
 		second := &testListener{startError: failure}
-		server := newTestServer(t, routing.ServerOptions{Listeners: []routing.ServerListener{first, second}})
+		server := createTestServer(t, routingtest.TestServerOptions{Listeners: []routing.ServerListener{first, second}})
 		// listener.test.ts:48 rejects.toBe(failure): the listener's own error, not a wrapper.
 		if err := server.Start(); err != failure { //nolint:errorlint // identity is the upstream contract (toBe).
 			t.Fatalf("Start = %v, want the listener's own error", err)

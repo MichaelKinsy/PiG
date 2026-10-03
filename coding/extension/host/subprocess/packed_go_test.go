@@ -23,6 +23,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
 	"github.com/MichaelKinsy/PiG/extensions/sdk"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
+	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
 // Pi's loader awaits factories without a deadline. PiG's subprocess load must
@@ -174,7 +175,7 @@ func packedCellSnapshot(host *Host, names ...string) ([]bool, []string) {
 func TestHost_ReloadPlansPackedPythonAndFissionsQuarantinedCell(t *testing.T) {
 	// Packed toolchain builds are intentionally serial in this package. Running
 	// Go, Rust, and Python cell builds together can exhaust CI process memory.
-	python := findPythonExecutable(runtime.GOOS, exec.LookPath)
+	python := toolchain.PythonExecutable(runtime.GOOS, exec.LookPath)
 	if _, err := exec.LookPath(python); err != nil {
 		t.Skipf("%s not found: %v", python, err)
 	}
@@ -217,6 +218,7 @@ func TestHost_ReloadPlansPackedPythonAndFissionsQuarantinedCell(t *testing.T) {
 }
 
 func TestHost_ReloadPlansPackedRustAndFissionsQuarantinedCell(t *testing.T) {
+	t.Parallel()
 	if _, err := exec.LookPath("cargo"); err != nil {
 		t.Skipf("cargo not found: %v", err)
 	}
@@ -814,10 +816,7 @@ func TestAC59PackedSDKFocusedComponentsOwnInput(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping packed SDK builds in short mode")
 	}
-	moduleRoot := findModuleRoot(t)
-	t.Setenv("PIG_SDK_GO_ROOT", filepath.Join(moduleRoot, "extensions", "sdk"))
-	t.Setenv("PIG_SDK_PY_ROOT", filepath.Join(moduleRoot, "extensions", "sdk-py"))
-	t.Setenv("PIG_SDK_RS_ROOT", filepath.Join(moduleRoot, "extensions", "sdk-rs"))
+	t.Parallel()
 	tests := []struct {
 		name    string
 		configs func(*testing.T) []ExtConfig
@@ -829,7 +828,7 @@ func TestAC59PackedSDKFocusedComponentsOwnInput(t *testing.T) {
 			}
 		}},
 		{"python", func(t *testing.T) []ExtConfig {
-			python := findPythonExecutable(runtime.GOOS, exec.LookPath)
+			python := toolchain.PythonExecutable(runtime.GOOS, exec.LookPath)
 			if _, err := exec.LookPath(python); err != nil {
 				t.Skipf("%s is not installed", python)
 			}
@@ -1008,10 +1007,7 @@ func TestPackedSDKFocusedComponentAndSessionActionsMatch(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping packed SDK builds in short mode")
 	}
-	moduleRoot := findModuleRoot(t)
-	t.Setenv("PIG_SDK_GO_ROOT", filepath.Join(moduleRoot, "extensions", "sdk"))
-	t.Setenv("PIG_SDK_PY_ROOT", filepath.Join(moduleRoot, "extensions", "sdk-py"))
-	t.Setenv("PIG_SDK_RS_ROOT", filepath.Join(moduleRoot, "extensions", "sdk-rs"))
+	t.Parallel()
 
 	tests := []struct {
 		name    string
@@ -1083,7 +1079,7 @@ func TestPackedSDKFocusedComponentAndSessionActionsMatch(t *testing.T) {
 			if err := sessionCommand.Handler(ctx, ""); err != nil {
 				t.Fatalf("packed session action command: %v", err)
 			}
-			for _, want := range []string{"appendEntry:packed-entry:map[value:hello]", "setSessionName:packed-session"} {
+			for _, want := range []string{"appendEntry:packed-entry:{\"value\":\"hello\"}", "setSessionName:packed-session"} {
 				select {
 				case got := <-actions:
 					if got != want {
@@ -1555,7 +1551,6 @@ pub fn new_extension() -> Extension {
 
 func writePackedFactoryModule(t testing.TB, modulePath, extName, toolName string, includeModelRuntime ...bool) string {
 	t.Helper()
-	t.Setenv("PIG_SDK_GO_ROOT", filepath.Join(findModuleRoot(t), "extensions", "sdk"))
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "go.mod"), fmt.Appendf(nil, "module %s\n\ngo 1.26\n\nrequire github.com/MichaelKinsy/PiG/extensions/sdk v0.0.0\n", modulePath), 0o644); err != nil {
 		t.Fatal(err)

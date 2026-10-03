@@ -56,6 +56,8 @@ const (
 	EventBeforeProviderRequest = "before_provider_request"
 	EventAfterProviderResponse = "after_provider_response"
 	EventBeforeProviderHeaders = "before_provider_headers"
+	// EventProviderStreamEvent fires for a parsed provider stream event before normalization (types.ts ProviderStreamEvent).
+	EventProviderStreamEvent = "provider_stream_event"
 
 	// Models / input
 	EventModelSelect         = "model_select"
@@ -69,6 +71,9 @@ const (
 
 	// Resources
 	EventResourcesDiscover = "resources_discover"
+
+	// MCP servers registered by extensions (types.ts McpServersChangeEvent).
+	EventMcpServersChange = "mcp_servers_change"
 )
 
 // ─── Tool Call Hook Result ────────────────────────────────────────────────────

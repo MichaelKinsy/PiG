@@ -266,7 +266,8 @@ func bundleFacetEntry(workingDirectory string, withSourceMap bool, name, source,
 	if count != 1 {
 		return FacetBundleEntry{}, fmt.Errorf("Facet entry %s did not produce exactly one JavaScript file", name)
 	}
-	absolute := outputPath
+	// esbuild's metafile uses forward slashes on every OS.
+	absolute := filepath.FromSlash(outputPath)
 	if !filepath.IsAbs(absolute) {
 		absolute = filepath.Join(workingDirectory, absolute)
 	}
@@ -282,6 +283,7 @@ func bundleFacetEntry(workingDirectory string, withSourceMap bool, name, source,
 		mapName = new(file + ".map")
 	}
 	for path := range info.Outputs {
+		path = filepath.FromSlash(path)
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(workingDirectory, path)
 		}

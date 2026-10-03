@@ -16,6 +16,7 @@ import (
 )
 
 func TestAddCorrespondenceDenominatorGeneratesExactOpenGraph(t *testing.T) {
+	parallelHeavy(t)
 	root, err := filepath.Abs("../../..")
 	if err != nil {
 		t.Fatal(err)
@@ -71,21 +72,21 @@ func TestAddCorrespondenceDenominatorGeneratesExactOpenGraph(t *testing.T) {
 			}
 		}
 	}
-	// 43/43/35/33/10: the reviewed current settings inventory has 33 rows
+	// 44/44/36/34/10: the reviewed current settings inventory has 34 rows
 	// (independently counted from settings-selector.ts; see
 	// test/parity/cmd/correspondence/main_test.go's TestCompareCurrentPin), three
-	// more than this pin's prior 30, which raises the behaviors/mappings/
-	// direct-fact counts by the same three settings
-	// (cache-warming-mode, model-thinking, hide-thinking's fix for the
-	// pre-existing "thinking" typo below). Reproduce by running this test.
-	if behaviors != 43 || mappings != 43 || directFacts != 35 || normalizedSettingFacts != 33 || normalizedFunctionFacts != 10 {
-		t.Fatalf("generated behaviors/mappings/facts = %d/%d/%d/%d/%d, want 43/43/35/33/10", behaviors, mappings, directFacts, normalizedSettingFacts, normalizedFunctionFacts)
+	// more than this pin's prior 30 (cache-warming-mode, model-thinking,
+	// hide-thinking's fix for the pre-existing "thinking" typo below) plus
+	// fullscreen-wheel-scroll-lines, which raises the behaviors/mappings/
+	// direct-fact counts by the same four settings. Reproduce by running this test.
+	if behaviors != 44 || mappings != 44 || directFacts != 36 || normalizedSettingFacts != 34 || normalizedFunctionFacts != 10 {
+		t.Fatalf("generated behaviors/mappings/facts = %d/%d/%d/%d/%d, want 44/44/36/34/10", behaviors, mappings, directFacts, normalizedSettingFacts, normalizedFunctionFacts)
 	}
-	// 208 matches test/parity/cmd/correspondence/main_test.go's independently
-	// reproduced work-packet obligationIds count for the same 33-row
+	// 213 matches test/parity/cmd/correspondence/main_test.go's independently
+	// reproduced work-packet obligationIds count for the same 34-row
 	// settings inventory.
-	if obligations != 208 {
-		t.Fatalf("generated obligations = %d, want 208", obligations)
+	if obligations != 213 {
+		t.Fatalf("generated obligations = %d, want 213", obligations)
 	}
 	lineageFact := graph.Records["fact:correspondence:setting-lineage:autocompact"].(*Fact)
 	if len(lineageFact.PinIDs) != 7 {
@@ -241,6 +242,7 @@ func TestAddCorrespondenceDenominatorRejectsWrongUpstreamCommit(t *testing.T) {
 }
 
 func TestCorrespondenceAssertionsRequestTypedCompactionEvidence(t *testing.T) {
+	parallelHeavy(t)
 	root, err := filepath.Abs("../../..")
 	if err != nil {
 		t.Fatal(err)

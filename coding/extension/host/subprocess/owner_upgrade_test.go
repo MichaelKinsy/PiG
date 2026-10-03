@@ -93,7 +93,6 @@ func Extension() *sdk.Extension { e:=sdk.New("ask"); e.Command("ask",%q,func(ctx
 			dispatched := make(chan string, 1)
 			bridge.SetHostAction("setSessionName", func(name string) error { dispatched <- name; return nil })
 			h.SetUIBridge(bridge)
-			t.Setenv("PIG_SDK_GO_ROOT", filepath.Join(findModuleRoot(t), "extensions", "sdk"))
 			t.Cleanup(func() { h.Shutdown("test done") })
 			loaded, errs := h.LoadAll(t.Context(), configs)
 			if len(errs) != 0 {

@@ -1,0 +1,68 @@
+# Red run: family 1, ai model types (tests ported before implementation)
+# base commit: 5f7365546 plus the uncommitted red change set
+# go: go version go1.27.1 darwin/arm64
+# command: go test ./ai/ -count=1 -v -run 'TestModelTypesUpstream|TestModelsGenerateImagesAuthThroughOpenRouter|TestOpenRouterOAuthProvidersUpstream|TestOpenRouterImagesUpstream'
+=== RUN   TestModelsGenerateImagesAuthThroughOpenRouter
+    images_models_wire_test.go:66: result={API: Provider: Model: Output:[] ResponseID: Usage:<nil> StopReason:error ErrorMessage:not implemented Timestamp:0}
+--- FAIL: TestModelsGenerateImagesAuthThroughOpenRouter (0.00s)
+=== RUN   TestModelTypesUpstream
+=== RUN   TestModelTypesUpstream/treats_models_without_a_type_as_chat_models
+    models_typed_upstream_test.go:117: types: chat="" typed="" image=""
+=== RUN   TestModelTypesUpstream/narrow_mixed_lists_with_isModelType
+    models_typed_upstream_test.go:142: chat=[]
+=== RUN   TestModelTypesUpstream/chat_models_without_a_type_work_through_a_handwritten_provider_without_GetAllModels
+    models_typed_upstream_test.go:160: model=&{Type: ID:faux-1 DisplayName:Faux Model Provider:0xa61fc22b330 Capabilities:{MaxThinking: SupportsImages:true SupportsToolUse:true ContextWindow:128000 MaxOutputTokens:16384 InputCostPer1M:0 OutputCostPer1M:0 CacheReadCostPer1M:0 CacheWriteCostPer1M:0 CostTiers:[]} ProviderMeta:{ProviderID:handwritten API:faux BaseURL:http://localhost:0 Headers:map[] Compat:<nil> Reasoning:false} Input:[text image] ThinkingLevelMap:map[] SamplingParams:map[] PromptCache:map[] InputLimits:<nil>}
+=== RUN   TestModelTypesUpstream/lists_models_without_a_type_as_chat_models_at_createProvider_boundaries
+    models_typed_upstream_test.go:213: image=[]
+=== RUN   TestModelTypesUpstream/lists_chat,_image,_and_all_models_through_typed_accessors
+    models_typed_upstream_test.go:228: chat=[] want [c1]
+=== RUN   TestModelTypesUpstream/splits_available_models_by_type
+    models_typed_upstream_test.go:260: chat=[] err=<nil>
+=== RUN   TestModelTypesUpstream/resolves_auth_through_the_provider_and_merges_it_into_image_requests;_explicit_options_win
+    models_typed_upstream_test.go:276: image model p1/model-a is missing
+=== RUN   TestModelTypesUpstream/merges_provider-resolved_env_and_applies_header_transforms
+    models_typed_upstream_test.go:304: image model p1/model-a is missing
+=== RUN   TestModelTypesUpstream/returns_error_results_instead_of_rejecting
+    models_typed_upstream_test.go:333: ghost={API: Provider: Model: Output:[] ResponseID: Usage:<nil> StopReason:error ErrorMessage:not implemented Timestamp:0}
+=== RUN   TestModelTypesUpstream/rejects_models_of_another_type_at_the_stream_entry_points_at_runtime
+    models_typed_upstream_test.go:374: result=&{observation:<nil> Content:[{Text:ok TextSignature: scratch:}] API:test-chat Provider:p1 Model:model-a ResponseModel: ResponseID: ProviderThinkingLevel: Diagnostics:[] Usage:{Input:0 Output:0 CacheRead:0 CacheWrite:0 CacheWrite1h:<nil> Reasoning:<nil> TotalTokens:0 Cost:{Input:0 Output:0 CacheRead:0 CacheWrite:0 Total:0}} StopReason:stop Deferred:<nil> ErrorMessage: RawStopReason: EndTurn:<nil> Timestamp:1790719031452}
+=== RUN   TestModelTypesUpstream/requires_at_least_one_concrete_operation_implementation
+    models_typed_upstream_test.go:393: none: panic=<nil>
+=== RUN   TestModelTypesUpstream/supports_dynamic_providers_listing_image_models_via_refresh
+    models_typed_upstream_test.go:418: refreshed models are missing
+=== RUN   TestModelTypesUpstream/stored_and_fetched_models_of_unknown_types_are_dropped_instead_of_failing_the_refresh
+    models_typed_upstream_test.go:458: restored=[]
+=== RUN   TestModelTypesUpstream/keeps_chat_reads_independent_from_the_all-model_catalog
+--- FAIL: TestModelTypesUpstream (0.00s)
+    --- FAIL: TestModelTypesUpstream/treats_models_without_a_type_as_chat_models (0.00s)
+    --- FAIL: TestModelTypesUpstream/narrow_mixed_lists_with_isModelType (0.00s)
+    --- FAIL: TestModelTypesUpstream/chat_models_without_a_type_work_through_a_handwritten_provider_without_GetAllModels (0.00s)
+    --- FAIL: TestModelTypesUpstream/lists_models_without_a_type_as_chat_models_at_createProvider_boundaries (0.00s)
+    --- FAIL: TestModelTypesUpstream/lists_chat,_image,_and_all_models_through_typed_accessors (0.00s)
+    --- FAIL: TestModelTypesUpstream/splits_available_models_by_type (0.00s)
+    --- FAIL: TestModelTypesUpstream/resolves_auth_through_the_provider_and_merges_it_into_image_requests;_explicit_options_win (0.00s)
+    --- FAIL: TestModelTypesUpstream/merges_provider-resolved_env_and_applies_header_transforms (0.00s)
+    --- FAIL: TestModelTypesUpstream/returns_error_results_instead_of_rejecting (0.00s)
+    --- FAIL: TestModelTypesUpstream/rejects_models_of_another_type_at_the_stream_entry_points_at_runtime (0.00s)
+    --- FAIL: TestModelTypesUpstream/requires_at_least_one_concrete_operation_implementation (0.00s)
+    --- FAIL: TestModelTypesUpstream/supports_dynamic_providers_listing_image_models_via_refresh (0.00s)
+    --- FAIL: TestModelTypesUpstream/stored_and_fetched_models_of_unknown_types_are_dropped_instead_of_failing_the_refresh (0.00s)
+    --- PASS: TestModelTypesUpstream/keeps_chat_reads_independent_from_the_all-model_catalog (0.00s)
+=== RUN   TestOpenRouterOAuthProvidersUpstream
+=== RUN   TestOpenRouterOAuthProvidersUpstream/is_exposed_alongside_API-key_auth
+=== RUN   TestOpenRouterOAuthProvidersUpstream/resolves_the_same_stored_OAuth_key_for_chat_and_image_models
+    oauth_openrouter_test.go:47: chat=386 image=0 models
+--- FAIL: TestOpenRouterOAuthProvidersUpstream (0.00s)
+    --- PASS: TestOpenRouterOAuthProvidersUpstream/is_exposed_alongside_API-key_auth (0.00s)
+    --- FAIL: TestOpenRouterOAuthProvidersUpstream/resolves_the_same_stored_OAuth_key_for_chat_and_image_models (0.00s)
+=== RUN   TestOpenRouterImagesUpstream
+=== RUN   TestOpenRouterImagesUpstream/returns_text_plus_images_in_final_output
+=== RUN   TestOpenRouterImagesUpstream/passes_through_abort_signal_and_returns_aborted_result
+=== RUN   TestOpenRouterImagesUpstream/generateImages_resolves_the_final_assistant_images_result
+--- PASS: TestOpenRouterImagesUpstream (0.00s)
+    --- PASS: TestOpenRouterImagesUpstream/returns_text_plus_images_in_final_output (0.00s)
+    --- PASS: TestOpenRouterImagesUpstream/passes_through_abort_signal_and_returns_aborted_result (0.00s)
+    --- PASS: TestOpenRouterImagesUpstream/generateImages_resolves_the_final_assistant_images_result (0.00s)
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/ai	1.251s
+FAIL

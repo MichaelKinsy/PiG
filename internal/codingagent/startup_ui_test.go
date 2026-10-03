@@ -102,7 +102,6 @@ func TestRunStartupComponentRetainsSeparateReadDuringTeardown(t *testing.T) {
 			false,
 			tui.NewWithOutput(io.Discard, 80, 24),
 			terminal,
-			nil,
 		)
 		done <- err
 	}()

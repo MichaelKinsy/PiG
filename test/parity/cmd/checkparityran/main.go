@@ -3,12 +3,13 @@
 //
 // TestParity (test/parity/runner/runner_test.go) resolves the pig-under-test and
 // upstream-pi binaries before it does anything else. When PIG_PARITY_PIG_BIN
-// (or PIG_BIN) is unset, or tmux/pi 0.87.1 is missing, those resolvers call
-// t.Skip with an explicit reason and TestParity's body returns immediately -
-// no scenario ever runs, and `--pig-parity.results` is never written. `go
-// test` still exits 0 for that run, because a skipped test is not a failed
-// test, so `make parity` alone cannot tell "0 scenarios ran" apart from
-// "every scenario passed" without checking the results file.
+// (or PIG_BIN) is unset or the pinned pi is missing, those resolvers fail the
+// run unless PIG_PARITY_ALLOW_ZERO is set, in which case they call t.Skip and
+// TestParity's body returns immediately - no scenario ever runs, and
+// `--pig-parity.results` is never written. `go test` still exits 0 for a
+// skip, and a scenario filter can also select nothing, so
+// `make parity` alone cannot tell "0 scenarios ran" apart from "every
+// scenario passed" without checking the results file.
 //
 // This command reads that results file and prints the number of scenario
 // outcomes it contains. The Makefile treats 0 as a hard failure (see

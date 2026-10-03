@@ -3,6 +3,7 @@
 package runner
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -10,9 +11,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -268,9 +272,10 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 					break
 				}
 			}
-			if len(step.WaitVisibleContains) > 0 || len(step.WaitNotContains) > 0 {
-				if !waitForPaneState(ctx, session, step.WaitVisibleContains, step.WaitNotContains, timeout) {
-					operationErr = fmt.Errorf("visible step state includes=%q excludes=%q not reached within %s", step.WaitVisibleContains, step.WaitNotContains, timeout)
+			visible := step.visibleContains(bin.Label)
+			if len(visible) > 0 || len(step.WaitNotContains) > 0 {
+				if !waitForPaneState(ctx, session, visible, step.WaitNotContains, timeout) {
+					operationErr = fmt.Errorf("visible step state includes=%q excludes=%q not reached within %s", visible, step.WaitNotContains, timeout)
 					break
 				}
 			}
@@ -308,7 +313,7 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 		return Result{
 			RuntimeMs: elapsed,
 			ReadyOK:   readyOK,
-			Err:       fmt.Errorf("capture-pane: %w", err),
+			Err:       fmt.Errorf("capture-pane: %w (%s)", err, tmuxServerReport(ctx, session)),
 		}
 	}
 	if !readyOK && paneMatchesCaptureSurface(pane, cfg) {
@@ -667,10 +672,84 @@ func waitForPaneState(ctx context.Context, session string, includes, excludes []
 	return false
 }
 
+// capturePaneHistory returns the pane's scrollback followed by the displayed text of the terminal transcript, so a wait matches displayed text only.
 func capturePaneHistory(ctx context.Context, session, transcriptPath string) string {
 	out, _ := exec.CommandContext(ctx, "tmux", tmuxArgs("capture-pane", "-t", session, "-p", "-S", "-")...).Output()
 	transcript, _ := os.ReadFile(transcriptPath)
-	return string(out) + "\n" + string(transcript)
+	return string(out) + "\n" + transcriptText(transcript)
+}
+
+// transcriptText returns the text a raw terminal transcript displays. Escape-sequence parameters and string payloads are not text: a repaint at row 42 writes ESC[42;1H without displaying "42", and a kitty graphics APC carries base64 data. A cursor movement separates the text written before it from the text written after it, so it becomes a line break; fullscreen rendering positions every row with ESC[row;1H and no line break. Other sequences are removed. tmux pipe-pane is still appending while a wait reads the file, so a sequence cut off at the end is removed as well.
+func transcriptText(raw []byte) string {
+	var text strings.Builder
+	text.Grow(len(raw))
+	for len(raw) > 0 {
+		esc := bytes.IndexByte(raw, 0x1b)
+		if esc < 0 {
+			text.Write(raw)
+			break
+		}
+		text.Write(raw[:esc])
+		n, moves := escapeSequenceLength(raw[esc:])
+		if n == 0 {
+			break
+		}
+		if moves {
+			text.WriteByte('\n')
+		}
+		raw = raw[esc+n:]
+	}
+	return text.String()
+}
+
+// escapeSequenceLength returns the length of the ECMA-48 escape sequence at the start of seq, which begins with ESC, and whether it moves the cursor. It returns 0 for a sequence cut off at the end of seq. An ESC that interrupts a control string ends it.
+func escapeSequenceLength(seq []byte) (int, bool) {
+	if len(seq) < 2 {
+		return 0, false
+	}
+	switch seq[1] {
+	case '[':
+		i := 2
+		for i < len(seq) && seq[i] >= 0x30 && seq[i] <= 0x3f {
+			i++
+		}
+		for i < len(seq) && seq[i] >= 0x20 && seq[i] <= 0x2f {
+			i++
+		}
+		if i == len(seq) {
+			return 0, false
+		}
+		if seq[i] < 0x40 || seq[i] > 0x7e {
+			return i, false
+		}
+		return i + 1, strings.IndexByte("ABCDEFGHIZadef`r", seq[i]) >= 0
+	case ']', 'P', 'X', '^', '_':
+		end := bytes.IndexAny(seq[2:], "\x07\x1b")
+		switch {
+		case end < 0:
+			return 0, false
+		case seq[2+end] == 0x07:
+			return 2 + end + 1, false
+		case 2+end+1 == len(seq):
+			return 0, false
+		case seq[2+end+1] == '\\':
+			return 2 + end + 2, false
+		default:
+			return 2 + end, false
+		}
+	default:
+		i := 1
+		for i < len(seq) && seq[i] >= 0x20 && seq[i] <= 0x2f {
+			i++
+		}
+		if i == len(seq) {
+			return 0, false
+		}
+		if seq[i] < 0x30 || seq[i] > 0x7e {
+			return i, false
+		}
+		return i + 1, i == 1 && strings.IndexByte("8DEMc", seq[i]) >= 0
+	}
 }
 
 func waitForPaneAllSince(ctx context.Context, session, transcriptPath string, patterns []string, baseline string, requireNew bool, timeout time.Duration) bool {
@@ -759,9 +838,13 @@ var (
 	sessionRegistryMu sync.Mutex
 	sessionRegistry   = map[string]struct{}{}
 	tmuxServerMu      sync.Mutex
-	tmuxKeeperOnce    sync.Once
 	tmuxKeeperErr     error
 	tmuxKeeperStarted bool
+	// tmuxServerPID is the isolated server's process once it has been recorded (0 before).
+	tmuxServerPID atomic.Int64
+	// tmuxLostServers describes each keeper or server that vanished and was started again.
+	tmuxLostMu      sync.Mutex
+	tmuxLostServers []string
 	// tmuxExtendedKeysFormatSupported records whether the isolated server accepted extended-keys-format (tmux 3.5+).
 	tmuxExtendedKeysFormatSupported bool
 	tmuxSocketName                  = "pig-parity-" + parityRunID()
@@ -773,28 +856,56 @@ func tmuxArgs(args ...string) []string {
 	return append([]string{"-L", tmuxSocketName}, args...)
 }
 
+// ensureTmuxServer starts the isolated server with its keeper session and keyboard configuration, and starts it again when the server was lost since the last call: a replacement created implicitly by the next new-session has tmux's defaults and no keeper. A configuration error persists while the keeper does. Callers hold tmuxServerMu.
 func ensureTmuxServer() error {
-	tmuxKeeperOnce.Do(func() {
-		// Ignore host tmux configuration and configure the private server before either application starts. Pi checks these options asynchronously (interactive-mode.ts:1214-1259); both sides must see the same supported keyboard protocol, not race a startup warning against scenario input.
-		output, err := exec.Command("tmux", tmuxArgs("-f", os.DevNull,
-			"new-session", "-d", "-s", tmuxKeeperSession, "sleep 2147483647",
-			";", "set-option", "-g", "extended-keys", "on")...).CombinedOutput()
-		if err != nil {
-			tmuxKeeperErr = fmt.Errorf("start isolated tmux server: %w: %s", err, strings.TrimSpace(string(output)))
-			return
-		}
-		tmuxKeeperStarted = true
-		// extended-keys-format arrived in tmux 3.5. Older tmux (Ubuntu 24.04 ships 3.4) has no such option and always emits its one extended-key format; Pi then reads an empty format and raises no warning (interactive-mode.ts:1214-1259), so both sides still see the same setup.
-		output, err = exec.Command("tmux", tmuxArgs("set-option", "-g", "extended-keys-format", "csi-u")...).CombinedOutput()
-		switch {
-		case err == nil:
-			tmuxExtendedKeysFormatSupported = true
-		case strings.Contains(string(output), "invalid option: extended-keys-format"):
-		default:
-			tmuxKeeperErr = fmt.Errorf("configure isolated tmux server: %w: %s", err, strings.TrimSpace(string(output)))
-		}
-	})
+	if tmuxKeeperStarted && tmuxKeeperPresent() {
+		return tmuxKeeperErr
+	}
+	lost, restarting := int(tmuxServerPID.Swap(0)), tmuxKeeperStarted
+	if restarting {
+		defer func() { noteLostTmuxServer(lost, int(tmuxServerPID.Load())) }()
+	}
+	tmuxKeeperErr = nil
+	tmuxKeeperStarted = false
+	// Ignore host tmux configuration and configure the private server before either application starts. Pi checks these options asynchronously (interactive-mode.ts:1214-1259); both sides must see the same supported keyboard protocol, not race a startup warning against scenario input.
+	output, err := exec.Command("tmux", tmuxArgs("-f", os.DevNull,
+		"new-session", "-d", "-s", tmuxKeeperSession, "sleep 2147483647",
+		";", "set-option", "-g", "extended-keys", "on")...).CombinedOutput()
+	if err != nil {
+		tmuxKeeperErr = fmt.Errorf("start isolated tmux server: %w: %s", err, strings.TrimSpace(string(output)))
+		return tmuxKeeperErr
+	}
+	tmuxKeeperStarted = true
+	recordTmuxServerPID(context.Background())
+	// extended-keys-format arrived in tmux 3.5. Older tmux (Ubuntu 24.04 ships 3.4) has no such option and always emits its one extended-key format; Pi then reads an empty format and raises no warning (interactive-mode.ts:1214-1259), so both sides still see the same setup.
+	output, err = exec.Command("tmux", tmuxArgs("set-option", "-g", "extended-keys-format", "csi-u")...).CombinedOutput()
+	switch {
+	case err == nil:
+		tmuxExtendedKeysFormatSupported = true
+	case strings.Contains(string(output), "invalid option: extended-keys-format"):
+	default:
+		tmuxKeeperErr = fmt.Errorf("configure isolated tmux server: %w: %s", err, strings.TrimSpace(string(output)))
+	}
 	return tmuxKeeperErr
+}
+
+// noteLostTmuxServer records for tmuxServerReport that the keeper vanished: with its server when the restarted keeper runs on another process, alone when the server survived.
+func noteLostTmuxServer(lost, current int) {
+	if lost == 0 {
+		return
+	}
+	note := fmt.Sprintf("server pid %d was lost and replaced", lost)
+	if lost == current {
+		note = fmt.Sprintf("keeper session on server pid %d was lost and restarted", lost)
+	}
+	tmuxLostMu.Lock()
+	tmuxLostServers = append(tmuxLostServers, note)
+	tmuxLostMu.Unlock()
+}
+
+// tmuxKeeperPresent reports whether the keeper session, and so the server configured around it, is still there.
+func tmuxKeeperPresent() bool {
+	return exec.Command("tmux", tmuxArgs("has-session", "-t", "="+tmuxKeeperSession)...).Run() == nil
 }
 
 func registerSession(name string) {
@@ -934,4 +1045,66 @@ func cropCapture(s, start, end, endRegex string, startLast bool) string {
 		return s
 	}
 	return strings.TrimRight(s[from:to], "\n")
+}
+
+// tmuxServerReport states what the isolated tmux server looks like now, so a capture that fails because the whole server vanished is told apart from one session ending: the recorded server process, the socket file, the sessions that remain, and whether the named session is among them.
+func tmuxServerReport(ctx context.Context, session string) string {
+	var parts []string
+	tmuxLostMu.Lock()
+	parts = append(parts, tmuxLostServers...)
+	tmuxLostMu.Unlock()
+	if pid := int(tmuxServerPID.Load()); pid != 0 {
+		if tmuxProcessRunning(pid) {
+			parts = append(parts, fmt.Sprintf("server pid %d running", pid))
+		} else {
+			parts = append(parts, fmt.Sprintf("server pid %d exited", pid))
+		}
+	}
+	socket := tmuxSocketPath()
+	if _, err := os.Stat(socket); err != nil {
+		parts = append(parts, "socket missing: "+socket)
+	} else {
+		parts = append(parts, "socket present: "+socket)
+	}
+	out, err := exec.CommandContext(ctx, "tmux", tmuxArgs("list-sessions", "-F", "#{session_name}")...).CombinedOutput()
+	if err != nil {
+		parts = append(parts, fmt.Sprintf("server unreachable: %v: %s", err, strings.TrimSpace(string(out))))
+		return strings.Join(append(parts, "session "+session+" absent"), "; ")
+	}
+	names := strings.Fields(string(out))
+	state := "absent"
+	if slices.Contains(names, session) {
+		state = "present"
+	}
+	parts = append(parts, "server alive", "session "+session+" "+state, fmt.Sprintf("%d sessions: %s", len(names), strings.Join(names, ",")))
+	return strings.Join(parts, "; ")
+}
+
+// tmuxSocketPath is where `tmux -L` places the isolated server's socket.
+func tmuxSocketPath() string {
+	dir := os.Getenv("TMUX_TMPDIR")
+	if dir == "" {
+		dir = "/tmp"
+	}
+	return filepath.Join(dir, "tmux-"+strconv.Itoa(os.Getuid()), tmuxSocketName)
+}
+
+// recordTmuxServerPID remembers the isolated server's process for tmuxServerReport.
+func recordTmuxServerPID(ctx context.Context) {
+	out, err := exec.CommandContext(ctx, "tmux", tmuxArgs("display-message", "-p", "#{pid}")...).Output()
+	if err != nil {
+		return
+	}
+	if pid, err := strconv.Atoi(strings.TrimSpace(string(out))); err == nil {
+		tmuxServerPID.Store(int64(pid))
+	}
+}
+
+func tmuxProcessRunning(pid int) bool {
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return false
+	}
+	err = process.Signal(syscall.Signal(0))
+	return err == nil || errors.Is(err, syscall.EPERM)
 }

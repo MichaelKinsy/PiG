@@ -11,8 +11,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/MichaelKinsy/PiG/agent/harness/pico3"
 )
 
 // services.test.ts: "does not publish when a transaction restores the prior value"
@@ -236,7 +234,7 @@ func TestUpstreamRetainedRemoteStateRevokedByDispose(t *testing.T) {
 	if _, _, err := replica.Load(); err == nil || !strings.Contains(err.Error(), "disposed") {
 		t.Fatalf("retained state after dispose = %v", err)
 	}
-	if _, err := replica.Subscribe(func(pico3.JsonValue, context.Context, pico3.ReplicatedStateDelivery) error { return nil }); err == nil {
+	if _, err := replica.Subscribe(func(JsonValue, context.Context, ReplicatedStateDelivery) error { return nil }); err == nil {
 		t.Fatal("subscribe after dispose succeeded")
 	}
 }
@@ -278,7 +276,7 @@ func TestUpstreamRetainedKeyedViewClosesWithInstance(t *testing.T) {
 
 func TestServiceRefWithoutRegisteredViewFails(t *testing.T) {
 	ctx := context.Background()
-	unviewed := pico3.DefineService[Counter]("test.unviewed")
+	unviewed := DefineService[Counter]("test.unviewed")
 	var ref *ServiceRef[Counter]
 	facets := []Facet{
 		{Id: "p", Setup: func(env *FacetEnvironment) error {

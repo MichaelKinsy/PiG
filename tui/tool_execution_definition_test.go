@@ -91,7 +91,7 @@ func TestDefinitionCardFallbacksAndExpansion(t *testing.T) {
 	}
 }
 
-// packages/coding-agent/test/tool-execution-component.test.ts:435-463 supplies a definition with neither renderer. The definition fallback must show ten leading lines, not the separate generic-tool preview.
+// packages/coding-agent/test/tool-execution-component.test.ts:478-506 supplies a definition with neither renderer. The definition fallback must show ten leading lines, not the separate generic-tool preview. Its call fallback shows the arguments (tool-execution.ts:155-157, formatToolCallWithArgs).
 func TestDefinitionCardFallbackResultsUpstream(t *testing.T) {
 	card := NewToolExecutionComponent("custom_tool", "")
 	card.SetDefinition(&ToolDefinitionRenderers{}, json.RawMessage(`{"foo":"bar"}`))
@@ -101,13 +101,16 @@ func TestDefinitionCardFallbackResultsUpstream(t *testing.T) {
 	}
 	card.SetResult(strings.Join(output, "\n"), false, 0)
 
-	// Pi 0.87.1 with its default app keybindings renders a spacer, Box(1, 1), call, result, and bottom padding. Preserve every display row and padding cell.
+	// Upstream 0.99.1 with its default app keybindings renders a spacer, Box(1, 1), call, result, and bottom padding. Preserve every display row and padding cell.
 	const width = 120
 	padded := func(text string) string { return text + strings.Repeat(" ", width-len(text)) }
 	for _, expanded := range []bool{false, true} {
 		t.Run(fmt.Sprintf("expanded=%t", expanded), func(t *testing.T) {
 			card.SetExpanded(expanded)
-			want := []string{"", padded(""), padded(" custom_tool")}
+			want := []string{"", padded(""), padded(` custom_tool foo="bar"`)}
+			if expanded {
+				want = []string{"", padded(""), padded(" custom_tool"), padded("   foo: bar")}
+			}
 			display := output
 			if !expanded {
 				display = output[:10]

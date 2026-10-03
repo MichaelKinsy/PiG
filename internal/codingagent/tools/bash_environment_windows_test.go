@@ -22,7 +22,9 @@ import (
 // PATH-like key. process.env skips Windows' hidden "=" names such as
 // "=ExitCode" (src/node_env_var.cc); Node's normalizeSpawnArguments sorts the
 // env names and keeps the first of names that differ only in case, and libuv
-// adds the required variables an env lacks (src/win/process.c). The test binary
+// adds the required variables an env lacks (src/win/process.c). Node keeps
+// both "PIG_K" and "PIG_K" (KELVIN SIGN), whose toUpperCase values
+// differ, though os/exec's lowercasing would merge them. The test binary
 // stands in for the shell and prints the environment it received; Pi's own
 // operations are the oracle.
 func TestLocalShellOperationsGiveTheShellPisEnvironment(t *testing.T) {
@@ -37,7 +39,8 @@ func TestLocalShellOperationsGiveTheShellPisEnvironment(t *testing.T) {
 	// A spawn hook's env: names that differ only in case and no system
 	// variables.
 	hookEnv := []string{testenv.EnvironHelper + "=1", "Path=/pig-mixed", "PATH=/pig-upper", "path=/pig-lower", "pig_b=2", "PIG_A=1"}
-	envs := [][]string{nil, hookEnv}
+	kelvinEnv := []string{testenv.EnvironHelper + "=1", "PIG_K=letter", "PIG_K=kelvin"}
+	envs := [][]string{nil, hookEnv, kelvinEnv}
 	root, err := filepath.EvalSymlinks("../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent")
 	if err != nil {
 		t.Fatal(err)

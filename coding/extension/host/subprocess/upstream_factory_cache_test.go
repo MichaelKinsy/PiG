@@ -92,6 +92,7 @@ func BenchmarkFactoryCacheThroughNodeHost(b *testing.B) {
 
 // The direct-load and reload cases also exercise the main Go Host, using an append-only evaluation trace because separate runtime processes do not share globalThis.
 func TestHostUncachedFactoryModuleEvaluation(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []string{"direct", "reload"} {
 		t.Run(mode, func(t *testing.T) {
 			nodeCellRequireNode(t)

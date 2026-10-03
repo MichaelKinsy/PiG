@@ -2,7 +2,7 @@
 
 # Extension SDK surface matrix
 
-Every extension-facing surface of Pi 0.87.1's extension API, and how each PiG extension runtime realizes it. The rows come from Pi's `packages/coding-agent/src/core/extensions/types.ts` and the declarations it re-exports or exposes through its members (`EventBus`, `ExecOptions`/`ExecResult`, `CacheWarmingDecisionEvent`, `ReadonlySessionManager`, `ModelRegistry`, `Theme`, `AgentToolResult`), read from `.upstream/v0.87.1`.
+Every extension-facing surface of Pi 1.0.0's extension API, and how each PiG extension runtime realizes it. The rows come from Pi's `packages/coding-agent/src/core/extensions/types.ts` and the declarations it re-exports or exposes through its members (`EventBus`, `ExecOptions`/`ExecResult`, `CacheWarmingDecisionEvent`, `ReadonlySessionManager`, `ModelRegistry`, `Theme`, `AgentToolResult`), read from `.upstream/v1.0.0`.
 
 A cell's status comes from the runtime itself: the Go SDK's exported identifiers, the Rust SDK's `pub` items and the Python SDK's classes, members and parameters, read from their source, and the Node runtime's objects, read by instantiating the runtime in Node (`test/parity/cmd/sdksurface/probe.mjs`), plus the properties it reads from an extension's definitions. [`test/parity/sdk-surface.toml`](../test/parity/sdk-surface.toml) names the symbol where a language's naming differs from the default rule and says why a realization is a stand-in; a named symbol that does not exist is `missing`. Payload, result and option fields that cross the subprocess wire are also checked against the host's Go decoding type, so a field an SDK sends but the host drops is `missing`.
 
@@ -10,7 +10,7 @@ A cell's status comes from the runtime itself: the Go SDK's exported identifiers
 - `stand-in/partial`: the symbol exists; the note says what differs and why.
 - `missing`: no symbol. Each missing cell is listed in [`test/parity/sdk-surface-exceptions.toml`](../test/parity/sdk-surface-exceptions.toml) with its reviewed reason, and `go test ./test/parity/cmd/sdksurface` fails on any other.
 
-The package sections list every runtime export of the modules Pi serves to extensions (`pi-coding-agent`, `pi-tui`, `pi-ai`, `pi-ai/compat`, `pi-ai/providers/all`, `pi-agent-core`), from the compiler-derived inventory of Pi's `.d.ts` files (`test/parity/interfaces/upstream-v0.87.1.json`), and every public instance member of each exported class represented by that inventory. Static factories and overload-specific reachability are outside this probe. Only the Node runtime imports these modules. The probe loads each module the runtime serves and classifies every value by where its code lives, using the V8 inspector's function locations:
+The package sections list every runtime export of the modules Pi serves to extensions (`pi-coding-agent`, `pi-tui`, `pi-ai`, `pi-ai/compat`, `pi-ai/providers/all`, `pi-agent-core`), from the compiler-derived inventory of Pi's `.d.ts` files (`test/parity/interfaces/upstream-v1.0.0.json`), and every public instance member of each exported class represented by that inventory. Static factories and overload-specific reachability are outside this probe. Only the Node runtime imports these modules. The probe loads each module the runtime serves and classifies every value by where its code lives, using the V8 inspector's function locations:
 
 - `Pi's own code`: the function originates in the vendored pinned modules or their dependencies; host import rewrites can still affect behavior (D73).
 - `bridged`: PiG's implementation in the extension runtime, a line-for-line port or a host bridge, locked by the D73 tests (`TestNodeRuntimeShimsExportEveryPinnedPiValue`, `TestPiTuiComponentsMatchThePinnedPackage`, `TestPiAiUtilitiesMatchThePinnedPackage`, `TestPiThemeHelpersMatchThePinnedPackage`).
@@ -21,25 +21,25 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 ## Summary
 
-458 extension API surfaces:
+505 extension API surfaces:
 
 | Runtime | implemented | stand-in/partial | missing (all with a reviewed exception) |
 |---|---|---|---|
-| Node runtime | 402 | 33 | 23 |
-| Go | 402 | 30 | 26 |
-| Rust | 402 | 29 | 27 |
-| Python | 402 | 29 | 27 |
+| Node runtime | 462 | 32 | 11 |
+| Go | 464 | 29 | 12 |
+| Rust | 464 | 28 | 13 |
+| Python | 464 | 28 | 13 |
 
-1817 package exports and class members, Node runtime:
+1552 package exports and class members, Node runtime:
 
 | Module | Pi's own code | bridged | stand-in | missing (all with a reviewed exception) |
 |---|---|---|---|---|
-| `pi-coding-agent` | 856 | 7 | 0 | 10 |
-| `pi-tui` | 336 | 1 | 0 | 1 |
+| `pi-coding-agent` | 890 | 8 | 0 | 10 |
+| `pi-tui` | 352 | 1 | 0 | 1 |
 | `pi-ai` | 87 | 1 | 0 | 0 |
-| `pi-ai/compat` | 138 | 4 | 0 | 0 |
-| `pi-ai/providers/all` | 9 | 0 | 0 | 0 |
-| `pi-agent-core` | 352 | 8 | 0 | 7 |
+| `pi-ai/compat` | 138 | 9 | 0 | 0 |
+| `pi-ai/providers/all` | 12 | 0 | 0 | 0 |
+| `pi-agent-core` | 43 | 0 | 0 | 0 |
 
 ## pi (ExtensionAPI)
 
@@ -118,7 +118,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|---|
-| `pi.exec(options.signal)` | `ExtensionAPI.exec(options.signal)` | stand-in/partial `api.exec`: the command is killed when the calling request is cancelled (ctx.signal); an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.Done`: the command is killed when the calling request is cancelled (ctx.signal); an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the command is killed when the calling request is cancelled (ctx.signal); an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the command is killed when the calling request is cancelled (ctx.signal); an AbortSignal of its own cannot cross the process boundary |
+| `pi.exec(options.signal)` | `ExtensionAPI.exec(options.signal)` | stand-in/partial `api.exec`: the command is killed when the calling request is cancelled (Context.Done/Err, is_cancelled); an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.Done`: the command is killed when the calling request is cancelled (Context.Done/Err, is_cancelled); an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the command is killed when the calling request is cancelled (Context.Done/Err, is_cancelled); an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the command is killed when the calling request is cancelled (Context.Done/Err, is_cancelled); an AbortSignal of its own cannot cross the process boundary |
 | `pi.exec(options.timeout)` | `ExtensionAPI.exec(options.timeout)` | implemented `api.exec` | implemented `ExecOptions.Timeout` | implemented `ExecOptions.timeout` | implemented `Context.exec(timeout)` |
 | `pi.exec(options.cwd)` | `ExtensionAPI.exec(options.cwd)` | implemented `api.exec` | implemented `ExecOptions.Cwd` | implemented `ExecOptions.cwd` | implemented `Context.exec(cwd)` |
 | `pi.exec → stdout` | `ExtensionAPI.exec → stdout` | implemented `api.exec` | implemented `ExecResult.Stdout` | implemented `ExecResult.stdout` | implemented `ExecResult.stdout` |
@@ -141,12 +141,16 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi.getAllTools → description` | `ExtensionAPI.getAllTools → description` | implemented `api.getAllTools` | implemented `ToolInfo.Description` | implemented `ToolInfo.description` | implemented `Context.get_all_tools` |
 | `pi.getAllTools → promptGuidelines` | `ExtensionAPI.getAllTools → promptGuidelines` | implemented `api.getAllTools` | implemented `ToolInfo.PromptGuidelines` | implemented `ToolInfo.prompt_guidelines` | implemented `Context.get_all_tools` |
 | `pi.getAllTools → parameters` | `ExtensionAPI.getAllTools → parameters` | implemented `api.getAllTools` | implemented `ToolInfo.Parameters` | implemented `ToolInfo.parameters` | implemented `Context.get_all_tools` |
+| `pi.getAllTools → exposure` | `ExtensionAPI.getAllTools → exposure` | implemented `api.getAllTools` | implemented `ToolInfo.Exposure` | implemented `ToolInfo.exposure` | implemented `Context.get_all_tools` |
+| `pi.getAllTools → namespace` | `ExtensionAPI.getAllTools → namespace` | implemented `api.getAllTools` | implemented `ToolInfo.Namespace` | implemented `ToolInfo.namespace` | implemented `Context.get_all_tools` |
+| `pi.getAllTools → annotations` | `ExtensionAPI.getAllTools → annotations` | implemented `api.getAllTools` | implemented `ToolInfo.Annotations` | implemented `ToolInfo.annotations` | implemented `Context.get_all_tools` |
 | `pi.getAllTools → sourceInfo` | `ExtensionAPI.getAllTools → sourceInfo` | implemented `api.getAllTools` | implemented `ToolInfo.SourceInfo` | implemented `ToolInfo.source_info` | implemented `Context.get_all_tools` |
 
 ## pi (ExtensionAPI)
 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|---|
+| `pi.getSettings` | `ExtensionAPI.getSettings` | implemented `api.getSettings` | implemented `Context.GetSettings` | implemented `Context::get_settings` | implemented `Context.get_settings` |
 | `pi.setActiveTools` | `ExtensionAPI.setActiveTools` | implemented `api.setActiveTools` | implemented `Context.SetActiveTools` | implemented `Context::set_active_tools` | implemented `Context.set_active_tools` |
 | `pi.getCommands` | `ExtensionAPI.getCommands` | implemented `api.getCommands` | implemented `Context.GetCommands` | implemented `Context::get_commands` | implemented `Context.get_commands` |
 
@@ -168,13 +172,18 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi.setThinkingLevel` | `ExtensionAPI.setThinkingLevel` | implemented `api.setThinkingLevel` | implemented `Context.SetThinkingLevel` | implemented `Context::set_thinking_level` | implemented `Context.set_thinking_level` |
 | `pi.registerProvider` | `ExtensionAPI.registerProvider` | stand-in/partial `api.registerProvider`: config registration reaches the host; native callback providers remain process-local | stand-in/partial `Extension.RegisterProvider`: registration declaration is applied at load; use ModelRegistry.RegisterProvider for live config registration | stand-in/partial `Extension::register_provider`: registration declaration is applied at load; use ModelRegistry.register_provider for live config registration | stand-in/partial `Extension.register_provider`: registration declaration is applied at load; use ModelRegistry.register_provider for live config registration |
 | `pi.unregisterProvider` | `ExtensionAPI.unregisterProvider` | stand-in/partial `api.unregisterProvider`: config removal reaches the host; native providers remain process-local | stand-in/partial `Extension.UnregisterProvider`: registration declarations are removed at load; live config removal is exposed by ModelRegistry.UnregisterProvider | stand-in/partial `Extension::unregister_provider`: registration declarations are removed at load; live config removal is exposed by ModelRegistry.unregister_provider | stand-in/partial `Extension.unregister_provider`: registration declarations are removed at load; live config removal is exposed by ModelRegistry.unregister_provider |
+| `pi.registerMcpServer` | `ExtensionAPI.registerMcpServer` | implemented `api.registerMcpServer` | implemented `Extension.RegisterMcpServer` | implemented `Extension::register_mcp_server` | implemented `Extension.register_mcp_server` |
+| `pi.unregisterMcpServer` | `ExtensionAPI.unregisterMcpServer` | implemented `api.unregisterMcpServer` | implemented `Extension.UnregisterMcpServer` | implemented `Extension::unregister_mcp_server` | implemented `Extension.unregister_mcp_server` |
+| `pi.getMcpServers` | `ExtensionAPI.getMcpServers` | implemented `api.getMcpServers` | implemented `Context.GetMcpServers` | implemented `Context::get_mcp_servers` | implemented `Context.get_mcp_servers` |
+| `pi.registerVirtualModel` | `ExtensionAPI.registerVirtualModel` | implemented `api.registerVirtualModel` | implemented `Extension.RegisterVirtualModel` | implemented `Extension::register_virtual_model` | implemented `Extension.register_virtual_model` |
+| `pi.unregisterVirtualModel` | `ExtensionAPI.unregisterVirtualModel` | implemented `api.unregisterVirtualModel` | implemented `Extension.UnregisterVirtualModel` | implemented `Extension::unregister_virtual_model` | implemented `Extension.unregister_virtual_model` |
 
 ## pi.events (EventBus)
 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|---|
-| `pi.events.emit` | `EventBus.emit` | implemented `api.events.emit` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
-| `pi.events.on` | `EventBus.on` | implemented `api.events.on` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `pi.events.emit` | `EventBus.emit` | implemented `api.events.emit` | implemented `EventBus.Emit` | implemented `EventBus::emit` | implemented `EventBus.emit` |
+| `pi.events.on` | `EventBus.on` | implemented `api.events.on` | implemented `EventBus.On` | implemented `EventBus::on` | implemented `EventBus.on` |
 
 ## Events
 
@@ -352,6 +361,18 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|---|
+| `pi.on("mcp_servers_change")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventMcpServersChange` | implemented `EVENT_MCP_SERVERS_CHANGE` | implemented `EVENT_MCP_SERVERS_CHANGE` |
+
+## Event payloads
+
+| Surface | Pi declaration | Node runtime | Go | Rust | Python |
+|---|---|---|---|---|---|
+| `mcp_servers_change event.servers` | `McpServersChangeEvent.servers` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+
+## Events
+
+| Surface | Pi declaration | Node runtime | Go | Rust | Python |
+|---|---|---|---|---|---|
 | `pi.on("session_before_tree")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventSessionBeforeTree` | implemented `EVENT_SESSION_BEFORE_TREE` | implemented `EVENT_SESSION_BEFORE_TREE` |
 
 ## Event payloads
@@ -485,6 +506,21 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 |---|---|---|---|---|---|
 | `after_provider_response event.status` | `AfterProviderResponseEvent.status` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 | `after_provider_response event.headers` | `AfterProviderResponseEvent.headers` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+
+## Events
+
+| Surface | Pi declaration | Node runtime | Go | Rust | Python |
+|---|---|---|---|---|---|
+| `pi.on("provider_stream_event")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventProviderStreamEvent` | implemented `EVENT_PROVIDER_STREAM_EVENT` | implemented `EVENT_PROVIDER_STREAM_EVENT` |
+
+## Event payloads
+
+| Surface | Pi declaration | Node runtime | Go | Rust | Python |
+|---|---|---|---|---|---|
+| `provider_stream_event event.provider` | `ProviderStreamEvent.provider` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| `provider_stream_event event.api` | `ProviderStreamEvent.api` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| `provider_stream_event event.model` | `ProviderStreamEvent.model` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| `provider_stream_event event.data` | `ProviderStreamEvent.data` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 
 ## Events
 
@@ -668,6 +704,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `tool_execution_start event.toolCallId` | `ToolExecutionStartEvent.toolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 | `tool_execution_start event.toolName` | `ToolExecutionStartEvent.toolName` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 | `tool_execution_start event.args` | `ToolExecutionStartEvent.args` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| `tool_execution_start event.parentToolCallId` | `ToolExecutionStartEvent.parentToolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 
 ## Events
 
@@ -683,6 +720,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `tool_execution_update event.toolName` | `ToolExecutionUpdateEvent.toolName` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 | `tool_execution_update event.args` | `ToolExecutionUpdateEvent.args` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 | `tool_execution_update event.partialResult` | `ToolExecutionUpdateEvent.partialResult` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| `tool_execution_update event.parentToolCallId` | `ToolExecutionUpdateEvent.parentToolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 
 ## Events
 
@@ -698,6 +736,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `tool_execution_end event.toolName` | `ToolExecutionEndEvent.toolName` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 | `tool_execution_end event.result` | `ToolExecutionEndEvent.result` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 | `tool_execution_end event.isError` | `ToolExecutionEndEvent.isError` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| `tool_execution_end event.parentToolCallId` | `ToolExecutionEndEvent.parentToolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 
 ## Events
 
@@ -739,6 +778,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `tool_call event.toolName` | `ToolCallEvent.toolName` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 | `tool_call event.input` | `ToolCallEvent.input` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 | `tool_call event.toolCallId` | `ToolCallEvent.toolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| `tool_call event.parentToolCallId` | `ToolCallEvent.parentToolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 
 ## Event results
 
@@ -761,8 +801,10 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `tool_result event.toolName` | `ToolResultEvent.toolName` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 | `tool_result event.details` | `ToolResultEvent.details` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 | `tool_result event.toolCallId` | `ToolResultEvent.toolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| `tool_result event.parentToolCallId` | `ToolResultEvent.parentToolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 | `tool_result event.input` | `ToolResultEvent.input` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 | `tool_result event.content` | `ToolResultEvent.content` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| `tool_result event.structuredContent` | `ToolResultEvent.structuredContent` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 | `tool_result event.isError` | `ToolResultEvent.isError` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 | `tool_result event.usage` | `ToolResultEvent.usage` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 
@@ -772,6 +814,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 |---|---|---|---|---|---|
 | `tool_result return.content` | `ToolResultEventResult.content` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 | `tool_result return.details` | `ToolResultEventResult.details` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| `tool_result return.structuredContent` | `ToolResultEventResult.structuredContent` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 | `tool_result return.isError` | `ToolResultEventResult.isError` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 | `tool_result return.usage` | `ToolResultEventResult.usage` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
 
@@ -863,6 +906,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `ctx.modelRegistry.getAll` | `ModelRegistry.getAll` | implemented `RuntimeModelRegistry.getAll` | implemented `ModelRegistry.GetAll` | implemented `ModelRegistry::get_all` | implemented `ModelRegistry.get_all` |
 | `ctx.modelRegistry.getAvailable` | `ModelRegistry.getAvailable` | stand-in/partial `RuntimeModelRegistry.getAvailable`: host snapshot filters configured auth; Pi's checked-auth availability snapshot remains unported | stand-in/partial `ModelRegistry.GetAvailable`: host snapshot filters configured auth; Pi's checked-auth availability snapshot remains unported | stand-in/partial `ModelRegistry::get_available`: host snapshot filters configured auth; Pi's checked-auth availability snapshot remains unported | stand-in/partial `ModelRegistry.get_available`: host snapshot filters configured auth; Pi's checked-auth availability snapshot remains unported |
 | `ctx.modelRegistry.find` | `ModelRegistry.find` | implemented `RuntimeModelRegistry.find` | implemented `ModelRegistry.Find` | implemented `ModelRegistry::find` | implemented `ModelRegistry.find` |
+| `ctx.modelRegistry.findOfType` | `ModelRegistry.findOfType` | implemented `RuntimeModelRegistry.findOfType` | implemented `ModelRegistry.FindOfType` | implemented `ModelRegistry::find_of_type` | implemented `ModelRegistry.find_of_type` |
 | `ctx.modelRegistry.hasConfiguredAuth` | `ModelRegistry.hasConfiguredAuth` | implemented `RuntimeModelRegistry.hasConfiguredAuth` | implemented `ModelRegistry.HasConfiguredAuth` | implemented `ModelRegistry::has_configured_auth` | implemented `ModelRegistry.has_configured_auth` |
 | `ctx.modelRegistry.getApiKeyAndHeaders` | `ModelRegistry.getApiKeyAndHeaders` | implemented `RuntimeModelRegistry.getApiKeyAndHeaders` | implemented `ModelRegistry.GetApiKeyAndHeaders` | implemented `ModelRegistry::get_api_key_and_headers` | implemented `ModelRegistry.get_api_key_and_headers` |
 | `ctx.modelRegistry.getProviderAuthStatus` | `ModelRegistry.getProviderAuthStatus` | implemented `RuntimeModelRegistry.getProviderAuthStatus` | implemented `ModelRegistry.GetProviderAuthStatus` | implemented `ModelRegistry::get_provider_auth_status` | implemented `ModelRegistry.get_provider_auth_status` |
@@ -870,12 +914,19 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `ctx.modelRegistry.stream` | `ModelRegistry.stream` | implemented `RuntimeModelRegistry.stream` | implemented `ModelRegistry.Stream` | implemented `ModelRegistry::stream` | implemented `ModelRegistry.stream` |
 | `ctx.modelRegistry.streamSimple` | `ModelRegistry.streamSimple` | implemented `RuntimeModelRegistry.streamSimple` | implemented `ModelRegistry.StreamSimple` | implemented `ModelRegistry::stream_simple` | implemented `ModelRegistry.stream_simple` |
 | `ctx.modelRegistry.complete` | `ModelRegistry.complete` | implemented `RuntimeModelRegistry.complete` | implemented `ModelRegistry.Complete` | implemented `ModelRegistry::complete` | implemented `ModelRegistry.complete` |
+| `ctx.modelRegistry.getModelsOfType` | `ModelRegistry.getModelsOfType` | implemented `RuntimeModelRegistry.getModelsOfType` | implemented `ModelRegistry.GetModelsOfType` | implemented `ModelRegistry::get_models_of_type` | implemented `ModelRegistry.get_models_of_type` |
+| `ctx.modelRegistry.getAvailableOfType` | `ModelRegistry.getAvailableOfType` | implemented `RuntimeModelRegistry.getAvailableOfType` | implemented `ModelRegistry.GetAvailableOfType` | implemented `ModelRegistry::get_available_of_type` | implemented `ModelRegistry.get_available_of_type` |
+| `ctx.modelRegistry.getModelOfType` | `ModelRegistry.getModelOfType` | implemented `RuntimeModelRegistry.getModelOfType` | implemented `ModelRegistry.GetModelOfType` | implemented `ModelRegistry::get_model_of_type` | implemented `ModelRegistry.get_model_of_type` |
+| `ctx.modelRegistry.classify` | `ModelRegistry.classify` | implemented `RuntimeModelRegistry.classify` | implemented `ModelRegistry.Classify` | implemented `ModelRegistry::classify` | implemented `ModelRegistry.classify` |
+| `ctx.modelRegistry.generateImages` | `ModelRegistry.generateImages` | implemented `RuntimeModelRegistry.generateImages` | implemented `ModelRegistry.GenerateImages` | implemented `ModelRegistry::generate_images` | implemented `ModelRegistry.generate_images` |
 | `ctx.modelRegistry.getProviderDisplayName` | `ModelRegistry.getProviderDisplayName` | implemented `RuntimeModelRegistry.getProviderDisplayName` | implemented `ModelRegistry.GetProviderDisplayName` | implemented `ModelRegistry::get_provider_display_name` | implemented `ModelRegistry.get_provider_display_name` |
 | `ctx.modelRegistry.getProviderAuth` | `ModelRegistry.getProviderAuth` | implemented `RuntimeModelRegistry.getProviderAuth` | implemented `ModelRegistry.GetProviderAuth` | implemented `ModelRegistry::get_provider_auth` | implemented `ModelRegistry.get_provider_auth` |
 | `ctx.modelRegistry.getApiKeyForProvider` | `ModelRegistry.getApiKeyForProvider` | implemented `RuntimeModelRegistry.getApiKeyForProvider` | implemented `ModelRegistry.GetApiKeyForProvider` | implemented `ModelRegistry::get_api_key_for_provider` | implemented `ModelRegistry.get_api_key_for_provider` |
 | `ctx.modelRegistry.isUsingOAuth` | `ModelRegistry.isUsingOAuth` | implemented `RuntimeModelRegistry.isUsingOAuth` | implemented `ModelRegistry.IsUsingOAuth` | implemented `ModelRegistry::is_using_oauth` | implemented `ModelRegistry.is_using_oauth` |
 | `ctx.modelRegistry.registerProvider` | `ModelRegistry.registerProvider` | stand-in/partial `RuntimeModelRegistry.registerProvider`: config registration reaches the host; native callback providers remain process-local | stand-in/partial `ModelRegistry.RegisterProvider`: config overload only; native Provider callback objects are not implemented | stand-in/partial `ModelRegistry::register_provider`: config overload only; native Provider callback objects are not implemented | stand-in/partial `ModelRegistry.register_provider`: config overload only; native Provider callback objects are not implemented |
 | `ctx.modelRegistry.unregisterProvider` | `ModelRegistry.unregisterProvider` | implemented `RuntimeModelRegistry.unregisterProvider` | implemented `ModelRegistry.UnregisterProvider` | implemented `ModelRegistry::unregister_provider` | implemented `ModelRegistry.unregister_provider` |
+| `ctx.modelRegistry.registerVirtualModel` | `ModelRegistry.registerVirtualModel` | implemented `RuntimeModelRegistry.registerVirtualModel` | implemented `ModelRegistry.RegisterVirtualModel` | implemented `ModelRegistry::register_virtual_model` | implemented `ModelRegistry.register_virtual_model` |
+| `ctx.modelRegistry.unregisterVirtualModel` | `ModelRegistry.unregisterVirtualModel` | implemented `RuntimeModelRegistry.unregisterVirtualModel` | implemented `ModelRegistry.UnregisterVirtualModel` | implemented `ModelRegistry::unregister_virtual_model` | implemented `ModelRegistry.unregister_virtual_model` |
 | `ctx.modelRegistry.getRegisteredProviderConfig` | `ModelRegistry.getRegisteredProviderConfig` | implemented `RuntimeModelRegistry.getRegisteredProviderConfig` | implemented `ModelRegistry.GetRegisteredProviderConfig` | implemented `ModelRegistry::get_registered_provider_config` | implemented `ModelRegistry.get_registered_provider_config` |
 | `ctx.modelRegistry.getRegisteredNativeProvider` | `ModelRegistry.getRegisteredNativeProvider` | implemented `RuntimeModelRegistry.getRegisteredNativeProvider` | implemented `ModelRegistry.GetRegisteredNativeProvider` | implemented `ModelRegistry::get_registered_native_provider` | implemented `ModelRegistry.get_registered_native_provider` |
 | `ctx.modelRegistry.getRegisteredProviderIds` | `ModelRegistry.getRegisteredProviderIds` | implemented `RuntimeModelRegistry.getRegisteredProviderIds` | implemented `ModelRegistry.GetRegisteredProviderIDs` | implemented `ModelRegistry::get_registered_provider_ids` | implemented `ModelRegistry.get_registered_provider_ids` |
@@ -889,7 +940,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `ctx.thinkingLevel` | `ExtensionContext.thinkingLevel` | implemented `RuntimeContext.thinkingLevel` | implemented `Context.GetThinkingLevel` | implemented `Context::get_thinking_level` | implemented `Context.get_thinking_level` |
 | `ctx.isIdle` | `ExtensionContext.isIdle` | implemented `RuntimeContext.isIdle` | implemented `Context.IsIdle` | implemented `Context::is_idle` | implemented `Context.is_idle` |
 | `ctx.isProjectTrusted` | `ExtensionContext.isProjectTrusted` | implemented `RuntimeContext.isProjectTrusted` | implemented `Context.IsProjectTrusted` | implemented `Context::is_project_trusted` | implemented `Context.is_project_trusted` |
-| `ctx.signal` | `ExtensionContext.signal` | stand-in/partial `RuntimeContext.signal`: the handler request's cancellation: Go's Context.Done/Err, Rust's and Python's is_cancelled and cancellation_reason | stand-in/partial `Context.Done`: the handler request's cancellation: Go's Context.Done/Err, Rust's and Python's is_cancelled and cancellation_reason | stand-in/partial `Context::is_cancelled`: the handler request's cancellation: Go's Context.Done/Err, Rust's and Python's is_cancelled and cancellation_reason | stand-in/partial `Context.is_cancelled`: the handler request's cancellation: Go's Context.Done/Err, Rust's and Python's is_cancelled and cancellation_reason |
+| `ctx.signal` | `ExtensionContext.signal` | implemented `RuntimeContext.signal` | implemented `Context.Signal` | implemented `Context::signal` | implemented `Context.signal` |
 | `ctx.abort` | `ExtensionContext.abort` | implemented `RuntimeContext.abort` | implemented `Context.Abort` | implemented `Context::abort` | implemented `Context.abort` |
 | `ctx.hasPendingMessages` | `ExtensionContext.hasPendingMessages` | implemented `RuntimeContext.hasPendingMessages` | implemented `Context.HasPendingMessages` | implemented `Context::has_pending_messages` | implemented `Context.has_pending_messages` |
 | `ctx.shutdown` | `ExtensionContext.shutdown` | implemented `RuntimeContext.shutdown` | implemented `Context.Shutdown` | implemented `Context::shutdown` | implemented `Context.shutdown` |
@@ -937,7 +988,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 |---|---|---|---|---|---|
 | `ctx.newSession(options.parentSession)` | `ExtensionCommandContext.newSession(options.parentSession)` | implemented `RuntimeContext.newSession` | implemented `Context.NewSession` | implemented `Context::new_session` | implemented `Context.new_session` |
 | `ctx.newSession(options.setup)` | `ExtensionCommandContext.newSession(options.setup)` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
-| `ctx.newSession(options.withSession)` | `ExtensionCommandContext.newSession(options.withSession)` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `ctx.newSession(options.withSession)` | `ExtensionCommandContext.newSession(options.withSession)` | implemented `read:entry.callback` | implemented `WithSessionFunc` | implemented `Context::new_session_with` | implemented `ReplacedSessionContext` |
 | `ctx.newSession → cancelled` | `ExtensionCommandContext.newSession → cancelled` | implemented `RuntimeContext.newSession` | implemented `CancelledResult.Cancelled` | implemented `Context::new_session` | implemented `Context.new_session` |
 
 ## ctx (ExtensionCommandContext, command handlers)
@@ -951,7 +1002,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|---|
 | `ctx.fork(options.position)` | `ExtensionCommandContext.fork(options.position)` | implemented `RuntimeContext.fork` | implemented `Context.Fork` | implemented `Context::fork` | implemented `Context.fork` |
-| `ctx.fork(options.withSession)` | `ExtensionCommandContext.fork(options.withSession)` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `ctx.fork(options.withSession)` | `ExtensionCommandContext.fork(options.withSession)` | implemented `read:entry.callback` | implemented `WithSessionFunc` | implemented `Context::fork_with` | implemented `ReplacedSessionContext` |
 | `ctx.fork → cancelled` | `ExtensionCommandContext.fork → cancelled` | implemented `RuntimeContext.fork` | implemented `CancelledResult.Cancelled` | implemented `Context::fork` | implemented `Context.fork` |
 
 ## ctx (ExtensionCommandContext, command handlers)
@@ -980,7 +1031,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|---|
-| `ctx.switchSession(options.withSession)` | `ExtensionCommandContext.switchSession(options.withSession)` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `ctx.switchSession(options.withSession)` | `ExtensionCommandContext.switchSession(options.withSession)` | implemented `read:entry.callback` | implemented `WithSessionFunc` | implemented `Context::switch_session_with` | implemented `ReplacedSessionContext` |
 | `ctx.switchSession → cancelled` | `ExtensionCommandContext.switchSession → cancelled` | implemented `RuntimeContext.switchSession` | implemented `CancelledResult.Cancelled` | implemented `Context::switch_session` | implemented `Context.switch_session` |
 
 ## ctx (ExtensionCommandContext, command handlers)
@@ -993,31 +1044,31 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|---|
-| `withSession ctx.sendMessage` | `ReplacedSessionContext.sendMessage` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `withSession ctx.sendMessage` | `ReplacedSessionContext.sendMessage` | implemented `read:context.sendMessage` | implemented `Context.SendMessage` | implemented `Context::send_message` | implemented `Context.send_message` |
 
 ## ctx (ReplacedSessionContext, withSession callbacks) arguments
 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|---|
-| `withSession ctx.sendMessage(message.customType)` | `ReplacedSessionContext.sendMessage(message.customType)` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
-| `withSession ctx.sendMessage(message.content)` | `ReplacedSessionContext.sendMessage(message.content)` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
-| `withSession ctx.sendMessage(message.display)` | `ReplacedSessionContext.sendMessage(message.display)` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
-| `withSession ctx.sendMessage(message.details)` | `ReplacedSessionContext.sendMessage(message.details)` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
-| `withSession ctx.sendMessage(options.triggerTurn)` | `ReplacedSessionContext.sendMessage(options.triggerTurn)` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
-| `withSession ctx.sendMessage(options.deliverAs)` | `ReplacedSessionContext.sendMessage(options.deliverAs)` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `withSession ctx.sendMessage(message.customType)` | `ReplacedSessionContext.sendMessage(message.customType)` | implemented `read:context.sendMessage` | implemented `CustomMessage.CustomType` | implemented `CustomMessage.custom_type` | implemented `Context.send_message(custom_type)` |
+| `withSession ctx.sendMessage(message.content)` | `ReplacedSessionContext.sendMessage(message.content)` | implemented `read:context.sendMessage` | implemented `CustomMessage.Content` | implemented `CustomMessage.content` | implemented `Context.send_message(content)` |
+| `withSession ctx.sendMessage(message.display)` | `ReplacedSessionContext.sendMessage(message.display)` | implemented `read:context.sendMessage` | implemented `CustomMessage.Display` | implemented `CustomMessage.display` | implemented `Context.send_message(display)` |
+| `withSession ctx.sendMessage(message.details)` | `ReplacedSessionContext.sendMessage(message.details)` | implemented `read:context.sendMessage` | implemented `CustomMessage.Details` | implemented `CustomMessage.details` | implemented `Context.send_message(details)` |
+| `withSession ctx.sendMessage(options.triggerTurn)` | `ReplacedSessionContext.sendMessage(options.triggerTurn)` | implemented `read:context.sendMessage` | implemented `SendMessageOptions.TriggerTurn` | implemented `SendMessageOptions.trigger_turn` | implemented `Context.send_message(trigger_turn)` |
+| `withSession ctx.sendMessage(options.deliverAs)` | `ReplacedSessionContext.sendMessage(options.deliverAs)` | implemented `read:context.sendMessage` | implemented `SendMessageOptions.DeliverAs` | implemented `SendMessageOptions.deliver_as` | implemented `Context.send_message(deliver_as)` |
 
 ## ctx (ReplacedSessionContext, withSession callbacks)
 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|---|
-| `withSession ctx.sendUserMessage` | `ReplacedSessionContext.sendUserMessage` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `withSession ctx.sendUserMessage` | `ReplacedSessionContext.sendUserMessage` | implemented `read:context.sendUserMessage` | implemented `Context.SendUserMessage` | implemented `Context::send_user_message` | implemented `Context.send_user_message` |
 
 ## ctx (ReplacedSessionContext, withSession callbacks) arguments
 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|---|
-| `withSession ctx.sendUserMessage(options.deliverAs)` | `ReplacedSessionContext.sendUserMessage(options.deliverAs)` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
-| `withSession ctx.sendUserMessage(options.expandPromptTemplates)` | `ReplacedSessionContext.sendUserMessage(options.expandPromptTemplates)` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `withSession ctx.sendUserMessage(options.deliverAs)` | `ReplacedSessionContext.sendUserMessage(options.deliverAs)` | implemented `read:context.sendUserMessage` | implemented `Context.SendUserMessage` | implemented `Context::send_user_message` | implemented `Context.send_user_message(deliver_as)` |
+| `withSession ctx.sendUserMessage(options.expandPromptTemplates)` | `ReplacedSessionContext.sendUserMessage(options.expandPromptTemplates)` | missing (`read:context.sendUserMessage`: the host drops `expandPromptTemplates` (subprocess.SendUserMessageOptions)) [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
 
 ## ctx.ui (ExtensionUIContext)
 
@@ -1126,6 +1177,9 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `ctx.ui.theme.name` | `Theme.name` | implemented `ThemeShim.name` | implemented `UITheme.Name` | implemented `Theme.name` | implemented `Theme.name` |
 | `ctx.ui.theme.sourcePath` | `Theme.sourcePath` | implemented `ThemeShim.sourcePath` | implemented `UITheme.SourcePath` | implemented `Theme.source_path` | implemented `Theme.source_path` |
 | `ctx.ui.theme.sourceInfo` | `Theme.sourceInfo` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `ctx.ui.theme.appearance` | `Theme.appearance` | implemented `ThemeShim.appearance` | implemented `UITheme.Appearance` | implemented `Theme::appearance` | implemented `Theme.appearance` |
+| `ctx.ui.theme.colors` | `Theme.colors` | implemented `ThemeShim.colors` | implemented `UITheme.Colors` | implemented `Theme::colors` | implemented `Theme.colors` |
+| `ctx.ui.theme.style` | `Theme.style` | implemented `ThemeShim.style` | implemented `UITheme.Style` | implemented `Theme::style` | implemented `Theme.style` |
 | `ctx.ui.theme.fg` | `Theme.fg` | implemented `ThemeShim.fg` | implemented `UITheme.Fg` | implemented `Theme::fg` | implemented `Theme.fg` |
 | `ctx.ui.theme.bg` | `Theme.bg` | implemented `ThemeShim.bg` | implemented `UITheme.Bg` | implemented `Theme::bg` | implemented `Theme.bg` |
 | `ctx.ui.theme.bold` | `Theme.bold` | implemented `ThemeShim.bold` | implemented `UITheme.Bold` | implemented `Theme::bold` | implemented `Theme.bold` |
@@ -1186,13 +1240,21 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `tool.constrainedSampling` | `ToolDefinition.constrainedSampling` | implemented `read:tool.constrainedSampling` | implemented `ToolDefinition.ConstrainedSampling` | implemented `ToolDefinition.constrained_sampling` | implemented `ToolDefinition.constrained_sampling` |
 | `tool.renderShell` | `ToolDefinition.renderShell` | implemented `read:tool.renderShell` | implemented `ToolDefinition.RenderShell` | implemented `ToolDefinition.render_shell` | implemented `ToolDefinition.render_shell` |
 | `tool.prepareArguments` | `ToolDefinition.prepareArguments` | implemented `read:tool.prepareArguments` | implemented `ToolDefinition.PrepareArguments` | implemented `ToolDefinition.prepare_arguments` | implemented `ToolDefinition.prepare_arguments` |
+| `tool.outputSchema` | `ToolDefinition.outputSchema` | implemented `read:tool.outputSchema` | implemented `ToolDefinition.OutputSchema` | implemented `ToolDefinition.output_schema` | implemented `ToolDefinition.output_schema` |
+| `tool.exposure` | `ToolDefinition.exposure` | implemented `read:tool.exposure` | implemented `ToolDefinition.Exposure` | implemented `ToolDefinition.exposure` | implemented `ToolDefinition.exposure` |
+| `tool.namespace` | `ToolDefinition.namespace` | implemented `read:tool.namespace` | implemented `ToolDefinition.Namespace` | implemented `ToolDefinition.namespace` | implemented `ToolDefinition.namespace` |
+| `tool.annotations` | `ToolDefinition.annotations` | implemented `read:tool.annotations` | implemented `ToolDefinition.Annotations` | implemented `ToolDefinition.annotations` | implemented `ToolDefinition.annotations` |
+| `tool.defaultActive` | `ToolDefinition.defaultActive` | implemented `read:tool.defaultActive` | implemented `ToolDefinition.DefaultActive` | implemented `ToolDefinition.default_active` | implemented `ToolDefinition.default_active` |
+| `tool.prepareLoadout` | `ToolDefinition.prepareLoadout` | implemented `read:tool.prepareLoadout` | implemented `ToolDefinition.PrepareLoadout` | implemented `ToolDefinition.prepare_loadout` | implemented `ToolDefinition.prepare_loadout` |
 | `tool.executionMode` | `ToolDefinition.executionMode` | implemented `read:tool.executionMode` | implemented `ToolDefinition.ExecutionMode` | implemented `ToolDefinition.execution_mode` | implemented `ToolDefinition.execution_mode` |
 | `tool.execute` | `ToolDefinition.execute` | stand-in/partial `read:tool.execute`: the AbortSignal is the tool request's, aborted when the host cancels it | stand-in/partial `ToolDefinition.Execute`: params arrive as JSON; onUpdate is ctx.OnUpdate/on_update and the AbortSignal is the request's cancellation | stand-in/partial `ToolDefinition.execute`: params arrive as JSON; onUpdate is ctx.OnUpdate/on_update and the AbortSignal is the request's cancellation | stand-in/partial `ToolDefinition.execute`: params arrive as JSON; onUpdate is ctx.OnUpdate/on_update and the AbortSignal is the request's cancellation |
 | `tool.renderCall` | `ToolDefinition.renderCall` | stand-in/partial `read:tool.renderCall`: the returned Component renders to lines inside the extension process | stand-in/partial `ToolDefinition.RenderCall`: returns lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `ToolDefinition.render_call`: returns lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `ToolDefinition.render_call`: returns lines at the requested width: a Pi Component cannot cross the process boundary |
 | `tool.renderResult` | `ToolDefinition.renderResult` | stand-in/partial `read:tool.renderResult`: the returned Component renders to lines inside the extension process | stand-in/partial `ToolDefinition.RenderResult`: returns lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `ToolDefinition.render_result`: returns lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `ToolDefinition.render_result`: returns lines at the requested width: a Pi Component cannot cross the process boundary |
 | `tool execute result.content` | `AgentToolResult.content` | implemented `read:result.content` | implemented `ToolResult.Content` | implemented `ToolResult::json` | implemented `Extension.tool` |
 | `tool execute result.details` | `AgentToolResult.details` | implemented `read:result.details` | implemented `ToolResult.Details` | implemented `ToolResult::json` | implemented `Extension.tool` |
+| `tool execute result.structuredContent` | `AgentToolResult.structuredContent` | implemented `read:result.structuredContent` | implemented `ToolResult.StructuredContent` | implemented `ToolResult::with_structured_content` | implemented `Extension.tool` |
 | `tool execute result.usage` | `AgentToolResult.usage` | implemented `read:result.usage` | implemented `ToolResult.Usage` | implemented `ToolResult::json` | implemented `Extension.tool` |
+| `tool execute result.isError` | `AgentToolResult.isError` | implemented `read:result.isError` | implemented `ToolResult.IsError` | implemented `ToolResult::with_is_error` | implemented `Extension.tool` |
 | `tool execute result.terminate` | `AgentToolResult.terminate` | implemented `read:result.terminate` | implemented `ToolResult.Terminate` | implemented `ToolResult::json` | implemented `Extension.tool` |
 | `tool render context.args` | `ToolRenderContext.args` | implemented `read:payload.args` | implemented `ToolRenderContext.Args` | implemented `ToolRenderContext.args` | implemented `ToolRenderContext.args` |
 | `tool render context.toolCallId` | `ToolRenderContext.toolCallId` | implemented `read:payload.context` | implemented `ToolRenderContext.ToolCallID` | implemented `ToolRenderContext.tool_call_id` | implemented `ToolRenderContext.tool_call_id` |
@@ -1226,6 +1288,8 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `provider.apiKey` | `ProviderConfig.apiKey` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
 | `provider.api` | `ProviderConfig.api` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
 | `provider.streamSimple` | `ProviderConfig.streamSimple` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `provider.images` | `ProviderConfig.images` | implemented `read:config.images` | implemented `ProviderImagesFunc` | implemented `ProviderOperations.images` | implemented `Extension.register_provider` |
+| `provider.classifiers` | `ProviderConfig.classifiers` | implemented `read:config.classifiers` | implemented `ProviderClassifyFunc` | implemented `ProviderOperations.classifiers` | implemented `Extension.register_provider` |
 | `provider.headers` | `ProviderConfig.headers` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
 | `provider.authHeader` | `ProviderConfig.authHeader` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
 | `provider.models` | `ProviderConfig.models` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
@@ -1238,20 +1302,23 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `provider.oauth.refreshToken` | `ProviderConfig.oauth.refreshToken` | implemented `read:oauth.refreshToken` | implemented `OAuthProvider.RefreshToken` | implemented `OAuthProvider.refresh_token` | implemented `OAuthProvider.refresh_token` |
 | `provider.oauth.getApiKey` | `ProviderConfig.oauth.getApiKey` | implemented `read:oauth.getApiKey` | implemented `OAuthProvider.GetAPIKey` | implemented `OAuthProvider.get_api_key` | implemented `OAuthProvider.get_api_key` |
 | `provider.oauth.modifyModels` | `ProviderConfig.oauth.modifyModels` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
-| `provider model.id` | `ProviderModelConfig.id` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider model.name` | `ProviderModelConfig.name` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
+| `provider model.type` | `ProviderModelConfig.type` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
 | `provider model.api` | `ProviderModelConfig.api` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider model.baseUrl` | `ProviderModelConfig.baseUrl` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
 | `provider model.reasoning` | `ProviderModelConfig.reasoning` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
 | `provider model.thinkingLevelMap` | `ProviderModelConfig.thinkingLevelMap` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider model.input` | `ProviderModelConfig.input` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider model.inputLimits` | `ProviderModelConfig.inputLimits` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider model.cost` | `ProviderModelConfig.cost` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
 | `provider model.promptCache` | `ProviderModelConfig.promptCache` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
 | `provider model.contextWindow` | `ProviderModelConfig.contextWindow` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
 | `provider model.maxTokens` | `ProviderModelConfig.maxTokens` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider model.headers` | `ProviderModelConfig.headers` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
+| `provider model.samplingParams` | `ProviderModelConfig.samplingParams` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
 | `provider model.compat` | `ProviderModelConfig.compat` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
+| `provider model.id` | `ProviderModelConfig.id` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
+| `provider model.name` | `ProviderModelConfig.name` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
+| `provider model.baseUrl` | `ProviderModelConfig.baseUrl` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
+| `provider model.input` | `ProviderModelConfig.input` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
+| `provider model.inputLimits` | `ProviderModelConfig.inputLimits` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
+| `provider model.cost` | `ProviderModelConfig.cost` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
+| `provider model.headers` | `ProviderModelConfig.headers` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
+| `provider model.output` | `ProviderModelConfig.output` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
 
 ## Renderers
 
@@ -1294,6 +1361,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: AgentSession.getActiveToolNames` | `AgentSession.getActiveToolNames` | Pi's own code |
 | `pi-coding-agent: AgentSession.getAllTools` | `AgentSession.getAllTools` | Pi's own code |
 | `pi-coding-agent: AgentSession.getAvailableThinkingLevels` | `AgentSession.getAvailableThinkingLevels` | Pi's own code |
+| `pi-coding-agent: AgentSession.getCallableToolNames` | `AgentSession.getCallableToolNames` | Pi's own code |
 | `pi-coding-agent: AgentSession.getContextUsage` | `AgentSession.getContextUsage` | Pi's own code |
 | `pi-coding-agent: AgentSession.getFollowUpMessages` | `AgentSession.getFollowUpMessages` | Pi's own code |
 | `pi-coding-agent: AgentSession.getLastAssistantText` | `AgentSession.getLastAssistantText` | Pi's own code |
@@ -1320,6 +1388,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: AgentSession.reload` | `AgentSession.reload` | Pi's own code |
 | `pi-coding-agent: AgentSession.resourceLoader` | `AgentSession.resourceLoader` | Pi's own code |
 | `pi-coding-agent: AgentSession.retryAttempt` | `AgentSession.retryAttempt` | Pi's own code |
+| `pi-coding-agent: AgentSession.routedModel` | `AgentSession.routedModel` | Pi's own code |
 | `pi-coding-agent: AgentSession.scopedModels` | `AgentSession.scopedModels` | Pi's own code |
 | `pi-coding-agent: AgentSession.sendCustomMessage` | `AgentSession.sendCustomMessage` | Pi's own code |
 | `pi-coding-agent: AgentSession.sendUserMessage` | `AgentSession.sendUserMessage` | Pi's own code |
@@ -1531,6 +1600,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: ExtensionRunner.bindCore` | `ExtensionRunner.bindCore` | Pi's own code |
 | `pi-coding-agent: ExtensionRunner.createCommandContext` | `ExtensionRunner.createCommandContext` | Pi's own code |
 | `pi-coding-agent: ExtensionRunner.createContext` | `ExtensionRunner.createContext` | Pi's own code |
+| `pi-coding-agent: ExtensionRunner.createToolContext` | `ExtensionRunner.createToolContext` | Pi's own code |
 | `pi-coding-agent: ExtensionRunner.emit` | `ExtensionRunner.emit` | Pi's own code |
 | `pi-coding-agent: ExtensionRunner.emitBeforeAgentStart` | `ExtensionRunner.emitBeforeAgentStart` | Pi's own code |
 | `pi-coding-agent: ExtensionRunner.emitBeforeProviderHeaders` | `ExtensionRunner.emitBeforeProviderHeaders` | Pi's own code |
@@ -1565,6 +1635,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: ExtensionRunner.hasUI` | `ExtensionRunner.hasUI` | Pi's own code |
 | `pi-coding-agent: ExtensionRunner.invalidate` | `ExtensionRunner.invalidate` | Pi's own code |
 | `pi-coding-agent: ExtensionRunner.onError` | `ExtensionRunner.onError` | Pi's own code |
+| `pi-coding-agent: ExtensionRunner.reportUnhandledMcpServers` | `ExtensionRunner.reportUnhandledMcpServers` | Pi's own code |
 | `pi-coding-agent: ExtensionRunner.setFlagValue` | `ExtensionRunner.setFlagValue` | Pi's own code |
 | `pi-coding-agent: ExtensionRunner.setUIContext` | `ExtensionRunner.setUIContext` | Pi's own code |
 | `pi-coding-agent: ExtensionRunner.shutdown` | `ExtensionRunner.shutdown` | Pi's own code |
@@ -1625,13 +1696,19 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: LoginDialogComponent.showWaiting` | `LoginDialogComponent.showWaiting` | Pi's own code |
 | `pi-coding-agent: LoginDialogComponent.signal` | `LoginDialogComponent.signal` | Pi's own code |
 | `pi-coding-agent: ModelRegistry` | `class ModelRegistry` | Pi's own code |
+| `pi-coding-agent: ModelRegistry.classify` | `ModelRegistry.classify` | Pi's own code |
 | `pi-coding-agent: ModelRegistry.complete` | `ModelRegistry.complete` | Pi's own code |
 | `pi-coding-agent: ModelRegistry.find` | `ModelRegistry.find` | Pi's own code |
+| `pi-coding-agent: ModelRegistry.findOfType` | `ModelRegistry.findOfType` | Pi's own code |
+| `pi-coding-agent: ModelRegistry.generateImages` | `ModelRegistry.generateImages` | Pi's own code |
 | `pi-coding-agent: ModelRegistry.getAll` | `ModelRegistry.getAll` | Pi's own code |
 | `pi-coding-agent: ModelRegistry.getApiKeyAndHeaders` | `ModelRegistry.getApiKeyAndHeaders` | Pi's own code |
 | `pi-coding-agent: ModelRegistry.getApiKeyForProvider` | `ModelRegistry.getApiKeyForProvider` | Pi's own code |
 | `pi-coding-agent: ModelRegistry.getAvailable` | `ModelRegistry.getAvailable` | Pi's own code |
+| `pi-coding-agent: ModelRegistry.getAvailableOfType` | `ModelRegistry.getAvailableOfType` | Pi's own code |
 | `pi-coding-agent: ModelRegistry.getError` | `ModelRegistry.getError` | Pi's own code |
+| `pi-coding-agent: ModelRegistry.getModelOfType` | `ModelRegistry.getModelOfType` | Pi's own code |
+| `pi-coding-agent: ModelRegistry.getModelsOfType` | `ModelRegistry.getModelsOfType` | Pi's own code |
 | `pi-coding-agent: ModelRegistry.getProvider` | `ModelRegistry.getProvider` | Pi's own code |
 | `pi-coding-agent: ModelRegistry.getProviderAuth` | `ModelRegistry.getProviderAuth` | Pi's own code |
 | `pi-coding-agent: ModelRegistry.getProviderAuthStatus` | `ModelRegistry.getProviderAuthStatus` | Pi's own code |
@@ -1643,22 +1720,32 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: ModelRegistry.isUsingOAuth` | `ModelRegistry.isUsingOAuth` | Pi's own code |
 | `pi-coding-agent: ModelRegistry.refresh` | `ModelRegistry.refresh` | Pi's own code |
 | `pi-coding-agent: ModelRegistry.registerProvider` | `ModelRegistry.registerProvider` | Pi's own code |
+| `pi-coding-agent: ModelRegistry.registerVirtualModel` | `ModelRegistry.registerVirtualModel` | Pi's own code |
 | `pi-coding-agent: ModelRegistry.stream` | `ModelRegistry.stream` | Pi's own code |
 | `pi-coding-agent: ModelRegistry.streamSimple` | `ModelRegistry.streamSimple` | Pi's own code |
 | `pi-coding-agent: ModelRegistry.unregisterProvider` | `ModelRegistry.unregisterProvider` | Pi's own code |
+| `pi-coding-agent: ModelRegistry.unregisterVirtualModel` | `ModelRegistry.unregisterVirtualModel` | Pi's own code |
 | `pi-coding-agent: ModelRuntime` | `class ModelRuntime` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.cancelDeferred` | `ModelRuntime.cancelDeferred` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.checkAuth` | `ModelRuntime.checkAuth` | Pi's own code |
+| `pi-coding-agent: ModelRuntime.classify` | `ModelRuntime.classify` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.complete` | `ModelRuntime.complete` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.completeSimple` | `ModelRuntime.completeSimple` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.fetchDeferred` | `ModelRuntime.fetchDeferred` | Pi's own code |
+| `pi-coding-agent: ModelRuntime.generateImages` | `ModelRuntime.generateImages` | Pi's own code |
+| `pi-coding-agent: ModelRuntime.getAllAvailable` | `ModelRuntime.getAllAvailable` | Pi's own code |
+| `pi-coding-agent: ModelRuntime.getAllModels` | `ModelRuntime.getAllModels` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.getAuth` | `ModelRuntime.getAuth` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.getAvailable` | `ModelRuntime.getAvailable` | Pi's own code |
+| `pi-coding-agent: ModelRuntime.getAvailableOfType` | `ModelRuntime.getAvailableOfType` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.getAvailableSnapshot` | `ModelRuntime.getAvailableSnapshot` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.getCompatibilityRequestConfig` | `ModelRuntime.getCompatibilityRequestConfig` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.getError` | `ModelRuntime.getError` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.getModel` | `ModelRuntime.getModel` | Pi's own code |
+| `pi-coding-agent: ModelRuntime.getModelOfType` | `ModelRuntime.getModelOfType` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.getModels` | `ModelRuntime.getModels` | Pi's own code |
+| `pi-coding-agent: ModelRuntime.getModelsOfType` | `ModelRuntime.getModelsOfType` | Pi's own code |
+| `pi-coding-agent: ModelRuntime.getPhysicalModel` | `ModelRuntime.getPhysicalModel` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.getProvider` | `ModelRuntime.getProvider` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.getProviderAuthStatus` | `ModelRuntime.getProviderAuthStatus` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.getProviders` | `ModelRuntime.getProviders` | Pi's own code |
@@ -1674,12 +1761,15 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: ModelRuntime.refresh` | `ModelRuntime.refresh` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.registerNativeProvider` | `ModelRuntime.registerNativeProvider` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.registerProvider` | `ModelRuntime.registerProvider` | Pi's own code |
+| `pi-coding-agent: ModelRuntime.registerVirtualModel` | `ModelRuntime.registerVirtualModel` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.removeRuntimeApiKey` | `ModelRuntime.removeRuntimeApiKey` | Pi's own code |
+| `pi-coding-agent: ModelRuntime.resolveModel` | `ModelRuntime.resolveModel` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.setRuntimeApiKey` | `ModelRuntime.setRuntimeApiKey` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.stream` | `ModelRuntime.stream` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.streamDeferred` | `ModelRuntime.streamDeferred` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.streamSimple` | `ModelRuntime.streamSimple` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.unregisterProvider` | `ModelRuntime.unregisterProvider` | Pi's own code |
+| `pi-coding-agent: ModelRuntime.unregisterVirtualModel` | `ModelRuntime.unregisterVirtualModel` | Pi's own code |
 | `pi-coding-agent: ModelSelectorComponent` | `class ModelSelectorComponent` | Pi's own code |
 | `pi-coding-agent: ModelSelectorComponent.addChild` | `ModelSelectorComponent.addChild` | Pi's own code |
 | `pi-coding-agent: ModelSelectorComponent.children` | `ModelSelectorComponent.children` | Pi's own code |
@@ -1771,6 +1861,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: SessionManager.getCwd` | `SessionManager.getCwd` | Pi's own code |
 | `pi-coding-agent: SessionManager.getEntries` | `SessionManager.getEntries` | Pi's own code |
 | `pi-coding-agent: SessionManager.getEntry` | `SessionManager.getEntry` | Pi's own code |
+| `pi-coding-agent: SessionManager.getEntryCount` | `SessionManager.getEntryCount` | Pi's own code |
 | `pi-coding-agent: SessionManager.getHeader` | `SessionManager.getHeader` | Pi's own code |
 | `pi-coding-agent: SessionManager.getLabel` | `SessionManager.getLabel` | Pi's own code |
 | `pi-coding-agent: SessionManager.getLeafEntry` | `SessionManager.getLeafEntry` | Pi's own code |
@@ -1830,6 +1921,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: SettingsManager.getFullscreenCopyOnSelect` | `SettingsManager.getFullscreenCopyOnSelect` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getFullscreenExitOutput` | `SettingsManager.getFullscreenExitOutput` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getFullscreenScrollbar` | `SettingsManager.getFullscreenScrollbar` | Pi's own code |
+| `pi-coding-agent: SettingsManager.getFullscreenWheelScrollLines` | `SettingsManager.getFullscreenWheelScrollLines` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getGlobalSettings` | `SettingsManager.getGlobalSettings` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getHideThinkingBlock` | `SettingsManager.getHideThinkingBlock` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getHttpIdleTimeoutMs` | `SettingsManager.getHttpIdleTimeoutMs` | Pi's own code |
@@ -1839,6 +1931,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: SettingsManager.getMermaidRenderingMode` | `SettingsManager.getMermaidRenderingMode` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getModelThinkingLevel` | `SettingsManager.getModelThinkingLevel` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getNpmCommand` | `SettingsManager.getNpmCommand` | Pi's own code |
+| `pi-coding-agent: SettingsManager.getOrCreateDeviceId` | `SettingsManager.getOrCreateDeviceId` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getOutputPad` | `SettingsManager.getOutputPad` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getPackages` | `SettingsManager.getPackages` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getProjectSettings` | `SettingsManager.getProjectSettings` | Pi's own code |
@@ -1848,6 +1941,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: SettingsManager.getRetryEnabled` | `SettingsManager.getRetryEnabled` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getRetrySettings` | `SettingsManager.getRetrySettings` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getSessionDir` | `SettingsManager.getSessionDir` | Pi's own code |
+| `pi-coding-agent: SettingsManager.getSettings` | `SettingsManager.getSettings` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getShellCommandPrefix` | `SettingsManager.getShellCommandPrefix` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getShellPath` | `SettingsManager.getShellPath` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getShowCacheMissNotices` | `SettingsManager.getShowCacheMissNotices` | Pi's own code |
@@ -1892,6 +1986,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: SettingsManager.setFullscreenCopyOnSelect` | `SettingsManager.setFullscreenCopyOnSelect` | Pi's own code |
 | `pi-coding-agent: SettingsManager.setFullscreenExitOutput` | `SettingsManager.setFullscreenExitOutput` | Pi's own code |
 | `pi-coding-agent: SettingsManager.setFullscreenScrollbar` | `SettingsManager.setFullscreenScrollbar` | Pi's own code |
+| `pi-coding-agent: SettingsManager.setFullscreenWheelScrollLines` | `SettingsManager.setFullscreenWheelScrollLines` | Pi's own code |
 | `pi-coding-agent: SettingsManager.setHideThinkingBlock` | `SettingsManager.setHideThinkingBlock` | Pi's own code |
 | `pi-coding-agent: SettingsManager.setHttpIdleTimeoutMs` | `SettingsManager.setHttpIdleTimeoutMs` | Pi's own code |
 | `pi-coding-agent: SettingsManager.setImageAutoResize` | `SettingsManager.setImageAutoResize` | Pi's own code |
@@ -1954,8 +2049,10 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: SkillInvocationMessageComponent.setBgFn` | `SkillInvocationMessageComponent.setBgFn` | Pi's own code |
 | `pi-coding-agent: SkillInvocationMessageComponent.setExpanded` | `SkillInvocationMessageComponent.setExpanded` | Pi's own code |
 | `pi-coding-agent: Theme` | `class Theme` | Pi's own code |
+| `pi-coding-agent: Theme.appearance` | `Theme.appearance` | Pi's own code |
 | `pi-coding-agent: Theme.bg` | `Theme.bg` | Pi's own code |
 | `pi-coding-agent: Theme.bold` | `Theme.bold` | Pi's own code |
+| `pi-coding-agent: Theme.colors` | `Theme.colors` | Pi's own code |
 | `pi-coding-agent: Theme.fg` | `Theme.fg` | Pi's own code |
 | `pi-coding-agent: Theme.getBashModeBorderColor` | `Theme.getBashModeBorderColor` | Pi's own code |
 | `pi-coding-agent: Theme.getBgAnsi` | `Theme.getBgAnsi` | Pi's own code |
@@ -1968,6 +2065,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: Theme.sourceInfo` | `Theme.sourceInfo` | Pi's own code |
 | `pi-coding-agent: Theme.sourcePath` | `Theme.sourcePath` | Pi's own code |
 | `pi-coding-agent: Theme.strikethrough` | `Theme.strikethrough` | Pi's own code |
+| `pi-coding-agent: Theme.style` | `Theme.style` | Pi's own code |
 | `pi-coding-agent: Theme.underline` | `Theme.underline` | Pi's own code |
 | `pi-coding-agent: ThemeSelectorComponent` | `class ThemeSelectorComponent` | Pi's own code |
 | `pi-coding-agent: ThemeSelectorComponent.addChild` | `ThemeSelectorComponent.addChild` | Pi's own code |
@@ -2035,6 +2133,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: UserMessageSelectorComponent.removeChild` | `UserMessageSelectorComponent.removeChild` | Pi's own code |
 | `pi-coding-agent: UserMessageSelectorComponent.render` | `UserMessageSelectorComponent.render` | Pi's own code |
 | `pi-coding-agent: VERSION` | `variable VERSION` | bridged |
+| `pi-coding-agent: VIRTUAL_MODEL_STATE_ENTRY` | `variable VIRTUAL_MODEL_STATE_ENTRY` | bridged |
 | `pi-coding-agent: buildContextEntries` | `function buildContextEntries` | Pi's own code |
 | `pi-coding-agent: buildSessionContext` | `function buildSessionContext` | Pi's own code |
 | `pi-coding-agent: buildSessionProjection` | `function buildSessionProjection` | Pi's own code |
@@ -2050,6 +2149,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: createAgentSessionServices` | `function createAgentSessionServices` | Pi's own code |
 | `pi-coding-agent: createBashTool` | `function createBashTool` | Pi's own code |
 | `pi-coding-agent: createBashToolDefinition` | `function createBashToolDefinition` | Pi's own code |
+| `pi-coding-agent: createCodemodeExtension` | `function createCodemodeExtension` | Pi's own code |
 | `pi-coding-agent: createCodingTools` | `function createCodingTools` | Pi's own code |
 | `pi-coding-agent: createEditTool` | `function createEditTool` | Pi's own code |
 | `pi-coding-agent: createEditToolDefinition` | `function createEditToolDefinition` | Pi's own code |
@@ -2063,12 +2163,14 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: createLocalPowerShellOperations` | `function createLocalPowerShellOperations` | Pi's own code |
 | `pi-coding-agent: createLsTool` | `function createLsTool` | Pi's own code |
 | `pi-coding-agent: createLsToolDefinition` | `function createLsToolDefinition` | Pi's own code |
+| `pi-coding-agent: createMcpExtension` | `function createMcpExtension` | Pi's own code |
 | `pi-coding-agent: createPowerShellTool` | `function createPowerShellTool` | Pi's own code |
 | `pi-coding-agent: createPowerShellToolDefinition` | `function createPowerShellToolDefinition` | Pi's own code |
 | `pi-coding-agent: createReadOnlyTools` | `function createReadOnlyTools` | Pi's own code |
 | `pi-coding-agent: createReadTool` | `function createReadTool` | Pi's own code |
 | `pi-coding-agent: createReadToolDefinition` | `function createReadToolDefinition` | Pi's own code |
 | `pi-coding-agent: createSyntheticSourceInfo` | `function createSyntheticSourceInfo` | Pi's own code |
+| `pi-coding-agent: createToolSearchExtension` | `function createToolSearchExtension` | Pi's own code |
 | `pi-coding-agent: createWriteTool` | `function createWriteTool` | Pi's own code |
 | `pi-coding-agent: createWriteToolDefinition` | `function createWriteToolDefinition` | Pi's own code |
 | `pi-coding-agent: defineTool` | `function defineTool` | Pi's own code |
@@ -2364,6 +2466,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-tui: TuiAltScreen.getClearOnShrink` | `TuiAltScreen.getClearOnShrink` | Pi's own code |
 | `pi-tui: TuiAltScreen.getCopyOnSelect` | `TuiAltScreen.getCopyOnSelect` | Pi's own code |
 | `pi-tui: TuiAltScreen.getFocusedComponent` | `TuiAltScreen.getFocusedComponent` | Pi's own code |
+| `pi-tui: TuiAltScreen.getScreenLines` | `TuiAltScreen.getScreenLines` | Pi's own code |
 | `pi-tui: TuiAltScreen.getShowHardwareCursor` | `TuiAltScreen.getShowHardwareCursor` | Pi's own code |
 | `pi-tui: TuiAltScreen.handleMouse` | `TuiAltScreen.handleMouse` | Pi's own code |
 | `pi-tui: TuiAltScreen.hasActiveSelection` | `TuiAltScreen.hasActiveSelection` | Pi's own code |
@@ -2375,8 +2478,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-tui: TuiAltScreen.mode` | `TuiAltScreen.mode` | Pi's own code |
 | `pi-tui: TuiAltScreen.onDebug` | `TuiAltScreen.onDebug` | Pi's own code |
 | `pi-tui: TuiAltScreen.onTerminalColorSchemeChange` | `TuiAltScreen.onTerminalColorSchemeChange` | Pi's own code |
-| `pi-tui: TuiAltScreen.queryTerminalBackgroundColor` | `TuiAltScreen.queryTerminalBackgroundColor` | Pi's own code |
-| `pi-tui: TuiAltScreen.queryTerminalColorScheme` | `TuiAltScreen.queryTerminalColorScheme` | Pi's own code |
+| `pi-tui: TuiAltScreen.queryTerminalColors` | `TuiAltScreen.queryTerminalColors` | Pi's own code |
 | `pi-tui: TuiAltScreen.removeChild` | `TuiAltScreen.removeChild` | Pi's own code |
 | `pi-tui: TuiAltScreen.removeInputListener` | `TuiAltScreen.removeInputListener` | Pi's own code |
 | `pi-tui: TuiAltScreen.render` | `TuiAltScreen.render` | Pi's own code |
@@ -2391,6 +2493,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-tui: TuiAltScreen.setLayoutRoot` | `TuiAltScreen.setLayoutRoot` | Pi's own code |
 | `pi-tui: TuiAltScreen.setShowHardwareCursor` | `TuiAltScreen.setShowHardwareCursor` | Pi's own code |
 | `pi-tui: TuiAltScreen.setTerminalColorSchemeNotifications` | `TuiAltScreen.setTerminalColorSchemeNotifications` | Pi's own code |
+| `pi-tui: TuiAltScreen.setWheelScrollLines` | `TuiAltScreen.setWheelScrollLines` | Pi's own code |
 | `pi-tui: TuiAltScreen.showOverlay` | `TuiAltScreen.showOverlay` | Pi's own code |
 | `pi-tui: TuiAltScreen.start` | `TuiAltScreen.start` | Pi's own code |
 | `pi-tui: TuiAltScreen.stop` | `TuiAltScreen.stop` | Pi's own code |
@@ -2414,8 +2517,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-tui: TuiMainScreen.mode` | `TuiMainScreen.mode` | Pi's own code |
 | `pi-tui: TuiMainScreen.onDebug` | `TuiMainScreen.onDebug` | Pi's own code |
 | `pi-tui: TuiMainScreen.onTerminalColorSchemeChange` | `TuiMainScreen.onTerminalColorSchemeChange` | Pi's own code |
-| `pi-tui: TuiMainScreen.queryTerminalBackgroundColor` | `TuiMainScreen.queryTerminalBackgroundColor` | Pi's own code |
-| `pi-tui: TuiMainScreen.queryTerminalColorScheme` | `TuiMainScreen.queryTerminalColorScheme` | Pi's own code |
+| `pi-tui: TuiMainScreen.queryTerminalColors` | `TuiMainScreen.queryTerminalColors` | Pi's own code |
 | `pi-tui: TuiMainScreen.removeChild` | `TuiMainScreen.removeChild` | Pi's own code |
 | `pi-tui: TuiMainScreen.removeInputListener` | `TuiMainScreen.removeInputListener` | Pi's own code |
 | `pi-tui: TuiMainScreen.render` | `TuiMainScreen.render` | Pi's own code |
@@ -2440,7 +2542,12 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-tui: VStack.removeChild` | `VStack.removeChild` | Pi's own code |
 | `pi-tui: VStack.render` | `VStack.render` | Pi's own code |
 | `pi-tui: allocateImageId` | `function allocateImageId` | Pi's own code |
+| `pi-tui: backgroundAnsi` | `function backgroundAnsi` | Pi's own code |
 | `pi-tui: calculateImageRows` | `function calculateImageRows` | Pi's own code |
+| `pi-tui: colorToHex` | `function colorToHex` | Pi's own code |
+| `pi-tui: colorToOkhsl` | `function colorToOkhsl` | Pi's own code |
+| `pi-tui: colorToOklch` | `function colorToOklch` | Pi's own code |
+| `pi-tui: colorToRgb` | `function colorToRgb` | Pi's own code |
 | `pi-tui: compositeTuiLine` | `function compositeTuiLine` | Pi's own code |
 | `pi-tui: decodeKittyPrintable` | `function decodeKittyPrintable` | Pi's own code |
 | `pi-tui: deleteAllKittyImages` | `function deleteAllKittyImages` | Pi's own code |
@@ -2448,6 +2555,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-tui: detectCapabilities` | `function detectCapabilities` | Pi's own code |
 | `pi-tui: encodeITerm2` | `function encodeITerm2` | Pi's own code |
 | `pi-tui: encodeKitty` | `function encodeKitty` | Pi's own code |
+| `pi-tui: foregroundAnsi` | `function foregroundAnsi` | Pi's own code |
 | `pi-tui: fuzzyFilter` | `function fuzzyFilter` | Pi's own code |
 | `pi-tui: fuzzyMatch` | `function fuzzyMatch` | Pi's own code |
 | `pi-tui: getCapabilities` | `function getCapabilities` | Pi's own code |
@@ -2459,21 +2567,29 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-tui: getNativeClipboard` | `function getNativeClipboard` | Pi's own code |
 | `pi-tui: getOsc8LinkAtColumn` | `function getOsc8LinkAtColumn` | Pi's own code |
 | `pi-tui: getPngDimensions` | `function getPngDimensions` | Pi's own code |
+| `pi-tui: getTerminalColorMode` | `function getTerminalColorMode` | Pi's own code |
 | `pi-tui: getWebpDimensions` | `function getWebpDimensions` | Pi's own code |
 | `pi-tui: hyperlink` | `function hyperlink` | Pi's own code |
 | `pi-tui: imageFallback` | `function imageFallback` | Pi's own code |
+| `pi-tui: indexedColor` | `function indexedColor` | Pi's own code |
+| `pi-tui: isAppleTerminalSession` | `function isAppleTerminalSession` | Pi's own code |
 | `pi-tui: isFocusable` | `function isFocusable` | Pi's own code |
 | `pi-tui: isKeyRelease` | `function isKeyRelease` | Pi's own code |
 | `pi-tui: isKeyRepeat` | `function isKeyRepeat` | Pi's own code |
 | `pi-tui: isKittyProtocolActive` | `function isKittyProtocolActive` | Pi's own code |
 | `pi-tui: isViewportTUI` | `function isViewportTUI` | Pi's own code |
 | `pi-tui: matchesKey` | `function matchesKey` | Pi's own code |
+| `pi-tui: mixColors` | `function mixColors` | Pi's own code |
+| `pi-tui: okhslColor` | `function okhslColor` | Pi's own code |
+| `pi-tui: oklabToOkhslLightness` | `variable oklabToOkhslLightness` | Pi's own code |
+| `pi-tui: oklchColor` | `function oklchColor` | Pi's own code |
+| `pi-tui: parseColor` | `function parseColor` | Pi's own code |
 | `pi-tui: parseKey` | `function parseKey` | Pi's own code |
-| `pi-tui: parseOsc11BackgroundColor` | `function parseOsc11BackgroundColor` | Pi's own code |
 | `pi-tui: parseTerminalColorSchemeReport` | `function parseTerminalColorSchemeReport` | Pi's own code |
 | `pi-tui: renderImage` | `function renderImage` | Pi's own code |
 | `pi-tui: renderLatex` | `function renderLatex` | Pi's own code |
 | `pi-tui: resetCapabilitiesCache` | `function resetCapabilitiesCache` | Pi's own code |
+| `pi-tui: rgbColor` | `function rgbColor` | Pi's own code |
 | `pi-tui: setCapabilities` | `function setCapabilities` | Pi's own code |
 | `pi-tui: setCapabilityOverrides` | `function setCapabilityOverrides` | Pi's own code |
 | `pi-tui: setCellDimensions` | `function setCellDimensions` | Pi's own code |
@@ -2481,6 +2597,8 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-tui: setKittyProtocolActive` | `function setKittyProtocolActive` | Pi's own code |
 | `pi-tui: sliceByColumn` | `function sliceByColumn` | Pi's own code |
 | `pi-tui: stripTerminalSequences` | `function stripTerminalSequences` | Pi's own code |
+| `pi-tui: styleText` | `function styleText` | Pi's own code |
+| `pi-tui: styleTextWithAnsi` | `function styleTextWithAnsi` | Pi's own code |
 | `pi-tui: truncateToWidth` | `function truncateToWidth` | Pi's own code |
 | `pi-tui: visibleWidth` | `function visibleWidth` | Pi's own code |
 | `pi-tui: wrapTextWithAnsi` | `function wrapTextWithAnsi` | Pi's own code |
@@ -2527,8 +2645,6 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-ai: createAssistantMessageDiagnostic` | `function createAssistantMessageDiagnostic` | Pi's own code |
 | `pi-ai: createAssistantMessageEventStream` | `function createAssistantMessageEventStream` | Pi's own code |
 | `pi-ai: createFauxCore` | `function createFauxCore` | Pi's own code |
-| `pi-ai: createImagesModels` | `function createImagesModels` | Pi's own code |
-| `pi-ai: createImagesProvider` | `function createImagesProvider` | Pi's own code |
 | `pi-ai: createInitialSystemMessage` | `function createInitialSystemMessage` | Pi's own code |
 | `pi-ai: createModels` | `function createModels` | Pi's own code |
 | `pi-ai: createProvider` | `function createProvider` | Pi's own code |
@@ -2547,6 +2663,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-ai: getCurrentTools` | `function getCurrentTools` | Pi's own code |
 | `pi-ai: getDeclaredTools` | `function getDeclaredTools` | Pi's own code |
 | `pi-ai: getInitialSystemMessage` | `function getInitialSystemMessage` | Pi's own code |
+| `pi-ai: getModelType` | `function getModelType` | Pi's own code |
 | `pi-ai: getOverflowPatterns` | `function getOverflowPatterns` | Pi's own code |
 | `pi-ai: getSupportedThinkingLevels` | `function getSupportedThinkingLevels` | Pi's own code |
 | `pi-ai: getSystemMessageText` | `function getSystemMessageText` | Pi's own code |
@@ -2555,6 +2672,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-ai: hasNonAdditiveToolChanges` | `function hasNonAdditiveToolChanges` | Pi's own code |
 | `pi-ai: hasToolRedefinitions` | `function hasToolRedefinitions` | Pi's own code |
 | `pi-ai: isContextOverflow` | `function isContextOverflow` | Pi's own code |
+| `pi-ai: isModelType` | `function isModelType` | Pi's own code |
 | `pi-ai: isRecoverableLength` | `function isRecoverableLength` | Pi's own code |
 | `pi-ai: isRetryableAssistantError` | `function isRetryableAssistantError` | Pi's own code |
 | `pi-ai: lazyApi` | `function lazyApi` | Pi's own code |
@@ -2584,7 +2702,12 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 |---|---|---|
 | `pi-ai/compat: ANTHROPIC_API_KEY_ENV` | `variable ANTHROPIC_API_KEY_ENV` | bridged |
 | `pi-ai/compat: ANTHROPIC_AUTH_TOKEN_ENV` | `variable ANTHROPIC_AUTH_TOKEN_ENV` | bridged |
+| `pi-ai/compat: ANTHROPIC_FEDERATION_RULE_ID_ENV` | `variable ANTHROPIC_FEDERATION_RULE_ID_ENV` | bridged |
+| `pi-ai/compat: ANTHROPIC_IDENTITY_TOKEN_FILE_ENV` | `variable ANTHROPIC_IDENTITY_TOKEN_FILE_ENV` | bridged |
 | `pi-ai/compat: ANTHROPIC_OAUTH_TOKEN_ENV` | `variable ANTHROPIC_OAUTH_TOKEN_ENV` | bridged |
+| `pi-ai/compat: ANTHROPIC_ORGANIZATION_ID_ENV` | `variable ANTHROPIC_ORGANIZATION_ID_ENV` | bridged |
+| `pi-ai/compat: ANTHROPIC_SERVICE_ACCOUNT_ID_ENV` | `variable ANTHROPIC_SERVICE_ACCOUNT_ID_ENV` | bridged |
+| `pi-ai/compat: ANTHROPIC_WORKSPACE_ID_ENV` | `variable ANTHROPIC_WORKSPACE_ID_ENV` | bridged |
 | `pi-ai/compat: AssistantMessageEventStream` | `class AssistantMessageEventStream` | Pi's own code |
 | `pi-ai/compat: AssistantMessageEventStream.[Symbol.asyncIterator]` | `AssistantMessageEventStream.[Symbol.asyncIterator]` | Pi's own code |
 | `pi-ai/compat: AssistantMessageEventStream.end` | `AssistantMessageEventStream.end` | Pi's own code |
@@ -2628,8 +2751,6 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-ai/compat: createAssistantMessageDiagnostic` | `function createAssistantMessageDiagnostic` | Pi's own code |
 | `pi-ai/compat: createAssistantMessageEventStream` | `function createAssistantMessageEventStream` | Pi's own code |
 | `pi-ai/compat: createFauxCore` | `function createFauxCore` | Pi's own code |
-| `pi-ai/compat: createImagesModels` | `function createImagesModels` | Pi's own code |
-| `pi-ai/compat: createImagesProvider` | `function createImagesProvider` | Pi's own code |
 | `pi-ai/compat: createInitialSystemMessage` | `function createInitialSystemMessage` | Pi's own code |
 | `pi-ai/compat: createModels` | `function createModels` | Pi's own code |
 | `pi-ai/compat: createProvider` | `function createProvider` | Pi's own code |
@@ -2659,6 +2780,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-ai/compat: getImagesApiProvider` | `function getImagesApiProvider` | Pi's own code |
 | `pi-ai/compat: getInitialSystemMessage` | `function getInitialSystemMessage` | Pi's own code |
 | `pi-ai/compat: getModel` | `variable getModel` | Pi's own code |
+| `pi-ai/compat: getModelType` | `function getModelType` | Pi's own code |
 | `pi-ai/compat: getModels` | `variable getModels` | Pi's own code |
 | `pi-ai/compat: getOverflowPatterns` | `function getOverflowPatterns` | Pi's own code |
 | `pi-ai/compat: getProviders` | `variable getProviders` | Pi's own code |
@@ -2671,6 +2793,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-ai/compat: hasNonAdditiveToolChanges` | `function hasNonAdditiveToolChanges` | Pi's own code |
 | `pi-ai/compat: hasToolRedefinitions` | `function hasToolRedefinitions` | Pi's own code |
 | `pi-ai/compat: isContextOverflow` | `function isContextOverflow` | Pi's own code |
+| `pi-ai/compat: isModelType` | `function isModelType` | Pi's own code |
 | `pi-ai/compat: isRecoverableLength` | `function isRecoverableLength` | Pi's own code |
 | `pi-ai/compat: isRetryableAssistantError` | `function isRetryableAssistantError` | Pi's own code |
 | `pi-ai/compat: lazyApi` | `function lazyApi` | Pi's own code |
@@ -2729,10 +2852,13 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Export | Pi declaration | Node runtime |
 |---|---|---|
-| `pi-ai/providers/all: builtinImagesModels` | `function builtinImagesModels` | Pi's own code |
-| `pi-ai/providers/all: builtinImagesProviders` | `function builtinImagesProviders` | Pi's own code |
 | `pi-ai/providers/all: builtinModels` | `function builtinModels` | Pi's own code |
 | `pi-ai/providers/all: builtinProviders` | `function builtinProviders` | Pi's own code |
+| `pi-ai/providers/all: getAllBuiltinModels` | `function getAllBuiltinModels` | Pi's own code |
+| `pi-ai/providers/all: getBuiltinClassifierModel` | `function getBuiltinClassifierModel` | Pi's own code |
+| `pi-ai/providers/all: getBuiltinClassifierModels` | `function getBuiltinClassifierModels` | Pi's own code |
+| `pi-ai/providers/all: getBuiltinImageModel` | `function getBuiltinImageModel` | Pi's own code |
+| `pi-ai/providers/all: getBuiltinImageModels` | `function getBuiltinImageModels` | Pi's own code |
 | `pi-ai/providers/all: getBuiltinModel` | `function getBuiltinModel` | Pi's own code |
 | `pi-ai/providers/all: getBuiltinModelDataGeneratedAt` | `function getBuiltinModelDataGeneratedAt` | Pi's own code |
 | `pi-ai/providers/all: getBuiltinModels` | `function getBuiltinModels` | Pi's own code |
@@ -2743,8 +2869,6 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Export | Pi declaration | Node runtime |
 |---|---|---|
-| `pi-agent-core: AGENT_TELEMETRY_SCHEMAS` | `variable AGENT_TELEMETRY_SCHEMAS` | Pi's own code |
-| `pi-agent-core: AI_TELEMETRY_SCHEMA` | `variable AI_TELEMETRY_SCHEMA` | Pi's own code |
 | `pi-agent-core: Agent` | `class Agent` | Pi's own code |
 | `pi-agent-core: Agent.abort` | `Agent.abort` | Pi's own code |
 | `pi-agent-core: Agent.afterToolCall` | `Agent.afterToolCall` | Pi's own code |
@@ -2761,6 +2885,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-agent-core: Agent.hasQueuedMessages` | `Agent.hasQueuedMessages` | Pi's own code |
 | `pi-agent-core: Agent.maxRetryDelayMs` | `Agent.maxRetryDelayMs` | Pi's own code |
 | `pi-agent-core: Agent.onPayload` | `Agent.onPayload` | Pi's own code |
+| `pi-agent-core: Agent.onProviderStreamEvent` | `Agent.onProviderStreamEvent` | Pi's own code |
 | `pi-agent-core: Agent.onResponse` | `Agent.onResponse` | Pi's own code |
 | `pi-agent-core: Agent.peekQueuedMessages` | `Agent.peekQueuedMessages` | Pi's own code |
 | `pi-agent-core: Agent.prepareNextTurn` | `Agent.prepareNextTurn` | Pi's own code |
@@ -2780,366 +2905,32 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-agent-core: Agent.transformContext` | `Agent.transformContext` | Pi's own code |
 | `pi-agent-core: Agent.transport` | `Agent.transport` | Pi's own code |
 | `pi-agent-core: Agent.waitForIdle` | `Agent.waitForIdle` | Pi's own code |
-| `pi-agent-core: BACKGROUND_CONTEXT` | `variable BACKGROUND_CONTEXT` | Pi's own code |
-| `pi-agent-core: BRANCH_SUMMARY_PREFIX` | `variable BRANCH_SUMMARY_PREFIX` | bridged |
-| `pi-agent-core: BRANCH_SUMMARY_SUFFIX` | `variable BRANCH_SUMMARY_SUFFIX` | bridged |
-| `pi-agent-core: BranchSummaryError` | `class BranchSummaryError` | Pi's own code |
-| `pi-agent-core: BranchSummaryError.cause` | `BranchSummaryError.cause` | Pi's own code |
-| `pi-agent-core: BranchSummaryError.code` | `BranchSummaryError.code` | Pi's own code |
-| `pi-agent-core: BranchSummaryError.message` | `BranchSummaryError.message` | Pi's own code |
-| `pi-agent-core: BranchSummaryError.name` | `BranchSummaryError.name` | Pi's own code |
-| `pi-agent-core: BranchSummaryError.stack` | `BranchSummaryError.stack` | Pi's own code |
-| `pi-agent-core: COMPACTION_SUMMARY_PREFIX` | `variable COMPACTION_SUMMARY_PREFIX` | bridged |
-| `pi-agent-core: COMPACTION_SUMMARY_SUFFIX` | `variable COMPACTION_SUMMARY_SUFFIX` | bridged |
-| `pi-agent-core: Closed` | `class Closed` | Pi's own code |
-| `pi-agent-core: Closed._tag` | `Closed._tag` | Pi's own code |
-| `pi-agent-core: Closed.cause` | `Closed.cause` | Pi's own code |
-| `pi-agent-core: Closed.message` | `Closed.message` | Pi's own code |
-| `pi-agent-core: Closed.name` | `Closed.name` | Pi's own code |
-| `pi-agent-core: Closed.stack` | `Closed.stack` | Pi's own code |
-| `pi-agent-core: Closed.toJSON` | `Closed.toJSON` | Pi's own code |
-| `pi-agent-core: CompactionError` | `class CompactionError` | Pi's own code |
-| `pi-agent-core: CompactionError.cause` | `CompactionError.cause` | Pi's own code |
-| `pi-agent-core: CompactionError.code` | `CompactionError.code` | Pi's own code |
-| `pi-agent-core: CompactionError.message` | `CompactionError.message` | Pi's own code |
-| `pi-agent-core: CompactionError.name` | `CompactionError.name` | Pi's own code |
-| `pi-agent-core: CompactionError.stack` | `CompactionError.stack` | Pi's own code |
-| `pi-agent-core: DEFAULT_COMPACTION_SETTINGS` | `variable DEFAULT_COMPACTION_SETTINGS` | Pi's own code |
-| `pi-agent-core: DEFAULT_MAX_BYTES` | `variable DEFAULT_MAX_BYTES` | bridged |
-| `pi-agent-core: DEFAULT_MAX_LINES` | `variable DEFAULT_MAX_LINES` | bridged |
-| `pi-agent-core: ExecutionError` | `class ExecutionError` | Pi's own code |
-| `pi-agent-core: ExecutionError.cause` | `ExecutionError.cause` | Pi's own code |
-| `pi-agent-core: ExecutionError.code` | `ExecutionError.code` | Pi's own code |
-| `pi-agent-core: ExecutionError.message` | `ExecutionError.message` | Pi's own code |
-| `pi-agent-core: ExecutionError.name` | `ExecutionError.name` | Pi's own code |
-| `pi-agent-core: ExecutionError.stack` | `ExecutionError.stack` | Pi's own code |
-| `pi-agent-core: FileError` | `class FileError` | Pi's own code |
-| `pi-agent-core: FileError.cause` | `FileError.cause` | Pi's own code |
-| `pi-agent-core: FileError.code` | `FileError.code` | Pi's own code |
-| `pi-agent-core: FileError.message` | `FileError.message` | Pi's own code |
-| `pi-agent-core: FileError.name` | `FileError.name` | Pi's own code |
-| `pi-agent-core: FileError.path` | `FileError.path` | Pi's own code |
-| `pi-agent-core: FileError.stack` | `FileError.stack` | Pi's own code |
-| `pi-agent-core: GREP_MAX_LINE_LENGTH` | `variable GREP_MAX_LINE_LENGTH` | bridged |
-| `pi-agent-core: HARNESS_TELEMETRY_SCHEMA` | `variable HARNESS_TELEMETRY_SCHEMA` | Pi's own code |
-| `pi-agent-core: HarnessClosed` | `class HarnessClosed` | Pi's own code |
-| `pi-agent-core: HarnessClosed.cause` | `HarnessClosed.cause` | missing [exception](#exceptions) |
-| `pi-agent-core: HarnessClosed.message` | `HarnessClosed.message` | Pi's own code |
-| `pi-agent-core: HarnessClosed.name` | `HarnessClosed.name` | Pi's own code |
-| `pi-agent-core: HarnessClosed.stack` | `HarnessClosed.stack` | Pi's own code |
-| `pi-agent-core: HarnessFault` | `class HarnessFault` | Pi's own code |
-| `pi-agent-core: HarnessFault.cause` | `HarnessFault.cause` | Pi's own code |
-| `pi-agent-core: HarnessFault.message` | `HarnessFault.message` | Pi's own code |
-| `pi-agent-core: HarnessFault.name` | `HarnessFault.name` | Pi's own code |
-| `pi-agent-core: HarnessFault.stack` | `HarnessFault.stack` | Pi's own code |
-| `pi-agent-core: InvalidLane` | `class InvalidLane` | Pi's own code |
-| `pi-agent-core: InvalidLane._tag` | `InvalidLane._tag` | Pi's own code |
-| `pi-agent-core: InvalidLane.cause` | `InvalidLane.cause` | Pi's own code |
-| `pi-agent-core: InvalidLane.lane` | `InvalidLane.lane` | Pi's own code |
-| `pi-agent-core: InvalidLane.message` | `InvalidLane.message` | Pi's own code |
-| `pi-agent-core: InvalidLane.name` | `InvalidLane.name` | Pi's own code |
-| `pi-agent-core: InvalidLane.reason` | `InvalidLane.reason` | Pi's own code |
-| `pi-agent-core: InvalidLane.stack` | `InvalidLane.stack` | Pi's own code |
-| `pi-agent-core: InvalidLane.toJSON` | `InvalidLane.toJSON` | Pi's own code |
-| `pi-agent-core: InvalidMessage` | `class InvalidMessage` | Pi's own code |
-| `pi-agent-core: InvalidMessage._tag` | `InvalidMessage._tag` | Pi's own code |
-| `pi-agent-core: InvalidMessage.cause` | `InvalidMessage.cause` | Pi's own code |
-| `pi-agent-core: InvalidMessage.lane` | `InvalidMessage.lane` | Pi's own code |
-| `pi-agent-core: InvalidMessage.message` | `InvalidMessage.message` | Pi's own code |
-| `pi-agent-core: InvalidMessage.name` | `InvalidMessage.name` | Pi's own code |
-| `pi-agent-core: InvalidMessage.reason` | `InvalidMessage.reason` | Pi's own code |
-| `pi-agent-core: InvalidMessage.stack` | `InvalidMessage.stack` | Pi's own code |
-| `pi-agent-core: InvalidMessage.toJSON` | `InvalidMessage.toJSON` | Pi's own code |
-| `pi-agent-core: InvalidNavigation` | `class InvalidNavigation` | Pi's own code |
-| `pi-agent-core: InvalidNavigation._tag` | `InvalidNavigation._tag` | Pi's own code |
-| `pi-agent-core: InvalidNavigation.cause` | `InvalidNavigation.cause` | Pi's own code |
-| `pi-agent-core: InvalidNavigation.lane` | `InvalidNavigation.lane` | Pi's own code |
-| `pi-agent-core: InvalidNavigation.message` | `InvalidNavigation.message` | Pi's own code |
-| `pi-agent-core: InvalidNavigation.name` | `InvalidNavigation.name` | Pi's own code |
-| `pi-agent-core: InvalidNavigation.reason` | `InvalidNavigation.reason` | Pi's own code |
-| `pi-agent-core: InvalidNavigation.stack` | `InvalidNavigation.stack` | Pi's own code |
-| `pi-agent-core: InvalidNavigation.toJSON` | `InvalidNavigation.toJSON` | Pi's own code |
-| `pi-agent-core: JSONL_STORAGE_VERSION` | `variable JSONL_STORAGE_VERSION` | bridged |
-| `pi-agent-core: JsonlSessionRepo` | `class JsonlSessionRepo` | Pi's own code |
-| `pi-agent-core: JsonlSessionRepo.close` | `JsonlSessionRepo.close` | Pi's own code |
-| `pi-agent-core: JsonlSessionRepo.create` | `JsonlSessionRepo.create` | Pi's own code |
-| `pi-agent-core: JsonlSessionRepo.delete` | `JsonlSessionRepo.delete` | Pi's own code |
-| `pi-agent-core: JsonlSessionRepo.fork` | `JsonlSessionRepo.fork` | Pi's own code |
-| `pi-agent-core: JsonlSessionRepo.list` | `JsonlSessionRepo.list` | Pi's own code |
-| `pi-agent-core: JsonlSessionRepo.open` | `JsonlSessionRepo.open` | Pi's own code |
-| `pi-agent-core: LaneBusy` | `class LaneBusy` | Pi's own code |
-| `pi-agent-core: LaneBusy._tag` | `LaneBusy._tag` | Pi's own code |
-| `pi-agent-core: LaneBusy.cause` | `LaneBusy.cause` | Pi's own code |
-| `pi-agent-core: LaneBusy.lane` | `LaneBusy.lane` | Pi's own code |
-| `pi-agent-core: LaneBusy.message` | `LaneBusy.message` | Pi's own code |
-| `pi-agent-core: LaneBusy.name` | `LaneBusy.name` | Pi's own code |
-| `pi-agent-core: LaneBusy.operationId` | `LaneBusy.operationId` | Pi's own code |
-| `pi-agent-core: LaneBusy.operationKind` | `LaneBusy.operationKind` | Pi's own code |
-| `pi-agent-core: LaneBusy.stack` | `LaneBusy.stack` | Pi's own code |
-| `pi-agent-core: LaneBusy.toJSON` | `LaneBusy.toJSON` | Pi's own code |
-| `pi-agent-core: MemorySessionRepo` | `class MemorySessionRepo` | Pi's own code |
-| `pi-agent-core: MemorySessionRepo.close` | `MemorySessionRepo.close` | Pi's own code |
-| `pi-agent-core: MemorySessionRepo.create` | `MemorySessionRepo.create` | Pi's own code |
-| `pi-agent-core: MemorySessionRepo.delete` | `MemorySessionRepo.delete` | Pi's own code |
-| `pi-agent-core: MemorySessionRepo.fork` | `MemorySessionRepo.fork` | Pi's own code |
-| `pi-agent-core: MemorySessionRepo.list` | `MemorySessionRepo.list` | Pi's own code |
-| `pi-agent-core: MemorySessionRepo.open` | `MemorySessionRepo.open` | Pi's own code |
-| `pi-agent-core: NoActiveOperation` | `class NoActiveOperation` | Pi's own code |
-| `pi-agent-core: NoActiveOperation._tag` | `NoActiveOperation._tag` | Pi's own code |
-| `pi-agent-core: NoActiveOperation.cause` | `NoActiveOperation.cause` | Pi's own code |
-| `pi-agent-core: NoActiveOperation.lane` | `NoActiveOperation.lane` | Pi's own code |
-| `pi-agent-core: NoActiveOperation.message` | `NoActiveOperation.message` | Pi's own code |
-| `pi-agent-core: NoActiveOperation.name` | `NoActiveOperation.name` | Pi's own code |
-| `pi-agent-core: NoActiveOperation.stack` | `NoActiveOperation.stack` | Pi's own code |
-| `pi-agent-core: NoActiveOperation.toJSON` | `NoActiveOperation.toJSON` | Pi's own code |
-| `pi-agent-core: NoActiveRun` | `class NoActiveRun` | Pi's own code |
-| `pi-agent-core: NoActiveRun._tag` | `NoActiveRun._tag` | Pi's own code |
-| `pi-agent-core: NoActiveRun.cause` | `NoActiveRun.cause` | Pi's own code |
-| `pi-agent-core: NoActiveRun.lane` | `NoActiveRun.lane` | Pi's own code |
-| `pi-agent-core: NoActiveRun.message` | `NoActiveRun.message` | Pi's own code |
-| `pi-agent-core: NoActiveRun.name` | `NoActiveRun.name` | Pi's own code |
-| `pi-agent-core: NoActiveRun.stack` | `NoActiveRun.stack` | Pi's own code |
-| `pi-agent-core: NoActiveRun.toJSON` | `NoActiveRun.toJSON` | Pi's own code |
-| `pi-agent-core: NothingToCompact` | `class NothingToCompact` | Pi's own code |
-| `pi-agent-core: NothingToCompact._tag` | `NothingToCompact._tag` | Pi's own code |
-| `pi-agent-core: NothingToCompact.cause` | `NothingToCompact.cause` | Pi's own code |
-| `pi-agent-core: NothingToCompact.lane` | `NothingToCompact.lane` | Pi's own code |
-| `pi-agent-core: NothingToCompact.message` | `NothingToCompact.message` | Pi's own code |
-| `pi-agent-core: NothingToCompact.name` | `NothingToCompact.name` | Pi's own code |
-| `pi-agent-core: NothingToCompact.stack` | `NothingToCompact.stack` | Pi's own code |
-| `pi-agent-core: NothingToCompact.toJSON` | `NothingToCompact.toJSON` | Pi's own code |
-| `pi-agent-core: NothingToResume` | `class NothingToResume` | Pi's own code |
-| `pi-agent-core: NothingToResume._tag` | `NothingToResume._tag` | Pi's own code |
-| `pi-agent-core: NothingToResume.cause` | `NothingToResume.cause` | Pi's own code |
-| `pi-agent-core: NothingToResume.lane` | `NothingToResume.lane` | Pi's own code |
-| `pi-agent-core: NothingToResume.message` | `NothingToResume.message` | Pi's own code |
-| `pi-agent-core: NothingToResume.name` | `NothingToResume.name` | Pi's own code |
-| `pi-agent-core: NothingToResume.stack` | `NothingToResume.stack` | Pi's own code |
-| `pi-agent-core: NothingToResume.toJSON` | `NothingToResume.toJSON` | Pi's own code |
-| `pi-agent-core: OperationMismatch` | `class OperationMismatch` | Pi's own code |
-| `pi-agent-core: OperationMismatch._tag` | `OperationMismatch._tag` | Pi's own code |
-| `pi-agent-core: OperationMismatch.cause` | `OperationMismatch.cause` | Pi's own code |
-| `pi-agent-core: OperationMismatch.currentOperationId` | `OperationMismatch.currentOperationId` | Pi's own code |
-| `pi-agent-core: OperationMismatch.expectedOperationId` | `OperationMismatch.expectedOperationId` | Pi's own code |
-| `pi-agent-core: OperationMismatch.lane` | `OperationMismatch.lane` | Pi's own code |
-| `pi-agent-core: OperationMismatch.lastOperationId` | `OperationMismatch.lastOperationId` | Pi's own code |
-| `pi-agent-core: OperationMismatch.message` | `OperationMismatch.message` | Pi's own code |
-| `pi-agent-core: OperationMismatch.name` | `OperationMismatch.name` | Pi's own code |
-| `pi-agent-core: OperationMismatch.stack` | `OperationMismatch.stack` | Pi's own code |
-| `pi-agent-core: OperationMismatch.toJSON` | `OperationMismatch.toJSON` | Pi's own code |
-| `pi-agent-core: SessionBranchExistsError` | `class SessionBranchExistsError` | Pi's own code |
-| `pi-agent-core: SessionBranchExistsError.branch` | `SessionBranchExistsError.branch` | Pi's own code |
-| `pi-agent-core: SessionBranchExistsError.cause` | `SessionBranchExistsError.cause` | missing [exception](#exceptions) |
-| `pi-agent-core: SessionBranchExistsError.message` | `SessionBranchExistsError.message` | Pi's own code |
-| `pi-agent-core: SessionBranchExistsError.name` | `SessionBranchExistsError.name` | Pi's own code |
-| `pi-agent-core: SessionBranchExistsError.stack` | `SessionBranchExistsError.stack` | Pi's own code |
-| `pi-agent-core: SessionInvalidBranchError` | `class SessionInvalidBranchError` | Pi's own code |
-| `pi-agent-core: SessionInvalidBranchError.branch` | `SessionInvalidBranchError.branch` | Pi's own code |
-| `pi-agent-core: SessionInvalidBranchError.cause` | `SessionInvalidBranchError.cause` | missing [exception](#exceptions) |
-| `pi-agent-core: SessionInvalidBranchError.message` | `SessionInvalidBranchError.message` | Pi's own code |
-| `pi-agent-core: SessionInvalidBranchError.name` | `SessionInvalidBranchError.name` | Pi's own code |
-| `pi-agent-core: SessionInvalidBranchError.reason` | `SessionInvalidBranchError.reason` | Pi's own code |
-| `pi-agent-core: SessionInvalidBranchError.stack` | `SessionInvalidBranchError.stack` | Pi's own code |
-| `pi-agent-core: SessionInvariantError` | `class SessionInvariantError` | Pi's own code |
-| `pi-agent-core: SessionInvariantError.cause` | `SessionInvariantError.cause` | missing [exception](#exceptions) |
-| `pi-agent-core: SessionInvariantError.message` | `SessionInvariantError.message` | Pi's own code |
-| `pi-agent-core: SessionInvariantError.name` | `SessionInvariantError.name` | Pi's own code |
-| `pi-agent-core: SessionInvariantError.stack` | `SessionInvariantError.stack` | Pi's own code |
-| `pi-agent-core: SessionPendingAssistantMessageError` | `class SessionPendingAssistantMessageError` | Pi's own code |
-| `pi-agent-core: SessionPendingAssistantMessageError.cause` | `SessionPendingAssistantMessageError.cause` | missing [exception](#exceptions) |
-| `pi-agent-core: SessionPendingAssistantMessageError.message` | `SessionPendingAssistantMessageError.message` | Pi's own code |
-| `pi-agent-core: SessionPendingAssistantMessageError.name` | `SessionPendingAssistantMessageError.name` | Pi's own code |
-| `pi-agent-core: SessionPendingAssistantMessageError.stack` | `SessionPendingAssistantMessageError.stack` | Pi's own code |
-| `pi-agent-core: SessionUnknownTargetError` | `class SessionUnknownTargetError` | Pi's own code |
-| `pi-agent-core: SessionUnknownTargetError.cause` | `SessionUnknownTargetError.cause` | missing [exception](#exceptions) |
-| `pi-agent-core: SessionUnknownTargetError.message` | `SessionUnknownTargetError.message` | Pi's own code |
-| `pi-agent-core: SessionUnknownTargetError.name` | `SessionUnknownTargetError.name` | Pi's own code |
-| `pi-agent-core: SessionUnknownTargetError.stack` | `SessionUnknownTargetError.stack` | Pi's own code |
-| `pi-agent-core: SessionUnknownTargetError.targetId` | `SessionUnknownTargetError.targetId` | Pi's own code |
-| `pi-agent-core: SliceNotImplemented` | `class SliceNotImplemented` | Pi's own code |
-| `pi-agent-core: SliceNotImplemented.cause` | `SliceNotImplemented.cause` | missing [exception](#exceptions) |
-| `pi-agent-core: SliceNotImplemented.message` | `SliceNotImplemented.message` | Pi's own code |
-| `pi-agent-core: SliceNotImplemented.name` | `SliceNotImplemented.name` | Pi's own code |
-| `pi-agent-core: SliceNotImplemented.stack` | `SliceNotImplemented.stack` | Pi's own code |
-| `pi-agent-core: StorageBackedSession` | `class StorageBackedSession` | Pi's own code |
-| `pi-agent-core: StorageBackedSession.appendList` | `StorageBackedSession.appendList` | Pi's own code |
-| `pi-agent-core: StorageBackedSession.appendToBranch` | `StorageBackedSession.appendToBranch` | Pi's own code |
-| `pi-agent-core: StorageBackedSession.beginMutation` | `StorageBackedSession.beginMutation` | Pi's own code |
-| `pi-agent-core: StorageBackedSession.branch` | `StorageBackedSession.branch` | Pi's own code |
-| `pi-agent-core: StorageBackedSession.close` | `StorageBackedSession.close` | Pi's own code |
-| `pi-agent-core: StorageBackedSession.createBranch` | `StorageBackedSession.createBranch` | Pi's own code |
-| `pi-agent-core: StorageBackedSession.deleteList` | `StorageBackedSession.deleteList` | Pi's own code |
-| `pi-agent-core: StorageBackedSession.deleteValue` | `StorageBackedSession.deleteValue` | Pi's own code |
-| `pi-agent-core: StorageBackedSession.findEntries` | `StorageBackedSession.findEntries` | Pi's own code |
-| `pi-agent-core: StorageBackedSession.findEntry` | `StorageBackedSession.findEntry` | Pi's own code |
-| `pi-agent-core: StorageBackedSession.getBranchTip` | `StorageBackedSession.getBranchTip` | Pi's own code |
-| `pi-agent-core: StorageBackedSession.getEntries` | `StorageBackedSession.getEntries` | Pi's own code |
-| `pi-agent-core: StorageBackedSession.getEntry` | `StorageBackedSession.getEntry` | Pi's own code |
-| `pi-agent-core: StorageBackedSession.getLabel` | `StorageBackedSession.getLabel` | Pi's own code |
-| `pi-agent-core: StorageBackedSession.getName` | `StorageBackedSession.getName` | Pi's own code |
-| `pi-agent-core: StorageBackedSession.getStats` | `StorageBackedSession.getStats` | Pi's own code |
-| `pi-agent-core: StorageBackedSession.getValue` | `StorageBackedSession.getValue` | Pi's own code |
-| `pi-agent-core: StorageBackedSession.idGenerator` | `StorageBackedSession.idGenerator` | Pi's own code |
-| `pi-agent-core: StorageBackedSession.metadata` | `StorageBackedSession.metadata` | Pi's own code |
-| `pi-agent-core: StorageBackedSession.mutate` | `StorageBackedSession.mutate` | Pi's own code |
-| `pi-agent-core: StorageBackedSession.readList` | `StorageBackedSession.readList` | Pi's own code |
-| `pi-agent-core: StorageBackedSession.scanBranch` | `StorageBackedSession.scanBranch` | Pi's own code |
-| `pi-agent-core: StorageBackedSession.scanValues` | `StorageBackedSession.scanValues` | Pi's own code |
-| `pi-agent-core: StorageBackedSession.setLabel` | `StorageBackedSession.setLabel` | Pi's own code |
-| `pi-agent-core: StorageBackedSession.setName` | `StorageBackedSession.setName` | Pi's own code |
-| `pi-agent-core: StorageBackedSession.setValue` | `StorageBackedSession.setValue` | Pi's own code |
-| `pi-agent-core: TODO_CONTEXT` | `variable TODO_CONTEXT` | Pi's own code |
-| `pi-agent-core: TaggedError` | `function TaggedError` | Pi's own code |
-| `pi-agent-core: UnknownSkill` | `class UnknownSkill` | Pi's own code |
-| `pi-agent-core: UnknownSkill._tag` | `UnknownSkill._tag` | Pi's own code |
-| `pi-agent-core: UnknownSkill.cause` | `UnknownSkill.cause` | Pi's own code |
-| `pi-agent-core: UnknownSkill.message` | `UnknownSkill.message` | Pi's own code |
-| `pi-agent-core: UnknownSkill.name` | `UnknownSkill.name` | Pi's own code |
-| `pi-agent-core: UnknownSkill.stack` | `UnknownSkill.stack` | Pi's own code |
-| `pi-agent-core: UnknownSkill.toJSON` | `UnknownSkill.toJSON` | Pi's own code |
-| `pi-agent-core: UnknownTarget` | `class UnknownTarget` | Pi's own code |
-| `pi-agent-core: UnknownTarget._tag` | `UnknownTarget._tag` | Pi's own code |
-| `pi-agent-core: UnknownTarget.cause` | `UnknownTarget.cause` | Pi's own code |
-| `pi-agent-core: UnknownTarget.message` | `UnknownTarget.message` | Pi's own code |
-| `pi-agent-core: UnknownTarget.name` | `UnknownTarget.name` | Pi's own code |
-| `pi-agent-core: UnknownTarget.stack` | `UnknownTarget.stack` | Pi's own code |
-| `pi-agent-core: UnknownTarget.targetId` | `UnknownTarget.targetId` | Pi's own code |
-| `pi-agent-core: UnknownTarget.toJSON` | `UnknownTarget.toJSON` | Pi's own code |
-| `pi-agent-core: UnknownTemplate` | `class UnknownTemplate` | Pi's own code |
-| `pi-agent-core: UnknownTemplate._tag` | `UnknownTemplate._tag` | Pi's own code |
-| `pi-agent-core: UnknownTemplate.cause` | `UnknownTemplate.cause` | Pi's own code |
-| `pi-agent-core: UnknownTemplate.message` | `UnknownTemplate.message` | Pi's own code |
-| `pi-agent-core: UnknownTemplate.name` | `UnknownTemplate.name` | Pi's own code |
-| `pi-agent-core: UnknownTemplate.stack` | `UnknownTemplate.stack` | Pi's own code |
-| `pi-agent-core: UnknownTemplate.toJSON` | `UnknownTemplate.toJSON` | Pi's own code |
 | `pi-agent-core: agentLoop` | `function agentLoop` | Pi's own code |
 | `pi-agent-core: agentLoopContinue` | `function agentLoopContinue` | Pi's own code |
-| `pi-agent-core: appendList` | `function appendList` | Pi's own code |
-| `pi-agent-core: applyShellOutputUpdate` | `function applyShellOutputUpdate` | Pi's own code |
-| `pi-agent-core: awaitWithContext` | `function awaitWithContext` | Pi's own code |
-| `pi-agent-core: bashExecutionToText` | `function bashExecutionToText` | Pi's own code |
-| `pi-agent-core: branchTip` | `variable branchTip` | Pi's own code |
-| `pi-agent-core: branchTipInventoryPrefix` | `variable branchTipInventoryPrefix` | Pi's own code |
-| `pi-agent-core: calculateContextTokens` | `function calculateContextTokens` | Pi's own code |
-| `pi-agent-core: collectEntriesForBranchSummary` | `function collectEntriesForBranchSummary` | Pi's own code |
-| `pi-agent-core: commitWrite` | `function commitWrite` | Pi's own code |
-| `pi-agent-core: compact` | `function compact` | Pi's own code |
-| `pi-agent-core: convertToLlm` | `function convertToLlm` | Pi's own code |
-| `pi-agent-core: createBashTool` | `function createBashTool` | Pi's own code |
-| `pi-agent-core: createBranchSummaryMessage` | `function createBranchSummaryMessage` | Pi's own code |
-| `pi-agent-core: createCompactionSummaryMessage` | `function createCompactionSummaryMessage` | Pi's own code |
-| `pi-agent-core: createContextKey` | `function createContextKey` | Pi's own code |
-| `pi-agent-core: createCustomMessage` | `function createCustomMessage` | Pi's own code |
-| `pi-agent-core: createEditTool` | `function createEditTool` | Pi's own code |
-| `pi-agent-core: createForkSnapshot` | `function createForkSnapshot` | Pi's own code |
-| `pi-agent-core: createReadTool` | `function createReadTool` | Pi's own code |
-| `pi-agent-core: createWriteTool` | `function createWriteTool` | Pi's own code |
-| `pi-agent-core: deleteList` | `function deleteList` | Pi's own code |
-| `pi-agent-core: deleteValue` | `function deleteValue` | Pi's own code |
-| `pi-agent-core: entryLabel` | `variable entryLabel` | Pi's own code |
-| `pi-agent-core: err` | `function err` | Pi's own code |
-| `pi-agent-core: estimateContextTokens` | `function estimateContextTokens` | Pi's own code |
-| `pi-agent-core: estimateTokens` | `function estimateTokens` | Pi's own code |
-| `pi-agent-core: executeShellWithCapture` | `function executeShellWithCapture` | Pi's own code |
-| `pi-agent-core: findCutPoint` | `function findCutPoint` | Pi's own code |
-| `pi-agent-core: findTurnStartIndex` | `function findTurnStartIndex` | Pi's own code |
-| `pi-agent-core: formatPromptTemplateInvocation` | `function formatPromptTemplateInvocation` | Pi's own code |
-| `pi-agent-core: formatSize` | `function formatSize` | Pi's own code |
-| `pi-agent-core: formatSkillInvocation` | `function formatSkillInvocation` | Pi's own code |
-| `pi-agent-core: formatSkillsForSystemPrompt` | `function formatSkillsForSystemPrompt` | Pi's own code |
-| `pi-agent-core: generateBranchSummary` | `function generateBranchSummary` | Pi's own code |
-| `pi-agent-core: generateSummary` | `function generateSummary` | Pi's own code |
-| `pi-agent-core: generateSummaryWithUsage` | `function generateSummaryWithUsage` | Pi's own code |
-| `pi-agent-core: getLastAssistantUsage` | `function getLastAssistantUsage` | Pi's own code |
-| `pi-agent-core: getOrThrow` | `function getOrThrow` | Pi's own code |
-| `pi-agent-core: getOrUndefined` | `function getOrUndefined` | Pi's own code |
-| `pi-agent-core: getTelemetryContext` | `function getTelemetryContext` | Pi's own code |
-| `pi-agent-core: insertEntry` | `function insertEntry` | Pi's own code |
-| `pi-agent-core: insertUsage` | `function insertUsage` | Pi's own code |
-| `pi-agent-core: laneConfig` | `variable laneConfig` | Pi's own code |
-| `pi-agent-core: laneState` | `variable laneState` | Pi's own code |
-| `pi-agent-core: list` | `function list` | Pi's own code |
-| `pi-agent-core: loadPromptTemplates` | `function loadPromptTemplates` | Pi's own code |
-| `pi-agent-core: loadSkills` | `function loadSkills` | Pi's own code |
-| `pi-agent-core: loadSourcedPromptTemplates` | `function loadSourcedPromptTemplates` | Pi's own code |
-| `pi-agent-core: loadSourcedSkills` | `function loadSourcedSkills` | Pi's own code |
-| `pi-agent-core: matchError` | `function matchError` | Pi's own code |
-| `pi-agent-core: ok` | `function ok` | Pi's own code |
-| `pi-agent-core: operationMeta` | `variable operationMeta` | Pi's own code |
-| `pi-agent-core: operationPreparation` | `variable operationPreparation` | Pi's own code |
-| `pi-agent-core: operationPreparationPrefix` | `variable operationPreparationPrefix` | Pi's own code |
-| `pi-agent-core: operationResult` | `variable operationResult` | Pi's own code |
-| `pi-agent-core: operationScopeOf` | `function operationScopeOf` | Pi's own code |
-| `pi-agent-core: operationState` | `variable operationState` | Pi's own code |
-| `pi-agent-core: operationToolArgs` | `variable operationToolArgs` | Pi's own code |
-| `pi-agent-core: operationToolArgsPrefix` | `variable operationToolArgsPrefix` | Pi's own code |
-| `pi-agent-core: operationToolMemo` | `variable operationToolMemo` | Pi's own code |
-| `pi-agent-core: operationToolMemoPrefix` | `variable operationToolMemoPrefix` | Pi's own code |
-| `pi-agent-core: parseCommandArgs` | `function parseCommandArgs` | Pi's own code |
-| `pi-agent-core: pendingAssistantFrames` | `variable pendingAssistantFrames` | Pi's own code |
-| `pi-agent-core: pendingEntry` | `variable pendingEntry` | Pi's own code |
-| `pi-agent-core: pendingToolOutput` | `variable pendingToolOutput` | Pi's own code |
-| `pi-agent-core: pendingToolOutputPrefix` | `variable pendingToolOutputPrefix` | Pi's own code |
-| `pi-agent-core: prepareBranchEntries` | `function prepareBranchEntries` | Pi's own code |
-| `pi-agent-core: prepareCompaction` | `function prepareCompaction` | Pi's own code |
-| `pi-agent-core: prepareStorageCommit` | `function prepareStorageCommit` | Pi's own code |
-| `pi-agent-core: projectForkCurrentStateWrite` | `function projectForkCurrentStateWrite` | Pi's own code |
-| `pi-agent-core: reduceLaneSnapshot` | `function reduceLaneSnapshot` | Pi's own code |
-| `pi-agent-core: resolveListReadOptions` | `function resolveListReadOptions` | Pi's own code |
 | `pi-agent-core: runAgentLoop` | `function runAgentLoop` | Pi's own code |
 | `pi-agent-core: runAgentLoopContinue` | `function runAgentLoopContinue` | Pi's own code |
-| `pi-agent-core: sanitizeBinaryOutput` | `function sanitizeBinaryOutput` | Pi's own code |
-| `pi-agent-core: serializeConversation` | `function serializeConversation` | Pi's own code |
-| `pi-agent-core: sessionName` | `variable sessionName` | Pi's own code |
+| `pi-agent-core: runToolCall` | `function runToolCall` | Pi's own code |
 | `pi-agent-core: setDefaultStreamFn` | `function setDefaultStreamFn` | Pi's own code |
-| `pi-agent-core: setValue` | `function setValue` | Pi's own code |
-| `pi-agent-core: shouldCompact` | `function shouldCompact` | Pi's own code |
-| `pi-agent-core: startAiSpan` | `function startAiSpan` | Pi's own code |
-| `pi-agent-core: startHarnessSpan` | `function startHarnessSpan` | Pi's own code |
 | `pi-agent-core: streamProxy` | `function streamProxy` | Pi's own code |
-| `pi-agent-core: substituteArgs` | `function substituteArgs` | Pi's own code |
-| `pi-agent-core: toError` | `function toError` | Pi's own code |
-| `pi-agent-core: truncateHead` | `function truncateHead` | Pi's own code |
-| `pi-agent-core: truncateLine` | `function truncateLine` | Pi's own code |
-| `pi-agent-core: truncateTail` | `function truncateTail` | Pi's own code |
-| `pi-agent-core: utf8ByteLength` | `function utf8ByteLength` | Pi's own code |
-| `pi-agent-core: validateCommittedWrites` | `function validateCommittedWrites` | Pi's own code |
-| `pi-agent-core: value` | `function value` | Pi's own code |
-| `pi-agent-core: withAbortSignal` | `function withAbortSignal` | Pi's own code |
-| `pi-agent-core: withCancel` | `function withCancel` | Pi's own code |
-| `pi-agent-core: withContextValue` | `function withContextValue` | Pi's own code |
-| `pi-agent-core: withTelemetryContext` | `function withTelemetryContext` | Pi's own code |
-| `pi-agent-core: withoutAbortSignal` | `function withoutAbortSignal` | Pi's own code |
 
 ## Exceptions
 
 | Surface | Runtimes | Reason |
 |---|---|---|
-| `pi.events.*` | Go, Rust, Python | No native SDK event-bus bridge exists. Node realms share one bus through cross-process references; native SDKs have no reader or owner for that wire yet (D83 boundary 5). |
 | `pi.on("cache_warming_decision")` | Node runtime, Go, Rust, Python | Generic handlers receive the emitted cache_warming_decision payload and result. Typed registration remains a separate API declaration gap in test/parity/known-gaps.toml api:OnCacheWarmingDecision. |
 | `pi.sendUserMessage(options.expandPromptTemplates)` | Node runtime, Go, Rust, Python | The host SendUserMessageOptions carries deliverAs only; expandPromptTemplates would be dropped. Requires host prompt-expansion control. |
 | `ctx.newSession(options.setup)` | Node runtime, Go, Rust, Python | The wire has no writable replacement SessionManager callback handle. Requires replacement callback ownership in the Pi runner bridge (0.3.0), not JSON serialization of a function. |
-| `ctx.newSession(options.withSession)` | Node runtime, Go, Rust, Python | No ReplacedSessionContext callback bridge exists. Requires destination-generation callback handles in the Pi runner bridge (0.3.0). |
-| `ctx.fork(options.withSession)` | Node runtime, Go, Rust, Python | No ReplacedSessionContext callback bridge exists. Requires destination-generation callback handles in the Pi runner bridge (0.3.0). |
-| `ctx.switchSession(options.withSession)` | Node runtime, Go, Rust, Python | No ReplacedSessionContext callback bridge exists. Requires destination-generation callback handles in the Pi runner bridge (0.3.0). |
-| `withSession ctx.*` | Node runtime, Go, Rust, Python | No ReplacedSessionContext is created. Its awaited send methods need destination ownership distinct from the ordinary void pi.sendMessage/pi.sendUserMessage operations (Pi runner bridge, 0.3.0). |
+| `withSession ctx.sendUserMessage(options.expandPromptTemplates)` | Node runtime, Go, Rust, Python | The host SendUserMessageOptions carries deliverAs only; expandPromptTemplates would be dropped. Requires host prompt-expansion control. |
 | `ctx.ui.theme.sourceInfo` | Node runtime, Go, Rust, Python | The theme snapshot carries sourcePath but no SourceInfo. Requires theme resource provenance publication. |
 | `user_bash return.operations` | Node runtime, Go, Rust, Python | The wire has no host-invoked streaming BashOperations executor callback. Returning a completed result works; operations requires callback/stream ownership. |
 | `ctx.ui.custom(options.onHandle)` | Go, Rust, Python | Native SDKs do not expose the mounted-overlay control handle. Node uses the host overlay control protocol and synchronous acknowledgement. |
 | `tool render context.lastComponent` | Go, Rust, Python | Native renderers return lines rather than Components (D56), so no previous component is returned. Card state persists separately in context.state/State. |
 | `provider.streamSimple` | Node runtime, Go, Rust, Python | The host cannot invoke an extension-served provider EventStream. Requires provider callback and streaming transport, not the existing host-served modelStream direction. |
 | `provider.refreshModels` | Node runtime, Go, Rust, Python | The provider bridge has no host-to-extension refreshModels request or publication callback handles. |
-| `provider.oauth.usesCallbackServer` | Node runtime, Go, Rust, Python | Deprecated and ignored by Pi 0.87.1 canonical auth flows (core/extensions/types.ts); runtimes do not forward this inert legacy metadata. |
+| `provider.oauth.usesCallbackServer` | Node runtime, Go, Rust, Python | Deprecated and ignored by upstream 0.99.2 canonical auth flows (core/extensions/types.ts); runtimes do not forward this inert legacy metadata. |
 | `provider.oauth.modifyModels` | Node runtime, Go, Rust, Python | The host OAuth bridge has no credential-dependent modify-models callback request. |
 | `ctx.ui.getEditorComponent` | Rust, Python | Native Rust/Python editor factories are not implemented. Returning a fabricated factory would hide the missing editor-component bridge. |
 | `ctx.ui.setTheme → error` | Node runtime | Node returns synchronously before host theme validation, so it cannot report host errors. Requires synchronous validation/state acknowledgement rather than optimistic success. |
 | `pi-coding-agent: KeybindingsManager` | Node runtime | Pi's published root index.d.ts re-exports KeybindingsManager as a type only. Both actual runtime namespaces omit it (TestNodeCodingAgentTypeOnlyExportsMatchPi). |
 | `pi-coding-agent: KeybindingsManager.*` | Node runtime | Members of the type-only root re-export have no runtime receiver. Both Pi and PiG omit the value; the actual class remains in the private core/keybindings module. |
-| `pi-agent-core: HarnessClosed.cause` | Node runtime | Optional Error.cause is not installed by Pi's constructor; the class is vendored. |
-| `pi-agent-core: SessionBranchExistsError.cause` | Node runtime | Optional Error.cause is not installed by Pi's constructor; the class is vendored. |
-| `pi-agent-core: SessionInvalidBranchError.cause` | Node runtime | Optional Error.cause is not installed by Pi's constructor; the class is vendored. |
-| `pi-agent-core: SessionInvariantError.cause` | Node runtime | Optional Error.cause is not installed by Pi's constructor; the class is vendored. |
-| `pi-agent-core: SessionPendingAssistantMessageError.cause` | Node runtime | Optional Error.cause is not installed by Pi's constructor; the class is vendored. |
-| `pi-agent-core: SessionUnknownTargetError.cause` | Node runtime | Optional Error.cause is not installed by Pi's constructor; the class is vendored. |
-| `pi-agent-core: SliceNotImplemented.cause` | Node runtime | Optional Error.cause is not installed by Pi's constructor; the class is vendored. |
 | `pi-tui: StdinBuffer.[Symbol.captureRejectionSymbol]` | Node runtime | Inherited optional Node EventEmitter rejection hook. Pi's StdinBuffer does not install it; this declaration is not an implemented method in the Pi oracle either. |

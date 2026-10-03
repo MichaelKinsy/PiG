@@ -17,14 +17,11 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
-	"unicode"
 
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
-	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
 // CopilotClientID is the OAuth client ID used by the upstream pi-ai package
@@ -291,6 +288,9 @@ func pollForGitHubAccessToken(ctx context.Context, domain string, dc *deviceCode
 		},
 	})
 }
+
+// refreshCopilotCredential is the stored Copilot credential's refresh; tests replace it.
+var refreshCopilotCredential = refreshCopilotToken
 
 // refreshCopilotToken refreshes the token and the account's picker catalog without retrying catalog throttling.
 func refreshCopilotToken(ctx context.Context, githubToken, enterpriseDomain string) (Credential, error) {
@@ -563,31 +563,17 @@ func copilotFetchWithRetry(ctx context.Context, policy copilotRetryPolicy, newRe
 func copilotRetryDelay(retryAfter string, retry int) (float64, bool) {
 	delayMs := 500 * math.Pow(2, float64(retry))
 	if retryAfter != "" {
-		if seconds := copilotParseFloat(retryAfter); !math.IsNaN(seconds) {
+		if seconds := jsParseFloat(retryAfter); !math.IsNaN(seconds) {
 			delayMs = seconds * 1000
-		} else if t, err := http.ParseTime(retryAfter); err == nil {
-			delayMs = float64(t.UnixMilli() - time.Now().UnixMilli())
 		} else {
-			return 0, false
+			// github-copilot.ts:158: Date.parse(retryAfter) - Date.now(); a NaN delay is not finite and returns the response.
+			delayMs = jsDateParse(retryAfter) - float64(time.Now().UnixMilli())
 		}
 	}
 	if math.IsNaN(delayMs) || math.IsInf(delayMs, 0) {
 		return 0, false
 	}
 	return math.Max(0, delayMs), true
-}
-
-var copilotFloatPrefix = lazyregexp.New(`^[+-]?(?:Infinity|(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?)`)
-
-func copilotParseFloat(value string) float64 {
-	value = strings.TrimLeftFunc(value, func(r rune) bool { return r == '\ufeff' || r != '\u0085' && unicode.IsSpace(r) })
-	prefix := copilotFloatPrefix.FindString(value)
-	if prefix == "" {
-		return math.NaN()
-	}
-	// A range error carries the Infinity value required by Number.parseFloat.
-	parsed, _ := strconv.ParseFloat(prefix, 64)
-	return parsed
 }
 
 // fetchGitHubCopilotModels fetches and filters the account's model catalog.
@@ -844,7 +830,7 @@ func (m *copilotTokenManager) loadCred() (Credential, error) {
 		return Credential{}, err
 	}
 	if !ok {
-		return Credential{}, errors.New("github-copilot: not logged in (run `pi login github-copilot`)")
+		return Credential{}, errors.New("github-copilot: not logged in (run `pig login github-copilot`)")
 	}
 	if cred.Refresh == "" {
 		return Credential{}, errors.New("github-copilot: missing refresh token; re-login required")
@@ -879,14 +865,28 @@ func (m *copilotTokenManager) getAccessToken(ctx context.Context) (string, error
 		}
 		return "", err
 	}
-	now := time.Now().UnixMilli()
-	if cred.Access != "" && cred.ExpiresMillis() > float64(now+60_000) {
+	expiresSoon := func(cred Credential) bool {
+		return cred.Access == "" || cred.ExpiresMillis() <= float64(time.Now().UnixMilli()+60_000)
+	}
+	if !expiresSoon(cred) {
 		return cred.Access, nil
 	}
-	// Copilot API token expired: refresh using the stored GitHub access
-	// token (ghu_). Mirrors upstream auth-storage.ts getApiKey →
-	// provider.refreshToken → refreshGitHubCopilotToken.
-	fresh, err := refreshCopilotToken(ctx, cred.Refresh, cred.EnterpriseDomain)
+	// Copilot API token expired: refresh it with the stored GitHub access token (ghu_), with upstream resolveStoredOAuth's double-checked locking (resolve.ts:126-150). The refresh runs under the store's cancellable lock, and only when the credential still expires once the lock is held, because another process may have refreshed it meanwhile.
+	var refreshErr error
+	post, err := m.auth.Modify(ctx, "github-copilot", func(current *Credential) (*Credential, error) {
+		if current == nil || current.Type != CredentialOAuth || !expiresSoon(*current) {
+			return nil, nil
+		}
+		// Pi bounds the refresh with AbortSignal.any([signal, AbortSignal.timeout(15_000)]) (resolve.ts:149-153), which also bounds how long this process holds the lock.
+		refreshCtx, cancel := context.WithTimeout(ctx, defaultOAuthRefreshTimeout)
+		defer cancel()
+		fresh, err := refreshCopilotCredential(refreshCtx, current.Refresh, current.EnterpriseDomain)
+		if err != nil {
+			refreshErr = err
+			return nil, err
+		}
+		return &fresh, nil
+	})
 	if err != nil {
 		// If the context was canceled (user abort), propagate the
 		// cancellation directly so callers can distinguish user abort
@@ -896,17 +896,21 @@ func (m *copilotTokenManager) getAccessToken(ctx context.Context) (string, error
 		if ctx.Err() != nil {
 			return "", ctx.Err()
 		}
-		// Upstream does not classify this failure: refreshGitHubCopilotToken
-		// simply throws, the credential resolves to undefined, and the session
-		// reports a hedged message naming both causes. Mirror that wording
-		// rather than asserting expiry: a refresh also fails on rate limits,
-		// network loss, and provider outages, none of which a login fixes.
-		return "", fmt.Errorf("github-copilot: token refresh failed: credentials may have expired or the network is unavailable: %w", err)
-	}
-	if err := m.auth.Set("github-copilot", fresh); err != nil {
+		if refreshErr != nil {
+			// Upstream does not classify this failure: refreshGitHubCopilotToken
+			// simply throws, the credential resolves to undefined, and the session
+			// reports a hedged message naming both causes. Mirror that wording
+			// rather than asserting expiry: a refresh also fails on rate limits,
+			// network loss, and provider outages, none of which a login fixes.
+			return "", fmt.Errorf("github-copilot: token refresh failed: credentials may have expired or the network is unavailable: %w", refreshErr)
+		}
 		return "", fmt.Errorf("github-copilot: persist refreshed token: %w", err)
 	}
-	return fresh.Access, nil
+	if post == nil || post.Type != CredentialOAuth {
+		// Logged out meanwhile.
+		return "", errors.New("github-copilot: not logged in (run `pig login github-copilot`)")
+	}
+	return post.Access, nil
 }
 
 // getBaseURL extracts the per-user proxy endpoint from the (refreshed)

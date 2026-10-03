@@ -72,7 +72,7 @@ func TestSessionSelectorStatusExpiryWakesIdleOwners(t *testing.T) {
 				if tc.mode == "startup" {
 					terminal := &selectorStatusTerminal{input: make(chan func([]byte), 1)}
 					go func() {
-						_, err := runStartupComponentWith(selector, StartupUIOptions{Settings: Settings{Theme: "dark"}}, false, ui, terminal, nil)
+						_, err := runStartupComponentWith(selector, StartupUIOptions{Settings: Settings{Theme: "dark"}}, false, ui, terminal)
 						done <- err
 					}()
 					input := <-terminal.input
@@ -135,7 +135,7 @@ func TestSessionSelectorRenameFailureReachesOwners(t *testing.T) {
 				if kind == "startup" {
 					terminal := &selectorStatusTerminal{input: make(chan func([]byte), 1)}
 					go func() {
-						_, err := runStartupComponentWith(selector, StartupUIOptions{Settings: Settings{Theme: "dark"}}, false, ui, terminal, nil)
+						_, err := runStartupComponentWith(selector, StartupUIOptions{Settings: Settings{Theme: "dark"}}, false, ui, terminal)
 						done <- err
 					}()
 					input := <-terminal.input
@@ -200,7 +200,7 @@ func TestSessionSelectorOwnerExitStopsPendingStatus(t *testing.T) {
 				if kind == "startup" {
 					terminal := &selectorStatusTerminal{input: make(chan func([]byte), 1), fail: make(chan func(error), 1)}
 					go func() {
-						_, err := runStartupComponentWith(selector, StartupUIOptions{Settings: Settings{Theme: "dark"}}, false, ui, terminal, nil)
+						_, err := runStartupComponentWith(selector, StartupUIOptions{Settings: Settings{Theme: "dark"}}, false, ui, terminal)
 						done <- err
 					}()
 					onError := <-terminal.fail

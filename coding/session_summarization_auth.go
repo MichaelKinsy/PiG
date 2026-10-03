@@ -19,6 +19,19 @@ type summarizationRequest struct {
 	model     *ai.Model
 	completer compaction.SimpleCompleter
 	streamFn  compaction.StreamFn
+	// thinkingLevel is the thinking level of the summary request: the session's, or the router's for a virtual selection.
+	thinkingLevel ai.ThinkingLevel
+}
+
+// runDefaultCompaction generates Pi's built-in compaction summary for manual and automatic compaction. It resolves the request only when Pi summarizes itself, so a summary supplied by an extension needs no auth and no routing.
+//
+// upstream: agent-session.ts:2633-2661 (_runDefaultCompaction)
+func (s *Session) runDefaultCompaction(ctx context.Context, prep compaction.CompactionPreparation, model *ai.Model, customInstructions, reason string) (compaction.CompactionResult, error) {
+	request, err := s.prepareSummarizationRequest(ctx, model)
+	if err != nil {
+		return compaction.CompactionResult{}, err
+	}
+	return compaction.Compact(ctx, prep, request.model, request.completer, request.streamFn, customInstructions, request.thinkingLevel, s.summarizationRetryOptions("compaction", reason), "")
 }
 
 type authenticatedSummaryCompleter struct {
@@ -43,7 +56,16 @@ func summaryAuthOptions(options, auth ai.StreamOptions) ai.StreamOptions {
 
 // prepareSummarizationRequest uses the same Services-owned request preparation as ModelRuntime streaming. Explicit custom streams may operate without registry auth; caller-supplied Go providers own their own auth callbacks.
 func (s *Session) prepareSummarizationRequest(ctx context.Context, model *ai.Model) (summarizationRequest, error) {
-	request := summarizationRequest{model: model, completer: s.resolveCompleter(), streamFn: s.streamFn}
+	thinking := s.ThinkingLevel()
+	// Route a virtual model first: summaries size their input and output from the model they get. upstream: agent-session.ts:541-548
+	if IsVirtualModel(model) {
+		route, err := s.modelRuntime.ResolveModel(ctx, model, agent.ConvertToLLM(s.agent.Messages(), model), ResolveModelOptions{Reason: ModelRouteReasonDirect, ThinkingLevel: thinking})
+		if err != nil {
+			return summarizationRequest{model: model, thinkingLevel: thinking}, err
+		}
+		model, thinking = route.Model, route.ThinkingLevel
+	}
+	request := summarizationRequest{model: model, completer: s.resolveCompleter(), streamFn: s.streamFn, thinkingLevel: thinking}
 	// Registry-built providers use the stock request path. A directly supplied Go provider is a caller-owned stream, even when it carries provider identity metadata.
 	_, registryBuilt := model.Provider.(*providerAttributionProvider)
 	_, nativeAuth := model.Provider.(interface{ Auth() ai.ProviderAuth })

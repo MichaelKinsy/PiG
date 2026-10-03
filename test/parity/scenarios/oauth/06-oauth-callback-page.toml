@@ -1,7 +1,7 @@
 # Behavior family: oauth
 # Surface: OAuth callback page HTML renderer.
 #
-# Upstream evidence (pi v0.69.0, current loop probe):
+# Upstream evidence (pi 0.99.2: the helper is utils/oauth-page.ts; probe re-run 2026-10-01):
 #   /probe-oauth-callback-page
 #   output: oauth-page:success=true:error=true:escaped=true:details=true
 #
@@ -12,7 +12,7 @@
 name = "06-oauth-callback-page"
 description = "OAuth callback success and error pages render the same escaped HTML markers in both binaries."
 covers = [
-  "packages/ai/src/auth/oauth/oauth-page.ts",
+  "packages/ai/src/utils/oauth-page.ts",
 ]
 tags = ["hermetic", "fast", "tui"]
 driver = "interactive-tmux"

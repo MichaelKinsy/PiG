@@ -55,6 +55,10 @@ The generated width table also derives from `unicode-width` 0.2.0, Copyright (c)
 
 PiG ports upstream Pi code that incorporates material from OpenTUI, `ansi-regex`, and `strip-ansi`. Their notices are retained in the corresponding source files and in `THIRD_PARTY_NOTICES.md`.
 
+`tui/internal/hljs` ports `highlight.js` 10.7.3 to Go and embeds the language definitions and test inputs it serializes from that release, Copyright (c) 2006, Ivan Sagalaev, BSD-3-Clause.
+
+`internal/jsarray` translates the TimSort of V8 13.6 (`third_party/v8/builtins/array-sort.tq`), which derives from CPython, Copyright (c) 2001-2018 Python Software Foundation, PSF-2.0.
+
 `internal/nodespawn` translates libuv 1.51.0 Windows command-line quoting, Copyright Joyent, Inc. and other Node contributors, MIT.
 
 The project banner and derived social banners adapt the Go gopher, which was designed by Renee French and is licensed under CC-BY-4.0. The license text is in `LICENSES/CC-BY-4.0.txt`.

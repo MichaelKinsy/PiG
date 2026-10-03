@@ -15,7 +15,12 @@ passes its page sources and generated docs data), and fails on:
              signed releases stated without a negation on the same line
   version    a Pi version other than the pin in internal/coding/pigversion/pigversion.go
              (UpstreamReviewedVersion, read from coding/upstream.go, is
-             accepted only on a line about review)
+             accepted only on a line about review). Two kinds of text record work
+             done against an earlier release and keep that release's number: the
+             released sections of CHANGELOG.md, and the files that
+             automation/ci/version-records.toml lists for that exact version. A
+             record entry that excuses nothing fails, so the list cannot outlive
+             the text it covers.
   numbers    a porting or verification percentage or ratio that differs from
              the generated coverage block in AGENTS.md
   piglet    a ``pig piglet <verb>`` command in Markdown that is absent from
@@ -34,6 +39,7 @@ import os
 import pathlib
 import re
 import sys
+import tomllib
 from dataclasses import dataclass
 
 # Overclaims that the evidence contradicts wherever they appear.
@@ -83,6 +89,12 @@ NEGATION = re.compile(
 # (path, text on the line, reason). Each entry must still match a line, so the
 # list cannot outlive the text it excuses.
 ALLOWED: list[tuple[str, str, str]] = []
+
+# Point-in-time records keep the Pi release they were written against. The list
+# is data, so a new file is checked until someone reviews it into the list.
+VERSION_RECORDS = "automation/ci/version-records.toml"
+RELEASED_CHANGELOG_HEADING = re.compile(r"^## \[(?!Unreleased\])")
+FINDING_VERSION = re.compile(r"^Pi (\S+) is not the pinned")
 
 PI_VERSION = re.compile(r"\bPi v?(\d+\.\d+(?:\.\d+)?)\b")
 TAG_VERSION = re.compile(r"(?:earendil-works/pi/releases/tag/v|pi-coding-agent@|Pi%20\w+-)(\d+\.\d+\.\d+)")
@@ -297,11 +309,15 @@ def scan(path: pathlib.Path, name: str, pinned: str, reviewed: str, cov: Coverag
     else:
         lines = list(enumerate(path.read_text(encoding="utf-8").splitlines(), 1))
     findings = []
+    released = False
     for number, line in lines:
+        if name == "CHANGELOG.md" and line.startswith("## "):
+            released = bool(RELEASED_CHANGELOG_HEADING.match(line))
         for kind, detail in claim_findings(line, user_facing):
             findings.append(Finding(name, number, kind, detail, line))
-        for detail in version_findings(line, pinned, reviewed):
-            findings.append(Finding(name, number, "version", detail, line))
+        if not released:
+            for detail in version_findings(line, pinned, reviewed):
+                findings.append(Finding(name, number, "version", detail, line))
         for detail in number_findings(line, cov):
             findings.append(Finding(name, number, "numbers", detail, line))
     return findings
@@ -326,6 +342,43 @@ def apply_allowlist(root: pathlib.Path, findings: list[Finding]) -> tuple[list[F
     return kept, stale
 
 
+def load_version_records(root: pathlib.Path) -> list[dict]:
+    path = root / VERSION_RECORDS
+    if not path.exists():
+        return []
+    with path.open("rb") as handle:
+        records = tomllib.load(handle).get("record", [])
+    for record in records:
+        for key in ("version", "reason", "paths"):
+            if not record.get(key):
+                sys.exit(f"public-claims: {VERSION_RECORDS} record lacks {key}")
+    return records
+
+
+def apply_version_records(root: pathlib.Path, findings: list[Finding], records: list[dict]) -> tuple[list[Finding], list[str]]:
+    used: set[tuple[int, str]] = set()
+    kept = []
+    for finding in findings:
+        excused = False
+        found = FINDING_VERSION.match(finding.detail) if finding.kind == "version" else None
+        for index, record in enumerate(records):
+            if not found or found.group(1) != record["version"]:
+                continue
+            for entry in record["paths"]:
+                if finding.path == entry or (entry.endswith("/") and finding.path.startswith(entry)):
+                    used.add((index, entry))
+                    excused = True
+        if not excused:
+            kept.append(finding)
+    stale = []
+    for index, record in enumerate(records):
+        for path in record["paths"]:
+            if (index, path) not in used:
+                where = "matches nothing" if (root / path).exists() else "names a missing file"
+                stale.append(f"{VERSION_RECORDS}: {path} ({record['version']}) {where}; remove the entry")
+    return kept, stale
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
@@ -345,6 +398,8 @@ def main() -> int:
     for path in go_files(root):
         findings += scan(path, display(path, root), pinned, reviewed, cov, True)
     findings, stale = apply_allowlist(root, findings)
+    findings, stale_records = apply_version_records(root, findings, load_version_records(root))
+    stale += stale_records
     for path in args.extra:
         findings += scan(path, display(path, root), pinned, reviewed, cov, True)
 
@@ -356,7 +411,7 @@ def main() -> int:
     for message in stale:
         print(f"public-claims: {message}")
     if findings or stale:
-        print(f"public-claims: {len(findings)} finding(s); fix the text or, for a true statement, extend ALLOWED with a reason", file=sys.stderr)
+        print(f"public-claims: {len(findings)} finding(s); fix the text or, for a true statement, extend ALLOWED (phrases) or version-records.toml (records of an earlier release) with a reason", file=sys.stderr)
         return 1
     print(f"public-claims: no contradicted claims (Pi {pinned}; porting {cov.ported}/{cov.intended} = {cov.porting_pct}%)")
     return 0

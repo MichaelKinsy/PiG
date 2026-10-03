@@ -99,6 +99,7 @@ func (h *harness) startArgsWithProjectTrustAt(args []string, cwd string, trusted
 	if trusted {
 		trustIntegrationProjectAt(h.t, pigHome, cwd)
 	}
+	seedIntegrationSettings(h.t, pigHome)
 	envPrefix := strings.Join(env, " ")
 	if envPrefix != "" {
 		envPrefix += " "
@@ -258,5 +259,21 @@ func trustIntegrationProjectAt(t *testing.T, pigHome, cwd string) {
 	}
 	if err := codingagent.NewProjectTrustStore(filepath.Join(pigHome, "agent")).Set(cwd, new(true)); err != nil {
 		t.Fatalf("store project trust: %v", err)
+	}
+}
+
+// seedIntegrationSettings gives the isolated agent directory a settings.json when it has none, so an interactive start skips the first-time setup dialog (D88), as Pi's does once settings.json exists.
+func seedIntegrationSettings(t *testing.T, pigHome string) {
+	t.Helper()
+	agentDir := filepath.Join(pigHome, "agent")
+	path := filepath.Join(agentDir, "settings.json")
+	if _, err := os.Stat(path); err == nil {
+		return
+	}
+	if err := os.MkdirAll(agentDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("{}\n"), 0o644); err != nil {
+		t.Fatal(err)
 	}
 }

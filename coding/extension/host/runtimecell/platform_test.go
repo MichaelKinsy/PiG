@@ -23,15 +23,6 @@ func TestPackedRunnerNameByPlatform(t *testing.T) {
 	}
 }
 
-func TestPythonExecutableNameByPlatform(t *testing.T) {
-	if got := pythonExecutableName("windows"); got != "python" {
-		t.Errorf("Windows Python executable = %q, want python", got)
-	}
-	if got := pythonExecutableName("linux"); got != "python3" {
-		t.Errorf("Linux Python executable = %q, want python3", got)
-	}
-}
-
 func TestPythonPackedRunnerDoesNotDependOnShebangExecution(t *testing.T) {
 	runner := renderPythonRunner([]PythonExtension{{
 		Name: "portable",

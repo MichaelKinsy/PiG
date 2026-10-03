@@ -1,9 +1,13 @@
 package codingagent
 
 import (
+	"bytes"
 	"slices"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // Header and footer rows are painted as rendered, as upstream's component
@@ -83,5 +87,23 @@ func TestExtensionFooterFittingLinesAreNotReflowed(t *testing.T) {
 		if got[i] != in[i] {
 			t.Errorf("row %d was rewritten although it fits:\n got  %q\n want %q", i, got[i], in[i])
 		}
+	}
+}
+
+// upstream 0.99.1 tui.ts: a theme change invalidates every child while the UI renders. A header or footer that requests a render from Invalidate re-enters the renderer and never returns.
+func TestThemeChangeRendersHeaderAndFooterComponents(t *testing.T) {
+	restoreStartupTheme(t)
+	ui := tui.NewWithOutput(new(bytes.Buffer), 40, 10)
+	c := newSpecialLinesComponent(ui.Render)
+	c.SetLinesAt([]string{"header"}, 40)
+	ui.Add(c)
+	ui.Render()
+	tui.SetThemeByName("light")
+	done := make(chan struct{})
+	go func() { ui.Render(); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("rendering after a theme change deadlocked on the header component")
 	}
 }

@@ -17,6 +17,22 @@ pub struct LoginDefinition {
     pub tagline: String,
 }
 
+// pig divergence (D2): Rust extensions add a sprite to PiG's /sprite catalogue.
+/// One sprite for PiG's /sprite catalogue: its ID, the name and tagline /sprite lists, the
+/// 16-by-14 pig the startup header draws and /sprite preview shows beside the wordmark, and the
+/// palette coloring it. Grid cells are printable ASCII palette symbols; '.' is transparent.
+///
+/// Pig validates the definition when [`Context::register_sprite`](crate::Context::register_sprite)
+/// sends it.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct SpriteDefinition {
+    pub id: String,
+    pub name: String,
+    pub tagline: String,
+    pub mascot: Vec<String>,
+    pub palette: HashMap<String, String>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

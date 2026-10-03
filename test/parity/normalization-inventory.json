@@ -2,7 +2,7 @@
   "mechanisms": [
     {
       "source": "test/parity/runner/asserts.go",
-      "sha256": "eaa480e28ec465641fa7a1ffa84c3c658ea8a8639c0853aa3e2fa4ea271a61f7",
+      "sha256": "4c9cd4fc7320c303e75ba119b8448aa54557aece54d74a941683dd0308ad5efd",
       "reason": "Normalized/layout comparators are explicit plain-terminal contracts: ANSI, CR, trailing spaces and outer blank rows are not compared. They are not full wire proof. Exact comparators apply only scenario-declared, justified replacements."
     },
     {
@@ -27,7 +27,7 @@
     },
     {
       "source": "test/parity/runner/driver_tmux.go",
-      "sha256": "144b79d09fa2ca82330e74bab3628126414e0a9b63ac014a1edb3b81fd3693ed",
+      "sha256": "39b8df4873dee48894ff96cb20837a6b08cfa7efbe6af485d3064638a587cea5",
       "reason": "Terminal state capture is not a byte-stream assertion. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage."
     },
     {
@@ -37,12 +37,12 @@
     },
     {
       "source": "test/parity/runner/json_compare.go",
-      "sha256": "1534d1e3148c61224ba8d794b08255bb6d8c8e95c181f61cbd35921ea84e847b",
+      "sha256": "1485499edcf12cf5e1db283bbf9d616a1ad280f650610d18077337b2bd85b9ff",
       "reason": "Parsed full records ignore object-member order and equivalent JSON number spelling only. Explicit scalar aliases preserve field presence, types, ordered arrays and bijective ID references; no ignored-field list exists."
     },
     {
       "source": "test/parity/testdata/list-limit-number-pi.mjs",
-      "sha256": "c4b5cd4fb9f7eaca9052234726d4909c9ecb64a0ae0ef79f5d16e266552b1c2a",
+      "sha256": "b67ba57557c849e5e93c1392d602d1f13e923d81d26af65fc0bd69f7dc83e9d8",
       "reason": "This numeric-renderer probe selects the complete warning-bracket text from Pi's actual renderResult output under an explicit unstyled fixture theme. It claims number/notice text only, not terminal layout or ANSI styling; full themed body rows are checked by the Go caller regression."
     },
     {
@@ -72,7 +72,7 @@
     },
     {
       "source": "test/parity/testdata/session-collision-pi.mjs",
-      "sha256": "4be78e4871c5c6369448b3eb6f819b94daa554e707de77cf0f03ccdcd9b34af9",
+      "sha256": "8fcc6965417ebd905263106ee25e01f5604e2c5b9a65b72d774eb38377108eda",
       "reason": "This entry-allocation probe controls seed/duplicate/fresh entropy in the real Pi SessionManager and compares IDs, parent links, retained indexed content and generator calls. It makes no timestamp or whole-record claim; those contracts are covered by the Session wire probe."
     },
     {
@@ -87,7 +87,7 @@
     },
     {
       "source": "test/parity/testdata/test-faux-provider.ts",
-      "sha256": "01b889f02a739dd746fb278a4f9fbde1f89dc8e3e8f7ed1c85834b891a842c0c",
+      "sha256": "8f146fa0036882dd761c2dd24c420d90d818ee3fdce3646b5fb4cf8255929e04",
       "reason": "Canned followups exercise specific orchestration/rendering questions, not complete result metadata. Full RPC tool records and real-provider mode scenarios supply result acceptance independently of final prose."
     }
   ],
@@ -487,6 +487,12 @@
     {
       "scenario": "test/parity/scenarios/clipboard-images/05-kitty-settings-visible.toml",
       "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "\\(1/35\\)",
+          "with": "(1/34)",
+          "reason": "D80 adds exactly one visible PiG-only settings row; raw assertions require 35 PiG rows and 34 Pi rows before this replacement."
+        },
         {
           "kind": "output_normalized_equal",
           "reason": "Declared plain-text/layout surface: Image-related settings appear when terminal reports Kitty image capability.",
@@ -1065,7 +1071,7 @@
             "capture_start": "echo_bridge",
             "capture_end": "details-probe-done"
           },
-          "reason": "Owned visible surface: Generic extension tool details retain complete arguments behind the global expansion toggle (D59)",
+          "reason": "Owned visible surface: A registered extension tool without renderCall shows its arguments in the fallback call header and expands them with Ctrl+O",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -1236,6 +1242,12 @@
           "reason": "D2: the isolated project configuration root is .pig versus .pi; preserve all resource-relative paths."
         },
         {
+          "kind": "normalize_replace",
+          "pattern": "\\{\"(?:name\":\"sprite\",\"description\":\"Select the PiG login sprite\\.\",\"source\":\"extension\",\"sourceInfo\":\\{\"path\":\"builtin:pig-login\",\"source\":\"builtin\",\"scope\":\"temporary\",\"origin\":\"top-level\"\\}|description\":\"Select the PiG login sprite\\.\",\"name\":\"sprite\",\"source\":\"extension\",\"sourceInfo\":\\{\"origin\":\"top-level\",\"path\":\"builtin:pig-login\",\"scope\":\"temporary\",\"source\":\"builtin\"\\})\\},?",
+          "with": "",
+          "reason": "D2: PiG's built-in pig-login extension registers /sprite, which Pi has no counterpart for. Only that one command entry is removed; every other command, its order and its sourceInfo stay compared."
+        },
+        {
           "kind": "output_normalized_equal",
           "reason": "Declared plain-text/layout surface: Extensions load -e first, then project settings, project auto, user settings, user auto, then Packages",
           "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
@@ -1276,6 +1288,12 @@
           "reason": "D2: the isolated project configuration root is .pig versus .pi; preserve all resource-relative paths."
         },
         {
+          "kind": "normalize_replace",
+          "pattern": "\\{\"(?:name\":\"sprite\",\"description\":\"Select the PiG login sprite\\.\",\"source\":\"extension\",\"sourceInfo\":\\{\"path\":\"builtin:pig-login\",\"source\":\"builtin\",\"scope\":\"temporary\",\"origin\":\"top-level\"\\}|description\":\"Select the PiG login sprite\\.\",\"name\":\"sprite\",\"source\":\"extension\",\"sourceInfo\":\\{\"origin\":\"top-level\",\"path\":\"builtin:pig-login\",\"scope\":\"temporary\",\"source\":\"builtin\"\\})\\},?",
+          "with": "",
+          "reason": "D2: PiG's built-in pig-login extension registers /sprite, which Pi has no counterpart for. Only that one command entry is removed; every other command, its order and its sourceInfo stay compared."
+        },
+        {
           "kind": "output_normalized_equal",
           "reason": "Declared plain-text/layout surface: Same-name prompt templates resolve as upstream orders them: project settings, project auto, user settings, user auto, then Packages",
           "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
@@ -1308,8 +1326,8 @@
         {
           "kind": "terminal_crop",
           "configuration": {
-            "capture_start": "COVER 14",
-            "capture_end": "COVER 16"
+            "capture_start": "COVER 17",
+            "capture_end": "COVER 19"
           },
           "reason": "Owned visible surface: An overlay covering the editor row leaves the editor cursor one inverse cell wide",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
@@ -1710,6 +1728,12 @@
           "reason": "Isolated agent roots differ; preserve each resource path and its metadata."
         },
         {
+          "kind": "normalize_replace",
+          "pattern": "\\{\"(?:name\":\"sprite\",\"description\":\"Select the PiG login sprite\\.\",\"source\":\"extension\",\"sourceInfo\":\\{\"path\":\"builtin:pig-login\",\"source\":\"builtin\",\"scope\":\"temporary\",\"origin\":\"top-level\"\\}|description\":\"Select the PiG login sprite\\.\",\"name\":\"sprite\",\"source\":\"extension\",\"sourceInfo\":\\{\"origin\":\"top-level\",\"path\":\"builtin:pig-login\",\"scope\":\"temporary\",\"source\":\"builtin\"\\})\\},?",
+          "with": "",
+          "reason": "D2: PiG's built-in pig-login extension registers /sprite, which Pi has no counterpart for. Only that one command entry is removed; every other command, its order and its sourceInfo stay compared."
+        },
+        {
           "kind": "canonical_json",
           "reason": "JSON object member order is not semantic. Raw stdout remains retained; fields and record order are not projected."
         }
@@ -1779,6 +1803,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/68-extension-context-signal-abort.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "signal-live",
+            "capture_end": "signal-done"
+          },
+          "reason": "Owned visible surface: Escape aborts the run's ctx.signal, which is gone at agent_settled",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/extensions-runtime/69-sdk-string-widget-python.toml",
       "transforms": [
         {
@@ -1787,6 +1829,41 @@
             "capture_start": "WIDGET-START"
           },
           "reason": "Owned visible surface: A string list widget set through the Python SDK wraps as Pi's Text does at 114 columns",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/70-interactive-extension-load-failure-exits.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"pig? -ne\"",
+          "with": "\"<bin> -ne\"",
+          "reason": "D2: the quoted no-extensions remediation command names the host executable; retain all error prose."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "/parity-snap-extension-[0-9]+/",
+          "with": "/<extension-snapshot>/",
+          "reason": "Harness isolation: each binary loads its own copy of the fixture. Only the random directory suffix is replaced; the file name and the full error prose stay compared."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: An extension load failure ends an interactive start with Pi's error, -ne hint and status 1",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Error: Failed to load extension",
+            "capture_join_wrapped": true
+          },
+          "reason": "Owned visible surface: An extension load failure ends an interactive start with Pi's error, -ne hint and status 1",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -2242,6 +2319,23 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/fullscreen/11-logo-click-animation.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "escape to return"
+          },
+          "reason": "Owned visible surface: A click on the header logo plays the fullscreen dissolve, starfield and return hint in the same cells as pi.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/interactive-rendering/01-assistant-message-text.toml",
       "transforms": [
         {
@@ -2464,11 +2558,6 @@
     {
       "scenario": "test/parity/scenarios/interactive-rendering/10-edit-tool-diff.toml",
       "transforms": [
-        {
-          "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: Edit-tool legacy `{path, oldText, newText}` input shape is normalized by EditTool.PrepareArguments before schema validation, and the line-numbered diff body (ported generateDiffString) matches upstream byte-for-byte.",
-          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
-        },
         {
           "kind": "terminal_crop",
           "configuration": {
@@ -3154,6 +3243,215 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/json/05-json-failing-bash-result-iserror.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "parity-snap-cwd-[0-9]{10}",
+          "with": "parity-snap-cwd-0000000000",
+          "reason": "Alias the isolated working-directory identity while preserving path suffixes and content."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":[0-9]+",
+          "with": "\"timestamp\":0",
+          "reason": "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\"",
+          "with": "\"timestamp\":\"2000-01-01T00:00:00.000Z\"",
+          "reason": "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"id\":\"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\"",
+          "with": "\"id\":\"SESSION\"",
+          "reason": "The header UUID is independently generated; no message content or property order is replaced."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"wall_time_seconds\":[0-9.]+",
+          "with": "\"wall_time_seconds\":0",
+          "reason": "bash rounds wall time to 0.1 s (bash.ts:392), so a slow runner can differ by one step; the key, its type and its position stay."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/json/06-json-failing-bash-result-iserror-hook.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "parity-snap-cwd-[0-9]{10}",
+          "with": "parity-snap-cwd-0000000000",
+          "reason": "Alias the isolated working-directory identity while preserving path suffixes and content."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":[0-9]+",
+          "with": "\"timestamp\":0",
+          "reason": "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\"",
+          "with": "\"timestamp\":\"2000-01-01T00:00:00.000Z\"",
+          "reason": "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"id\":\"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\"",
+          "with": "\"id\":\"SESSION\"",
+          "reason": "The header UUID is independently generated; no message content or property order is replaced."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"wall_time_seconds\":[0-9.]+",
+          "with": "\"wall_time_seconds\":0",
+          "reason": "bash rounds wall time to 0.1 s (bash.ts:392), so a slow runner can differ by one step; the key, its type and its position stay."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/json/07-json-failing-bash-result-iserror-content-hook.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "parity-snap-cwd-[0-9]{10}",
+          "with": "parity-snap-cwd-0000000000",
+          "reason": "Alias the isolated working-directory identity while preserving path suffixes and content."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":[0-9]+",
+          "with": "\"timestamp\":0",
+          "reason": "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\"",
+          "with": "\"timestamp\":\"2000-01-01T00:00:00.000Z\"",
+          "reason": "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"id\":\"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\"",
+          "with": "\"id\":\"SESSION\"",
+          "reason": "The header UUID is independently generated; no message content or property order is replaced."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"wall_time_seconds\":[0-9.]+",
+          "with": "\"wall_time_seconds\":0",
+          "reason": "bash rounds wall time to 0.1 s (bash.ts:392), so a slow runner can differ by one step; the key, its type and its position stay."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/json/08-json-tool-execution-update-partial-result.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "parity-snap-cwd-[0-9]{10}",
+          "with": "parity-snap-cwd-0000000000",
+          "reason": "Alias the isolated working-directory identity while preserving path suffixes and content."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":[0-9]+",
+          "with": "\"timestamp\":0",
+          "reason": "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\"",
+          "with": "\"timestamp\":\"2000-01-01T00:00:00.000Z\"",
+          "reason": "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"id\":\"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\"",
+          "with": "\"id\":\"SESSION\"",
+          "reason": "The header UUID is independently generated; no message content or property order is replaced."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"wall_time_seconds\":[0-9.]+",
+          "with": "\"wall_time_seconds\":0",
+          "reason": "bash rounds wall time to 0.1 s (bash.ts:392), so a slow runner can differ by one step; the key, its type and its position stay."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/json/09-json-extension-object-member-order.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "parity-snap-cwd-[0-9]{10}",
+          "with": "parity-snap-cwd-0000000000",
+          "reason": "Alias the isolated working-directory identity while preserving path suffixes and content."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":[0-9]+",
+          "with": "\"timestamp\":0",
+          "reason": "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\"",
+          "with": "\"timestamp\":\"2000-01-01T00:00:00.000Z\"",
+          "reason": "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"id\":\"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\"",
+          "with": "\"id\":\"SESSION\"",
+          "reason": "The header UUID is independently generated; no message content or property order is replaced."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"wall_time_seconds\":[0-9.]+",
+          "with": "\"wall_time_seconds\":0",
+          "reason": "bash rounds wall time to 0.1 s (bash.ts:392), so a slow runner can differ by one step; the key, its type and its position stay."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/json/10-json-extension-tool-null-details.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "parity-snap-cwd-[0-9]{10}",
+          "with": "parity-snap-cwd-0000000000",
+          "reason": "Alias the isolated working-directory identity while preserving path suffixes and content."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":[0-9]+",
+          "with": "\"timestamp\":0",
+          "reason": "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\"",
+          "with": "\"timestamp\":\"2000-01-01T00:00:00.000Z\"",
+          "reason": "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"id\":\"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\"",
+          "with": "\"id\":\"SESSION\"",
+          "reason": "The header UUID is independently generated; no message content or property order is replaced."
+        },
+        {
+          "kind": "artifact_normalized_equal",
+          "reason": "Declared plain-text/layout surface: --mode json and the session file keep an extension tool's details: null",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/model-resolver-selector/03-model-invalid.toml",
       "transforms": [
         {
@@ -3508,6 +3806,24 @@
             "capture_end": "Model catalogs refreshed."
           },
           "reason": "Owned visible surface: Shift+Tab does not toggle the model-picker scope.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/model-resolver-selector/24-fullscreen-model-picker-page-down-scrolls-viewport.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Only showing models",
+            "capture_end": "Model Name: Model One"
+          },
+          "reason": "Owned visible surface: Fullscreen PageDown scrolls the viewport and leaves the model picker selection alone.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -4061,6 +4377,96 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/oauth/25-anthropic-login-method-selector.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Select Anthropic login method:",
+            "capture_end": "cancel"
+          },
+          "reason": "Owned visible surface: Anthropic /login offers browser and copy code login methods",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/oauth/26-login-cancel-returns-to-provider-list.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Select provider to configure:",
+            "capture_end": "(1/9)"
+          },
+          "reason": "Owned visible surface: Cancelling a login started from the provider list reopens the provider list",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/oauth/27-login-radius-method-intro.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Sign in to Radius:",
+            "capture_end": "cancel"
+          },
+          "reason": "Owned visible surface: /login offers Radius at the top level and introduces Radius in its method prompt",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/oauth/28-login-radius-cancel-returns-to-menu.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Select authentication method:",
+            "capture_end": "cancel"
+          },
+          "reason": "Owned visible surface: Cancelling the top-level Radius sign-in reopens the authentication method menu",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/oauth/29-logout-radius-account-label.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Select provider to logout:",
+            "capture_end_regex": "Radius[^\\n]*configured"
+          },
+          "reason": "Owned visible surface: Logout labels a non-subscription OAuth sign-in as an account",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/print/02-print-extension-command.toml",
       "transforms": [
         {
@@ -4498,6 +4904,13 @@
             "/**/timestamp"
           ],
           "reason": "Message wall clocks vary per process; retain field presence and type."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/wall_time_seconds"
+          ],
+          "reason": "bash.ts:392 measures the command's wall clock and rounds it to 0.1 s, so a loaded host reports 0 or 0.1 for the same command; retain the field's presence, its position and Pi's one-decimal number spelling."
         },
         {
           "kind": "id",
@@ -5051,6 +5464,70 @@
           "reason": "Independent message wall clocks vary; retain field presence, timestamp type and valid syntax."
         },
         {
+          "kind": "duration",
+          "paths": [
+            "/**/wall_time_seconds"
+          ],
+          "reason": "bash.ts:392 measures the command's wall clock and rounds it to 0.1 s, so a loaded host reports 0 or 0.1 for the same command; retain the field's presence, its position and Pi's one-decimal number spelling."
+        },
+        {
+          "kind": "canonical_json",
+          "reason": "JSON object member order is not semantic. Raw stdout remains retained; fields and record order are not projected."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/42-rpc-failing-bash-result-iserror.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "parity-snap-cwd-[0-9]{10}",
+          "with": "parity-snap-cwd-0000000000",
+          "reason": "Alias the isolated working-directory identity while preserving path suffixes and content."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":[0-9]+",
+          "with": "\"timestamp\":0",
+          "reason": "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"wall_time_seconds\":[0-9.]+",
+          "with": "\"wall_time_seconds\":0",
+          "reason": "bash rounds wall time to 0.1 s (bash.ts:392), so a slow runner can differ by one step; the key, its type and its position stay."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/43-rpc-extension-tool-null-details.toml",
+      "transforms": [
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "D2: alias only the exact isolated cwd embedded in the system section; retain its tags, whitespace and suffix."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message and entry wall clocks vary; retain field presence, timestamp type and valid syntax."
+        },
+        {
+          "kind": "id",
+          "paths": [
+            "/**/id",
+            "/**/parentId",
+            "/**/leafId"
+          ],
+          "group": "entry",
+          "pattern": "^[a-f0-9]{8,16}$",
+          "reason": "Generated entry keys vary per process. A bijection retains every parent and leaf reference; command and tool-call IDs stay literal."
+        },
+        {
           "kind": "canonical_json",
           "reason": "JSON object member order is not semantic. Raw stdout remains retained; fields and record order are not projected."
         }
@@ -5066,6 +5543,12 @@
           "reason": "D2: only the configuration-root product name differs in the selector subtitle."
         },
         {
+          "kind": "normalize_replace",
+          "pattern": "\\n {6}\\[x\\] pig-login *",
+          "with": "",
+          "reason": "D2: PiG's built-in pig-login extension (the /sprite command) is listed with the other built-in extensions; Pi has no such entry. Only that one row is removed; the others, their order and the selector chrome stay compared."
+        },
+        {
           "kind": "output_normalized_equal",
           "reason": "Declared plain-text/layout surface: Both binaries open the resource configuration overlay with an empty agent dir.",
           "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
@@ -5074,7 +5557,7 @@
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "Global Resources",
-            "capture_end": "No resources found"
+            "capture_end": "[x] tool-search"
           },
           "reason": "Owned visible surface: Both binaries open the resource configuration overlay with an empty agent dir.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
@@ -5263,7 +5746,7 @@
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "Select provider to configure",
-            "capture_end_regex": "OpenAI Codex(?:\\x1b\\[[0-9;]*m)* • unconfigured"
+            "capture_end_regex": "OpenAI Codex \\(legacy\\)(?:\\x1b\\[[0-9;]*m)* • not configured"
           },
           "reason": "Owned visible surface: /login subscription provider picker includes GitHub Copilot and Kimi For Coding with upstream labels.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
@@ -5367,6 +5850,12 @@
           "reason": "D2: separate agent roots vary by host and run. Preserve the complete label suffix, row structure and resource names."
         },
         {
+          "kind": "normalize_replace",
+          "pattern": "\\n {6}\\[x\\] pig-login *",
+          "with": "",
+          "reason": "D2: PiG's built-in pig-login extension (the /sprite command) is listed with the other built-in extensions; Pi has no such entry. Only that one row is removed; the others, their order and the selector chrome stay compared."
+        },
+        {
           "kind": "output_normalized_equal",
           "reason": "Declared plain-text/layout surface: Ctrl-C closes pi config / pig config with status 0 and leaves the same screen.",
           "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
@@ -5399,6 +5888,12 @@
           "pattern": "(User \\()/[^\\n)]*/parity-snap-(?:PIG_HOME-[0-9]+/agent|PI_CODING_AGENT_DIR-[0-9]+)/",
           "with": "${1}<agent>/",
           "reason": "D2: separate agent roots vary by host and run. Preserve the complete label suffix, row structure and resource names."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\\n {6}\\[x\\] pig-login *",
+          "with": "",
+          "reason": "D2: PiG's built-in pig-login extension (the /sprite command) is listed with the other built-in extensions; Pi has no such entry. Only that one row is removed; the others, their order and the selector chrome stay compared."
         },
         {
           "kind": "output_normalized_equal",
@@ -5670,9 +6165,9 @@
       "transforms": [
         {
           "kind": "normalize_replace",
-          "pattern": "\\(1/32\\)",
-          "with": "(1/31)",
-          "reason": "D80 adds exactly one visible PiG-only settings row; raw assertions require 32 PiG rows and 31 Pi rows before this replacement."
+          "pattern": "\\(1/33\\)",
+          "with": "(1/32)",
+          "reason": "D80 adds exactly one visible PiG-only settings row; raw assertions require 33 PiG rows and 32 Pi rows before this replacement."
         },
         {
           "kind": "terminal_crop",
@@ -5807,9 +6302,9 @@
       "transforms": [
         {
           "kind": "normalize_replace",
-          "pattern": "\\(1/32\\)",
-          "with": "(1/31)",
-          "reason": "D80 adds one non-image settings row; Pi's 33-row catalog loses two image-only rows under tmux, and PiG adds one privacy row."
+          "pattern": "\\(1/33\\)",
+          "with": "(1/32)",
+          "reason": "D80 adds one non-image settings row; Pi 0.99.1's 34-row catalog loses two image-only rows under tmux, and PiG adds one privacy row."
         },
         {
           "kind": "terminal_crop",
@@ -6114,7 +6609,7 @@
             "capture_start": "Session name set: armin-anchor",
             "capture_end": "Session name set: armin-end"
           },
-          "reason": "Owned visible surface: Hidden Armin command converges to Pi's complete accent-colored 31 by 36 half-block bitmap",
+          "reason": "Owned visible surface: Hidden Armin command converges to the complete accent-colored half-block bitmap: Pi's Armin, PiG's pig head (D87)",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -6148,6 +6643,18 @@
           "reason": "D2: the same onboarding sentence starts with the host product name; all remaining words, ANSI and spaces stay literal."
         },
         {
+          "kind": "normalize_replace",
+          "pattern": "(?m)^ (?:(?:\\x1b\\[[0-9;]*m)*[▀▄ ]){1,16}(?:\\x1b\\[[0-9;]*m)*[ ]*$",
+          "with": "",
+          "reason": "D2: a head line with no text beside it (tmux trims its trailing transparent cells) is the blank line Pi draws below its 2-line logo."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "(?m)^ (?:(?:\\x1b\\[[0-9;]*m)*[▀▄ ]){16}(?:\\x1b\\[[0-9;]*m)* ",
+          "with": " ",
+          "reason": "D2: a head line with text beside it carries the line Pi draws at the padded margin below its 2-line logo."
+        },
+        {
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "escape",
@@ -6176,6 +6683,30 @@
           "pattern": "PiG can explain its own features",
           "with": "Pi can explain its own features",
           "reason": "D2: the same onboarding sentence starts with the host product name; all remaining words, ANSI and spaces stay literal."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "(?m)^ (?:(?:\\x1b\\[[0-9;]*m)*[▀▄ ]){1,16}(?:\\x1b\\[[0-9;]*m)*[ ]*$",
+          "with": "",
+          "reason": "D2: a head line with no text beside it (tmux trims its trailing transparent cells) is the blank line Pi draws below its 2-line logo."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "(?m)^ (?:(?:\\x1b\\[[0-9;]*m)*[▀▄ ]){16}(?:\\x1b\\[[0-9;]*m)* ",
+          "with": " ",
+          "reason": "D2: a head line with text beside it carries the line Pi draws at the padded margin below its 2-line logo."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\\x1b\\[39m\\n",
+          "with": "\n",
+          "reason": "D2: a foreground reset at the end of a line, where the previous frame's trailing cells decide whether tmux reports it."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\\n\\x1b\\[39m",
+          "with": "\n",
+          "reason": "D2: the same foreground reset reported at the start of the next line."
         },
         {
           "kind": "terminal_crop",
@@ -6208,6 +6739,18 @@
           "reason": "D2: the same onboarding sentence starts with the host product name; all remaining words, ANSI and spaces stay literal."
         },
         {
+          "kind": "normalize_replace",
+          "pattern": "(?m)^ (?:(?:\\x1b\\[[0-9;]*m)*[▀▄ ]){1,16}(?:\\x1b\\[[0-9;]*m)*[ ]*$",
+          "with": "",
+          "reason": "D2: a head line with no text beside it (tmux trims its trailing transparent cells) is the blank line Pi draws below its 2-line logo."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "(?m)^ (?:(?:\\x1b\\[[0-9;]*m)*[▀▄ ]){16}(?:\\x1b\\[[0-9;]*m)* ",
+          "with": " ",
+          "reason": "D2: a head line with text beside it carries the line Pi draws at the padded margin below its 2-line logo."
+        },
+        {
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "escape",
@@ -6229,7 +6772,7 @@
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "[Skills]",
-            "capture_end": "fixture-theme"
+            "capture_end": "listing-fixture:beta"
           },
           "reason": "Owned visible surface: The startup listing puts each section's list under its heading and labels Package extensions by package and entry.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
@@ -6258,7 +6801,7 @@
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "[Skills]",
-            "capture_end": "fixture-theme.json"
+            "capture_end": "extensions/beta"
           },
           "reason": "Owned visible surface: Ctrl+O expands the startup listing into Pi's scope groups with package-relative paths.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
@@ -6276,7 +6819,7 @@
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "[Skills]",
-            "capture_end": "shapes-theme"
+            "capture_end": "pig-parity/entry-shapes:entry-shapes"
           },
           "reason": "Owned visible surface: A Package's file and directory entries, dot-directory theme and Claude plugin manifest load and list as in Pi.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
@@ -6292,16 +6835,16 @@
       "transforms": [
         {
           "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: Ctrl+O lists a Package's file skills, root Markdown skills and dot-directory theme at Pi's package-relative paths.",
+          "reason": "Declared plain-text/layout surface: Ctrl+O lists a Package's file skills, root Markdown skills and extension at Pi's package-relative paths.",
           "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
         },
         {
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "[Skills]",
-            "capture_end": "shapes-theme.json"
+            "capture_end_regex": "git:github.com/pig-parity/entry-shapes\\n\\s+entry-shapes"
           },
-          "reason": "Owned visible surface: Ctrl+O lists a Package's file skills, root Markdown skills and dot-directory theme at Pi's package-relative paths.",
+          "reason": "Owned visible surface: Ctrl+O lists a Package's file skills, root Markdown skills and extension at Pi's package-relative paths.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -6389,6 +6932,78 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/startup/13-startup-narrow-mark-wrapping.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "extend PiG\\.",
+          "with": "extend Pi.",
+          "reason": "D2: the onboarding sentence names the host product. Match only that sentence fragment, not arbitrary PiG text."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "PiG can explain its own",
+          "with": "Pi can explain its own",
+          "reason": "D2: the same onboarding sentence starts with the host product name; all remaining words, ANSI and spaces stay literal."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "escape",
+            "capture_end_regex": "extend Pi(G)?\\."
+          },
+          "reason": "Owned visible surface: Below the pig head's width PiG's one-line text mark leaves Pi's header wrapping unchanged.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/startup/14-startup-quiet-header.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "extend PiG\\.",
+          "with": "extend Pi.",
+          "reason": "D2: the onboarding sentence names the host product. Match only that sentence fragment, not arbitrary PiG text."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "PiG can explain its own features",
+          "with": "Pi can explain its own features",
+          "reason": "D2: the same onboarding sentence starts with the host product name; all remaining words, ANSI and spaces stay literal."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "(?m)^ (?:(?:\\x1b\\[[0-9;]*m)*[▀▄ ]){1,16}(?:\\x1b\\[[0-9;]*m)*[ ]*$",
+          "with": "",
+          "reason": "D2: a head line with no text beside it (tmux trims its trailing transparent cells) is the blank line Pi draws below its 2-line logo."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "(?m)^ (?:(?:\\x1b\\[[0-9;]*m)*[▀▄ ]){16}(?:\\x1b\\[[0-9;]*m)* ",
+          "with": " ",
+          "reason": "D2: a head line with text beside it carries the line Pi draws at the padded margin below its 2-line logo."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "escape",
+            "capture_end_regex": "─{20}"
+          },
+          "reason": "Owned visible surface: quietStartup \"header\" keeps the compact startup header, drops the loaded-resources hint and hides the resource listing.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/tools/17-tool-rpc-error-and-bash-wire.toml",
       "transforms": [
         {
@@ -6418,6 +7033,13 @@
             "/**/timestamp"
           ],
           "reason": "Clocks are independent; retain numeric/string type and syntax. The probe separately validates range and repeated message/entry timestamps across all surfaces."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/wall_time_seconds"
+          ],
+          "reason": "bash.ts:392 measures the command's wall clock and rounds it to 0.1 s, so a loaded host reports 0 or 0.1 for the same command; retain the field's presence, its position and Pi's one-decimal number spelling."
         }
       ]
     },

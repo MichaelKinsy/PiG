@@ -45,6 +45,15 @@ export default function (pi) {
     out.refresh={aborted:refresh.aborted,errors:Object.fromEntries([...refresh.errors].map(([key,error])=>[key,error.message]))};
     ctx.ui.notify(JSON.stringify(out),"info");
   }});
+  // The session reads of Pi's Pi-order probe (session_read_order_test.go): the answers are written as JSON.stringify writes them.
+  pi.registerCommand("session-order", { description: "Read the session as Pi returns it", handler: async (_args, ctx) => {
+    const s = ctx.sessionManager;
+    ctx.ui.notify(JSON.stringify({
+      getEntries: s.getEntries(), getEntry: s.getEntry("a4"), getLeafEntry: s.getLeafEntry(), getBranch: s.getBranch("a4"),
+      getChildren: s.getChildren("a1"), getTree: s.getTree(), buildContextEntries: s.buildContextEntries(),
+      buildSessionProjection: s.buildSessionProjection(), buildSessionContext: s.buildSessionContext(),
+    }), "info");
+  }});
   const loginDefinition = () => ({
     brand: Array.from({ length: 5 }, () => "A".repeat(41)),
     hero: Array.from({ length: 14 }, () => "A".repeat(32)),
@@ -53,6 +62,13 @@ export default function (pi) {
     name: "Conformance Pig",
     description: "Cross-language login fixture",
     tagline: "One canonical definition across every SDK",
+  });
+  const spriteDefinition = () => ({
+    id: "conformance-pig",
+    name: "Conformance Pig",
+    tagline: "One canonical sprite across every SDK",
+    mascot: Array.from({ length: 14 }, () => "A".repeat(16)),
+    palette: { A: "#123ABC" },
   });
 
   pi.registerMessageRenderer("conformance-message", (message, options) => ({
@@ -100,6 +116,24 @@ export default function (pi) {
     },
   });
   pi.registerTool({
+    name: "ordered_details",
+    description: "Return details whose members are not in alphabetical order",
+    parameters: { type: "object", properties: {} },
+    async execute(_id, _params, _signal, onUpdate) {
+      onUpdate({ content: [{ type: "text", text: "partial" }], details: { zeta: 1, alpha: { yy: 2, bb: 3 }, mid: [{ qq: 1, aa: 2 }] } });
+      return { content: [{ type: "text", text: "done" }], details: { zeta: 1, alpha: { yy: 2, bb: 3 }, mid: [{ qq: 1, aa: 2 }] } };
+    },
+  });
+  pi.registerTool({
+    name: "ordered_result",
+    description: "Return a result whose members are not in the declared order",
+    parameters: { type: "object", properties: {} },
+    async execute(_id, _params, _signal, onUpdate) {
+      onUpdate({ details: { k: 1 }, content: [{ type: "text", text: "partial" }] });
+      return { details: { k: 1 }, isError: true, content: [{ type: "text", text: "done" }] };
+    },
+  });
+  pi.registerTool({
     name: "abort_tool",
     description: "Wait for the abort signal",
     parameters: { type: "object", properties: {} },
@@ -137,6 +171,14 @@ export default function (pi) {
     parameters: { type: "object", required: ["text"], properties: { text: { type: "string" } } },
     prepareArguments(params) { return { text: params.legacy }; },
     async execute(_id, params) { return { content: [{ type: "text", text: `prepared:${params.text ?? ""}` }] }; },
+  });
+  // Reports the order in which calls start: the number of calls that started before it, plus its own argument.
+  let startedCalls = 0;
+  pi.registerTool({
+    name: "start_order",
+    description: "Report the order in which calls start",
+    parameters: { type: "object", properties: { n: { type: "number" } } },
+    async execute(_id, params) { startedCalls += 1; return { content: [{ type: "text", text: `start#${startedCalls} n=${params.n}` }] }; },
   });
   pi.registerTool({
     name: "tool_error",
@@ -264,6 +306,9 @@ export default function (pi) {
     description: "Set one status repeatedly without awaiting",
     handler: async (_args, ctx) => { for (let i = 0; i < 200; i++) ctx.ui.setStatus("burst", String(i)); },
   });
+  // A width handler makes a host call the way any other handler does; the host's reply must reach it (conformance TestConformance_WidthHandlerHostCall).
+  let widthProbe;
+  pi.registerCommand("arm_width_probe", { description: "Notify from a width handler", handler: async (_args, ctx) => { widthProbe ??= ctx.ui.onWidthChange(async (width) => { await ctx.ui.notify(`width-probe:${width}`, "info"); await ctx.ui.notify(`width-probe-returned:${width}`, "info"); }); } });
   pi.registerCommand("report_geometry", { description: "Report observed terminal geometry", handler: async (_args, ctx) => ctx.ui.notify(`geometry:${ctx.width}x${ctx.height}`, "info") });
 
   pi.registerCommand("surface_footer", { description: "Install a footer renderer", handler: async (_args, ctx) => ctx.ui.setFooter(() => ({ render: (width) => [`footer@${width}`], invalidate() {} })) });
@@ -356,6 +401,38 @@ export default function (pi) {
       ctx.ui.notify("registered:"+tag,"info");
     }
   }});
+  pi.registerCommand("signal-probe", {
+    description: "Report ctx.signal",
+    handler: (_args, ctx) => ctx.ui.notify(`signal:${ctx.signal === undefined ? "none" : ctx.signal.aborted ? "aborted" : "live"}`, "info"),
+  });
+  pi.registerCommand("signal-wait", {
+    description: "Wait for ctx.signal to abort",
+    handler: async (_args, ctx) => {
+      const signal = ctx.signal;
+      if (signal === undefined) return ctx.ui.notify("wait:none", "info");
+      ctx.ui.notify("wait:start", "info");
+      const outcome = await new Promise((resolve) => {
+        const timer = setTimeout(() => resolve("timeout"), 10_000);
+        const done = () => { clearTimeout(timer); resolve("aborted"); };
+        if (signal.aborted) return done();
+        signal.addEventListener("abort", done, { once: true });
+      });
+      ctx.ui.notify(`wait:${outcome}`, "info");
+    },
+  });
+  // signal-poll reads ctx.signal from timers, as an extension does between requests (runner.ts:917-920): the state is "live" or "none".
+  pi.registerCommand("signal-poll", {
+    description: "Poll ctx.signal until it is live or none",
+    handler: async (args, ctx) => {
+      ctx.ui.notify("poll:start", "info");
+      const deadline = Date.now() + 10_000;
+      while (Date.now() < deadline) {
+        if ((ctx.signal !== undefined) === (args === "live")) return ctx.ui.notify(`poll:${args}`, "info");
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+      ctx.ui.notify("poll:timeout", "info");
+    },
+  });
   pi.registerCommand("usage-probe", {
     handler: (_args, ctx) => ctx.ui.notify(JSON.stringify(ctx.getContextUsage() ?? null), "info"),
   });
@@ -366,6 +443,21 @@ export default function (pi) {
       const shape = (v) => v === undefined || v === null ? "absent" : Array.isArray(v) ? `array:${v.length}` : v !== null && typeof v === "object" ? `object:${Object.keys(v).length}` : `${typeof v}:${String(v).length}`;
       const shapes = ["selectedTools", "toolSnippets", "toolGuidelines", "promptGuidelines", "appendSystemPrompt", "sections", "contextFiles", "skills"].map((key) => `${key}:${shape(options[key])}`).join(",");
       ctx.ui.notify(`mode=${ctx.mode} trusted=${ctx.isProjectTrusted()} spo_prompt=${options.customPrompt ?? ""} spo_cwd=${options.cwd ?? ""} spo_tools=${(options.selectedTools ?? []).join(",")} spo_shape=${shapes} spo_guidelines=${(options.toolGuidelines?.read ?? []).join(",")} spo_skill_scope=${options.skills?.[0]?.sourceInfo?.scope ?? ""} spo_force_empty=${options.forceSystemPrompt === ""} spo_custom_present=${Object.hasOwn(options, "customPrompt")}`, "info");
+    },
+  });
+  pi.registerCommand("sprite-probe", {
+    description: "Exercise sprite registration and host errors",
+    handler: async (_args, ctx) => {
+      const definition = spriteDefinition();
+      await ctx.ui.registerSprite(definition);
+      definition.mascot[0] = definition.mascot[0].slice(0, -1);
+      try {
+        await ctx.ui.registerSprite(definition);
+      } catch (error) {
+        ctx.ui.notify(error.message, "error");
+        return;
+      }
+      throw new Error("invalid sprite definition was accepted");
     },
   });
   pi.registerCommand("login-probe", {
@@ -487,10 +579,10 @@ export default function (pi) {
   });
   pi.on("tool_execution_update", async (event, ctx) => {
     if (event.toolName === "production_tool") {
-      ctx.ui.notify(`tool-update=${event.toolName}:${event.args?.path}:${event.args?.nested?.depth}:${event.partialResult?.content}:${event.partialResult?.details?.progress}`, "info");
+      ctx.ui.notify(`tool-update=${event.toolName}:${event.args?.path}:${event.args?.nested?.depth}:${event.partialResult?.content?.[0]?.text}:${event.partialResult?.details?.progress}`, "info");
       return;
     }
-    ctx.ui.notify(`tool-update=${event.toolName}:${JSON.stringify(event.args)}:${event.partialResult?.content}:${event.partialResult?.details?.progress}`, "info");
+    ctx.ui.notify(`tool-update=${event.toolName}:${JSON.stringify(event.args)}:${event.partialResult?.content?.[0]?.text}:${event.partialResult?.details?.progress}`, "info");
   });
   pi.on("tool_execution_end", async (event, ctx) => {
     if (event.toolName === "production_tool") {

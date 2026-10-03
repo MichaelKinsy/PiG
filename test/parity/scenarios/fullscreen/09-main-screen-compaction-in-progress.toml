@@ -21,8 +21,9 @@ model = "test-faux/faux-1"
 pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=../compaction/testdata/pig-agent", "TUI_LIVE_PROBE=1", "TEST_FAUX_HOLD_COMPACTION=1"]
 pi = ["PI_CODING_AGENT_DIR=../compaction/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1", "TUI_LIVE_PROBE=1", "TEST_FAUX_HOLD_COMPACTION=1"]
 pi_extensions = ["../../testdata/test-faux-provider.ts"]
-pig_args = ["--no-extensions", "--session-dir", "sessions", "--session", "sessions/2025-01-01T00-00-00-000Z_parity-compact.jsonl"]
-pi_args = ["--session-dir", "sessions", "--session", "sessions/2025-01-01T00-00-00-000Z_parity-compact.jsonl"]
+# Fullscreen is the default TUI mode since Pi 1.0.0; this scenario covers the main-screen renderer.
+pig_args = ["--no-extensions", "--session-dir", "sessions", "--session", "sessions/2025-01-01T00-00-00-000Z_parity-compact.jsonl", "--tui-mode", "regular"]
+pi_args = ["--session-dir", "sessions", "--session", "sessions/2025-01-01T00-00-00-000Z_parity-compact.jsonl", "--tui-mode", "regular"]
 
 [tmux]
 width = 80

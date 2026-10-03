@@ -65,6 +65,8 @@ fn provider_transport_shutdown_does_not_settle_owned_stream() {
                     stream_simple: produce.clone(),
                     fetch_deferred: Some(produce),
                     cancel_deferred: None,
+                    generate_images: None,
+                    classify: None,
                 }),
             );
             let request: RequestMsg = serde_json::from_value(json!({"method":"provider_stream", "tool":"owner", "args":{"method":method,"params":{"model":{},"context":{},"handle":{}}}})).unwrap();

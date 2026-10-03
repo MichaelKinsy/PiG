@@ -145,6 +145,8 @@ returns through the approved run-on-main mechanism. Map `AbortSignal` to
 `context.Context`, `sdk.Context.Done()`, or the owning lifetime's cancellation
 channel and test cancellation before and during the operation.
 
+Pi's `ctx.signal` is the signal of the run in progress, not of the handler's request: it is `undefined` while no run is active (a command or `session_start` while idle), one object for the whole run, and aborted with the run even while a handler is still in flight. Node exposes it as `ctx.signal`, the Go SDK as `ctx.Signal()` (a `context.Context`, nil while no run is active), Python as `ctx.signal` and Rust as `ctx.signal()` (a `ProviderSignal`, `None` while no run is active). `sdk.Context.Done()`, `Err()` and Rust and Python `is_cancelled()` report the handler's own request, which the host cancels when it abandons that request.
+
 ### Subprocess request liveness
 
 The SDK answers host heartbeat on its socket dispatcher. Extension handlers do
@@ -361,6 +363,19 @@ Resource. Activate it through a Piglet `extensions` entry, user extension
 policy, or `pig -e <path>`. Verify activation by starting or reloading through
 that path and checking the identity name. Keep product identities outside Stock
 Pig and select them through an ordinary Piglet extension entry.
+
+### Add a sprite
+
+Use `RegisterSprite` to add a sprite to `/sprite` without replacing the header (D2). A sprite has a lowercase slug `id` of at most 32 characters, a one-line `name` and `tagline`, a 16-by-14 `mascot` that the startup header draws as its head and `/sprite preview` draws beside the `PiG.` wordmark, and a `palette` that maps each symbol to a `#RRGGBB` color. `.` is transparent. Start from PiG's standard pig (`pigMascot` in `coding/piglogin/art.go`) so it matches the built-in sprites. The id must not be a built-in sprite's id or another extension's.
+
+```go
+err := ctx.RegisterSprite(sdk.SpriteDefinition{
+    ID: "blue-pig", Name: "Blue PiG", Tagline: "A pig in blue.",
+    Mascot: mascot, Palette: palette,
+})
+```
+
+Rust uses `ctx.register_sprite(&SpriteDefinition { .. })`, Python `ctx.register_sprite(SpriteDefinition(...))`, and Node `await ctx.ui.registerSprite({ id, name, tagline, mascot, palette })`. Register the sprite in `session_start`. The sprite appears after the built-in sprites in `/sprite list` and the picker, and `/sprite set <id>` saves it. When the extension is not loaded, the header draws `pig-default` and the saved choice stays.
 
 ## Choosing a source form
 

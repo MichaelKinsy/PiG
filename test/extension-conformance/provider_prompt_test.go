@@ -17,6 +17,7 @@ import (
 // Pi sdk.ts:356-364 and agent-session.ts:1347-1394 share the same Session
 // behavior across runtimes: awaited response notifications and active tool metadata.
 func TestProviderResponseAndToolPromptsAcrossSDKs(t *testing.T) {
+	t.Parallel()
 	for _, test := range allHarnessCases() {
 		t.Run(test.name, func(t *testing.T) {
 			h := test.make(t)

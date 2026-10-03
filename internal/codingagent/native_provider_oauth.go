@@ -8,11 +8,11 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-func adaptExtensionOAuthLogin(login func(context.Context, ai.OAuthLoginCallbacks) (ai.Credential, error)) func(context.Context, ai.AuthInteraction) (ai.Credential, error) {
+func adaptExtensionOAuthLogin(login func(context.Context, ai.OAuthLoginCallbacks) (ai.Credential, error)) func(context.Context, ai.AuthInteraction, ai.LoginOptions) (ai.Credential, error) {
 	if login == nil {
 		return nil
 	}
-	return func(ctx context.Context, interaction ai.AuthInteraction) (ai.Credential, error) {
+	return func(ctx context.Context, interaction ai.AuthInteraction, _ ai.LoginOptions) (ai.Credential, error) {
 		notify := func(event ai.AuthEvent) {
 			if interaction.Notify != nil {
 				interaction.Notify(event)
