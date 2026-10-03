@@ -137,7 +137,7 @@ func TestWindowsShardsTestEverySelectedPackage(t *testing.T) {
 	for shard := 1; shard <= shards; shard++ {
 		wantMatrix = append(wantMatrix, "cli-"+strconv.Itoa(shard))
 	}
-	wantMatrix = append(wantMatrix, "extension-host", "extension-conformance")
+	wantMatrix = append(wantMatrix, "extension-host-1", "extension-host-2", "extension-conformance-1", "extension-conformance-2")
 	if !slices.Equal(job.Strategy.Matrix.Shard, wantMatrix) {
 		t.Fatalf("windows shards = %v, want %v", job.Strategy.Matrix.Shard, wantMatrix)
 	}
@@ -175,10 +175,10 @@ func TestWindowsShardsTestEverySelectedPackage(t *testing.T) {
 				t.Errorf("native shard does not test the selected packages:\n%s", step.Run)
 			}
 		}
-		if step.If == "matrix.shard == 'extension-host'" {
+		if step.If == "startsWith(matrix.shard, 'extension-host-')" {
 			extensionRuns += step.Run
 		}
-		if step.If == "matrix.shard == 'extension-conformance'" {
+		if step.If == "startsWith(matrix.shard, 'extension-conformance-')" {
 			conformanceRuns += step.Run
 		}
 	}
@@ -209,6 +209,18 @@ func TestWindowsShardsTestEverySelectedPackage(t *testing.T) {
 	}
 	if !droppedCLI {
 		t.Errorf("native shards test %s whole as well as in its shards", cliPkg)
+	}
+	// The two jobs of each extension pair split the package's tests with test-shard-pattern.sh, so each test runs once.
+	for _, want := range []string{`extension-host-*) package=./coding/extension/host/subprocess`, `extension-conformance-*) package=./test/extension-conformance`, `test-shard-pattern.sh "${EXTENSION_SHARD##*-}" 2 "$package"`} {
+		found := false
+		for _, step := range job.Steps {
+			if strings.Contains(step.Run, want) && step.If == "startsWith(matrix.shard, 'extension-')" {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("no extension shard-selection step contains %q", want)
+		}
 	}
 	const conformancePkg = "test/extension-conformance"
 	conformanceRun := regexp.MustCompile(`go test [^\n]*\./` + regexp.QuoteMeta(conformancePkg) + `(\s|$)`)

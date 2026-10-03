@@ -1,10 +1,10 @@
 # SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 #
-# Placement of the slowest cmd/pig tests, read by test-shard-pattern.sh.
-# "package" and "shards" name the package and shard count the placement
-# balances; with any other count every test is placed by name hash. Each line "<shard> <test>" pins that
-# test to the shard, packed by measured duration (tests over 10 s, measured
+# Placement of the slowest tests of sharded packages, read by test-shard-pattern.sh.
+# Each "package" line starts a section; "shards" names the shard count the
+# placement balances; with any other count every test is placed by name hash. Each line "<shard> <test>" pins that
+# test to the shard, packed by measured duration (tests over 10 s for cmd/pig and 5 s for the extension packages, measured
 # with go test -json) on top of the hash-placed rest. A name that is no longer
 # listed is ignored; a test not named here is placed by hash, so every test
 # still lands in exactly one shard.
@@ -61,3 +61,76 @@ shards 8
 8 TestRPCBedrockConverseStreamObservation
 8 TestResourceLoaderUpstreamRPCFileURLs
 8 TestSharedSubprocessExecAcrossModes
+
+package ./coding/extension/host/subprocess
+shards 2
+1 TestAC59PackedSDKFocusedComponentsOwnInput
+1 TestContextResultShapesCrossSDKTransports
+1 TestDrainSpansIsolatedNodeProcesses
+1 TestGitMergeAndResolveExample
+1 TestHostClosedConnectionKeepsItsProcessRetained
+1 TestHostLoadAndReloadPreserveConfiguredGuardOrder
+1 TestNodeCommandReturnDoesNotCancelItsHostCalls
+1 TestNodeIssuePackageForms
+1 TestNodeRecoveryKeepsOriginalOwnerCancellation
+1 TestNodeRepeatedUnknownCrashBisectsAndRejoinsHealthyMembers
+1 TestPackedStderrLogLifecycle
+1 TestReloadAcrossAPlacementChangeStartsAFreshProcess
+1 TestSlowNodeFactoryLoads
+1 TestToolRenderersAcrossSDKs
+1 TestUnknownEventHandlerIsAnErrorInEverySDK
+1 TestUpstreamExtensionFactoryCache
+1 TestXrefEventBusCloneMatchesPi
+1 TestXrefEventBusInspectMatchesPi
+1 TestXrefEventBusListenerOrderMatchesPi
+1 TestXrefEventBusMaxListenersWarningIsSilentLikePi
+2 TestConcurrentIsolatedStartsClaimOnlyCompleteProcesses
+2 TestEmbeddedPackedOwnerActivationByLanguage
+2 TestHostProviderQueueBindsToRunnerRegistry
+2 TestHost_ReloadPlansPackedRustAndFissionsQuarantinedCell
+2 TestInputTransformStreamingExample
+2 TestNodeCrashAfterRetainedReloadRecoversWithoutReplay
+2 TestNodeCrashQuarantinesOnlyCulpritAndDoesNotReplay
+2 TestOAuthSubscriptionSDKPlacements
+2 TestPackedMemberFactoryFailureEndsTheLoad
+2 TestPackedMessageOutputPadAcrossSDKs
+2 TestPackedPromptHandlerBodyFIFO
+2 TestPackedProviderResponseAndToolPrompts
+2 TestPackedSDKFocusedComponentAndSessionActionsMatch
+2 TestPackedUserMessageContentAcrossSDKs
+2 TestRustFactoryReloadReinvokesFactoryInTheRetainedProcess
+2 TestTurnBoundaryPackedFactoriesMatchIsolated
+2 TestXrefEventBusForeignPrefixMutationMatchesPi
+2 TestXrefEventBusMatchesPiAcrossRealms
+2 TestXrefEventBusPayloadLifetimeMatchesPi
+2 TestXrefEventBusReentrantDispatchMatchesPi
+2 TestXrefEventBusSymbolLifetimeMatchesPi
+
+package ./test/extension-conformance
+shards 2
+1 TestCacheWarmingDecisionAcrossSDKs
+1 TestConformance_SuspendedCommandFlush
+1 TestConformance_TransportsMatch
+1 TestFlagValuesAcrossSDKs
+1 TestLateProviderKeepsOperationsAcrossSDKs
+1 TestModelTypesGenerateImagesAcrossSDKs
+1 TestModelTypesProviderObjectAcrossSDKs
+1 TestModelTypesProviderOperationCancellationAcrossSDKs
+1 TestModelTypesReadsAcrossSDKs
+1 TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners
+1 TestPromptSelectedToolsMutationsAcrossSDKs
+1 TestProviderProducersAcrossSDKs
+1 TestSystemPromptOptionContentAcrossSDKs
+2 TestConformance_TerminalInput
+2 TestDynamicToolRegistrationAcrossSDKs
+2 TestModelTypesClassifyAcrossSDKs
+2 TestModelTypesProviderConfigImplementationsAcrossSDKs
+2 TestModelTypesVirtualModelsAcrossSDKs
+2 TestNativeEventBusFirstNativeCallWhileNodeRealmSpawns
+2 TestNativeEventBusRuntimeCrashMidDispatchReleasesTheEmitter
+2 TestNativeEventBusStressKeepsEveryDeliveryAndBoundedState
+2 TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener
+2 TestPromptHandlerBodyFIFOAcrossSDKs
+2 TestPromptOptionEditsAcrossSDKs
+2 TestPromptSectionMutationsAcrossSDKs
+2 TestProviderObjectsAcrossSDKs

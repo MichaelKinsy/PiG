@@ -296,7 +296,7 @@ jobs:
         # cmd/pig shards, run in parallel. The two extension
         # shards were one shard whose extension step took 49 of the job's 60
         # minutes, and native with cmd/pig reached the 60-minute limit.
-        shard: [native-1, native-2, native-3, cli-1, cli-2, cli-3, cli-4, cli-5, cli-6, cli-7, cli-8, extension-host, extension-conformance]
+        shard: [native-1, native-2, native-3, cli-1, cli-2, cli-3, cli-4, cli-5, cli-6, cli-7, cli-8, extension-host-1, extension-host-2, extension-conformance-1, extension-conformance-2]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -424,12 +424,28 @@ jobs:
           export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
           run=$(automation/ci/test-shard-pattern.sh "${CLI_SHARD#cli-}" 8 ./cmd/pig)
           go test -timeout 30m -run "$run" ./cmd/pig
+      - name: Select this job's extension tests
+        # Each extension job runs its half of the package's tests, split by automation/ci/test-shard-pattern.sh so every test runs in exactly one of the two jobs.
+        if: startsWith(matrix.shard, 'extension-')
+        shell: bash
+        env:
+          EXTENSION_SHARD: ${{ matrix.shard }}
+        run: |
+          set -euo pipefail
+          case "$EXTENSION_SHARD" in
+            extension-host-*) package=./coding/extension/host/subprocess ;;
+            extension-conformance-*) package=./test/extension-conformance ;;
+            *) echo "unexpected shard $EXTENSION_SHARD" >&2; exit 1 ;;
+          esac
+          run=$(automation/ci/test-shard-pattern.sh "${EXTENSION_SHARD##*-}" 2 "$package")
+          echo "SHARD_RUN=$run" >> "$GITHUB_ENV"
       - name: Test Windows extension host packages
-        if: matrix.shard == 'extension-host'
+        if: startsWith(matrix.shard, 'extension-host-')
         shell: pwsh
         env:
           CARGO_BUILD_JOBS: '2'
           PIG_REQUIRE_EXTENSION_TOOLCHAINS: '1'
+          MATRIX_SHARD: ${{ matrix.shard }}
         run: |
           $acceptanceRoot = Join-Path $env:RUNNER_TEMP 'pig extension acceptance'
           New-Item -ItemType Directory -Force -Path $acceptanceRoot | Out-Null
@@ -437,10 +453,15 @@ jobs:
           $env:TMP = $acceptanceRoot
           $env:TMPDIR = $acceptanceRoot
           $env:PIG_HOME = Join-Path $acceptanceRoot 'config with spaces'
-          go test -v -timeout 30m ./coding/extension/host/runtimecell ./coding/extension/host/subprocess
+          # runtimecell runs whole, in extension-host-1; the subprocess tests are split in two.
+          if ($env:MATRIX_SHARD -eq 'extension-host-1') {
+            go test -v -timeout 30m ./coding/extension/host/runtimecell
+            if ($LASTEXITCODE -ne 0) { throw "Windows runtimecell tests failed" }
+          }
+          go test -v -timeout 30m -run $env:SHARD_RUN ./coding/extension/host/subprocess
           if ($LASTEXITCODE -ne 0) { throw "Windows extension host tests failed" }
       - name: Test Windows extension conformance for every SDK
-        if: matrix.shard == 'extension-conformance'
+        if: startsWith(matrix.shard, 'extension-conformance-')
         shell: pwsh
         env:
           CARGO_BUILD_JOBS: '2'
@@ -452,7 +473,7 @@ jobs:
           $env:TMP = $acceptanceRoot
           $env:TMPDIR = $acceptanceRoot
           $env:PIG_HOME = Join-Path $acceptanceRoot 'config with spaces'
-          go test -v -timeout 30m ./test/extension-conformance
+          go test -v -timeout 30m -run $env:SHARD_RUN ./test/extension-conformance
           if ($LASTEXITCODE -ne 0) { throw "Windows Go, Node, Rust, Python, or fused-Go extension conformance failed" }
       - name: Save the Go build cache
         if: success() && matrix.shard == 'native-1'
