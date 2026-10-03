@@ -48,6 +48,11 @@ type Starter struct {
 	// DataDir is the app data directory. Only a program below it needs the
 	// linker; a system program such as /system/bin/sh starts directly.
 	DataDir string
+	// LegacyDataDir is the same directory under its /data/data/<package> name.
+	// Termux may set TERMUX_APP__DATA_DIR to /data/user/0/<package> while
+	// $PREFIX and every program path use /data/data/<package>; termux-exec
+	// treats a path under either as an app data file, and so does Resolve.
+	LegacyDataDir string
 	// Prefix is Termux's $PREFIX, the home of the interpreters a script's
 	// "#!/usr/bin/env" or "#!/bin/sh" line names.
 	Prefix string
@@ -71,7 +76,7 @@ func (s Starter) Resolve(path string, args []string) (string, []string, error) {
 		return path, args, nil
 	}
 	for range maxInterpreters + 1 {
-		if !below(s.DataDir, path) {
+		if !below(s.DataDir, path) && (s.LegacyDataDir == "" || !below(s.LegacyDataDir, path)) {
 			return path, args, nil
 		}
 		head, err := s.ReadHead(path)
@@ -285,12 +290,22 @@ func starterFor(getenv func(string) string, selfExe func() (string, error)) Star
 		// $PREFIX is <data dir>/files/usr.
 		dataDir = filepath.Dir(filepath.Dir(prefix))
 	}
+	// termux-exec's legacy data directory: TERMUX_APP__LEGACY_DATA_DIR, else
+	// /data/data/<package>, the package being the data directory's last element.
+	legacy := getenv("TERMUX_APP__LEGACY_DATA_DIR")
+	if legacy == "" && dataDir != "" {
+		legacy = filepath.Join("/data/data", filepath.Base(dataDir))
+	}
+	if legacy == dataDir {
+		legacy = ""
+	}
 	return Starter{
-		Linker:   exe,
-		DataDir:  dataDir,
-		Prefix:   prefix,
-		ReadHead: readHead,
-		LookPath: pathLookup(getenv("PATH")),
+		Linker:        exe,
+		LegacyDataDir: legacy,
+		DataDir:       dataDir,
+		Prefix:        prefix,
+		ReadHead:      readHead,
+		LookPath:      pathLookup(getenv("PATH")),
 	}
 }
 

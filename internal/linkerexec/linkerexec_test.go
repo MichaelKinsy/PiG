@@ -303,3 +303,25 @@ func TestPrepareStartsRealProgramsThroughAFakeLinker(t *testing.T) {
 		}
 	}
 }
+
+// Termux 0.118.3 sets TERMUX_APP__DATA_DIR to /data/user/0/com.termux while $PREFIX and every program path use
+// /data/data/com.termux. termux-exec treats a path under either directory as an app data file; so does PiG.
+func TestStarterForTreatsTheLegacyDataDirAsTheDataDir(t *testing.T) {
+	env := map[string]string{"PREFIX": prefix, "TERMUX_APP__DATA_DIR": "/data/user/0/com.termux"}
+	s := starterFor(func(k string) string { return env[k] }, func() (string, error) { return "/system/bin/linker64", nil })
+	if s.DataDir != "/data/user/0/com.termux" || s.LegacyDataDir != dataDir {
+		t.Fatalf("starter = %+v, want DataDir /data/user/0/com.termux and LegacyDataDir %s", s, dataDir)
+	}
+	s.ReadHead = files{prefix + "/bin/bash": elf}.starter().ReadHead
+	program, args, err := s.Resolve(prefix+"/bin/bash", []string{"bash", "-c", "true"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"/system/bin/linker64", prefix + "/bin/bash", "-c", "true"}; program != "/system/bin/linker64" || !slices.Equal(args, want) {
+		t.Fatalf("Resolve = %q %q, want the linker starting bash: %q", program, args, want)
+	}
+	explicit := map[string]string{"PREFIX": prefix, "TERMUX_APP__DATA_DIR": "/data/user/0/com.termux", "TERMUX_APP__LEGACY_DATA_DIR": "/data/data/com.termux.legacy"}
+	if got := starterFor(func(k string) string { return explicit[k] }, func() (string, error) { return "/system/bin/linker64", nil }); got.LegacyDataDir != "/data/data/com.termux.legacy" {
+		t.Fatalf("TERMUX_APP__LEGACY_DATA_DIR ignored: %+v", got)
+	}
+}
