@@ -21,6 +21,18 @@ import (
 // is handling a different Host request. The callback still belongs to the provider call
 // that declared it, so the Host must answer it there.
 func TestNodeNativeProviderCallbackFromAnotherRequest(t *testing.T) {
+	runNativeProviderCallbackProbe(t, "")
+}
+
+// TestNodeNativeProviderCallbackWithoutAmbientRequest covers a Provider that invokes the
+// declared callback from a chain with no Host request at all (a transport timer or
+// socket created outside any request): the callback still answers its provider call.
+func TestNodeNativeProviderCallbackWithoutAmbientRequest(t *testing.T) {
+	runNativeProviderCallbackProbe(t, "detached")
+}
+
+func runNativeProviderCallbackProbe(t *testing.T, mode string) {
+	t.Helper()
 	dir := t.TempDir()
 	services, err := coding.NewServices(coding.ServicesOptions{CWD: dir, AgentDir: filepath.Join(dir, "agent")})
 	if err != nil {
@@ -83,7 +95,7 @@ func TestNodeNativeProviderCallbackFromAnotherRequest(t *testing.T) {
 
 	// The provider stream is in flight. Its declared payload callback is now invoked
 	// from the request the Host sends for this command.
-	if !runner.ExecuteCommand(ctx, "payload_probe", "") {
+	if !runner.ExecuteCommand(ctx, "payload_probe", mode) {
 		t.Fatal("the payload probe command did not run")
 	}
 	<-finished

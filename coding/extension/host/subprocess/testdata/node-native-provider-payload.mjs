@@ -1,4 +1,8 @@
+import { AsyncResource } from "node:async_hooks";
 import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
+
+// Module evaluation runs outside any Host request, so this scope has no ambient request.
+const outsideRequests = new AsyncResource("outside-requests");
 
 const model = {
   id: "native-model", name: "Native Model", api: "openai-completions", provider: "native-probe",
@@ -19,10 +23,11 @@ export default function (pi) {
 
   pi.registerCommand("payload_probe", {
     description: "Drive the pending provider callback from this command's request",
-    handler: async () => {
+    handler: async args => {
       if (!invokePayload) throw new Error("no provider callback is pending");
       try {
-        await invokePayload({ marker: "payload" });
+        const call = () => invokePayload({ marker: "payload" });
+        await (args === "detached" ? outsideRequests.runInAsyncScope(call) : call());
       } catch (error) {
         payloadError = error;
       }

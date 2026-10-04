@@ -3754,8 +3754,11 @@ export class Runtime {
 
   // A detached call is not tied to the request that made it: the host does not cancel it with that request. The request still reports it as blocked while it waits.
   async call(method, args = {}, { detached = false, parent = undefined } = {}) {
-    const owner = this.requestContext.getStore();
-    const connection = owner?.connection ?? this.conn;
+    // A callback the Host declared for one request is owned by that request's record, not
+    // by whatever request (if any) is ambient where the extension invokes it.
+    const ambient = this.requestContext.getStore();
+    const owner = parent ? this.requestRecords.get(parent) : ambient;
+    const connection = owner?.connection ?? ambient?.connection ?? this.conn;
     if (!connection || connection.closed || connection !== this.conn) throw new Error("extension connection closed or replaced");
     if (!detached && (owner?.cancelled || (!owner?.settled && owner?.controller.signal.aborted))) {
       throw hostCancelled("host call cancelled with its parent request");
@@ -3770,7 +3773,7 @@ export class Runtime {
     try {
       return await connection.call(method, args, parentRequestId);
     } finally {
-      if (reportedRequestId && !owner.responded && !connection.closed) connection.requestState(reportedRequestId, "progress");
+      if (reportedRequestId && !owner?.responded && !connection.closed) connection.requestState(reportedRequestId, "progress");
     }
   }
 
