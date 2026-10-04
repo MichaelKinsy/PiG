@@ -160,7 +160,9 @@ func collectStatus() statusOutput {
 				name = filepath.Base(resource.Path)
 			}
 			identity := string(resource.ResourceType) + "\x00" + resource.Scope + "\x00" + name
-			if previous, exists := seenIdentities[identity]; exists {
+			// A disabled copy is never loaded, so it cannot collide at runtime; it stays in the inventory as disabled.
+			if !resource.Enabled {
+			} else if previous, exists := seenIdentities[identity]; exists {
 				status.Errors = append(status.Errors, fmt.Sprintf("duplicate %s resource %q in %s scope: %s and %s", kind, name, resource.Scope, previous, resource.Path))
 			} else {
 				seenIdentities[identity] = resource.Path
