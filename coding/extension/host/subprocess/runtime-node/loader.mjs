@@ -55,7 +55,10 @@ function localModule(url) {
   return url.startsWith("file:") && !url.includes("/node_modules/");
 }
 
-// track records which local module imports which, and gives each local import of a module evaluated again in a reload pass the same pass, so Node evaluates the extension's own modules again while installed packages keep theirs.
+// evaluatedURLs maps the key of each local module that a reload evaluated again to the URL of its latest evaluation, which carries the reload pass in reloadParam.
+export const evaluatedURLs = new Map();
+
+// track records which local module imports which, and resolves a local import of a module that a reload evaluated again to its latest evaluation, so every importer shares one instance of each module while an unedited module keeps its first.
 function track(result, parentURL) {
   if (!localModule(result.url)) return result;
   const child = moduleKey(result.url);
@@ -64,12 +67,10 @@ function track(result, parentURL) {
   const parent = moduleKey(parentURL);
   if (!nativeImports.has(parent)) nativeImports.set(parent, new Set());
   nativeImports.get(parent).add(child);
-  const pass = new URL(parentURL).searchParams.get(reloadParam);
-  const url = new URL(result.url);
-  if (!pass || url.searchParams.has(reloadParam)) return result;
-  // pig divergence (D93): a local import of an edited ES module extension that a reload evaluates again is evaluated again too.
-  url.searchParams.set(reloadParam, pass);
-  return { ...result, url: url.href };
+  const latest = evaluatedURLs.get(child);
+  if (!latest || result.url !== child) return result;
+  // pig divergence (D93): a local import of a module that a reload evaluated again because it or a module it imports was edited resolves to that evaluation.
+  return { ...result, url: latest };
 }
 
 export function resolve(specifier, context, defaultResolve) {

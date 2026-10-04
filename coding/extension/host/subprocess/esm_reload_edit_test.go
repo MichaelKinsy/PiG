@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -165,6 +166,189 @@ export default function (pi) {
 			seventh := emit()
 			moduleD := reevaluated("edited dynamic import", seventh, moduleC)
 			want("edited dynamic import", seventh, moduleD, "1", "v2", "l2", "-", dependency)
+
+			// An installed package keeps its module, as in Pi, even when its source changes.
+			edit("node_modules/dep/index.js", "randomUUID()", "randomUUID() + \"\"")
+			reload()
+			want("edited installed package", emit(), moduleD, "2", "v2", "l2", "t2", dependency)
 		})
+	}
+}
+
+// Packed ES module extensions that import one local module share its instance, in Pi and in PiG. A reload that evaluates one of them again because only its own source changed keeps the shared module's instance and state; an edit of the shared module evaluates it, and every extension that imports it, again, and they share the new instance (D93).
+func TestHostReloadKeepsAnUneditedSharedModuleOfPackedESModuleExtensions(t *testing.T) {
+	t.Parallel()
+	nodeCellRequireNode(t)
+	root := t.TempDir()
+	marker := filepath.Join(root, "hits")
+	source := func(name string) string {
+		return fmt.Sprintf(`import { appendFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { hit, SHARED } from "./shared.mjs";
+const evaluation = randomUUID();
+export default function (pi) {
+  pi.on("tool_call", async () => {
+    appendFileSync(%q, [%q, evaluation, hit(), SHARED].join(" ") + "\n");
+    return { block: false };
+  });
+}
+`, marker, name)
+	}
+	write := func(name, content string) {
+		t.Helper()
+		path := filepath.Join(root, name)
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		later := time.Now().Add(2 * time.Second)
+		if err := os.Chtimes(path, later, later); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("shared.mjs", "let hits = 0;\nexport function hit() { return ++hits; }\nexport const SHARED = \"s1\";\n")
+	write("a.mjs", source("a"))
+	write("b.mjs", source("b"))
+	configs := []ExtConfig{
+		{Name: "a", Source: filepath.Join(root, "a.mjs"), Enabled: true},
+		{Name: "b", Source: filepath.Join(root, "b.mjs"), Enabled: true},
+	}
+	host := NewHostWithConfigRoot(root, filepath.Join(root, "config"))
+	host.SetConfigLoader(func() ([]ExtConfig, error) { return configs, nil })
+	t.Cleanup(func() { host.Shutdown("test") })
+	current, errs := host.LoadAll(t.Context(), configs)
+	if len(errs) != 0 || len(current) != 2 {
+		t.Fatalf("startup loaded=%v errors=%v", current, errs)
+	}
+	type line struct{ evaluation, hits, shared string }
+	seen := 0
+	calls := 0
+	// emit sends one tool_call to both extensions and returns what each logged for it.
+	emit := func() map[string]line {
+		t.Helper()
+		calls++
+		if _, err := inproc.NewRunner(current, root).EmitToolCall(t.Context(), extension.CustomToolCallEvent{
+			ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: fmt.Sprint("call-", calls)},
+			ToolName:          "fixture",
+			Input:             map[string]any{},
+		}); err != nil {
+			t.Fatal(err)
+		}
+		data, err := os.ReadFile(marker)
+		if err != nil {
+			t.Fatal(err)
+		}
+		lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+		if len(lines) != seen+2 {
+			t.Fatalf("marker after call %d = %q", calls, data)
+		}
+		got := map[string]line{}
+		for _, text := range lines[seen:] {
+			fields := strings.Fields(text)
+			if len(fields) != 4 {
+				t.Fatalf("marker line %q", text)
+			}
+			got[fields[0]] = line{fields[1], fields[2], fields[3]}
+		}
+		seen = len(lines)
+		return got
+	}
+	reload := func() {
+		t.Helper()
+		reloaded, err := host.Reload(t.Context())
+		if err != nil || len(reloaded) != 2 {
+			t.Fatalf("reload = %v, %v", reloaded, err)
+		}
+		current = reloaded
+	}
+	hits := func(got map[string]line) string {
+		pair := []string{got["a"].hits, got["b"].hits}
+		slices.Sort(pair)
+		return strings.Join(pair, ",")
+	}
+
+	first := emit()
+	if hits(first) != "1,2" || first["a"].shared != "s1" || first["b"].shared != "s1" {
+		t.Fatalf("first call = %+v, want one shared instance counting 1,2", first)
+	}
+
+	write("a.mjs", source("a")+"// edited\n")
+	reload()
+	second := emit()
+	if second["a"].evaluation == first["a"].evaluation || second["b"].evaluation != first["b"].evaluation {
+		t.Fatalf("after an edit of a.mjs: %+v, want a evaluated again and b kept (before %+v)", second, first)
+	}
+	if hits(second) != "3,4" {
+		t.Fatalf("after an edit of a.mjs: %+v, want the unedited shared module's instance counting on at 3,4", second)
+	}
+
+	write("shared.mjs", "let hits = 0;\nexport function hit() { return ++hits; }\nexport const SHARED = \"s2\";\n")
+	reload()
+	third := emit()
+	if third["a"].evaluation == second["a"].evaluation || third["b"].evaluation == second["b"].evaluation {
+		t.Fatalf("after an edit of shared.mjs: %+v, want both extensions evaluated again (before %+v)", third, second)
+	}
+	if hits(third) != "1,2" || third["a"].shared != "s2" || third["b"].shared != "s2" {
+		t.Fatalf("after an edit of shared.mjs: %+v, want one new shared instance counting 1,2", third)
+	}
+
+	reload()
+	if fourth := emit(); fourth["a"].evaluation != third["a"].evaluation || fourth["b"].evaluation != third["b"].evaluation || hits(fourth) != "3,4" {
+		t.Fatalf("unedited reload: %+v, want both modules and the shared instance kept (before %+v)", fourth, third)
+	}
+}
+
+// A Session replacement calls each factory again without a reload pass (Pi's resource loader keeps or clears its factory cache by cwd and re-imports through jiti, which Node's ES module cache answers), so it never evaluates an edited ES module extension again; the next /reload does (D93).
+func TestSessionReplacementKeepsAnEditedESModuleUntilAReload(t *testing.T) {
+	nodeCellRequireNode(t)
+	root := t.TempDir()
+	mjs, log := retainedNodeExtension(t, root, "replaced.mjs", false)
+	configs := []ExtConfig{mjs}
+	retention := NewRuntimeRetention()
+	t.Cleanup(retention.Close)
+	first := NewHost(t.TempDir())
+	first.SetRuntimeRetention(retention)
+	t.Cleanup(func() { first.Shutdown("test done") })
+	if _, errs := first.LoadAll(t.Context(), configs); len(errs) > 0 {
+		t.Fatal(errs)
+	}
+	before := retainedProbeOf(t, first, mjs.Name)
+
+	data, err := os.ReadFile(mjs.Source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(mjs.Source, append(data, "// edited\n"...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	later := time.Now().Add(2 * time.Second)
+	if err := os.Chtimes(mjs.Source, later, later); err != nil {
+		t.Fatal(err)
+	}
+	first.Retain()
+	first.Shutdown("session replaced")
+
+	// The replacement Host has another cwd, so the runtime clears its factory cache and imports the entry again outside a reload.
+	second := NewHost(t.TempDir())
+	second.SetRuntimeRetention(retention)
+	t.Cleanup(func() { second.Shutdown("test done") })
+	second.SetConfigLoader(func() ([]ExtConfig, error) { return configs, nil })
+	if _, errs := second.LoadAll(t.Context(), configs); len(errs) > 0 {
+		t.Fatal(errs)
+	}
+	if after := retainedProbeOf(t, second, mjs.Name); after.Pid != before.Pid || after.Calls != 2 {
+		t.Fatalf("replacement probe = %+v, want the parked process %d with its module (2 factory calls)", after, before.Pid)
+	}
+	if modules, factories := retainedLogCounts(t, log); modules != 1 || factories != 2 {
+		t.Fatalf("module evaluated %d times with %d factory calls after the replacement, want 1 and 2", modules, factories)
+	}
+
+	if _, err := second.Reload(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if reloaded := retainedProbeOf(t, second, mjs.Name); reloaded.Calls != 1 {
+		t.Fatalf("reload probe = %+v, want the edited module evaluated again (1 factory call)", reloaded)
+	}
+	if modules, factories := retainedLogCounts(t, log); modules != 2 || factories != 3 {
+		t.Fatalf("module evaluated %d times with %d factory calls after the reload, want 2 and 3", modules, factories)
 	}
 }

@@ -77,7 +77,7 @@ func reloadSourceProbes(t *testing.T) []reloadSourceProbe {
 		}}
 }
 
-// Pi's loader imports extensions through jiti with moduleCache: false (core/extensions/loader.ts:496-499), so /reload runs a TypeScript extension's factory from the source as it is now, its local imports included: an -e extension edited after it loaded reloads the edit (probed with Pi 1.0.0 in RPC mode). Pi keeps an edited .mjs extension's old code, which Node's ES module cache holds; PiG evaluates it again (D93). PiG re-invokes the factory in the process that holds the extension, and the Python runner re-imports an extension whose source changed since its import, so a Python extension reloads its edit as a TypeScript one does. A Go or Rust extension's source identifies its build, so an edit rebuilds it.
+// Pi's loader imports extensions through jiti with moduleCache: false (core/extensions/loader.ts:569-572), so /reload runs a TypeScript extension's factory from the source as it is now, its local imports included: an -e extension edited after it loaded reloads the edit (probed with Pi 1.0.0 in RPC mode). Pi keeps an edited .mjs extension's old code, which Node's ES module cache holds; PiG evaluates it again (D93). PiG re-invokes the factory in the process that holds the extension, and the Python runner re-imports an extension whose source changed since its import, so a Python extension reloads its edit as a TypeScript one does. A Go or Rust extension's source identifies its build, so an edit rebuilds it.
 func TestReloadRunsTheCurrentSourceOfACommandLineExtension(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds the pig binary and starts Node, Python, Go and Rust extensions")
@@ -108,8 +108,9 @@ func TestReloadRunsTheCurrentSourceOfACommandLineExtension(t *testing.T) {
 			logPath := filepath.Join(t.TempDir(), "reload.log")
 			env := []string{"HOME=" + home, "PIG_HOME=" + filepath.Join(home, ".pig"), "PIG_CODING_AGENT_DIR=" + agentDir, "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "PIG_OFFLINE=1", "RELOAD_PROBE_LOG=" + logPath}
 			process := startRPCProcessAt(t, cwd, env, "--no-extensions", "--model", "test-faux/faux-1", "--session-dir", sessionDir, "-e", filepath.Join(dir, probe.entry))
-			wait := max(testbudget.Wait(t), probe.build)
-			awaitReloadLog(t, logPath, "factory:v1", wait)
+			// The load and the reload each build the probe, so both waits allow its build.
+			process.budget = probeWait(t, probe.build)
+			awaitReloadLog(t, logPath, "factory:v1", process.budget)
 
 			versionPath := filepath.Join(dir, filepath.FromSlash(probe.version))
 			edited := strings.Replace(string(mustReadFile(versionPath)), "v1", "v2", 1)
@@ -118,7 +119,8 @@ func TestReloadRunsTheCurrentSourceOfACommandLineExtension(t *testing.T) {
 			}
 			process.sendJSON(map[string]any{"id": "reload", "type": "prompt", "message": "/rl"})
 			process.await("the prompt response", func(r rpcRecord) bool { return isSuccessResponse(r, "reload") })
-			awaitReloadLog(t, logPath, "factory:v2", wait)
+			// The reload ran the new factory before it answered, so the log needs no build allowance.
+			awaitReloadLog(t, logPath, "factory:v2", testbudget.Wait(t))
 			process.closeAndWait("reload source probe")
 
 			if got, want := strings.Join(readReloadLog(t, logPath), "\n"), "factory:v1\nfactory:v2"; got != want {
@@ -126,6 +128,21 @@ func TestReloadRunsTheCurrentSourceOfACommandLineExtension(t *testing.T) {
 			}
 		})
 	}
+}
+
+// probeWait is the hang bound for a probe whose cold build may take up to build: the test budget, or build when that is longer, capped below the test's deadline as the budget is.
+func probeWait(t *testing.T, build time.Duration) time.Duration {
+	t.Helper()
+	wait := testbudget.Wait(t)
+	if build <= wait {
+		return wait
+	}
+	deadline, hasDeadline := t.Deadline()
+	capped, err := testbudget.Resolve(strconv.FormatInt(int64(build/time.Second), 10), time.Until(deadline), hasDeadline)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return capped
 }
 
 // awaitReloadLog waits up to wait until the probe log holds line.
