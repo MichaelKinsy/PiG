@@ -58,11 +58,14 @@ export async function dispatchProviderObject(runtime, id, request, ctx) {
   const provider = providerFor(runtime, request);
   const { method, params = {} } = request.args;
   const signal = ctx.signal;
-  const invoke = (method, params) => runtime.call("provider.callback", { provider: request.tool, method, params });
+  // Every callback below is one the Host declared for this request (id), so it stays
+  // owned by this request even when the Provider invokes it from another request's
+  // chain, which is what a Provider that owns its transport does.
+  const invoke = (method, params) => runtime.call("provider.callback", { provider: request.tool, method, params }, { parent: id });
   const interaction = {
     signal,
     prompt: prompt => invoke("prompt", { prompt }),
-    notify: event => runtime.callSync("provider.callback", { provider: request.tool, method: "notify", params: { event } }),
+    notify: event => runtime.callSync("provider.callback", { provider: request.tool, method: "notify", params: { event } }, id),
   };
   const authInput = {
     signal,
