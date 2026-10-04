@@ -213,7 +213,7 @@ func buildGoPackedCell(ctx context.Context, cacheRoot, key string, extensions []
 				args := append(append([]string{"build"}, goPackedBuildFlags...), "-o", out, ".")
 				cmd := linkerexec.CommandContext(ctx, goToolchain.Command, buildprogress.ToolArgs(ctx, "go", args)...)
 				cmd.Dir = buildDir
-				cmd.Env = append(goToolchain.Environ(cacheBuildEnvironment(buildDir)), "CGO_ENABLED=0", "GOWORK=off")
+				cmd.Env = append(goToolchain.Environ(cacheBuildEnvironment(buildDir)), GoBuildCgo(runtime.GOOS, runtime.GOARCH), "GOWORK=off")
 				if combined, err := buildprogress.CombinedOutput(ctx, cmd); err != nil {
 					invalidateCommandVersion(cacheRoot, goToolchain.Command, "version")
 					if explained, ok := explainMissingToolchain("go", err); ok {

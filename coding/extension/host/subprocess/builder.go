@@ -667,7 +667,7 @@ func buildGo(ctx context.Context, cacheRoot, srcDir, outPath, stagedSDK string) 
 	buildprogress.Phase(ctx, "Compiling Go member", srcDir+" (module resolution, compile, link)")
 	cmd := linkerexec.CommandContext(ctx, goToolchain.Command, buildprogress.ToolArgs(ctx, "go", args)...)
 	cmd.Dir = srcDir
-	cmd.Env = append(goToolchain.Environ(goBuildEnvironment(srcDir, os.Environ())), "CGO_ENABLED=0", "GOWORK=off")
+	cmd.Env = append(goToolchain.Environ(goBuildEnvironment(srcDir, os.Environ())), runtimecell.GoBuildCgo(runtime.GOOS, runtime.GOARCH), "GOWORK=off")
 	out, err := buildprogress.CombinedOutput(ctx, cmd)
 	if err != nil {
 		_ = os.Remove(tmpPath) // Clean up partial.
