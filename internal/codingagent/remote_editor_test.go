@@ -9,11 +9,13 @@ import (
 )
 
 type fakeRemoteEditor struct {
-	host    extension.RemoteEditorHost
-	calls   []string
-	configs []extension.RemoteEditorConfig
+	host               extension.RemoteEditorHost
+	calls              []string
+	configs            []extension.RemoteEditorConfig
+	embedWorkingStatus bool
 }
 
+func (f *fakeRemoteEditor) EmbedWorkingStatus() bool       { return f.embedWorkingStatus }
 func (f *fakeRemoteEditor) Input(data string)              { f.calls = append(f.calls, "input:"+data) }
 func (f *fakeRemoteEditor) SetText(text string)            { f.calls = append(f.calls, "setText:"+text) }
 func (f *fakeRemoteEditor) InsertTextAtCursor(text string) { f.calls = append(f.calls, "insert:"+text) }

@@ -39,27 +39,29 @@ const (
 // EditorPayload is the argument of the editor notifies; each carries the
 // fields its method uses.
 type EditorPayload struct {
-	Key             string   `json:"key"`
-	Data            string   `json:"data,omitempty"`
-	Text            string   `json:"text,omitempty"`
-	Expanded        string   `json:"expanded,omitempty"`
-	Lines           []string `json:"lines,omitempty"`
-	Width           int      `json:"width,omitempty"`
-	Seq             uint64   `json:"seq,omitempty"`
-	WantsKeyRelease bool     `json:"wantsKeyRelease,omitempty"`
-	ID              uint64   `json:"id,omitempty"`
-	Action          string   `json:"action,omitempty"`
-	Local           bool     `json:"local,omitempty"`
-	Enabled         bool     `json:"enabled,omitempty"`
+	Key                string   `json:"key"`
+	Data               string   `json:"data,omitempty"`
+	Text               string   `json:"text,omitempty"`
+	Expanded           string   `json:"expanded,omitempty"`
+	Lines              []string `json:"lines,omitempty"`
+	Width              int      `json:"width,omitempty"`
+	Seq                uint64   `json:"seq,omitempty"`
+	WantsKeyRelease    bool     `json:"wantsKeyRelease,omitempty"`
+	EmbedWorkingStatus bool     `json:"embedWorkingStatus,omitempty"`
+	ID                 uint64   `json:"id,omitempty"`
+	Action             string   `json:"action,omitempty"`
+	Local              bool     `json:"local,omitempty"`
+	Enabled            bool     `json:"enabled,omitempty"`
 }
 
 // editorProxy is the host's handle on one extension editor component. It
 // sends the host's calls to the editor and hands the editor's events to the
 // bound host, holding events that arrive before the host binds.
 type editorProxy struct {
-	ext  string
-	conn *Conn
-	key  string
+	ext                string
+	conn               *Conn
+	key                string
+	embedWorkingStatus bool
 
 	mu       sync.Mutex
 	host     extension.RemoteEditorHost
@@ -70,6 +72,8 @@ type editorProxy struct {
 }
 
 var _ extension.RemoteEditor = (*editorProxy)(nil)
+
+func (p *editorProxy) EmbedWorkingStatus() bool { return p.embedWorkingStatus }
 
 func (p *editorProxy) send(method string, payload any) {
 	if p.conn == nil {
@@ -259,7 +263,7 @@ func (b *UIBridge) handleEditorNotify(extName string, owner *Conn, n *NotifyPayl
 	}
 	switch n.Method {
 	case NotifyEditorInstall:
-		proxy := &editorProxy{ext: extName, conn: owner, key: payload.Key}
+		proxy := &editorProxy{ext: extName, conn: owner, key: payload.Key, embedWorkingStatus: payload.EmbedWorkingStatus}
 		b.mu.Lock()
 		previous := b.editor
 		b.editor = proxy

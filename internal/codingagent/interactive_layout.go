@@ -129,6 +129,9 @@ func (m *InteractiveMode) tickStatusIndicators(now time.Time) {
 	if indicator := m.activeStatusIndicator; indicator != nil && now.Sub(m.statusLastFrame) >= m.statusFrameInterval() {
 		if len(indicator.Frames) > 1 {
 			indicator.Tick()
+			if m.remoteEditor != nil && m.activeWorkingIndicatorEmbedded {
+				m.reconfigureRemoteEditor()
+			}
 		}
 		m.statusLastFrame = now
 		// Node's setInterval rearms from callback entry, not the previous deadline. Rearm only a due callback so dispatch jitter cannot skip a frame or postpone a replacement indicator's first frame.

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -43,6 +44,107 @@ func TestInteractiveTuiCustomEditorStandaloneStatusUpstream(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Pi checks the custom editor's own embedWorkingStatus flag.
+func TestCustomEditorEmbeddedStatusEventPlacement(t *testing.T) {
+	for _, mode := range []string{"regular", "fullscreen"} {
+		t.Run(mode, func(t *testing.T) {
+			m := statusBorderMode(t, true)
+			m.opts.TuiMode = mode
+			m.tuiInst.SetClearOnShrink(true)
+			custom := &fakeRemoteEditor{embedWorkingStatus: true}
+			m.setRemoteEditor(custom)
+			t.Cleanup(func() { m.clearStatusIndicator("") })
+			for _, tc := range []struct {
+				event   agent.AgentEvent
+				kind    string
+				message string
+			}{
+				{agent.AgentStartEvent{}, "working", "Working"},
+				{agent.CompactionStartEvent{Reason: "manual"}, "compaction", "Compacting context... (escape to cancel)"},
+				{agent.AutoRetryStartEvent{Attempt: 1, MaxAttempts: 3, DelayMs: 1000}, "retry", "Retrying (1/3) in 1s... (escape to cancel)"},
+				{agent.SummarizationRetryAttemptStartEvent{Source: "branchSummary"}, "branchSummary", "Summarizing branch... (escape to cancel)"},
+			} {
+				m.handleAgentEvent(tc.event)
+				if !m.activeWorkingIndicatorEmbedded || !m.statusContainer.IsEmpty() {
+					t.Fatalf("%s ignores custom editor opt-in: embedded=%v status rows=%d", tc.kind, m.activeWorkingIndicatorEmbedded, m.statusContainer.ChildCount())
+				}
+				status := custom.configs[len(custom.configs)-1].WorkingStatus
+				if status == nil || status.Kind != tc.kind || status.Message != tc.message || status.Frame != 0 {
+					t.Fatalf("%s did not send initial status: %+v", tc.kind, status)
+				}
+				m.tickStatusIndicators(m.statusLastFrame.Add(80 * time.Millisecond))
+				if got := custom.configs[len(custom.configs)-1].WorkingStatus; got == nil || got.Frame != 1 || status.Frame != 0 {
+					t.Fatalf("%s did not send an independent animation snapshot: %+v", tc.kind, got)
+				}
+				if tc.kind == "retry" {
+					label := "Retrying (1/3) in 0s... (escape to cancel)"
+					m.postRetryStatusUpdate(make(chan struct{}), label)
+					apply := <-m.uiTaskCh
+					apply()
+					if got := custom.configs[len(custom.configs)-1].WorkingStatus; got == nil || got.Message != label {
+						t.Fatalf("countdown update did not reach the editor: %+v", got)
+					}
+				}
+				m.clearStatusIndicator("")
+				if !m.statusContainer.IsEmpty() {
+					t.Fatalf("%s clearing embedded status reserves standalone rows", tc.kind)
+				}
+				if custom.configs[len(custom.configs)-1].WorkingStatus != nil {
+					t.Fatalf("%s clearing status did not reach the component", tc.kind)
+				}
+			}
+		})
+	}
+}
+
+func TestCustomEditorStatusUpdatesAndReplacement(t *testing.T) {
+	m := statusBorderMode(t, true)
+	first := &fakeRemoteEditor{embedWorkingStatus: true}
+	m.setRemoteEditor(first)
+	m.handleAgentEvent(agent.AgentStartEvent{})
+	m.setWorkingMessage("Indexing")
+	m.setWorkingIndicator(&workingIndicatorOptions{Frames: []string{"A", "B"}, IntervalMs: 200})
+	status := first.configs[len(first.configs)-1].WorkingStatus
+	if status == nil || status.Message != "Indexing" || len(status.Frames) != 2 || status.Frames[0] != "A" || !status.IndicatorVerbatim {
+		t.Fatalf("working updates were not sent: %+v", status)
+	}
+	before := len(first.configs)
+	m.tickStatusIndicators(m.statusLastFrame.Add(100 * time.Millisecond))
+	if len(first.configs) != before {
+		t.Fatal("custom animation advanced before its interval")
+	}
+	m.tickStatusIndicators(m.statusLastFrame.Add(200 * time.Millisecond))
+	if first.configs[len(first.configs)-1].WorkingStatus.Frame != 1 {
+		t.Fatal("custom animation did not reach the component")
+	}
+	m.setWorkingIndicator(&workingIndicatorOptions{Frames: []string{}})
+	if frames := first.configs[len(first.configs)-1].WorkingStatus.Frames; frames == nil || len(frames) != 0 {
+		t.Fatalf("hidden spinner must send an empty array, not null: %v", frames)
+	}
+	before = len(first.configs)
+	m.setRemoteEditor(&fakeRemoteEditor{})
+	if m.activeWorkingIndicatorEmbedded || m.statusContainer.ChildCount() != 1 {
+		t.Fatal("replacement without opt-in must move active status to standalone rows")
+	}
+	second := &fakeRemoteEditor{embedWorkingStatus: true}
+	m.setRemoteEditor(second)
+	if len(second.configs) != 1 {
+		t.Fatalf("replacement sent %d configurations, want one", len(second.configs))
+	}
+	status = second.configs[0].WorkingStatus
+	if !m.activeWorkingIndicatorEmbedded || !m.statusContainer.IsEmpty() || status == nil || status.Message != "Indexing" {
+		t.Fatal("replacement with opt-in lost the active status")
+	}
+	if len(first.configs) != before {
+		t.Fatal("replaced editor received status updates")
+	}
+	m.setRemoteEditor(nil)
+	if !m.activeWorkingIndicatorEmbedded || !strings.Contains(widthx.StripAnsi(m.editor.Render(80)[0]), "── Indexing") {
+		t.Fatal("restored default editor lost the active status")
+	}
+	m.handleAgentEvent(agent.AgentEndEvent{})
 }
 
 // Pi interactive-mode.ts:3528-3529,3553,3615-3651 sends every operation through showStatusIndicator, which checks the active editor at :2208-2225.
