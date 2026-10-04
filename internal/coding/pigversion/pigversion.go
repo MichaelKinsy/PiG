@@ -4,7 +4,7 @@ package pigversion
 
 // PigVersion is PiG's release line. It advances independently of the upstream
 // Pi target.
-const PigVersion = "0.3.1"
+const PigVersion = "0.4.0"
 
 // UpstreamVersion is the Pi release whose behavior PiG targets.
 const UpstreamVersion = "1.0.0"
