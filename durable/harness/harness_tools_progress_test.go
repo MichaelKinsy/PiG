@@ -366,7 +366,11 @@ func TestToolProgressAndLifetime(t *testing.T) {
 			api.Output("first\n")
 			// The output commit is in flight, so these details wait for the next throttle window.
 			go func() { pendingDetails <- api.Details(testContext, map[string]any{"step": float64(1)}) }()
-			time.Sleep(time.Millisecond)
+			// Upstream records the details before details() returns its Promise; wait for that record so the call has not
+			// settled before the goroutine's details() runs.
+			if err := awaitDetailsRecorded(testContext, api, 1); err != nil {
+				return durable.ToolExecutionResult{}, err
+			}
 			return durable.ToolExecutionResult{}, nil
 		}))
 		addHooks(t, setup.Registry, ToolTask, &ToolHooks{AfterTool: func(ctx context.Context, _ ai.ToolCall, _ durable.ToolExecutionResult, _ HookApi) (*durable.ToolExecutionResult, error) {
