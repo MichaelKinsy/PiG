@@ -76992,6 +76992,17 @@
       "shapeHash": "sha256:7d508d280c61decf247115e90b8749e71ea5dfc4d0ae712cc664fb5de63b74fe"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#GoBuildCgoEnv",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "GoBuildCgoEnv",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(goos string, goarch string) string"
+      },
+      "shapeHash": "sha256:46f61537303ef0d01aeee95f11defffb75b7b086c0b4c8b992c2952d6d326075"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#GoBuildFailure",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "GoBuildFailure",
