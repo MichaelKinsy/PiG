@@ -208,8 +208,9 @@ func pigSourceRootCandidates() []string {
 }
 
 func gitShortCommit(root string) string {
-	cmd := linkerexec.Command("git", "rev-parse", "--short", "HEAD")
+	cmd := exec.Command("git", "rev-parse", "--short", "HEAD")
 	cmd.Dir = root
+	linkerexec.Prepare(cmd)
 	out, err := cmd.Output()
 	if err != nil {
 		return "dev"

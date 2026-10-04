@@ -148,12 +148,15 @@ func (c *RpcClient) spawn() (*agentProcess, io.ReadCloser, io.ReadCloser, error)
 	}
 	args = append(args, c.options.Args...)
 
-	cmd := linkerexec.Command(cliPath, args...)
+	cmd := exec.Command(cliPath, args...)
 	cmd.Dir = c.options.Cwd
 	cmd.Env = os.Environ()
 	for _, key := range slices.Sorted(maps.Keys(c.options.Env)) {
 		cmd.Env = append(cmd.Env, key+"="+c.options.Env[key])
 	}
+	// Prepare after Dir and Env: a relative CliPath resolves against Cwd, and a script's interpreter is found in the
+	// child's PATH.
+	linkerexec.Prepare(cmd)
 	// Own both ends until Start succeeds, including failures while opening a
 	// later pipe. StdinPipe would hide the child's read end on those failures.
 	var owned []io.Closer

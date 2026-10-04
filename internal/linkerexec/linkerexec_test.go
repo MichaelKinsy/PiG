@@ -325,3 +325,13 @@ func TestStarterForTreatsTheLegacyDataDirAsTheDataDir(t *testing.T) {
 		t.Fatalf("TERMUX_APP__LEGACY_DATA_DIR ignored: %+v", got)
 	}
 }
+
+// A child environment that repeats PATH (os.Environ() plus an override) uses the last entry, as execve does.
+func TestEnvironmentPathUsesTheLastEntry(t *testing.T) {
+	if got, ok := environmentPath([]string{"PATH=/first", "HOME=/h", "PATH=/last"}); !ok || got != "/last" {
+		t.Fatalf("environmentPath = %q, %v; want /last", got, ok)
+	}
+	if _, ok := environmentPath([]string{"HOME=/h"}); ok {
+		t.Fatal("environmentPath found a PATH in an environment without one")
+	}
+}

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime/debug"
 	"strings"
@@ -285,8 +286,9 @@ func (s pigSource) buildEnv(env []string) []string {
 // cache copy.
 func (s pigSource) sourceFiles() ([]string, error) {
 	if s.ModuleVersion == "" {
-		command := linkerexec.Command("git", "ls-files", "--cached", "--others", "--exclude-standard", "-z")
+		command := exec.Command("git", "ls-files", "--cached", "--others", "--exclude-standard", "-z")
 		command.Dir = s.Root
+		linkerexec.Prepare(command)
 		output, err := command.Output()
 		if err != nil {
 			return nil, fmt.Errorf("enumerate Pig build sources: %w", err)
@@ -326,8 +328,9 @@ func (s pigSource) revision() (string, error) {
 		}
 		return s.ModuleVersion, nil
 	}
-	command := linkerexec.Command("git", "rev-parse", "HEAD")
+	command := exec.Command("git", "rev-parse", "HEAD")
 	command.Dir = s.Root
+	linkerexec.Prepare(command)
 	output, err := command.Output()
 	if err != nil {
 		return "", fmt.Errorf("resolve Pig source revision: %w", err)

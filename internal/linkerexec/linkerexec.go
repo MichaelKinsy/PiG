@@ -186,12 +186,15 @@ func (s Starter) Prepare(cmd *exec.Cmd) {
 // environmentPath returns the PATH of env, the environment a program starts
 // with, and false when env has none.
 func environmentPath(env []string) (string, bool) {
+	// The last PATH entry wins, as os/exec and the kernel's execve see it when a key repeats.
+	var path string
+	found := false
 	for _, entry := range env {
 		if value, ok := strings.CutPrefix(entry, "PATH="); ok {
-			return value, true
+			path, found = value, true
 		}
 	}
-	return "", false
+	return path, found
 }
 
 // pathLookup returns a search of the directories of the PATH value path for an
