@@ -68,6 +68,8 @@ type registerMsg struct {
 	// MarkdownTransformer reports a registered Markdown transformer; the host
 	// runs it with markdown_transform requests.
 	MarkdownTransformer bool `json:"markdown_transformer,omitempty"`
+	// ToolRenderers is the number of tool renderer resolvers registered while the factory ran.
+	ToolRenderers int `json:"tool_renderers,omitempty"`
 	// McpServers and VirtualModels are the registrations made while the factory ran; the host applies them when the extension loads.
 	McpServers    []mcpServerDecl    `json:"mcp_servers,omitempty"`
 	VirtualModels []virtualModelDecl `json:"virtual_models,omitempty"`

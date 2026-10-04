@@ -199,6 +199,25 @@ export function createMcpToolDefinition(options) {
         exposure: toToolExposure(options.exposure),
         namespace: options.namespace,
         ...(annotations ? { annotations } : {}),
+        ...createMcpToolRenderers(label),
+        async execute(_toolCallId, params, signal, onUpdate) {
+            const client = await options.getClient();
+            const result = await client.callTool(tool.name, (params ?? {}), {
+                signal,
+                timeoutMs: options.timeoutMs,
+                onProgress: (progress) => {
+                    const total = progress.total === undefined ? "" : `/${progress.total}`;
+                    const text = progress.message ?? `Progress ${progress.progress}${total}`;
+                    onUpdate?.({ content: [{ type: "text", text }], details: { server, tool: tool.name } });
+                },
+            });
+            return convertMcpResult(server, tool.name, result, { readableResources: options.readableResources?.() });
+        },
+    };
+}
+/** Renderers of calls to an MCP tool, labeled `server/tool`, also used before the tool is registered. */
+export function createMcpToolRenderers(label) {
+    return {
         renderCall(args, theme, context) {
             const component = context.lastComponent ?? new Text("", 0, 0);
             component.setText(formatToolCallWithArgs(label, args, theme, context.expanded));
@@ -232,19 +251,6 @@ export function createMcpToolDefinition(options) {
                     component.addChild(new Text(theme.fg("muted", `Full output: ${fullOutputPath}`), 0, 0));
             }
             return component;
-        },
-        async execute(_toolCallId, params, signal, onUpdate) {
-            const client = await options.getClient();
-            const result = await client.callTool(tool.name, (params ?? {}), {
-                signal,
-                timeoutMs: options.timeoutMs,
-                onProgress: (progress) => {
-                    const total = progress.total === undefined ? "" : `/${progress.total}`;
-                    const text = progress.message ?? `Progress ${progress.progress}${total}`;
-                    onUpdate?.({ content: [{ type: "text", text }], details: { server, tool: tool.name } });
-                },
-            });
-            return convertMcpResult(server, tool.name, result, { readableResources: options.readableResources?.() });
         },
     };
 }

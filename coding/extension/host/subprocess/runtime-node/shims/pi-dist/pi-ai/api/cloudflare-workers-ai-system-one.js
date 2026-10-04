@@ -12,10 +12,13 @@ function cloudflareErrorMessage(errors) {
 }
 /**
  * System One models on the Workers AI REST endpoint:
- * `POST /accounts/{account}/ai/run` with `{ model, input }`. The REST API
- * wraps the model output in Cloudflare's API envelope and a run record:
+ * `POST /accounts/{account}/ai/run` with `{ model, input }`. The REST API wraps the model
+ * output in Cloudflare's API envelope. Third-party models such as `typesafe/jev` add a run record:
  * `{ success, result: { state: "Completed", result: { answers, usage } } }`.
  * https://developers.cloudflare.com/ai/models/typesafe/jev/
+ * Cloudflare-hosted models such as `@cf/cloudflare/clef` return the output directly:
+ * `{ success, result: { model, answers, usage } }`.
+ * https://developers.cloudflare.com/workers-ai/models/clef/
  */
 const transport = {
     api: "cloudflare-workers-ai-system-one",
@@ -27,15 +30,17 @@ const transport = {
             throw new Error(`${LABEL} returned an unexpected response`);
         if (body.success === false)
             throw new Error(cloudflareErrorMessage(body.errors));
-        const run = body.result;
-        if (!isRecord(run))
+        const result = body.result;
+        if (!isRecord(result))
             throw new Error(`${LABEL} returned an unexpected response`);
-        if (run.state !== "Completed") {
-            throw new Error(`${LABEL} run did not complete (state: ${String(run.state)})`);
+        if ("answers" in result)
+            return result;
+        if (result.state !== "Completed") {
+            throw new Error(`${LABEL} run did not complete (state: ${String(result.state)})`);
         }
-        if (!isRecord(run.result))
+        if (!isRecord(result.result))
             throw new Error(`${LABEL} returned an unexpected response`);
-        return run.result;
+        return result.result;
     },
 };
 /** Cloudflare Workers AI System One classification with public `bool` values mapped to wire-level `noul`. */

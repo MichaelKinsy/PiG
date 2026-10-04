@@ -25,7 +25,7 @@ func nativeBuiltInExtensions(settings *codingagent.SettingsManager) []inlineExte
 	if settings != nil {
 		agentDir = settings.AgentDir()
 	}
-	options.ConfigureMcp(agentDir, codingagent.ConfigDirName(), codingagent.OpenBrowser)
+	options.ConfigureMcp(agentDir, codingagent.ConfigDirName(), codingagent.OpenBrowser, codingagent.CopyToClipboard)
 	inline := []inlineExtension{{Name: llamaBuiltinName, Factory: llamaExtension, Builtin: true}}
 	for _, entry := range builtin.All(options) {
 		inline = append(inline, inlineExtension{Name: entry.Name, Factory: entry.Factory, Replaceable: entry.Replaceable, Builtin: true})

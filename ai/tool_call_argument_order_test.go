@@ -190,7 +190,10 @@ func TestProviderRequestsReplayToolCallArgumentsInModelOrder(t *testing.T) {
 		check(t, "mistral", out)
 	})
 	t.Run("anthropic", func(t *testing.T) {
-		out := anthropicParams{}.convertMessages(assistant(APIAnthropicMessages, "anthropic", "claude-test"), false)
+		out, err := anthropicParams{}.convertMessages(assistant(APIAnthropicMessages, "anthropic", "claude-test"), false)
+		if err != nil {
+			t.Fatal(err)
+		}
 		check(t, "anthropic", out)
 	})
 	t.Run("google", func(t *testing.T) {

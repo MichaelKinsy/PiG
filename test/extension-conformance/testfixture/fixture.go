@@ -267,6 +267,38 @@ func Extension() *sdk.Extension {
 	ext.MarkdownTransformer(func(markdown string, context sdk.MarkdownTransformContext) string {
 		return fmt.Sprintf("md:%s:%s:streaming=%t:width=%d", markdown, context.MessageType, context.IsStreaming, context.AvailableWidth)
 	})
+	resolvedLine := func(prefix, tool string) sdk.ToolRenderCallFunc {
+		return func(_ sdk.Context, args map[string]any, _ sdk.ToolRenderContext, _ int) ([]string, error) {
+			return []string{fmt.Sprintf("%s:%s:%v", prefix, tool, args["q"])}, nil
+		}
+	}
+	ext.ToolRenderer(func(tool string, next func() *sdk.ToolRenderers) *sdk.ToolRenderers {
+		switch tool {
+		case "conformance_tool_renderer":
+			return &sdk.ToolRenderers{Call: resolvedLine("resolved", tool)}
+		case "conformance_no_renderer":
+			return nil
+		case "conformance_fill":
+			if renderers := next(); renderers != nil {
+				return renderers
+			}
+			return &sdk.ToolRenderers{Call: resolvedLine("filled", tool)}
+		case "conformance_wrap":
+			wrapped := next()
+			wrapped.Call = resolvedLine("wrapped", tool)
+			return wrapped
+		}
+		return next()
+	})
+	ext.Command("late_tool_renderer", "Register a tool renderer resolver after loading", func(sdk.Context, string) error {
+		ext.ToolRenderer(func(tool string, next func() *sdk.ToolRenderers) *sdk.ToolRenderers {
+			if tool != "conformance_late" {
+				return next()
+			}
+			return &sdk.ToolRenderers{Call: resolvedLine("late", tool)}
+		})
+		return nil
+	})
 	ext.Tool("render_probe", "Render its own tool card", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(sdk.Context, map[string]any) (any, error) {
 		return "render ok", nil
 	})

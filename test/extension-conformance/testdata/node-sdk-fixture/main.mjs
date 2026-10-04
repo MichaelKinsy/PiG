@@ -81,6 +81,19 @@ export default function (pi) {
   }));
   pi.registerMarkdownTransformer((markdown, context) =>
     `md:${markdown}:${context.messageType}:streaming=${context.isStreaming}:width=${context.availableWidth}`);
+  const resolvedLine = (prefix, toolName) => (args) => ({ render: () => [`${prefix}:${toolName}:${args?.q}`], invalidate: () => {} });
+  pi.registerToolRenderer((toolName, next) => {
+    switch (toolName) {
+      case "conformance_tool_renderer": return { renderCall: resolvedLine("resolved", toolName) };
+      case "conformance_no_renderer": return undefined;
+      case "conformance_fill": return next() ?? { renderCall: resolvedLine("filled", toolName) };
+      case "conformance_wrap": return { ...next(), renderCall: resolvedLine("wrapped", toolName) };
+      default: return next();
+    }
+  });
+  pi.registerCommand("late_tool_renderer", { description: "Register a tool renderer resolver after loading", handler: async () => {
+    pi.registerToolRenderer((toolName, next) => toolName === "conformance_late" ? { renderCall: resolvedLine("late", toolName) } : next());
+  } });
 
   pi.registerTool({
     name: "render_probe",

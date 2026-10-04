@@ -74,6 +74,21 @@ type ToolRenderResultFunc = func(
 	context ToolRenderContext,
 ) Component
 
+// ToolRenderers is how calls to a tool are drawn: the renderShell, renderCall,
+// and renderResult of a [ToolDefinition].
+// upstream: types.ts ToolRenderers
+type ToolRenderers struct {
+	RenderShell  ToolRenderShell
+	RenderCall   ToolRenderCallFunc
+	RenderResult ToolRenderResultFunc
+}
+
+// ToolRendererResolver chooses how calls to a tool are drawn, including tools
+// that are not registered. next returns the renderers the remaining
+// resolvers, then the registered tool, would use. A nil result means none.
+// upstream: types.ts ToolRendererResolver
+type ToolRendererResolver = func(toolName string, next func() *ToolRenderers) *ToolRenderers
+
 // ToolPrepareArgumentsFunc mirrors upstream ToolDefinition.prepareArguments.
 type ToolPrepareArgumentsFunc = func(args json.RawMessage) (json.RawMessage, error)
 

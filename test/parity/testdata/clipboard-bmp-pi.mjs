@@ -2,7 +2,7 @@ import {mkdtempSync,writeFileSync,rmSync,readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 const root=fileURLToPath(new URL('../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent',import.meta.url));
-if (JSON.parse(readFileSync(join(root,'package.json'),'utf8')).version!=='1.0.0') throw new Error('Expected Pi 1.0.0');
+if (JSON.parse(readFileSync(join(root,'package.json'),'utf8')).version!=='1.0.1') throw new Error('Expected Pi 1.0.1');
 const {readClipboardImage}=await import(pathToFileURL(join(root,'dist/utils/clipboard-image.js')));
 const {loadPhoton}=await import(pathToFileURL(join(root,'dist/utils/photon.js')));
 const dir=mkdtempSync(join(process.env.PARITY_CLIPBOARD_DIR,'clipboard-pi-'));

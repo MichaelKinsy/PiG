@@ -74,6 +74,7 @@ var upstreamRunnerMethods = []string{
 	"reportUnhandledMcpServers", // runner.ts:751 (0.99.2)
 	"createToolContext",         // runner.ts:952 (0.99.2)
 	"getMarkdownTransformers",   // runner.ts:725
+	"resolveToolRenderers",      // runner.ts:790 (1.0.1)
 	"getModelRegistry",          // runner.ts:639
 	"getActiveTools",            // runner.ts:664
 	"emitMessageEnd",            // runner.ts:835

@@ -5,7 +5,7 @@ import { resolve, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const root = process.env.PI_PACKAGE_ROOT ?? resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, "1.0.0");
+assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, "1.0.1");
 const cases = [
   ["read", "ctx-cwd-read.txt", "hello from ctx.cwd", {path:"ctx-cwd-read.txt"}],
   ["write", "", "", {path:"ctx-cwd-write.txt",content:"written via ctx.cwd"}, "written via ctx.cwd"],

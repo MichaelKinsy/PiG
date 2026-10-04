@@ -9,7 +9,7 @@ import (
 )
 
 func TestPortWave13BedrockClaudeMaxTokensE2E(t *testing.T) {
-	// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:166-194. This live case inherently requests more than 4096 output tokens; retain the original 180-second deadline.
+	// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:200-231. This live case inherently requests more than 4096 output tokens; retain the original 180-second deadline.
 	t.Run("uses the model maxTokens cap instead of Bedrock's 4096-token default for adaptive Claude models", func(t *testing.T) {
 		requireBedrockLiveCredentials(t)
 		model := cloneGeneratedModel(t, "amazon-bedrock/global.anthropic.claude-sonnet-4-6").ToModel()

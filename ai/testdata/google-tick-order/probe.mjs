@@ -37,7 +37,7 @@ const root = process.env.PI_PACKAGE_ROOT;
 assert.ok(root, 'PI_PACKAGE_ROOT must name the installed @earendil-works/pi-coding-agent directory');
 const scope = root + '/node_modules/@earendil-works/';
 const genaiDir = root + '/node_modules/@google/genai';
-for (const [dir, version] of [[root, '1.0.0'], [scope + 'pi-ai', '1.0.0'], [genaiDir, '2.21.0']]) {
+for (const [dir, version] of [[root, '1.0.1'], [scope + 'pi-ai', '1.0.1'], [genaiDir, '2.21.0']]) {
   assert.equal(JSON.parse(await readFile(dir + '/package.json', 'utf8')).version, version, dir);
 }
 const load = path => import(pathToFileURL(path).href);
@@ -186,7 +186,7 @@ async function runProvider(c) {
 const scrub = value => JSON.parse(JSON.stringify(value).replace(/"timestamp":\d+/g, '"timestamp":0'));
 
 const out = {
-  pi: '1.0.0', genai: '2.21.0', node: process.version,
+  pi: '1.0.1', genai: '2.21.0', node: process.version,
   cap: CAP,
   note: 'stamp = (seg, tick); see probe.mjs header. array order within a stamp is execution order.',
   cases: [],

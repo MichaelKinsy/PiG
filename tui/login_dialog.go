@@ -55,6 +55,19 @@ type LoginDialog struct {
 	done            bool
 	cancelled       bool
 	onCancel        func()
+	// authURL is the shown sign-in URL, which `app.message.copy` copies; its two lines start at authURLIndex.
+	authURL       *AuthURL
+	authURLIndex  int
+	copyText      func(text string) error
+	requestRender func()
+}
+
+// SetCopyToClipboard supplies the clipboard writer `app.message.copy` uses for a sign-in URL and the repaint request
+// that shows the outcome.
+func (d *LoginDialog) SetCopyToClipboard(copyText func(text string) error, requestRender func()) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.copyText, d.requestRender = copyText, requestRender
 }
 
 // NewLoginDialog creates a provider dialog with PiG's configurable input privacy default enabled.
@@ -83,7 +96,14 @@ func loginKeyHint(action TUIKeybinding, description string) string {
 func (d *LoginDialog) ShowAuth(url, instructions string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	d.lines = linkedURLLines(url)
+	d.authURL = NewAuthURL(url, d.copyText, func() {
+		d.Invalidate()
+		if d.requestRender != nil {
+			d.requestRender()
+		}
+	})
+	d.authURLIndex = 1
+	d.lines = append([]string{""}, d.authURL.Lines()...)
 	d.inputIndex = -1
 	if instructions != "" {
 		d.lines = append(d.lines, "", " "+ActiveTheme().FgText("warning", d.redactLocked(instructions)))
@@ -95,6 +115,7 @@ func (d *LoginDialog) ShowAuth(url, instructions string) {
 func (d *LoginDialog) ShowDeviceCode(verificationURI, userCode string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	d.authURL = nil
 	d.lines = append(linkedURLLines(verificationURI), "", " "+ActiveTheme().FgText("warning", "Enter code: "+userCode))
 	d.inputIndex = -1
 	d.Invalidate()
@@ -115,6 +136,7 @@ func linkedURLLines(url string) []string {
 func (d *LoginDialog) ShowDetails(lines []string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	d.authURL = nil
 	d.lines = []string{""}
 	d.inputIndex = -1
 	for _, line := range lines {
@@ -263,6 +285,10 @@ func (d *LoginDialog) HandleInput(data string) {
 		}
 		return
 	}
+	if d.authURL != nil && GetTUIKeybindings().Matches(data, "app.message.copy") {
+		d.authURL.Copy()
+		return
+	}
 	if !d.inputActive {
 		return
 	}
@@ -278,6 +304,10 @@ func (d *LoginDialog) Render(width int) []string {
 	border := NewDynamicBorder("")
 	out := border.Render(width)
 	out = append(out, NewPaddedText(t.FgText("accent", "\x1b[1m"+d.title+SGRBoldDimReset), 1, 0, nil).Render(width)...)
+	if d.authURL != nil {
+		authLines := d.authURL.Lines()
+		copy(d.lines[d.authURLIndex:d.authURLIndex+len(authLines)], authLines)
+	}
 	for i, line := range d.lines {
 		if d.inputActive && i == d.inputIndex {
 			input := d.input

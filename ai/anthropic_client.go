@@ -28,9 +28,9 @@ const (
 	serverSideFallbackBeta       = "server-side-fallback-2026-07-01"
 	midConversationEffortBeta    = "mid-conversation-output-config-2026-07-01"
 	thinkingBindingControlsBeta  = "thinking-binding-controls-2026-08-01"
-	// midConversationToolChangesBeta enables tool_addition and tool_removal
-	// blocks in mid-conversation system messages.
-	midConversationToolChangesBeta = "mid-conversation-tool-changes-2026-07-01"
+	// inlineToolsBeta enables tool_addition blocks with inline tool
+	// definitions and tool_removal blocks in mid-conversation system messages.
+	inlineToolsBeta = "inline-tools-2026-09-15"
 )
 
 // claudeCodeTools lists the Claude Code 2.x tool names in canonical casing.
@@ -309,7 +309,7 @@ func getBetaFeatures(modelHeaders, optionsHeaders anthropicHeaders, inputs anthr
 		features = append(features, midConversationEffortBeta, thinkingBindingControlsBeta)
 	}
 	if inputs.nativeToolChanges {
-		features = append(features, midConversationToolChangesBeta)
+		features = append(features, inlineToolsBeta)
 	}
 	return uniqueStrings(features)
 }

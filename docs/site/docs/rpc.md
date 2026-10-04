@@ -71,7 +71,7 @@ languages use the JSONL protocol directly.
 same runtime factory that creates the first Session, as Pi's rpc-mode does with its
 runtime host. The replacement gets a new extension runner, new extension processes
 and services for the destination Session's working directory. The old runner is
-invalidated. As in Pi 1.0.0, the replacement's extensions receive `session_start`
+invalidated. As in Pi 1.0.1, the replacement's extensions receive `session_start`
 twice after these four commands, because rpc-mode rebinds once more after the
 command returns. An extension process does not inherit process-wide state such as
 environment variables from the replaced one; This is D70, which also covers `/reload`.

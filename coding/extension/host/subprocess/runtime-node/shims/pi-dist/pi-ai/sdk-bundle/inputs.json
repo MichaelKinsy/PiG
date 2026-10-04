@@ -19,7 +19,7 @@
     },
     {
       "path": "pi-dist/pi-ai/api/cloudflare-workers-ai-system-one.js",
-      "sha256": "856f69a1e928c02cbc422e0a70a92b4f5a7bba3a79aedbcc0301ee0c235e7470"
+      "sha256": "3001ee95e7a02073530319f2827b286d4eb3948c707e218f627226986f0e67c0"
     },
     {
       "path": "pi-dist/pi-ai/api/cloudflare-workers-ai-system-one.lazy.js",
@@ -243,11 +243,11 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/.manifest.json",
-      "sha256": "480c62be35fc8b713133bfed66f775a90f8bfa7a90116e204e09c15ec3655680"
+      "sha256": "d965e8f4f6f5de9326aaf4bfe7e1db332ef231920bae98cb3f562b56b4b5d0cd"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/amazon-bedrock.json",
-      "sha256": "b962444f8daad1e3022d3e4bd59af8e8802d6012615397015c825996219e4af5"
+      "sha256": "743db9df34ddb710536a2544485b005a994a8a1aae96006b4262cc1f2cc147e3"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/ant-ling.json",
@@ -271,11 +271,11 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/cloudflare-ai-gateway.json",
-      "sha256": "52decade622d1d25f1af90385b1aec7331dad00d56e010a5e4d15118efae67ce"
+      "sha256": "9030456decc3f3edacc3388165ab87cb3db0360f6b191f4a12e063f5c9464332"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/cloudflare-workers-ai.json",
-      "sha256": "b9f76cc83756a05920a8a7046c515919a1de918331b860a211f309bb716c4bb0"
+      "sha256": "d04336a61cacfd0cadbc2f3d30cd3b552e3d153e5a320658a31ba1bab8f01c83"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/deepseek.json",
@@ -283,7 +283,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/fireworks.json",
-      "sha256": "d6144ba451bd7a0617669527bec1898f97a633f7d7ea5035d8e03234550340c0"
+      "sha256": "8db3c11f65a5d76260d5040a5dc5a9ef0f35b92de8505a30907c2355c2837b36"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/github-copilot.json",
@@ -335,7 +335,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/nvidia.json",
-      "sha256": "3b4e7b799bf3eaacd1af0491eef77fe33147ea7f72a3a9fa54d77af0e7eacf4c"
+      "sha256": "cc7b418f706178f0aac2384324cd63f7641ff03656ef25551a1859e2c69381bc"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/openai-codex.json",
@@ -351,11 +351,11 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/opencode.json",
-      "sha256": "1c504731d37468cc992a88b231cde29d46f0273e2710d8af227247c58afaa1b7"
+      "sha256": "7cf6c2e34b4defd50135572da48030402d33101bcb8c43c7612841e5b3afcd43"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/openrouter.json",
-      "sha256": "767e2ea83edbbdfcc9e9d66a2d4e9eae9b14589fb97e137daebef7958b1b0283"
+      "sha256": "20eda7941391d511df7696624652a780859974e6c411a8a5174e9c391a8bec5a"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/qwen-token-plan-cn.json",
@@ -371,11 +371,11 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/radius.json",
-      "sha256": "c8e24a65119360946749c6d5e45782d84ab2794df661b369bb27c2bff3b72e67"
+      "sha256": "88a3f060a851882df89015bcd346e03238b4b0725bd72c8ad501fcffff782768"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/together.json",
-      "sha256": "94ec3839972061405885d64f5fdbde48eb1f29a159be5e607e9770befd54e28e"
+      "sha256": "52293df62191c8e799ae3632f8ab1b3f52ee626aee0280677086627b32864bf7"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/typesafe.json",
@@ -383,7 +383,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/vercel-ai-gateway.json",
-      "sha256": "b3574cebd04f1db537c2d06517caf3e184360f181b9cbc5ce1c287886dbfce77"
+      "sha256": "436f085bd5d972959f0b2b66e82f2af55843c8a40a70417328911cb1a5f32997"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/xai.json",
@@ -747,7 +747,7 @@
     },
     {
       "path": "pi-dist/pi-ai/utils/retry.js",
-      "sha256": "ae91b950515c239d8bbae9e6a85074b10d5ae4195b20effa228ea51898c0658d"
+      "sha256": "8302372246b92d5047bb5715afeee374c672e1652d96a80268dc3b5758a7cae4"
     },
     {
       "path": "pi-dist/pi-ai/utils/text.js",
@@ -755,7 +755,7 @@
     },
     {
       "path": "pi-dist/pi-ai/utils/transcript.js",
-      "sha256": "cd63514661b4036c3bcdda11a108f6be853f790a01216bf30fa80121e4fd320f"
+      "sha256": "4c772c6691be0c5b4c308a09e3eeaa4d965b59e39652442b3aef0600ffb5fccb"
     },
     {
       "path": "pi-dist/pi-ai/utils/typebox-helpers.js",

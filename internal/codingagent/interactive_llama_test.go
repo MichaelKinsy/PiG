@@ -20,7 +20,8 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-var llamaTestANSI = regexp.MustCompile(`\x1b\[[0-9;]*m|\x1b\]8;;[^\x07]*\x07|\x1b_[^\x07]*\x07`)
+// OSC 8 hyperlinks end in BEL or ST: Pi 1.0.1's sign-in URLs use pi-tui hyperlink(), which ends in ST.
+var llamaTestANSI = regexp.MustCompile(`\x1b\[[0-9;]*m|\x1b\]8;;[^\x07\x1b]*(?:\x07|\x1b\\)|\x1b_[^\x07]*\x07`)
 
 // llamaRouter is a llama.cpp router whose loads complete immediately.
 type llamaRouter struct {

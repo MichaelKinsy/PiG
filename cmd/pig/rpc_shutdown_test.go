@@ -78,7 +78,7 @@ func startPiRPCShutdownFixture(t *testing.T, extraEnv ...string) (*rpcProcess, s
 		t.Fatal(err)
 	}
 	var pkg struct{ Version string }
-	if err := json.Unmarshal(metadata, &pkg); err != nil || pkg.Version != "1.0.0" {
+	if err := json.Unmarshal(metadata, &pkg); err != nil || pkg.Version != "1.0.1" {
 		t.Fatalf("Pi version = %q, %v", pkg.Version, err)
 	}
 	node, err := exec.LookPath("node")

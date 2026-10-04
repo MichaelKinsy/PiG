@@ -1,6 +1,6 @@
 # Message types
 
-PiG uses one message format in session files, in JSON and RPC events, and in the Go SDK. This page defines the messages and the content blocks inside them. The JSON field names match Pi 1.0.0, except that PiG does not yet carry the `nestedCalls` record that Pi 1.0.0 adds to tool result messages.
+PiG uses one message format in session files, in JSON and RPC events, and in the Go SDK. This page defines the messages and the content blocks inside them. The JSON field names match Pi 1.0.1, except that PiG does not yet carry the `nestedCalls` record that Pi 1.0.1 adds to tool result messages.
 
 Every message has a `role` field that names its type. A message `timestamp` is a Unix time in milliseconds. Session entries use ISO 8601 timestamps instead. See [session file format](/docs/latest/session-format).
 
@@ -113,7 +113,7 @@ A system message sets the instructions and the tool set from its position in the
 
 The first system message declares the starting prompt and tools. Replay the later ones in order to get the current state.
 
-Pi's `message-types.md` also lists a `replace` field. The Pi 1.0.0 source does not define that field, and PiG does not read or write it.
+Pi's `message-types.md` also lists a `replace` field. The Pi 1.0.1 source does not define that field, and PiG does not read or write it.
 
 Go type: `ai.SystemMessage`.
 

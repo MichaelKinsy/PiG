@@ -11,7 +11,7 @@ import (
 // The OAuth callback page shows the provider's error and error_description, which the browser request supplies. The page is HTML, so the render function must escape every interpolated value (Pi: packages/ai/src/utils/oauth-page.ts escapeHtml on title, heading, message and details).
 func TestOAuthCallbackPageEscapesRequestValues(t *testing.T) {
 	const payload = `<script>alert(1)</script>"'&`
-	server, err := listenForCallback(callbackSettings{host: "127.0.0.1", path: "/callback"}, nil, false)
+	server, err := listenForCallback(callbackSettings{host: "127.0.0.1", path: "/callback"}, nil, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,7 +26,7 @@ func TestOAuthCallbackPageEscapesRequestValues(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			wait, err := server.WaitForCallback("state-" + tc.name)
+			wait, err := server.WaitForCallback("state-"+tc.name, "")
 			if err != nil {
 				t.Fatal(err)
 			}

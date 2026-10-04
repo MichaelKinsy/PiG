@@ -101,12 +101,13 @@ type toolRenderCard struct {
 }
 
 type renderToolRequest struct {
-	Card    string                  `json:"card"`
-	Phase   string                  `json:"phase"`
-	Args    map[string]any          `json:"args"`
-	Result  *ToolRenderResult       `json:"result"`
-	Options ToolRenderResultOptions `json:"options"`
-	Context struct {
+	Card      string                  `json:"card"`
+	Renderers string                  `json:"renderers"`
+	Phase     string                  `json:"phase"`
+	Args      map[string]any          `json:"args"`
+	Result    *ToolRenderResult       `json:"result"`
+	Options   ToolRenderResultOptions `json:"options"`
+	Context   struct {
 		ToolCallID       string `json:"toolCallId"`
 		Cwd              string `json:"cwd"`
 		ExecutionStarted bool   `json:"executionStarted"`
@@ -129,6 +130,9 @@ func (e *Extension) renderTool(ctx Context, name string, raw json.RawMessage) ([
 	}
 	e.toolRenderMu.Lock()
 	renderers, ok := e.toolRenderers[name]
+	if request.Renderers != "" {
+		renderers, ok = e.resolvedToolRenderers[request.Renderers]
+	}
 	card := e.toolRenderCards[request.Card]
 	if card == nil {
 		card = &toolRenderCard{state: map[string]any{}}

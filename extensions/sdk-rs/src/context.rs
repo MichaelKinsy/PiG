@@ -1808,6 +1808,21 @@ impl Context {
         Ok(())
     }
 
+    /// Upstream `pi.registerToolRenderer(resolver)` after load: the resolver runs after the extension's earlier
+    /// resolvers, and the host asks the extension's resolvers again for every tool. During load, use
+    /// [`crate::Extension::tool_renderer`].
+    pub fn register_tool_renderer(
+        &self,
+        resolver: impl Fn(&str, &dyn Fn() -> Option<crate::ToolRendererSet>) -> Option<crate::ToolRendererSet> + Send + Sync + 'static,
+    ) -> io::Result<()> {
+        let late = &self.conn.late_tool_renderers;
+        let mut resolvers = late.resolvers.lock().unwrap();
+        resolvers.push(Arc::new(resolver));
+        let count = late.loaded.load(std::sync::atomic::Ordering::SeqCst) + resolvers.len();
+        // The count reaches the host in registration order.
+        self.conn.notify("tool_renderers", Some(serde_json::json!({ "count": count })))
+    }
+
     /// Upstream `pi.unregisterMcpServer(name)` (`types.ts:1836`): removes an MCP server this extension registered and closes its connection.
     pub fn unregister_mcp_server(&self, name: &str) -> io::Result<()> {
         let servers = self.mcp_servers_call("unregisterMcpServer", serde_json::json!({"name": name}))?;
@@ -3216,6 +3231,28 @@ mod login_call_tests {
             surfaces: Arc::new(Mutex::new(HashMap::new())),
             replacement: false,
         })
+    }
+
+    // Pi's loader appends a resolver registered after loading; the host learns the extension's new resolver count
+    // and asks the late resolver after the loaded ones.
+    #[test]
+    fn register_tool_renderer_after_loading_reports_the_count_and_runs_after_the_loaded_resolvers() {
+        let (extension_stream, host_stream) = UnixStream::pair().unwrap();
+        let ctx = context(extension_stream);
+        ctx.conn.late_tool_renderers.loaded.store(2, Ordering::SeqCst);
+        ctx.register_tool_renderer(|tool, next| if tool == "late" { Some(crate::ToolRendererSet::default()) } else { next() })
+            .unwrap();
+        let host = Connection::new(host_stream);
+        let notify = host.read_envelope().unwrap().notify.unwrap();
+        assert_eq!(notify.method, "tool_renderers");
+        assert_eq!(notify.args, Some(serde_json::json!({ "count": 3 })));
+
+        let renderers = crate::tool_render::ToolRenderers::default();
+        let next = serde_json::json!({ "render_shell": "self" });
+        let late = renderers.resolve(&ctx.conn, Some(&serde_json::json!({ "tool": "late", "next": next })));
+        assert_eq!(late["use"], "own");
+        let other = renderers.resolve(&ctx.conn, Some(&serde_json::json!({ "tool": "other", "next": next })));
+        assert_eq!(other, serde_json::json!({ "use": "next" }));
     }
 
     #[test]

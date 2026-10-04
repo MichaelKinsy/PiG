@@ -122,6 +122,9 @@ function getSelfUpdateCommandForMethod(method, installedPackageName, updatePacka
             const [command = "npm", ...npmArgs] = npmCommand ?? [];
             const inferred = npmCommand?.length ? undefined : getInferredNpmInstall();
             const prefixArgs = [...npmArgs, ...(inferred ? ["--prefix", inferred.prefix] : [])];
+            // pi.dev advertises releases immediately, so a configured npm age gate would
+            // block the update. npm has no per-package age gate, so this also lets new
+            // transitive dependency releases through. Managed installs avoid this.
             const installStep = makeSelfUpdateCommandStep(command, [
                 ...prefixArgs,
                 "install",

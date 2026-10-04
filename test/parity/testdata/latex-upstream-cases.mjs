@@ -12,7 +12,7 @@ import ts from "../../../extensions/sdk-ts/node_modules/typescript/lib/typescrip
 
 const pkg = realpathSync("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/package.json");
 const { renderLatex } = await import(pathToFileURL(resolve(dirname(pkg), "node_modules/@earendil-works/pi-tui/dist/latex.js")).href);
-assert.equal(JSON.parse(readFileSync(pkg, "utf8")).version, "1.0.0");
+assert.equal(JSON.parse(readFileSync(pkg, "utf8")).version, "1.0.1");
 const path = ".upstream/current/packages/tui/test/latex.test.ts";
 const source = readFileSync(path, "utf8");
 const ast = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true);

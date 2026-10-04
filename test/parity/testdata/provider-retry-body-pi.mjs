@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
 const root = new URL("../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/", import.meta.url);
-if (JSON.parse(readFileSync(new URL("package.json", root), "utf8")).version !== "1.0.0") throw new Error("Expected Pi 1.0.0");
+if (JSON.parse(readFileSync(new URL("package.json", root), "utf8")).version !== "1.0.1") throw new Error("Expected Pi 1.0.1");
 const { stream } = await import(new URL("dist/api/openai-completions.js", root));
 const { normalizeContext } = await import(new URL("dist/utils/transcript.js", root));
 let attempts = 0;

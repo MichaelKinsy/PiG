@@ -42,7 +42,7 @@
     },
     {
       "source": "test/parity/testdata/list-limit-number-pi.mjs",
-      "sha256": "b67ba57557c849e5e93c1392d602d1f13e923d81d26af65fc0bd69f7dc83e9d8",
+      "sha256": "9e508c5b6420ac8a8a3325419729e92b70aa1089a8eeb93500d36774c503077d",
       "reason": "This numeric-renderer probe selects the complete warning-bracket text from Pi's actual renderResult output under an explicit unstyled fixture theme. It claims number/notice text only, not terminal layout or ANSI styling; full themed body rows are checked by the Go caller regression."
     },
     {
@@ -72,7 +72,7 @@
     },
     {
       "source": "test/parity/testdata/session-collision-pi.mjs",
-      "sha256": "8fcc6965417ebd905263106ee25e01f5604e2c5b9a65b72d774eb38377108eda",
+      "sha256": "153a7e0cc007b3919365e96b625b959ae5b92bbeda42e7d690eca31249c480de",
       "reason": "This entry-allocation probe controls seed/duplicate/fresh entropy in the real Pi SessionManager and compares IDs, parent links, retained indexed content and generator calls. It makes no timestamp or whole-record claim; those contracts are covered by the Session wire probe."
     },
     {

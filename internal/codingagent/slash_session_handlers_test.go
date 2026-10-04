@@ -1053,8 +1053,8 @@ func TestExportHandler_PrerendersCustomToolHTML(t *testing.T) {
 	sc, out := newFakeSlashCtx()
 	sc.CurrentSession = func() *Session { return session }
 	sc.Args = outPath
-	sc.RegisteredTools = func() []extension.RegisteredTool {
-		return []extension.RegisteredTool{{
+	sc.ToolRenderers = func() func(string) *extension.ToolRenderers {
+		return ExportToolRenderers(inproc.NewRunner([]extension.Extension{{Name: "test-ext", Tools: map[string]extension.RegisteredTool{"custom-tool": {
 			Definition: extension.ToolDefinition{
 				Name: "custom-tool",
 				RenderCall: func(args json.RawMessage, theme extension.Theme, context extension.ToolRenderContext) extension.Component {
@@ -1068,7 +1068,7 @@ func TestExportHandler_PrerendersCustomToolHTML(t *testing.T) {
 					return exportTestComponent{lines: []string{"preview"}}
 				},
 			},
-		}}
+		}}}}, dir))
 	}
 	if err := exportHandler(sc); err != nil {
 		t.Fatal(err)

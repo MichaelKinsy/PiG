@@ -65,6 +65,8 @@ func TestArgsUpstream(t *testing.T) {
 		{name: "parses --thinking", args: []string{"--thinking", "high"}, want: CLIFlags{Thinking: "high"}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:144
 		{name: "parses --models as comma-separated list", args: []string{"--models", "gpt-4o,claude-sonnet,gemini-pro"}, want: CLIFlags{Models: []string{"gpt-4o", "claude-sonnet", "gemini-pro"}}},
+		// .upstream/v1.0.1/packages/coding-agent/test/args.test.ts:150 (Issue #10334)
+		{name: "ignores empty entries in --models", args: []string{"--models", "gpt-4o, ,claude-sonnet,"}, want: CLIFlags{Models: []string{"gpt-4o", "claude-sonnet"}}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:152
 		{name: "parses --mode text", args: []string{"--mode", "text"}, want: CLIFlags{Mode: "text", modeSet: true}},
 		// .upstream/v0.87.1/packages/coding-agent/test/args.test.ts:152

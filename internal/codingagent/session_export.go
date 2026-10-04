@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/export"
 )
@@ -110,6 +111,20 @@ func ExportSessionToJsonl(session *Session, outputPath string, createTrailingEnt
 	return filePath, nil
 }
 
+// ExportToolRenderers is upstream AgentSession's getToolRenderers for HTML
+// exports: the resolvers of runner's extensions in load order, then the tools
+// they registered. A nil runner draws no tool through renderers.
+// upstream: packages/coding-agent/src/core/agent-session.ts:exportToHtml (getToolRenderers)
+func ExportToolRenderers(runner *inproc.Runner) func(name string) *extension.ToolRenderers {
+	if runner == nil {
+		return nil
+	}
+	registered := export.ToolRenderersOf(runner.Tools())
+	return func(name string) *extension.ToolRenderers {
+		return runner.ResolveToolRenderers(name, func() *extension.ToolRenderers { return registered(name) })
+	}
+}
+
 // ExportSessionToHTML writes the session file as HTML the way upstream
 // exportSessionToHtml does and returns the path written. An in-memory session
 // (empty sessionFile) and a session whose file is not written yet fail with
@@ -118,7 +133,7 @@ func ExportSessionToJsonl(session *Session, outputPath string, createTrailingEnt
 // parent; an empty outputPath becomes pig-session-<session basename>.html.
 // state is the live agent state upstream passes to exportSessionToHtml: the
 // export embeds its system prompt and active tool schemas.
-func ExportSessionToHTML(sessionFile, outputPath string, tools []extension.RegisteredTool, cwd string, state ShareState) (string, error) {
+func ExportSessionToHTML(sessionFile, outputPath string, getToolRenderers func(name string) *extension.ToolRenderers, cwd string, state ShareState) (string, error) {
 	if sessionFile == "" {
 		return "", errors.New("Cannot export in-memory session to HTML")
 	}
@@ -133,7 +148,7 @@ func ExportSessionToHTML(sessionFile, outputPath string, tools []extension.Regis
 	for i, tool := range state.Tools {
 		agentState.Tools[i] = export.ToolSchema(tool)
 	}
-	return export.ExportFromFileWithTools(sessionFile, outputPath, tools, cwd, &agentState)
+	return export.ExportFromFileWithTools(sessionFile, outputPath, getToolRenderers, cwd, &agentState)
 }
 
 // resolveExportPath mirrors upstream resolvePath(input, baseDir): expand a

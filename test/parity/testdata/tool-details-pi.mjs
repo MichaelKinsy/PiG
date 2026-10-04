@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 const root = process.env.PI_PACKAGE_ROOT ?? resolve('extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent');
-assert.equal(JSON.parse(readFileSync(join(root,'package.json'),'utf8')).version, '1.0.0');
+assert.equal(JSON.parse(readFileSync(join(root,'package.json'),'utf8')).version, '1.0.1');
 const pi = await import(pathToFileURL(join(root,'dist/index.js')).href);
 const cwd = mkdtempSync(join(tmpdir(), 'tool-wire-'));
 const sorted = value => Array.isArray(value) ? value.map(sorted) : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, sorted(value[key])])) : value;

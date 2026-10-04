@@ -38,6 +38,7 @@ import { getChangelogPath, getNewEntries, normalizeChangelogLinks, parseChangelo
 import { copyToClipboard, readClipboardFilePaths, readClipboardText } from "../../utils/clipboard.js";
 import { extensionForImageMimeType, readClipboardImage } from "../../utils/clipboard-image.js";
 import { parseGitUrl } from "../../utils/git.js";
+import { ensurePngTranscoder } from "../../utils/image-convert.js";
 import { getCwdRelativePath } from "../../utils/paths.js";
 import { getPiUserAgent } from "../../utils/pi-user-agent.js";
 import { killTrackedDetachedChildren } from "../../utils/shell.js";
@@ -54,9 +55,9 @@ import { CompactionSummaryMessageComponent } from "./components/compaction-summa
 import { CustomEditor } from "./components/custom-editor.js";
 import { CustomEntryComponent } from "./components/custom-entry.js";
 import { CustomMessageComponent } from "./components/custom-message.js";
-import { DaxnutsComponent } from "./components/daxnuts.js";
 import { DynamicBorder } from "./components/dynamic-border.js";
 import { EarendilAnnouncementComponent } from "./components/earendil-announcement.js";
+import { playArmin3d, playPiLogo3d } from "./components/easter-egg-3d.lazy.js";
 import { ExtensionEditorComponent } from "./components/extension-editor.js";
 import { ExtensionInputComponent } from "./components/extension-input.js";
 import { ExtensionSelectorComponent } from "./components/extension-selector.js";
@@ -67,7 +68,6 @@ import { createMermaidMarkdownTransformer } from "./components/mermaid.js";
 import { ModelSelectorComponent } from "./components/model-selector.js";
 import { formatAuthSelectorProviderStatus, formatAuthSelectorProviderType, OAuthSelectorComponent, } from "./components/oauth-selector.js";
 import { piLogoLines, piWordmark, supportsPiLogo } from "./components/pi-logo.js";
-import { playPiLogoAnimation } from "./components/pi-logo-animation.lazy.js";
 import { createLoginMenuSelector } from "./components/radius-login-selector.js";
 import { ScopedModelsSelectorComponent } from "./components/scoped-models-selector.js";
 import { SessionSelectorComponent } from "./components/session-selector.js";
@@ -699,6 +699,7 @@ export class InteractiveMode {
         // Start the UI before initializing extensions so session_start handlers can use interactive dialogs
         this.ui.start();
         this.isInitialized = true;
+        this.ensurePngTranscoder();
         this.themeController.applyFromSettings();
         // The header and startup notices bake theme colors into their text, so build them once the terminal
         // reported its colors. This ends at the terminal's DA1 reply, or after 100 ms if it answers nothing.
@@ -750,7 +751,7 @@ export class InteractiveMode {
             const onboarding = () => theme.fg("dim", `Pi can explain its own features and look up its docs. Ask it how to use or extend Pi.`);
             const header = new BuiltInHeader(() => `${withLogo(compactInstructions())}\n${compactOnboarding()}\n\n${onboarding()}`, () => `${withLogo(expandedInstructions())}\n\n${onboarding()}`, this.getStartupExpansionState(), 1, 0);
             if (showLogo)
-                header.onLogoClick = (column, row) => playPiLogoAnimation(this.renderer, column, row);
+                header.onLogoClick = (column, row) => playPiLogo3d(this.renderer, column, row);
             this.builtInHeader = header;
             // Setup UI layout
             this.headerContainer.addChild(new Spacer(1));
@@ -1541,8 +1542,16 @@ export class InteractiveMode {
     applyFullscreenScrollbarSetting() {
         this.transcriptScrollView?.setScrollbar(this.settingsManager.getFullscreenScrollbar());
     }
+    /** Lets extension images use the PNG transcoder; tool results register it themselves. */
+    ensurePngTranscoder() {
+        ensurePngTranscoder(() => {
+            this.ui.invalidate();
+            this.ui.requestRender();
+        });
+    }
     applyRuntimeSettings() {
         setCapabilityOverrides(this.settingsManager.getTerminalCapabilityOverrides());
+        this.ensurePngTranscoder();
         configureHttpDispatcher(this.settingsManager.getHttpIdleTimeoutMs());
         this.applyFullscreenScrollbarSetting();
         if (this.renderer instanceof TuiAltScreen) {
@@ -1662,7 +1671,7 @@ export class InteractiveMode {
      * whatever this returns, so they never reach into the tool registry themselves.
      */
     getRegisteredToolDefinition(toolName) {
-        return withBuiltInRenderers(toolName, this.session.getToolDefinition(toolName));
+        return this.session.extensionRunner.resolveToolRenderers(toolName, () => withBuiltInRenderers(toolName, this.session.getToolDefinition(toolName)));
     }
     getMarkdownTransformers() {
         return [this.mermaidMarkdownTransformer, ...this.session.extensionRunner.getMarkdownTransformers()];
@@ -4258,7 +4267,6 @@ export class InteractiveMode {
                 this.updateEditorBorderColor();
                 this.showStatus(`Model: ${model.id}`);
                 void this.maybeWarnAboutAnthropicSubscriptionAuth(model);
-                this.checkDaxnutsEasterEgg(model);
             }
             catch (error) {
                 this.showError(error instanceof Error ? error.message : String(error));
@@ -4391,7 +4399,6 @@ export class InteractiveMode {
                     done();
                     this.showStatus(persist ? `Default model: ${model.provider}/${model.id}` : `Model: ${model.id}`);
                     void this.maybeWarnAboutAnthropicSubscriptionAuth(model);
-                    this.checkDaxnutsEasterEgg(model);
                 }
                 catch (error) {
                     done();
@@ -5033,7 +5040,6 @@ export class InteractiveMode {
             if (selectedModel) {
                 this.showStatus(`${actionLabel}. Selected ${selectedModel.id}. Credentials saved to ${getAuthPath()}`);
                 void this.maybeWarnAboutAnthropicSubscriptionAuth(selectedModel);
-                this.checkDaxnutsEasterEgg(selectedModel);
             }
             else {
                 this.showStatus(`${actionLabel}. Credentials saved to ${getAuthPath()}`);
@@ -5780,6 +5786,8 @@ export class InteractiveMode {
         this.ui.requestRender();
     }
     handleArminSaysHi() {
+        if (playArmin3d(this.renderer))
+            return;
         this.chatContainer.addChild(new Spacer(1));
         this.chatContainer.addChild(new ArminComponent(this.ui));
         this.ui.requestRender();
@@ -5788,16 +5796,6 @@ export class InteractiveMode {
         this.chatContainer.addChild(new Spacer(1));
         this.chatContainer.addChild(new EarendilAnnouncementComponent());
         this.ui.requestRender();
-    }
-    handleDaxnuts() {
-        this.chatContainer.addChild(new Spacer(1));
-        this.chatContainer.addChild(new DaxnutsComponent(this.ui));
-        this.ui.requestRender();
-    }
-    checkDaxnutsEasterEgg(model) {
-        if (model.provider === "opencode" && model.id.toLowerCase().includes("kimi-k2.5")) {
-            this.handleDaxnuts();
-        }
     }
     async handleBashCommand(command, excludeFromContext = false) {
         const extensionRunner = this.session.extensionRunner;

@@ -1,6 +1,6 @@
 package codingagent
 
-// Ports packages/coding-agent/src/modes/interactive/components/pi-logo-animation.ts.
+// Ports packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts (the Pi-logo kind, as Pi 1.0.0 pi-logo-animation.ts drew it; D87).
 //
 // pig divergence (D87): the object of the animation is the pig of PiG's header mark (D2) in the active sprite's colors, not
 // Pi's logo, and where Pi's logo plays its sliding puzzle a side-view pig runs across the screen (pig_logo_run.go). The engine, the timeline, the
@@ -59,7 +59,7 @@ type logoPose struct {
 }
 
 // logoFrameRate is the animation's frames per second.
-// upstream: packages/coding-agent/src/modes/interactive/components/pi-logo-animation.ts:FRAME_MS
+// upstream: packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts:FRAME_MS
 const logoFrameRate = 30
 
 const (

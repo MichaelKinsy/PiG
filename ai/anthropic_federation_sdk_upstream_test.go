@@ -2,7 +2,7 @@ package ai
 
 // Ports .upstream/v0.99.2/packages/ai/test/anthropic-federation-sdk.test.ts (the real SDK against a fake fetch:
 // how often the workload identity federation token exchange happens, #10177) and pins the Anthropic SDK
-// behaviors pi inherits from @anthropic-ai/sdk@0.124.0 (lib/credentials/*.mjs, client.mjs) for a federation
+// behaviors pi inherits from @anthropic-ai/sdk@0.129.0 (lib/credentials/*.mjs, client.mjs) for a federation
 // config: exchange errors, redaction, the 401 reactive refresh and the client cache keyed by config and fetch.
 
 import (

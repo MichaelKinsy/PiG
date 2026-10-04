@@ -813,17 +813,40 @@ func (t *TuiAltScreen) doRender() {
 	}
 
 	fullRedraw := len(t.previousScreen) == 0 || t.previousScreenWidth != width || t.previousScreenHeight != height
-	imagesNeedRedraw := false
+	changedRows := make([]bool, len(screen))
+	anyChanged := false
+	imageAnchorsNeedRedraw := false
 	for row, line := range screen {
 		var prev string
 		if row < len(t.previousScreen) {
 			prev = t.previousScreen[row]
 		}
-		if line != prev && (widthx.IsImageLine(line) || widthx.IsImageLine(prev)) {
-			imagesNeedRedraw = true
-			break
+		changedRows[row] = row >= len(t.previousScreen) || line != prev
+		anyChanged = anyChanged || changedRows[row]
+		if changedRows[row] && (widthx.IsImageLine(line) || widthx.IsImageLine(prev)) {
+			imageAnchorsNeedRedraw = true
 		}
 	}
+	// WezTerm erases the Kitty image cells a row write touches, so a changed row an image covers redraws the images
+	// (upstream tui-alt-screen.ts imageCellsNeedRedraw).
+	isWezTerm := isWezTermSession()
+	imageCellsNeedRedraw := false
+	if !imageAnchorsNeedRedraw && isWezTerm && t.imageProtocol == "kitty" && anyChanged {
+	rows:
+		for row, line := range screen {
+			placementRows, ok := GetKittyImagePlacementRows(line)
+			if !ok {
+				continue
+			}
+			for covered := row; covered < min(row+placementRows, len(changedRows)); covered++ {
+				if changedRows[covered] {
+					imageCellsNeedRedraw = true
+					break rows
+				}
+			}
+		}
+	}
+	imagesNeedRedraw := imageAnchorsNeedRedraw || imageCellsNeedRedraw
 	redrawImages := fullRedraw || imagesNeedRedraw
 	hadUploadedKittyImages := len(t.uploadedKittyImages) > 0
 
@@ -853,29 +876,36 @@ func (t *TuiAltScreen) doRender() {
 	}
 	buf.WriteString(evictedImageDeletion)
 
-	// WezTerm erases intersecting Kitty image cells when a later EL clears a
-	// covered row. Only separate clearing from drawing for WezTerm frames that
-	// place images; text-only frames and other terminals keep the interleaved
-	// output. Mirrors upstream clearRowsBeforeKittyImages.
-	clearRowsBeforeKittyImages := redrawImages && t.imageProtocol == "kitty" &&
-		slices.ContainsFunc(screen, widthx.IsImageLine) && isWezTermSession()
+	// WezTerm erases intersecting Kitty image cells when a later row write
+	// touches a covered row. Draw image placements after every clear and text
+	// write so nothing later intersects them; text-only frames and other
+	// terminals keep the interleaved output. Mirrors upstream drawKittyImagesLast.
+	drawKittyImagesLast := redrawImages && t.imageProtocol == "kitty" &&
+		slices.ContainsFunc(screen, widthx.IsImageLine) && isWezTerm
 	repaintAll := fullRedraw || imagesNeedRedraw
-	if clearRowsBeforeKittyImages {
+	repaint := func(row int) bool {
+		return repaintAll || altScreenRow(screen, row) != altScreenRow(t.previousScreen, row)
+	}
+	if drawKittyImagesLast {
 		for row := range height {
-			if repaintAll || altScreenRow(screen, row) != altScreenRow(t.previousScreen, row) {
+			if repaint(row) {
 				fmt.Fprintf(&buf, "\x1b[%d;1H\x1b[2K", row+1)
 			}
 		}
-	}
-	eraseLine := "\x1b[2K"
-	if clearRowsBeforeKittyImages {
-		eraseLine = ""
-	}
-	for row := range height {
-		if !repaintAll && altScreenRow(screen, row) == altScreenRow(t.previousScreen, row) {
-			continue
+		for _, images := range []bool{false, true} {
+			for row := range height {
+				line := altScreenRow(preparedLines, row)
+				if repaint(row) && widthx.IsImageLine(line) == images {
+					fmt.Fprintf(&buf, "\x1b[%d;1H%s", row+1, line)
+				}
+			}
 		}
-		fmt.Fprintf(&buf, "\x1b[%d;1H%s%s", row+1, eraseLine, altScreenRow(preparedLines, row))
+	} else {
+		for row := range height {
+			if repaint(row) {
+				fmt.Fprintf(&buf, "\x1b[%d;1H\x1b[2K%s", row+1, altScreenRow(preparedLines, row))
+			}
+		}
 	}
 
 	if hasCursor {

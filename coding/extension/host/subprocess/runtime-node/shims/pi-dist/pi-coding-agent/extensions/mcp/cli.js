@@ -350,6 +350,7 @@ async function list(loaded, json, untrustedNote, options, credentials, log) {
             name: entry.name,
             scope: entry.scope ?? "global",
             source: entry.source,
+            ...(entry.override ? { override: entry.override } : {}),
             enabled: entry.config.enabled !== false,
             exposure: entry.config.exposure ?? "codemode",
             transport: describeTransport(entry),
@@ -398,6 +399,8 @@ async function list(loaded, json, untrustedNote, options, credentials, log) {
                 : report.state;
         log(`${report.name}: ${state} (${report.exposure}, ${report.scope})`);
         log(`  ${report.transport}`);
+        if (report.override)
+            log(`  project override: ${report.override}`);
         if (report.state === "needs-auth")
             log(`  sign in with: ${APP_NAME} mcp login ${report.name}`);
         if (report.tools.length > 0) {

@@ -166,7 +166,7 @@ type anthContentBlock struct {
 	// redacted_thinking
 	Data string `json:"data,omitempty"`
 	// tool_addition / tool_removal
-	Tool *anthToolReference `json:"tool,omitempty"`
+	Tool *anthToolChange `json:"tool,omitempty"`
 	// cache_control
 	CacheControl *anthCacheControl `json:"cache_control,omitempty"`
 }
@@ -192,11 +192,13 @@ func (block anthContentBlock) MarshalJSON() ([]byte, error) {
 	}{block.Type, block.Thinking, block.Signature, block.CacheControl})
 }
 
-// anthToolReference names a declared tool in a tool_addition or tool_removal
-// block.
-type anthToolReference struct {
-	Type string `json:"type"` // "tool_reference"
-	Name string `json:"name"`
+// anthToolChange is the tool of a tool_addition or tool_removal block: a
+// tool_reference naming a declared tool, or a tool_definition carrying a tool by
+// value (inline-tools-2026-09-15).
+type anthToolChange struct {
+	Type       string    `json:"type"` // "tool_reference" | "tool_definition"
+	Name       string    `json:"name,omitempty"`
+	Definition *anthTool `json:"definition,omitempty"`
 }
 
 type anthTool struct {
@@ -213,9 +215,10 @@ type anthTool struct {
 
 // deferredToolPlaceholder mirrors upstream DEFERRED_TOOL_PLACEHOLDER: a stable
 // deferred tool declared whenever native tool changes are in use. Anthropic adds
-// hidden prompt scaffolding as soon as any tool has defer_loading; declaring
-// the placeholder from the first request keeps that scaffolding in the cached
-// prefix. It is never activated.
+// hidden prompt scaffolding for mid-conversation tool changes; declaring the
+// placeholder from the first request keeps that scaffolding in the cached
+// prefix, so the first tool change does not invalidate the cache. It is never
+// activated.
 func deferredToolPlaceholder() anthTool {
 	return anthTool{
 		Name:         "__pi_deferred_placeholder__",
@@ -398,30 +401,45 @@ func applyConversationCacheControl(msgs []anthMessage, cc *anthCacheControl) {
 	}
 }
 
+// anthToolDefinitions converts the tools of native tool_addition blocks. It is
+// nil when tool changes are not native.
+type anthToolDefinitions func([]ToolSchema) ([]anthTool, error)
+
 // anthSystemUpdateBlocks mirrors the system branch of upstream convertMessages:
 // the rendered update text, then, with native tool changes, a tool_removal
-// block per removed tool and a tool_addition block per added tool.
-func anthSystemUpdateBlocks(message SystemMessage, isOAuthToken, nativeToolChanges bool) []anthContentBlock {
+// block per removed tool that is not redefined in the same update and a
+// tool_addition block carrying each added tool by value.
+func anthSystemUpdateBlocks(message SystemMessage, isOAuthToken bool, convertToolDefinitions anthToolDefinitions) ([]anthContentBlock, error) {
 	var blocks []anthContentBlock
 	if update := RenderSystemMessageUpdate(message); update != "" {
 		blocks = append(blocks, anthContentBlock{Type: "text", Text: sanitizeSurrogates(update)})
 	}
-	if !nativeToolChanges {
-		return blocks
+	if convertToolDefinitions == nil {
+		return blocks, nil
 	}
-	reference := func(name string) *anthToolReference {
+	redefined := make(map[string]bool, len(message.ToolsAdded))
+	for _, tool := range message.ToolsAdded {
+		redefined[tool.Name] = true
+	}
+	for _, tool := range message.ToolsRemoved {
+		// A new definition under the same name replaces the old one, so no removal is needed.
+		if redefined[tool.Name] {
+			continue
+		}
+		name := tool.Name
 		if isOAuthToken {
 			name = toClaudeCodeName(name)
 		}
-		return &anthToolReference{Type: "tool_reference", Name: name}
+		blocks = append(blocks, anthContentBlock{Type: "tool_removal", Tool: &anthToolChange{Type: "tool_reference", Name: name}})
 	}
-	for _, tool := range message.ToolsRemoved {
-		blocks = append(blocks, anthContentBlock{Type: "tool_removal", Tool: reference(tool.Name)})
+	definitions, err := convertToolDefinitions(message.ToolsAdded)
+	if err != nil {
+		return nil, err
 	}
-	for _, tool := range message.ToolsAdded {
-		blocks = append(blocks, anthContentBlock{Type: "tool_addition", Tool: reference(tool.Name)})
+	for i := range definitions {
+		blocks = append(blocks, anthContentBlock{Type: "tool_addition", Tool: &anthToolChange{Type: "tool_definition", Definition: &definitions[i]}})
 	}
-	return blocks
+	return blocks, nil
 }
 
 type anthConvertedMessages struct {
@@ -434,18 +452,32 @@ type anthConvertedMessages struct {
 // the end: Anthropic requires tool_result blocks to follow their tool_use
 // immediately, so an update between them would be rejected.
 func anthConvertMessages(messages []Message, isOAuthToken, allowEmptySignature, nativeToolChanges bool) []anthMessage {
-	return anthConvertMessagesDetailed(messages, isOAuthToken, allowEmptySignature, "", nativeToolChanges).messages
+	var convertToolDefinitions anthToolDefinitions
+	if nativeToolChanges {
+		convertToolDefinitions = func(tools []ToolSchema) ([]anthTool, error) {
+			return anthConvertTools(tools, isOAuthToken, false, false, nil)
+		}
+	}
+	converted, err := anthConvertMessagesDetailed(messages, isOAuthToken, allowEmptySignature, "", convertToolDefinitions)
+	if err != nil {
+		return nil
+	}
+	return converted.messages
 }
 
 // anthConvertMessagesDetailed also records native effort for replayable assistant turns when the managed-effort provider identity matches. Empty text and signature checks use ECMAScript whitespace rules.
-func anthConvertMessagesDetailed(messages []Message, isOAuthToken, allowEmptySignature bool, managedProvider string, nativeToolChanges bool) anthConvertedMessages {
+func anthConvertMessagesDetailed(messages []Message, isOAuthToken, allowEmptySignature bool, managedProvider string, convertToolDefinitions anthToolDefinitions) (anthConvertedMessages, error) {
 	out := make([]anthMessage, 0, len(messages))
 	assistantLevels := map[int]string{}
 	var pendingSystem []anthMessage
 	for index := 0; index < len(messages); index++ {
 		switch message := messages[index].(type) {
 		case SystemMessage:
-			if blocks := anthSystemUpdateBlocks(message, isOAuthToken, nativeToolChanges); len(blocks) > 0 {
+			blocks, err := anthSystemUpdateBlocks(message, isOAuthToken, convertToolDefinitions)
+			if err != nil {
+				return anthConvertedMessages{}, err
+			}
+			if len(blocks) > 0 {
 				pendingSystem = append(pendingSystem, anthMessage{Role: "system", Content: blocks})
 			}
 		case UserMessage:
@@ -537,7 +569,7 @@ func anthConvertMessagesDetailed(messages []Message, isOAuthToken, allowEmptySig
 		}
 	}
 	out = append(out, pendingSystem...)
-	return anthConvertedMessages{messages: out, assistantLevels: assistantLevels}
+	return anthConvertedMessages{messages: out, assistantLevels: assistantLevels}, nil
 }
 
 func isAnthropicEffort(value string) bool {
@@ -856,17 +888,23 @@ type anthropicParams struct {
 	cacheControl        *anthCacheControl
 	allowEmptySignature bool
 	nativeToolChanges   bool
-	managedProvider     string
-	activeEffort        string
+	// toolDefinitions converts tools for native tool_addition blocks; nil
+	// unless nativeToolChanges.
+	toolDefinitions anthToolDefinitions
+	managedProvider string
+	activeEffort    string
 }
 
-func (params anthropicParams) convertMessages(messages []Message, isOAuthToken bool) []anthMessage {
-	converted := anthConvertMessagesDetailed(messages, isOAuthToken, params.allowEmptySignature, params.managedProvider, params.nativeToolChanges)
+func (params anthropicParams) convertMessages(messages []Message, isOAuthToken bool) ([]anthMessage, error) {
+	converted, err := anthConvertMessagesDetailed(messages, isOAuthToken, params.allowEmptySignature, params.managedProvider, params.toolDefinitions)
+	if err != nil {
+		return nil, err
+	}
 	applyConversationCacheControl(converted.messages, params.cacheControl)
 	if params.activeEffort != "" {
-		return insertAnthropicThinkingLevelMessages(converted, params.activeEffort)
+		return insertAnthropicThinkingLevelMessages(converted, params.activeEffort), nil
 	}
-	return converted.messages
+	return converted.messages, nil
 }
 
 // Stream retains the assistant identity and active effort when request preparation fails, and terminates with an error event before generation starts. The request, its response and the body read run behind the returned stream, as upstream's async IIFE does; only the synchronous prefix of that IIFE runs before Stream returns.
@@ -976,7 +1014,10 @@ func (p *anthropicProvider) streamResponse(ctx, requestContext context.Context, 
 		if resp.StatusCode != http.StatusBadRequest || !isThinkingSignatureError(b) {
 			return anthHTTPError(p.cfg.ProviderID, resp.StatusCode, b)
 		}
-		request.params.request.Messages = request.params.convertMessages(stripThinkingSignatures(request.params.conversation), request.client.isOAuthToken)
+		request.params.request.Messages, err = request.params.convertMessages(stripThinkingSignatures(request.params.conversation), request.client.isOAuthToken)
+		if err != nil {
+			return err
+		}
 		retry, err := p.prepareRequest(ctx, request.baseURL, request.client, request.params.request, model, opts)
 		if err != nil {
 			return err
@@ -1174,37 +1215,22 @@ func anthropicCompatFlag(model *Model, flag func(*ModelCompat) *bool) bool {
 // on the last one, then the deferred placeholder, then every later declaration
 // deferred; removed tools stay declared, so the list only grows. Otherwise the
 // current tool list is sent.
-func anthropicRequestTools(messages []Message, params anthropicParams, initialTools []ToolSchema, isOAuthToken, supportsEager, supportsStrict bool, cacheControl *anthCacheControl) ([]anthTool, error) {
+func anthropicRequestTools(params anthropicParams, initialTools []ToolSchema, isOAuthToken, supportsEager, supportsStrict bool, cacheControl *anthCacheControl) ([]anthTool, error) {
 	if !params.nativeToolChanges {
 		if len(params.tools) == 0 {
 			return nil, nil
 		}
 		return anthConvertTools(params.tools, isOAuthToken, supportsEager, supportsStrict, cacheControl)
 	}
-	initialNames := make(map[string]bool, len(initialTools))
-	for _, tool := range initialTools {
-		initialNames[tool.Name] = true
-	}
-	var laterTools []ToolSchema
-	for _, tool := range GetDeclaredTools(messages) {
-		if !initialNames[tool.Name] {
-			laterTools = append(laterTools, tool)
-		}
-	}
+	// Initial tools stay active with the cache breakpoint on the last one,
+	// followed by the placeholder. The list never changes afterwards: later
+	// tools are defined by value in tool_addition blocks and withdrawn by
+	// tool_removal, so the cached prefix survives every tool change.
 	tools, err := anthConvertTools(initialTools, isOAuthToken, supportsEager, supportsStrict, cacheControl)
 	if err != nil {
 		return nil, err
 	}
-	tools = append(tools, deferredToolPlaceholder())
-	deferredTools, err := anthConvertTools(laterTools, isOAuthToken, supportsEager, supportsStrict, nil)
-	if err != nil {
-		return nil, err
-	}
-	for _, tool := range deferredTools {
-		tool.DeferLoading = true
-		tools = append(tools, tool)
-	}
-	return tools, nil
+	return append(tools, deferredToolPlaceholder()), nil
 }
 
 // buildParams mirrors upstream buildParams for the request fields PiG sends.
@@ -1220,9 +1246,10 @@ func (p *anthropicProvider) buildParams(model *Model, transcript TranscriptConte
 		systemPrompt = GetCurrentSystemPrompt([]Message{*initialSystem})
 		initialTools = initialSystem.ToolsAdded
 	}
-	// Native tool changes reference tools by name, so a redefined name cannot be
-	// expressed, and Anthropic rejects a tool list where every tool is deferred,
-	// so an initial active tool must anchor the deferred ones.
+	// Native tool changes keep the request-level tool list fixed and define
+	// every later tool by value in a tool_addition block, which also expresses
+	// same-name redefinitions. Anthropic rejects a tool list where every tool is
+	// deferred, so an initial active tool must anchor the placeholder.
 	params := anthropicParams{
 		conversation:        WithoutInitialSystemMessage(messages),
 		tools:               GetCurrentTools(messages),
@@ -1230,7 +1257,7 @@ func (p *anthropicProvider) buildParams(model *Model, transcript TranscriptConte
 		allowEmptySignature: modelAllowsEmptySignature(model),
 		nativeToolChanges: supportsMidConversation &&
 			anthropicCompatFlag(model, func(c *ModelCompat) *bool { return c.SupportsMidConvoToolChanges }) &&
-			len(initialTools) > 0 && !HasToolRedefinitions(messages),
+			len(initialTools) > 0,
 	}
 	params.activeEffort = anthropicProviderEffort(model, opts)
 	if params.activeEffort != "" {
@@ -1245,6 +1272,16 @@ func (p *anthropicProvider) buildParams(model *Model, transcript TranscriptConte
 		}
 	}
 	supportsEager := p.supportsEagerToolInputStreaming()
+	supportsStrictTools := anthropicCompatFlag(model, func(c *ModelCompat) *bool { return c.SupportsStrictTools })
+	if params.nativeToolChanges {
+		params.toolDefinitions = func(tools []ToolSchema) ([]anthTool, error) {
+			return anthConvertTools(tools, isOAuthToken, supportsEager, supportsStrictTools, nil)
+		}
+	}
+	conversation, err := params.convertMessages(params.conversation, isOAuthToken)
+	if err != nil {
+		return anthropicParams{}, err
+	}
 	thinkingEnabled := opts.Thinking != ThinkingOff && opts.Thinking != ""
 	if opts.ThinkingEnabled != nil {
 		thinkingEnabled = *opts.ThinkingEnabled
@@ -1255,7 +1292,7 @@ func (p *anthropicProvider) buildParams(model *Model, transcript TranscriptConte
 	}
 	req := anthRequest{
 		Model:     p.cfg.Model,
-		Messages:  params.convertMessages(params.conversation, isOAuthToken),
+		Messages:  conversation,
 		MaxTokens: maxTokens,
 		Stream:    true,
 		Betas: getBetaFeatures(modelHeaders, optionsHeaders, anthropicBetaInputs{
@@ -1281,9 +1318,7 @@ func (p *anthropicProvider) buildParams(model *Model, transcript TranscriptConte
 	if compat := p.cfg.Compat; compat == nil || compat.SupportsCacheControlOnTools == nil || *compat.SupportsCacheControlOnTools {
 		toolCacheControl = params.cacheControl
 	}
-	supportsStrictTools := anthropicCompatFlag(model, func(c *ModelCompat) *bool { return c.SupportsStrictTools })
-	var err error
-	req.Tools, err = anthropicRequestTools(messages, params, initialTools, isOAuthToken, supportsEager, supportsStrictTools, toolCacheControl)
+	req.Tools, err = anthropicRequestTools(params, initialTools, isOAuthToken, supportsEager, supportsStrictTools, toolCacheControl)
 	if err != nil {
 		return anthropicParams{}, err
 	}

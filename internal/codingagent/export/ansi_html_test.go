@@ -34,7 +34,7 @@ func TestCustomToolResultHTMLBlankLineSemantics(t *testing.T) {
 					return testComponent{lines: []string{tc.edge, "one", tc.edge}}
 				},
 			}}}
-			renderer := newToolHTMLRenderer(tools, "/tmp", 100)
+			renderer := newToolHTMLRenderer(ToolRenderersOf(tools), "/tmp", 100)
 			got := renderer.renderResult("id", "custom", agent.AgentToolResult{})
 			if got.ResultHTMLExpanded != tc.want {
 				t.Fatalf("got %q, want %q", got.ResultHTMLExpanded, tc.want)

@@ -155,6 +155,41 @@ func TestMcpLoginNeedsInteractiveMode(t *testing.T) {
 	expectNotes(t, h.run(t, "login docs"), leveledNote{`Signing in to MCP server "docs" requires interactive mode.`, "error"})
 }
 
+// index.ts loginCommand (1.0.1): in the terminal UI, `/mcp login` signs in on the manager view's sign-in screen, which
+// shows the URL with a copy key, instead of a notice with the URL; the outcome is reported after the view closes.
+func TestMcpLoginSignsInOnTheManagerSignInScreenInTheTerminalUI(t *testing.T) {
+	h := newCommandHarness(t, "docs")
+	h.ctx.Mode, h.ctx.HasUI = extension.ModeTUI, true
+	ui := &scriptedUI{}
+	h.ctx.ShowManager = func(_ context.Context, manage func(mcpext.McpUi) error) error {
+		h.managed++
+		return manage(ui)
+	}
+	notes := h.run(t, "login docs")
+	if h.err != nil || h.managed != 1 {
+		t.Fatalf("err = %v, manager views = %d, want the sign-in in one view", h.err, h.managed)
+	}
+	if len(ui.statuses) == 0 || ui.statuses[0] != [2]string{"Sign in to docs", "Contacting the authorization server…"} {
+		t.Fatalf("sign-in screen = %q", ui.statuses)
+	}
+	for _, note := range notes {
+		if strings.Contains(note.message, "in your browser") {
+			t.Fatalf("the URL was shown as a notice: %q", notes)
+		}
+	}
+	if len(notes) != 1 || notes[0].level != "error" {
+		t.Fatalf("notifications = %q, want the failed sign-in after the view closed", notes)
+	}
+
+	// A manager view that cannot be shown is the command's error, as upstream's showMcpManager throws.
+	failed := errors.New("no view")
+	h.ctx.ShowManager = func(context.Context, func(mcpext.McpUi) error) error { return failed }
+	expectNotes(t, h.run(t, "login docs"))
+	if !errors.Is(h.err, failed) {
+		t.Fatalf("command error = %v, want %v", h.err, failed)
+	}
+}
+
 // index.ts:236-244 pickServer: a name that matches no server, and a server that does not use OAuth.
 func TestMcpCommandNamesTheServerItCannotUse(t *testing.T) {
 	h := newCommandHarness(t, "docs", "stdio-tool")
@@ -283,6 +318,7 @@ func (*recordingAPI) OnTurnStart(func(context.Context, extension.TurnStartEvent)
 func (*recordingAPI) OnMcpServersChange(func(context.Context, extension.McpServersChangeEvent) error) {
 }
 func (*recordingAPI) OnSessionShutdown(func(context.Context, extension.SessionShutdownEvent) error) {}
+func (*recordingAPI) RegisterToolRenderer(extension.ToolRendererResolver)                           {}
 
 // index.ts:745-751: of several servers, the only one that failed or disconnected is the one a nameless reconnect means.
 func TestMcpReconnectPrefersTheOnlyServerThatFailed(t *testing.T) {

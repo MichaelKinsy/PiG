@@ -160,6 +160,10 @@ type Extension struct {
 	toolRenderMu    sync.Mutex
 	toolRenderers   map[string]ToolRenderers
 	toolRenderCards map[string]*toolRenderCard
+	// toolRendererResolvers are the pi.registerToolRenderer resolvers in registration order; resolvedToolRenderers
+	// holds the renderers they returned, by the id the host draws them with. Both are guarded by toolRenderMu.
+	toolRendererResolvers []ToolRendererResolver
+	resolvedToolRenderers map[string]ToolRenderers
 
 	// terminalInputMu guards terminalInputFuncs, which the host consults
 	// synchronously while it holds the user's keystroke.
@@ -868,6 +872,7 @@ func (e *Extension) RunWithConn(nc net.Conn) error {
 			Renderers:               e.renderers,
 			EntryRenderers:          e.entryRenderers,
 			MarkdownTransformer:     e.markdownTransform != nil,
+			ToolRenderers:           e.toolRendererCount(),
 			McpServers:              e.mcpServerDecls,
 			VirtualModels:           e.virtualModelDecls,
 			UnregisterVirtualModels: e.virtualModelUnregistrations,
@@ -1236,6 +1241,10 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 	case "render_tool":
 		lines, err := e.renderTool(ctx, req.Tool, req.Args)
 		_ = e.conn.respond(id, map[string]any{"lines": lines}, err)
+
+	case "resolve_tool_renderers":
+		resolved, err := e.resolveToolRenderers(req.Args)
+		_ = e.conn.respond(id, resolved, err)
 
 	default:
 		_ = e.conn.respond(id, nil, fmt.Errorf("unknown request method: %s", req.Method))

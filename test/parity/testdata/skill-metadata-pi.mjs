@@ -5,7 +5,7 @@ import { join, resolve, relative } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const root = process.env.PI_PACKAGE_ROOT ?? resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, "1.0.0");
+assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, "1.0.1");
 const { SettingsManager } = await import(pathToFileURL(join(root, "dist/core/settings-manager.js")));
 const { DefaultPackageManager } = await import(pathToFileURL(join(root, "dist/core/package-manager.js")));
 const temp = mkdtempSync(join(tmpdir(), "pi-skill-metadata-"));

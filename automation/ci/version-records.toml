@@ -75,3 +75,14 @@ paths = [
 version = "0.87.1"
 reason = "The upgrade plan and its progress ledgers describe the move from 0.87.1 to the current pin, so they name both."
 paths = ["docs/plan/"]
+
+[[record]]
+version = "1.0.0"
+reason = "Records of work done against Pi 1.0.0 before the 1.0.1 leap: the unreleased changelog entries of the 1.0.0 port (changelog.d/port-101.md states the 1.0.1 pin), the rpc33 probe pinned to 1.0.0, D87's oracle of Pi 1.0.0's pi-logo-animation.ts (removed at 1.0.1) and its PORT_MAP row, and the plan and progress ledgers."
+paths = [
+  "CHANGELOG.md",
+  "docs/findings/rpc33-observation-matrix.md",
+  "docs/parity/DIVERGENCES.md",
+  "docs/parity/PORT_MAP.md",
+  "docs/plan/",
+]

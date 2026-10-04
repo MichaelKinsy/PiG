@@ -56,7 +56,7 @@ tables.
 |---|---|---|
 | `app.clipboard.pasteImage` | `ctrl+v` | Paste files on macOS, images, or text from clipboard |
 | `app.editor.external` | `ctrl+g` | Open external editor |
-| `app.message.copy` | `ctrl+x` | Copy selection or last assistant message |
+| `app.message.copy` | `ctrl+x` | Copy selection or last assistant message. On OAuth sign-in screens, copy the sign-in URL |
 | `app.message.dequeue` | `alt+up` | Restore queued messages |
 | `app.message.followUp` | `alt+enter` | Queue follow-up message |
 

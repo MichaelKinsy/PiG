@@ -18,7 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
 )
 
-// This file translates the pure, synchronous parts of @smithy/core 3.33.3 event streams that Pi's Bedrock provider reads through the AWS SDK: getChunkedStream's framing (eventstream-serde-universal/getChunkedStream.js), EventStreamCodec.decode (eventstream-codec/EventStreamCodec.js, splitMessage.js, HeaderMarshaller.js parse) and the message unmarshaller (eventstream-serde-universal/getUnmarshalledStream.js getMessageUnmarshaller, EventStreamSerde.js deserializeEventStream). The awaits between these steps are modeled by bedrock_stream_pipeline.go.
+// This file translates the pure, synchronous parts of @smithy/core 3.35.1 event streams (their modules are unchanged from 3.33.3) that Pi's Bedrock provider reads through the AWS SDK: getChunkedStream's framing (eventstream-serde-universal/getChunkedStream.js), EventStreamCodec.decode (eventstream-codec/EventStreamCodec.js, splitMessage.js, HeaderMarshaller.js parse) and the message unmarshaller (eventstream-serde-universal/getUnmarshalledStream.js getMessageUnmarshaller, EventStreamSerde.js deserializeEventStream). The awaits between these steps are modeled by bedrock_stream_pipeline.go.
 
 const (
 	bedrockPreludeLength     = 8

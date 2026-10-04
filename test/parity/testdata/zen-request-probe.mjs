@@ -6,7 +6,7 @@ import { complete } from '../../../extensions/sdk-ts/node_modules/@earendil-work
 import { MODELS } from '../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/dist/models.generated.js';
 
 const packageURL = new URL('../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/package.json', import.meta.url);
-assert.equal(JSON.parse(readFileSync(packageURL, 'utf8')).version, '1.0.0');
+assert.equal(JSON.parse(readFileSync(packageURL, 'utf8')).version, '1.0.1');
 const requests = {};
 for (const provider of ['opencode', 'opencode-go']) {
   for (const model of Object.values(MODELS[provider])) {

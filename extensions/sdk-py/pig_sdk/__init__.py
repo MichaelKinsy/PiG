@@ -259,6 +259,22 @@ Factory: TypeAlias = Callable[[], "Extension"]
 
 
 @dataclass(kw_only=True)
+class ToolRenderers:
+    """How calls to a tool are drawn (upstream ToolRenderers): render_shell, render_call and render_result."""
+
+    render_call: ToolRenderCallHandler | None = None
+    render_result: ToolRenderResultHandler | None = None
+    render_shell: str = "default"
+
+
+# A tool renderer resolver (upstream ToolRendererResolver): (tool name, next) -> renderers or None. next() returns the
+# renderers the remaining resolvers, then the registered tool, would use. pig divergence (D89): next() returns a marker
+# for renderers the host draws; returning it keeps them, and its render_call and render_result are None. A marker given
+# a render_call or render_result is the resolver's own renderers.
+ToolRendererResolver: TypeAlias = Callable[[str, Callable[[], "ToolRenderers | None"]], "ToolRenderers | None"]
+
+
+@dataclass(kw_only=True)
 class ToolDefinition:
     """Upstream ToolDefinition, the argument of :meth:`Extension.register_tool`.
 
@@ -2442,6 +2458,8 @@ class Extension:
         self._renderers: list[dict[str, Any]] = []
         self._entry_renderers: list[dict[str, Any]] = []
         self._markdown_transformer: Callable[[str, dict[str, Any]], Any] | None = None
+        self._tool_renderer_resolvers: list[ToolRendererResolver] = []
+        self._resolved_tool_renderers: dict[str, ToolRenderers] = {}
         self._oauth_providers: dict[str, OAuthProvider] = {}
         self._tool_handlers: dict[str, ToolHandler] = {}
         self._tool_prepare_handlers: dict[str, ToolPrepareArguments] = {}
@@ -2965,6 +2983,15 @@ class Extension:
                 _invalidate=lambda: self._notify("tool_render_invalidate", {"card": card_id}),
             )
             width = int(args.get("width") or 0)
+            resolved = self._resolved_tool_renderers.get(str(args.get("renderers") or "")) if args.get("renderers") else None
+            if resolved is not None:
+                if args.get("phase") == "result":
+                    if resolved.render_result is None:
+                        raise RuntimeError(f"tool {name} has no result renderer")
+                    return resolved.render_result(ctx, args.get("result") or {"content": []}, args.get("options") or {}, render, width)
+                if resolved.render_call is None:
+                    raise RuntimeError(f"tool {name} has no call renderer")
+                return resolved.render_call(ctx, args.get("args") or {}, render, width)
             if args.get("phase") == "result":
                 handler = self._tool_result_renderers.get(name)
                 if handler is None:
@@ -2975,6 +3002,45 @@ class Extension:
             if call is None:
                 raise RuntimeError(f"tool {name} has no call renderer")
             return call(ctx, args.get("args") or {}, render, width)
+
+    def tool_renderer(self, resolver: ToolRendererResolver) -> None:
+        """Register a tool renderer resolver (Pi's pi.registerToolRenderer). Resolvers run in extension load order, and
+        an extension's resolvers in registration order."""
+        with self._tool_render_lock:
+            self._tool_renderer_resolvers.append(resolver)
+            count = len(self._tool_renderer_resolvers)
+        if self._tools_live:
+            self._notify("tool_renderers", {"count": count})
+
+    def _resolve_tool_renderers(self, args: dict[str, Any]) -> dict[str, Any]:
+        wire_next = args.get("next")
+        marker = ToolRenderers(render_shell=str(wire_next.get("render_shell") or "default")) if isinstance(wire_next, dict) else None
+        with self._tool_render_lock:
+            resolvers = list(self._tool_renderer_resolvers)
+        tool = str(args.get("tool") or "")
+
+        def resolve(index: int) -> ToolRenderers | None:
+            if index < len(resolvers):
+                return resolvers[index](tool, lambda: resolve(index + 1))
+            return marker
+
+        got = resolve(0)
+        if got is None:
+            return {"use": "none"}
+        # A marker given render functions is the resolver's own renderers.
+        if got is marker and got.render_call is None and got.render_result is None:
+            return {"use": "next"}
+        with self._tool_render_lock:
+            renderer_id = f"r{len(self._resolved_tool_renderers) + 1}"
+            self._resolved_tool_renderers[renderer_id] = got
+        out: dict[str, Any] = {"use": "own", "renderers": renderer_id}
+        if got.render_shell == "self":
+            out["render_shell"] = "self"
+        if got.render_call is not None:
+            out["renders_call"] = True
+        if got.render_result is not None:
+            out["renders_result"] = True
+        return out
 
     def message_renderer(self, custom_type: str, handler: RendererHandler) -> None:
         self._renderers.append({"custom_type": custom_type})
@@ -3028,7 +3094,7 @@ class Extension:
     def _serve(self) -> None:
         self._bus.register_pending()
         with self._tool_registration_lock:
-            self._send({"type": "register", "register": {"name": self._name, "tools": self._tools, "commands": self._commands, "shortcuts": self._shortcuts, "handlers": self._handlers, "flags": self._flags, "providers": self._providers, "message_renderers": self._renderers, "entry_renderers": self._entry_renderers, **({"markdown_transformer": True} if self._markdown_transformer is not None else {}), **({"mcp_servers": self._mcp_servers_pending} if self._mcp_servers_pending else {}), **({"virtual_models": self._virtual_models_pending} if self._virtual_models_pending else {}), **({"unregister_virtual_models": self._virtual_model_unregistrations} if self._virtual_model_unregistrations else {})}})
+            self._send({"type": "register", "register": {"name": self._name, "tools": self._tools, "commands": self._commands, "shortcuts": self._shortcuts, "handlers": self._handlers, "flags": self._flags, "providers": self._providers, "message_renderers": self._renderers, "entry_renderers": self._entry_renderers, **({"markdown_transformer": True} if self._markdown_transformer is not None else {}), **({"tool_renderers": len(self._tool_renderer_resolvers)} if self._tool_renderer_resolvers else {}), **({"mcp_servers": self._mcp_servers_pending} if self._mcp_servers_pending else {}), **({"virtual_models": self._virtual_models_pending} if self._virtual_models_pending else {}), **({"unregister_virtual_models": self._virtual_model_unregistrations} if self._virtual_model_unregistrations else {})}})
             ready = self._read_during_load()
             if ready.get("type") != "ready":
                 raise RuntimeError(f"expected ready, got {ready.get('type')}")
@@ -3537,6 +3603,8 @@ class Extension:
             elif method == "render_tool":
                 lines = self._render_tool(ctx, req.get("tool", ""), req.get("args") or {})
                 self._respond(req_id, {"lines": lines}, None)
+            elif method == "resolve_tool_renderers":
+                self._respond(req_id, self._resolve_tool_renderers(req.get("args") or {}), None)
             elif method == "markdown_transform":
                 args = req.get("args") or {}
                 transformed = None

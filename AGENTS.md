@@ -273,8 +273,8 @@ make async-contracts` or `make verify` from `docs/parity/PORT_MAP.md` and `test/
   port. Everything else is invariant rule, not progress narrative.
 -->
 
-**Porting:** 376 / 489 intended-portable entries ✅ (76.9%); **Verification:** 355 behavioral (94.4%), 3 weak-only (no behavioral verification), 18 untested.
-Raw PORT_MAP rows: 547. Breakdown: 58 n/a (designed out) · 101 🟡 partial · 12 ⬜ not started. See docs/parity/DIVERGENCES.md for the documented exceptions.
+**Porting:** 377 / 491 intended-portable entries ✅ (76.8%); **Verification:** 355 behavioral (94.2%), 3 weak-only (no behavioral verification), 19 untested.
+Raw PORT_MAP rows: 548. Breakdown: 57 n/a (designed out) · 102 🟡 partial · 12 ⬜ not started. See docs/parity/DIVERGENCES.md for the documented exceptions.
 Behavioral evidence includes paired scenarios and reviewed mutation-proven unit tests; the family table below counts paired scenarios only.
 Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registration-only, 1 smoke-only.
 

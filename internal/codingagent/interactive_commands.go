@@ -306,11 +306,8 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			}
 			return names
 		},
-		RegisteredTools: func() []extension.RegisteredTool {
-			if m.newRunner == nil {
-				return nil
-			}
-			return m.newRunner.Tools()
+		ToolRenderers: func() func(name string) *extension.ToolRenderers {
+			return ExportToolRenderers(m.newRunner)
 		},
 		// Pi's /export, /share and /bug read session.state (agent-session.ts:3921, session-share.ts:38): the transcript's system prompt and the active tools.
 		ShareState: func() ShareState {
@@ -914,6 +911,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			if m.opts.SettingsManager != nil {
 				tui.SetCapabilityOverrides(m.opts.SettingsManager.GetTerminalCapabilityOverrides())
 			}
+			ensurePngTranscoder()
 			m.applyThemeFromSettings(ctx)
 
 			// 8c. Upstream rebuilds the loaded-resources listing from the

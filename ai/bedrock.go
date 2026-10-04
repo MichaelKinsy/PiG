@@ -920,16 +920,25 @@ func buildBedrockAdditionalFields(model *Model, modelName string, opts StreamOpt
 	}
 
 	thinking := map[string]any{}
-	if !isGovCloudBedrockTarget(model, opts) {
+	isGovCloud := isGovCloudBedrockTarget(model, opts)
+	if !isGovCloud {
 		thinking["display"] = "summarized"
 	}
 
 	if supportsBedrockAdaptiveThinkingWithName(model.ID, modelName) {
 		thinking["type"] = "adaptive"
-		return map[string]any{
+		result := map[string]any{
 			"thinking":      thinking,
 			"output_config": map[string]any{"effort": mapBedrockThinkingEffort(model, opts.Thinking)},
 		}
+		// Replayed signed thinking blocks are bound to the system prompt and tools they were
+		// created with. Bedrock 400s on replay after either changes unless stale blocks are
+		// dropped, matching the Anthropic provider. Skipped on GovCloud like display.
+		if !isGovCloud && supportsBedrockThinkingBlockBinding(model.ID, modelName) {
+			thinking["block_binding"] = map[string]any{"prefix_mismatch_behavior": "drop_block"}
+			result["anthropic_beta"] = []string{thinkingBindingControlsBeta}
+		}
+		return result
 	}
 
 	budget := 0
@@ -958,6 +967,19 @@ func buildBedrockAdditionalFields(model *Model, modelName string, opts StreamOpt
 		result["anthropic_beta"] = []string{"interleaved-thinking-2025-05-14"}
 	}
 	return result
+}
+
+// supportsBedrockThinkingBlockBinding reports whether the model accepts
+// thinking.block_binding. Opus 4.6 and Sonnet 4.6 reject it with
+// "thinking.adaptive.block_binding: Extra inputs are not permitted".
+// upstream: packages/ai/src/api/bedrock-converse-stream.ts:supportsThinkingBlockBinding
+func supportsBedrockThinkingBlockBinding(modelID, modelName string) bool {
+	for _, s := range bedrockModelMatchCandidates(modelID, modelName) {
+		if strings.Contains(s, "opus-4-7") || strings.Contains(s, "opus-4-8") || strings.Contains(s, "opus-5") || strings.Contains(s, "sonnet-5") || strings.Contains(s, "fable-5") {
+			return true
+		}
+	}
+	return false
 }
 
 // supportsNativeXhighEffort recognizes the Bedrock model families with native xhigh effort in both model IDs and display names.

@@ -165,6 +165,10 @@ func copyToClipboard(text string) error {
 	return hostClipboardCopier().copy(text)
 }
 
+// CopyToClipboard writes text to the system clipboard, for components outside this package such as the MCP sign-in
+// screen.
+func CopyToClipboard(text string) error { return copyToClipboard(text) }
+
 func (c clipboardCopier) isRemoteSession() bool {
 	return c.getenv("SSH_CONNECTION") != "" || c.getenv("SSH_CLIENT") != "" || c.getenv("MOSH_CONNECTION") != ""
 }
