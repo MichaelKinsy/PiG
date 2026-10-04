@@ -145,7 +145,7 @@ MB. Later appends use the same bounded path.
 
 ## Reload
 
-`/reload` resolves the same extension inputs as startup and preserves their first-seen order. Pig reuses valid build artifacts, but it constructs a fresh factory and runtime for every configured, embedded, fused, and built-in extension so module and closure state reset as they do in Pi. It starts and validates replacements, checks registration, and publishes the successful set. A failed extension is removed and reported while other extensions load.
+`/reload` resolves the same extension inputs as startup and preserves their first-seen order. Pig reuses valid build artifacts and calls the factory of every configured, embedded, fused, and built-in extension again, as Pi does. Module state follows Pi's loader: a TypeScript or CommonJS extension is evaluated again, so its module state resets, and an ES module extension (`.mjs`, or `.js` under `"type": "module"`) keeps its module and its state. Pi keeps running an edited ES module extension's old code until it restarts; Pig evaluates it again when one of its local source files changed (D93). A Go or Rust extension keeps its package state until an edit of its source rebuilds it, and a Python extension keeps its modules until one of its source files changes. It starts and validates replacements, checks registration, and publishes the successful set. A failed extension is removed and reported while other extensions load.
 
 ## Product boundary
 

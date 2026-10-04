@@ -48,10 +48,10 @@ export class Generations {
     this.cacheCwd = resolved;
   }
 
-  async factoryFor(entry) {
+  async factoryFor(entry, reload = "0") {
     const cached = this.factories.get(entry);
     if (cached) return cached;
-    const factory = await importExtension(entry);
+    const factory = await importExtension(entry, reload);
     if (typeof factory !== "function") throw invalidFactory(entry);
     this.factories.set(entry, factory);
     return factory;
@@ -77,7 +77,7 @@ export class Generations {
     const runtime = new Runtime(entry, this.nativeProviderObjects, this.providerConfigObjects, { name, socket });
     try {
       await runWithRuntime(runtime, async () => {
-        const install = await this.factoryFor(entry);
+        const install = await this.factoryFor(entry, reload);
         await install(runtime.api);
       });
     } catch (error) {

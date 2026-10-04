@@ -35,6 +35,14 @@ func reloadSourceProbes(t *testing.T) []reloadSourceProbe {
 		},
 		entry:   "probe.ts",
 		version: "version.ts",
+	}, {
+		name: "node-mjs",
+		files: map[string]string{
+			"probe.mjs":   "import { appendFileSync } from \"node:fs\";\nimport { VERSION } from \"./version.mjs\";\nexport default function (pi) {\n  appendFileSync(process.env.RELOAD_PROBE_LOG, \"factory:\" + VERSION + \"\\n\");\n  pi.registerCommand(\"rl\", { description: \"Reload\", handler: async (_args, ctx) => { await ctx.reload(); } });\n}\n",
+			"version.mjs": "export const VERSION = \"v1\";\n",
+		},
+		entry:   "probe.mjs",
+		version: "version.mjs",
 	},
 		{
 			name: "python",
@@ -69,7 +77,7 @@ func reloadSourceProbes(t *testing.T) []reloadSourceProbe {
 		}}
 }
 
-// Pi's loader imports extensions through jiti with moduleCache: false (core/extensions/loader.ts:496-499), so /reload runs each factory from the source as it is now, its local imports included: an -e extension edited after it loaded reloads the edit (probed with Pi 1.0.0 in RPC mode). PiG re-invokes the factory in the process that holds the extension, and the Python runner re-imports an extension whose source changed since its import, so a Python extension reloads its edit as a TypeScript one does. A Go or Rust extension's source identifies its build, so an edit rebuilds it.
+// Pi's loader imports extensions through jiti with moduleCache: false (core/extensions/loader.ts:496-499), so /reload runs a TypeScript extension's factory from the source as it is now, its local imports included: an -e extension edited after it loaded reloads the edit (probed with Pi 1.0.0 in RPC mode). Pi keeps an edited .mjs extension's old code, which Node's ES module cache holds; PiG evaluates it again (D93). PiG re-invokes the factory in the process that holds the extension, and the Python runner re-imports an extension whose source changed since its import, so a Python extension reloads its edit as a TypeScript one does. A Go or Rust extension's source identifies its build, so an edit rebuilds it.
 func TestReloadRunsTheCurrentSourceOfACommandLineExtension(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds the pig binary and starts Node, Python, Go and Rust extensions")

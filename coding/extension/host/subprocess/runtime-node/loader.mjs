@@ -38,11 +38,47 @@ export const shims = new Map([
   ["@sinclair/typebox/compile", new URL("./shims/typebox-compile.mjs", import.meta.url).href],
 ]);
 
+// The query parameter that names the reload pass in which an edited ES module extension was evaluated again.
+export const reloadParam = "pig-reload";
+
+// nativeImports maps each local module Node resolved, by its URL without query or fragment, to the local modules it imports. Synchronous hooks build it in the extension's own thread; the asynchronous hooks of a Node release without module.registerHooks build it in theirs, so there it stays empty.
+export const nativeImports = new Map();
+
+export function moduleKey(url) {
+  const key = new URL(url);
+  key.search = "";
+  key.hash = "";
+  return key.href;
+}
+
+function localModule(url) {
+  return url.startsWith("file:") && !url.includes("/node_modules/");
+}
+
+// track records which local module imports which, and gives each local import of a module evaluated again in a reload pass the same pass, so Node evaluates the extension's own modules again while installed packages keep theirs.
+function track(result, parentURL) {
+  if (!localModule(result.url)) return result;
+  const child = moduleKey(result.url);
+  if (!nativeImports.has(child)) nativeImports.set(child, new Set());
+  if (!parentURL || !localModule(parentURL)) return result;
+  const parent = moduleKey(parentURL);
+  if (!nativeImports.has(parent)) nativeImports.set(parent, new Set());
+  nativeImports.get(parent).add(child);
+  const pass = new URL(parentURL).searchParams.get(reloadParam);
+  const url = new URL(result.url);
+  if (!pass || url.searchParams.has(reloadParam)) return result;
+  // pig divergence (D93): a local import of an edited ES module extension that a reload evaluates again is evaluated again too.
+  url.searchParams.set(reloadParam, pass);
+  return { ...result, url: url.href };
+}
+
 export function resolve(specifier, context, defaultResolve) {
   const shim = shims.get(specifier);
   if (shim) {
     cacheImportedModules();
     return { url: shim, shortCircuit: true };
   }
-  return defaultResolve(specifier, context, defaultResolve);
+  const result = defaultResolve(specifier, context, defaultResolve);
+  if (typeof result?.then === "function") return result.then((resolved) => track(resolved, context.parentURL));
+  return track(result, context.parentURL);
 }

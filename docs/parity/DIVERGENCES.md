@@ -1230,3 +1230,21 @@ Parity allowance: Pi never shows the dialog for a fork, and parity fixtures carr
 Remove when: never; the first-run setup is PiG's.
 
 SCRUTINIZED:approved
+
+## D93 /reload evaluates an edited ES module extension again
+
+What: Pi 1.0.2 imports each extension through jiti with `moduleCache: false` (`core/extensions/loader.ts`, `loadExtensionModule`), so `/reload` evaluates a TypeScript or CommonJS extension and its local imports again. jiti 2.7.0 hands a file it treats as an ES module, an `.mjs` file or a `.js` file under `"type": "module"`, to Node's own `import()` when it imports asynchronously (`eval_evalModule`), and Node keeps an ES module for the life of the process by its URL. Pi therefore keeps running an edited ES module extension's old code after `/reload` until it restarts, while a TypeScript extension beside it runs its edit (probed with Pi 1.0.0 in RPC mode; Pi 1.0.2 has the same loader and jiti). PiG keeps an unedited ES module extension's module and its state across `/reload`, as Pi does. On the first import of an extension's entry in a reload pass, PiG evaluates an ES module extension again when the source of a local module it imported changed since its evaluation: it imports the entry from its file URL with a `pig-reload=<pass>` query, and the runtime's resolve hook gives each local import outside `node_modules` of a module so imported the same query, so Node evaluates the extension's own modules again. Installed packages, and CommonJS modules, which Node keeps in its `require` cache, keep their modules. A later unedited reload keeps the latest evaluation, and a Session replacement never evaluates a module again. The edit check needs Node's synchronous module hooks (`module.registerHooks`, Node 22.15 or later); with an older Node release PiG keeps Pi's behavior. Node keeps every evaluation of a module until the process ends.
+
+Why: fixed ahead of upstream. The owner fixes a non-destructive inherited Pi bug in PiG when the fix only stops a failure and changes nothing for a user who does not hit it, and reports it upstream.
+
+Owner decision: 2026-10-04, owner Michael Kinsy (FIXLANE 2: fix the `.mjs` reload now instead of deferring it).
+
+Call-site markers: `coding/extension/host/subprocess/runtime-node/jiti-loader.mjs` (`importExtension`), `coding/extension/host/subprocess/runtime-node/loader.mjs` (`track`).
+
+Evidence: `TestHostReloadEvaluatesOnlyAnEditedESModuleExtensionAgain` (`.mjs` and `"type": "module"` `.js`, packed and isolated: an unedited reload keeps the module; an edit of a static import, of a dynamic import, or of a module first imported since the last reload evaluates it again; a later unedited reload keeps the new evaluation; an installed package keeps its module. It fails with the previous runtime, and each of seven mutations of the rules fails it), `TestReloadRunsTheCurrentSourceOfACommandLineExtension/node-mjs` (the real CLI in RPC mode logged `factory:v1` twice before the fix), and `TestHostReloadKeepsMjsModuleStateAndReevaluatesTsModules` (Pi's rule for an unedited `.mjs` module).
+
+Parity allowance: Pi keeps the old code of an edited ES module extension, so no paired scenario compares the reload; the tests above pin PiG's behavior.
+
+Remove when: Pi's loader evaluates an edited ES module extension again on `/reload` (upstream issue drafted 2026-10-04).
+
+SCRUTINIZED:approved
