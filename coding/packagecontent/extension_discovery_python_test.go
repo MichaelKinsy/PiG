@@ -61,13 +61,32 @@ func TestPythonExtensionDirectoryDiscovery(t *testing.T) {
 			t.Fatalf("entries=%q, want %q", got, want)
 		}
 	})
-	t.Run("child extensions win over a Python directory", func(t *testing.T) {
-		// As for go.work: a directory whose children are extensions is a collection of them.
-		dir := t.TempDir()
-		writeTestFile(t, filepath.Join(dir, "tool.py"), pythonFactoryModule)
-		writeTestFile(t, filepath.Join(dir, "hello-python", "hello_python.py"), pythonFactoryModule)
-		if got, want := Collect([]string{dir}, Extensions), []string{filepath.Join(dir, "hello-python")}; !slices.Equal(got, want) {
-			t.Fatalf("entries=%q, want %q", got, want)
+	t.Run("a factory directory keeps its child folders", func(t *testing.T) {
+		// As go.mod and Cargo.toml do: tests/main.py and web/index.js belong to the extension and are not extensions of their own.
+		root := t.TempDir()
+		ext := filepath.Join(root, "hello-python")
+		writeTestFile(t, filepath.Join(ext, "hello_python.py"), pythonFactoryModule)
+		writeTestFile(t, filepath.Join(ext, "tests", "main.py"), "#!/usr/bin/env python3\nprint('test')\n")
+		writeTestFile(t, filepath.Join(ext, "web", "index.js"), "export default function() {}\n")
+		if got, want := DiscoverAutomatic(root, Extensions), []string{ext}; !slices.Equal(got, want) {
+			t.Fatalf("DiscoverAutomatic=%q, want %q", got, want)
+		}
+		if got, want := Collect([]string{ext}, Extensions), []string{ext}; !slices.Equal(got, want) {
+			t.Fatalf("Collect=%q, want %q", got, want)
+		}
+	})
+	t.Run("a Package extensions directory is conventional", func(t *testing.T) {
+		// Upstream collectPackageResources reads a Package's extensions/ with collectAutoExtensionEntries, as it reads the global directory.
+		for _, module := range []string{"tool.py", "main.py"} {
+			root := t.TempDir()
+			writeTestFile(t, filepath.Join(root, "extensions", module), "#!/usr/bin/env python3\n"+pythonFactoryModule)
+			resources, err := Discover(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(resources.ExtensionEntries) != 0 {
+				t.Fatalf("%s: ExtensionEntries=%q, want none", module, resources.ExtensionEntries)
+			}
 		}
 	})
 }

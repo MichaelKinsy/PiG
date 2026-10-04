@@ -543,7 +543,7 @@ func installedSourceRoot(cwd string, sm *codingagent.SettingsManager, source str
 	if packagemanager.DetectSourceKind(source) != "local" {
 		return packagemanager.InstalledPathForSource(cwd, sm.AgentDir(), sm, source, local)
 	}
-	root, err := packagemanager.ResolveLocalPackageRoot(cwd, source)
+	root, err := packagemanager.ResolveInputPackageSourceRoot(cwd, sm.AgentDir(), sm, source)
 	if err != nil {
 		return ""
 	}
