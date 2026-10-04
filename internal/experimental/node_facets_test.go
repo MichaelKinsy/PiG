@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -40,14 +41,20 @@ const { createFacetBridge: createDriver } = createRequire(import.meta.url)(`+str
 export function createFacetBridge(host) {
   const driver = createDriver(host);
   const exits = [];
+  const started = [];
   return {
     sync: args => driver.sync(args),
     async request(args, signal) {
       if (args.op === "exits") return new Promise(resolve => setImmediate(() => resolve(exits.slice())));
+      if (args.op === "started") return started.slice();
       if (args.op !== "await") return driver.request(args, signal);
-      host.callSync({ observer: args.observer });
-      try { return await driver.request(args, signal); }
-      finally { exits.push(args.observer); }
+      // The entry call is inside the try: the host reports entry from within this synchronous call, so a cancel frame can land while it waits for its reply and abort it (cancelParent). That is still this observer's exit and must be recorded.
+      // started records that the driver's promise wait began; the test cancels only after it, so the exit it checks is the driver observer's.
+      try {
+        host.callSync({ observer: args.observer });
+        started.push(args.observer);
+        return await driver.request(args, signal);
+      } finally { exits.push(args.observer); }
     }
   };
 }
@@ -132,12 +139,26 @@ export function createFacetBridge(host) {
 		case got := <-result:
 			t.Fatalf("%s waiter returned before its entry barrier: %#v, %v", name, got.value, got.err)
 		}
+		// Cancel only once the driver's promise wait has started, so the exit asserted below is the driver observer's own,
+		// not an entry call that the cancel aborted before driver.request ran.
+		for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(5 * time.Millisecond) {
+			var started []string
+			if err := call(t.Context(), false, map[string]any{"op": "started"}, &started); err != nil {
+				t.Fatal(err)
+			}
+			if slices.Contains(started, name) {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("%s waiter never started the driver's promise wait (started=%q)", name, started)
+			}
+		}
 	}
 	cancel()
 	if got := <-results["cancelled"]; !errors.Is(got.err, context.Canceled) {
 		t.Fatalf("cancelled observer=%#v, %v; want context cancellation", got.value, got.err)
 	}
-	// The cancel frame is queued ahead of this request, but Node reads socket frames in separate event-loop turns on Windows, so a single checkpoint can precede the abort. Poll until the exit is recorded; the producer stays unsettled throughout.
+	// The cancel frame is queued ahead of this request, but Node reads socket frames in separate event-loop turns, so a single checkpoint can precede the abort. Poll until the exit is recorded; the producer stays unsettled throughout.
 	var exits []string
 	for deadline := time.Now().Add(10 * time.Second); ; {
 		exits = nil
