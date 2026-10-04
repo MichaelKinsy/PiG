@@ -12,8 +12,8 @@ FAST_PARALLEL=${TEST_FAST_PARALLEL:-12}
 SUBPROCESS_PARALLEL=${TEST_SUBPROCESS_PARALLEL:-2}
 SERIAL_PARALLEL=${TEST_SERIAL_PARALLEL:-1}
 STRESS_COUNT=${TEST_STRESS_COUNT:-3}
-# cmd/pig runs as CLI_SHARDS separate go test processes (test-shard-pattern.sh), each under go test's 10-minute package timeout. One process for the whole package needs more than 10 minutes on a 4-CPU runner. The Windows cli job in .github/workflows/ci.yml runs the same shards as separate steps; test/ci-images checks that the two agree.
-CLI_SHARDS=5
+# cmd/pig runs as CLI_SHARDS separate go test processes (test-shard-pattern.sh), each under go test's 10-minute package timeout. One process for the whole package needs more than 10 minutes on a 4-CPU runner. The Windows cli-1 to cli-8 jobs in .github/workflows/ci.yml run the same shards, one parallel job each; test/ci-images checks that the two agree.
+CLI_SHARDS=8
 CLI_PKG=./cmd/pig
 MODE=${1:-default}
 COUNT_FLAG=()

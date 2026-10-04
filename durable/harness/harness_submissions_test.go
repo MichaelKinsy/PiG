@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"path/filepath"
-	"slices"
 	"sync/atomic"
 	"testing"
 
@@ -174,9 +173,14 @@ func TestSubmissions(t *testing.T) {
 		go func() { _, err := submission.Wait(waitCtx); cancelled <- err }()
 		pending := make(chan error, 1)
 		go func() { _, err := submission.Wait(testContext); pending <- err }()
-		// Upstream's wait() enqueues its read on the Session line synchronously; wait until it registered.
+		// Upstream's wait() enqueues its read on the Session line synchronously; Go starts the goroutines
+		// asynchronously, so wait until BOTH waits registered (otherwise close can precede the second wait's
+		// read and it would see the Session's own closed error instead of the Harness's).
 		waitFor(t, func() bool {
-			return slices.Contains(harness.(*harnessImpl).submissions.waiters.Keys(), submission.Id())
+			waiters := &harness.(*harnessImpl).submissions.waiters
+			waiters.mu.Lock()
+			defer waiters.mu.Unlock()
+			return len(waiters.sets[submission.Id()]) == 2
 		})
 		abort()
 		expectError(t, <-cancelled, "stop waiting")
