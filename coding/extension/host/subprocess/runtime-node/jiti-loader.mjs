@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
-import { readFileSync, realpathSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { isAbsolute, join } from "node:path";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { evaluatedURLs, nativeImports, reloadParam, shims } from "./loader.mjs";
+import { shims } from "./loader.mjs";
 import { cacheImportedModules } from "./compile-cache.mjs";
 import { getRuntimeCacheDir } from "./shims/pig-config.mjs";
 
@@ -11,16 +11,7 @@ import { getRuntimeCacheDir } from "./shims/pig-config.mjs";
 // The published Node distribution uses jiti's Babel transform, virtual modules,
 // disabled module caching, and disabled native imports for each extension.
 const require = createRequire(import.meta.url);
-// jiti's own entry (shims/jiti/lib/jiti.cjs) passes a fixed native import to this constructor; the runtime passes one that imports the same way and notes whether jiti imported an extension's entry natively, and otherwise builds jiti as that entry does.
-const createJitiCore = require("./shims/jiti/dist/jiti.cjs");
-let babelTransform;
-function lazyTransform(...args) {
-  babelTransform ??= require("./shims/jiti/dist/babel.cjs");
-  return babelTransform(...args);
-}
-function onError(error) {
-  throw error;
-}
+const createJiti = require("./shims/jiti/lib/jiti.cjs");
 
 // Jiti validates each source's contents, not its mtime, before reusing a transform. Separate compiler/runtime versions and environment-controlled transform options as well: jiti's internal cache revision alone is not a release identity.
 const compilerIdentity = createHash("sha256")
@@ -51,125 +42,13 @@ for (const [specifier, url] of shims) {
   });
 }
 
-// jiti hands an ES module (an .mjs file, or a .js file under "type": "module") to Node's own import when it imports asynchronously, and Node keeps such a module for the life of the process, so Pi keeps running an edited ES module extension's old code after /reload while it evaluates a TypeScript or CommonJS extension's current source.
-// pig divergence (D93): the first import of an extension's entry in each reload pass evaluates again the local modules of an ES module extension whose source changed since their evaluation, and each local module that imports one of them, the entry included; every other module keeps its instance and its state, as in Pi. evaluations holds, by the entry's canonical path, its module key, when its latest evaluation started, and the source stamp of each local module it imported.
-const evaluations = new Map();
-
-function canonicalPath(pathOrURL) {
-  const text = String(pathOrURL);
-  let path = text.startsWith("file:") ? fileURLToPath(text) : text;
-  try { path = realpathSync.native(path); } catch {}
-  return process.platform === "win32" ? path.toLowerCase() : path;
-}
-
-function now() {
-  return BigInt(Date.now()) * 1_000_000n;
-}
-
-function stampOf(key) {
-  try {
-    const info = statSync(fileURLToPath(key), { bigint: true });
-    return { mtime: info.mtimeNs, text: `${info.mtimeNs}:${info.size}` };
-  } catch {
-    return { mtime: undefined, text: "" };
-  }
-}
-
-// graphOf lists the local modules that the module with key imports, itself included, directly or through other local modules.
-function graphOf(key) {
-  const seen = new Set([key]);
-  const queue = [key];
-  while (queue.length > 0) {
-    for (const child of nativeImports.get(queue.shift()) ?? []) {
-      if (seen.has(child)) continue;
-      seen.add(child);
-      queue.push(child);
-    }
-  }
-  return seen;
-}
-
-function changed(evaluation, key) {
-  const current = stampOf(key);
-  const stamp = evaluation.stamps.get(key);
-  if (stamp !== undefined) return current.text !== stamp;
-  // A module the extension imported after its factory returned has no stamp: its source changed if its file is newer than the evaluation.
-  return current.mtime === undefined || current.mtime > evaluation.since;
-}
-
-// stale lists the modules of an evaluation's graph that a reload evaluates again: each changed module and each module that imports one, directly or through other local modules.
-function stale(evaluation) {
-  const graph = graphOf(evaluation.node);
-  const result = new Set([...graph].filter((key) => changed(evaluation, key)));
-  for (let grew = result.size > 0; grew;) {
-    grew = false;
-    for (const key of graph) {
-      if (result.has(key)) continue;
-      for (const child of nativeImports.get(key) ?? []) {
-        if (!result.has(child)) continue;
-        result.add(key);
-        grew = true;
-        break;
-      }
-    }
-  }
-  return result;
-}
-
-function nodeOf(path) {
-  for (const key of nativeImports.keys()) {
-    if (key.startsWith("file:") && canonicalPath(key) === path) return key;
-  }
-  return undefined;
-}
-
-// record keeps an evaluation of an entry that jiti imported natively and stamps the local modules it imported that have no stamp yet. A Node release without module.registerHooks leaves nativeImports empty in this thread, so there nothing is recorded and every import is Pi's.
-function record(path, previous, fresh, since) {
-  const node = previous?.node ?? nodeOf(path);
-  if (!node) return;
-  let evaluation = previous;
-  if (!evaluation || fresh) {
-    evaluation = { node, since, stamps: new Map() };
-    evaluations.set(path, evaluation);
-  }
-  for (const key of graphOf(node)) {
-    if (!evaluation.stamps.has(key)) evaluation.stamps.set(key, stampOf(key).text);
-  }
-}
-
-/** Imports an extension's entry the way Pi does and returns its default export. reload is the reload pass of the admission, or "0" outside a reload. */
-export async function importExtension(entry, reload = "0") {
-  const path = canonicalPath(entry);
-  const previous = evaluations.get(path);
-  let fresh = false;
-  let since = previous?.since ?? now();
-  if (previous && reload !== "0") {
-    const modules = stale(previous);
-    for (const key of modules) {
-      const url = new URL(key);
-      url.searchParams.set(reloadParam, reload);
-      evaluatedURLs.set(key, url.href);
-    }
-    if (modules.size > 0) {
-      fresh = true;
-      since = now();
-    }
-  }
-  // The resolve hook (loader.mjs track) resolves a native import of the entry to its latest evaluation.
-  let native = false;
-  const nativeImport = (id) => {
-    const specifier = String(id);
-    if ((specifier.startsWith("file:") || isAbsolute(specifier)) && canonicalPath(specifier) === path) native = true;
-    return import(id);
-  };
-  const jiti = createJitiCore(import.meta.url, {
+/** Imports an extension's entry the way Pi does and returns its default export. */
+export async function importExtension(entry) {
+  const jiti = createJiti(import.meta.url, {
     moduleCache: false,
     fsCache: transformCacheDir(),
     virtualModules,
     tryNative: false,
-    transform: lazyTransform,
-  }, { onError, nativeImport, createRequire });
-  const factory = await jiti.import(entry, { default: true });
-  if (native) record(path, previous, fresh, since);
-  return factory;
+  });
+  return jiti.import(entry, { default: true });
 }

@@ -1233,24 +1233,45 @@ SCRUTINIZED:approved
 
 ## D93 /reload evaluates an edited ES module extension again
 
-What: Pi 1.0.0 imports each extension through jiti with `moduleCache: false` (`core/extensions/loader.ts:569-572`, `loadExtensionModule`), so `/reload` evaluates a TypeScript or CommonJS extension and its local imports again. jiti 2.7.0 hands a file it treats as an ES module, an `.mjs` file or a `.js` file under `"type": "module"`, to Node's own `import()` when it imports asynchronously (`eval_evalModule`), and Node keeps an ES module for the life of the process by its URL. Pi therefore keeps running an edited ES module extension's old code after `/reload` until it restarts, even when the edit is a syntax error, while a TypeScript extension beside it runs its edit (probed with Pi 1.0.0 in RPC mode and with Pi 0.87.1's own loader; Pi 1.0.2 has the same loader and jiti). PiG keeps an unedited ES module extension's modules and their state across `/reload`, as Pi does. On the first import of an extension's entry in a reload pass, PiG evaluates again each local module of the extension whose source changed since its evaluation and each local module that imports one of them, directly or through other local modules, the entry included: it imports each from its file URL with a `pig-reload=<pass>` query, and the runtime's resolve hook resolves every local import of such a module to its latest evaluation. Every other module keeps its instance, so extensions that share an unedited local module keep sharing it, and an edit of a shared module evaluates it, and each extension that imports it, again into one new instance. An edit that breaks the module fails the extension's load on `/reload`, as an edited TypeScript extension's does in Pi, and the next valid edit loads it again. Installed packages under `node_modules`, and CommonJS modules, which Node keeps in its `require` cache, keep their modules. A later unedited reload keeps the latest evaluation, and a Session replacement never evaluates a module again. A module evaluated again has the query in its `import.meta.url` and in the file names of its stack traces. The edit check needs Node's synchronous module hooks (`module.registerHooks`, Node 22.15 or later); with an older Node release PiG keeps Pi's behavior. Node keeps every evaluation of a module until the process ends.
+What: Pi 1.0.0 imports each extension through jiti with `moduleCache: false` (`core/extensions/loader.ts:569-572`, `loadExtensionModule`), so `/reload` evaluates a TypeScript or CommonJS extension and its local imports again. jiti 2.7.0 hands a file it treats as an ES module, an `.mjs` file or a `.js` file under `"type": "module"`, to Node's own `import()` when it imports asynchronously (`eval_evalModule`), and Node keeps an ES module for the life of the process by its URL. Pi therefore keeps running an edited ES module, an extension's entry or a local module it imports, until it restarts, even when the edit is a syntax error. This also holds for an `.mjs` module that a TypeScript extension imports. A TypeScript extension's own source runs its edit. This was probed with Pi 1.0.0 in RPC mode and with Pi 0.87.1's own loader; Pi 1.0.2 has the same loader and jiti.
+
+PiG's runtime hooks record, for each local extension module that Node loads, the source it loaded and the extension modules each evaluation imports. Local means outside the runtime and outside `node_modules`. When a reload pass starts, PiG gives a new URL, with a `pig-reload=<pass>` query, to each ES module whose source changed since Node loaded it and to each ES module that imports one, directly or through others. The resolve hook resolves every import of such a module to that URL, so the reload evaluates exactly those modules again:
+- Every other module keeps its instance and its state, as in Pi.
+- Extensions, TypeScript ones included, that import one edited module share its one new evaluation.
+- An edit that breaks a module fails each extension that imports it on `/reload`, as an edited TypeScript extension's does in Pi, and the next valid edit loads it again.
+- A module that an edit no longer imports stops counting.
+- An installed package under `node_modules` keeps its module, and so does a CommonJS module, which Node keeps in its `require` cache: an edit of either takes effect after a restart, and does not evaluate its importers again.
+- A later unedited reload keeps the latest evaluation, and a Session replacement never evaluates a module again.
+- An old generation that still serves until the swap and imports such a module dynamically gets the new evaluation.
+- A module evaluated again has the query in its `import.meta.url` and in the file names of its stack traces.
+- The hooks need Node's synchronous module hooks (`module.registerHooks`, Node 22.15 or later); with an older Node release PiG keeps Pi's behavior.
+- Node keeps every evaluation of a module until the process ends.
 
 Why: fixed ahead of upstream. The owner fixes a non-destructive inherited Pi bug in PiG when the fix only stops a failure and changes nothing for a user who does not hit it, and reports it upstream.
 
 Owner decision: 2026-10-04, owner Michael Kinsy (FIXLANE 2: fix the `.mjs` reload in 0.4.1 instead of deferring it; ID assigned by the lead).
 
-Call-site markers: `coding/extension/host/subprocess/runtime-node/jiti-loader.mjs` (`importExtension`), `coding/extension/host/subprocess/runtime-node/loader.mjs` (`track`).
+Call-site markers: `coding/extension/host/subprocess/runtime-node/loader.mjs` (`track`, `reevaluateEdited`).
 
-Evidence:
-- `TestHostReloadEvaluatesOnlyAnEditedESModuleExtensionAgain` (`.mjs` and `"type": "module"` `.js`, packed and isolated). An unedited reload keeps the module. An edit of a static import, of a dynamic import, or of a module first imported since the last reload evaluates it again. A later unedited reload keeps the new evaluation. An installed package keeps its module even when edited.
-- `TestHostReloadKeepsAnUneditedSharedModuleOfPackedESModuleExtensions`: an edit of one extension keeps the shared module's instance and state; an edit of the shared module gives both extensions one new instance.
+Evidence: these tests are in `coding/extension/host/subprocess`.
+- `TestHostReloadEvaluatesOnlyAnEditedESModuleExtensionAgain` (`.mjs` and `"type": "module"` `.js`, packed and isolated):
+  - an unedited reload keeps the module;
+  - an edit of a static import, a dynamic import, or a module first imported since the last reload evaluates it again;
+  - a later unedited reload keeps the new evaluation;
+  - an edited installed package keeps its module.
+- `TestHostReloadKeepsAnUneditedSharedModuleOfPackedESModuleExtensions`: shared instance kept, then one new shared instance.
+- `TestHostReloadKeepsOneSharedEvaluationAcrossAFailedImporter`.
+- `TestHostReloadForgetsAnImportTheEditRemoved`.
+- `TestHostReloadGivesTypeScriptAndESModuleImportersOneNewEvaluation`.
+- `TestHostReloadKeepsAnESModuleWhoseCommonJSDependencyChanged`.
 - `TestNodeReloadEvaluatesAnEditedTypeModuleJsEntryAgain`: an edit runs, a broken edit fails the load, and the fix loads it again. It replaces the test that pinned Pi's behavior.
 - `TestSessionReplacementKeepsAnEditedESModuleUntilAReload`.
-- `TestReloadRunsTheCurrentSourceOfACommandLineExtension/node-mjs`: the real CLI in RPC mode logged `factory:v1` twice before the fix.
 - `TestHostReloadKeepsMjsModuleStateAndReevaluatesTsModules`: Pi's rule for an unedited `.mjs` module.
-- The host tests fail with the runtime before the fix, and each of nine mutations of the rules fails at least one of them.
+- `TestReloadRunsTheCurrentSourceOfACommandLineExtension/node-mjs` (`cmd/pig`): the real CLI over RPC.
 
-Parity allowance: Pi keeps the old code of an edited ES module extension, so no paired scenario compares the reload; the tests above pin PiG's behavior.
+Each test fails with an earlier runtime: the CLI test with the runtime before D93, and the last four regression tests with the first D93 runtime. Each of ten mutations of the rules fails at least one test. Loading 19 more ES module extensions in one process takes the same 30 ms as before D93.
+
+Parity allowance: Pi keeps the old code of an edited ES module, so no paired scenario compares the reload; the tests above pin PiG's behavior.
 
 Remove when: Pi's loader evaluates an edited ES module extension again on `/reload` (upstream issue drafted 2026-10-04).
 

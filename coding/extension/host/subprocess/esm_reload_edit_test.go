@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -308,8 +309,13 @@ func TestSessionReplacementKeepsAnEditedESModuleUntilAReload(t *testing.T) {
 	first := NewHost(t.TempDir())
 	first.SetRuntimeRetention(retention)
 	t.Cleanup(func() { first.Shutdown("test done") })
+	first.SetConfigLoader(func() ([]ExtConfig, error) { return configs, nil })
 	if _, errs := first.LoadAll(t.Context(), configs); len(errs) > 0 {
 		t.Fatal(errs)
+	}
+	// A reload before the edit leaves the runtime in a reload pass, so the replacement's admission is the first one outside it.
+	if _, err := first.Reload(t.Context()); err != nil {
+		t.Fatal(err)
 	}
 	before := retainedProbeOf(t, first, mjs.Name)
 
@@ -335,11 +341,11 @@ func TestSessionReplacementKeepsAnEditedESModuleUntilAReload(t *testing.T) {
 	if _, errs := second.LoadAll(t.Context(), configs); len(errs) > 0 {
 		t.Fatal(errs)
 	}
-	if after := retainedProbeOf(t, second, mjs.Name); after.Pid != before.Pid || after.Calls != 2 {
-		t.Fatalf("replacement probe = %+v, want the parked process %d with its module (2 factory calls)", after, before.Pid)
+	if after := retainedProbeOf(t, second, mjs.Name); after.Pid != before.Pid || after.Calls != 3 {
+		t.Fatalf("replacement probe = %+v, want the parked process %d with its module (3 factory calls)", after, before.Pid)
 	}
-	if modules, factories := retainedLogCounts(t, log); modules != 1 || factories != 2 {
-		t.Fatalf("module evaluated %d times with %d factory calls after the replacement, want 1 and 2", modules, factories)
+	if modules, factories := retainedLogCounts(t, log); modules != 1 || factories != 3 {
+		t.Fatalf("module evaluated %d times with %d factory calls after the replacement, want 1 and 3", modules, factories)
 	}
 
 	if _, err := second.Reload(t.Context()); err != nil {
@@ -348,7 +354,207 @@ func TestSessionReplacementKeepsAnEditedESModuleUntilAReload(t *testing.T) {
 	if reloaded := retainedProbeOf(t, second, mjs.Name); reloaded.Calls != 1 {
 		t.Fatalf("reload probe = %+v, want the edited module evaluated again (1 factory call)", reloaded)
 	}
-	if modules, factories := retainedLogCounts(t, log); modules != 2 || factories != 3 {
-		t.Fatalf("module evaluated %d times with %d factory calls after the reload, want 2 and 3", modules, factories)
+	if modules, factories := retainedLogCounts(t, log); modules != 2 || factories != 4 {
+		t.Fatalf("module evaluated %d times with %d factory calls after the reload, want 2 and 4", modules, factories)
+	}
+}
+
+// esmReloadFixture loads extensions that log one line per tool_call, "<name> <fields...>", into one marker file, in one packed Node process.
+type esmReloadFixture struct {
+	t       *testing.T
+	root    string
+	marker  string
+	host    *Host
+	current []extension.Extension
+	seen    int
+	calls   int
+}
+
+func newESMReloadFixture(t *testing.T, files map[string]string, entries ...string) *esmReloadFixture {
+	t.Helper()
+	nodeCellRequireNode(t)
+	f := &esmReloadFixture{t: t, root: t.TempDir()}
+	f.marker = filepath.Join(f.root, "marker")
+	for name, content := range files {
+		f.write(name, strings.ReplaceAll(content, "MARKER", strconv.Quote(f.marker)))
+	}
+	var configs []ExtConfig
+	for _, entry := range entries {
+		configs = append(configs, ExtConfig{Name: strings.TrimSuffix(entry, filepath.Ext(entry)), Source: filepath.Join(f.root, entry), Enabled: true})
+	}
+	f.host = NewHostWithConfigRoot(f.root, filepath.Join(f.root, "config"))
+	f.host.SetConfigLoader(func() ([]ExtConfig, error) { return configs, nil })
+	t.Cleanup(func() { f.host.Shutdown("test") })
+	current, errs := f.host.LoadAll(t.Context(), configs)
+	if len(errs) != 0 || len(current) != len(configs) {
+		t.Fatalf("startup loaded=%v errors=%v", current, errs)
+	}
+	f.current = current
+	return f
+}
+
+// write writes a source file with a later modification time, so a file system with a coarse clock still records the edit.
+func (f *esmReloadFixture) write(name, content string) {
+	f.t.Helper()
+	path := filepath.Join(f.root, filepath.FromSlash(name))
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		f.t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		f.t.Fatal(err)
+	}
+	later := time.Now().Add(2 * time.Second)
+	if err := os.Chtimes(path, later, later); err != nil {
+		f.t.Fatal(err)
+	}
+}
+
+// reload reloads every extension and returns the reload's issues.
+func (f *esmReloadFixture) reload() []string {
+	f.t.Helper()
+	reloaded, err := f.host.Reload(f.t.Context())
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	f.current = reloaded
+	return f.host.LastReloadReport().Issues
+}
+
+// emit sends one tool_call and returns each loaded extension's logged fields by name.
+func (f *esmReloadFixture) emit() map[string][]string {
+	f.t.Helper()
+	f.calls++
+	if _, err := inproc.NewRunner(f.current, f.root).EmitToolCall(f.t.Context(), extension.CustomToolCallEvent{
+		ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: fmt.Sprint("call-", f.calls)},
+		ToolName:          "fixture",
+		Input:             map[string]any{},
+	}); err != nil {
+		f.t.Fatal(err)
+	}
+	data, err := os.ReadFile(f.marker)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	if len(lines) != f.seen+len(f.current) {
+		f.t.Fatalf("marker after call %d with %d extensions = %q", f.calls, len(f.current), data)
+	}
+	got := map[string][]string{}
+	for _, line := range lines[f.seen:] {
+		fields := strings.Fields(line)
+		got[fields[0]] = fields[1:]
+	}
+	f.seen = len(lines)
+	return got
+}
+
+// esmLogger is an extension entry that logs its name, its evaluation, its call count and the given expressions on each tool_call.
+func esmLogger(name, imports, fields string) string {
+	return fmt.Sprintf(`import { appendFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+%s
+const evaluation = randomUUID();
+let count = 0;
+export default function (pi) {
+  pi.on("tool_call", async () => {
+    count++;
+    appendFileSync(MARKER, [%q, evaluation, count, %s].join(" ") + "\n");
+    return { block: false };
+  });
+}
+`, imports, name, fields)
+}
+
+const esmSharedCounter = "let hits = 0;\nexport function hit() { return ++hits; }\nexport const SHARED = %q;\n"
+
+// A reload decides once which modules to evaluate again, from the source each module's current evaluation loaded: when one importer of an edited shared module fails to load and is fixed by the next reload, it joins the evaluation its sibling already shares (D93).
+func TestHostReloadKeepsOneSharedEvaluationAcrossAFailedImporter(t *testing.T) {
+	t.Parallel()
+	shared := `import { hit, SHARED } from "./shared.mjs";`
+	f := newESMReloadFixture(t, map[string]string{
+		"shared.mjs": fmt.Sprintf(esmSharedCounter, "s1"),
+		"a.mjs":      esmLogger("a", shared, "hit(), SHARED"),
+		"b.mjs":      esmLogger("b", shared, "hit(), SHARED"),
+	}, "a.mjs", "b.mjs")
+	f.emit()
+
+	f.write("shared.mjs", fmt.Sprintf(esmSharedCounter, "s2"))
+	f.write("b.mjs", "export default function (pi) { pi.on(\"tool_call\", () => {\n")
+	if issues := f.reload(); len(issues) != 1 {
+		t.Fatalf("reload with b broken: issues = %q, want b's load failure", issues)
+	}
+	if got := f.emit(); got["a"][2] != "1" || got["a"][3] != "s2" {
+		t.Fatalf("after the edit of shared.mjs: a = %q, want the new shared module's first hit", got["a"])
+	}
+
+	f.write("b.mjs", strings.ReplaceAll(esmLogger("b", shared, "hit(), SHARED"), "MARKER", strconv.Quote(f.marker)))
+	if issues := f.reload(); len(issues) != 0 {
+		t.Fatalf("reload after fixing b: issues = %q", issues)
+	}
+	got := f.emit()
+	pair := []string{got["a"][2], got["b"][2]}
+	slices.Sort(pair)
+	if strings.Join(pair, ",") != "2,3" || got["b"][3] != "s2" {
+		t.Fatalf("after fixing b: %q, want b sharing a's evaluation of shared.mjs at hits 2,3", got)
+	}
+}
+
+// An evaluation's imports decide what it depends on: after an edit removes an import, an edit of the module it no longer imports leaves it, and its state, alone (D93).
+func TestHostReloadForgetsAnImportTheEditRemoved(t *testing.T) {
+	t.Parallel()
+	f := newESMReloadFixture(t, map[string]string{
+		"helper.mjs": "export const HELPER = \"h1\";\n",
+		"e.mjs":      esmLogger("e", `import { HELPER } from "./helper.mjs";`, "HELPER"),
+	}, "e.mjs")
+	first := f.emit()
+
+	f.write("e.mjs", strings.ReplaceAll(esmLogger("e", "", `"none"`), "MARKER", strconv.Quote(f.marker)))
+	f.reload()
+	second := f.emit()
+	if second["e"][0] == first["e"][0] || second["e"][2] != "none" {
+		t.Fatalf("after removing the import: %q, want e evaluated again without helper", second["e"])
+	}
+
+	f.write("helper.mjs", "export const HELPER = \"h2\";\n")
+	f.reload()
+	if third := f.emit(); third["e"][0] != second["e"][0] || third["e"][1] != "2" {
+		t.Fatalf("after an edit of the module e no longer imports: %q, want e kept at call 2", third["e"])
+	}
+}
+
+// A TypeScript extension that imports a local .mjs module gets it through Node's import, as an ES module extension does; after an edit of that module, both get its one new evaluation in the same reload, whatever their admission order (D93).
+func TestHostReloadGivesTypeScriptAndESModuleImportersOneNewEvaluation(t *testing.T) {
+	t.Parallel()
+	shared := `import { hit, SHARED } from "./shared.mjs";`
+	f := newESMReloadFixture(t, map[string]string{
+		"shared.mjs": fmt.Sprintf(esmSharedCounter, "s1"),
+		"t.ts":       esmLogger("t", shared, "hit(), SHARED"),
+		"e.mjs":      esmLogger("e", shared, "hit(), SHARED"),
+	}, "t.ts", "e.mjs")
+	f.emit()
+
+	f.write("shared.mjs", fmt.Sprintf(esmSharedCounter, "s2"))
+	f.reload()
+	got := f.emit()
+	pair := []string{got["t"][2], got["e"][2]}
+	slices.Sort(pair)
+	if strings.Join(pair, ",") != "1,2" || got["t"][3] != "s2" || got["e"][3] != "s2" {
+		t.Fatalf("after an edit of shared.mjs: %q, want t and e on one new evaluation at hits 1,2", got)
+	}
+}
+
+// Node keeps a CommonJS module in its require cache, so an edit of a .cjs dependency is not evaluated again, and its ES module importer keeps its module and its state (D93).
+func TestHostReloadKeepsAnESModuleWhoseCommonJSDependencyChanged(t *testing.T) {
+	t.Parallel()
+	f := newESMReloadFixture(t, map[string]string{
+		"dep.cjs": "module.exports = { DEP: \"c1\" };\n",
+		"e.mjs":   esmLogger("e", `import dep from "./dep.cjs";`, "dep.DEP"),
+	}, "e.mjs")
+	first := f.emit()
+
+	f.write("dep.cjs", "module.exports = { DEP: \"c2\" };\n")
+	f.reload()
+	if second := f.emit(); second["e"][0] != first["e"][0] || second["e"][1] != "2" || second["e"][2] != "c1" {
+		t.Fatalf("after an edit of dep.cjs: %q, want e kept at call 2 with the cached c1", second["e"])
 	}
 }
