@@ -136,6 +136,24 @@ func TestInstallRejectsAnExtensionDirectoryAsAPackage(t *testing.T) {
 	}
 }
 
+// The source arrives as typed, relative to the working directory, and only the settings record rebases it onto the settings directory. Resolved against the agent directory instead, `pig install ./ext` found nothing there, skipped the guard, and recorded an extension that never loads.
+func TestInstallRejectsAnExtensionDirectoryGivenRelativeToTheWorkingDirectory(t *testing.T) {
+	dir := writeBareGoExtension(t)
+	sm := codingagent.NewSettingsManager(filepath.Dir(dir), t.TempDir())
+	source := "./" + filepath.Base(dir)
+
+	err := verifyPackageContributesResources(filepath.Dir(dir), sm, source, false)
+	if err == nil || !strings.Contains(err.Error(), "is an extension, not a package") {
+		t.Fatalf("verify %s from its parent = %v, want the extension refusal", source, err)
+	}
+	if err := installAndPersistPackage(filepath.Dir(dir), sm, source, false, nil); err == nil {
+		t.Fatalf("pig install %s from its parent reported success", source)
+	}
+	if packages := sm.GetGlobalSettings().Packages; len(packages) != 0 {
+		t.Fatalf("refused install recorded packages %v", packages)
+	}
+}
+
 // The guard must not reject a real package. This is the case that would make the
 // fix worse than the bug.
 func TestInstallAcceptsAPackageUsingConventionDirectories(t *testing.T) {
