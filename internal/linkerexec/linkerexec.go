@@ -23,7 +23,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	slashpath "path"
+	slashpath "path" // Every path this package handles is an Android path, whatever the host.
 	"runtime"
 	"strings"
 	"sync"
@@ -326,11 +326,16 @@ func isLinker(path string) bool {
 // is the one termux-exec records in TERMUX_EXEC__PROC_SELF_EXE, or argv[0] when
 // the linker made it absolute.
 func Executable() (string, error) {
-	exe, err := os.Executable()
-	if err != nil || !isLinker(exe) {
+	return executable(runtime.GOOS, os.Executable, os.Getenv, os.Args)
+}
+
+// executable is Executable for an operating system; only Android starts a program through its linker, so a program elsewhere that is named linker is itself.
+func executable(goos string, osExecutable func() (string, error), getenv func(string) string, args []string) (string, error) {
+	exe, err := osExecutable()
+	if err != nil || goos != "android" || !isLinker(exe) {
 		return exe, err
 	}
-	return programOfLinkedProcess(os.Getenv, os.Args)
+	return programOfLinkedProcess(getenv, args)
 }
 
 // programOfLinkedProcess finds the program a linker-started process runs.

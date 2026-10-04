@@ -262,6 +262,29 @@ func TestProgramOfLinkedProcess(t *testing.T) {
 	}
 }
 
+// Only Android starts a program through its linker: a program named linker elsewhere is itself.
+func TestExecutableFollowsTheLinkerOnlyOnAndroid(t *testing.T) {
+	env := func(k string) string {
+		if k == "TERMUX_EXEC__PROC_SELF_EXE" {
+			return prefix + "/bin/pig"
+		}
+		return ""
+	}
+	for name, tc := range map[string]struct {
+		goos, exe, want string
+	}{
+		"android linker64": {"android", "/system/bin/linker64", prefix + "/bin/pig"},
+		"android program":  {"android", prefix + "/bin/pig", prefix + "/bin/pig"},
+		"linux linker":     {"linux", "/opt/tools/linker", "/opt/tools/linker"},
+		"darwin linker64":  {"darwin", "/usr/local/bin/linker64", "/usr/local/bin/linker64"},
+	} {
+		got, err := executable(tc.goos, func() (string, error) { return tc.exe, nil }, env, []string{"pig"})
+		if err != nil || got != tc.want {
+			t.Errorf("%s: = %q, %v; want %q", name, got, err, tc.want)
+		}
+	}
+}
+
 // A fake linker that, like the real one, runs its first argument with the rest, proves the rewritten command line starts real programs and a script chain.
 func TestPrepareStartsRealProgramsThroughAFakeLinker(t *testing.T) {
 	root := t.TempDir()
