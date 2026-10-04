@@ -182,7 +182,7 @@ func findPythonSDKRoot() (string, error) {
 
 func renderPythonRunner(extensions []PythonExtension, sdkRoot string) string {
 	var b strings.Builder
-	b.WriteString("import importlib.util\nimport hashlib\nimport os\nimport sys\nimport threading\n\n")
+	b.WriteString("import importlib.util\nimport hashlib\nimport os\nimport sys\nimport threading\nimport time\n\n")
 	b.WriteString("sys.dont_write_bytecode = True\nos.environ.setdefault('PYTHONDONTWRITEBYTECODE', '1')\n\n")
 	fmt.Fprintf(&b, "sys.path.insert(0, %q)\n", filepath.ToSlash(sdkRoot))
 	for _, ext := range extensions {
@@ -193,15 +193,19 @@ func renderPythonRunner(extensions []PythonExtension, sdkRoot string) string {
 		fmt.Fprintf(&b, "    (%q, %q, %q, %q, %q),\n", ext.Name, SocketEnvName(ext.Name), ext.Package, ext.Factory, filepath.ToSlash(ext.Root))
 	}
 	b.WriteString("]\n\n")
+	fmt.Fprintf(&b, "_KEPT = [os.path.normcase(os.path.join(os.path.abspath(p), '')) for p in (%q, sys.prefix, sys.exec_prefix, sys.base_prefix, sys.base_exec_prefix, os.path.dirname(os.path.abspath(__file__)))]\n", filepath.ToSlash(sdkRoot))
 	b.WriteString("_MODULES = {}\n\n")
 	b.WriteString("def _module(module_name, root):\n")
-	b.WriteString("    # Python keeps an imported module for the life of the process, so module state survives each factory call.\n")
+	b.WriteString("    # An imported module stays until _reload_edited drops it, so module state survives each factory call that reuses it.\n")
 	b.WriteString("    key = '_pig_cell_' + hashlib.sha256((root + ':' + module_name).encode()).hexdigest()\n")
 	b.WriteString("    mod = _MODULES.get(key)\n    if mod is not None:\n        return mod\n")
 	b.WriteString("    path = os.path.join(root, *module_name.split('.'))\n    path = os.path.join(path, '__init__.py') if os.path.isdir(path) else path + '.py'\n    spec = importlib.util.spec_from_file_location(key, path, submodule_search_locations=[os.path.dirname(path)])\n    mod = importlib.util.module_from_spec(spec)\n    sys.modules[key] = mod\n    spec.loader.exec_module(mod)\n    _MODULES[key] = mod\n    return mod\n\n")
+	b.WriteString(pythonRunnerModuleCache)
 	b.WriteString("def _run(item, sock):\n")
 	b.WriteString("    name, env, module_name, factory_name, root = item\n")
+	b.WriteString("    _begin(root)\n")
 	b.WriteString("    ext = getattr(_module(module_name, root), factory_name)()\n")
+	b.WriteString("    _stamp(root)\n")
 	b.WriteString("    ext.run_with_socket(sock)\n\n")
 	b.WriteString(pythonRunnerFailureReport)
 	b.WriteString(pythonRunnerMain)
@@ -257,6 +261,7 @@ def main():
                     except OSError:
                         pass
             elif fields[0] == 'admit' and len(fields) >= 3:
+                _reload_edited(fields[5] if len(fields) > 5 else '0')
                 for item in ITEMS:
                     if item[0] == fields[1]:
                         with cond:
@@ -276,6 +281,68 @@ def main():
 
 if __name__ == '__main__':
     main()
+`
+
+// pythonRunnerModuleCache keeps each extension's modules for the life of the process, as Pi keeps an .mjs module, so module state survives /reload and Session replacement. The first admission of a reload pass the runner has not seen drops an extension's own modules when the source of any of them changed since its import; the next factory call imports the edited source, as Pi's jiti import re-evaluates an edited .ts extension. Every admission of one reload carries the same pass. The SDK, the Python installation, the runner's own directory and packages installed under an extension's directory stay imported, so an extension in the home directory reloads only its own source.
+const pythonRunnerModuleCache = `_STAMPS = {}
+_LOADED = {}
+_RELOAD = {'pass': '0'}
+
+def _stamp_of(path):
+    try:
+        info = os.stat(path)
+        return (info.st_mtime_ns, info.st_size)
+    except OSError:
+        return None
+
+def _own_source(path, prefix):
+    if not path.startswith(prefix):
+        return False
+    for kept in _KEPT:
+        if path.startswith(kept) and not prefix.startswith(kept):
+            return False
+    parts = path[len(prefix):].split(os.sep)
+    return 'site-packages' not in parts and 'dist-packages' not in parts
+
+def _root_modules(root):
+    prefix = os.path.normcase(os.path.join(os.path.abspath(root), ''))
+    for name, mod in list(sys.modules.items()):
+        path = getattr(mod, '__file__', None)
+        if path:
+            path = os.path.normcase(os.path.abspath(path))
+            if _own_source(path, prefix):
+                yield name, path
+
+def _begin(root):
+    _LOADED.setdefault(root, time.time_ns())
+
+def _stamp(root):
+    for _, path in _root_modules(root):
+        _STAMPS.setdefault(path, _stamp_of(path))
+
+def _edited(path, since):
+    stamp = _stamp_of(path)
+    if path in _STAMPS:
+        return stamp != _STAMPS[path]
+    # A module the extension imported after its factory returned has no stamp; its source changed if the file is newer than the factory call that loaded the extension.
+    return stamp is None or stamp[0] > since
+
+def _reload_edited(reload):
+    if reload == '0' or reload == _RELOAD['pass']:
+        return
+    _RELOAD['pass'] = reload
+    for root in sorted({item[4] for item in ITEMS}):
+        modules = list(_root_modules(root))
+        since = _LOADED.get(root, 0)
+        if not any(_edited(path, since) for _, path in modules):
+            continue
+        for name, path in modules:
+            sys.modules.pop(name, None)
+            _STAMPS.pop(path, None)
+            _MODULES.pop(name, None)
+        _LOADED.pop(root, None)
+    importlib.invalidate_caches()
+
 `
 
 // pythonRunnerFailureReport tells the host that one member failed while the

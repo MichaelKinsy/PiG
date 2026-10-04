@@ -462,9 +462,9 @@ func (h *Host) startGoPackedCell(ctx context.Context, cell *runtimecell.GoPacked
 
 	var acceptErr *packedAcceptError
 	if retained != nil && !nodeRuntime {
-		// The runner starts every member's factory together, as a fresh runner does at spawn.
+		// The runner starts every member's factory together, as a fresh runner does at spawn. The reload pass tells the Python runner when to re-import an edited extension.
 		for i := range pendingExts {
-			if err := processState.share.send(factoryAdmission{Name: pendingExts[i].me.config.Name, Socket: pendingExts[i].address}); err != nil {
+			if err := processState.share.send(factoryAdmission{Name: pendingExts[i].me.config.Name, Socket: pendingExts[i].address, ReloadPass: reloadPass(ctx)}); err != nil {
 				processState.stop()
 				return nil, nil, newLoadError(cell.Key, "spawn", "admit_failed", fmt.Errorf("admit %s to the running packed process: %w", pendingExts[i].me.config.Name, err))
 			}
