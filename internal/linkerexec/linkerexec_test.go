@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -184,6 +185,9 @@ func TestPrepareResolvesARelativePathAgainstTheCommandDirectory(t *testing.T) {
 }
 
 func TestPrepareSearchesTheCommandsOwnPATH(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the lookup reads an Android PATH, colon-separated with Unix execute bits, which a Windows directory cannot provide")
+	}
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "runner"), []byte("x"), 0o755); err != nil {
 		t.Fatal(err)
