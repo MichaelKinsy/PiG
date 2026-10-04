@@ -139,6 +139,48 @@ func TestStatusAcceptsDisabledMissingPackageMember(t *testing.T) {
 	}
 }
 
+func writeStatusSkillPackage(t *testing.T, root string) {
+	t.Helper()
+	writeResourceFixture(t, filepath.Join(root, "package.json"), `{"name":"pkg","pi":{"skills":["skills"]}}`)
+	for _, name := range []string{"alpha", "beta"} {
+		writeResourceFixture(t, filepath.Join(root, "skills", name, "SKILL.md"), "---\nname: "+name+"\ndescription: d\n---\n")
+	}
+}
+
+func TestStatusIgnoresFilterDisabledDuplicatePackageResources(t *testing.T) {
+	cwd, agentDir, first, second := t.TempDir(), t.TempDir(), t.TempDir(), t.TempDir()
+	t.Setenv("PIG_HOME", t.TempDir())
+	t.Setenv("PIG_CODING_AGENT_DIR", agentDir)
+	t.Chdir(cwd)
+	writeStatusSkillPackage(t, first)
+	writeStatusSkillPackage(t, second)
+	settings := codingagent.NewSettingsManager(cwd, agentDir)
+	if err := settings.SetPackages([]codingagent.PackageSource{{Source: first}, {Source: second, Skills: []string{}}}); err != nil {
+		t.Fatal(err)
+	}
+	status := collectStatus()
+	if !status.Healthy || len(status.Errors) != 0 {
+		t.Fatalf("disabled copies reported as duplicates: %#v", status.Errors)
+	}
+}
+
+func TestStatusStillFailsOnEnabledDuplicatePackageResources(t *testing.T) {
+	cwd, agentDir, first, second := t.TempDir(), t.TempDir(), t.TempDir(), t.TempDir()
+	t.Setenv("PIG_HOME", t.TempDir())
+	t.Setenv("PIG_CODING_AGENT_DIR", agentDir)
+	t.Chdir(cwd)
+	writeStatusSkillPackage(t, first)
+	writeStatusSkillPackage(t, second)
+	settings := codingagent.NewSettingsManager(cwd, agentDir)
+	if err := settings.SetPackages([]codingagent.PackageSource{{Source: first}, {Source: second}}); err != nil {
+		t.Fatal(err)
+	}
+	status := collectStatus()
+	if status.Healthy || !strings.Contains(strings.Join(status.Errors, "\n"), "duplicate skills resource") {
+		t.Fatalf("enabled duplicates not reported: %#v", status)
+	}
+}
+
 func writeResourceFixture(t *testing.T, path, content string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
