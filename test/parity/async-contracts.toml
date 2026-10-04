@@ -1,4 +1,4 @@
-version = "1.0.0"
+version = "1.0.1"
 
 [[files]]
 path = "packages/agent/src/agent-loop.ts"
@@ -1310,6 +1310,13 @@ evidence = []
 rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/slash_bug.go, internal/codingagent/interactive_bug.go (consent flow, export-only; D62)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
 
 [[files]]
+path = "packages/coding-agent/src/modes/interactive/components/auth-url.ts"
+disposition = "translated"
+contracts = ["detached-owned", "ui-handoff"]
+evidence = ["test:tui/auth_url_copy_upstream_test.go#TestAuthURLCopyLoginDialogCopiesTheAuthURLInsteadOfTypingIntoTheCodeInput", "test:coding/mcpext/manager_test.go#TestMcpManagerViewSignInScreenCopiesTheAuthorizationURL"]
+rationale = "Hosts call copy() unawaited from handleInput; it awaits copyToClipboard, then sets the hint (success or the error message) and requests a render. tui.AuthURL.Copy returns at once and runs the clipboard write on its own goroutine, which sets the hint under the component's lock and requests the repaint through the host's render request; the returned channel closes when the hint shows the outcome. Like the unawaited Promise, an exit during the write does not wait for it."
+
+[[files]]
 path = "packages/coding-agent/src/modes/interactive/components/extension-editor.ts"
 disposition = "deferred"
 contracts = []
@@ -1331,18 +1338,18 @@ evidence = []
 rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`tui/model_select.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
 
 [[files]]
-path = "packages/coding-agent/src/modes/interactive/components/pi-logo-animation.lazy.ts"
+path = "packages/coding-agent/src/modes/interactive/components/easter-egg-3d.lazy.ts"
 disposition = "translated"
 contracts = ["detached-owned", "ui-handoff"]
 evidence = ["test:internal/codingagent/pig_logo_animation_test.go#TestClickingTheHeaderPigPlaysTheAnimation", "test:internal/codingagent/pig_logo_animation_test.go#TestHeaderPigClickIgnoredWhileAnOverlayOrTheAnimationIsOpen", "scenario:test/parity/scenarios/fullscreen/11-logo-click-animation.toml"]
-rationale = "playPiLogoAnimation returns synchronously after the fullscreen and overlay checks and the screen capture; the unawaited import().then() then starts pi-logo-animation.ts and swallows only a failed import. Go links the module, so the click handler calls playPigLogoAnimation on the owner loop in the same order: fullscreen check, overlay check, screen capture, then the playing flag. Its color wait is the pi-logo-animation.ts row."
+rationale = "D87: PiG plays its pig version of the Pi-logo egg; /arminsayshi keeps the inline pig head, so playArmin3d has no counterpart. playPiLogo3d (playEasterEgg3d) returns synchronously after the fullscreen and overlay checks and the screen capture; the unawaited import().then() then starts easter-egg-3d.ts and swallows only a failed import. Go links the module, so the click handler calls playPigLogoAnimation on the owner loop in the same order: fullscreen check, overlay check, screen capture, then the playing flag. Its color wait is the easter-egg-3d.ts row."
 
 [[files]]
-path = "packages/coding-agent/src/modes/interactive/components/pi-logo-animation.ts"
+path = "packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts"
 disposition = "translated"
 contracts = ["awaited", "detached-owned", "ui-handoff", "cancellable"]
 evidence = ["test:internal/codingagent/pig_logo_animation_test.go#TestHeaderPigClickIgnoredWhileAnOverlayOrTheAnimationIsOpen", "test:internal/codingagent/pig_logo_animation_test.go#TestPigLogoAnimationColors", "test:internal/codingagent/pig_logo_animation_test.go#TestPigLogoAnimationTimer", "test:internal/codingagent/pig_logo_animation_test.go#TestClickingTheHeaderPigPlaysTheAnimation", "scenario:test/parity/scenarios/fullscreen/11-logo-click-animation.toml"]
-rationale = "playPiLogoAnimation sets playing, awaits queryTerminalColors (100 ms timeout) and then, on the event loop, falls back to the theme's colors, returns if an overlay opened meanwhile, and shows the overlay. Go waits for the query on a background task owned by the mode's lifetime (cancelled and joined at exit) and posts the rest to the owner loop; a query that fails to write shows nothing and clears playing. The setInterval frame timer maps to a worker owned by the same lifetime that posts each tick to the owner loop and stops after finish, after a second without a render, or on Dispose, which cancels and joins it; a tick queued before Dispose runs nothing."
+rationale = "D87: the Pi-logo kind as Pi 1.0.0 pi-logo-animation.ts drew it. playEasterEgg3d sets playing, awaits queryTerminalColors (100 ms timeout) and then, on the event loop, falls back to the theme's colors, returns if an overlay opened meanwhile, and shows the overlay. Go waits for the query on a background task owned by the mode's lifetime (cancelled and joined at exit) and posts the rest to the owner loop; a query that fails to write shows nothing and clears playing. The setInterval frame timer maps to a worker owned by the same lifetime that posts each tick to the owner loop and stops after finish, after a second without a render, or on Dispose, which cancels and joins it; a tick queued before Dispose runs nothing."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts"
@@ -1357,13 +1364,6 @@ disposition = "deferred"
 contracts = []
 evidence = []
 rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/session_selector.go + session_selectors.go + interactive.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
-
-[[files]]
-path = "packages/coding-agent/src/modes/interactive/components/tool-execution.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`tui/tool_execution.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/external-editor.ts"

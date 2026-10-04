@@ -315,8 +315,9 @@ func cloudflareErrorMessage(errors json.RawMessage) string {
 }
 
 // cloudflareSystemOneTransport serves System One models on the Workers AI REST endpoint: POST /accounts/{account}/ai/run
-// with { model, input }. The REST API wraps the model output in Cloudflare's API envelope and a run record:
-// { success, result: { state: "Completed", result: { answers, usage } } }.
+// with { model, input }. The REST API wraps the model output in Cloudflare's API envelope. Third-party models such as
+// typesafe/jev add a run record: { success, result: { state: "Completed", result: { answers, usage } } }. Cloudflare-hosted
+// models such as @cf/cloudflare/clef return the output directly: { success, result: { model, answers, usage } }.
 var cloudflareSystemOneTransport = systemOneTransport{
 	api:   ClassifierAPICloudflareWorkersAISystemOne,
 	label: cloudflareSystemOneLabel,
@@ -335,6 +336,10 @@ var cloudflareSystemOneTransport = systemOneTransport{
 		run, ok := jsonObjectOf(object["result"])
 		if !ok {
 			return nil, errors.New(cloudflareSystemOneLabel + " returned an unexpected response")
+		}
+		// upstream: packages/ai/src/api/cloudflare-workers-ai-system-one.ts:transport.output (`"answers" in result`).
+		if _, direct := run["answers"]; direct {
+			return run, nil
 		}
 		if state, ok := jsonStringOf(run["state"]); !ok || state != "Completed" {
 			return nil, fmt.Errorf("%s run did not complete (state: %s)", cloudflareSystemOneLabel, jsStateString(run["state"]))

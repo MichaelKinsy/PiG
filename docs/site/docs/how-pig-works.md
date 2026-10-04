@@ -1,6 +1,6 @@
 # How PiG works
 
-PiG sends model requests, runs tools, assembles context and stores sessions. It follows the design of Pi 1.0.0. This page shows how those parts fit together, and it names the places where PiG's Go implementation differs from Pi.
+PiG sends model requests, runs tools, assembles context and stores sessions. It follows the design of Pi 1.0.1. This page shows how those parts fit together, and it names the places where PiG's Go implementation differs from Pi.
 
 A session is PiG's record of one conversation. It holds messages, tool calls and their results, model changes, compactions and other events. The entries form a tree. Each path from the root to an entry is a branch, and the branch that ends at the current entry is the active branch. The active branch supplies the history for the next model request.
 

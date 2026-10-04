@@ -171,29 +171,29 @@ async function runFlow(provider, options) {
     const resource = selectResource(options.serverUrl, discovered.resourceMetadata);
     // `||`, not `??`: an empty scope (for example from `scopes_supported: []`) falls through to the next source.
     const scope = options.scope || discovered.resourceMetadata?.scopes_supported?.join(" ") || provider.clientMetadata.scope;
-    let client = await provider.clientInformation();
+    const stored = await provider.clientInformation();
+    const clientDocument = stored ? undefined : provider.clientMetadataDocument?.(metadata);
+    if (clientDocument) {
+        const url = new URL(clientDocument.url);
+        if (url.protocol !== "https:" || url.pathname === "/")
+            throw new Error("Invalid OAuth client metadata URL");
+    }
+    let client = stored ?? (clientDocument && { client_id: clientDocument.url });
     if (!client) {
         if (options.authorizationCode)
             throw new Error("OAuth client information is missing during code exchange");
-        if (metadata?.client_id_metadata_document_supported && provider.clientMetadataUrl) {
-            const url = new URL(provider.clientMetadataUrl);
-            if (url.protocol !== "https:" || url.pathname === "/")
-                throw new Error("Invalid OAuth client metadata URL");
-            client = { client_id: provider.clientMetadataUrl };
-            await provider.saveClientInformation?.(client);
-        }
-        else {
-            if (!provider.saveClientInformation)
-                throw new Error("OAuth client information cannot be persisted");
-            client = await registerClient(discovered.authorizationServerUrl, {
-                metadata,
-                clientMetadata: provider.clientMetadata,
-                scope,
-                fetch: options.fetch,
-            });
-            await provider.saveClientInformation(client);
-        }
+        if (!provider.saveClientInformation)
+            throw new Error("OAuth client information cannot be persisted");
+        client = await registerClient(discovered.authorizationServerUrl, {
+            metadata,
+            clientMetadata: provider.clientMetadata,
+            scope,
+            fetch: options.fetch,
+        });
+        await provider.saveClientInformation(client);
     }
+    // The document's redirect URI may differ from the provider's, for example by a server-specific path.
+    const redirectUrl = clientDocument?.redirectUrl ?? provider.redirectUrl;
     const tokenOptions = {
         metadata,
         clientInformation: client,
@@ -212,7 +212,7 @@ async function runFlow(provider, options) {
             ...tokenOptions,
             code: options.authorizationCode,
             codeVerifier: await provider.codeVerifier(),
-            redirectUrl: provider.redirectUrl,
+            redirectUrl,
         });
         // A response without `scope` grants the requested scope (RFC 6749 §5.1). Recorded so a step-up can
         // keep it. Callers pass the options of the authorization request, so `scope` is what was requested.
@@ -241,7 +241,7 @@ async function runFlow(provider, options) {
     const authorization = await startAuthorization(discovered.authorizationServerUrl, {
         metadata,
         clientInformation: client,
-        redirectUrl: provider.redirectUrl,
+        redirectUrl,
         scope,
         state,
         resource,

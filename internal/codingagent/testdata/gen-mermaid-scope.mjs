@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const root = process.env.PI_PACKAGE_ROOT ?? realpathSync("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, "1.0.0");
+assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, "1.0.1");
 const { createMermaidMarkdownTransformer } = await import(pathToFileURL(join(root, "dist/modes/interactive/components/mermaid.js")));
 const transform = createMermaidMarkdownTransformer({ getMode: () => "streaming" });
 for (const line of readFileSync(new URL("mermaid-scope-golden.jsonl", import.meta.url), "utf8").trimEnd().split("\n")) {

@@ -5,7 +5,7 @@ import { createServer } from "node:http";
 import { crc32 } from "node:zlib";
 
 const root = fileURLToPath(new URL("../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url));
-if (JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version !== "1.0.0") throw new Error("Expected Pi 1.0.0");
+if (JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version !== "1.0.1") throw new Error("Expected Pi 1.0.1");
 const aiRoot = join(root, "node_modules/@earendil-works/pi-ai/dist");
 const { stream } = await import(pathToFileURL(join(aiRoot, "api/bedrock-converse-stream.js")));
 const { normalizeContext } = await import(pathToFileURL(join(aiRoot, "utils/transcript.js")));

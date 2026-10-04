@@ -26,7 +26,6 @@
  * current session for registered servers.
  */
 import { join, resolve } from "node:path";
-import { hyperlink } from "../../../../pi-tui.mjs";
 import { getAgentDir } from "../../config.js";
 import { mcpNamespace } from "../../core/mcp-servers.js";
 import { openBrowser } from "../../utils/open-browser.js";
@@ -35,7 +34,7 @@ import { isToolSearchTool, TOOL_SEARCH_TOOL_NAME } from "../tool-search/tool.js"
 import { getMcpToolExposure, loadMcpConfig, updateMcpServerConfig, } from "./config.js";
 import { createMcpResourceToolDefinitions, LIST_MCP_RESOURCE_TEMPLATES_TOOL, LIST_MCP_RESOURCES_TOOL, READ_MCP_RESOURCE_TOOL, } from "./resources.js";
 import { loadMcpRuntime } from "./runtime.lazy.js";
-import { createMcpToolDefinition, createMcpToolName } from "./tools.js";
+import { createMcpToolDefinition, createMcpToolName, createMcpToolRenderers } from "./tools.js";
 import { showMcpManager } from "./ui.js";
 const DEFAULT_STARTUP_WAIT_MS = 10_000;
 const RESOURCE_TOOL_NAMES = new Set([
@@ -194,6 +193,8 @@ export function createMcpExtension(options = {}) {
         /** Servers from `mcp.json`, which take precedence over registered servers of the same name. */
         let configuredEntries = [];
         let configErrors = [];
+        /** The trusted project's `mcp.json`, where `/mcp` saves project overrides of global servers. */
+        let projectConfig;
         /** Registered servers that `mcp.json` overrides, shown in `/mcp`. */
         let overridden = [];
         /** Between session_start and session_shutdown. Registrations before that are read on session_start. */
@@ -214,7 +215,10 @@ export function createMcpExtension(options = {}) {
         let modelRegistry;
         let serverLog;
         const openUrl = options.openUrl ?? openBrowser;
-        const updateConfig = options.updateConfig ?? ((entry, patch) => updateMcpServerConfig(entry.source, entry.name, patch));
+        const updateConfig = options.updateConfig ??
+            ((entry, patch) => updateMcpServerConfig(entry.override ?? entry.source, entry.name, patch, {
+                override: entry.override !== undefined,
+            }));
         const listeners = new Set();
         const emitChange = () => {
             for (const listener of listeners)
@@ -259,6 +263,11 @@ export function createMcpExtension(options = {}) {
         const serverTools = new Map();
         /** Last definition registered under each tool name, to re-register withdrawn tools as hidden. */
         const definitions = new Map();
+        // A resumed session renders calls to MCP tools before their server connected, if it ever does.
+        pi.registerToolRenderer((toolName, next) => {
+            const match = /^mcp__(.+?)__(.+)$/.exec(toolName);
+            return next() ?? (match ? createMcpToolRenderers(`${match[1]}/${match[2]}`) : undefined);
+        });
         const registerTools = (connection) => {
             const server = connection.entry.name;
             const entry = findServer(server)?.entry ?? connection.entry;
@@ -481,18 +490,20 @@ export function createMcpExtension(options = {}) {
         };
         /**
          * Save a config change; returns an error message when the file could not be updated. Changes to
-         * registered servers only apply to the current session.
+         * registered servers only apply to the current session. `inProject` adds a project override.
          */
-        const saveConfig = (server, patch) => {
-            if (server.entry.scope !== "extension") {
+        const saveConfig = (server, patch, inProject = false) => {
+            const override = inProject ? projectConfig : server.entry.override;
+            const entry = override ? { ...server.entry, override } : server.entry;
+            if (entry.scope !== "extension") {
                 try {
-                    updateConfig(server.entry, patch);
+                    updateConfig(entry, patch);
                 }
                 catch (error) {
-                    return `Could not update ${server.entry.source}: ${errorMessage(error)}`;
+                    return `Could not update ${entry.override ?? entry.source}: ${errorMessage(error)}`;
                 }
             }
-            server.entry = { ...server.entry, config: { ...server.entry.config, ...patch } };
+            server.entry = { ...entry, config: { ...entry.config, ...patch } };
             return undefined;
         };
         const signIn = async (server, prompt) => {
@@ -547,8 +558,8 @@ export function createMcpExtension(options = {}) {
             }
         };
         /** Returns an error message when the config could not be saved; connection errors show in the state. */
-        const setEnabled = async (server, enabled) => {
-            const failed = saveConfig(server, { enabled });
+        const setEnabled = async (server, enabled, inProject = false) => {
+            const failed = saveConfig(server, { enabled }, inProject);
             if (failed)
                 return failed;
             if (!enabled) {
@@ -594,7 +605,7 @@ export function createMcpExtension(options = {}) {
                 .map((server) => ({
                 value: server.entry.name,
                 label: server.entry.name,
-                description: `${describeState(server)} · ${exposureOf(server.entry)} · ${server.entry.scope ?? server.entry.source}`,
+                description: `${describeState(server)} · ${exposureOf(server.entry)} · ${server.entry.override ? "global, project override" : (server.entry.scope ?? server.entry.source)}`,
             })),
             empty: `No MCP servers configured. Add them to ${resolve(getAgentDir(), "mcp.json")} or .pi/mcp.json.`,
             confirmLabel: "manage",
@@ -614,12 +625,20 @@ export function createMcpExtension(options = {}) {
             const { entry, connection } = server;
             const saved = entry.scope === "extension"
                 ? "for this session"
-                : entry.scope
-                    ? `saved to the ${entry.scope} mcp.json`
-                    : "saved to mcp.json";
+                : entry.override
+                    ? "saved to the project mcp.json"
+                    : entry.scope
+                        ? `saved to the ${entry.scope} mcp.json`
+                        : "saved to mcp.json";
+            // Global servers without an override can be turned on or off for the trusted project alone.
+            const inProject = entry.scope === "global" && !entry.override && projectConfig !== undefined;
+            const inProjectSaved = "saved to the project mcp.json";
             const items = [];
             if (!isEnabled(server)) {
                 items.push({ value: "enable", label: "Enable", description: saved });
+                if (inProject) {
+                    items.push({ value: "enable-project", label: "Enable in this project", description: inProjectSaved });
+                }
             }
             else {
                 const state = connection?.state;
@@ -636,10 +655,14 @@ export function createMcpExtension(options = {}) {
                 }
                 items.push({ value: "exposure", label: "Exposure", description: exposureOf(entry) });
                 items.push({ value: "disable", label: "Disable", description: saved });
+                if (inProject) {
+                    items.push({ value: "disable-project", label: "Disable in this project", description: inProjectSaved });
+                }
             }
             const details = [
                 describeTransport(entry),
                 `${entry.scope ?? "config"}: ${entry.source}`,
+                ...(entry.override ? [`project override: ${entry.override}`] : []),
                 `State: ${describeState(server, false)}`,
             ];
             const error = [server.message, connection?.state === "connected" ? undefined : connection?.error]
@@ -681,7 +704,7 @@ export function createMcpExtension(options = {}) {
                 title: `Exposure of ${server.entry.name}`,
                 details: server.entry.scope === "extension"
                     ? `Applies to this session; the server is registered by ${server.entry.source}.`
-                    : `Saved to ${server.entry.source}.`,
+                    : `Saved to ${server.entry.override ?? server.entry.source}.`,
                 items: Object.keys(EXPOSURE_DESCRIPTIONS).map((exposure) => ({
                     value: exposure,
                     label: `${exposure === current ? "✓ " : "  "}${exposure}`,
@@ -695,27 +718,30 @@ export function createMcpExtension(options = {}) {
                 return undefined;
             return setExposure(server, choice);
         };
+        /** Sign in with the manager view's sign-in screen, which shows the URL with a copy key. */
+        const signInWithUi = (ui, server) => {
+            const title = `Sign in to ${server.entry.name}`;
+            let authorizationUrl = "";
+            ui.status(title, "Contacting the authorization server…");
+            return signIn(server, {
+                showAuthorizationUrl: (url) => {
+                    authorizationUrl = url.href;
+                    openUrl(url.href);
+                },
+                promptForRedirectUrl: async (signal) => {
+                    const value = await ui.redirectUrl(title, authorizationUrl, signal);
+                    ui.status(title, "Connecting…");
+                    return value;
+                },
+            });
+        };
         const runAction = async (ui, ctx, server, action) => {
             const { name } = server.entry;
             let message;
             switch (action) {
-                case "signin": {
-                    const title = `Sign in to ${name}`;
-                    let authorizationUrl = "";
-                    ui.status(title, "Contacting the authorization server…");
-                    message = await signIn(server, {
-                        showAuthorizationUrl: (url) => {
-                            authorizationUrl = url.href;
-                            openUrl(url.href);
-                        },
-                        promptForRedirectUrl: async (signal) => {
-                            const value = await ui.redirectUrl(title, authorizationUrl, signal);
-                            ui.status(title, "Connecting…");
-                            return value;
-                        },
-                    });
+                case "signin":
+                    message = await signInWithUi(ui, server);
                     break;
-                }
                 case "reconnect":
                     // A failure shows as the connection's state and error.
                     ui.status(`MCP server ${name}`, "Reconnecting…");
@@ -732,9 +758,13 @@ export function createMcpExtension(options = {}) {
                     break;
                 case "enable":
                 case "disable":
-                    ui.status(`MCP server ${name}`, action === "enable" ? "Connecting…" : "Disconnecting…");
-                    message = await setEnabled(server, action === "enable");
+                case "enable-project":
+                case "disable-project": {
+                    const enable = action.startsWith("enable");
+                    ui.status(`MCP server ${name}`, enable ? "Connecting…" : "Disconnecting…");
+                    message = await setEnabled(server, enable, action.endsWith("-project"));
                     break;
+                }
             }
             server.message = message;
             ensureDiscoveryActive(ctx);
@@ -819,17 +849,21 @@ export function createMcpExtension(options = {}) {
                 ctx.ui.notify(`Signing in to MCP server "${name}" requires interactive mode.`, "error");
                 return;
             }
-            const failure = await signIn(server, {
-                showAuthorizationUrl: (url) => {
-                    // Long URLs wrap, which some terminals cannot open; a short link line stays on one line.
-                    const lines = ctx.mode === "tui"
-                        ? `${hyperlink(url.href, url.href)}\n${hyperlink(process.platform === "darwin" ? "Cmd+click to open" : "Ctrl+click to open", url.href)}`
-                        : url.href;
-                    ctx.ui.notify(`Sign in to MCP server "${name}" in your browser:\n${lines}`, "info");
-                    openUrl(url.href);
-                },
-                promptForRedirectUrl: (signal) => ctx.ui.input(`Waiting for sign-in to "${name}". If the browser cannot reach this machine, paste the URL it was redirected to.`, "http://127.0.0.1:.../callback?code=...", { signal }),
-            });
+            let failure;
+            if (ctx.mode === "tui") {
+                await showMcpManager(ctx, async (ui) => {
+                    failure = await signInWithUi(ui, server);
+                });
+            }
+            else {
+                failure = await signIn(server, {
+                    showAuthorizationUrl: (url) => {
+                        ctx.ui.notify(`Sign in to MCP server "${name}" in your browser:\n${url.href}`, "info");
+                        openUrl(url.href);
+                    },
+                    promptForRedirectUrl: (signal) => ctx.ui.input(`Waiting for sign-in to "${name}". If the browser cannot reach this machine, paste the URL it was redirected to.`, "http://127.0.0.1:.../callback?code=...", { signal }),
+                });
+            }
             if (failure) {
                 ctx.ui.notify(failure, failure === "Sign-in cancelled." ? "info" : "error");
                 return;
@@ -840,6 +874,7 @@ export function createMcpExtension(options = {}) {
         pi.on("session_start", (_event, ctx) => {
             const loaded = (options.loadConfig ?? defaultLoadConfig)(ctx);
             configErrors = loaded.errors;
+            projectConfig = loaded.projectConfig;
             autoEnableCodemode = loaded.autoEnableCodemode ?? true;
             warnedUnreachable = false;
             waitedForStartup = false;

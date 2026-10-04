@@ -115,7 +115,7 @@ func TestPrintSessionPathCreatesSessionLikePi(t *testing.T) {
 	if err := json.Unmarshal(metadata, &pkg); err != nil {
 		t.Fatal(err)
 	}
-	if pkg.Version != "1.0.0" {
+	if pkg.Version != "1.0.1" {
 		t.Fatalf("Pi version=%q", pkg.Version)
 	}
 	fauxProvider, err := filepath.Abs("../../test/parity/testdata/test-faux-provider.ts")

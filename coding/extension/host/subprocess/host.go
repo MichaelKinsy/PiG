@@ -351,6 +351,14 @@ type Host struct {
 	oauthLoginMu       sync.Mutex
 	oauthLoginSessions map[string]oauthLoginSession
 
+	// toolRenderersResolved is the mode's callback for an answered tool renderer resolution; toolRendererResolutions
+	// drains the resolution requests at Shutdown. toolRendererResolutionsClosed, guarded by toolRendererResolutionsMu,
+	// stops new requests once Shutdown waits for them.
+	toolRenderersResolved         atomic.Pointer[func(string)]
+	toolRendererResolutionsMu     sync.Mutex
+	toolRendererResolutionsClosed bool
+	toolRendererResolutions       sync.WaitGroup
+
 	// transitionMu serializes startup, explicit reload and crash recovery. Node recovery owns a cancellable host lifetime and drains before Shutdown returns.
 	transitionMu    sync.Mutex
 	recoveryContext context.Context
@@ -607,6 +615,8 @@ type managedExt struct {
 	procOwner     *managedExt
 	retainedFrom  *processShare
 
+	// toolRendererResolvers is the extension's pi.registerToolRenderer state.
+	toolRendererResolvers toolRendererResolvers
 	// toolRenders routes this extension's renderer invalidations to the
 	// tool cards whose renderers it runs.
 	toolRenders toolRenderSessions
@@ -2045,6 +2055,7 @@ func (h *Host) Shutdown(reason string) {
 	if h.recoveryCancel != nil {
 		h.recoveryCancel()
 	}
+	h.closeToolRendererResolutions()
 	h.finishRetirements()
 	h.transitionMu.Lock()
 	h.mu.Lock()
@@ -3052,6 +3063,7 @@ func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, 
 	// become exactly the new registration, so subscriptions the new process
 	// makes reach dispatch and ones the old process made do not.
 	ext := h.buildExtension(me, reg)
+	me.resetToolRenderers(reg.ToolRenderers)
 	if isRestart && me.ext != nil {
 		me.ext.ReplaceEventHandlers(ext)
 		me.ext.ReplaceRegisteredTools(ext)
@@ -3356,6 +3368,8 @@ func (h *Host) buildExtension(me *managedExt, reg *RegisterPayload) *extension.E
 		customType := rd.CustomType
 		ext.EntryRenderers[customType] = h.makeEntryRenderer(me, customType)
 	}
+
+	ext.ToolRenderers = append(ext.ToolRenderers, h.makeToolRendererResolver(me))
 
 	if reg.MarkdownTransformer {
 		proxy := &markdownTransformProxy{conn: func() *Conn { return me.current().connection() }, inactivity: rendererInactivity}
@@ -4009,6 +4023,10 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 			}
 			if h.uiBridge != nil && env.Notify.Method == "ui.autocomplete.release" {
 				h.uiBridge.releaseAutocompleteReference(conn, env.Notify.Args)
+				continue
+			}
+			if env.Notify.Method == NotifyToolRenderers {
+				me.setToolRendererCount(env.Notify.Args)
 				continue
 			}
 			if env.Notify.Method == NotifyToolRenderInvalidate {

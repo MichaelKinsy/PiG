@@ -1,7 +1,7 @@
 package ai
 
 // Pins the Anthropic SDK TokenCache that pi's federation client shares across requests:
-// node_modules/@anthropic-ai/sdk@0.124.0 lib/credentials/token-cache.mjs:1-107 (two-tier proactive refresh,
+// node_modules/@anthropic-ai/sdk@0.129.0 lib/credentials/token-cache.mjs:1-107 (two-tier proactive refresh,
 // concurrent deduplication, invalidate after a 401).
 
 import (

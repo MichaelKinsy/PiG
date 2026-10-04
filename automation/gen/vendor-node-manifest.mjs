@@ -6,13 +6,15 @@ import { dirname, join, relative } from "node:path";
 import { identityPatches, patchIdentity } from "./pi-identity-patches.mjs";
 
 const [shims, agent, output = join(shims, "vendor-manifest.json")] = process.argv.slice(2);
-const shrinkwrap = JSON.parse(readFileSync(join(agent, "npm-shrinkwrap.json"), "utf8"));
+// Pi 1.0.1 publishes no npm-shrinkwrap.json; the sdk-ts lock (install-strategy=shallow) records every package under
+// the coding agent's own node_modules with its integrity.
 const sdkLock = JSON.parse(readFileSync(new URL("../../extensions/sdk-ts/package-lock.json", import.meta.url), "utf8"));
 const records = [];
 const hash = file => createHash("sha256").update(readFileSync(file)).digest("hex");
 function packageInfo(root) {
   const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
-  const lock = root === agent ? sdkLock.packages["node_modules/@earendil-works/pi-coding-agent"] : shrinkwrap.packages?.[relative(agent, root).split("\\").join("/")];
+  const agentKey = "node_modules/@earendil-works/pi-coding-agent";
+  const lock = sdkLock.packages[root === agent ? agentKey : `${agentKey}/${relative(agent, root).split("\\").join("/")}`];
   return { name: manifest.name, version: manifest.version, integrity: lock?.integrity };
 }
 function files(root) {

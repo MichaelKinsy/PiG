@@ -425,7 +425,7 @@ func (c *Connection) OAuthSettings() (McpOAuthSettings, error) {
 		return McpOAuthSettings{}, nil
 	}
 	settings := McpOAuthSettings{
-		ClientID: oauthConfig.ClientID, CallbackPort: oauthConfig.CallbackPort, CallbackURL: oauthConfig.CallbackURL, Scope: oauthConfig.Scope, ClientName: oauthConfig.ClientName,
+		ClientID: oauthConfig.ClientID, CallbackPort: oauthConfig.CallbackPort, CallbackURL: oauthConfig.CallbackURL, Scope: oauthConfig.Scope, ClientName: oauthConfig.ClientName, ClientRegistration: oauthConfig.ClientRegistration,
 	}
 	if oauthConfig.AuthServerMetadataURL != "" {
 		// Config validation accepted the URL. `new URL()` strips leading and trailing C0 controls and spaces and

@@ -165,6 +165,7 @@ func (m *InteractiveMode) maskSecretInput() bool {
 func (m *InteractiveMode) newLoginDialog(name string, cancel func(), titleOverride ...string) *tui.LoginDialog {
 	dialog := tui.NewLoginDialog(name, cancel, titleOverride...)
 	dialog.SetMaskSecretInput(m.maskSecretInput())
+	dialog.SetCopyToClipboard(copyToClipboard, m.requestRender)
 	return dialog
 }
 

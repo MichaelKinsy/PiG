@@ -32,6 +32,7 @@ func TestSessionRetriesUpstreamRetryableErrors(t *testing.T) {
 	for _, message := range []string{
 		"connect ENOTFOUND api.example.com",
 		"The system is currently experiencing high demand and cannot process your request.",
+		"Selected model is at capacity. Please try a different model.",
 		"An error occurred while processing your request. You can retry your request.",
 	} {
 		t.Run(message, func(t *testing.T) {

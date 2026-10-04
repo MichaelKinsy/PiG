@@ -15,6 +15,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/mcpext"
+	"github.com/MichaelKinsy/PiG/mcp"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -631,5 +632,101 @@ func TestMcpManagerSignOutFailureEndsTheManager(t *testing.T) {
 	}
 	if len(ui.menus) != 2 {
 		t.Fatalf("%d menus shown after the failure, want 2", len(ui.menus))
+	}
+}
+
+// index.ts serverMenu/runAction (1.0.1 #10277): in a trusted project, a global server offers "Disable in this project",
+// which saves an override to the project mcp.json; the server then shows as overridden and saves there.
+func TestMcpManagerDisablesAGlobalServerInThisProject(t *testing.T) {
+	root := t.TempDir()
+	agentDir, cwd := filepath.Join(root, "agent"), filepath.Join(root, "project")
+	if err := os.MkdirAll(agentDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	global := filepath.Join(agentDir, "mcp.json")
+	if err := os.WriteFile(global, []byte(`{"mcpServers":{"docs":{"url":"http://unused.invalid"}}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	calls := &callLog{}
+	host := newFakeHost()
+	host.registerBuiltin(mcpext.CodemodeToolName, "builtin:codemode")
+	host.registerBuiltin(mcpext.ToolSearchToolName, "builtin:tool-search")
+	ext := mcpext.New(host, mcpext.Options{
+		CreateTransport: func(mcpext.McpServerEntry, string, mcp.AuthProvider) (mcp.Transport, error) {
+			client, server := createFakeServer(calls, func() []map[string]any { return serverTools }, false)
+			_ = server.Start()
+			return client, nil
+		},
+		Credentials:   mcpext.NewMcpOAuthCredentialStoreWithBackend(&mcpext.InMemoryAuthStorageBackend{}, ""),
+		LogPath:       filepath.Join(root, "mcp.log"),
+		AgentDir:      agentDir,
+		ConfigDirName: ".pi",
+	})
+	events := mcpext.EventContext{Cwd: cwd, IsProjectTrusted: func() bool { return true }, Notify: (&leveledNotes{}).notify}
+	ext.SessionStart(events)
+	ext.Pending()
+	ext.BeforeAgentStart(events, nil)
+	t.Cleanup(ext.SessionShutdown)
+
+	ui := &scriptedUI{answers: []string{"docs", "disable-project", "", ""}}
+	if err := ext.Manage(t.Context(), ui, events); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"tools|Tools|3 offered", "reconnect|Reconnect|", "signout|Sign out|deletes the stored credentials",
+		"exposure|Exposure|codemode", "disable|Disable|saved to the global mcp.json",
+		"disable-project|Disable in this project|saved to the project mcp.json"}
+	if got := itemsOf(ui.menus[1]); !slices.Equal(got, want) {
+		t.Fatalf("items = %q, want %q", got, want)
+	}
+	project := filepath.Join(cwd, ".pi", "mcp.json")
+	data, err := os.ReadFile(project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "{\n  \"mcpServers\": {\n    \"docs\": {\n      \"enabled\": false\n    }\n  }\n}\n"; string(data) != want {
+		t.Fatalf("project mcp.json = %q, want %q", data, want)
+	}
+	if data, _ := os.ReadFile(global); string(data) != `{"mcpServers":{"docs":{"url":"http://unused.invalid"}}}` {
+		t.Fatalf("global mcp.json changed: %s", data)
+	}
+	disabled := ui.menus[2]
+	if got := itemsOf(disabled); !slices.Equal(got, []string{"enable|Enable|saved to the project mcp.json"}) {
+		t.Fatalf("disabled menu = %q", got)
+	}
+	if want := "http://unused.invalid\nglobal: " + global + "\nproject override: " + project + "\nState: disabled"; disabled.Details != want {
+		t.Fatalf("details = %q, want %q", disabled.Details, want)
+	}
+	if got := itemsOf(ui.menus[3]); len(got) != 1 || !strings.HasSuffix(got[0], "· global, project override") {
+		t.Fatalf("servers menu = %q", got)
+	}
+}
+
+// .upstream/v1.0.1/packages/coding-agent/test/auth-url-copy.test.ts ("MCP sign-in screen copies the authorization URL"):
+// `app.message.copy` copies the sign-in URL, which often cannot be selected or clicked as a whole when it wraps.
+func TestMcpManagerViewSignInScreenCopiesTheAuthorizationURL(t *testing.T) {
+	defs := tui.TUIKeybindingDefinitionsFor(tui.KeybindingPlatformFor("linux", func(string) string { return "" }))
+	defs["app.message.copy"] = tui.TUIKeybindingDef{DefaultKeys: []string{"ctrl+x"}}
+	prev := tui.GetTUIKeybindings()
+	tui.SetKeybindings(tui.NewKeybindingsManager(defs, nil))
+	t.Cleanup(func() { tui.SetKeybindings(prev) })
+	h := &managerHarness{renders: &renderCounter{}}
+	h.view = mcpext.NewMcpManagerView(h.renders, coloredTheme(t), tui.GetTUIKeybindings())
+	var mu sync.Mutex
+	var copied []string
+	h.view.SetCopyToClipboard(func(text string) error {
+		mu.Lock()
+		defer mu.Unlock()
+		copied = append(copied, text)
+		return nil
+	})
+	url := "https://auth.example.invalid/authorize?" + strings.Repeat("x", 300)
+	go func() { _, _ = h.view.RedirectURL(t.Context(), "Sign in to issues", url) }()
+	h.waitForText(t, "ctrl+x to copy")
+	h.view.HandleInput("\x18")
+	h.waitForText(t, "Copied URL to clipboard")
+	mu.Lock()
+	defer mu.Unlock()
+	if len(copied) != 1 || copied[0] != url {
+		t.Fatalf("copied %q", copied)
 	}
 }

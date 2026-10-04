@@ -126,7 +126,11 @@ func anthropicBlockTools(blocks []map[string]any) []string {
 	for i, block := range blocks {
 		out[i], _ = block["type"].(string)
 		if tool, ok := block["tool"].(map[string]any); ok {
-			out[i] += ":" + tool["name"].(string) + ":" + tool["type"].(string)
+			name, _ := tool["name"].(string)
+			if definition, ok := tool["definition"].(map[string]any); ok {
+				name, _ = definition["name"].(string)
+			}
+			out[i] += ":" + name + ":" + tool["type"].(string)
 		}
 	}
 	return out
@@ -145,19 +149,22 @@ func TestTranscriptToolChangesAnthropicRequests(t *testing.T) {
 		deferred   []bool
 		cached     []bool
 		roles      []string
-		// lastBlocks lists the final message's blocks as type[:tool:reference type].
+		// lastBlocks lists the final message's blocks as type[:tool:tool type].
 		lastBlocks []string
 		// description is the first tool's expected description.
 		description string
+		// addedDescription is the description of the final block's inline tool definition.
+		addedDescription string
 	}{
 		{
 			name: "native updates and tool changes", compat: nativeAnthropicCompat, transcript: foldContext(), native: true,
 			system: []string{nativePrompt},
-			// Initial tools stay active and carry the cache breakpoint; the placeholder
-			// and every later declaration are deferred; the removed tool stays declared.
-			tools: []string{"base_tool", deferredPlaceholderName, "late_tool"}, deferred: []bool{false, true, true}, cached: []bool{true, false, false},
-			roles:      []string{"user", "system"},
-			lastBlocks: []string{"text", "tool_removal:base_tool:tool_reference", "tool_addition:late_tool:tool_reference"},
+			// The top-level list holds only the initial tools (with the cache breakpoint)
+			// and the deferred placeholder; later tools never appear there.
+			tools: []string{"base_tool", deferredPlaceholderName}, deferred: []bool{false, true}, cached: []bool{true, false},
+			roles:            []string{"user", "system"},
+			lastBlocks:       []string{"text", "tool_removal:base_tool:tool_reference", "tool_addition:late_tool:tool_definition"},
+			addedDescription: "late_tool tool",
 		},
 		{
 			// The placeholder is declared before any change so its scaffolding is cached from request one.
@@ -168,26 +175,31 @@ func TestTranscriptToolChangesAnthropicRequests(t *testing.T) {
 			roles: []string{"user"}, lastBlocks: []string{"text"},
 		},
 		{
-			// Same-name redefinition: blocks reference tools by name only.
-			name: "redefinition falls back to the current tool list", compat: nativeAnthropicCompat,
+			// redefines an Anthropic tool by value under the same name: the top-level
+			// declaration keeps the original definition, so the cached prefix survives,
+			// and the new definition replaces the old one without a removal block.
+			name: "redefinition is an inline tool_addition", compat: nativeAnthropicCompat,
 			transcript: NormalizeContext(Context{Messages: []Message{
 				SystemMessage{Content: SystemText("base prompt"), ToolsAdded: []ToolSchema{replayTool("base_tool")}},
-				SystemMessage{Content: SystemText("updated guidance"), ToolsRemoved: []ToolReference{{Name: "base_tool"}}, ToolsAdded: []ToolSchema{redefined}, Timestamp: 2},
-			}}),
+				UserMessage{Content: UserText("before"), Timestamp: 1},
+				SystemMessage{ToolsRemoved: []ToolReference{{Name: "base_tool"}}, ToolsAdded: []ToolSchema{redefined}, Timestamp: 2},
+			}}), native: true,
 			system: []string{"base prompt"},
-			tools:  []string{"base_tool"}, deferred: []bool{false}, cached: []bool{true},
-			roles: []string{"system"}, lastBlocks: []string{"text"}, description: "changed",
+			tools:  []string{"base_tool", deferredPlaceholderName}, deferred: []bool{false, true}, cached: []bool{true, false},
+			roles: []string{"user", "system"}, lastBlocks: []string{"tool_addition:base_tool:tool_definition"},
+			description: "base_tool tool", addedDescription: "changed",
 		},
 		{
-			// No initial tool: Anthropic rejects an all-deferred tool list.
-			name: "no initial tool falls back to the current tool list", compat: nativeAnthropicCompat,
+			// No initial tool: Anthropic rejects a tool list where every tool (here: the placeholder) is deferred.
+			name: "no initial tool sends the current tool list", compat: nativeAnthropicCompat,
 			transcript: NormalizeContext(Context{Messages: []Message{
 				SystemMessage{Content: SystemText("base prompt")},
-				SystemMessage{Content: SystemText("updated guidance"), ToolsAdded: []ToolSchema{redefined}, Timestamp: 2},
+				UserMessage{Content: UserText("before"), Timestamp: 1},
+				SystemMessage{Content: SystemText("updated guidance"), ToolsAdded: []ToolSchema{replayTool("late_tool")}, Timestamp: 2},
 			}}),
 			system: []string{"base prompt"},
-			tools:  []string{"base_tool"}, deferred: []bool{false}, cached: []bool{true},
-			roles: []string{"system"}, lastBlocks: []string{"text"}, description: "changed",
+			tools:  []string{"late_tool"}, deferred: []bool{false}, cached: []bool{true},
+			roles: []string{"user", "system"}, lastBlocks: []string{"text"},
 		},
 		{
 			name: "folds without native support", transcript: foldContext(),
@@ -208,7 +220,7 @@ func TestTranscriptToolChangesAnthropicRequests(t *testing.T) {
 				t.Fatalf("requests = %d", len(requests))
 			}
 			request := requests[0]
-			if got := slices.Contains(anthropicBetas(request), midConversationToolChangesBeta); got != tc.native {
+			if got := slices.Contains(anthropicBetas(request), inlineToolsBeta); got != tc.native {
 				t.Errorf("beta header %q, want tool-changes beta %v", request.header.Get("anthropic-beta"), tc.native)
 			}
 			if got := jsonStrings(jsonItems(request.body["system"]), "text"); !slices.Equal(got, tc.system) {
@@ -231,8 +243,23 @@ func TestTranscriptToolChangesAnthropicRequests(t *testing.T) {
 			if got := jsonStrings(messages, "role"); !slices.Equal(got, tc.roles) {
 				t.Fatalf("roles = %v, want %v", got, tc.roles)
 			}
-			if got := anthropicBlockTools(jsonItems(messages[len(messages)-1]["content"])); !slices.Equal(got, tc.lastBlocks) {
+			lastBlocks := jsonItems(messages[len(messages)-1]["content"])
+			if got := anthropicBlockTools(lastBlocks); !slices.Equal(got, tc.lastBlocks) {
 				t.Errorf("last blocks = %v, want %v", got, tc.lastBlocks)
+			}
+			if tc.addedDescription != "" {
+				tool, _ := lastBlocks[len(lastBlocks)-1]["tool"].(map[string]any)
+				definition, _ := tool["definition"].(map[string]any)
+				if definition["description"] != tc.addedDescription {
+					t.Errorf("inline definition = %#v, want description %q", definition, tc.addedDescription)
+				}
+				// Cache control goes on the block, never on the inline definition; nothing is deferred.
+				if _, ok := definition["cache_control"]; ok {
+					t.Errorf("inline definition carries cache_control: %#v", definition)
+				}
+				if _, ok := definition["defer_loading"]; ok {
+					t.Errorf("inline definition carries defer_loading: %#v", definition)
+				}
 			}
 		})
 	}
@@ -252,8 +279,8 @@ func TestTranscriptToolChangesAnthropicNativeUpdateText(t *testing.T) {
 	if !slices.Equal(jsonHas(blocks, "cache_control"), []bool{false, false, true}) {
 		t.Errorf("update cache_control = %v", jsonHas(blocks, "cache_control"))
 	}
-	// Native deferred tools keep their schema and the eager-streaming flag.
-	late := jsonItems(request.body["tools"])[2]
+	// Inline tool definitions keep their schema and the eager-streaming flag.
+	late, _ := blocks[2]["tool"].(map[string]any)["definition"].(map[string]any)
 	if late["eager_input_streaming"] != true || late["input_schema"] == nil {
 		t.Errorf("late tool = %#v", late)
 	}
@@ -270,10 +297,10 @@ func TestTranscriptToolChangesAnthropicCatalogModelUsesNativeChanges(t *testing.
 		t.Fatalf("catalog claude-opus-5 lacks supportsMidConvoToolChanges: %#v", generated.Compat)
 	}
 	request := captureAnthropicToolChanges(t, "claude-opus-5", nil, foldContext())[0]
-	if !slices.Contains(anthropicBetas(request), midConversationToolChangesBeta) {
+	if !slices.Contains(anthropicBetas(request), inlineToolsBeta) {
 		t.Errorf("beta header %q", request.header.Get("anthropic-beta"))
 	}
-	if got := jsonStrings(jsonItems(request.body["tools"]), "name"); !slices.Equal(got, []string{"base_tool", deferredPlaceholderName, "late_tool"}) {
+	if got := jsonStrings(jsonItems(request.body["tools"]), "name"); !slices.Equal(got, []string{"base_tool", deferredPlaceholderName}) {
 		t.Errorf("tools = %v", got)
 	}
 }
@@ -289,14 +316,14 @@ func TestTranscriptToolChangesAnthropicOAuthReferencesClaudeCodeNames(t *testing
 	request := captureToolChangeRequests(t, func(client *http.Client) { provider.client = client }, func() (*AssistantMessageEventStream, error) {
 		return provider.Stream(context.Background(), transcript, StreamOptions{})
 	}, toolChangeReply{200, anthropicToolChangeStop})[0]
-	if got := jsonStrings(jsonItems(request.body["tools"]), "name"); !slices.Equal(got, []string{"Read", deferredPlaceholderName, "Bash"}) {
+	if got := jsonStrings(jsonItems(request.body["tools"]), "name"); !slices.Equal(got, []string{"Read", deferredPlaceholderName}) {
 		t.Errorf("tools = %v", got)
 	}
 	messages := jsonItems(request.body["messages"])
-	if got := anthropicBlockTools(jsonItems(messages[len(messages)-1]["content"])); !slices.Equal(got, []string{"tool_removal:Read:tool_reference", "tool_addition:Bash:tool_reference"}) {
+	if got := anthropicBlockTools(jsonItems(messages[len(messages)-1]["content"])); !slices.Equal(got, []string{"tool_removal:Read:tool_reference", "tool_addition:Bash:tool_definition"}) {
 		t.Errorf("last blocks = %v", got)
 	}
-	if got := anthropicBetas(request); !slices.Equal(got, []string{claudeCodeBeta, oauthBeta, midConversationToolChangesBeta}) {
+	if got := anthropicBetas(request); !slices.Equal(got, []string{claudeCodeBeta, oauthBeta, inlineToolsBeta}) {
 		t.Errorf("betas = %v", got)
 	}
 }
@@ -362,7 +389,7 @@ func TestTranscriptToolChangesAnthropicPoisonedHistory(t *testing.T) {
 	want := []string{
 		"user(string)",
 		"user(string)",
-		"system(text,tool_addition:late_tool:tool_reference)",
+		"system(text,tool_addition:late_tool:tool_definition)",
 		"assistant(tool_use:call_1_fc_1)",
 		"user(tool_result:call_1_fc_1)",
 		"user(string)",
@@ -379,10 +406,10 @@ func TestTranscriptToolChangesAnthropicPoisonedHistory(t *testing.T) {
 		if got := anthropicMessageShape(jsonItems(request.body["messages"])); !slices.Equal(got, want) {
 			t.Errorf("request %d messages = %v, want %v", i, got, want)
 		}
-		if got := jsonStrings(jsonItems(request.body["tools"]), "name"); !slices.Equal(got, []string{"base_tool", deferredPlaceholderName, "late_tool"}) {
+		if got := jsonStrings(jsonItems(request.body["tools"]), "name"); !slices.Equal(got, []string{"base_tool", deferredPlaceholderName}) {
 			t.Errorf("request %d tools = %v", i, got)
 		}
-		if !slices.Contains(anthropicBetas(request), midConversationToolChangesBeta) {
+		if !slices.Contains(anthropicBetas(request), inlineToolsBeta) {
 			t.Errorf("request %d beta header %q", i, request.header.Get("anthropic-beta"))
 		}
 	}

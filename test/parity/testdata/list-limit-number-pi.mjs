@@ -5,7 +5,7 @@ import { readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 const root = realpathSync(new URL("../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url));
-assert.equal(JSON.parse(readFileSync(`${root}/package.json`, "utf8")).version, "1.0.0");
+assert.equal(JSON.parse(readFileSync(`${root}/package.json`, "utf8")).version, "1.0.1");
 const observations = [];
 for (const [name, field] of [["grep", "matchLimitReached"], ["find", "resultLimitReached"], ["ls", "entryLimitReached"]]) {
   const module = await import(pathToFileURL(`${root}/dist/core/tools/renderers/${name}.js`));

@@ -81,6 +81,66 @@ pub type ToolRenderResultHandler = Box<
         + Sync,
 >;
 
+/// Renders a tool call into terminal lines at a width; shared by the renderers a resolver returns.
+pub type SharedToolRenderCall = Arc<
+    dyn Fn(&Context, Value, &mut ToolRenderContext, u32) -> Result<Vec<String>, String> + Send + Sync,
+>;
+
+/// Renders a tool result into terminal lines at a width; shared by the renderers a resolver returns.
+pub type SharedToolRenderResult = Arc<
+    dyn Fn(
+            &Context,
+            ToolRenderResult,
+            ToolRenderResultOptions,
+            &mut ToolRenderContext,
+            u32,
+        ) -> Result<Vec<String>, String>
+        + Send
+        + Sync,
+>;
+
+/// The renderers a tool renderer resolver returns (upstream ToolRenderers).
+///
+/// pig divergence (D89): `next()` returns renderers the host draws as a marker. Returning it keeps them; its
+/// `render_call` and `render_result` are `None`, so a resolver cannot wrap them. A marker given a `render_call` or
+/// `render_result` is the resolver's own renderers.
+#[derive(Clone, Default)]
+pub struct ToolRendererSet {
+    pub render_shell: ToolRenderShell,
+    pub render_call: Option<SharedToolRenderCall>,
+    pub render_result: Option<SharedToolRenderResult>,
+    next_marker: bool,
+}
+
+impl ToolRendererSet {
+    /// Renderers that draw calls with `render_call`.
+    pub fn with_call(
+        render_call: impl Fn(&Context, Value, &mut ToolRenderContext, u32) -> Result<Vec<String>, String>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        Self { render_call: Some(Arc::new(render_call)), ..Self::default() }
+    }
+}
+
+/// The function of a tool renderer resolver.
+pub(crate) type ToolRendererResolverFn =
+    dyn Fn(&str, &dyn Fn() -> Option<ToolRendererSet>) -> Option<ToolRendererSet> + Send + Sync;
+
+/// A tool renderer resolver (upstream ToolRendererResolver): the tool's name and `next`, which returns the renderers
+/// the remaining resolvers, then the registered tool, would use.
+pub type ToolRendererResolver = Box<ToolRendererResolverFn>;
+
+/// The resolvers an extension registers after loading ([`crate::Context::register_tool_renderer`]), after the ones it
+/// registered while loading.
+#[derive(Default)]
+pub(crate) struct LateToolRendererResolvers {
+    /// How many resolvers the extension registered while loading.
+    pub(crate) loaded: std::sync::atomic::AtomicUsize,
+    pub(crate) resolvers: Mutex<Vec<Arc<ToolRendererResolverFn>>>,
+}
+
 /// Each tool card's renderer state, by card.
 type CardStates = HashMap<String, Arc<Mutex<Map<String, Value>>>>;
 
@@ -88,6 +148,8 @@ type CardStates = HashMap<String, Arc<Mutex<Map<String, Value>>>>;
 pub(crate) struct ToolRenderers {
     pub(crate) call: HashMap<String, ToolRenderCallHandler>,
     pub(crate) result: HashMap<String, ToolRenderResultHandler>,
+    pub(crate) resolvers: Vec<ToolRendererResolver>,
+    resolved: Mutex<HashMap<String, ToolRendererSet>>,
     cards: Mutex<CardStates>,
 }
 
@@ -118,6 +180,8 @@ struct RenderToolWire {
     card: String,
     #[serde(default)]
     phase: String,
+    #[serde(default)]
+    renderers: String,
     #[serde(default)]
     args: Value,
     #[serde(default)]
@@ -173,6 +237,22 @@ impl ToolRenderers {
                 );
             }),
         };
+        if !request.renderers.is_empty() {
+            let set = self.resolved.lock().unwrap().get(&request.renderers).cloned();
+            let lines = match (set, request.phase.as_str()) {
+                (Some(set), "result") => match set.render_result {
+                    Some(handler) => handler(ctx, request.result.unwrap_or_default(), request.options, &mut render, request.width),
+                    None => Err(format!("tool {tool} has no result renderer")),
+                },
+                (Some(set), _) => match set.render_call {
+                    Some(handler) => handler(ctx, request.args, &mut render, request.width),
+                    None => Err(format!("tool {tool} has no call renderer")),
+                },
+                (None, _) => Err(format!("unknown tool renderers {}", request.renderers)),
+            };
+            *state = render.state;
+            return lines;
+        }
         let registered = conn.registered_tools.lock().unwrap().get(tool).cloned();
         let call = match &registered {
             Some(definition) => definition.render_call.as_ref(),
@@ -201,6 +281,50 @@ impl ToolRenderers {
         };
         *state = render.state;
         lines
+    }
+
+    /// Answers a resolve_tool_renderers request: the resolvers run in registration order with the host's next()
+    /// renderers last.
+    pub(crate) fn resolve(&self, conn: &Connection, args: Option<&Value>) -> Value {
+        let tool = args.and_then(|args| args.get("tool")).and_then(Value::as_str).unwrap_or("").to_string();
+        let marker = args.and_then(|args| args.get("next")).filter(|next| next.is_object()).map(|next| ToolRendererSet {
+            render_shell: if next.get("render_shell").and_then(Value::as_str) == Some("self") { ToolRenderShell::SelfShell } else { ToolRenderShell::Default },
+            next_marker: true,
+            ..ToolRendererSet::default()
+        });
+        fn chain(resolvers: &[&ToolRendererResolverFn], tool: &str, marker: &Option<ToolRendererSet>) -> Option<ToolRendererSet> {
+            match resolvers.split_first() {
+                Some((first, rest)) => first(tool, &|| chain(rest, tool, marker)),
+                None => marker.clone(),
+            }
+        }
+        let late = conn.late_tool_renderers.resolvers.lock().unwrap().clone();
+        let resolvers: Vec<&ToolRendererResolverFn> =
+            self.resolvers.iter().map(|resolver| resolver.as_ref()).chain(late.iter().map(|resolver| resolver.as_ref())).collect();
+        match chain(&resolvers, &tool, &marker) {
+            None => serde_json::json!({ "use": "none" }),
+            // A marker given render functions (`let mut set = next()?; set.render_call = ...`) is the resolver's own
+            // renderers.
+            Some(set) if set.next_marker && set.render_call.is_none() && set.render_result.is_none() => {
+                serde_json::json!({ "use": "next" })
+            }
+            Some(set) => {
+                let mut resolved = self.resolved.lock().unwrap();
+                let id = format!("r{}", resolved.len() + 1);
+                let mut answer = serde_json::json!({ "use": "own", "renderers": id });
+                if set.render_shell == ToolRenderShell::SelfShell {
+                    answer["render_shell"] = Value::from("self");
+                }
+                if set.render_call.is_some() {
+                    answer["renders_call"] = Value::from(true);
+                }
+                if set.render_result.is_some() {
+                    answer["renders_result"] = Value::from(true);
+                }
+                resolved.insert(id, set);
+                answer
+            }
+        }
     }
 
     /// Drops the state of a tool card the host no longer shows.

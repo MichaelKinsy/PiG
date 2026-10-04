@@ -24,6 +24,7 @@ type API interface {
 	GetActiveTools() []string
 	SetActiveTools(names []string)
 	GetMcpServers() []extension.RegisteredMcpServer
+	RegisterToolRenderer(resolver extension.ToolRendererResolver)
 }
 
 // apiHost adapts an API to the [Host] the extension uses.
@@ -82,6 +83,17 @@ func eventContext(ctx context.Context) EventContext {
 func Factory(options Options) func(api API) *Extension {
 	return func(api API) *Extension {
 		e := New(apiHost{api}, options)
+		// A resumed session renders calls to MCP tools before their server connected, if it ever does.
+		// upstream: packages/coding-agent/src/extensions/mcp/index.ts (pi.registerToolRenderer, #10285)
+		api.RegisterToolRenderer(func(toolName string, next func() *extension.ToolRenderers) *extension.ToolRenderers {
+			if renderers := next(); renderers != nil {
+				return renderers
+			}
+			if match := mcpToolNamePattern.FindStringSubmatch(toolName); match != nil {
+				return CreateMcpToolRenderers(match[1] + "/" + match[2])
+			}
+			return nil
+		})
 		api.OnSessionStart(func(ctx context.Context, _ extension.SessionStartEvent) error {
 			e.SessionStart(eventContext(ctx))
 			return nil
@@ -110,7 +122,7 @@ func Factory(options Options) func(api API) *Extension {
 				return e.CompleteCommand(prefix), nil
 			},
 			Handler: func(ctx context.Context, args string) error {
-				return e.RunCommand(ctx, args, commandContext(ctx))
+				return e.RunCommand(ctx, args, commandContext(ctx, options.CopyToClipboard))
 			},
 		})
 		api.OnSessionShutdown(func(context.Context, extension.SessionShutdownEvent) error {
@@ -122,7 +134,7 @@ func Factory(options Options) func(api API) *Extension {
 }
 
 // commandContext builds the command context from the extension context a runner puts in ctx.
-func commandContext(ctx context.Context) CommandContext {
+func commandContext(ctx context.Context, copyToClipboard func(text string) error) CommandContext {
 	c := extension.FromContext(ctx)
 	out := CommandContext{EventContext: eventContext(ctx)}
 	if c == nil {
@@ -147,18 +159,19 @@ func commandContext(ctx context.Context) CommandContext {
 		return value, err == nil && value != ""
 	}
 	out.ShowManager = func(ctx context.Context, manage func(McpUi) error) error {
-		return showManager(ctx, ui, out.EventContext, manage)
+		return showManager(ctx, ui, out.EventContext, copyToClipboard, manage)
 	}
 	return out
 }
 
 // showManager runs manage in the manager view until it returns (showMcpManager).
 // upstream: packages/coding-agent/src/extensions/mcp/ui.ts:showMcpManager
-func showManager(ctx context.Context, ui extension.UIContext, events EventContext, manage func(McpUi) error) error {
+func showManager(ctx context.Context, ui extension.UIContext, events EventContext, copyToClipboard func(text string) error, manage func(McpUi) error) error {
 	var running sync.WaitGroup
 	defer running.Wait()
 	_, err := ui.Custom(ctx, extension.CustomFactory(func(host extension.CustomHost, theme extension.Theme, keybindings extension.KeybindingsManager, done func(any)) (extension.Component, error) {
 		view := NewMcpManagerView(host, themeOf(theme), keybindingsOf(keybindings))
+		view.SetCopyToClipboard(copyToClipboard)
 		running.Go(func() {
 			if err := manage(view); err != nil {
 				events.notify(err.Error(), "error")

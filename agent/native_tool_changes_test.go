@@ -82,7 +82,7 @@ func TestAgentToolLoadoutChangesUseNativeProviderToolChanges(t *testing.T) {
 				}}), ai.APIAnthropicMessages
 			},
 			check: func(t *testing.T, body map[string]any) {
-				if got := nativeToolChangeNames(body["tools"]); !slices.Equal(got, []string{"first", "__pi_deferred_placeholder__", "second"}) {
+				if got := nativeToolChangeNames(body["tools"]); !slices.Equal(got, []string{"first", "__pi_deferred_placeholder__"}) {
 					t.Errorf("tools = %v", got)
 				}
 				messages := nativeToolChangeItems(body["messages"])
@@ -90,6 +90,13 @@ func TestAgentToolLoadoutChangesUseNativeProviderToolChanges(t *testing.T) {
 				blocks := nativeToolChangeItems(update["content"])
 				if update["role"] != "system" || len(blocks) != 2 || blocks[0]["type"] != "tool_removal" || blocks[1]["type"] != "tool_addition" {
 					t.Errorf("update = %#v", update)
+					return
+				}
+				// Pi 1.0.1 anthropic-messages convertMessages: additions carry a tool_definition by value.
+				tool, _ := blocks[1]["tool"].(map[string]any)
+				definition, _ := tool["definition"].(map[string]any)
+				if tool["type"] != "tool_definition" || definition["name"] != "second" {
+					t.Errorf("tool_addition = %#v", blocks[1])
 				}
 			},
 		},
@@ -227,7 +234,12 @@ func TestNativeToolChangesPoisonedPersistedHistoryRequests(t *testing.T) {
 							}
 						}
 						if tool, ok := block["tool"].(map[string]any); ok {
-							entry += ":" + tool["name"].(string)
+							// Pi 1.0.1 sends a tool_definition carrying the tool by value; removals stay tool_reference by name.
+							name, _ := tool["name"].(string)
+							if definition, ok := tool["definition"].(map[string]any); ok {
+								name, _ = definition["name"].(string)
+							}
+							entry += ":" + name
 						}
 					}
 					shape = append(shape, entry)
@@ -239,7 +251,7 @@ func TestNativeToolChangesPoisonedPersistedHistoryRequests(t *testing.T) {
 			want: []string{
 				"user text", "assistant tool_use:call_a_fc_a", "user tool_result:call_a_fc_a",
 				"user text", "system tool_addition:read", "assistant tool_use:toolu_1", "user tool_result:toolu_1",
-				"user text", "tools=bash,__pi_deferred_placeholder__,read",
+				"user text", "tools=bash,__pi_deferred_placeholder__",
 			},
 		},
 		{

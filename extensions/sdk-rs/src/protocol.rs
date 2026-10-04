@@ -111,6 +111,10 @@ pub struct RegisterMsg {
     /// `markdown_transform` requests.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub markdown_transformer: bool,
+    /// The number of tool renderer resolvers (upstream `registerToolRenderer`); the host asks them with
+    /// `resolve_tool_renderers` requests.
+    #[serde(default, skip_serializing_if = "is_zero_usize")]
+    pub tool_renderers: usize,
     /// MCP servers registered while loading (upstream `registerMcpServer` in the factory). The host validates them.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub mcp_servers: Vec<McpServerDecl>,
@@ -536,6 +540,8 @@ impl RequestParent {
 pub struct Connection {
     pub(crate) registered_tools: Mutex<HashMap<String, Arc<crate::extension::ToolDefinition>>>,
     pub(crate) tool_registration_lock: Mutex<()>,
+    /// Tool renderer resolvers registered after loading.
+    pub(crate) late_tool_renderers: crate::tool_render::LateToolRendererResolvers,
     pub(crate) autocomplete: crate::autocomplete::AutocompleteRegistry,
     pub(crate) provider_objects: std::sync::OnceLock<Arc<crate::provider::ProviderObjects>>,
     pub(crate) provider_callbacks: std::sync::OnceLock<Arc<crate::provider::ProviderCallbacks>>,
@@ -625,6 +631,7 @@ impl Connection {
             with_sessions: Default::default(),
             registered_tools: Mutex::new(HashMap::new()),
             tool_registration_lock: Mutex::new(()),
+            late_tool_renderers: Default::default(),
             autocomplete: crate::autocomplete::AutocompleteRegistry::default(),
         }
     }
@@ -894,4 +901,8 @@ impl Connection {
             ..Default::default()
         })
     }
+}
+
+fn is_zero_usize(value: &usize) -> bool {
+    *value == 0
 }

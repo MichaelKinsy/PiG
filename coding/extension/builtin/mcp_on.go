@@ -15,7 +15,10 @@ func mcpEntries(options Options) []Extension {
 }
 
 // ConfigureMcp sets where the MCP extension reads `mcp.json` and keeps its credentials and log (the agent directory and the
-// per-project configuration directory name) and how it opens an OAuth authorization URL.
-func (o *Options) ConfigureMcp(agentDir, configDirName string, openURL func(url string)) {
+// per-project configuration directory name), how it opens an OAuth authorization URL, and, when given, how it copies one.
+func (o *Options) ConfigureMcp(agentDir, configDirName string, openURL func(url string), copyToClipboard ...func(text string) error) {
 	o.Mcp.AgentDir, o.Mcp.ConfigDirName, o.Mcp.OpenURL = agentDir, configDirName, openURL
+	if len(copyToClipboard) > 0 {
+		o.Mcp.CopyToClipboard = copyToClipboard[0]
+	}
 }

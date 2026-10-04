@@ -1,4 +1,4 @@
-// D82 W5 oracle for the openai-codex-responses SSE transport (Pi 1.0.0).
+// D82 W5 oracle for the openai-codex-responses SSE transport (Pi 1.0.1).
 //
 // Drives Pi's real pipeline twice:
 //   inproc  Pi's exported `stream` (packages/ai/src/api/openai-codex-responses.ts) against a loopback server, with
@@ -25,7 +25,7 @@ import assert from 'node:assert/strict';
 
 const root = process.env.PI_PACKAGE_ROOT;
 const piAI = root + '/node_modules/@earendil-works/pi-ai/';
-for (const [dir, version] of [[root, '1.0.0'], [piAI, '1.0.0']]) {
+for (const [dir, version] of [[root, '1.0.1'], [piAI, '1.0.1']]) {
   assert.equal(JSON.parse(await readFile(dir + '/package.json', 'utf8')).version, version);
 }
 const { stream } = await import(piAI + 'dist/api/openai-codex-responses.js');
@@ -182,7 +182,7 @@ async function repeat(fn) {
   return first;
 }
 
-const result = { piVersion: '1.0.0', api: 'openai-codex-responses', node: process.version, runs, fixtures: {}, inproc: {}, rpc: {} };
+const result = { piVersion: '1.0.1', api: 'openai-codex-responses', node: process.version, runs, fixtures: {}, inproc: {}, rpc: {} };
 for (const shape of shapes) result.fixtures[shape] = fixture(shape).join('');
 for (const mode of modes) {
   for (const shape of shapes) {

@@ -2,7 +2,7 @@
 
 # Extension SDK surface matrix
 
-Every extension-facing surface of Pi 1.0.0's extension API, and how each PiG extension runtime realizes it. The rows come from Pi's `packages/coding-agent/src/core/extensions/types.ts` and the declarations it re-exports or exposes through its members (`EventBus`, `ExecOptions`/`ExecResult`, `CacheWarmingDecisionEvent`, `ReadonlySessionManager`, `ModelRegistry`, `Theme`, `AgentToolResult`), read from `.upstream/v1.0.0`.
+Every extension-facing surface of Pi 1.0.1's extension API, and how each PiG extension runtime realizes it. The rows come from Pi's `packages/coding-agent/src/core/extensions/types.ts` and the declarations it re-exports or exposes through its members (`EventBus`, `ExecOptions`/`ExecResult`, `CacheWarmingDecisionEvent`, `ReadonlySessionManager`, `ModelRegistry`, `Theme`, `AgentToolResult`), read from `.upstream/v1.0.1`.
 
 A cell's status comes from the runtime itself: the Go SDK's exported identifiers, the Rust SDK's `pub` items and the Python SDK's classes, members and parameters, read from their source, and the Node runtime's objects, read by instantiating the runtime in Node (`test/parity/cmd/sdksurface/probe.mjs`), plus the properties it reads from an extension's definitions. [`test/parity/sdk-surface.toml`](../test/parity/sdk-surface.toml) names the symbol where a language's naming differs from the default rule and says why a realization is a stand-in; a named symbol that does not exist is `missing`. Payload, result and option fields that cross the subprocess wire are also checked against the host's Go decoding type, so a field an SDK sends but the host drops is `missing`.
 
@@ -10,7 +10,7 @@ A cell's status comes from the runtime itself: the Go SDK's exported identifiers
 - `stand-in/partial`: the symbol exists; the note says what differs and why.
 - `missing`: no symbol. Each missing cell is listed in [`test/parity/sdk-surface-exceptions.toml`](../test/parity/sdk-surface-exceptions.toml) with its reviewed reason, and `go test ./test/parity/cmd/sdksurface` fails on any other.
 
-The package sections list every runtime export of the modules Pi serves to extensions (`pi-coding-agent`, `pi-tui`, `pi-ai`, `pi-ai/compat`, `pi-ai/providers/all`, `pi-agent-core`), from the compiler-derived inventory of Pi's `.d.ts` files (`test/parity/interfaces/upstream-v1.0.0.json`), and every public instance member of each exported class represented by that inventory. Static factories and overload-specific reachability are outside this probe. Only the Node runtime imports these modules. The probe loads each module the runtime serves and classifies every value by where its code lives, using the V8 inspector's function locations:
+The package sections list every runtime export of the modules Pi serves to extensions (`pi-coding-agent`, `pi-tui`, `pi-ai`, `pi-ai/compat`, `pi-ai/providers/all`, `pi-agent-core`), from the compiler-derived inventory of Pi's `.d.ts` files (`test/parity/interfaces/upstream-v1.0.1.json`), and every public instance member of each exported class represented by that inventory. Static factories and overload-specific reachability are outside this probe. Only the Node runtime imports these modules. The probe loads each module the runtime serves and classifies every value by where its code lives, using the V8 inspector's function locations:
 
 - `Pi's own code`: the function originates in the vendored pinned modules or their dependencies; host import rewrites can still affect behavior (D73).
 - `bridged`: PiG's implementation in the extension runtime, a line-for-line port or a host bridge, locked by the D73 tests (`TestNodeRuntimeShimsExportEveryPinnedPiValue`, `TestPiTuiComponentsMatchThePinnedPackage`, `TestPiAiUtilitiesMatchThePinnedPackage`, `TestPiThemeHelpersMatchThePinnedPackage`).
@@ -21,21 +21,21 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 ## Summary
 
-505 extension API surfaces:
+506 extension API surfaces:
 
 | Runtime | implemented | stand-in/partial | missing (all with a reviewed exception) |
 |---|---|---|---|
-| Node runtime | 462 | 32 | 11 |
-| Go | 464 | 29 | 12 |
-| Rust | 464 | 28 | 13 |
-| Python | 464 | 28 | 13 |
+| Node runtime | 463 | 32 | 11 |
+| Go | 465 | 29 | 12 |
+| Rust | 465 | 28 | 13 |
+| Python | 465 | 28 | 13 |
 
-1552 package exports and class members, Node runtime:
+1554 package exports and class members, Node runtime:
 
 | Module | Pi's own code | bridged | stand-in | missing (all with a reviewed exception) |
 |---|---|---|---|---|
-| `pi-coding-agent` | 890 | 8 | 0 | 10 |
-| `pi-tui` | 352 | 1 | 0 | 1 |
+| `pi-coding-agent` | 891 | 8 | 0 | 10 |
+| `pi-tui` | 353 | 1 | 0 | 1 |
 | `pi-ai` | 87 | 1 | 0 | 0 |
 | `pi-ai/compat` | 138 | 9 | 0 | 0 |
 | `pi-ai/providers/all` | 12 | 0 | 0 | 0 |
@@ -78,6 +78,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi.registerMessageRenderer` | `ExtensionAPI.registerMessageRenderer` | stand-in/partial `api.registerMessageRenderer`: the renderer's Component renders to lines at the requested width inside the extension process | stand-in/partial `Extension.MessageRenderer`: renders lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `Extension::message_renderer`: renders lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `Extension.message_renderer`: renders lines at the requested width: a Pi Component cannot cross the process boundary |
 | `pi.registerMarkdownTransformer` | `ExtensionAPI.registerMarkdownTransformer` | implemented `api.registerMarkdownTransformer` | implemented `Extension.MarkdownTransformer` | implemented `Extension::markdown_transformer` | implemented `Extension.markdown_transformer` |
 | `pi.registerEntryRenderer` | `ExtensionAPI.registerEntryRenderer` | stand-in/partial `api.registerEntryRenderer`: the renderer's Component renders to lines at the requested width inside the extension process | stand-in/partial `Extension.EntryRenderer`: renders lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `Extension::entry_renderer`: renders lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `Extension.entry_renderer`: renders lines at the requested width: a Pi Component cannot cross the process boundary |
+| `pi.registerToolRenderer` | `ExtensionAPI.registerToolRenderer` | implemented `api.registerToolRenderer` | implemented `Extension.ToolRenderer` | implemented `Extension::tool_renderer` | implemented `Extension.tool_renderer` |
 | `pi.sendMessage` | `ExtensionAPI.sendMessage` | implemented `api.sendMessage` | implemented `Context.SendMessage` | implemented `Context::send_message` | implemented `Context.send_message` |
 
 ## pi (ExtensionAPI) arguments
@@ -1636,6 +1637,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: ExtensionRunner.invalidate` | `ExtensionRunner.invalidate` | Pi's own code |
 | `pi-coding-agent: ExtensionRunner.onError` | `ExtensionRunner.onError` | Pi's own code |
 | `pi-coding-agent: ExtensionRunner.reportUnhandledMcpServers` | `ExtensionRunner.reportUnhandledMcpServers` | Pi's own code |
+| `pi-coding-agent: ExtensionRunner.resolveToolRenderers` | `ExtensionRunner.resolveToolRenderers` | Pi's own code |
 | `pi-coding-agent: ExtensionRunner.setFlagValue` | `ExtensionRunner.setFlagValue` | Pi's own code |
 | `pi-coding-agent: ExtensionRunner.setUIContext` | `ExtensionRunner.setUIContext` | Pi's own code |
 | `pi-coding-agent: ExtensionRunner.shutdown` | `ExtensionRunner.shutdown` | Pi's own code |
@@ -2593,6 +2595,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-tui: setCapabilities` | `function setCapabilities` | Pi's own code |
 | `pi-tui: setCapabilityOverrides` | `function setCapabilityOverrides` | Pi's own code |
 | `pi-tui: setCellDimensions` | `function setCellDimensions` | Pi's own code |
+| `pi-tui: setImageTranscoder` | `function setImageTranscoder` | Pi's own code |
 | `pi-tui: setKeybindings` | `function setKeybindings` | Pi's own code |
 | `pi-tui: setKittyProtocolActive` | `function setKittyProtocolActive` | Pi's own code |
 | `pi-tui: sliceByColumn` | `function sliceByColumn` | Pi's own code |

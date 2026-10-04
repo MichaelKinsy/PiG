@@ -44,6 +44,8 @@ func TestIsRetryableAssistantErrorClassification(t *testing.T) {
 		{"matches OpenAI Responses streams that end before terminal events", "OpenAI Responses stream ended before a terminal response event"},
 		// .upstream/v0.87.1/packages/ai/test/retry.test.ts:73
 		{"matches Azure peak-load capacity errors", "The system is currently experiencing high demand and cannot process your request. Your request exceeds the maximum usage size allowed during peak load. For improved capacity reliability, consider switching to Provisioned Throughput."},
+		// .upstream/v1.0.1/packages/ai/src/utils/retry.ts:34 (#10278): "Selected model is at capacity" ends the turn without this pattern.
+		{"matches provider model capacity errors", "Selected model is at capacity. Please try a different model."},
 		// .upstream/v0.87.1/packages/ai/test/retry.test.ts:88
 		{"classifies assistant error messages/overloaded", "overloaded_error"},
 		{"classifies assistant error messages/520", "520 status code (no body)"},

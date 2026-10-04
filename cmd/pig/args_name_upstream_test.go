@@ -92,7 +92,7 @@ func TestCLISelectsSessionBeforeNameValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 	var pkg struct{ Version string }
-	if err := json.Unmarshal(metadata, &pkg); err != nil || pkg.Version != "1.0.0" {
+	if err := json.Unmarshal(metadata, &pkg); err != nil || pkg.Version != "1.0.1" {
 		t.Fatalf("pinned Pi version=%q, err=%v", pkg.Version, err)
 	}
 	node, err := exec.LookPath("node")

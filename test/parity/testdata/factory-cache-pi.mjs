@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
 import { pathToFileURL } from "node:url";
 const packageRoot = resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-if (JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")).version !== "1.0.0") throw new Error("unexpected Pi version");
+if (JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")).version !== "1.0.1") throw new Error("unexpected Pi version");
 const { loadExtensions } = await import(pathToFileURL(join(packageRoot, "dist/core/extensions/loader.js")));
 const entry = resolve("test/parity/scenarios/extensions-runtime/testdata/factory-cache/probe.mjs");
 for (const mode of ["same-cwd", "direct", "reload", "cross-cwd"]) {

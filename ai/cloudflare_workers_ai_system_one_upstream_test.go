@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"math"
 	"net/http"
 	"reflect"
 	"strings"
@@ -83,6 +84,48 @@ func TestCloudflareWorkersAISystemOneUpstream(t *testing.T) {
 			t.Errorf("usage=%+v", result.Usage)
 		}
 	})
+	// .upstream/v1.0.1/packages/ai/test/cloudflare-workers-ai-system-one.test.ts:106 (#10316, #10322)
+	for _, tc := range []struct {
+		id         string
+		inputPrice float64
+	}{{"@cf/cloudflare/clef", 0.24}, {"@cf/cloudflare/clef-flash", 0.09}} {
+		t.Run("runs "+tc.id+" through /ai/run and parses its direct output", func(t *testing.T) {
+			models, _ := cloudflareClassifierSetup(t)
+			clef, _ := models.GetModelOfType(ModelTypeClassifier, "cloudflare-workers-ai", tc.id).(*ClassifierModel)
+			if clef == nil {
+				t.Fatalf("missing Cloudflare %s model", tc.id)
+			}
+			var requested string
+			result := models.Classify(t.Context(), clef, cloudflareTestContext(), cloudflareClassifierOptions(func(r *http.Request) (*http.Response, error) {
+				requested = r.URL.String()
+				payload := clsBody(t, r)
+				input, _ := payload["input"].(map[string]any)
+				questions, _ := input["questions"].(map[string]any)
+				if payload["model"] != tc.id || !reflect.DeepEqual(input["state"], map[string]any{"message": "Help! My payouts have been failing for 3 days."}) ||
+					questions["is_urgent"].(map[string]any)["type"] != "noul" {
+					t.Errorf("payload=%v", payload)
+				}
+				// Cloudflare-hosted output observed from a live /ai/run call: the envelope carries the output directly, without a run record.
+				return clsJSON(200, `{"result":{"model":"clef","answers":{"is_urgent":{"type":"noul","noul":0.9912},"department":{"type":"choice","choice":"technical","probabilities":{"billing":0.1632,"technical":0.8368},"confidence":0.4538}},"usage":{"input_tokens":222,"output_tokens":0}},"success":true,"errors":[],"messages":[]}`), nil
+			}))
+
+			if requested != "https://api.cloudflare.com/client/v4/accounts/account-id/ai/run" {
+				t.Errorf("url=%s", requested)
+			}
+			if result.StopReason != "stop" || clsAnswer(t, result.Answers, "is_urgent") != (ClassifierBoolAnswer{Probability: 0.9912}) {
+				t.Fatalf("result=%+v", result)
+			}
+			if department, ok := clsAnswer(t, result.Answers, "department").(ClassifierChoiceAnswer); !ok || department.Choice != "technical" || department.Confidence != 0.4538 {
+				t.Errorf("department=%+v", department)
+			}
+			if result.Usage == nil || result.Usage.Input != 222 || result.Usage.Output != 0 || result.Usage.TotalTokens != 222 {
+				t.Fatalf("usage=%+v", result.Usage)
+			}
+			if want := 222 * tc.inputPrice / 1_000_000; math.Abs(result.Usage.Cost.Input-want) > 5e-3 {
+				t.Errorf("input cost=%v, want %v", result.Usage.Cost.Input, want)
+			}
+		})
+	}
 	// .upstream/v0.99.1/packages/ai/test/cloudflare-workers-ai-system-one.test.ts:90
 	t.Run("reports runs that did not complete", func(t *testing.T) {
 		models, jev := cloudflareClassifierSetup(t)

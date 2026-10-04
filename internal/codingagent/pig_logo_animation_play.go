@@ -1,7 +1,7 @@
 package codingagent
 
-// Ports packages/coding-agent/src/modes/interactive/components/pi-logo-animation.lazy.ts
-// Ports packages/coding-agent/src/modes/interactive/components/pi-logo-animation.ts (playPiLogoAnimation)
+// Ports packages/coding-agent/src/modes/interactive/components/easter-egg-3d.lazy.ts (playPiLogo3d)
+// Ports packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts (playEasterEgg3d)
 
 import (
 	"time"
@@ -11,7 +11,7 @@ import (
 )
 
 // logoTerminalColorQueryTimeout is the wait in milliseconds for the terminal's default colors before the animation starts.
-// upstream: packages/coding-agent/src/modes/interactive/components/pi-logo-animation.ts:playPiLogoAnimation
+// upstream: packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts:playEasterEgg3d
 const logoTerminalColorQueryTimeout = 100
 
 var logoOverlaySpec = tui.OverlaySpec{

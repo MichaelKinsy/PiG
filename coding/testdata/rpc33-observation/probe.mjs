@@ -1,4 +1,4 @@
-// Pi 1.0.0 / OpenAI 7.19.0. Kept structurally identical to the retained RPC33 probe.
+// Pi 1.0.1 / OpenAI 7.19.0. Kept structurally identical to the retained RPC33 probe.
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import assert from 'node:assert/strict';
@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const base = process.env.PI_PACKAGE_ROOT + '/node_modules/@earendil-works/';
-for (const [path, version] of [[process.env.PI_PACKAGE_ROOT, '1.0.0'], [base + 'pi-ai', '1.0.0'], [base + 'pi-agent-core', '1.0.0'], [base + 'pi-ai/node_modules/openai', '7.19.0']]) {
+for (const [path, version] of [[process.env.PI_PACKAGE_ROOT, '1.0.1'], [base + 'pi-ai', '1.0.1'], [base + 'pi-agent-core', '1.0.1'], [base + '../openai', '7.19.0']]) {
   assert.equal(JSON.parse(await readFile(path + '/package.json', 'utf8')).version, version);
 }
 const axes = {
@@ -141,7 +141,7 @@ async function probe(api, shape, mode, layers) {
   return {api,shape,mode,layers,records};
 }
 if (process.argv[3]) {
-  await writeFile(process.argv[3], JSON.stringify({piVersion: '1.0.0', openaiVersion: '7.19.0', axes, bodies: Object.fromEntries(axes.apis.map(api => [api, Object.fromEntries(axes.shapes.map(shape => [shape, frames(api, shape).join('')]))]))}, null, 2) + '\n');
+  await writeFile(process.argv[3], JSON.stringify({piVersion: '1.0.1', openaiVersion: '7.19.0', axes, bodies: Object.fromEntries(axes.apis.map(api => [api, Object.fromEntries(axes.shapes.map(shape => [shape, frames(api, shape).join('')]))]))}, null, 2) + '\n');
 }
 for (const layers of axes.layers) {
   for (const api of axes.apis) {

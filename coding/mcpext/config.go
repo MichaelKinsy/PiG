@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
@@ -24,6 +25,13 @@ import (
 // projects, from `<project>/<config dir>/mcp.json`. Both use the `mcpServers`
 // shape shared by other MCP clients, so existing configurations can be copied
 // over. Project entries replace global entries with the same name.
+//
+// A project entry without `command`, `url`, or `type` overrides only
+// `enabled`, `exposure`, and `toolExposure` of the global server with the same
+// name, for example to turn it off in one project:
+// `{ "mcpServers": { "internal-tools": { "enabled": false } } }`. The rest of
+// the global entry is kept, including credentials the project could not set
+// itself.
 //
 // HTTP servers without an `Authorization` header use OAuth when they answer
 // 401 (sign in with `/mcp`). `"auth": { "provider": "<provider>" }` sends the
@@ -45,6 +53,9 @@ type McpServerEntry struct {
 	// servers registered with `pi.registerMcpServer()`. Changes to extension
 	// servers are not saved.
 	Scope string
+	// Override is the project `mcp.json` with an override of this global
+	// server's `enabled`, `exposure`, or `toolExposure`.
+	Override string
 }
 
 // LoadedMcpConfig is the result of [LoadMcpConfig].
@@ -54,6 +65,9 @@ type LoadedMcpConfig struct {
 	// connect. Nil means the default, true.
 	AutoEnableCodemode *bool
 	Errors             []string
+	// ProjectConfig is the project `mcp.json` when the project is trusted,
+	// where `/mcp` saves project overrides.
+	ProjectConfig string
 }
 
 // LoadOptions locate the configuration.
@@ -68,13 +82,25 @@ type LoadOptions struct {
 }
 
 type configState struct {
-	names              []string
-	servers            map[string]McpServerEntry
+	names   []string
+	servers map[string]McpServerEntry
+	// raw is each server's entry as written, the base a project override merges over.
+	raw                map[string]*orderedjson.Object
 	autoEnableCodemode *bool
 	errors             []string
 }
 
 func isJSONObject(raw json.RawMessage) bool { return len(raw) > 0 && raw[0] == '{' }
+
+// overrideKeys are the members a project override can set.
+// upstream: packages/coding-agent/src/extensions/mcp/config.ts:OVERRIDE_KEYS
+var overrideKeys = []string{"enabled", "exposure", "toolExposure"}
+
+// isOverride reports whether an entry overrides a server defined elsewhere
+// instead of defining one: it has no `command`, `url`, or `type` member.
+func isOverride(value *orderedjson.Object) bool {
+	return !value.Has("command") && !value.Has("url") && !value.Has("type")
+}
 
 func (s *configState) readFile(path, scope string) {
 	data, err := os.ReadFile(path)
@@ -120,6 +146,12 @@ func (s *configState) readFile(path, scope string) {
 	}
 	for _, name := range servers.Keys() {
 		raw, _ := servers.Get(name)
+		if scope == "project" && isJSONObject(raw) {
+			if value, err := orderedjson.Parse(raw); err == nil && isOverride(value) {
+				s.readOverride(path, name, value)
+				continue
+			}
+		}
 		config, message := extension.ValidateMcpServerConfig(name, raw)
 		if message != "" {
 			s.errors = append(s.errors, fmt.Sprintf("%s: %s", path, message))
@@ -140,6 +172,51 @@ func (s *configState) readFile(path, scope string) {
 			s.names = append(s.names, name)
 		}
 		s.servers[name] = McpServerEntry{Name: name, Config: config, Source: path, Scope: scope}
+		if object, err := orderedjson.Parse(raw); err == nil {
+			s.raw[name] = object
+		}
+	}
+}
+
+// readOverride applies a project override of the server defined earlier
+// under name: its `enabled`, `exposure`, and `toolExposure` replace the
+// global entry's, which is validated again with them.
+// upstream: packages/coding-agent/src/extensions/mcp/config.ts:readConfigFile
+func (s *configState) readOverride(path, name string, value *orderedjson.Object) {
+	base, ok := s.servers[name]
+	var extra []string
+	for _, key := range value.Keys() {
+		if !slices.Contains(overrideKeys, key) {
+			extra = append(extra, key)
+		}
+	}
+	switch {
+	case !ok:
+		s.errors = append(s.errors, fmt.Sprintf(`%s: server "%s" needs "command" or "url", or a global server to override`, path, name))
+	case len(extra) > 0:
+		s.errors = append(s.errors, fmt.Sprintf(`%s: server "%s": an override can only set %s`, path, name, strings.Join(overrideKeys, ", ")))
+	default:
+		merged := orderedjson.New()
+		if baseRaw := s.raw[name]; baseRaw != nil {
+			for _, key := range baseRaw.Keys() {
+				member, _ := baseRaw.Get(key)
+				merged.Set(key, member)
+			}
+		}
+		for _, key := range value.Keys() {
+			member, _ := value.Get(key)
+			merged.Set(key, member)
+		}
+		raw, _ := merged.MarshalJSON()
+		config, message := extension.ValidateMcpServerConfig(name, raw)
+		if message != "" {
+			s.errors = append(s.errors, fmt.Sprintf("%s: %s", path, message))
+			return
+		}
+		base.Config = config
+		base.Override = path
+		s.servers[name] = base
+		s.raw[name] = merged
 	}
 }
 
@@ -158,12 +235,14 @@ func nodeReadError(path string, err error) string {
 // Disabled servers are included with `enabled: false`, so they can be enabled
 // again.
 func LoadMcpConfig(options LoadOptions) LoadedMcpConfig {
-	state := &configState{servers: map[string]McpServerEntry{}}
+	state := &configState{servers: map[string]McpServerEntry{}, raw: map[string]*orderedjson.Object{}}
 	state.readFile(filepath.Join(options.AgentDir, "mcp.json"), "global")
+	projectConfig := ""
 	if options.ProjectTrusted {
-		state.readFile(filepath.Join(options.Cwd, options.ConfigDirName, "mcp.json"), "project")
+		projectConfig = filepath.Join(options.Cwd, options.ConfigDirName, "mcp.json")
+		state.readFile(projectConfig, "project")
 	}
-	loaded := LoadedMcpConfig{AutoEnableCodemode: state.autoEnableCodemode, Errors: state.errors}
+	loaded := LoadedMcpConfig{AutoEnableCodemode: state.autoEnableCodemode, Errors: state.errors, ProjectConfig: projectConfig}
 	for _, name := range state.names {
 		loaded.Servers = append(loaded.Servers, state.servers[name])
 	}
@@ -178,28 +257,48 @@ type McpServerConfigPatch struct {
 }
 
 // UpdateMcpServerConfig changes one server's settings in the `mcp.json` that
-// defines it. Other content is kept; the file is rewritten with its
-// indentation.
-func UpdateMcpServerConfig(path, name string, patch McpServerConfigPatch) error {
-	return editMcpServers(path, func(servers, _ *orderedjson.Object) (bool, error) {
+// defines or overrides it. With options' Override (upstream's optional
+// `options`), a missing entry is added as an override. Overrides keep default
+// values, since they replace the global server's. Other content is kept; the
+// file is rewritten with its indentation.
+func UpdateMcpServerConfig(path, name string, patch McpServerConfigPatch, options ...UpdateMcpServerConfigOptions) error {
+	var option UpdateMcpServerConfigOptions
+	if len(options) > 0 {
+		option = options[0]
+	}
+	return editMcpServers(path, func(servers, parsed *orderedjson.Object) (bool, error) {
 		var server *orderedjson.Object
+		present := false
 		if servers != nil {
-			if raw, ok := servers.Get(name); ok && isJSONObject(raw) {
-				server, _ = orderedjson.Parse(raw)
+			if raw, ok := servers.Get(name); ok {
+				present = true
+				if isJSONObject(raw) {
+					server, _ = orderedjson.Parse(raw)
+				}
 			}
+		}
+		created := false
+		if !present && option.Override {
+			// parsed.mcpServers = { ...servers, [name]: {} }
+			if servers == nil {
+				servers = orderedjson.New()
+			}
+			server = orderedjson.New()
+			created = true
 		}
 		if server == nil {
 			return false, fmt.Errorf(`%s does not define MCP server "%s"`, path, name)
 		}
+		keepDefaults := isOverride(server)
 		if patch.Enabled != nil {
-			if *patch.Enabled {
+			if *patch.Enabled && !keepDefaults {
 				server.Delete("enabled")
 			} else {
-				_ = server.SetValue("enabled", false)
+				_ = server.SetValue("enabled", *patch.Enabled)
 			}
 		}
 		if patch.Exposure != "" {
-			if patch.Exposure == extension.McpExposureCodemode {
+			if patch.Exposure == extension.McpExposureCodemode && !keepDefaults {
 				server.Delete("exposure")
 			} else {
 				_ = server.SetValue("exposure", string(patch.Exposure))
@@ -207,8 +306,18 @@ func UpdateMcpServerConfig(path, name string, patch McpServerConfigPatch) error 
 		}
 		raw, _ := server.MarshalJSON()
 		servers.Set(name, raw)
+		if created {
+			serversRaw, _ := servers.MarshalJSON()
+			parsed.Set("mcpServers", serversRaw)
+		}
 		return true, nil
 	})
+}
+
+// UpdateMcpServerConfigOptions are the options of [UpdateMcpServerConfig].
+type UpdateMcpServerConfigOptions struct {
+	// Override adds a missing entry as an override of a global server.
+	Override bool
 }
 
 // AddMcpServerConfig adds a server to an `mcp.json`, creating the file when

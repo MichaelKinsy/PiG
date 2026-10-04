@@ -238,7 +238,7 @@ func TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401(t *testin
 		t.Fatalf("authorization url = %v", provider.authorizationURL)
 	}
 
-	wait, err := callback.WaitForCallback("expected-state")
+	wait, err := callback.WaitForCallback("expected-state", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -577,7 +577,7 @@ func TestOAuthCallbackServerPagesRendersPlainTextByDefault(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = callback.Close() }()
-	pending, err := callback.WaitForCallback("s1")
+	pending, err := callback.WaitForCallback("s1", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -621,7 +621,7 @@ func TestOAuthCallbackServerPagesRendersPagesThroughRenderPage(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = callback.Close() }()
-	denied, err := callback.WaitForCallback("s1")
+	denied, err := callback.WaitForCallback("s1", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -644,7 +644,7 @@ func TestOAuthCallbackServerPagesRendersPagesThroughRenderPage(t *testing.T) {
 		t.Fatalf("page = %#v", last)
 	}
 
-	pending, err := callback.WaitForCallback("s2")
+	pending, err := callback.WaitForCallback("s2", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -890,5 +890,48 @@ func TestStartAuthorizationKeepsUpstreamParameterOrder(t *testing.T) {
 	want := []string{"tenant", "response_type", "client_id", "code_challenge", "code_challenge_method", "redirect_uri", "state", "scope", "prompt", "resource"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("authorization URL parameter order = %v, want %v\nURL: %s", got, want, authorizationURL)
+	}
+}
+
+// .upstream/v1.0.1/packages/mcp/test/oauth.test.ts:517 (#10302)
+func TestOAuthCallbackServerRejectsAResponseOnAnotherPathThanTheExpectedOne(t *testing.T) {
+	callback, err := oauth.ListenOAuthCallbackServer(oauth.OAuthCallbackServerOptions{ExtraPaths: []string{"/callback/server-id"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = callback.Close() }()
+	origin := strings.TrimSuffix(callback.RedirectURL, "/callback")
+	mixedUp, err := callback.WaitForCallback("s1", "/callback/server-id")
+	if err != nil {
+		t.Fatal(err)
+	}
+	//nolint:bodyclose // readAllBody closes the body
+	wrong, err := http.Get(origin + "/callback?code=abc&state=s1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	readAllBody(wrong)
+	if wrong.StatusCode != http.StatusBadRequest {
+		t.Fatalf("wrong path status = %d", wrong.StatusCode)
+	}
+	if _, err := mixedUp.Wait(t.Context()); err == nil || !strings.Contains(err.Error(), "arrived on another redirect URI") {
+		t.Fatalf("mixed-up wait = %v", err)
+	}
+
+	pending, err := callback.WaitForCallback("s2", "/callback/server-id")
+	if err != nil {
+		t.Fatal(err)
+	}
+	//nolint:bodyclose // readAllBody closes the body
+	right, err := http.Get(origin + "/callback/server-id?code=abc&state=s2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	readAllBody(right)
+	if right.StatusCode != http.StatusOK {
+		t.Fatalf("right path status = %d", right.StatusCode)
+	}
+	if received, err := pending.Wait(t.Context()); err != nil || received.Code != "abc" {
+		t.Fatalf("callback = %#v, %v", received, err)
 	}
 }

@@ -50,7 +50,7 @@ func TestEditingAConfigFileNormalizesItLikeJSONStringify(t *testing.T) {
 		t.Fatal(err)
 	}
 	disabled := false
-	if err := mcpext.UpdateMcpServerConfig(path, "a", mcpext.McpServerConfigPatch{Enabled: &disabled, Exposure: extension.McpExposureDirect}); err != nil {
+	if err := mcpext.UpdateMcpServerConfig(path, "a", mcpext.McpServerConfigPatch{Enabled: &disabled, Exposure: extension.McpExposureDirect}, mcpext.UpdateMcpServerConfigOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	data, _ := os.ReadFile(path)

@@ -26,7 +26,7 @@ func TestBedrockOpus5Capabilities(t *testing.T) {
 	}
 }
 
-// upstream: packages/ai/src/api/bedrock-converse-stream.ts:1175-1182,1225-1293.
+// upstream: packages/ai/src/api/bedrock-converse-stream.ts:1175-1182,1259-1280. GovCloud omits both display and the block_binding/beta pair.
 func TestBedrockGovCloudThinkingDisplay(t *testing.T) {
 	t.Parallel()
 	for _, row := range []struct {
@@ -51,7 +51,7 @@ func TestBedrockGovCloudThinkingDisplay(t *testing.T) {
 			}
 			want := `{"thinking":{"type":"adaptive"},"output_config":{"effort":"high"}}`
 			if row.display {
-				want = `{"thinking":{"type":"adaptive","display":"summarized"},"output_config":{"effort":"high"}}`
+				want = `{"thinking":{"type":"adaptive","display":"summarized","block_binding":{"prefix_mismatch_behavior":"drop_block"}},"output_config":{"effort":"high"},"anthropic_beta":["thinking-binding-controls-2026-08-01"]}`
 			}
 			assertShapeJSON(t, data, want)
 		})

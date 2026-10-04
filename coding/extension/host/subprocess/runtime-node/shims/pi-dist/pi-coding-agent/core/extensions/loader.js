@@ -286,6 +286,11 @@ function createExtensionAPI(extension, runtime, cwd, eventBus) {
             extension.entryRenderers ??= new Map();
             extension.entryRenderers.set(customType, renderer);
         },
+        registerToolRenderer(resolver) {
+            assertActive();
+            extension.toolRenderers ??= [];
+            extension.toolRenderers.push(resolver);
+        },
         // Flag access - checks extension registered it, reads from runtime
         getFlag(name) {
             assertActive();

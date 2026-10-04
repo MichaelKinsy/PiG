@@ -1,6 +1,6 @@
 {
   "name": "@earendil-works/pi-coding-agent",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "PiG's harness entry: extensions that re-launch Pi from process.argv[1] run PiG through it",
   "private": true,
   "main": "index.mjs",

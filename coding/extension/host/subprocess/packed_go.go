@@ -913,6 +913,7 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 		h.uiBridge.RegisterExtConn(me.config.Name, conn)
 	}
 	ext := h.buildExtension(me, reg)
+	me.resetToolRenderers(reg.ToolRenderers)
 	if previous, _ := ctx.Value(recoveryMembersKey{}).(map[string]*managedExt); previous != nil {
 		if old := previous[me.config.Name]; old != nil && old.ext != nil {
 			old.ext.ReplaceEventHandlers(ext)

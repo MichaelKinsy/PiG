@@ -10,7 +10,7 @@ const root = mkdtempSync(join(temp, "startup-metadata-"));
 try {
   const binary = side === "pig" ? join(root, "pig") : process.execPath;
   const piRoot = process.env.PI_PACKAGE_ROOT ?? resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-  if (side === "pi") assert.equal(JSON.parse(readFileSync(join(piRoot, "package.json"), "utf8")).version, "1.0.0", "pinned Pi package");
+  if (side === "pi") assert.equal(JSON.parse(readFileSync(join(piRoot, "package.json"), "utf8")).version, "1.0.1", "pinned Pi package");
   const prefix = side === "pig" ? [] : [join(piRoot, "dist/cli.js")];
   if (side === "pig") execFileSync("go", ["build", "-o", binary, "./cmd/pig"], { stdio: "pipe" });
   const records = path => readFileSync(path, "utf8").trim().split("\n").map(line => JSON.parse(line));
