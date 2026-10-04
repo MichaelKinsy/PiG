@@ -1,0 +1,54 @@
+# Upstream evidence: Pi 1.0.0 embeds status when the active editor opts in and provides its setter.
+# Reproduced with baggiiiie/pi-stuff c49af84: Pi embeds Working; PiG main c8596596 puts it above the editor.
+# One fixed spinner frame lets us compare the styled editor rows exactly.
+name = "71-custom-editor-embedded-status"
+description = "An opted-in subprocess CustomEditor renders active Working status in its border while retaining a draft"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/modes/interactive/components/custom-editor.ts",
+  "packages/coding-agent/src/modes/interactive/components/status-indicator.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/editor-pig-home/agent", "COLORTERM="]
+pi = ["PI_CODING_AGENT_DIR=testdata/editor-pi-agent", "COLORTERM="]
+pig_args = ["--no-extensions", "--no-session"]
+pi_args = ["--no-session"]
+pig_extensions = ["testdata/ext/embedded-status-editor.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/embedded-status-editor.mjs"]
+
+[tmux]
+width = 100
+height = 30
+ready_pattern_pig = "STATUS-EDITOR"
+ready_pattern_pi = "STATUS-EDITOR"
+ready_timeout_seconds = 30
+# Start at the spinner: ANSI colors split the label, and an idle border would trigger readiness too early.
+capture_start = "*"
+capture_end = "STATUS-EDITOR"
+
+[[tmux.steps]]
+keys = ["Run: tui live tool pause"]
+wait_contains = ["Run: tui live tool pause"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["── * Working"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["Draft next message"]
+wait_contains = ["Draft next message"]
+wait_visible_contains = ["── * Working", "STATUS-EDITOR"]
+wait_timeout_seconds = 5
+
+[assert]
+both_reach_ready = true
+both_contain = ["* Working", "Draft next message", "STATUS-EDITOR"]
+both_not_contain = ["panic:", "editor render failed:"]
+escaped_output_equal = true
+runs = 3

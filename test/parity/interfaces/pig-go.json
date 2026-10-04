@@ -69160,6 +69160,17 @@
       "shapeHash": "sha256:5a8b14dfb859e78e7c8481ad99fca0ac094d7c70f32f21c250f54c4aeb0826f8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#RemoteEditorStatus",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "RemoteEditorStatus",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "RemoteEditorStatus"
+      },
+      "shapeHash": "sha256:ee2a91b0b9913e4f4db3dd0443d7282dd3db067db32089e3a8faa622c23faaad"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#RemoteOverlayBounds",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "RemoteOverlayBounds",
@@ -88969,6 +88980,17 @@
         "type": "func(config github.com/MichaelKinsy/PiG/coding/extension.RemoteEditorConfig)"
       },
       "shapeHash": "sha256:6d917eb3bc551e04c6c3c71136d7bb8f8e38fe0d8bef2e1cac035e1f94106169"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#editorProxy.EmbedWorkingStatus",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "editorProxy.EmbedWorkingStatus",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#editorProxy.Input",
@@ -135983,6 +136005,17 @@
         "type": "func(expanded bool)"
       },
       "shapeHash": "sha256:7b3921904510b5737900a614d6d548e3ac067a2eb6b19a35e0331bb5067d1c91"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.setEditorWorkingStatusIndicator",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.setEditorWorkingStatusIndicator",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(indicator *github.com/MichaelKinsy/PiG/tui.StatusIndicator) bool"
+      },
+      "shapeHash": "sha256:27aa9244089f14fdd85d9e240f71e8360106e84a3ae1aeb1dea28492ebdf34d2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.setExtensionDialogViewMode",

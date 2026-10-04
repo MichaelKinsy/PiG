@@ -41,30 +41,35 @@ func (m *InteractiveMode) setRemoteEditor(editor extension.RemoteEditor) {
 	if m.editor == nil {
 		return
 	}
+	text := m.editor.Text()
+	if m.remoteEditor != nil {
+		m.remoteEditor.finishInput()
+	}
 	if editor == nil {
-		if m.remoteEditor != nil {
-			m.remoteEditor.finishInput()
-		}
 		m.remoteEditor = nil
 		m.editor.SetRemote(nil)
 		if len(m.autocompleteFactories) == 0 {
 			m.editor.SetAutocompleteChanged(nil)
 			m.autocompleteProvider = nil
 		}
-		m.requestRender()
-		return
+	} else {
+		h := &remoteEditor{m: m, editor: editor}
+		m.remoteEditor = h
+		m.editor.SetAutocompleteChanged(func(base tui.AutocompleteProvider) { m.rebuildAutocompleteWrappers(base, nil) })
+		m.editor.SetRemote(h)
+		editor.Bind(h)
 	}
-	text := m.editor.Text()
-	if m.remoteEditor != nil {
-		m.remoteEditor.finishInput()
+	if m.activeStatusIndicator != nil {
+		m.statusContainer.Clear()
+		m.activeWorkingIndicatorEmbedded = m.setEditorWorkingStatusIndicator(m.activeStatusIndicator)
+		if !m.activeWorkingIndicatorEmbedded {
+			m.statusContainer.Add(m.activeStatusIndicator)
+		}
 	}
-	h := &remoteEditor{m: m, editor: editor}
-	m.remoteEditor = h
-	m.editor.SetAutocompleteChanged(func(base tui.AutocompleteProvider) { m.rebuildAutocompleteWrappers(base, nil) })
-	m.editor.SetRemote(h)
-	editor.Bind(h)
-	editor.Configure(m.remoteEditorConfig())
-	editor.SetText(text)
+	if editor != nil {
+		editor.Configure(m.remoteEditorConfig())
+		editor.SetText(text)
+	}
 	m.requestRender()
 }
 
@@ -84,11 +89,21 @@ func (m *InteractiveMode) remoteEditorConfig() extension.RemoteEditorConfig {
 	if cursor, ok := m.tuiInst.(interface{ GetShowHardwareCursor() bool }); ok {
 		config.ShowHardwareCursor = cursor.GetShowHardwareCursor()
 	}
+	if indicator := m.activeStatusIndicator; indicator != nil && m.remoteEditor.editor.EmbedWorkingStatus() {
+		config.WorkingStatus = &extension.RemoteEditorStatus{
+			Kind:              indicator.Kind,
+			Message:           indicator.Message,
+			Frames:            append([]string{}, indicator.Frames...),
+			Frame:             indicator.Frame,
+			SpinnerColor:      indicator.SpinnerColor,
+			MessageColor:      indicator.MessageColor,
+			IndicatorVerbatim: indicator.IndicatorVerbatim,
+		}
+	}
 	return config
 }
 
-// reconfigureRemoteEditor sends the component the host editor state again,
-// after the shortcuts it matches changed.
+// reconfigureRemoteEditor sends updated host state to the installed editor.
 func (m *InteractiveMode) reconfigureRemoteEditor() {
 	if m.remoteEditor != nil {
 		m.remoteEditor.editor.Configure(m.remoteEditorConfig())
