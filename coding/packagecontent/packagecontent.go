@@ -1533,7 +1533,7 @@ func Collect(paths []string, kind Kind) []string {
 				files = append(files, DiscoverSkillDirs(resourcePath)...)
 			}
 		case Extensions:
-			files = append(files, discoverExtensionEntries(resourcePath)...)
+			files = append(files, discoverExtensionEntries(resourcePath, true)...)
 		case Prompts:
 			files = append(files, collectFiles(resourcePath, ".md")...)
 		case Themes:
@@ -1559,7 +1559,7 @@ func DiscoverAutomatic(dir string, kind Kind) []string {
 	case Skills:
 		return DiscoverSkillDirs(dir)
 	case Extensions:
-		return discoverExtensionEntries(dir)
+		return discoverExtensionEntries(dir, false)
 	case AgentEnvironments:
 		return discoverAgentEnvironmentPaths(dir)
 	default:
@@ -2278,8 +2278,9 @@ func discoverFlatFiles(dir, suffix string) []string {
 	return paths
 }
 
-func discoverExtensionEntries(dir string) []string {
-	if root := resolveExtensionEntries(dir); len(root) > 0 {
+// discoverExtensionEntries lists the extension entries of dir. pythonRoot reports whether dir itself may be one Python extension: an explicit path may, but a conventional extensions directory may not, since Pi discovers only .ts and .js files at its top.
+func discoverExtensionEntries(dir string, pythonRoot bool) []string {
+	if root := resolveExtensionEntries(dir, pythonRoot); len(root) > 0 {
 		return root
 	}
 	// Upstream collectAutoExtensionEntries: symlinks are followed and the
@@ -2303,7 +2304,7 @@ func discoverExtensionEntries(dir string) []string {
 			continue
 		}
 		if info.IsDir() {
-			paths = append(paths, resolveExtensionEntries(full)...)
+			paths = append(paths, resolveExtensionEntries(full, true)...)
 			continue
 		}
 		if info.Mode().IsRegular() && (strings.HasSuffix(entry.Name(), ".ts") || strings.HasSuffix(entry.Name(), ".js")) {
@@ -2315,8 +2316,8 @@ func discoverExtensionEntries(dir string) []string {
 
 // resolveExtensionEntries follows Pi's manifest entries, index.ts, then index.js rule. A manifest that declares only missing entries, with no index, contributes nothing. Go and Rust build roots load as one extension for source.Resolve to classify.
 //
-// A directory holding go.work without go.mod is ambiguous: source.Resolve loads it as one extension that selects the modules it uses, but it is also the usual development workspace over sibling extension modules. It is one extension only when none of its children is an extension entry, so a workspace over extensions/a and extensions/b still yields both.
-func resolveExtensionEntries(dir string) []string {
+// A directory holding go.work without go.mod is ambiguous: source.Resolve loads it as one extension that selects the modules it uses, but it is also the usual development workspace over sibling extension modules. It is one extension only when none of its children is an extension entry, so a workspace over extensions/a and extensions/b still yields both. A Python extension directory (pythonExtensionRoot), when python allows one, follows the same rule.
+func resolveExtensionEntries(dir string, python bool) []string {
 	if dir == "" {
 		return nil
 	}
@@ -2332,10 +2333,22 @@ func resolveExtensionEntries(dir string) []string {
 	if fileExists(filepath.Join(dir, "go.work")) && !hasChildExtensionEntry(dir) {
 		return []string{dir}
 	}
+	if python && pythonExtensionRoot(dir) && !hasChildExtensionEntry(dir) {
+		return []string{dir}
+	}
 	return nil
 }
 
-// hasChildExtensionEntry reports whether discoverExtensionEntries would find an entry among the children of dir. A child directory counts when it carries an index, a manifest entry, or a native build marker; go.work in a child is not searched further, which bounds the check to one level.
+// pythonExtensionRoot reports whether dir is a Python extension: it carries a pyproject.toml marker, as go.mod and Cargo.toml mark Go and Rust ones, or source.Resolve classifies it as Python by its one new_extension factory module or executable main.py.
+func pythonExtensionRoot(dir string) bool {
+	if fileExists(filepath.Join(dir, "pyproject.toml")) {
+		return true
+	}
+	definition, err := extsource.Resolve(dir)
+	return err == nil && definition.Language == "python"
+}
+
+// hasChildExtensionEntry reports whether discoverExtensionEntries would find an entry among the children of dir. A child directory counts when it carries an index, a manifest entry, a native build marker, or is a Python extension; go.work in a child is not searched further, which bounds the check to one level.
 func hasChildExtensionEntry(dir string) bool {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -2352,7 +2365,7 @@ func hasChildExtensionEntry(dir string) bool {
 			continue
 		}
 		if info.IsDir() {
-			if len(extsource.NodeRootEntries(full)) > 0 || hasBuildFile(full) || fileExists(filepath.Join(full, "go.work")) {
+			if len(extsource.NodeRootEntries(full)) > 0 || hasBuildFile(full) || fileExists(filepath.Join(full, "go.work")) || pythonExtensionRoot(full) {
 				return true
 			}
 			continue
