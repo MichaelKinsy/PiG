@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 	"github.com/MichaelKinsy/PiG/internal/ownerfile"
 )
 
@@ -68,11 +69,11 @@ type osRuntimeCommands struct{}
 func (osRuntimeCommands) LookPath(name string) (string, error) { return exec.LookPath(name) }
 
 func (osRuntimeCommands) Output(ctx context.Context, name string, args []string) ([]byte, error) {
-	return exec.CommandContext(ctx, name, args...).Output()
+	return linkerexec.CommandContext(ctx, name, args...).Output()
 }
 
 func (osRuntimeCommands) Run(ctx context.Context, name string, args []string, streams RuntimeIO) error {
-	command := exec.CommandContext(ctx, name, args...)
+	command := linkerexec.CommandContext(ctx, name, args...)
 	command.Stdin = streams.Stdin
 	command.Stdout = streams.Stdout
 	command.Stderr = streams.Stderr

@@ -23,7 +23,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
+	slashpath "path" // Every path this package handles is an Android path, whatever the host.
 	"runtime"
 	"strings"
 	"sync"
@@ -48,6 +48,11 @@ type Starter struct {
 	// DataDir is the app data directory. Only a program below it needs the
 	// linker; a system program such as /system/bin/sh starts directly.
 	DataDir string
+	// LegacyDataDir is the same directory under its /data/data/<package> name.
+	// Termux may set TERMUX_APP__DATA_DIR to /data/user/0/<package> while
+	// $PREFIX and every program path use /data/data/<package>; termux-exec
+	// treats a path under either as an app data file, and so does Resolve.
+	LegacyDataDir string
 	// Prefix is Termux's $PREFIX, the home of the interpreters a script's
 	// "#!/usr/bin/env" or "#!/bin/sh" line names.
 	Prefix string
@@ -71,7 +76,7 @@ func (s Starter) Resolve(path string, args []string) (string, []string, error) {
 		return path, args, nil
 	}
 	for range maxInterpreters + 1 {
-		if !below(s.DataDir, path) {
+		if !below(s.DataDir, path) && (s.LegacyDataDir == "" || !below(s.LegacyDataDir, path)) {
 			return path, args, nil
 		}
 		head, err := s.ReadHead(path)
@@ -101,7 +106,7 @@ func (s Starter) throughInterpreter(head []byte, path string, args []string) (st
 	if optionalArg != "" {
 		argv = append(argv, optionalArg)
 	}
-	if filepath.Base(interpreter) == "env" && s.LookPath != nil && isCommandName(optionalArg) {
+	if slashpath.Base(interpreter) == "env" && s.LookPath != nil && isCommandName(optionalArg) {
 		// env would exec the command with a libc execve, which only
 		// termux-exec's preload can redirect, and a caller's environment may
 		// not carry the preload.
@@ -136,7 +141,7 @@ func (s Starter) mapInterpreter(interpreter string) string {
 	}
 	for _, dir := range []string{"/usr/bin/", "/bin/"} {
 		if name, ok := strings.CutPrefix(interpreter, dir); ok {
-			return filepath.Join(s.Prefix, "bin", name)
+			return slashpath.Join(s.Prefix, "bin", name)
 		}
 	}
 	return interpreter
@@ -150,7 +155,7 @@ func isCommandName(arg string) bool {
 
 // below reports whether path is inside dir.
 func below(dir, path string) bool {
-	return strings.HasPrefix(filepath.Clean(path), strings.TrimSuffix(dir, "/")+"/")
+	return strings.HasPrefix(slashpath.Clean(path), strings.TrimSuffix(dir, "/")+"/")
 }
 
 // Prepare makes cmd start through the linker when s requires it. It returns
@@ -163,12 +168,12 @@ func (s Starter) Prepare(cmd *exec.Cmd) {
 		s.LookPath = pathLookup(value)
 	}
 	path := cmd.Path
-	if !filepath.IsAbs(path) {
+	if !slashpath.IsAbs(path) {
 		dir := cmd.Dir
 		if dir == "" {
 			dir, _ = os.Getwd()
 		}
-		path = filepath.Join(dir, path)
+		path = slashpath.Join(dir, path)
 	}
 	program, args, err := s.Resolve(path, cmd.Args)
 	if err != nil {
@@ -181,12 +186,15 @@ func (s Starter) Prepare(cmd *exec.Cmd) {
 // environmentPath returns the PATH of env, the environment a program starts
 // with, and false when env has none.
 func environmentPath(env []string) (string, bool) {
+	// The last PATH entry wins, as os/exec and the kernel's execve see it when a key repeats.
+	var path string
+	found := false
 	for _, entry := range env {
 		if value, ok := strings.CutPrefix(entry, "PATH="); ok {
-			return value, true
+			path, found = value, true
 		}
 	}
-	return "", false
+	return path, found
 }
 
 // pathLookup returns a search of the directories of the PATH value path for an
@@ -197,7 +205,7 @@ func pathLookup(path string) func(string) (string, error) {
 			if dir == "" {
 				continue
 			}
-			candidate := filepath.Join(dir, name)
+			candidate := slashpath.Join(dir, name)
 			if info, err := os.Stat(candidate); err == nil && info.Mode().IsRegular() && info.Mode().Perm()&0o111 != 0 {
 				return candidate, nil
 			}
@@ -253,6 +261,14 @@ func SetStarterForTest(s Starter) (restore func()) {
 // it.
 func Prepare(cmd *exec.Cmd) { Current().Prepare(cmd) }
 
+// Command is exec.Command for a command that starts through the linker when
+// the running process needs it.
+func Command(name string, args ...string) *exec.Cmd {
+	cmd := exec.Command(name, args...)
+	Prepare(cmd)
+	return cmd
+}
+
 // CommandContext is exec.CommandContext for a command that starts through the
 // linker when the running process needs it.
 func CommandContext(ctx context.Context, name string, args ...string) *exec.Cmd {
@@ -275,20 +291,30 @@ func starterFor(getenv func(string) string, selfExe func() (string, error)) Star
 	dataDir := getenv("TERMUX_APP__DATA_DIR")
 	if dataDir == "" && prefix != "" {
 		// $PREFIX is <data dir>/files/usr.
-		dataDir = filepath.Dir(filepath.Dir(prefix))
+		dataDir = slashpath.Dir(slashpath.Dir(prefix))
+	}
+	// termux-exec's legacy data directory: TERMUX_APP__LEGACY_DATA_DIR, else
+	// /data/data/<package>, the package being the data directory's last element.
+	legacy := getenv("TERMUX_APP__LEGACY_DATA_DIR")
+	if legacy == "" && dataDir != "" {
+		legacy = slashpath.Join("/data/data", slashpath.Base(dataDir))
+	}
+	if legacy == dataDir {
+		legacy = ""
 	}
 	return Starter{
-		Linker:   exe,
-		DataDir:  dataDir,
-		Prefix:   prefix,
-		ReadHead: readHead,
-		LookPath: pathLookup(getenv("PATH")),
+		Linker:        exe,
+		LegacyDataDir: legacy,
+		DataDir:       dataDir,
+		Prefix:        prefix,
+		ReadHead:      readHead,
+		LookPath:      pathLookup(getenv("PATH")),
 	}
 }
 
 // isLinker reports whether path is Android's dynamic linker.
 func isLinker(path string) bool {
-	switch filepath.Base(path) {
+	switch slashpath.Base(path) {
 	case "linker64", "linker":
 		return true
 	}
@@ -300,19 +326,24 @@ func isLinker(path string) bool {
 // is the one termux-exec records in TERMUX_EXEC__PROC_SELF_EXE, or argv[0] when
 // the linker made it absolute.
 func Executable() (string, error) {
-	exe, err := os.Executable()
-	if err != nil || !isLinker(exe) {
+	return executable(runtime.GOOS, os.Executable, os.Getenv, os.Args)
+}
+
+// executable is Executable for an operating system; only Android starts a program through its linker, so a program elsewhere that is named linker is itself.
+func executable(goos string, osExecutable func() (string, error), getenv func(string) string, args []string) (string, error) {
+	exe, err := osExecutable()
+	if err != nil || goos != "android" || !isLinker(exe) {
 		return exe, err
 	}
-	return programOfLinkedProcess(os.Getenv, os.Args)
+	return programOfLinkedProcess(getenv, args)
 }
 
 // programOfLinkedProcess finds the program a linker-started process runs.
 func programOfLinkedProcess(getenv func(string) string, args []string) (string, error) {
-	if recorded := getenv("TERMUX_EXEC__PROC_SELF_EXE"); filepath.IsAbs(recorded) {
+	if recorded := getenv("TERMUX_EXEC__PROC_SELF_EXE"); slashpath.IsAbs(recorded) {
 		return recorded, nil
 	}
-	if len(args) > 0 && filepath.IsAbs(args[0]) {
+	if len(args) > 0 && slashpath.IsAbs(args[0]) {
 		return args[0], nil
 	}
 	return "", errors.New("linkerexec: the running program's path is unknown: started through the linker without an absolute argv[0]")

@@ -17,6 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/internal/buildprogress"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
@@ -233,7 +234,7 @@ func goModDownload(ctx context.Context, query string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	command := exec.CommandContext(ctx, goToolchain.Command, "mod", "download", "-json", query)
+	command := linkerexec.CommandContext(ctx, goToolchain.Command, "mod", "download", "-json", query)
 	command.Dir = os.TempDir()
 	command.Env = goToolchain.Environ(moduleSourceBuildEnv(os.Environ()))
 	var stdout, stderr bytes.Buffer
@@ -287,6 +288,7 @@ func (s pigSource) sourceFiles() ([]string, error) {
 	if s.ModuleVersion == "" {
 		command := exec.Command("git", "ls-files", "--cached", "--others", "--exclude-standard", "-z")
 		command.Dir = s.Root
+		linkerexec.Prepare(command)
 		output, err := command.Output()
 		if err != nil {
 			return nil, fmt.Errorf("enumerate Pig build sources: %w", err)
@@ -328,6 +330,7 @@ func (s pigSource) revision() (string, error) {
 	}
 	command := exec.Command("git", "rev-parse", "HEAD")
 	command.Dir = s.Root
+	linkerexec.Prepare(command)
 	output, err := command.Output()
 	if err != nil {
 		return "", fmt.Errorf("resolve Pig source revision: %w", err)

@@ -9,12 +9,12 @@ import (
 	"io"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 
 	sourceref "github.com/MichaelKinsy/PiG/coding/source"
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 )
 
 // pig additive (D18): Remote Piglet origins bind installed source bytes to
@@ -73,7 +73,7 @@ func inspectPigletOrigin(ref sourceref.Ref, materializedRoot string) (string, st
 		}
 		return manifest.Version, readNPMOriginIntegrity(materializedRoot), "", nil
 	case sourceref.KindGit:
-		command := exec.Command("git", "-C", materializedRoot, "rev-parse", "HEAD")
+		command := linkerexec.Command("git", "-C", materializedRoot, "rev-parse", "HEAD")
 		output, err := command.CombinedOutput()
 		if err != nil {
 			return "", "", "", fmt.Errorf("resolve materialized Git commit: %w: %s", err, strings.TrimSpace(string(output)))

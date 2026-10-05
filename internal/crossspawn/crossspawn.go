@@ -8,6 +8,7 @@ import (
 	"context"
 	"os/exec"
 
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
@@ -20,5 +21,8 @@ func Command(ctx context.Context, dir, name string, args ...string) *exec.Cmd {
 	cmd := command(ctx, dir, name, args)
 	cmd.Dir = dir
 	nodespawn.SetDirectory(cmd)
+	// Android forbids execve of a file in the app data directory, so a start
+	// there goes through the system linker. It does nothing elsewhere.
+	linkerexec.Prepare(cmd)
 	return cmd
 }

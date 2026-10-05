@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -23,6 +22,7 @@ import (
 	pigletartifact "github.com/MichaelKinsy/PiG/coding/piglet/artifact"
 	"github.com/MichaelKinsy/PiG/coding/piglet/signature"
 	"github.com/MichaelKinsy/PiG/internal/buildprogress"
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
@@ -131,7 +131,7 @@ func buildNativeArtifact(ctx context.Context, source pigSource, p *piglet.Piglet
 	if err != nil {
 		return nil, err
 	}
-	cmd := exec.CommandContext(ctx, goToolchain.Command, buildArgs...)
+	cmd := linkerexec.CommandContext(ctx, goToolchain.Command, buildArgs...)
 	cmd.Dir = sourceRoot
 	cmd.Env = goToolchain.Environ(source.buildEnv(os.Environ()))
 	if err := buildprogress.Run(buildprogress.Member(ctx, p.Name), cmd); err != nil {

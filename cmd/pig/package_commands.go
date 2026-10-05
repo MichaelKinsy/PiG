@@ -516,7 +516,7 @@ func installAndPersistPackage(cwd string, sm *codingagent.SettingsManager, sourc
 // pig divergence (D57): reject a proven extension root that Package discovery
 // cannot load.
 func verifyPackageContributesResources(cwd string, sm *codingagent.SettingsManager, source string, local bool) error {
-	root := packagemanager.InstalledPathForSource(cwd, sm.AgentDir(), sm, source, local)
+	root := installedSourceRoot(cwd, sm, source, local)
 	if root == "" {
 		// The source resolved to no local root (a remote form this build cannot
 		// inspect). Nothing to assert against, so stay out of the way.
@@ -536,6 +536,21 @@ func verifyPackageContributesResources(cwd string, sm *codingagent.SettingsManag
 	return fmt.Errorf("%s is an extension, not a package, so installing it as one loads nothing.\n"+
 		"Load it directly with `pig -e %s`, put it in ~/.pig/agent/extensions/, or publish it inside a "+
 		"package's extensions/ directory", source, source)
+}
+
+// installedSourceRoot returns the directory an install of source contributes, or "" when none exists. A local source is still the path as typed, relative to cwd; only the settings record rebases it onto the settings directory.
+func installedSourceRoot(cwd string, sm *codingagent.SettingsManager, source string, local bool) string {
+	if packagemanager.DetectSourceKind(source) != "local" {
+		return packagemanager.InstalledPathForSource(cwd, sm.AgentDir(), sm, source, local)
+	}
+	root, err := packagemanager.ResolveInputPackageSourceRoot(cwd, sm.AgentDir(), sm, source)
+	if err != nil {
+		return ""
+	}
+	if _, err := os.Stat(root); err != nil {
+		return ""
+	}
+	return root
 }
 
 // directoryIsProvablyAnExtension accepts a statically proven factory or standalone contract. Node factory resolution only selects an entrypoint; proving its exports requires execution, which Package installation must not perform.

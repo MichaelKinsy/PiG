@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -184,6 +185,9 @@ func TestPrepareResolvesARelativePathAgainstTheCommandDirectory(t *testing.T) {
 }
 
 func TestPrepareSearchesTheCommandsOwnPATH(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the lookup reads an Android PATH, colon-separated with Unix execute bits, which a Windows directory cannot provide")
+	}
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "runner"), []byte("x"), 0o755); err != nil {
 		t.Fatal(err)
@@ -258,6 +262,29 @@ func TestProgramOfLinkedProcess(t *testing.T) {
 	}
 }
 
+// Only Android starts a program through its linker: a program named linker elsewhere is itself.
+func TestExecutableFollowsTheLinkerOnlyOnAndroid(t *testing.T) {
+	env := func(k string) string {
+		if k == "TERMUX_EXEC__PROC_SELF_EXE" {
+			return prefix + "/bin/pig"
+		}
+		return ""
+	}
+	for name, tc := range map[string]struct {
+		goos, exe, want string
+	}{
+		"android linker64": {"android", "/system/bin/linker64", prefix + "/bin/pig"},
+		"android program":  {"android", prefix + "/bin/pig", prefix + "/bin/pig"},
+		"linux linker":     {"linux", "/opt/tools/linker", "/opt/tools/linker"},
+		"darwin linker64":  {"darwin", "/usr/local/bin/linker64", "/usr/local/bin/linker64"},
+	} {
+		got, err := executable(tc.goos, func() (string, error) { return tc.exe, nil }, env, []string{"pig"})
+		if err != nil || got != tc.want {
+			t.Errorf("%s: = %q, %v; want %q", name, got, err, tc.want)
+		}
+	}
+}
+
 // A fake linker that, like the real one, runs its first argument with the rest, proves the rewritten command line starts real programs and a script chain.
 func TestPrepareStartsRealProgramsThroughAFakeLinker(t *testing.T) {
 	root := t.TempDir()
@@ -301,5 +328,37 @@ func TestPrepareStartsRealProgramsThroughAFakeLinker(t *testing.T) {
 		if string(out) != want {
 			t.Errorf("%s: output %q, want %q", name, out, want)
 		}
+	}
+}
+
+// Termux 0.118.3 sets TERMUX_APP__DATA_DIR to /data/user/0/com.termux while $PREFIX and every program path use
+// /data/data/com.termux. termux-exec treats a path under either directory as an app data file; so does PiG.
+func TestStarterForTreatsTheLegacyDataDirAsTheDataDir(t *testing.T) {
+	env := map[string]string{"PREFIX": prefix, "TERMUX_APP__DATA_DIR": "/data/user/0/com.termux"}
+	s := starterFor(func(k string) string { return env[k] }, func() (string, error) { return "/system/bin/linker64", nil })
+	if s.DataDir != "/data/user/0/com.termux" || s.LegacyDataDir != dataDir {
+		t.Fatalf("starter = %+v, want DataDir /data/user/0/com.termux and LegacyDataDir %s", s, dataDir)
+	}
+	s.ReadHead = files{prefix + "/bin/bash": elf}.starter().ReadHead
+	program, args, err := s.Resolve(prefix+"/bin/bash", []string{"bash", "-c", "true"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"/system/bin/linker64", prefix + "/bin/bash", "-c", "true"}; program != "/system/bin/linker64" || !slices.Equal(args, want) {
+		t.Fatalf("Resolve = %q %q, want the linker starting bash: %q", program, args, want)
+	}
+	explicit := map[string]string{"PREFIX": prefix, "TERMUX_APP__DATA_DIR": "/data/user/0/com.termux", "TERMUX_APP__LEGACY_DATA_DIR": "/data/data/com.termux.legacy"}
+	if got := starterFor(func(k string) string { return explicit[k] }, func() (string, error) { return "/system/bin/linker64", nil }); got.LegacyDataDir != "/data/data/com.termux.legacy" {
+		t.Fatalf("TERMUX_APP__LEGACY_DATA_DIR ignored: %+v", got)
+	}
+}
+
+// A child environment that repeats PATH (os.Environ() plus an override) uses the last entry, as execve does.
+func TestEnvironmentPathUsesTheLastEntry(t *testing.T) {
+	if got, ok := environmentPath([]string{"PATH=/first", "HOME=/h", "PATH=/last"}); !ok || got != "/last" {
+		t.Fatalf("environmentPath = %q, %v; want /last", got, ok)
+	}
+	if _, ok := environmentPath([]string{"HOME=/h"}); ok {
+		t.Fatal("environmentPath found a PATH in an environment without one")
 	}
 }

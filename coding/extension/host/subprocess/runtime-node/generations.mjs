@@ -2,6 +2,7 @@ import net from "node:net";
 import { resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { importExtension } from "./jiti-loader.mjs";
+import { reevaluateEdited } from "./loader.mjs";
 import { invalidFactory, isHostCancellation, loadFailure, reportLoadFailure, Runtime } from "./runtime.mjs";
 import { runWithRuntime } from "./state.mjs";
 
@@ -44,7 +45,10 @@ export class Generations {
     const resolved = cwd ? resolve(cwd) : this.cacheCwd;
     const reloadStarts = reload !== "0" && reload !== this.reloadPass;
     if (reloadStarts || (this.cacheCwd !== undefined && resolved !== undefined && resolved !== this.cacheCwd)) this.factories.clear();
-    if (reloadStarts) this.reloadPass = reload;
+    if (reloadStarts) {
+      this.reloadPass = reload;
+      reevaluateEdited(reload);
+    }
     this.cacheCwd = resolved;
   }
 

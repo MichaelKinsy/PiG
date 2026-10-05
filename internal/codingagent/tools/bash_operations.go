@@ -155,6 +155,8 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 		}
 		return BashOperationsResult{}, &shellSpawnError{path: shell.Path, cause: err}
 	}
+	attachProcessGroup(cmd.Process)
+	defer releaseProcessGroup(cmd.Process)
 	// os/exec copies a reader to the child's stdin the same way, and Wait
 	// waits for that copy.
 	var input sync.WaitGroup

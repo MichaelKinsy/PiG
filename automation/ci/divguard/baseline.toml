@@ -243,8 +243,8 @@ finding = "D60"
 [[hit]]
 check = "magic-literal"
 file = "cmd/pig/extension_validate_command.go"
-func = "validateExtensionRuntimes"
-snippet = "ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)"
+func = "validationLoadTimeout"
+snippet = "const validationLoadTimeout = 2 * time.Minute"
 finding = "D28"
 
 [[hit]]
