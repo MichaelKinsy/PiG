@@ -45796,6 +45796,17 @@
       "shapeHash": "sha256:d5f7da257bd739ba7ae67668f5cf9427e7a99de9ffd0ec799bee62a2f8c8f207"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/cmd/pig#installedSourceRoot",
+      "package": "github.com/MichaelKinsy/PiG/cmd/pig",
+      "name": "installedSourceRoot",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(cwd string, sm *github.com/MichaelKinsy/PiG/internal/codingagent.SettingsManager, source string, local bool) string"
+      },
+      "shapeHash": "sha256:da44412e9b819a77275b037476c9fc67232244e2e893855afffdb17b6e5b6f74"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/cmd/pig#interactiveRuntime",
       "package": "github.com/MichaelKinsy/PiG/cmd/pig",
       "name": "interactiveRuntime",
@@ -78818,6 +78829,17 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#pythonRunnerModuleCache",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "pythonRunnerModuleCache",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#readCellFailureMetadata",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "readCellFailureMetadata",
@@ -102039,6 +102061,17 @@
       "shapeHash": "sha256:15ff52f07798bffcd5abf74588646542a1179795015c8a5af3773e9d49c70c9f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#conventionalRoot",
+      "package": "github.com/MichaelKinsy/PiG/coding/packagecontent",
+      "name": "conventionalRoot",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "extensionRoot"
+      },
+      "shapeHash": "sha256:c494c0f044ae5bba34c873eea35bdb833c68bd57a42c49d315f7e7e36eecce90"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#declaredEntries",
       "package": "github.com/MichaelKinsy/PiG/coding/packagecontent",
       "name": "declaredEntries",
@@ -102122,9 +102155,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(dir string) []string"
+        "type": "func(dir string, root extensionRoot) []string"
       },
-      "shapeHash": "sha256:94e234dda5d4f511e0a2900403f8d2fb700767ce383fa2d30ca537602a83a6d8"
+      "shapeHash": "sha256:dc3e0679dd982590a17e30a3fc6d03394feab50551a76ec30cb69c95b0c67bab"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#discoverFlatFiles",
@@ -102169,6 +102202,17 @@
         "type": "func(root string, pattern string) []string"
       },
       "shapeHash": "sha256:50df0d7cbd10e50d97593bfccbb4705163bc6edd12d17716074d88e83eaf3500"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#extensionRoot",
+      "package": "github.com/MichaelKinsy/PiG/coding/packagecontent",
+      "name": "extensionRoot",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "extensionRoot"
+      },
+      "shapeHash": "sha256:c494c0f044ae5bba34c873eea35bdb833c68bd57a42c49d315f7e7e36eecce90"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#fileExists",
@@ -102235,6 +102279,17 @@
         "type": "func(raw string) bool"
       },
       "shapeHash": "sha256:9bec827878eddcbdd8a67e162d901dea4e4c9cb221ba38d138b7406eb4103ead"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#isPythonFactoryRoot",
+      "package": "github.com/MichaelKinsy/PiG/coding/packagecontent",
+      "name": "isPythonFactoryRoot",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(dir string) bool"
+      },
+      "shapeHash": "sha256:451b0d543749447787c9a569018000fef5d03bb4235deb5a55dbf6b58d4ae8a5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#manifestEntries",
@@ -102323,6 +102378,17 @@
         "type": "func(baseDir string, target string) string"
       },
       "shapeHash": "sha256:508998846bcea6c1528013e762ff1680ca6abe2b1c418774ad4db6d6e0cbccd8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#namedRoot",
+      "package": "github.com/MichaelKinsy/PiG/coding/packagecontent",
+      "name": "namedRoot",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "extensionRoot"
+      },
+      "shapeHash": "sha256:c494c0f044ae5bba34c873eea35bdb833c68bd57a42c49d315f7e7e36eecce90"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#normalizeExactPattern",
@@ -102540,9 +102606,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(dir string) []string"
+        "type": "func(dir string, python bool) []string"
       },
-      "shapeHash": "sha256:94e234dda5d4f511e0a2900403f8d2fb700767ce383fa2d30ca537602a83a6d8"
+      "shapeHash": "sha256:30663fe4e84ff3bb34ec2f06c00af3ac18b3e476b6dfffd51eed4382e798fdc0"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#resolveExtensionSource",
