@@ -17,7 +17,6 @@ import (
 func TestWin_KillProcessGroupReapsTree(t *testing.T) {
 	// cmd spawns a long-lived child (ping loop) so there is a real tree to reap.
 	cmd := exec.Command("cmd", "/c", "ping -n 60 127.0.0.1 >NUL")
-	setProcessGroup(cmd) // CREATE_NEW_PROCESS_GROUP path; exercise it
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("start: %v", err)
 	}

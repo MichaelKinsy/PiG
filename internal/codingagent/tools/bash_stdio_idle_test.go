@@ -19,7 +19,7 @@ func TestWaitForStdioIdleRearmsOnEveryChunk(t *testing.T) {
 			opts.OnData([]byte("HEAD\n"))
 			// The fixture's shell exits with code zero; its pipe remains open. The
 			// production wait gate controls when operations may return that code.
-			go func() { result <- waitForStdioIdle(make(chan struct{}), activity) }()
+			go func() { result <- waitForStdioIdle(make(chan struct{}), activity, func() bool { return true }) }()
 			for index := 1; index <= 6; index++ {
 				time.Sleep(50 * time.Millisecond)
 				opts.OnData(fmt.Appendf(nil, "TICK%d\n", index))
@@ -65,7 +65,9 @@ func TestWaitForStdioIdleReleasesAQuietHeldPipe(t *testing.T) {
 		operations := portBashOperations(func(_ context.Context, _, _ string, opts BashOperationsExecOptions) (BashOperationsResult, error) {
 			result := make(chan bool, 1)
 			opts.OnData([]byte("DONE\n"))
-			go func() { result <- waitForStdioIdle(make(chan struct{}), make(chan struct{})) }()
+			go func() {
+				result <- waitForStdioIdle(make(chan struct{}), make(chan struct{}), func() bool { return true })
+			}()
 			time.Sleep(99 * time.Millisecond)
 			synctest.Wait()
 			select {
