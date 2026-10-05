@@ -3,11 +3,11 @@
 package tools
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"sync"
 	"syscall"
-	"time"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -44,22 +44,57 @@ func killProcessGroup(p *os.Process) error {
 		return nil
 	}
 	job := v.(windows.Handle)
-	_ = windows.TerminateJobObject(job, 1)
-	deadline := time.Now().Add(10 * time.Second)
-	for time.Now().Before(deadline) {
-		var info jobAccounting
-		if err := windows.QueryInformationJobObject(job, windows.JobObjectBasicAccountingInformation, uintptr(unsafe.Pointer(&info)), uint32(unsafe.Sizeof(info)), nil); err != nil || info.ActiveProcesses == 0 {
-			break
+	// Open every member before the kill so a recycled PID cannot be waited on.
+	// A PID that is already gone fails OpenProcess and needs no wait.
+	members, listErr := openJobMembers(job)
+	defer func() {
+		for _, h := range members {
+			_ = windows.CloseHandle(h)
 		}
-		time.Sleep(5 * time.Millisecond)
+	}()
+	if err := windows.TerminateJobObject(job, 1); err != nil {
+		return fmt.Errorf("terminate bash job object: %w", err)
 	}
-	return nil
+	// TerminateJobObject guarantees that each member exits.
+	for _, h := range members {
+		if _, err := windows.WaitForSingleObject(h, windows.INFINITE); err != nil {
+			return fmt.Errorf("wait for bash job member: %w", err)
+		}
+	}
+	return listErr
 }
 
-// jobAccounting is JOBOBJECT_BASIC_ACCOUNTING_INFORMATION, which x/sys lacks.
-type jobAccounting struct {
-	TotalUserTime, TotalKernelTime, ThisPeriodTotalUserTime, ThisPeriodTotalKernelTime int64
-	TotalPageFaultCount, TotalProcesses, ActiveProcesses, TotalTerminatedProcesses     uint32
+// jobProcessIDList is JOBOBJECT_BASIC_PROCESS_ID_LIST with room for ids.
+type jobProcessIDList struct {
+	assigned, listed uint32
+	ids              [1]uintptr
+}
+
+// openJobMembers opens, with SYNCHRONIZE, each process now in the job. It
+// grows the buffer to the count the job reports until the list fits.
+func openJobMembers(job windows.Handle) ([]windows.Handle, error) {
+	capacity := uint32(1)
+	for {
+		size := uint32(unsafe.Sizeof(jobProcessIDList{})) + (capacity-1)*uint32(unsafe.Sizeof(uintptr(0)))
+		buf := make([]uintptr, (size+uint32(unsafe.Sizeof(uintptr(0)))-1)/uint32(unsafe.Sizeof(uintptr(0))))
+		list := (*jobProcessIDList)(unsafe.Pointer(&buf[0]))
+		err := windows.QueryInformationJobObject(job, windows.JobObjectBasicProcessIdList, uintptr(unsafe.Pointer(list)), size, nil)
+		if err == windows.ERROR_MORE_DATA {
+			capacity = list.assigned
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("list bash job members: %w", err)
+		}
+		ids := unsafe.Slice(&list.ids[0], list.listed)
+		var members []windows.Handle
+		for _, id := range ids {
+			if h, err := windows.OpenProcess(windows.SYNCHRONIZE, false, uint32(id)); err == nil {
+				members = append(members, h)
+			}
+		}
+		return members, nil
+	}
 }
 
 // bashJobs maps a shell's pid to the job object that holds its descendants.
