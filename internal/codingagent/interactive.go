@@ -393,6 +393,15 @@ type InteractiveMode struct {
 	// component tree (upstream runs this on one JS event loop).
 	uiTaskCh chan func()
 
+	// preflight is the submission whose input handlers are running off the loop,
+	// and preflightQueue holds the submissions waiting behind it. The main input
+	// loop owns both; preflightMu only makes an off-loop reader (a test, or
+	// shutdown) able to ask whether a dispatch is still in flight. See
+	// interactive_input_preflight.go for why the dispatch is not on the loop.
+	preflightMu    sync.Mutex
+	preflight      *inputPreflight
+	preflightQueue []inputPreflight
+
 	// eventCh is the agent's live event stream (m.opts.SessionHandle.Events()).
 	// The inputLoop select drains it and calls handleAgentEvent on the main
 	// goroutine. evCurrentBlock/evTurnIndex are that handler's

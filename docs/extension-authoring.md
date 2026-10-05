@@ -139,7 +139,22 @@ A naked `go func()` with ignored error is not a valid translation of a Promise.
 ### UI and cancellation
 
 Upstream Promise-based dialogs (`select`, `confirm`, `input`, `editor`) map to
-blocking Go SDK calls because the handler is already off the host UI loop. For
+blocking Go SDK calls because the handler is already off the host UI loop. In
+interactive mode that includes the `input` event: a handler registered for it
+runs on its own goroutine, one dispatch at a time, and the rest of the prompt
+path is applied on the owner loop when the handlers return. An input handler may
+therefore open a dialog and wait for the answer. With no `input` handler loaded
+there is nothing that can suspend the dispatch, and the prompt path stays
+synchronous, because several of the loop's guarantees are stated in terms of a
+submission being fully dispatched before the loop reads the next keystroke.
+
+A handler that blocks on the owner loop instead of beside it deadlocks the
+terminal: the loop is what installs a dialog and feeds it keystrokes, so Enter
+appears to do nothing and no key responds again, with nothing on screen to
+explain it. The same applies to `model_select`, which interactive mode emits
+from the loop while `/model` runs.
+
+For
 Pig core/in-process code, slow work leaves the TUI loop and every UI mutation
 returns through the approved run-on-main mechanism. Map `AbortSignal` to
 `context.Context`, `sdk.Context.Done()`, or the owning lifetime's cancellation

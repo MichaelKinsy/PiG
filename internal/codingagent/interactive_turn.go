@@ -94,12 +94,17 @@ func (m *InteractiveMode) handleSubmitWithImages(ctx context.Context, prompt str
 
 // promptUserInput is upstream prompt() after command dispatch, and
 // _queueUserInput for steer and follow-up. Extension input handlers see the
-// raw text first, with the streaming behavior while a run is active; then
-// skill commands and prompt templates expand (unless expand is false, as for
+// raw text first, with the streaming behavior sampled while a run is active;
+// then skill commands and prompt templates expand (unless expand is false, as for
 // an extension's sendUserMessage); then the text queues into the active run
 // as a steering message, or as a follow-up with followUp, or starts a new
 // turn when no run is active. An unresolved `/foo` is ordinary user text:
 // upstream forwards it to the model rather than reporting an unknown command.
+//
+// The handlers run off the owner loop when an extension has an `input` handler,
+// because a handler that blocks on the user would otherwise block the loop that
+// has to route the user's keys to it. With no such handler the dispatch stays
+// synchronous; see interactive_input_preflight.go.
 func (m *InteractiveMode) promptUserInput(ctx context.Context, text string, images []ai.ImageContent, followUp bool, source extension.InputSource, expand bool) {
 	streaming := m.runStreaming()
 	behavior := ""
@@ -109,36 +114,22 @@ func (m *InteractiveMode) promptUserInput(ctx context.Context, text string, imag
 			behavior = "followUp"
 		}
 	}
-	text, images, handled, err := m.runInputHandlers(ctx, text, images, source, behavior)
-	if err != nil {
-		// Upstream prompt() rejects and the input is not sent; the error
-		// is shown.
-		m.showError(err.Error())
+	submission := inputPreflight{
+		ctx:       ctx,
+		text:      text,
+		images:    images,
+		followUp:  followUp,
+		expand:    expand,
+		behavior:  behavior,
+		streaming: streaming,
+		source:    source,
+	}
+	if !m.inputHandlersRegistered() {
+		text, images, handled, err := m.runInputHandlers(ctx, text, images, source, behavior)
+		m.finishPreflight(submission, inputPreflightResult{text: text, images: images, handled: handled, err: err})
 		return
 	}
-	if handled {
-		return
-	}
-	if expand {
-		// Upstream expansion order: _expandSkillCommand, then
-		// expandPromptTemplate on its result.
-		if expanded, ok := m.expandSkillCommand(text); ok {
-			text = expanded
-		}
-		if expanded, ok := ExpandPromptTemplate(text, m.promptTemplates); ok {
-			text = expanded
-		}
-	}
-	if streaming && m.enqueueIfTurnActive(func() {
-		if followUp {
-			m.followUpMessageWithImages(text, images)
-		} else {
-			m.steerMessageWithImages(text, images)
-		}
-	}) {
-		return
-	}
-	m.runPromptTurnWithImages(ctx, text, images)
+	m.submitPrompt(submission)
 }
 
 // runInputHandlers runs the input handlers through the Session, or through

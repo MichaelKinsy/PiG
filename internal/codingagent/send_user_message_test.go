@@ -172,6 +172,7 @@ func TestSendUserMessageActiveInputHandledBeforeQueue(t *testing.T) {
 		t.Fatal(err)
 	}
 	drainOneUITask(t, m)
+	runPromptDispatch(t, m)
 	if queued := m.agent.ClearFollowUpQueue(); !called || len(queued) != 0 {
 		t.Fatalf("input handled hook called=%v, queued=%d", called, len(queued))
 	}
@@ -191,6 +192,7 @@ func TestSendUserMessageIdleInputUsesExtensionSource(t *testing.T) {
 		t.Fatal(err)
 	}
 	drainOneUITask(t, m)
+	runPromptDispatch(t, m)
 	if source != extension.InputSourceExtension {
 		t.Fatalf("input source = %q", source)
 	}
@@ -212,6 +214,7 @@ func TestSendUserMessageActiveInputTransformReplacesTextAndImages(t *testing.T) 
 		t.Fatal(err)
 	}
 	drainOneUITask(t, m)
+	runPromptDispatch(t, m)
 	queued := m.agent.ClearSteeringQueue()
 	if len(queued) != 1 || queued[0].User == nil || len(queued[0].User.Content.(ai.UserContentBlocks)) != 2 {
 		t.Fatalf("queued = %#v", queued)
@@ -243,6 +246,7 @@ func TestSendUserMessageIdleInputTransformReachesProvider(t *testing.T) {
 		t.Fatal(err)
 	}
 	drainOneUITask(t, m)
+	runPromptDispatch(t, m)
 	select {
 	case request := <-seen:
 		assertRequestUserContent(t, request, "transformed idle", upstreamTinyPNG, "image/png")
