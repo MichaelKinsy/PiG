@@ -1,1 +1,0 @@
-- `pig status` no longer reports duplicate resource errors for package resources that settings filters disable; only enabled resources can collide.
