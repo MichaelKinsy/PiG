@@ -99,7 +99,10 @@ export function parseArgs(args) {
             result.sessionDir = args[++i];
         }
         else if (arg === "--models" && i + 1 < args.length) {
-            result.models = args[++i].split(",").map((s) => s.trim());
+            result.models = args[++i]
+                .split(",")
+                .map((s) => s.trim())
+                .filter((pattern) => pattern.length > 0);
         }
         else if (arg === "--no-tools" || arg === "-nt") {
             result.noTools = true;

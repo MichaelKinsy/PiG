@@ -861,3 +861,31 @@ Remove when: Pi implements equivalent same-tool download sharing, or PiG no long
 Approval: the owner explicitly classifies this capability as additive robustness in the fix-download-dedup lane.
 SCRUTINIZED:approved
 
+
+---
+
+## D95 Install-change restart warning for a running native executable
+
+Stock disposition: inert capability. It detects a changed install and shows one warning. It selects no product behavior and runs no extension code.
+
+What: Pi 1.0.3 (#10439) warns when an update or removal replaced the install a running process loads code from. Pi's `detectInstallChange` (`packages/coding-agent/src/config.ts`) re-reads the `package.json` the process started from, and `InteractiveMode.maybeShowInstallChangeWarning` shows the warning in place of the bug report hint. Pi returns no change for its Bun executable, because that code is embedded. PiG is one native executable, so the package-based check cannot apply. PiG builds the same behavior from what can change under a running `pig`:
+
+- At startup `installchange.Record` stores the executable's identity: the `os.Executable` path with symbolic links resolved, the device and inode on Unix or the volume serial number and file index on Windows (`GetFileInformationByHandle`), the size and the modification time. It also keeps the path the process was launched from, so a package manager that repoints a link is noticed.
+- The extension host records each extension cell it starts from the governed cache (a Go, Rust or Python packed cell, a Node launcher or an isolated binary), and only a cache artifact that holds a usage lease.
+- Nothing polls. The check runs when an error is shown: on an assistant error before the bug report hint, on a failed tool call, in `showError` and when queued extension errors are shown. It stats the recorded paths and never searches for another install, as Pi reads the `package.json` it started from, so a removed install is reported even when another `pig` sits further up the tree. Only a missing file counts; a permission error says nothing about the install. The first detected change sets a flag, so the warning shows once and the bug report hint no longer shows, as in Pi.
+- A replaced or removed executable, or a cell or runtime file that another `pig` pruned, shows Pi's warning for a removed install with pig's app name: `Warning: The pig installation this session runs from was removed or replaced. Features that load code on demand can fail until restart. Restart with `pig --session <id>` to continue this session.` A pruned cell or runtime file names the extension files instead: `The pig extension files this session runs from were removed or replaced.` Without a persisted session or a terminal, the last sentence is `Restart pig.`
+
+Single-binary difference: Pi detects a different version string in a package file and names it (`pi was updated to X while this session was running (Y)`). PiG reads no version from the replaced file and cannot name it, because it cannot run or parse a binary it did not start, so it always uses Pi's sentence for a removed or replaced install. Pi's check never fires for the Bun executable, which PiG's check replaces. PiG's check does not cover a change to a file that the process embeds, because an embedded file cannot change.
+
+Pi source: `packages/coding-agent/src/config.ts` `detectInstallChange`; `packages/coding-agent/src/modes/interactive/interactive-mode.ts` `maybeSuggestBugReport`, `maybeShowInstallChangeWarning` and the `tool_execution_end` case; `packages/coding-agent/test/config.test.ts`, `test/interactive-mode-bug-report-hint.test.ts` and `test/suite/regressions/5080-signal-shutdown-extension-cleanup.test.ts`.
+
+Why: another `pig` can update the executable or prune the extension cache while this process runs, and a cell started later then fails with a missing file. The warning turns that failure into a restart instruction.
+
+Call-site markers: `cmd/pig/main.go` (`runStableCLI`), `internal/installchange/installchange.go`, `internal/codingagent/install_change.go` (`maybeShowInstallChangeWarning`), `internal/codingagent/interactive_chat.go` (`showError`), `internal/codingagent/interactive_extension_errors.go`, `coding/extension/host/subprocess/host.go` and `packed_go.go`.
+
+Locked by: `internal/installchange/installchange_test.go` replaces and removes a real executable that a built probe records (`TestDetectInstallChangeReportsARemovedInstallInsteadOfReadingAFileFurtherUp`, `TestDetectInstallChangeReportsAReplacedExecutable`, `TestDetectInstallChangeReportsPrunedCellFiles`, `TestTrackerFollowsASymlinkedExecutable`); `internal/codingagent/install_change_test.go` drives the warning through the interactive error paths; `coding/extension/host/subprocess/install_change_tracking_test.go` shows that a started cell is tracked and that pruning its cache is detected.
+
+Remove when: Pi stops detecting an install change, or PiG no longer starts code from files that an update or another process can replace or remove.
+
+Approval: the owner approved building this PiG version in place of designing it out on 2026-10-05.
+SCRUTINIZED:approved

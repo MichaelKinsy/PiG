@@ -182,7 +182,7 @@ func findPythonSDKRoot() (string, error) {
 
 func renderPythonRunner(extensions []PythonExtension, sdkRoot string) string {
 	var b strings.Builder
-	b.WriteString("import builtins\nimport importlib.util\nimport hashlib\nimport os\nimport sys\nimport threading\nimport time\n\n")
+	b.WriteString("import builtins\nimport importlib.machinery\nimport importlib.util\nimport hashlib\nimport os\nimport sys\nimport threading\nimport time\n\n")
 	b.WriteString("sys.dont_write_bytecode = True\nos.environ.setdefault('PYTHONDONTWRITEBYTECODE', '1')\n\n")
 	fmt.Fprintf(&b, "sys.path.insert(0, %q)\n", filepath.ToSlash(sdkRoot))
 	for _, ext := range extensions {
@@ -292,13 +292,21 @@ _WINDOW = _Window()
 _BUILTIN_IMPORT = builtins.__import__
 _IMPORT_MODULE = importlib.import_module
 
+_SEEN = {}
+
 class _Claims:
-    # Records each module the current thread's factory call imports first; it never finds a module itself.
+    # Records each module the current thread's factory call imports first and the stamp of its source before the import system reads it, keyed by the normalized path _source_of reports, so an edit that lands before the factory call returns is not mistaken for the source that was imported. It never finds a module itself.
     @staticmethod
     def find_spec(fullname, path=None, target=None):
         first = _WINDOW.first
         if first is not None:
             first.add(fullname)
+            try:
+                spec = importlib.machinery.PathFinder.find_spec(fullname, path)
+                if spec is not None and spec.has_location and spec.origin:
+                    _SEEN[fullname] = (os.path.normcase(os.path.abspath(spec.origin)), _stamp_of(spec.origin))
+            except Exception:
+                _SEEN.pop(fullname, None)
         return None
 
 def _record(importer, name, module, fromlist, returned):
@@ -359,14 +367,18 @@ def _module(module_name, root):
     first = _WINDOW.first
     if first is not None:
         first.add(key)
+        _SEEN[key] = (os.path.normcase(os.path.abspath(path)), _stamp_of(path))
     spec.loader.exec_module(mod)
     _MODULES[key] = mod
     return mod
 
 def _stamp_of(path):
+    # The digest finds a rewrite of the same size inside the file system's timestamp tick, which (modification time, size) cannot tell from no edit.
     try:
         info = os.stat(path)
-        return (info.st_mtime_ns, info.st_size)
+        with open(path, 'rb') as source:
+            digest = hashlib.blake2b(source.read()).digest()
+        return (info.st_mtime_ns, info.st_size, digest)
     except OSError:
         return None
 
@@ -405,7 +417,8 @@ def _claim(name, first, used):
         if path and _root_of(path):
             _CLAIMS.setdefault(module, set()).add(name)
             if module in first:
-                _STAMPS[module] = _stamp_of(path)
+                seen = _SEEN.pop(module, None)
+                _STAMPS[module] = seen[1] if seen is not None and seen[0] == path else _stamp_of(path)
 
 def _factory(item):
     name, env, module_name, factory_name, root = item
@@ -443,8 +456,11 @@ def _edited(module, path, since):
     stamp = _stamp_of(path)
     if module in _STAMPS:
         return stamp != _STAMPS[module]
-    # A module no factory call imported first has no stamp; its source changed if the file is newer than the first factory call of an extension that uses it.
-    return stamp is None or stamp[0] > since
+    # A module no factory call imported first has no stamp; its source changed if the file is newer than the first factory call of an extension that uses it. A pass that finds it unchanged records its stamp, so a later pass also finds a same-size rewrite inside the timestamp tick by its content.
+    if stamp is None or stamp[0] > since:
+        return True
+    _STAMPS[module] = stamp
+    return False
 
 def _reload_edited(reload):
     if reload == '0' or reload == _RELOAD['pass']:

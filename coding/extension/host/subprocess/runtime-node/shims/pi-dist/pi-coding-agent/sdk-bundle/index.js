@@ -6,7 +6,10 @@ import {
   loadMcpConfig,
   openBrowser,
   updateMcpServerConfig
-} from "./chunk-DNRNXI57.js";
+} from "./chunk-MOFNYD55.js";
+import {
+  ArminComponent
+} from "./chunk-6FWVW2J5.js";
 import {
   AgentSession,
   BUG_REPORT_CUSTOM_ENTRY_TYPE,
@@ -119,7 +122,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-WRPYCDOU.js";
+} from "./chunk-XKIXC7ST.js";
 import {
   convertToPng,
   createBashToolDefinition,
@@ -136,6 +139,7 @@ import {
   detectSupportedImageMimeType,
   detectSupportedImageMimeTypeFromFile,
   editRenderers,
+  ensurePngTranscoder,
   ensureTool,
   fetchWithRetry,
   findRenderers,
@@ -152,7 +156,7 @@ import {
   resolveReadPath,
   withFileMutationQueue,
   writeRenderers
-} from "./chunk-OKP3ZTZI.js";
+} from "./chunk-TQVQARUB.js";
 import {
   CODEMODE_TOOL_NAME,
   TOOL_SEARCH_TOOL_NAME,
@@ -160,7 +164,7 @@ import {
   createToolSearchToolDefinition,
   isCodemodeTool,
   isToolSearchTool
-} from "./chunk-57JBIZQD.js";
+} from "./chunk-BP7BM6EW.js";
 import {
   addUsageToTotals,
   createUsageTotals,
@@ -173,8 +177,9 @@ import {
   READ_MCP_RESOURCE_TOOL,
   createMcpResourceToolDefinitions,
   createMcpToolDefinition,
-  createMcpToolName
-} from "./chunk-Y62A6C76.js";
+  createMcpToolName,
+  createMcpToolRenderers
+} from "./chunk-4ADCFCS2.js";
 import {
   AuthStorage,
   ReadOnlyAuthStorage,
@@ -182,24 +187,22 @@ import {
   mcpNamespace,
   raceWithAbortSignal,
   readStoredCredential
-} from "./chunk-TZDYOFRO.js";
+} from "./chunk-SDVV3MJA.js";
 import {
   DEFAULT_MAX_BYTES,
   DEFAULT_MAX_LINES,
   formatSize,
-  truncateHead,
-  truncateLine,
-  truncateTail
-} from "./chunk-YJMZRBMJ.js";
-import {
   formatToolCallWithArgs,
   getPowerShellConfig,
   getShellConfig,
   getTextOutput,
   killTrackedDetachedChildren,
   stripAnsi,
+  truncateHead,
+  truncateLine,
+  truncateTail,
   truncateToVisualLines
-} from "./chunk-65Z52CAH.js";
+} from "./chunk-EDGTPAH6.js";
 import {
   APP_NAME,
   APP_TITLE,
@@ -211,6 +214,7 @@ import {
   Theme,
   VERSION,
   canonicalizePath,
+  detectInstallChange,
   detectInstallMethod,
   expandTildePath,
   formatKeyText,
@@ -264,7 +268,7 @@ import {
   stripBom,
   theme,
   waitForChildProcess
-} from "./chunk-6PEVBP2X.js";
+} from "./chunk-H7ICR3WT.js";
 import {
   __name
 } from "./chunk-SHUYVCID.js";
@@ -316,14 +320,250 @@ __name(createCodemodeExtension, "createCodemodeExtension");
 var codemode_default = createCodemodeExtension();
 
 // pi-dist/pi-coding-agent/extensions/mcp/index.js
-import { join, resolve } from "node:path";
-import { hyperlink as hyperlink2 } from "../../../pi-tui.mjs";
+import { join as join2, resolve } from "node:path";
 
 // pi-dist/pi-coding-agent/extensions/mcp/runtime.lazy.js
-var loadMcpRuntime = /* @__PURE__ */ __name(() => import("./chunk-FX5HEKHS.js"), "loadMcpRuntime");
+var loadMcpRuntime = /* @__PURE__ */ __name(() => import("./chunk-VQASTC2W.js"), "loadMcpRuntime");
 
 // pi-dist/pi-coding-agent/extensions/mcp/ui.js
-import { Container, hyperlink, Input, SelectList, Spacer, Text, truncateToWidth, visibleWidth } from "../../../pi-tui.mjs";
+import { Container as Container2, Input, SelectList, Spacer, Text as Text2, truncateToWidth, visibleWidth } from "../../../pi-tui.mjs";
+
+// pi-dist/pi-coding-agent/modes/interactive/components/auth-url.js
+import { Container, hyperlink, Text } from "../../../pi-tui.mjs";
+
+// pi-dist/pi-coding-agent/utils/clipboard.js
+import { randomUUID } from "node:crypto";
+import { unlinkSync, writeFileSync } from "node:fs";
+import { platform, tmpdir } from "node:os";
+import { join } from "node:path";
+import { getNativeClipboard } from "../../../pi-tui.mjs";
+
+// pi-dist/pi-coding-agent/utils/clipboard-command.js
+import { spawn } from "node:child_process";
+function runClipboardCommand(command, args, options) {
+  return new Promise((resolve7) => {
+    const child = spawn(command, args, {
+      stdio: ["pipe", options?.input === void 0 ? "pipe" : "ignore", "ignore"],
+      windowsHide: true
+    });
+    const chunks = [];
+    let length = 0;
+    let settled = false;
+    const finish = /* @__PURE__ */ __name((result) => {
+      if (settled)
+        return;
+      settled = true;
+      clearTimeout(timer);
+      resolve7(result);
+    }, "finish");
+    const abort = /* @__PURE__ */ __name(() => {
+      child.kill("SIGKILL");
+      child.stdout?.destroy();
+      child.stdin?.destroy();
+      finish(void 0);
+    }, "abort");
+    const timer = setTimeout(abort, options?.timeoutMs ?? 3e3);
+    child.on("error", () => finish(void 0));
+    child.on("close", (code) => {
+      if (!settled)
+        finish(code === 0 ? Buffer.concat(chunks, length) : void 0);
+    });
+    child.stdout?.on("data", (chunk) => {
+      if (settled)
+        return;
+      length += chunk.length;
+      if (length > (options?.maxBufferBytes ?? 50 * 1024 * 1024))
+        abort();
+      else
+        chunks.push(chunk);
+    });
+    child.stdin?.on("error", () => {
+    });
+    child.stdin?.end(options?.input);
+  });
+}
+__name(runClipboardCommand, "runClipboardCommand");
+
+// pi-dist/pi-coding-agent/utils/wsl.js
+import { readFileSync } from "node:fs";
+function isWSL(env = process.env) {
+  if (env.WSL_DISTRO_NAME || env.WSLENV) {
+    return true;
+  }
+  try {
+    const release = readFileSync("/proc/version", "utf-8");
+    return /microsoft|wsl/i.test(release);
+  } catch {
+    return false;
+  }
+}
+__name(isWSL, "isWSL");
+
+// pi-dist/pi-coding-agent/utils/clipboard.js
+var MAX_OSC52_ENCODED_LENGTH = 1e5;
+function isRemoteSession(env) {
+  return Boolean(env.SSH_CONNECTION || env.SSH_CLIENT || env.MOSH_CONNECTION);
+}
+__name(isRemoteSession, "isRemoteSession");
+function emitOsc52(text) {
+  const encoded = Buffer.from(text).toString("base64");
+  if (encoded.length > MAX_OSC52_ENCODED_LENGTH) {
+    return false;
+  }
+  process.stdout.write(`\x1B]52;c;${encoded}\x07`);
+  return true;
+}
+__name(emitOsc52, "emitOsc52");
+async function copyViaWindowsClipboard(text) {
+  const tmpFile = join(tmpdir(), `pi-wsl-clip-${randomUUID()}.txt`);
+  try {
+    writeFileSync(tmpFile, text, { encoding: "utf8", mode: 384 });
+    const winPath = (await runClipboardCommand("wslpath", ["-w", tmpFile], { timeoutMs: 1e3 }))?.toString("utf8").trim();
+    if (!winPath)
+      return false;
+    const script = `Set-Clipboard -Value ([System.IO.File]::ReadAllText('${winPath.replaceAll("'", "''")}', [System.Text.Encoding]::UTF8))`;
+    const result = await runClipboardCommand("powershell.exe", ["-NoProfile", "-Command", script], {
+      timeoutMs: 5e3
+    });
+    return result !== void 0;
+  } catch {
+    return false;
+  } finally {
+    try {
+      unlinkSync(tmpFile);
+    } catch {
+    }
+  }
+}
+__name(copyViaWindowsClipboard, "copyViaWindowsClipboard");
+async function readClipboardText() {
+  if (platform() === "linux") {
+    const commands = [];
+    if (process.env.TERMUX_VERSION)
+      commands.push(["termux-clipboard-get", []]);
+    if (process.env.WAYLAND_DISPLAY)
+      commands.push(["wl-paste", ["--no-newline", "--type", "text"]]);
+    if (process.env.DISPLAY) {
+      commands.push(["xclip", ["-selection", "clipboard", "-out"]], ["xsel", ["--clipboard", "--output"]]);
+    }
+    for (const [command, args] of commands) {
+      const bytes = await runClipboardCommand(command, args, { timeoutMs: 5e3 });
+      if (bytes !== void 0)
+        return bytes.toString("utf8") || null;
+    }
+  }
+  try {
+    return await getNativeClipboard()?.getText() || null;
+  } catch {
+    return null;
+  }
+}
+__name(readClipboardText, "readClipboardText");
+async function readClipboardFilePaths() {
+  const paths = await getNativeClipboard()?.getFilePaths?.();
+  return paths?.length ? paths : null;
+}
+__name(readClipboardFilePaths, "readClipboardFilePaths");
+async function copyToClipboard(text) {
+  const p = platform();
+  const env = process.env;
+  let copied = false;
+  if (p !== "linux") {
+    try {
+      const clipboard = getNativeClipboard();
+      if (clipboard?.setText) {
+        await clipboard.setText(text);
+        copied = true;
+      }
+    } catch {
+    }
+  }
+  if (!copied) {
+    const commands = [];
+    if (p === "darwin")
+      commands.push(["pbcopy", []]);
+    else if (p === "win32")
+      commands.push(["clip", []]);
+    else {
+      if (env.TERMUX_VERSION)
+        commands.push(["termux-clipboard-set", []]);
+      if (env.WAYLAND_DISPLAY)
+        commands.push(["wl-copy", []]);
+      if (env.DISPLAY) {
+        commands.push(["xclip", ["-selection", "clipboard"]], ["xsel", ["--clipboard", "--input"]]);
+      }
+    }
+    for (const [command, args] of commands) {
+      if (await runClipboardCommand(command, args, { input: text, timeoutMs: 5e3 }) !== void 0) {
+        copied = true;
+        break;
+      }
+    }
+  }
+  let osc52Emitted = false;
+  if (!copied && p === "linux" && isWSL(env)) {
+    if (env.WT_SESSION)
+      osc52Emitted = emitOsc52(text);
+    copied = osc52Emitted || await copyViaWindowsClipboard(text);
+  }
+  const headless = p === "linux" && !env.DISPLAY && !env.WAYLAND_DISPLAY && !env.TERMUX_VERSION;
+  let oversized = false;
+  if (!osc52Emitted && (isRemoteSession(env) || !copied && headless)) {
+    if (emitOsc52(text))
+      copied = true;
+    else
+      oversized = true;
+  }
+  if (copied)
+    return;
+  if (oversized)
+    throw new Error("Clipboard unavailable: text exceeds the OSC 52 size limit");
+  if (p === "linux") {
+    if (env.TERMUX_VERSION) {
+      throw new Error("Clipboard unavailable: install the Termux:API app and `termux-api` package");
+    }
+    if (env.WAYLAND_DISPLAY) {
+      throw new Error("Clipboard unavailable: install `wl-clipboard` (`wl-copy`) or check Wayland access");
+    }
+    if (env.DISPLAY) {
+      throw new Error("Clipboard unavailable: install `xclip` or `xsel`, or check X11 access");
+    }
+  }
+  throw new Error("Clipboard unavailable");
+}
+__name(copyToClipboard, "copyToClipboard");
+
+// pi-dist/pi-coding-agent/modes/interactive/components/auth-url.js
+var AuthUrlComponent = class extends Container {
+  static {
+    __name(this, "AuthUrlComponent");
+  }
+  url;
+  tui;
+  hint;
+  constructor(tui, url) {
+    super();
+    this.tui = tui;
+    this.url = url;
+    this.addChild(new Text(theme.fg("accent", hyperlink(url, url)), 1, 0));
+    this.hint = new Text("", 1, 0);
+    this.addChild(this.hint);
+    this.setHint(keyHint("app.message.copy", "to copy"));
+  }
+  setHint(suffix) {
+    const clickHint = process.platform === "darwin" ? "Cmd+click to open" : "Ctrl+click to open";
+    this.hint.setText(`${theme.fg("dim", hyperlink(clickHint, this.url))} ${theme.fg("dim", "\u2022")} ${suffix}`);
+    this.tui.requestRender();
+  }
+  async copy() {
+    try {
+      await copyToClipboard(this.url);
+      this.setHint(theme.fg("success", "Copied URL to clipboard"));
+    } catch (error) {
+      this.setHint(theme.fg("error", error instanceof Error ? error.message : String(error)));
+    }
+  }
+};
 
 // pi-dist/pi-coding-agent/modes/interactive/components/dynamic-border.js
 var DynamicBorder = class {
@@ -343,14 +583,14 @@ var DynamicBorder = class {
 
 // pi-dist/pi-coding-agent/extensions/mcp/ui.js
 function frame(theme2, title, body, footer) {
-  const container = new Container();
+  const container = new Container2();
   container.addChild(new DynamicBorder((text) => theme2.fg("accent", text)));
-  container.addChild(new Text(theme2.fg("accent", theme2.bold(title)), 1, 0));
+  container.addChild(new Text2(theme2.fg("accent", theme2.bold(title)), 1, 0));
   for (const child of body)
     container.addChild(child);
   if (footer) {
     container.addChild(new Spacer(1));
-    container.addChild(new Text(theme2.fg("dim", footer), 1, 0));
+    container.addChild(new Text2(theme2.fg("dim", footer), 1, 0));
   }
   container.addChild(new DynamicBorder((text) => theme2.fg("accent", text)));
   return container;
@@ -372,7 +612,7 @@ var McpManagerView = class {
     this.tui = tui;
     this.theme = theme2;
     this.keybindings = keybindings;
-    this.content = frame(theme2, "MCP servers", [new Text(theme2.fg("muted", "Loading\u2026"), 1, 1)]);
+    this.content = frame(theme2, "MCP servers", [new Text2(theme2.fg("muted", "Loading\u2026"), 1, 1)]);
   }
   get focused() {
     return this._focused;
@@ -409,13 +649,13 @@ var McpManagerView = class {
         const wanted = selected ?? menu.selected;
         const body = [];
         if (menu.details)
-          body.push(new Text(this.theme.fg("muted", menu.details), 1, 0));
+          body.push(new Text2(this.theme.fg("muted", menu.details), 1, 0));
         if (menu.error)
-          body.push(new Text(this.theme.fg("error", menu.error), 1, 0));
+          body.push(new Text2(this.theme.fg("error", menu.error), 1, 0));
         body.push(new Spacer(1));
         const footer = `${keyHint("tui.select.confirm", menu.confirmLabel)} \u2022 ${keyHint("tui.select.cancel", menu.cancelLabel)}`;
         if (menu.items.length === 0) {
-          body.push(new Text(this.theme.fg("muted", menu.empty ?? "Nothing to show."), 1, 0));
+          body.push(new Text2(this.theme.fg("muted", menu.empty ?? "Nothing to show."), 1, 0));
           this.setContent(frame(this.theme, menu.title, body, keyHint("tui.select.cancel", menu.cancelLabel)), (data) => {
             if (this.keybindings.matches(data, "tui.select.cancel"))
               finish(void 0);
@@ -443,7 +683,7 @@ var McpManagerView = class {
     });
   }
   status(title, message) {
-    this.setContent(frame(this.theme, title, [new Spacer(1), new Text(this.theme.fg("muted", message), 1, 0)]));
+    this.setContent(frame(this.theme, title, [new Spacer(1), new Text2(this.theme.fg("muted", message), 1, 0)]));
   }
   redirectUrl(title, authorizationUrl, signal) {
     return new Promise((resolve7) => {
@@ -462,14 +702,13 @@ var McpManagerView = class {
       }
       signal.addEventListener("abort", onAbort, { once: true });
       const input2 = new Input();
-      const clickHint = process.platform === "darwin" ? "Cmd+click to open" : "Ctrl+click to open";
+      const link = new AuthUrlComponent(this.tui, authorizationUrl);
       const body = [
         new Spacer(1),
-        new Text(this.theme.fg("muted", "Approve access in your browser. If it did not open, visit:"), 1, 0),
-        new Text(this.theme.fg("accent", hyperlink(authorizationUrl, authorizationUrl)), 1, 0),
-        new Text(this.theme.fg("dim", hyperlink(clickHint, authorizationUrl)), 1, 0),
+        new Text2(this.theme.fg("muted", "Approve access in your browser. If it did not open, visit:"), 1, 0),
+        link,
         new Spacer(1),
-        new Text(this.theme.fg("muted", "If the browser runs on another machine, paste the URL it was redirected to:"), 1, 0),
+        new Text2(this.theme.fg("muted", "If the browser runs on another machine, paste the URL it was redirected to:"), 1, 0),
         input2
       ];
       this.setContent(frame(this.theme, title, body, `${keyHint("tui.select.confirm", "submit")} \u2022 ${keyHint("tui.select.cancel", "cancel")}`), (data) => {
@@ -481,6 +720,10 @@ var McpManagerView = class {
         }
         if (this.keybindings.matches(data, "tui.select.cancel")) {
           finish(void 0);
+          return;
+        }
+        if (this.keybindings.matches(data, "app.message.copy")) {
+          void link.copy();
           return;
         }
         input2.handleInput(data);
@@ -654,6 +897,7 @@ function createMcpExtension(options = {}) {
     let servers = [];
     let configuredEntries = [];
     let configErrors = [];
+    let projectConfig;
     let overridden = [];
     let sessionActive = false;
     let autoEnableCodemode = true;
@@ -667,7 +911,9 @@ function createMcpExtension(options = {}) {
     let modelRegistry;
     let serverLog;
     const openUrl = options.openUrl ?? openBrowser;
-    const updateConfig = options.updateConfig ?? ((entry, patch) => updateMcpServerConfig(entry.source, entry.name, patch));
+    const updateConfig = options.updateConfig ?? ((entry, patch) => updateMcpServerConfig(entry.override ?? entry.source, entry.name, patch, {
+      override: entry.override !== void 0
+    }));
     const listeners = /* @__PURE__ */ new Set();
     const emitChange = /* @__PURE__ */ __name(() => {
       for (const listener of listeners)
@@ -702,12 +948,16 @@ function createMcpExtension(options = {}) {
       return credentials;
     }, "getCredentials");
     const getServerLog = /* @__PURE__ */ __name((runtime) => {
-      serverLog ??= new runtime.McpServerLog(options.logPath ?? join(getAgentDir(), "mcp.log"));
+      serverLog ??= new runtime.McpServerLog(options.logPath ?? join2(getAgentDir(), "mcp.log"));
       return serverLog;
     }, "getServerLog");
     const toolOwners = /* @__PURE__ */ new Map();
     const serverTools = /* @__PURE__ */ new Map();
     const definitions = /* @__PURE__ */ new Map();
+    pi.registerToolRenderer((toolName, next) => {
+      const match = /^mcp__(.+?)__(.+)$/.exec(toolName);
+      return next() ?? (match ? createMcpToolRenderers(`${match[1]}/${match[2]}`) : void 0);
+    });
     const registerTools = /* @__PURE__ */ __name((connection) => {
       const server = connection.entry.name;
       const entry = findServer(server)?.entry ?? connection.entry;
@@ -892,15 +1142,17 @@ function createMcpExtension(options = {}) {
 ${lines.map((line) => `  ${line}`).join("\n")}
 Run /mcp to fix.`, "warning");
     }, "reportProblems");
-    const saveConfig = /* @__PURE__ */ __name((server, patch) => {
-      if (server.entry.scope !== "extension") {
+    const saveConfig = /* @__PURE__ */ __name((server, patch, inProject = false) => {
+      const override = inProject ? projectConfig : server.entry.override;
+      const entry = override ? { ...server.entry, override } : server.entry;
+      if (entry.scope !== "extension") {
         try {
-          updateConfig(server.entry, patch);
+          updateConfig(entry, patch);
         } catch (error) {
-          return `Could not update ${server.entry.source}: ${errorMessage(error)}`;
+          return `Could not update ${entry.override ?? entry.source}: ${errorMessage(error)}`;
         }
       }
-      server.entry = { ...server.entry, config: { ...server.entry.config, ...patch } };
+      server.entry = { ...entry, config: { ...entry.config, ...patch } };
       return void 0;
     }, "saveConfig");
     const signIn = /* @__PURE__ */ __name(async (server, prompt) => {
@@ -950,8 +1202,8 @@ Run /mcp to fix.`, "warning");
         return errorMessage(error);
       }
     }, "reconnect");
-    const setEnabled = /* @__PURE__ */ __name(async (server, enabled) => {
-      const failed = saveConfig(server, { enabled });
+    const setEnabled = /* @__PURE__ */ __name(async (server, enabled, inProject = false) => {
+      const failed = saveConfig(server, { enabled }, inProject);
       if (failed)
         return failed;
       if (!enabled) {
@@ -988,7 +1240,7 @@ Run /mcp to fix.`, "warning");
       items: [...servers].sort((a, b) => attentionRank(a) - attentionRank(b) || a.entry.name.localeCompare(b.entry.name)).map((server) => ({
         value: server.entry.name,
         label: server.entry.name,
-        description: `${describeState(server)} \xB7 ${exposureOf(server.entry)} \xB7 ${server.entry.scope ?? server.entry.source}`
+        description: `${describeState(server)} \xB7 ${exposureOf(server.entry)} \xB7 ${server.entry.override ? "global, project override" : server.entry.scope ?? server.entry.source}`
       })),
       empty: `No MCP servers configured. Add them to ${resolve(getAgentDir(), "mcp.json")} or .pi/mcp.json.`,
       confirmLabel: "manage",
@@ -1006,10 +1258,15 @@ Run /mcp to fix.`, "warning");
         };
       }
       const { entry, connection } = server;
-      const saved = entry.scope === "extension" ? "for this session" : entry.scope ? `saved to the ${entry.scope} mcp.json` : "saved to mcp.json";
+      const saved = entry.scope === "extension" ? "for this session" : entry.override ? "saved to the project mcp.json" : entry.scope ? `saved to the ${entry.scope} mcp.json` : "saved to mcp.json";
+      const inProject = entry.scope === "global" && !entry.override && projectConfig !== void 0;
+      const inProjectSaved = "saved to the project mcp.json";
       const items = [];
       if (!isEnabled(server)) {
         items.push({ value: "enable", label: "Enable", description: saved });
+        if (inProject) {
+          items.push({ value: "enable-project", label: "Enable in this project", description: inProjectSaved });
+        }
       } else {
         const state = connection?.state;
         if (state === "needs-auth")
@@ -1025,10 +1282,14 @@ Run /mcp to fix.`, "warning");
         }
         items.push({ value: "exposure", label: "Exposure", description: exposureOf(entry) });
         items.push({ value: "disable", label: "Disable", description: saved });
+        if (inProject) {
+          items.push({ value: "disable-project", label: "Disable in this project", description: inProjectSaved });
+        }
       }
       const details = [
         describeTransport(entry),
         `${entry.scope ?? "config"}: ${entry.source}`,
+        ...entry.override ? [`project override: ${entry.override}`] : [],
         `State: ${describeState(server, false)}`
       ];
       const error = [server.message, connection?.state === "connected" ? void 0 : connection?.error].filter((line) => line !== void 0).join("\n");
@@ -1066,7 +1327,7 @@ Run /mcp to fix.`, "warning");
       const current = exposureOf(server.entry);
       const choice = await ui.menu(() => ({
         title: `Exposure of ${server.entry.name}`,
-        details: server.entry.scope === "extension" ? `Applies to this session; the server is registered by ${server.entry.source}.` : `Saved to ${server.entry.source}.`,
+        details: server.entry.scope === "extension" ? `Applies to this session; the server is registered by ${server.entry.source}.` : `Saved to ${server.entry.override ?? server.entry.source}.`,
         items: Object.keys(EXPOSURE_DESCRIPTIONS).map((exposure) => ({
           value: exposure,
           label: `${exposure === current ? "\u2713 " : "  "}${exposure}`,
@@ -1080,27 +1341,29 @@ Run /mcp to fix.`, "warning");
         return void 0;
       return setExposure(server, choice);
     }, "chooseExposure");
+    const signInWithUi = /* @__PURE__ */ __name((ui, server) => {
+      const title = `Sign in to ${server.entry.name}`;
+      let authorizationUrl = "";
+      ui.status(title, "Contacting the authorization server\u2026");
+      return signIn(server, {
+        showAuthorizationUrl: /* @__PURE__ */ __name((url) => {
+          authorizationUrl = url.href;
+          openUrl(url.href);
+        }, "showAuthorizationUrl"),
+        promptForRedirectUrl: /* @__PURE__ */ __name(async (signal) => {
+          const value = await ui.redirectUrl(title, authorizationUrl, signal);
+          ui.status(title, "Connecting\u2026");
+          return value;
+        }, "promptForRedirectUrl")
+      });
+    }, "signInWithUi");
     const runAction = /* @__PURE__ */ __name(async (ui, ctx, server, action) => {
       const { name } = server.entry;
       let message;
       switch (action) {
-        case "signin": {
-          const title = `Sign in to ${name}`;
-          let authorizationUrl = "";
-          ui.status(title, "Contacting the authorization server\u2026");
-          message = await signIn(server, {
-            showAuthorizationUrl: /* @__PURE__ */ __name((url) => {
-              authorizationUrl = url.href;
-              openUrl(url.href);
-            }, "showAuthorizationUrl"),
-            promptForRedirectUrl: /* @__PURE__ */ __name(async (signal) => {
-              const value = await ui.redirectUrl(title, authorizationUrl, signal);
-              ui.status(title, "Connecting\u2026");
-              return value;
-            }, "promptForRedirectUrl")
-          });
+        case "signin":
+          message = await signInWithUi(ui, server);
           break;
-        }
         case "reconnect":
           ui.status(`MCP server ${name}`, "Reconnecting\u2026");
           await reconnect(server);
@@ -1116,9 +1379,13 @@ Run /mcp to fix.`, "warning");
           break;
         case "enable":
         case "disable":
-          ui.status(`MCP server ${name}`, action === "enable" ? "Connecting\u2026" : "Disconnecting\u2026");
-          message = await setEnabled(server, action === "enable");
+        case "enable-project":
+        case "disable-project": {
+          const enable = action.startsWith("enable");
+          ui.status(`MCP server ${name}`, enable ? "Connecting\u2026" : "Disconnecting\u2026");
+          message = await setEnabled(server, enable, action.endsWith("-project"));
           break;
+        }
       }
       server.message = message;
       ensureDiscoveryActive(ctx);
@@ -1194,16 +1461,21 @@ Run /mcp to fix.`, "warning");
         ctx.ui.notify(`Signing in to MCP server "${name}" requires interactive mode.`, "error");
         return;
       }
-      const failure = await signIn(server, {
-        showAuthorizationUrl: /* @__PURE__ */ __name((url) => {
-          const lines = ctx.mode === "tui" ? `${hyperlink2(url.href, url.href)}
-${hyperlink2(process.platform === "darwin" ? "Cmd+click to open" : "Ctrl+click to open", url.href)}` : url.href;
-          ctx.ui.notify(`Sign in to MCP server "${name}" in your browser:
-${lines}`, "info");
-          openUrl(url.href);
-        }, "showAuthorizationUrl"),
-        promptForRedirectUrl: /* @__PURE__ */ __name((signal) => ctx.ui.input(`Waiting for sign-in to "${name}". If the browser cannot reach this machine, paste the URL it was redirected to.`, "http://127.0.0.1:.../callback?code=...", { signal }), "promptForRedirectUrl")
-      });
+      let failure;
+      if (ctx.mode === "tui") {
+        await showMcpManager(ctx, async (ui) => {
+          failure = await signInWithUi(ui, server);
+        });
+      } else {
+        failure = await signIn(server, {
+          showAuthorizationUrl: /* @__PURE__ */ __name((url) => {
+            ctx.ui.notify(`Sign in to MCP server "${name}" in your browser:
+${url.href}`, "info");
+            openUrl(url.href);
+          }, "showAuthorizationUrl"),
+          promptForRedirectUrl: /* @__PURE__ */ __name((signal) => ctx.ui.input(`Waiting for sign-in to "${name}". If the browser cannot reach this machine, paste the URL it was redirected to.`, "http://127.0.0.1:.../callback?code=...", { signal }), "promptForRedirectUrl")
+        });
+      }
       if (failure) {
         ctx.ui.notify(failure, failure === "Sign-in cancelled." ? "info" : "error");
         return;
@@ -1214,6 +1486,7 @@ ${lines}`, "info");
     pi.on("session_start", (_event, ctx) => {
       const loaded = (options.loadConfig ?? defaultLoadConfig)(ctx);
       configErrors = loaded.errors;
+      projectConfig = loaded.projectConfig;
       autoEnableCodemode = loaded.autoEnableCodemode ?? true;
       warnedUnreachable = false;
       waitedForStartup = false;
@@ -1828,8 +2101,8 @@ __name(areExperimentalFeaturesEnabled, "areExperimentalFeaturesEnabled");
 
 // pi-dist/pi-coding-agent/core/keybindings.js
 import { TUI_KEYBINDINGS, KeybindingsManager as TuiKeybindingsManager } from "../../../pi-tui.mjs";
-import { existsSync, readFileSync } from "fs";
-import { join as join2 } from "path";
+import { existsSync, readFileSync as readFileSync2 } from "fs";
+import { join as join3 } from "path";
 function useWindowsKeybindings(platform2 = process.platform, env = process.env) {
   return platform2 === "win32" || platform2 === "linux" && Boolean(env.WSL_DISTRO_NAME || env.WSL_INTEROP);
 }
@@ -2113,7 +2386,7 @@ function loadRawConfig(path5) {
   if (!existsSync(path5))
     return void 0;
   try {
-    const parsed = JSON.parse(stripBom(readFileSync(path5, "utf-8")));
+    const parsed = JSON.parse(stripBom(readFileSync2(path5, "utf-8")));
     if (typeof parsed !== "object" || parsed === null)
       return void 0;
     return parsed;
@@ -2132,7 +2405,7 @@ var KeybindingsManager = class _KeybindingsManager extends TuiKeybindingsManager
     this.configPath = configPath;
   }
   static create(agentDir = getAgentDir()) {
-    const configPath = join2(agentDir, "keybindings.json");
+    const configPath = join3(agentDir, "keybindings.json");
     const userBindings = _KeybindingsManager.loadFromFile(configPath);
     return new _KeybindingsManager(userBindings, configPath);
   }
@@ -2153,7 +2426,7 @@ var KeybindingsManager = class _KeybindingsManager extends TuiKeybindingsManager
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/extension-input.js
-import { Container as Container2, getKeybindings, Input as Input2, Spacer as Spacer2, Text as Text2 } from "../../../pi-tui.mjs";
+import { Container as Container3, getKeybindings, Input as Input2, Spacer as Spacer2, Text as Text3 } from "../../../pi-tui.mjs";
 
 // pi-dist/pi-coding-agent/modes/interactive/components/countdown-timer.js
 var CountdownTimer = class {
@@ -2190,7 +2463,7 @@ var CountdownTimer = class {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/extension-input.js
-var ExtensionInputComponent = class extends Container2 {
+var ExtensionInputComponent = class extends Container3 {
   static {
     __name(this, "ExtensionInputComponent");
   }
@@ -2216,11 +2489,11 @@ var ExtensionInputComponent = class extends Container2 {
     this.baseTitle = title;
     this.addChild(new DynamicBorder());
     this.addChild(new Spacer2(1));
-    this.titleText = new Text2(theme.fg("accent", title), 1, 0);
+    this.titleText = new Text3(theme.fg("accent", title), 1, 0);
     this.addChild(this.titleText);
     if (opts?.description) {
       this.addChild(new Spacer2(1));
-      this.addChild(new Text2(theme.fg("text", opts.description), 1, 0));
+      this.addChild(new Text3(theme.fg("text", opts.description), 1, 0));
     }
     this.addChild(new Spacer2(1));
     if (opts?.timeout && opts.timeout > 0 && opts.tui) {
@@ -2231,7 +2504,7 @@ var ExtensionInputComponent = class extends Container2 {
       this.input.setValue(opts.initialValue);
     this.addChild(this.input);
     this.addChild(new Spacer2(1));
-    this.addChild(new Text2(`${keyHint("tui.select.confirm", "submit")}  ${keyHint("tui.select.cancel", "cancel")}`, 1, 0));
+    this.addChild(new Text3(`${keyHint("tui.select.confirm", "submit")}  ${keyHint("tui.select.cancel", "cancel")}`, 1, 0));
     this.addChild(new Spacer2(1));
     this.addChild(new DynamicBorder());
   }
@@ -2251,8 +2524,8 @@ var ExtensionInputComponent = class extends Container2 {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/extension-selector.js
-import { Container as Container3, getKeybindings as getKeybindings2, Spacer as Spacer3, Text as Text3 } from "../../../pi-tui.mjs";
-var ExtensionSelectorComponent = class extends Container3 {
+import { Container as Container4, getKeybindings as getKeybindings2, Spacer as Spacer3, Text as Text4 } from "../../../pi-tui.mjs";
+var ExtensionSelectorComponent = class extends Container4 {
   static {
     __name(this, "ExtensionSelectorComponent");
   }
@@ -2274,20 +2547,20 @@ var ExtensionSelectorComponent = class extends Container3 {
     this.baseTitle = title;
     this.addChild(new DynamicBorder());
     this.addChild(new Spacer3(1));
-    this.titleText = new Text3(theme.fg("accent", theme.bold(title)), 1, 0);
+    this.titleText = new Text4(theme.fg("accent", theme.bold(title)), 1, 0);
     this.addChild(this.titleText);
     if (opts?.description) {
       this.addChild(new Spacer3(1));
-      this.addChild(new Text3(theme.fg("text", opts.description), 1, 0));
+      this.addChild(new Text4(theme.fg("text", opts.description), 1, 0));
     }
     this.addChild(new Spacer3(1));
     if (opts?.timeout && opts.timeout > 0 && opts.tui) {
       this.countdown = new CountdownTimer(opts.timeout, opts.tui, (s) => this.titleText.setText(theme.fg("accent", theme.bold(`${this.baseTitle} (${s}s)`))), () => this.onCancelCallback());
     }
-    this.listContainer = new Container3();
+    this.listContainer = new Container4();
     this.addChild(this.listContainer);
     this.addChild(new Spacer3(1));
-    this.addChild(new Text3(rawKeyHint("\u2191\u2193", "navigate") + "  " + keyHint("tui.select.confirm", "select") + "  " + keyHint("tui.select.cancel", "cancel"), 1, 0));
+    this.addChild(new Text4(rawKeyHint("\u2191\u2193", "navigate") + "  " + keyHint("tui.select.confirm", "select") + "  " + keyHint("tui.select.cancel", "cancel"), 1, 0));
     this.addChild(new Spacer3(1));
     this.addChild(new DynamicBorder());
     this.updateList();
@@ -2297,7 +2570,7 @@ var ExtensionSelectorComponent = class extends Container3 {
     for (let i = 0; i < this.options.length; i++) {
       const isSelected = i === this.selectedIndex;
       const text = isSelected ? theme.fg("accent", "\u2192 ") + theme.fg("accent", this.options[i]) : `  ${theme.fg("text", this.options[i])}`;
-      this.listContainer.addChild(new Text3(text, 1, 0));
+      this.listContainer.addChild(new Text4(text, 1, 0));
     }
   }
   handleInput(keyData) {
@@ -2324,7 +2597,7 @@ var ExtensionSelectorComponent = class extends Container3 {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/first-time-setup.js
-import { Container as Container4, getKeybindings as getKeybindings3, Spacer as Spacer4, Text as Text4 } from "../../../pi-tui.mjs";
+import { Container as Container5, getKeybindings as getKeybindings3, Spacer as Spacer4, Text as Text5 } from "../../../pi-tui.mjs";
 var THEME_OPTIONS = [
   { value: SYSTEM_THEME_NAME, label: "System (matches your terminal colors)" },
   { value: "dark", label: "Dark" },
@@ -2335,7 +2608,7 @@ var ANALYTICS_OPTIONS = [
   { value: false, label: "Don't share" }
 ];
 var SETUP_LOGO_LINES = ["\u2588\u2588\u2588\u2588\u2588\u2588", "\u2588\u2588  \u2588\u2588", "\u2588\u2588\u2588\u2588  \u2588\u2588", "\u2588\u2588    \u2588\u2588"];
-var FirstTimeSetupComponent = class extends Container4 {
+var FirstTimeSetupComponent = class extends Container5 {
   static {
     __name(this, "FirstTimeSetupComponent");
   }
@@ -2359,22 +2632,22 @@ var FirstTimeSetupComponent = class extends Container4 {
     this.clear();
     this.addChild(new DynamicBorder());
     this.addChild(new Spacer4(1));
-    this.addChild(new Text4(theme.fg("accent", SETUP_LOGO_LINES.join("\n")), 1, 0));
+    this.addChild(new Text5(theme.fg("accent", SETUP_LOGO_LINES.join("\n")), 1, 0));
     this.addChild(new Spacer4(1));
-    this.addChild(new Text4(theme.fg("accent", theme.bold(`Welcome to ${APP_NAME}, the minimal coding agent.`)), 1, 0));
+    this.addChild(new Text5(theme.fg("accent", theme.bold(`Welcome to ${APP_NAME}, the minimal coding agent.`)), 1, 0));
     this.addChild(new Spacer4(1));
     if (this.step === "theme") {
-      this.addChild(new Text4(theme.fg("text", "Pick a theme."), 1, 0));
+      this.addChild(new Text5(theme.fg("text", "Pick a theme."), 1, 0));
       this.addChild(new Spacer4(1));
       this.addOptionList(THEME_OPTIONS.map((option) => option.label), this.themeIndex);
     } else {
-      this.addChild(new Text4(theme.fg("text", "Opt-in to anonymous usage data sharing?"), 1, 0));
-      this.addChild(new Text4(theme.fg("muted", "Opting in stores a tracking identifier in settings.json and enables anonymous\nusage analytics. This helps us to better debug, reproduce, and resolve issues\nand bugs within Pi. You can observe what is shared using /privacy and make\nchanges anytime in settings.json."), 1, 0));
+      this.addChild(new Text5(theme.fg("text", "Opt-in to anonymous usage data sharing?"), 1, 0));
+      this.addChild(new Text5(theme.fg("muted", "Opting in stores a tracking identifier in settings.json and enables anonymous\nusage analytics. This helps us to better debug, reproduce, and resolve issues\nand bugs within Pi. You can observe what is shared using /privacy and make\nchanges anytime in settings.json."), 1, 0));
       this.addChild(new Spacer4(1));
       this.addOptionList(ANALYTICS_OPTIONS.map((option) => option.label), this.analyticsIndex);
     }
     this.addChild(new Spacer4(1));
-    this.addChild(new Text4(rawKeyHint("\u2191\u2193", "navigate") + "  " + keyHint("tui.select.confirm", this.step === "theme" ? "continue" : "finish") + "  " + keyHint("tui.select.cancel", "skip setup"), 1, 0));
+    this.addChild(new Text5(rawKeyHint("\u2191\u2193", "navigate") + "  " + keyHint("tui.select.confirm", this.step === "theme" ? "continue" : "finish") + "  " + keyHint("tui.select.cancel", "skip setup"), 1, 0));
     this.addChild(new Spacer4(1));
     this.addChild(new DynamicBorder());
   }
@@ -2383,7 +2656,7 @@ var FirstTimeSetupComponent = class extends Container4 {
       const isSelected = i === selectedIndex;
       const prefix = isSelected ? theme.fg("accent", "\u2192 ") : "  ";
       const label = isSelected ? theme.fg("accent", labels[i]) : theme.fg("text", labels[i]);
-      this.addChild(new Text4(`${prefix}${label}`, 1, 0));
+      this.addChild(new Text5(`${prefix}${label}`, 1, 0));
     }
   }
   moveSelection(delta) {
@@ -2849,7 +3122,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync as existsSync3 } from "node:fs";
 import { unlink } from "node:fs/promises";
 import * as os from "node:os";
-import { Container as Container5, getKeybindings as getKeybindings4, Input as Input3, Spacer as Spacer5, Text as Text5, truncateToWidth as truncateToWidth2, visibleWidth as visibleWidth2 } from "../../../pi-tui.mjs";
+import { Container as Container6, getKeybindings as getKeybindings4, Input as Input3, Spacer as Spacer5, Text as Text6, truncateToWidth as truncateToWidth2, visibleWidth as visibleWidth2 } from "../../../pi-tui.mjs";
 
 // pi-dist/pi-coding-agent/modes/interactive/components/session-selector-search.js
 import { fuzzyMatch } from "../../../pi-tui.mjs";
@@ -3522,7 +3795,7 @@ async function deleteSessionFile(sessionPath) {
   }
 }
 __name(deleteSessionFile, "deleteSessionFile");
-var SessionSelectorComponent = class extends Container5 {
+var SessionSelectorComponent = class extends Container6 {
   static {
     __name(this, "SessionSelectorComponent");
   }
@@ -3678,12 +3951,12 @@ var SessionSelectorComponent = class extends Container5 {
     this.renameTargetPath = sessionPath;
     this.renameInput.setValue(currentName ?? "");
     this.renameInput.focused = true;
-    const panel = new Container5();
-    panel.addChild(new Text5(theme.bold("Rename Session"), 1, 0));
+    const panel = new Container6();
+    panel.addChild(new Text6(theme.bold("Rename Session"), 1, 0));
     panel.addChild(new Spacer5(1));
     panel.addChild(this.renameInput);
     panel.addChild(new Spacer5(1));
-    panel.addChild(new Text5(theme.fg("muted", `${keyText("tui.select.confirm")} to save \xB7 ${keyText("tui.select.cancel")} to cancel`), 1, 0));
+    panel.addChild(new Text6(theme.fg("muted", `${keyText("tui.select.confirm")} to save \xB7 ${keyText("tui.select.cancel")} to cancel`), 1, 0));
     this.buildBaseLayout(panel, { showHeader: false });
     this.requestRender();
   }
@@ -4248,7 +4521,7 @@ var LlamaClient = class {
 // pi-dist/pi-coding-agent/extensions/llama/huggingface.js
 import { readFile as readFile2 } from "node:fs/promises";
 import { homedir as homedir2 } from "node:os";
-import { join as join3 } from "node:path";
+import { join as join4 } from "node:path";
 var DEFAULT_HUGGING_FACE_URL = "https://huggingface.co";
 var QUANTIZATION_PATTERN = /(?:^|[-_.])((?:UD-)?(?:IQ\d(?:_[A-Z0-9]+)+|Q\d(?:_[A-Z0-9]+)+|BF16|F16|F32|MXFP\d(?:_[A-Z0-9]+)*))$/iu;
 var SHARD_SUFFIX_PATTERN = /-\d{5}-of-\d{5}$/u;
@@ -4279,9 +4552,9 @@ async function findHuggingFaceToken(env = process.env) {
     return fromEnvironment;
   const paths = [
     env.HF_TOKEN_PATH,
-    env.HF_HOME ? join3(env.HF_HOME, "token") : void 0,
-    env.XDG_CACHE_HOME ? join3(env.XDG_CACHE_HOME, "huggingface", "token") : void 0,
-    join3(homedir2(), ".cache", "huggingface", "token")
+    env.HF_HOME ? join4(env.HF_HOME, "token") : void 0,
+    env.XDG_CACHE_HOME ? join4(env.XDG_CACHE_HOME, "huggingface", "token") : void 0,
+    join4(homedir2(), ".cache", "huggingface", "token")
   ].filter((path5) => Boolean(path5));
   for (const path5 of new Set(paths)) {
     const token = await readToken(path5);
@@ -4603,7 +4876,7 @@ function createLlamaProvider() {
 __name(createLlamaProvider, "createLlamaProvider");
 
 // pi-dist/pi-coding-agent/extensions/llama/ui.js
-import { Container as Container6, fuzzyFilter as fuzzyFilter2, Input as Input4, SelectList as SelectList2, Spacer as Spacer6, Text as Text6, truncateToWidth as truncateToWidth3, visibleWidth as visibleWidth3 } from "../../../pi-tui.mjs";
+import { Container as Container7, fuzzyFilter as fuzzyFilter2, Input as Input4, SelectList as SelectList2, Spacer as Spacer6, Text as Text7, truncateToWidth as truncateToWidth3, visibleWidth as visibleWidth3 } from "../../../pi-tui.mjs";
 var DOWNLOAD_VALUE = "\0download";
 function contextLabel(model) {
   const context = model.meta?.n_ctx ?? model.meta?.n_ctx_train;
@@ -4644,14 +4917,14 @@ function selectTheme(theme2) {
 }
 __name(selectTheme, "selectTheme");
 function frame2(theme2, title, body, footer) {
-  const container = new Container6();
+  const container = new Container7();
   container.addChild(new DynamicBorder((text) => theme2.fg("accent", text)));
-  container.addChild(new Text6(theme2.fg("accent", theme2.bold(title)), 1, 0));
+  container.addChild(new Text7(theme2.fg("accent", theme2.bold(title)), 1, 0));
   for (const child of body)
     container.addChild(child);
   if (footer) {
     container.addChild(new Spacer6(1));
-    container.addChild(new Text6(theme2.fg("dim", footer), 1, 0));
+    container.addChild(new Text7(theme2.fg("dim", footer), 1, 0));
   }
   container.addChild(new DynamicBorder((text) => theme2.fg("accent", text)));
   return container;
@@ -4665,7 +4938,7 @@ function compactCount(value) {
   return String(value);
 }
 __name(compactCount, "compactCount");
-var HuggingFaceSearch = class extends Container6 {
+var HuggingFaceSearch = class extends Container7 {
   static {
     __name(this, "HuggingFaceSearch");
   }
@@ -4676,7 +4949,7 @@ var HuggingFaceSearch = class extends Container6 {
   cache;
   onSelectModel;
   input = new Input4();
-  resultsContainer = new Container6();
+  resultsContainer = new Container7();
   results = [];
   filteredResults = [];
   selectedIndex = 0;
@@ -4694,7 +4967,7 @@ var HuggingFaceSearch = class extends Container6 {
     this.search = search;
     this.cache = cache;
     this.onSelectModel = onSelectModel;
-    this.addChild(new Text6(theme2.fg("dim", "Model name or owner/repository[:quant]"), 1, 0));
+    this.addChild(new Text7(theme2.fg("dim", "Model name or owner/repository[:quant]"), 1, 0));
     this.addChild(this.input);
     this.addChild(new Spacer6(1));
     this.addChild(this.resultsContainer);
@@ -4718,15 +4991,15 @@ var HuggingFaceSearch = class extends Container6 {
         continue;
       const prefix = index === this.selectedIndex ? "\u2192 " : "  ";
       const details = `${compactCount(model.downloads)} downloads`;
-      this.resultsContainer.addChild(new Text6(index === this.selectedIndex ? this.theme.fg("accent", `${prefix}${model.id}  ${details}`) : `${prefix}${model.id}${this.theme.fg("muted", `  ${details}`)}`, 0, 0));
+      this.resultsContainer.addChild(new Text7(index === this.selectedIndex ? this.theme.fg("accent", `${prefix}${model.id}  ${details}`) : `${prefix}${model.id}${this.theme.fg("muted", `  ${details}`)}`, 0, 0));
     }
     if (start > 0 || end < this.filteredResults.length) {
-      this.resultsContainer.addChild(new Text6(this.theme.fg("dim", `  (${this.selectedIndex + 1}/${this.filteredResults.length})`), 0, 0));
+      this.resultsContainer.addChild(new Text7(this.theme.fg("dim", `  (${this.selectedIndex + 1}/${this.filteredResults.length})`), 0, 0));
     }
     if (this.filteredResults.length === 0) {
-      this.resultsContainer.addChild(new Text6(this.theme.fg("dim", `  ${this.status}`), 0, 0));
+      this.resultsContainer.addChild(new Text7(this.theme.fg("dim", `  ${this.status}`), 0, 0));
     } else if (this.status === "Searching Hugging Face\u2026") {
-      this.resultsContainer.addChild(new Text6(this.theme.fg("dim", `  ${this.status}`), 0, 0));
+      this.resultsContainer.addChild(new Text7(this.theme.fg("dim", `  ${this.status}`), 0, 0));
     }
     this.tui.requestRender();
   }
@@ -4846,7 +5119,7 @@ var LlamaView = class {
     this.tui = tui;
     this.theme = theme2;
     this.keybindings = keybindings;
-    this.content = frame2(theme2, "llama.cpp models", [new Text6(theme2.fg("muted", "Loading\u2026"), 1, 1)]);
+    this.content = frame2(theme2, "llama.cpp models", [new Text7(theme2.fg("muted", "Loading\u2026"), 1, 1)]);
   }
   get focused() {
     return this._focused;
@@ -4898,7 +5171,7 @@ var LlamaView = class {
         }
       };
       list.onCancel = () => resolve7({ type: "close" });
-      this.setContent(frame2(this.theme, "llama.cpp models", [new Text6(this.theme.fg("dim", serverUrl), 1, 0), new Spacer6(1), list], `${keyHint("tui.select.confirm", "load/unload/download")} \u2022 ${keyHint("tui.select.cancel", "close")}`), list);
+      this.setContent(frame2(this.theme, "llama.cpp models", [new Text7(this.theme.fg("dim", serverUrl), 1, 0), new Spacer6(1), list], `${keyHint("tui.select.confirm", "load/unload/download")} \u2022 ${keyHint("tui.select.cancel", "close")}`), list);
     });
   }
   select(title, options) {
@@ -4927,7 +5200,7 @@ ${message}`, ["Retry", "Close"]);
     });
   }
   showStatus(title, message) {
-    this.setContent(frame2(this.theme, title, [new Spacer6(1), new Text6(this.theme.fg("muted", message), 1, 0)]));
+    this.setContent(frame2(this.theme, title, [new Spacer6(1), new Text7(this.theme.fg("muted", message), 1, 0)]));
   }
   progress(state) {
     if (!this.progressPromise) {
@@ -4943,17 +5216,17 @@ ${message}`, ["Retry", "Close"]);
     if (!this.showingProgress)
       return;
     const body = [
-      new Text6(this.theme.fg("text", state.model), 1, 0),
+      new Text7(this.theme.fg("text", state.model), 1, 0),
       new Spacer6(1),
-      new Text6(this.theme.fg("muted", state.message), 1, 0)
+      new Text7(this.theme.fg("muted", state.message), 1, 0)
     ];
     if (state.ratio !== void 0) {
       const available = 40;
       const filled = Math.round(Math.max(0, Math.min(1, state.ratio)) * available);
-      body.push(new Text6(this.theme.fg("accent", `${"\u2588".repeat(filled)}${"\u2500".repeat(available - filled)} ${Math.round(state.ratio * 100)}%`), 1, 0));
+      body.push(new Text7(this.theme.fg("accent", `${"\u2588".repeat(filled)}${"\u2500".repeat(available - filled)} ${Math.round(state.ratio * 100)}%`), 1, 0));
     }
     if (state.detail)
-      body.push(new Text6(this.theme.fg("dim", state.detail), 1, 0));
+      body.push(new Text7(this.theme.fg("dim", state.detail), 1, 0));
     this.content = frame2(this.theme, state.title, body, keyHint("tui.select.cancel", "stop"));
     this.inputHandler = void 0;
     this.tui.requestRender();
@@ -5255,26 +5528,26 @@ var builtInExtensions = [
 ];
 
 // pi-dist/pi-coding-agent/extensions/mcp/cli.lazy.js
-var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-BKEABWGV.js"), "loadMcpCommand");
+var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-PP6TQO2O.js"), "loadMcpCommand");
 
 // pi-dist/pi-coding-agent/migrations.js
 import chalk4 from "../../../chalk/source/index.js";
-import { existsSync as existsSync4, mkdirSync, readdirSync, readFileSync as readFileSync2, renameSync, rmSync, writeFileSync } from "fs";
-import { dirname, join as join4 } from "path";
+import { existsSync as existsSync4, mkdirSync, readdirSync, readFileSync as readFileSync3, renameSync, rmSync, writeFileSync as writeFileSync2 } from "fs";
+import { dirname, join as join5 } from "path";
 var MIGRATION_GUIDE_URL = "https://github.com/earendil-works/pi/blob/main/packages/coding-agent/CHANGELOG.md#extensions-migration";
 var EXTENSIONS_DOC_URL = "https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/extensions.md";
 function migrateAuthToAuthJson() {
   const agentDir = getAgentDir();
-  const authPath = join4(agentDir, "auth.json");
-  const oauthPath = join4(agentDir, "oauth.json");
-  const settingsPath = join4(agentDir, "settings.json");
+  const authPath = join5(agentDir, "auth.json");
+  const oauthPath = join5(agentDir, "oauth.json");
+  const settingsPath = join5(agentDir, "settings.json");
   if (existsSync4(authPath))
     return [];
   const migrated = {};
   const providers = [];
   if (existsSync4(oauthPath)) {
     try {
-      const oauth = JSON.parse(stripBom(readFileSync2(oauthPath, "utf-8")));
+      const oauth = JSON.parse(stripBom(readFileSync3(oauthPath, "utf-8")));
       for (const [provider, cred] of Object.entries(oauth)) {
         migrated[provider] = { type: "oauth", ...cred };
         providers.push(provider);
@@ -5285,7 +5558,7 @@ function migrateAuthToAuthJson() {
   }
   if (existsSync4(settingsPath)) {
     try {
-      const content = readFileSync2(settingsPath, "utf-8");
+      const content = readFileSync3(settingsPath, "utf-8");
       const settings = JSON.parse(stripBom(content));
       if (settings.apiKeys && typeof settings.apiKeys === "object") {
         for (const [provider, key] of Object.entries(settings.apiKeys)) {
@@ -5295,14 +5568,14 @@ function migrateAuthToAuthJson() {
           }
         }
         delete settings.apiKeys;
-        writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+        writeFileSync2(settingsPath, JSON.stringify(settings, null, 2));
       }
     } catch {
     }
   }
   if (Object.keys(migrated).length > 0) {
     mkdirSync(dirname(authPath), { recursive: true });
-    writeFileSync(authPath, JSON.stringify(migrated, null, 2), { mode: 384 });
+    writeFileSync2(authPath, JSON.stringify(migrated, null, 2), { mode: 384 });
   }
   return providers;
 }
@@ -5311,7 +5584,7 @@ function migrateSessionsFromAgentRoot() {
   const agentDir = getAgentDir();
   let files;
   try {
-    files = readdirSync(agentDir).filter((f) => f.endsWith(".jsonl")).map((f) => join4(agentDir, f));
+    files = readdirSync(agentDir).filter((f) => f.endsWith(".jsonl")).map((f) => join5(agentDir, f));
   } catch {
     return;
   }
@@ -5319,7 +5592,7 @@ function migrateSessionsFromAgentRoot() {
     return;
   for (const file of files) {
     try {
-      const content = readFileSync2(file, "utf8");
+      const content = readFileSync3(file, "utf8");
       const firstLine2 = content.split("\n")[0];
       if (!firstLine2?.trim())
         continue;
@@ -5328,12 +5601,12 @@ function migrateSessionsFromAgentRoot() {
         continue;
       const cwd = header.cwd;
       const safePath = `--${cwd.replace(/^[/\\]/, "").replace(/[/\\:]/g, "-")}--`;
-      const correctDir = join4(agentDir, "sessions", safePath);
+      const correctDir = join5(agentDir, "sessions", safePath);
       if (!existsSync4(correctDir)) {
         mkdirSync(correctDir, { recursive: true });
       }
       const fileName = file.split("/").pop() || file.split("\\").pop();
-      const newPath = join4(correctDir, fileName);
+      const newPath = join5(correctDir, fileName);
       if (existsSync4(newPath))
         continue;
       renameSync(file, newPath);
@@ -5343,8 +5616,8 @@ function migrateSessionsFromAgentRoot() {
 }
 __name(migrateSessionsFromAgentRoot, "migrateSessionsFromAgentRoot");
 function migrateCommandsToPrompts(baseDir, label) {
-  const commandsDir = join4(baseDir, "commands");
-  const promptsDir = join4(baseDir, "prompts");
+  const commandsDir = join5(baseDir, "commands");
+  const promptsDir = join5(baseDir, "prompts");
   if (existsSync4(commandsDir) && !existsSync4(promptsDir)) {
     try {
       renameSync(commandsDir, promptsDir);
@@ -5358,18 +5631,18 @@ function migrateCommandsToPrompts(baseDir, label) {
 }
 __name(migrateCommandsToPrompts, "migrateCommandsToPrompts");
 function migrateKeybindingsConfigFile() {
-  const configPath = join4(getAgentDir(), "keybindings.json");
+  const configPath = join5(getAgentDir(), "keybindings.json");
   if (!existsSync4(configPath))
     return;
   try {
-    const parsed = JSON.parse(stripBom(readFileSync2(configPath, "utf-8")));
+    const parsed = JSON.parse(stripBom(readFileSync3(configPath, "utf-8")));
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
       return;
     }
     const { config, migrated } = migrateKeybindingsConfig(parsed);
     if (!migrated)
       return;
-    writeFileSync(configPath, `${JSON.stringify(config, null, 2)}
+    writeFileSync2(configPath, `${JSON.stringify(config, null, 2)}
 `, "utf-8");
   } catch {
   }
@@ -5377,15 +5650,15 @@ function migrateKeybindingsConfigFile() {
 __name(migrateKeybindingsConfigFile, "migrateKeybindingsConfigFile");
 function migrateToolsToBin() {
   const agentDir = getAgentDir();
-  const toolsDir = join4(agentDir, "tools");
+  const toolsDir = join5(agentDir, "tools");
   const binDir = getBinDir();
   if (!existsSync4(toolsDir))
     return;
   const binaries = ["fd", "rg", "fd.exe", "rg.exe"];
   let movedAny = false;
   for (const bin of binaries) {
-    const oldPath = join4(toolsDir, bin);
-    const newPath = join4(binDir, bin);
+    const oldPath = join5(toolsDir, bin);
+    const newPath = join5(binDir, bin);
     if (existsSync4(oldPath)) {
       if (!existsSync4(binDir)) {
         mkdirSync(binDir, { recursive: true });
@@ -5410,8 +5683,8 @@ function migrateToolsToBin() {
 }
 __name(migrateToolsToBin, "migrateToolsToBin");
 function checkDeprecatedExtensionDirs(baseDir, label) {
-  const hooksDir = join4(baseDir, "hooks");
-  const toolsDir = join4(baseDir, "tools");
+  const hooksDir = join5(baseDir, "hooks");
+  const toolsDir = join5(baseDir, "tools");
   const warnings = [];
   if (existsSync4(hooksDir)) {
     warnings.push(`${label} hooks/ directory found. Hooks have been renamed to extensions.`);
@@ -5434,7 +5707,7 @@ function checkDeprecatedExtensionDirs(baseDir, label) {
 __name(checkDeprecatedExtensionDirs, "checkDeprecatedExtensionDirs");
 function migrateExtensionSystem(cwd) {
   const agentDir = getAgentDir();
-  const projectDir = join4(cwd, CONFIG_DIR_NAME);
+  const projectDir = join5(cwd, CONFIG_DIR_NAME);
   migrateCommandsToPrompts(agentDir, "Global");
   migrateCommandsToPrompts(projectDir, "Project");
   const warnings = [
@@ -5485,7 +5758,7 @@ import * as os3 from "node:os";
 import * as path4 from "node:path";
 import { isRetryableAssistantError } from "../../pi-ai/sdk-bundle/compat.js";
 import * as TuiLayouts from "../../../pi-tui.mjs";
-import { CombinedAutocompleteProvider, Container as Container29, fuzzyFilter as fuzzyFilter8, getCapabilities as getCapabilities3, hyperlink as hyperlink4, Markdown as Markdown7, matchesKey as matchesKey2, Spacer as Spacer27, setCapabilityOverrides as setCapabilityOverrides2, setKeybindings as setKeybindings3, Text as Text29, TruncatedText as TruncatedText2, TuiAltScreen as TuiAltScreen3, TuiMainScreen as TuiMainScreen3, visibleWidth as visibleWidth7 } from "../../../pi-tui.mjs";
+import { CombinedAutocompleteProvider, Container as Container30, fuzzyFilter as fuzzyFilter8, getCapabilities as getCapabilities3, hyperlink as hyperlink3, Markdown as Markdown7, matchesKey as matchesKey2, Spacer as Spacer27, setCapabilityOverrides as setCapabilityOverrides2, setKeybindings as setKeybindings3, Text as Text30, TruncatedText as TruncatedText2, TuiAltScreen as TuiAltScreen3, TuiMainScreen as TuiMainScreen3, visibleWidth as visibleWidth7 } from "../../../pi-tui.mjs";
 import chalk5 from "../../../chalk/source/index.js";
 import { spawn as spawn4 } from "child_process";
 
@@ -5572,17 +5845,17 @@ function detectCacheMiss(entries, message, models) {
 __name(detectCacheMiss, "detectCacheMiss");
 
 // pi-dist/pi-coding-agent/core/crash-log.js
-import { mkdirSync as mkdirSync2, readFileSync as readFileSync3, rmSync as rmSync2, writeFileSync as writeFileSync2 } from "node:fs";
-import { dirname as dirname2, join as join5 } from "node:path";
+import { mkdirSync as mkdirSync2, readFileSync as readFileSync4, rmSync as rmSync2, writeFileSync as writeFileSync3 } from "node:fs";
+import { dirname as dirname2, join as join6 } from "node:path";
 var MAX_CRASH_RECORDS = 5;
 var MAX_AGE = 7 * 24 * 60 * 60 * 1e3;
 function crashLogPath(agentDir = getAgentDir()) {
-  return join5(agentDir, "crashes.json");
+  return join6(agentDir, "crashes.json");
 }
 __name(crashLogPath, "crashLogPath");
 function readCrashLog(path5 = crashLogPath()) {
   try {
-    const records = JSON.parse(readFileSync3(path5, "utf8"));
+    const records = JSON.parse(readFileSync4(path5, "utf8"));
     return Array.isArray(records) ? records.filter((record) => typeof record === "object" && record !== null && typeof record.timestamp === "string" && typeof record.message === "string") : [];
   } catch {
     return [];
@@ -5591,7 +5864,7 @@ function readCrashLog(path5 = crashLogPath()) {
 __name(readCrashLog, "readCrashLog");
 function writeCrashLog(records, path5) {
   mkdirSync2(dirname2(path5), { recursive: true });
-  writeFileSync2(path5, `${JSON.stringify(records, null, 2)}
+  writeFileSync3(path5, `${JSON.stringify(records, null, 2)}
 `);
 }
 __name(writeCrashLog, "writeCrashLog");
@@ -5755,7 +6028,7 @@ __name(withBuiltInRenderers, "withBuiltInRenderers");
 
 // pi-dist/pi-coding-agent/utils/changelog.js
 import path from "node:path";
-import { existsSync as existsSync5, readFileSync as readFileSync4 } from "fs";
+import { existsSync as existsSync5, readFileSync as readFileSync5 } from "fs";
 var GITHUB_REPO = "earendil-works/pi";
 var CHANGELOG_LINK_BASE_PATH = "packages/coding-agent";
 var LEGACY_REPO_RE = /^https:\/\/github\.com\/(?:badlogic|earendil-works)\/pi-mono(?=\/|$)/;
@@ -5844,7 +6117,7 @@ function parseChangelog(changelogPath) {
     return [];
   }
   try {
-    const content = readFileSync4(changelogPath, "utf-8");
+    const content = readFileSync5(changelogPath, "utf-8");
     const lines = content.split("\n");
     const entries = [];
     let currentLines = [];
@@ -5905,208 +6178,6 @@ function getNewEntries(entries, lastVersion) {
   return entries.filter((entry) => compareVersions(entry, last) > 0);
 }
 __name(getNewEntries, "getNewEntries");
-
-// pi-dist/pi-coding-agent/utils/clipboard.js
-import { randomUUID } from "node:crypto";
-import { unlinkSync, writeFileSync as writeFileSync3 } from "node:fs";
-import { platform, tmpdir } from "node:os";
-import { join as join6 } from "node:path";
-import { getNativeClipboard } from "../../../pi-tui.mjs";
-
-// pi-dist/pi-coding-agent/utils/clipboard-command.js
-import { spawn } from "node:child_process";
-function runClipboardCommand(command, args, options) {
-  return new Promise((resolve7) => {
-    const child = spawn(command, args, {
-      stdio: ["pipe", options?.input === void 0 ? "pipe" : "ignore", "ignore"],
-      windowsHide: true
-    });
-    const chunks = [];
-    let length = 0;
-    let settled = false;
-    const finish = /* @__PURE__ */ __name((result) => {
-      if (settled)
-        return;
-      settled = true;
-      clearTimeout(timer);
-      resolve7(result);
-    }, "finish");
-    const abort = /* @__PURE__ */ __name(() => {
-      child.kill("SIGKILL");
-      child.stdout?.destroy();
-      child.stdin?.destroy();
-      finish(void 0);
-    }, "abort");
-    const timer = setTimeout(abort, options?.timeoutMs ?? 3e3);
-    child.on("error", () => finish(void 0));
-    child.on("close", (code) => {
-      if (!settled)
-        finish(code === 0 ? Buffer.concat(chunks, length) : void 0);
-    });
-    child.stdout?.on("data", (chunk) => {
-      if (settled)
-        return;
-      length += chunk.length;
-      if (length > (options?.maxBufferBytes ?? 50 * 1024 * 1024))
-        abort();
-      else
-        chunks.push(chunk);
-    });
-    child.stdin?.on("error", () => {
-    });
-    child.stdin?.end(options?.input);
-  });
-}
-__name(runClipboardCommand, "runClipboardCommand");
-
-// pi-dist/pi-coding-agent/utils/wsl.js
-import { readFileSync as readFileSync5 } from "node:fs";
-function isWSL(env = process.env) {
-  if (env.WSL_DISTRO_NAME || env.WSLENV) {
-    return true;
-  }
-  try {
-    const release = readFileSync5("/proc/version", "utf-8");
-    return /microsoft|wsl/i.test(release);
-  } catch {
-    return false;
-  }
-}
-__name(isWSL, "isWSL");
-
-// pi-dist/pi-coding-agent/utils/clipboard.js
-var MAX_OSC52_ENCODED_LENGTH = 1e5;
-function isRemoteSession(env) {
-  return Boolean(env.SSH_CONNECTION || env.SSH_CLIENT || env.MOSH_CONNECTION);
-}
-__name(isRemoteSession, "isRemoteSession");
-function emitOsc52(text) {
-  const encoded = Buffer.from(text).toString("base64");
-  if (encoded.length > MAX_OSC52_ENCODED_LENGTH) {
-    return false;
-  }
-  process.stdout.write(`\x1B]52;c;${encoded}\x07`);
-  return true;
-}
-__name(emitOsc52, "emitOsc52");
-async function copyViaWindowsClipboard(text) {
-  const tmpFile = join6(tmpdir(), `pi-wsl-clip-${randomUUID()}.txt`);
-  try {
-    writeFileSync3(tmpFile, text, { encoding: "utf8", mode: 384 });
-    const winPath = (await runClipboardCommand("wslpath", ["-w", tmpFile], { timeoutMs: 1e3 }))?.toString("utf8").trim();
-    if (!winPath)
-      return false;
-    const script = `Set-Clipboard -Value ([System.IO.File]::ReadAllText('${winPath.replaceAll("'", "''")}', [System.Text.Encoding]::UTF8))`;
-    const result = await runClipboardCommand("powershell.exe", ["-NoProfile", "-Command", script], {
-      timeoutMs: 5e3
-    });
-    return result !== void 0;
-  } catch {
-    return false;
-  } finally {
-    try {
-      unlinkSync(tmpFile);
-    } catch {
-    }
-  }
-}
-__name(copyViaWindowsClipboard, "copyViaWindowsClipboard");
-async function readClipboardText() {
-  if (platform() === "linux") {
-    const commands = [];
-    if (process.env.TERMUX_VERSION)
-      commands.push(["termux-clipboard-get", []]);
-    if (process.env.WAYLAND_DISPLAY)
-      commands.push(["wl-paste", ["--no-newline", "--type", "text"]]);
-    if (process.env.DISPLAY) {
-      commands.push(["xclip", ["-selection", "clipboard", "-out"]], ["xsel", ["--clipboard", "--output"]]);
-    }
-    for (const [command, args] of commands) {
-      const bytes = await runClipboardCommand(command, args, { timeoutMs: 5e3 });
-      if (bytes !== void 0)
-        return bytes.toString("utf8") || null;
-    }
-  }
-  try {
-    return await getNativeClipboard()?.getText() || null;
-  } catch {
-    return null;
-  }
-}
-__name(readClipboardText, "readClipboardText");
-async function readClipboardFilePaths() {
-  const paths = await getNativeClipboard()?.getFilePaths?.();
-  return paths?.length ? paths : null;
-}
-__name(readClipboardFilePaths, "readClipboardFilePaths");
-async function copyToClipboard(text) {
-  const p = platform();
-  const env = process.env;
-  let copied = false;
-  if (p !== "linux") {
-    try {
-      const clipboard = getNativeClipboard();
-      if (clipboard?.setText) {
-        await clipboard.setText(text);
-        copied = true;
-      }
-    } catch {
-    }
-  }
-  if (!copied) {
-    const commands = [];
-    if (p === "darwin")
-      commands.push(["pbcopy", []]);
-    else if (p === "win32")
-      commands.push(["clip", []]);
-    else {
-      if (env.TERMUX_VERSION)
-        commands.push(["termux-clipboard-set", []]);
-      if (env.WAYLAND_DISPLAY)
-        commands.push(["wl-copy", []]);
-      if (env.DISPLAY) {
-        commands.push(["xclip", ["-selection", "clipboard"]], ["xsel", ["--clipboard", "--input"]]);
-      }
-    }
-    for (const [command, args] of commands) {
-      if (await runClipboardCommand(command, args, { input: text, timeoutMs: 5e3 }) !== void 0) {
-        copied = true;
-        break;
-      }
-    }
-  }
-  let osc52Emitted = false;
-  if (!copied && p === "linux" && isWSL(env)) {
-    if (env.WT_SESSION)
-      osc52Emitted = emitOsc52(text);
-    copied = osc52Emitted || await copyViaWindowsClipboard(text);
-  }
-  const headless = p === "linux" && !env.DISPLAY && !env.WAYLAND_DISPLAY && !env.TERMUX_VERSION;
-  let oversized = false;
-  if (!osc52Emitted && (isRemoteSession(env) || !copied && headless)) {
-    if (emitOsc52(text))
-      copied = true;
-    else
-      oversized = true;
-  }
-  if (copied)
-    return;
-  if (oversized)
-    throw new Error("Clipboard unavailable: text exceeds the OSC 52 size limit");
-  if (p === "linux") {
-    if (env.TERMUX_VERSION) {
-      throw new Error("Clipboard unavailable: install the Termux:API app and `termux-api` package");
-    }
-    if (env.WAYLAND_DISPLAY) {
-      throw new Error("Clipboard unavailable: install `wl-clipboard` (`wl-copy`) or check Wayland access");
-    }
-    if (env.DISPLAY) {
-      throw new Error("Clipboard unavailable: install `xclip` or `xsel`, or check X11 access");
-    }
-  }
-  throw new Error("Clipboard unavailable");
-}
-__name(copyToClipboard, "copyToClipboard");
 
 // pi-dist/pi-coding-agent/utils/clipboard-image.js
 import { getNativeClipboard as getNativeClipboard2 } from "../../../pi-tui.mjs";
@@ -6463,8 +6534,8 @@ async function uploadBugReport(bundle, options = {}) {
 __name(uploadBugReport, "uploadBugReport");
 
 // pi-dist/pi-coding-agent/modes/interactive/components/bordered-loader.js
-import { CancellableLoader, Container as Container7, Loader, Spacer as Spacer7, Text as Text7 } from "../../../pi-tui.mjs";
-var BorderedLoader = class extends Container7 {
+import { CancellableLoader, Container as Container8, Loader, Spacer as Spacer7, Text as Text8 } from "../../../pi-tui.mjs";
+var BorderedLoader = class extends Container8 {
   static {
     __name(this, "BorderedLoader");
   }
@@ -6485,7 +6556,7 @@ var BorderedLoader = class extends Container7 {
     this.addChild(this.loader);
     if (this.cancellable) {
       this.addChild(new Spacer7(1));
-      this.addChild(new Text7(keyHint("tui.select.cancel", "cancel"), 1, 0));
+      this.addChild(new Text8(keyHint("tui.select.cancel", "cancel"), 1, 0));
     }
     this.addChild(new Spacer7(1));
     this.addChild(new DynamicBorder(borderColor));
@@ -6516,7 +6587,7 @@ var BorderedLoader = class extends Container7 {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/extension-editor.js
-import { Container as Container8, Editor, getKeybindings as getKeybindings5, Spacer as Spacer8, Text as Text8 } from "../../../pi-tui.mjs";
+import { Container as Container9, Editor, getKeybindings as getKeybindings5, Spacer as Spacer8, Text as Text9 } from "../../../pi-tui.mjs";
 
 // pi-dist/pi-coding-agent/modes/interactive/external-editor.js
 import { spawn as spawn2 } from "node:child_process";
@@ -6554,7 +6625,7 @@ Pi will resume when the editor exits.
 __name(editInExternalEditor, "editInExternalEditor");
 
 // pi-dist/pi-coding-agent/modes/interactive/components/extension-editor.js
-var ExtensionEditorComponent = class extends Container8 {
+var ExtensionEditorComponent = class extends Container9 {
   static {
     __name(this, "ExtensionEditorComponent");
   }
@@ -6582,10 +6653,10 @@ var ExtensionEditorComponent = class extends Container8 {
     const { description, ...editorOptions } = options ?? {};
     this.addChild(new DynamicBorder());
     this.addChild(new Spacer8(1));
-    this.addChild(new Text8(theme.fg("accent", title), 1, 0));
+    this.addChild(new Text9(theme.fg("accent", title), 1, 0));
     if (description) {
       this.addChild(new Spacer8(1));
-      this.addChild(new Text8(theme.fg("text", description), 1, 0));
+      this.addChild(new Text9(theme.fg("text", description), 1, 0));
     }
     this.addChild(new Spacer8(1));
     this.editor = new Editor(tui, getEditorTheme(), editorOptions);
@@ -6598,7 +6669,7 @@ var ExtensionEditorComponent = class extends Container8 {
     this.addChild(this.editor);
     this.addChild(new Spacer8(1));
     const hint = keyHint("tui.select.confirm", "submit") + "  " + keyHint("tui.input.newLine", "newline") + "  " + keyHint("tui.select.cancel", "cancel") + `  ${keyHint("app.editor.external", "external editor")}`;
-    this.addChild(new Text8(hint, 1, 0));
+    this.addChild(new Text9(hint, 1, 0));
     this.addChild(new Spacer8(1));
     this.addChild(new DynamicBorder());
   }
@@ -6639,7 +6710,7 @@ import * as fs from "node:fs";
 import * as os2 from "node:os";
 import * as path2 from "node:path";
 import { DEFAULT_RADIUS_GATEWAY as DEFAULT_RADIUS_GATEWAY2 } from "../../pi-ai/providers/radius-config.js";
-import { hyperlink as hyperlink3 } from "../../../pi-tui.mjs";
+import { hyperlink as hyperlink2 } from "../../../pi-tui.mjs";
 function createShareTrailingEntries(session, parentId, timestamp) {
   return [
     {
@@ -6745,7 +6816,7 @@ async function tryShareViaRadius(tmpFile, context) {
       return true;
     }
     const shareUrl = json2.artifact.canonical_url;
-    context.showStatus(`Share URL: ${hyperlink3(shareUrl, shareUrl)}`);
+    context.showStatus(`Share URL: ${hyperlink2(shareUrl, shareUrl)}`);
     return true;
   } catch (error) {
     if (!loader.signal.aborted) {
@@ -6795,8 +6866,8 @@ async function shareViaGist(tmpFile, context) {
       return;
     }
     const previewUrl = getShareViewerUrl(gistId);
-    context.showStatus(`Share URL: ${hyperlink3(previewUrl, previewUrl)}
-Gist: ${hyperlink3(gistUrl, gistUrl)}`);
+    context.showStatus(`Share URL: ${hyperlink2(previewUrl, previewUrl)}
+Gist: ${hyperlink2(gistUrl, gistUrl)}`);
   } catch (error) {
     if (!loader.signal.aborted) {
       restoreEditor(loader, context);
@@ -7053,455 +7124,8 @@ function createChatViewport(options) {
 }
 __name(createChatViewport, "createChatViewport");
 
-// pi-dist/pi-coding-agent/modes/interactive/components/armin.js
-var WIDTH = 31;
-var HEIGHT = 36;
-var BITS = [
-  255,
-  255,
-  255,
-  127,
-  255,
-  240,
-  255,
-  127,
-  255,
-  237,
-  255,
-  127,
-  255,
-  219,
-  255,
-  127,
-  255,
-  183,
-  255,
-  127,
-  255,
-  119,
-  254,
-  127,
-  63,
-  248,
-  254,
-  127,
-  223,
-  255,
-  254,
-  127,
-  223,
-  63,
-  252,
-  127,
-  159,
-  195,
-  251,
-  127,
-  111,
-  252,
-  244,
-  127,
-  247,
-  15,
-  247,
-  127,
-  247,
-  255,
-  247,
-  127,
-  247,
-  255,
-  227,
-  127,
-  247,
-  7,
-  232,
-  127,
-  239,
-  248,
-  103,
-  112,
-  15,
-  255,
-  187,
-  111,
-  241,
-  0,
-  208,
-  91,
-  253,
-  63,
-  236,
-  83,
-  193,
-  255,
-  239,
-  87,
-  159,
-  253,
-  238,
-  95,
-  159,
-  252,
-  174,
-  95,
-  31,
-  120,
-  172,
-  95,
-  63,
-  0,
-  80,
-  108,
-  127,
-  0,
-  220,
-  119,
-  255,
-  192,
-  63,
-  120,
-  255,
-  1,
-  248,
-  127,
-  255,
-  3,
-  156,
-  120,
-  255,
-  7,
-  140,
-  124,
-  255,
-  15,
-  206,
-  120,
-  255,
-  255,
-  207,
-  127,
-  255,
-  255,
-  207,
-  120,
-  255,
-  255,
-  223,
-  120,
-  255,
-  255,
-  223,
-  125,
-  255,
-  255,
-  63,
-  126,
-  255,
-  255,
-  255,
-  127
-];
-var BYTES_PER_ROW = Math.ceil(WIDTH / 8);
-var DISPLAY_HEIGHT = Math.ceil(HEIGHT / 2);
-var EFFECTS = ["typewriter", "scanline", "rain", "fade", "crt", "glitch", "dissolve"];
-function getPixel(x, y) {
-  if (y >= HEIGHT)
-    return false;
-  const byteIndex = y * BYTES_PER_ROW + Math.floor(x / 8);
-  const bitIndex = x % 8;
-  return (BITS[byteIndex] >> bitIndex & 1) === 0;
-}
-__name(getPixel, "getPixel");
-function getChar(x, row) {
-  const upper = getPixel(x, row * 2);
-  const lower = getPixel(x, row * 2 + 1);
-  if (upper && lower)
-    return "\u2588";
-  if (upper)
-    return "\u2580";
-  if (lower)
-    return "\u2584";
-  return " ";
-}
-__name(getChar, "getChar");
-function buildFinalGrid() {
-  const grid = [];
-  for (let row = 0; row < DISPLAY_HEIGHT; row++) {
-    const line = [];
-    for (let x = 0; x < WIDTH; x++) {
-      line.push(getChar(x, row));
-    }
-    grid.push(line);
-  }
-  return grid;
-}
-__name(buildFinalGrid, "buildFinalGrid");
-var ArminComponent = class {
-  static {
-    __name(this, "ArminComponent");
-  }
-  ui;
-  interval = null;
-  effect;
-  finalGrid;
-  currentGrid;
-  effectState = {};
-  cachedLines = [];
-  cachedWidth = 0;
-  gridVersion = 0;
-  cachedVersion = -1;
-  constructor(ui) {
-    this.ui = ui;
-    this.effect = EFFECTS[Math.floor(Math.random() * EFFECTS.length)];
-    this.finalGrid = buildFinalGrid();
-    this.currentGrid = this.createEmptyGrid();
-    this.initEffect();
-    this.startAnimation();
-  }
-  invalidate() {
-    this.cachedWidth = 0;
-  }
-  render(width) {
-    if (width === this.cachedWidth && this.cachedVersion === this.gridVersion) {
-      return this.cachedLines;
-    }
-    const padding = 1;
-    const availableWidth = width - padding;
-    this.cachedLines = this.currentGrid.map((row) => {
-      const clipped = row.slice(0, availableWidth).join("");
-      const padRight = Math.max(0, width - padding - clipped.length);
-      return ` ${theme.fg("accent", clipped)}${" ".repeat(padRight)}`;
-    });
-    const message = "ARMIN SAYS HI";
-    const msgPadRight = Math.max(0, width - padding - message.length);
-    this.cachedLines.push(` ${theme.fg("accent", message)}${" ".repeat(msgPadRight)}`);
-    this.cachedWidth = width;
-    this.cachedVersion = this.gridVersion;
-    return this.cachedLines;
-  }
-  createEmptyGrid() {
-    return Array.from({ length: DISPLAY_HEIGHT }, () => Array(WIDTH).fill(" "));
-  }
-  initEffect() {
-    switch (this.effect) {
-      case "typewriter":
-        this.effectState = { pos: 0 };
-        break;
-      case "scanline":
-        this.effectState = { row: 0 };
-        break;
-      case "rain":
-        this.effectState = {
-          drops: Array.from({ length: WIDTH }, () => ({
-            y: -Math.floor(Math.random() * DISPLAY_HEIGHT * 2),
-            settled: 0
-          }))
-        };
-        break;
-      case "fade": {
-        const positions = [];
-        for (let row = 0; row < DISPLAY_HEIGHT; row++) {
-          for (let x = 0; x < WIDTH; x++) {
-            positions.push([row, x]);
-          }
-        }
-        for (let i = positions.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [positions[i], positions[j]] = [positions[j], positions[i]];
-        }
-        this.effectState = { positions, idx: 0 };
-        break;
-      }
-      case "crt":
-        this.effectState = { expansion: 0 };
-        break;
-      case "glitch":
-        this.effectState = { phase: 0, glitchFrames: 8 };
-        break;
-      case "dissolve": {
-        this.currentGrid = Array.from({ length: DISPLAY_HEIGHT }, () => Array.from({ length: WIDTH }, () => {
-          const chars = [" ", "\u2591", "\u2592", "\u2593", "\u2588", "\u2580", "\u2584"];
-          return chars[Math.floor(Math.random() * chars.length)];
-        }));
-        const dissolvePositions = [];
-        for (let row = 0; row < DISPLAY_HEIGHT; row++) {
-          for (let x = 0; x < WIDTH; x++) {
-            dissolvePositions.push([row, x]);
-          }
-        }
-        for (let i = dissolvePositions.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [dissolvePositions[i], dissolvePositions[j]] = [dissolvePositions[j], dissolvePositions[i]];
-        }
-        this.effectState = { positions: dissolvePositions, idx: 0 };
-        break;
-      }
-    }
-  }
-  startAnimation() {
-    const fps = this.effect === "glitch" ? 60 : 30;
-    this.interval = setInterval(() => {
-      const done = this.tickEffect();
-      this.updateDisplay();
-      this.ui.requestRender();
-      if (done) {
-        this.stopAnimation();
-      }
-    }, 1e3 / fps);
-  }
-  stopAnimation() {
-    if (this.interval) {
-      clearInterval(this.interval);
-      this.interval = null;
-    }
-  }
-  tickEffect() {
-    switch (this.effect) {
-      case "typewriter":
-        return this.tickTypewriter();
-      case "scanline":
-        return this.tickScanline();
-      case "rain":
-        return this.tickRain();
-      case "fade":
-        return this.tickFade();
-      case "crt":
-        return this.tickCrt();
-      case "glitch":
-        return this.tickGlitch();
-      case "dissolve":
-        return this.tickDissolve();
-      default:
-        return true;
-    }
-  }
-  tickTypewriter() {
-    const state = this.effectState;
-    const pixelsPerFrame = 3;
-    for (let i = 0; i < pixelsPerFrame; i++) {
-      const row = Math.floor(state.pos / WIDTH);
-      const x = state.pos % WIDTH;
-      if (row >= DISPLAY_HEIGHT)
-        return true;
-      this.currentGrid[row][x] = this.finalGrid[row][x];
-      state.pos++;
-    }
-    return false;
-  }
-  tickScanline() {
-    const state = this.effectState;
-    if (state.row >= DISPLAY_HEIGHT)
-      return true;
-    for (let x = 0; x < WIDTH; x++) {
-      this.currentGrid[state.row][x] = this.finalGrid[state.row][x];
-    }
-    state.row++;
-    return false;
-  }
-  tickRain() {
-    const state = this.effectState;
-    let allSettled = true;
-    this.currentGrid = this.createEmptyGrid();
-    for (let x = 0; x < WIDTH; x++) {
-      const drop = state.drops[x];
-      for (let row = DISPLAY_HEIGHT - 1; row >= DISPLAY_HEIGHT - drop.settled; row--) {
-        if (row >= 0) {
-          this.currentGrid[row][x] = this.finalGrid[row][x];
-        }
-      }
-      if (drop.settled >= DISPLAY_HEIGHT)
-        continue;
-      allSettled = false;
-      let targetRow = -1;
-      for (let row = DISPLAY_HEIGHT - 1 - drop.settled; row >= 0; row--) {
-        if (this.finalGrid[row][x] !== " ") {
-          targetRow = row;
-          break;
-        }
-      }
-      drop.y++;
-      if (drop.y >= 0 && drop.y < DISPLAY_HEIGHT) {
-        if (targetRow >= 0 && drop.y >= targetRow) {
-          drop.settled = DISPLAY_HEIGHT - targetRow;
-          drop.y = -Math.floor(Math.random() * 5) - 1;
-        } else {
-          this.currentGrid[drop.y][x] = "\u2593";
-        }
-      }
-    }
-    return allSettled;
-  }
-  tickFade() {
-    const state = this.effectState;
-    const pixelsPerFrame = 15;
-    for (let i = 0; i < pixelsPerFrame; i++) {
-      if (state.idx >= state.positions.length)
-        return true;
-      const [row, x] = state.positions[state.idx];
-      this.currentGrid[row][x] = this.finalGrid[row][x];
-      state.idx++;
-    }
-    return false;
-  }
-  tickCrt() {
-    const state = this.effectState;
-    const midRow = Math.floor(DISPLAY_HEIGHT / 2);
-    this.currentGrid = this.createEmptyGrid();
-    const top = midRow - state.expansion;
-    const bottom = midRow + state.expansion;
-    for (let row = Math.max(0, top); row <= Math.min(DISPLAY_HEIGHT - 1, bottom); row++) {
-      for (let x = 0; x < WIDTH; x++) {
-        this.currentGrid[row][x] = this.finalGrid[row][x];
-      }
-    }
-    state.expansion++;
-    return state.expansion > DISPLAY_HEIGHT;
-  }
-  tickGlitch() {
-    const state = this.effectState;
-    if (state.phase < state.glitchFrames) {
-      this.currentGrid = this.finalGrid.map((row) => {
-        const offset = Math.floor(Math.random() * 7) - 3;
-        const glitchRow = [...row];
-        if (Math.random() < 0.3) {
-          const shifted = glitchRow.slice(offset).concat(glitchRow.slice(0, offset));
-          return shifted.slice(0, WIDTH);
-        }
-        if (Math.random() < 0.2) {
-          const swapRow = Math.floor(Math.random() * DISPLAY_HEIGHT);
-          return [...this.finalGrid[swapRow]];
-        }
-        return glitchRow;
-      });
-      state.phase++;
-      return false;
-    }
-    this.currentGrid = this.finalGrid.map((row) => [...row]);
-    return true;
-  }
-  tickDissolve() {
-    const state = this.effectState;
-    const pixelsPerFrame = 20;
-    for (let i = 0; i < pixelsPerFrame; i++) {
-      if (state.idx >= state.positions.length)
-        return true;
-      const [row, x] = state.positions[state.idx];
-      this.currentGrid[row][x] = this.finalGrid[row][x];
-      state.idx++;
-    }
-    return false;
-  }
-  updateDisplay() {
-    this.gridVersion++;
-  }
-  dispose() {
-    this.stopAnimation();
-  }
-};
-
 // pi-dist/pi-coding-agent/modes/interactive/components/assistant-message.js
-import { Container as Container9, Markdown, MouseRegion, Spacer as Spacer9, Text as Text9 } from "../../../pi-tui.mjs";
+import { Container as Container10, Markdown, MouseRegion, Spacer as Spacer9, Text as Text10 } from "../../../pi-tui.mjs";
 
 // pi-dist/pi-coding-agent/modes/interactive/components/markdown-transform.js
 function createMarkdownTransform(messageType, isStreaming, transformers) {
@@ -7527,7 +7151,7 @@ __name(applyMarkdownTransformers, "applyMarkdownTransformers");
 var OSC133_ZONE_START = "\x1B]133;A\x07";
 var OSC133_ZONE_END = "\x1B]133;B\x07";
 var OSC133_ZONE_FINAL = "\x1B]133;C\x07";
-var AssistantMessageComponent = class extends Container9 {
+var AssistantMessageComponent = class extends Container10 {
   static {
     __name(this, "AssistantMessageComponent");
   }
@@ -7548,7 +7172,7 @@ var AssistantMessageComponent = class extends Container9 {
     this.hiddenThinkingLabel = hiddenThinkingLabel;
     this.outputPad = outputPad;
     this.markdownTransformers = markdownTransformers;
-    this.contentContainer = new Container9();
+    this.contentContainer = new Container10();
     this.addChild(this.contentContainer);
     if (message) {
       this.updateContent(message);
@@ -7622,7 +7246,7 @@ var AssistantMessageComponent = class extends Container9 {
         const hasVisibleContentAfter = message.content.slice(i + 1).some((c2) => c2.type === "text" && c2.text.trim() || c2.type === "thinking" && c2.thinking.trim());
         const runIndex = thinkingRunIndex++;
         const hidden = this.thinkingVisibilityOverrides.get(runIndex) ?? this.hideThinkingBlock;
-        const thinkingComponent = hidden ? new Text9(theme.italic(theme.fg("thinkingText", this.hiddenThinkingLabel)), this.outputPad, 0) : new Markdown(thinkingBlocks.join("\n\n"), this.outputPad, 0, this.markdownTheme, {
+        const thinkingComponent = hidden ? new Text10(theme.italic(theme.fg("thinkingText", this.hiddenThinkingLabel)), this.outputPad, 0) : new Markdown(thinkingBlocks.join("\n\n"), this.outputPad, 0, this.markdownTheme, {
           color: /* @__PURE__ */ __name((text) => theme.fg("thinkingText", text), "color"),
           italic: true
         }, {
@@ -7645,25 +7269,25 @@ var AssistantMessageComponent = class extends Container9 {
     this.hasToolCalls = hasToolCalls;
     if (message.stopReason === "length") {
       this.contentContainer.addChild(new Spacer9(1));
-      this.contentContainer.addChild(new Text9(theme.fg("error", "Response was truncated before completion."), this.outputPad, 0));
+      this.contentContainer.addChild(new Text10(theme.fg("error", "Response was truncated before completion."), this.outputPad, 0));
     } else if (!hasToolCalls) {
       if (message.stopReason === "aborted") {
         const abortMessage = message.errorMessage && message.errorMessage !== "Request was aborted" ? message.errorMessage : "Operation aborted";
         this.contentContainer.addChild(new Spacer9(1));
-        this.contentContainer.addChild(new Text9(theme.fg("error", abortMessage), this.outputPad, 0));
+        this.contentContainer.addChild(new Text10(theme.fg("error", abortMessage), this.outputPad, 0));
       } else if (message.stopReason === "error") {
         const errorMsg = message.errorMessage || "Unknown error";
         this.contentContainer.addChild(new Spacer9(1));
-        this.contentContainer.addChild(new Text9(theme.fg("error", `Error: ${errorMsg}`), this.outputPad, 0));
+        this.contentContainer.addChild(new Text10(theme.fg("error", `Error: ${errorMsg}`), this.outputPad, 0));
       }
     }
   }
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/bash-execution.js
-import { Container as Container10, Loader as Loader2, Spacer as Spacer10, Text as Text10 } from "../../../pi-tui.mjs";
+import { Container as Container11, Loader as Loader2, Spacer as Spacer10, Text as Text11 } from "../../../pi-tui.mjs";
 var PREVIEW_LINES = 20;
-var BashExecutionComponent = class extends Container10 {
+var BashExecutionComponent = class extends Container11 {
   static {
     __name(this, "BashExecutionComponent");
   }
@@ -7683,9 +7307,9 @@ var BashExecutionComponent = class extends Container10 {
     const borderColor = /* @__PURE__ */ __name((str) => theme.fg(colorKey, str), "borderColor");
     this.addChild(new Spacer10(1));
     this.addChild(new DynamicBorder(borderColor));
-    this.contentContainer = new Container10();
+    this.contentContainer = new Container11();
     this.addChild(this.contentContainer);
-    const header = new Text10(theme.fg(colorKey, theme.bold(`$ ${command}`)), 1, 0);
+    const header = new Text11(theme.fg(colorKey, theme.bold(`$ ${command}`)), 1, 0);
     this.contentContainer.addChild(header);
     this.loader = new Loader2(ui, (spinner) => theme.fg(colorKey, spinner), (text) => theme.fg("muted", text), `Running... (${keyText("tui.select.cancel")} to cancel)`);
     this.contentContainer.addChild(this.loader);
@@ -7731,12 +7355,12 @@ var BashExecutionComponent = class extends Container10 {
     const previewLogicalLines = availableLines.slice(-PREVIEW_LINES);
     const hiddenLineCount = availableLines.length - previewLogicalLines.length;
     this.contentContainer.clear();
-    const header = new Text10(theme.fg("bashMode", theme.bold(`$ ${this.command}`)), 1, 0);
+    const header = new Text11(theme.fg("bashMode", theme.bold(`$ ${this.command}`)), 1, 0);
     this.contentContainer.addChild(header);
     if (availableLines.length > 0) {
       if (this.expanded) {
         const displayText = availableLines.map((line) => theme.fg("muted", line)).join("\n");
-        this.contentContainer.addChild(new Text10(`
+        this.contentContainer.addChild(new Text11(`
 ${displayText}`, 1, 0));
       } else {
         const styledOutput = previewLogicalLines.map((line) => theme.fg("muted", line)).join("\n");
@@ -7781,7 +7405,7 @@ ${styledOutput}`;
         statusParts.push(theme.fg("warning", `Output truncated. Full output: ${this.fullOutputPath}`));
       }
       if (statusParts.length > 0) {
-        this.contentContainer.addChild(new Text10(`
+        this.contentContainer.addChild(new Text11(`
 ${statusParts.join("\n")}`, 1, 0));
       }
     }
@@ -7801,7 +7425,7 @@ ${statusParts.join("\n")}`, 1, 0));
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/branch-summary-message.js
-import { Box, Container as Container11, Markdown as Markdown2, MouseRegion as MouseRegion2, Spacer as Spacer11, Text as Text11 } from "../../../pi-tui.mjs";
+import { Box, Container as Container12, Markdown as Markdown2, MouseRegion as MouseRegion2, Spacer as Spacer11, Text as Text12 } from "../../../pi-tui.mjs";
 var BranchSummaryMessageComponent = class extends Box {
   static {
     __name(this, "BranchSummaryMessageComponent");
@@ -7825,9 +7449,9 @@ var BranchSummaryMessageComponent = class extends Box {
   }
   updateDisplay() {
     this.clear();
-    const content = new Container11();
+    const content = new Container12();
     const label = theme.fg("customMessageLabel", `\x1B[1m[branch]\x1B[22m`);
-    content.addChild(new Text11(label, 0, 0));
+    content.addChild(new Text12(label, 0, 0));
     content.addChild(new Spacer11(1));
     if (this.expanded) {
       const header = "**Branch Summary**\n\n";
@@ -7835,7 +7459,7 @@ var BranchSummaryMessageComponent = class extends Box {
         color: /* @__PURE__ */ __name((text) => theme.fg("customMessageText", text), "color")
       }));
     } else {
-      content.addChild(new Text11(theme.fg("customMessageText", "Branch summary (") + theme.fg("dim", keyText("app.tools.expand")) + theme.fg("customMessageText", " to expand)"), 0, 0));
+      content.addChild(new Text12(theme.fg("customMessageText", "Branch summary (") + theme.fg("dim", keyText("app.tools.expand")) + theme.fg("customMessageText", " to expand)"), 0, 0));
     }
     this.addChild(new MouseRegion2(content, (event) => {
       if (event.type !== "click" || event.button !== "left")
@@ -7847,7 +7471,7 @@ var BranchSummaryMessageComponent = class extends Box {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/compaction-summary-message.js
-import { Box as Box2, Container as Container12, Markdown as Markdown3, MouseRegion as MouseRegion3, Spacer as Spacer12, Text as Text12 } from "../../../pi-tui.mjs";
+import { Box as Box2, Container as Container13, Markdown as Markdown3, MouseRegion as MouseRegion3, Spacer as Spacer12, Text as Text13 } from "../../../pi-tui.mjs";
 var CompactionSummaryMessageComponent = class extends Box2 {
   static {
     __name(this, "CompactionSummaryMessageComponent");
@@ -7871,10 +7495,10 @@ var CompactionSummaryMessageComponent = class extends Box2 {
   }
   updateDisplay() {
     this.clear();
-    const content = new Container12();
+    const content = new Container13();
     const tokenStr = this.message.tokensBefore.toLocaleString();
     const label = theme.fg("customMessageLabel", `\x1B[1m[compaction]\x1B[22m`);
-    content.addChild(new Text12(label, 0, 0));
+    content.addChild(new Text13(label, 0, 0));
     content.addChild(new Spacer12(1));
     if (this.expanded) {
       const header = `**Compacted from ${tokenStr} tokens**
@@ -7884,7 +7508,7 @@ var CompactionSummaryMessageComponent = class extends Box2 {
         color: /* @__PURE__ */ __name((text) => theme.fg("customMessageText", text), "color")
       }));
     } else {
-      content.addChild(new Text12(theme.fg("customMessageText", `Compacted from ${tokenStr} tokens (`) + theme.fg("dim", keyText("app.tools.expand")) + theme.fg("customMessageText", " to expand)"), 0, 0));
+      content.addChild(new Text13(theme.fg("customMessageText", `Compacted from ${tokenStr} tokens (`) + theme.fg("dim", keyText("app.tools.expand")) + theme.fg("customMessageText", " to expand)"), 0, 0));
     }
     this.addChild(new MouseRegion3(content, (event) => {
       if (event.type !== "click" || event.button !== "left")
@@ -7995,8 +7619,8 @@ var CustomEditor = class extends Editor2 {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/custom-entry.js
-import { Box as Box3, Container as Container13, Spacer as Spacer13, Text as Text13 } from "../../../pi-tui.mjs";
-var CustomEntryComponent = class extends Container13 {
+import { Box as Box3, Container as Container14, Spacer as Spacer13, Text as Text14 } from "../../../pi-tui.mjs";
+var CustomEntryComponent = class extends Container14 {
   static {
     __name(this, "CustomEntryComponent");
   }
@@ -8032,7 +7656,7 @@ var CustomEntryComponent = class extends Container13 {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const box = new Box3(1, 1, (text) => theme.bg("customMessageBg", text));
-      box.addChild(new Text13(theme.fg("error", `[${this.entry.customType}] renderer failed: ${message}`), 0, 0));
+      box.addChild(new Text14(theme.fg("error", `[${this.entry.customType}] renderer failed: ${message}`), 0, 0));
       component = box;
     }
     if (!component) {
@@ -8045,8 +7669,8 @@ var CustomEntryComponent = class extends Container13 {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/custom-message.js
-import { Box as Box4, Container as Container14, Markdown as Markdown4, Spacer as Spacer14, Text as Text14 } from "../../../pi-tui.mjs";
-var CustomMessageComponent = class extends Container14 {
+import { Box as Box4, Container as Container15, Markdown as Markdown4, Spacer as Spacer14, Text as Text15 } from "../../../pi-tui.mjs";
+var CustomMessageComponent = class extends Container15 {
   static {
     __name(this, "CustomMessageComponent");
   }
@@ -8103,7 +7727,7 @@ var CustomMessageComponent = class extends Container14 {
     this.addChild(this.box);
     this.box.clear();
     const label = theme.fg("customMessageLabel", `\x1B[1m[${this.message.customType}]\x1B[22m`);
-    this.box.addChild(new Text14(label, 0, 0));
+    this.box.addChild(new Text15(label, 0, 0));
     this.box.addChild(new Spacer14(1));
     let text;
     if (typeof this.message.content === "string") {
@@ -8117,142 +7741,9 @@ var CustomMessageComponent = class extends Container14 {
   }
 };
 
-// pi-dist/pi-coding-agent/modes/interactive/components/daxnuts.js
-var DAX_HEX = "bbbab8b9b9b6b9b8b5bcbbb8b8b7b4b7b5b2b6b5b2b8b7b4b7b6b3b6b4b1bdbcb8bab8b6bbb8b5b8b5b1bbb8b4c2bebbc1bebac0bdbabfbcb9c1bebabfbebbc0bfbcc0bdbabbb8b5c1bfbcbfbcb8bbb9b6bfbcb8c2bfbcc1bfbcbfbbb8bdb9b6b8b7b5b9b8b5b8b8b5b5b5b2b6b5b2b8b7b4b9b8b5b9b8b5b6b5b3bab8b5bcbab7bbb9b6bbb8b5bfb9b5bdb2abbcb0a8beb2aabeb5afbfbab6bebab7c0bfbcbebdbabebbb8c0bdbabfbebbc2bebbbdbab7c3c0bdc3c0bdc1bebbc2bebabfbcb8bab9b6b7b6b3b2b1aeb6b5b2b5b4b1b5b4b2b6b5b2b7b6b4b9b8b6b7b6b3bbbab7b2afaba5988fb49e90b09481b79a88b39683b09583b7a395bfb6b0c0bdbabdbbb8bebcb9c1bfbcc0bebbbdbab7bebbb8c2bfbcc0bdbac0bcb9bdb9b6c0bcb8b5b4b2b4b3b0bab9b6b9b9b6b5b4b1b5b4b1b6b5b3b9b8b5b9b8b6b9b8b6b2aeaa968174a6836eaa856eab846eaf8973ac8973b08f79b18f7ab39786b7a89dbbb3aebfbab6c2c0bdbebcb9bfbdbac3c1bdc2bebbc0bcb9bdb9b6c1bdbabfbbb8b4b3b0b9b8b5b8b7b5b4b3b1b5b4b1b8b7b4b8b7b5bab9b6bbbab7b1afad8c7a719d735ca47860a87d65a98069ae8972ae8c75af8d77aa826ba98067aa8974b39e90b6a79dbbb2adc0bdbac1bfbdbfbbb8c1bdb9bebab6c0bdb9bfbbb8c1bdbab4b2b0b7b6b4b7b6b3b4b2b0bab9b7b6b5b2b6b5b2bab9b6bab9b6958c87977663aa836bac8772b08f7aad8c77b2917db0917db0907cac8971a77d64a87f67ac8972b29887b8a89dbfbab5bfbdbac1bebac0bcb9c0bcb9c0bcb9c1bebabebab7b8b7b4b7b6b4b5b4b1b5b4b2b7b6b3b5b4b2bab9b7bab9b6b4b1ada88f7fad8973ae8d78b19684b19685b29786b69a89b29582b1917daa856ea87e66a97e66ad866ea9826baf9280b8ada6bdbbb8bebab7bfbbb8c1bdbabfbbb8bcb8b4bcb8b5b6b4b2b7b5b3b6b5b2b8b7b4b3b2afb8b7b4b6b5b2b3b2b0b3a59aab856fad8d78b0917eb19886b49b8bb49a89b39785b0917eaf8f7cab866fa77d65a77a61a87d64a9816ab08f79b5a296c1bcb8c3bfbcc2bebbbebab7bfbbb7bdbab6c2bebab8b7b4b7b6b4b6b5b3b7b6b3b6b5b2b9b8b6b4b3b1b6b1acac8f7ca9826bae8f7aaf9583b49c8cb49c8bb79d8cb59987b19380ad8e79ae8c77af8e78ac8771a3775faa826bae8972b39888bbb6b2bebbb8bfbbb8bfbbb8c0bdb9bebbb7c0bdb9b6b5b2b9b8b5b4b3b1b8b7b5b4b3b0b7b6b4b6b5b3b1a7a0aa8772a77d65a88570b49887b19b8d9c887c907a6d987f71aa907faf917daf8e7aad8c78ac8b77a8836ca9836cac8770b49b8abdb6b2c0bcb9c0bdb9bfbbb8bebab7bfbcb9bebab7b9b8b6b5b4b2b9b8b5b8b7b5b8b7b4b7b6b4b5b4b2b3a9a2ad8973a1755da9856fb398858c776a65544b776358725d526e594d9c7f6eb1907ba68672ad8e7aab8771ac856db18f79b3a092beb9b5c1bdbabdb9b5bebab7bfbbb7bebab7bcb9b6b7b6b4b6b6b3b8b7b4b5b4b2b8b6b4b7b6b3b4b3b0b4aba4a6826ba3775fb08e79b19584a88e7daa8e7db29481ad8f7c997e6da38674ac8d79ac8e7aae917f9a7c6a896a599a7c6ab3a398c1bdbabdb9b6bcb8b5bebab6bebab7bdb9b5bdb9b6b5b4b1b7b5b3b5b4b2b7b6b3b7b6b4b3b3b0b3b2b0b4aca5a7846fa97f68ae8f7bae9383b59c8bb2937fae8e79ac8b76af927eaf927eb29683b39885b2988891786a72594c6e594d978d86bdbab7bab7b3c0bcb9c0bcb9bebab7bebbb7bdb9b6b3b2b0b4b3b0b5b4b2b4b4b1b4b3b1b4b3b1b4b3b0b6ada5aa8670a57a62ad8e7ab29b8cb69d8dab856fa9826aa88069ab8771af907db49987b19684b29886b59987b39480b09787b5a9a1bcb8b5bebab7bdb9b5bebab7bfbbb8bfbbb7bbb7b4b3b2afb8b7b5b8b7b5b3b2b0b5b4b2b6b5b3b6b4b1afa299a98975a9826baf907cb39988b49a89af8e7aac8973aa856eaf8c74b1917dae907dac907db39988b29785b49785b7a090b9aca3bfbab7bcb8b5bdb9b6bcb8b4bcb8b5bdb9b5bcb8b4b5b4b2b6b5b3b4b3b0b4b3b0b9b8b5b8b6b4908b88887467aa8f7ea78976ad8973b08b74b59885b69e8eb29888b1917cb1917db1937fae907cb19686b39a8ab29886b59b8ab8a192b6aaa3b7b2afbcb8b4bcb8b5bbb7b4c0bcb9bebab7c0bcb9b6b5b2b6b5b3b4b3b0bab9b7b7b6b4b1b0ae7b716ba083709b806f716158967764b08870b29481b69b8ab69f8fb39a89b69f90b49d8db39a89b29988b49c8cb6a090b8a496baa49593867f8f8986bfbbb7bdb9b5bcb7b4bab6b3b9b5b2bab6b2b4b3b1b3b3b0b6b5b3b8b7b5b4b2b0a7a5a38f837dae917ea084725a504c63544da28370b39784b59e8db2a093a698909b918b998e8790857e95877dad998bb39c8cb5a091b9a2938d827c95908dbebab6bbb7b3bdbab7bbb7b4bdb9b6bbb7b4b4b3b0b5b4b1b8b7b5b6b5b3b8b8b5b4b2af968f8ab29a8bab9485544b483a323073655d96887f70655f61595547403e453e3c453f3d57504f655e5b90847db39c8db7a090b6a09189807aaba6a3bdb9b6c0bcb9bebab7bcb7b4bebab7bbb7b4b3b2b0b6b5b3b2b1afb7b6b4b8b7b4b5b4b1aeaba8b5a89fac998d4d44412d25244d46444e4744322b293a3230423937433a37352d2a59504c534b48524a48988a81b59f8fb19c8d827974b2afacbdb9b5bcb8b4bdb9b5bcb8b5bdb9b6bab6b2b8b7b5b5b4b2b6b6b3b9b8b5b7b6b3b6b5b2b8b6b3b9b4b1b2a9a26c64612d25242d2625312a28352d2c453d3a78675c8d7a6ea09792aea6a0615854332b29524a479f8e82b09d90a49b96c1bdb9bebab7bfbbb8bbb8b4b9b5b1b8b4b0b9b4b0b7b6b4b8b7b5b8b7b4b6b5b3b8b6b3bab9b6b9b8b5b4b3b0b7b5b2a5a29f453d3b261e1d261f1e2e2625413936857268977865b19482b5a69caca5a07c7572453d3b746963a0948cc5bfbbc0bbb8beb9b6bbb7b3bbb6b3b7b3afb8b4b0b9b5b1b7b6b3b6b5b3b5b4b2b5b4b2b7b6b3b7b6b3b8b6b3b4b2afb7b6b3b3b1ae6d6765251f1e1e18172a22212d2523443b3971625ab19888b09482a89182877e792c25243e3634766d6abeb9b5bfbbb7bebab6bcb7b3bbb6b3b9b5b1b7b3afb8b4b0b4b3b0b5b4b1b5b4b1b4b3b1b5b4b2b8b6b4b5b3b0b9b6b4b5b4b1b6b4b27f79762a2322221c1b2d2524221b1a443e3c47413f6f676281766f867971675e5a3e37352a222166605dbab7b3bdb9b5beb9b5bcb7b3bcb7b3b9b4b0bab6b2bab6b2b5b3b0b6b4b2b3b2afb7b6b3b4b4b1b4b3b0b6b4b1b5b4b1b4b3b0b9b6b29a8c8252474230292828201f181212322c2c231e1d1c16162c26252923222d26252d2523332b2a8e8885bcb8b5bcb7b3bbb6b2bcb7b3b9b4b1b9b5b1b7b2afb7b2ae7a838e9b9b9caeadacb3b2b0b3b2afb7b7b4b6b5b3b6b6b3b7b6b3b9ada4a991808e7b6f50453f2b24231a14142923221f19181d17161f18182620201d17162a22215d5654b7b3b0bbb7b3bbb6b2b8b4b0bab5b1bbb6b2bab5b1b8b4b0bab6b22c496b4c5d735f68766e727a828285929090adaba8b7b2aeb6a59ab39682a28470a387748e76674e403a1a14141d1716181211221c1c1f1918221c1b2f2827342d2c8d8884bab6b3b9b5b2bab5b1bab5b1b9b4b0bab6b2b8b4b0b9b4b0b7b2ae325e8b365f8a3a5d833f5b7a545f70646469706b6aa08f84b08e78b18e769f7e689e7f6b9e816d907766584940362d2a1c1615201b1a1a1413201a1a251e1d393331a39e9bbab5b1bcb7b3bab6b2b8b3afb8b4b0b9b4b0b9b4b1bab5b2b5b0ac3d6c9843729d44719c426e98415f805a64716f6a699d8677b1927eb3947faa89749d7a649f7f6ba487749e837186716454463f2c25231e181837302e3a33317a7471beb9b6bcb8b4bbb6b2b6b2aebab5b1b9b5b1b8b3afbab6b2b6b1adb5aeaa4877a14c7aa44e7ba345719a3a5d80586b7f767475927b6eb1927faf8e79b08e78a78169a07861a17f6aa58570a688749b83738270666f66618a8480a49e99b7b2aebab6b2bcb8b4b9b5b1b7b2aebab5b1b9b4b0b6b1aeb6b1adb2aca8b2aca84876a04a78a2517fa74771973a5d80405c7a6161677c695fac8a75b08d77b4917aaf8971ad876fa5816aa6846ea78670a98a76ac9484ab9f96b2aca8bdb8b4bcb7b3bcb8b4bcb8b4b8b3afb7b2aeb9b4b0b8b3afb8b2aeb6afabb3aeaab2aeaa4878a14b7aa34c7ba44a759b3d63873b5f825b67766f5f569c7e6caf8c77b18f79b28f78b5927caf8e78a98872aa8a76a98a76ac917fada199b7b0acb9b3afbfb9b5c1bab6bdb6b2b8b3afbab5b1b9b4b0b6afabb7b1adb3ada9b3aeaab0aba8";
-var WIDTH2 = 32;
-var HEIGHT2 = 32;
-function parseImage() {
-  const pixels = [];
-  for (let y = 0; y < HEIGHT2; y++) {
-    const row = [];
-    for (let x = 0; x < WIDTH2; x++) {
-      const idx = (y * WIDTH2 + x) * 6;
-      const r = parseInt(DAX_HEX.slice(idx, idx + 2), 16);
-      const g = parseInt(DAX_HEX.slice(idx + 2, idx + 4), 16);
-      const b = parseInt(DAX_HEX.slice(idx + 4, idx + 6), 16);
-      row.push([r, g, b]);
-    }
-    pixels.push(row);
-  }
-  return pixels;
-}
-__name(parseImage, "parseImage");
-function rgb(r, g, b, bg = false) {
-  return `\x1B[${bg ? 48 : 38};2;${r};${g};${b}m`;
-}
-__name(rgb, "rgb");
-var RESET = "\x1B[0m";
-function buildImage() {
-  const pixels = parseImage();
-  const lines = [];
-  for (let row = 0; row < HEIGHT2; row += 2) {
-    let line = "";
-    for (let x = 0; x < WIDTH2; x++) {
-      const top = pixels[row][x];
-      const bottom = pixels[row + 1]?.[x] ?? top;
-      line += `${rgb(bottom[0], bottom[1], bottom[2])}${rgb(top[0], top[1], top[2], true)}\u2584`;
-    }
-    line += RESET;
-    lines.push(line);
-  }
-  return lines;
-}
-__name(buildImage, "buildImage");
-var DaxnutsComponent = class {
-  static {
-    __name(this, "DaxnutsComponent");
-  }
-  ui;
-  image;
-  interval = null;
-  tick = 0;
-  maxTicks = 25;
-  // ~2 seconds at 80ms
-  cachedLines = [];
-  cachedWidth = 0;
-  cachedTick = -1;
-  constructor(ui) {
-    this.ui = ui;
-    this.image = buildImage();
-    this.startAnimation();
-  }
-  invalidate() {
-    this.cachedWidth = 0;
-  }
-  startAnimation() {
-    this.interval = setInterval(() => {
-      this.tick++;
-      if (this.tick >= this.maxTicks) {
-        this.stopAnimation();
-      }
-      this.cachedWidth = 0;
-      this.ui.requestRender();
-    }, 80);
-  }
-  stopAnimation() {
-    if (this.interval) {
-      clearInterval(this.interval);
-      this.interval = null;
-    }
-  }
-  render(width) {
-    if (width === this.cachedWidth && this.cachedTick === this.tick) {
-      return this.cachedLines;
-    }
-    const t = theme;
-    const lines = [];
-    const center = /* @__PURE__ */ __name((s) => {
-      const visible = s.replace(/\x1b\[[0-9;]*m/g, "").length;
-      const left = Math.max(0, Math.floor((width - visible) / 2));
-      return " ".repeat(left) + s;
-    }, "center");
-    lines.push("");
-    const revealedRows = Math.min(this.image.length, Math.floor(this.tick / this.maxTicks * (this.image.length + 3)));
-    for (let i = 0; i < this.image.length; i++) {
-      if (i < revealedRows) {
-        lines.push(center(this.image[i]));
-      } else {
-        if (i === revealedRows) {
-          const scanline = "\u2593".repeat(WIDTH2);
-          lines.push(center(rgb(100, 200, 255) + scanline + RESET));
-        } else {
-          lines.push(center(" ".repeat(WIDTH2)));
-        }
-      }
-    }
-    lines.push("");
-    const textPhase = Math.max(0, this.tick - this.maxTicks * 0.6);
-    if (textPhase > 0 || this.tick >= this.maxTicks) {
-      lines.push(center(t.fg("accent", "Free Kimi K2.5 via OpenCode Zen")));
-      lines.push(center(t.fg("success", '"Powered by daxnuts"')));
-      lines.push(center(t.fg("muted", "\u2014 @thdxr")));
-    } else {
-      lines.push("");
-      lines.push("");
-      lines.push("");
-    }
-    lines.push("");
-    if (textPhase > 2 || this.tick >= this.maxTicks) {
-      lines.push(center(t.fg("dim", "Try OpenCode")));
-      lines.push(center(t.fg("mdLink", "https://mistral.ai/news/mistral-vibe-2-0")));
-    } else {
-      lines.push("");
-      lines.push("");
-    }
-    lines.push("");
-    this.cachedLines = lines;
-    this.cachedWidth = width;
-    this.cachedTick = this.tick;
-    return lines;
-  }
-  dispose() {
-    this.stopAnimation();
-  }
-};
-
 // pi-dist/pi-coding-agent/modes/interactive/components/earendil-announcement.js
 import * as fs2 from "node:fs";
-import { Container as Container15, Image, Spacer as Spacer15, Text as Text15 } from "../../../pi-tui.mjs";
+import { Container as Container16, Image, Spacer as Spacer15, Text as Text16 } from "../../../pi-tui.mjs";
 var BLOG_URL = "https://mariozechner.at/posts/2026-04-08-ive-sold-out/";
 var IMAGE_FILENAME = "clankolas.png";
 var cachedImageBase64;
@@ -8270,17 +7761,17 @@ function loadImageBase64() {
   return cachedImageBase64;
 }
 __name(loadImageBase64, "loadImageBase64");
-var EarendilAnnouncementComponent = class extends Container15 {
+var EarendilAnnouncementComponent = class extends Container16 {
   static {
     __name(this, "EarendilAnnouncementComponent");
   }
   constructor() {
     super();
     this.addChild(new DynamicBorder((text) => theme.fg("accent", text)));
-    this.addChild(new Text15(theme.bold(theme.fg("accent", "pi has joined Earendil")), 1, 0));
+    this.addChild(new Text16(theme.bold(theme.fg("accent", "pi has joined Earendil")), 1, 0));
     this.addChild(new Spacer15(1));
-    this.addChild(new Text15(theme.fg("muted", "Read the blog post:"), 1, 0));
-    this.addChild(new Text15(theme.fg("mdLink", BLOG_URL), 1, 0));
+    this.addChild(new Text16(theme.fg("muted", "Read the blog post:"), 1, 0));
+    this.addChild(new Text16(theme.fg("mdLink", BLOG_URL), 1, 0));
     this.addChild(new Spacer15(1));
     const imageBase64 = loadImageBase64();
     if (imageBase64) {
@@ -8290,6 +7781,28 @@ var EarendilAnnouncementComponent = class extends Container15 {
     this.addChild(new DynamicBorder((text) => theme.fg("accent", text)));
   }
 };
+
+// pi-dist/pi-coding-agent/modes/interactive/components/easter-egg-3d.lazy.js
+import { TuiAltScreen } from "../../../pi-tui.mjs";
+function playEasterEgg3d(tui, egg) {
+  if (!(tui instanceof TuiAltScreen))
+    return false;
+  if (tui.hasOverlay())
+    return true;
+  const screen = tui.getScreenLines();
+  import("./chunk-ICOM4WIN.js").then((module) => module.playEasterEgg3d(tui, screen, egg), () => {
+  });
+  return true;
+}
+__name(playEasterEgg3d, "playEasterEgg3d");
+function playPiLogo3d(tui, column, row) {
+  playEasterEgg3d(tui, { kind: "pi-logo", column, row });
+}
+__name(playPiLogo3d, "playPiLogo3d");
+function playArmin3d(tui) {
+  return playEasterEgg3d(tui, { kind: "armin" });
+}
+__name(playArmin3d, "playArmin3d");
 
 // pi-dist/pi-coding-agent/modes/interactive/components/footer.js
 import { isAbsolute, relative, resolve as resolve3, sep } from "node:path";
@@ -8499,14 +8012,16 @@ var FooterComponent = class {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/login-dialog.js
-import { Container as Container16, getKeybindings as getKeybindings6, Input as Input5, Spacer as Spacer16, Text as Text16 } from "../../../pi-tui.mjs";
-var LoginDialogComponent = class extends Container16 {
+import { Container as Container17, getKeybindings as getKeybindings6, Input as Input5, Spacer as Spacer16, Text as Text17 } from "../../../pi-tui.mjs";
+var LoginDialogComponent = class extends Container17 {
   static {
     __name(this, "LoginDialogComponent");
   }
   contentContainer;
   input;
   tui;
+  /** The shown sign-in URL, which `app.message.copy` copies. */
+  authUrl;
   abortController = new AbortController();
   inputResolver;
   inputRejecter;
@@ -8527,8 +8042,8 @@ var LoginDialogComponent = class extends Container16 {
     const providerName = providerNameOverride || providerId;
     const title = titleOverride ?? `Login to ${providerName}`;
     this.addChild(new DynamicBorder());
-    this.addChild(new Text16(theme.fg("accent", theme.bold(title)), 1, 0));
-    this.contentContainer = new Container16();
+    this.addChild(new Text17(theme.fg("accent", theme.bold(title)), 1, 0));
+    this.contentContainer = new Container17();
     this.addChild(this.contentContainer);
     this.input = new Input5();
     this.input.onSubmit = () => {
@@ -8549,7 +8064,7 @@ var LoginDialogComponent = class extends Container16 {
     return this.abortController.signal;
   }
   replaceInputWithSubmittedText(value) {
-    this.contentContainer.children = this.contentContainer.children.map((child) => child === this.input ? new Text16(`> ${value}`, 0, 0) : child);
+    this.contentContainer.children = this.contentContainer.children.map((child) => child === this.input ? new Text17(`> ${value}`, 0, 0) : child);
   }
   cancel() {
     this.abortController.abort();
@@ -8566,14 +8081,11 @@ var LoginDialogComponent = class extends Container16 {
   showAuth(url, instructions) {
     this.contentContainer.clear();
     this.contentContainer.addChild(new Spacer16(1));
-    const linkedUrl = `\x1B]8;;${url}\x07${url}\x1B]8;;\x07`;
-    this.contentContainer.addChild(new Text16(theme.fg("accent", linkedUrl), 1, 0));
-    const clickHint = process.platform === "darwin" ? "Cmd+click to open" : "Ctrl+click to open";
-    const hyperlink5 = `\x1B]8;;${url}\x07${clickHint}\x1B]8;;\x07`;
-    this.contentContainer.addChild(new Text16(theme.fg("dim", hyperlink5), 1, 0));
+    this.authUrl = new AuthUrlComponent(this.tui, url);
+    this.contentContainer.addChild(this.authUrl);
     if (instructions) {
       this.contentContainer.addChild(new Spacer16(1));
-      this.contentContainer.addChild(new Text16(theme.fg("warning", instructions), 1, 0));
+      this.contentContainer.addChild(new Text17(theme.fg("warning", instructions), 1, 0));
     }
     openBrowser(url);
     this.tui.requestRender();
@@ -8582,15 +8094,16 @@ var LoginDialogComponent = class extends Container16 {
    * Called by onDeviceCode callback - show URL and user code.
    */
   showDeviceCode(info) {
+    this.authUrl = void 0;
     this.contentContainer.clear();
     this.contentContainer.addChild(new Spacer16(1));
     const linkedUrl = `\x1B]8;;${info.verificationUri}\x07${info.verificationUri}\x1B]8;;\x07`;
-    this.contentContainer.addChild(new Text16(theme.fg("accent", linkedUrl), 1, 0));
+    this.contentContainer.addChild(new Text17(theme.fg("accent", linkedUrl), 1, 0));
     const clickHint = process.platform === "darwin" ? "Cmd+click to open" : "Ctrl+click to open";
-    const hyperlink5 = `\x1B]8;;${info.verificationUri}\x07${clickHint}\x1B]8;;\x07`;
-    this.contentContainer.addChild(new Text16(theme.fg("dim", hyperlink5), 1, 0));
+    const hyperlink4 = `\x1B]8;;${info.verificationUri}\x07${clickHint}\x1B]8;;\x07`;
+    this.contentContainer.addChild(new Text17(theme.fg("dim", hyperlink4), 1, 0));
     this.contentContainer.addChild(new Spacer16(1));
-    this.contentContainer.addChild(new Text16(theme.fg("warning", `Enter code: ${info.userCode}`), 1, 0));
+    this.contentContainer.addChild(new Text17(theme.fg("warning", `Enter code: ${info.userCode}`), 1, 0));
     this.tui.requestRender();
   }
   /**
@@ -8599,9 +8112,9 @@ var LoginDialogComponent = class extends Container16 {
   showManualInput(prompt) {
     this.input.setValue("");
     this.contentContainer.addChild(new Spacer16(1));
-    this.contentContainer.addChild(new Text16(theme.fg("dim", prompt), 1, 0));
+    this.contentContainer.addChild(new Text17(theme.fg("dim", prompt), 1, 0));
     this.contentContainer.addChild(this.input);
-    this.contentContainer.addChild(new Text16(`(${keyHint("tui.select.cancel", "to cancel")})`, 1, 0));
+    this.contentContainer.addChild(new Text17(`(${keyHint("tui.select.cancel", "to cancel")})`, 1, 0));
     this.tui.requestRender();
     return new Promise((resolve7, reject) => {
       this.inputResolver = resolve7;
@@ -8614,12 +8127,12 @@ var LoginDialogComponent = class extends Container16 {
    */
   showPrompt(message, placeholder) {
     this.contentContainer.addChild(new Spacer16(1));
-    this.contentContainer.addChild(new Text16(theme.fg("text", message), 1, 0));
+    this.contentContainer.addChild(new Text17(theme.fg("text", message), 1, 0));
     if (placeholder) {
-      this.contentContainer.addChild(new Text16(theme.fg("dim", `e.g., ${placeholder}`), 1, 0));
+      this.contentContainer.addChild(new Text17(theme.fg("dim", `e.g., ${placeholder}`), 1, 0));
     }
     this.contentContainer.addChild(this.input);
-    this.contentContainer.addChild(new Text16(`(${keyHint("tui.select.cancel", "to cancel,")} ${keyHint("tui.select.confirm", "to submit")})`, 1, 0));
+    this.contentContainer.addChild(new Text17(`(${keyHint("tui.select.cancel", "to cancel,")} ${keyHint("tui.select.confirm", "to submit")})`, 1, 0));
     this.input.setValue("");
     this.tui.requestRender();
     return new Promise((resolve7, reject) => {
@@ -8629,25 +8142,26 @@ var LoginDialogComponent = class extends Container16 {
   }
   /** Show informational text before another login step. */
   showDetails(lines) {
+    this.authUrl = void 0;
     this.contentContainer.clear();
     this.contentContainer.addChild(new Spacer16(1));
     for (const line of lines) {
-      this.contentContainer.addChild(new Text16(line, 1, 0));
+      this.contentContainer.addChild(new Text17(line, 1, 0));
     }
     this.tui.requestRender();
   }
   /** Show provider-owned information and links without starting an auth callback flow. */
   showInfo(message, links = [], showCloseHint = false) {
     this.contentContainer.addChild(new Spacer16(1));
-    this.contentContainer.addChild(new Text16(theme.fg("text", message), 1, 0));
+    this.contentContainer.addChild(new Text17(theme.fg("text", message), 1, 0));
     for (const link of links) {
       const text = link.label ? `${link.label}: ${link.url}` : link.url;
-      const hyperlink5 = `\x1B]8;;${link.url}\x07${text}\x1B]8;;\x07`;
-      this.contentContainer.addChild(new Text16(theme.fg("accent", hyperlink5), 1, 0));
+      const hyperlink4 = `\x1B]8;;${link.url}\x07${text}\x1B]8;;\x07`;
+      this.contentContainer.addChild(new Text17(theme.fg("accent", hyperlink4), 1, 0));
     }
     if (showCloseHint) {
       this.contentContainer.addChild(new Spacer16(1));
-      this.contentContainer.addChild(new Text16(`(${keyHint("tui.select.cancel", "to close")})`, 1, 0));
+      this.contentContainer.addChild(new Text17(`(${keyHint("tui.select.cancel", "to close")})`, 1, 0));
     }
     this.tui.requestRender();
   }
@@ -8656,21 +8170,25 @@ var LoginDialogComponent = class extends Container16 {
    */
   showWaiting(message) {
     this.contentContainer.addChild(new Spacer16(1));
-    this.contentContainer.addChild(new Text16(theme.fg("dim", message), 1, 0));
-    this.contentContainer.addChild(new Text16(`(${keyHint("tui.select.cancel", "to cancel")})`, 1, 0));
+    this.contentContainer.addChild(new Text17(theme.fg("dim", message), 1, 0));
+    this.contentContainer.addChild(new Text17(`(${keyHint("tui.select.cancel", "to cancel")})`, 1, 0));
     this.tui.requestRender();
   }
   /**
    * Called by onProgress callback
    */
   showProgress(message) {
-    this.contentContainer.addChild(new Text16(theme.fg("dim", message), 1, 0));
+    this.contentContainer.addChild(new Text17(theme.fg("dim", message), 1, 0));
     this.tui.requestRender();
   }
   handleInput(data) {
     const kb = getKeybindings6();
     if (kb.matches(data, "tui.select.cancel")) {
       this.cancel();
+      return;
+    }
+    if (this.authUrl && kb.matches(data, "app.message.copy")) {
+      void this.authUrl.copy();
       return;
     }
     this.input.handleInput(data);
@@ -8744,7 +8262,7 @@ __name(createMermaidMarkdownTransformer, "createMermaidMarkdownTransformer");
 
 // pi-dist/pi-coding-agent/modes/interactive/components/model-selector.js
 import { modelsAreEqual } from "../../pi-ai/sdk-bundle/index.js";
-import { Container as Container17, fuzzyFilter as fuzzyFilter3, getKeybindings as getKeybindings7, Input as Input6, Spacer as Spacer17, Text as Text17 } from "../../../pi-tui.mjs";
+import { Container as Container18, fuzzyFilter as fuzzyFilter3, getKeybindings as getKeybindings7, Input as Input6, Spacer as Spacer17, Text as Text18 } from "../../../pi-tui.mjs";
 
 // pi-dist/pi-coding-agent/modes/interactive/model-catalog-refresh.js
 var ModelCatalogRefreshCoordinator = class {
@@ -8798,7 +8316,7 @@ function getModelSelectorSearchText(item) {
 __name(getModelSelectorSearchText, "getModelSelectorSearchText");
 
 // pi-dist/pi-coding-agent/modes/interactive/components/model-selector.js
-var ModelSelectorComponent = class extends Container17 {
+var ModelSelectorComponent = class extends Container18 {
   static {
     __name(this, "ModelSelectorComponent");
   }
@@ -8849,13 +8367,13 @@ var ModelSelectorComponent = class extends Container17 {
     this.addChild(new DynamicBorder());
     this.addChild(new Spacer17(1));
     if (scopedModels.length > 0) {
-      this.scopeText = new Text17(this.getScopeText(), 0, 0);
+      this.scopeText = new Text18(this.getScopeText(), 0, 0);
       this.addChild(this.scopeText);
-      this.scopeHintText = new Text17(this.getScopeHintText(), 0, 0);
+      this.scopeHintText = new Text18(this.getScopeHintText(), 0, 0);
       this.addChild(this.scopeHintText);
     } else {
       const hintText = "Only showing models from configured providers. Use /login to add providers.";
-      this.addChild(new Text17(theme.fg("warning", hintText), 0, 0));
+      this.addChild(new Text18(theme.fg("warning", hintText), 0, 0));
     }
     this.addChild(new Spacer17(1));
     this.searchInput = new Input6();
@@ -8869,11 +8387,11 @@ var ModelSelectorComponent = class extends Container17 {
     };
     this.addChild(this.searchInput);
     this.addChild(new Spacer17(1));
-    this.listContainer = new Container17();
+    this.listContainer = new Container18();
     this.addChild(this.listContainer);
     this.addChild(new Spacer17(1));
     if (this.onSelectAsDefaultCallback) {
-      this.addChild(new Text17(theme.fg("dim", `  ${keyDisplayText("tui.select.confirm")} to select \xB7 ${keyDisplayText("app.models.save")} to set as default \xB7 ${keyDisplayText("tui.select.cancel")} to cancel`), 0, 0));
+      this.addChild(new Text18(theme.fg("dim", `  ${keyDisplayText("tui.select.confirm")} to select \xB7 ${keyDisplayText("app.models.save")} to set as default \xB7 ${keyDisplayText("tui.select.cancel")} to cancel`), 0, 0));
     }
     this.addChild(new DynamicBorder());
     this.loadModelsFromSnapshot();
@@ -9039,27 +8557,27 @@ var ModelSelectorComponent = class extends Container17 {
       const modelText = isSelected ? theme.fg("accent", item.id) : item.id;
       const providerBadge = theme.fg("muted", `[${item.provider}]`);
       const line = `${cursor}${currentMarker}${modelText} ${providerBadge}${defaultBadge}`;
-      this.listContainer.addChild(new Text17(line, 0, 0));
+      this.listContainer.addChild(new Text18(line, 0, 0));
     }
     if (startIndex > 0 || endIndex < this.filteredModels.length) {
       const scrollInfo = theme.fg("muted", `  (${this.selectedIndex + 1}/${this.filteredModels.length})`);
-      this.listContainer.addChild(new Text17(scrollInfo, 0, 0));
+      this.listContainer.addChild(new Text18(scrollInfo, 0, 0));
     }
     if (this.errorMessage) {
       const errorLines = this.errorMessage.split("\n");
       for (const line of errorLines) {
-        this.listContainer.addChild(new Text17(theme.fg("error", line), 0, 0));
+        this.listContainer.addChild(new Text18(theme.fg("error", line), 0, 0));
       }
     } else if (this.filteredModels.length === 0) {
-      this.listContainer.addChild(new Text17(theme.fg("muted", "  No matching models"), 0, 0));
+      this.listContainer.addChild(new Text18(theme.fg("muted", "  No matching models"), 0, 0));
     } else {
       const selected = this.filteredModels[this.selectedIndex];
       this.listContainer.addChild(new Spacer17(1));
-      this.listContainer.addChild(new Text17(theme.fg("muted", `  Model Name: ${selected.model.name}`), 0, 0));
+      this.listContainer.addChild(new Text18(theme.fg("muted", `  Model Name: ${selected.model.name}`), 0, 0));
     }
     if (this.refreshStatusMessage) {
       this.listContainer.addChild(new Spacer17(1));
-      this.listContainer.addChild(new Text17(theme.fg(this.refreshStatusSuccess ? "success" : "muted", `  ${this.refreshStatusMessage}`), 0, 0));
+      this.listContainer.addChild(new Text18(theme.fg(this.refreshStatusSuccess ? "success" : "muted", `  ${this.refreshStatusMessage}`), 0, 0));
     }
   }
   handleInput(keyData) {
@@ -9113,7 +8631,7 @@ var ModelSelectorComponent = class extends Container17 {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/oauth-selector.js
-import { Container as Container18, fuzzyFilter as fuzzyFilter4, getKeybindings as getKeybindings8, Input as Input7, Spacer as Spacer18, TruncatedText } from "../../../pi-tui.mjs";
+import { Container as Container19, fuzzyFilter as fuzzyFilter4, getKeybindings as getKeybindings8, Input as Input7, Spacer as Spacer18, TruncatedText } from "../../../pi-tui.mjs";
 function formatAuthSelectorProviderType(authType, subscription) {
   if (authType === "api_key")
     return "API key";
@@ -9134,7 +8652,7 @@ function formatAuthSelectorProviderStatus(provider) {
   return theme.fg("success", ` \u2713 ${source}`);
 }
 __name(formatAuthSelectorProviderStatus, "formatAuthSelectorProviderStatus");
-var OAuthSelectorComponent = class extends Container18 {
+var OAuthSelectorComponent = class extends Container19 {
   static {
     __name(this, "OAuthSelectorComponent");
   }
@@ -9181,7 +8699,7 @@ var OAuthSelectorComponent = class extends Container18 {
     };
     this.addChild(this.searchInput);
     this.addChild(new Spacer18(1));
-    this.listContainer = new Container18();
+    this.listContainer = new Container19();
     this.addChild(this.listContainer);
     this.addChild(new Spacer18(1));
     this.addChild(new DynamicBorder());
@@ -9255,12 +8773,12 @@ import { backgroundAnsi, foregroundAnsi, isAppleTerminalSession, rgbColor } from
 var CORAL = rgbColor(228, 138, 122);
 var BLUE = rgbColor(79, 142, 179);
 var YELLOW = rgbColor(234, 182, 93);
-var RESET2 = "\x1B[0m";
+var RESET = "\x1B[0m";
 function piLogoLines() {
   const mode = theme.getColorMode();
   const fg = /* @__PURE__ */ __name((color) => foregroundAnsi(color, mode), "fg");
-  const top = `${fg(CORAL)}${backgroundAnsi(BLUE, mode)}\u2580${RESET2}${fg(CORAL)}\u2580\u2588${RESET2} `;
-  const bottom = `${fg(BLUE)}\u2588\u2580${RESET2} ${fg(YELLOW)}\u2588${RESET2}`;
+  const top = `${fg(CORAL)}${backgroundAnsi(BLUE, mode)}\u2580${RESET}${fg(CORAL)}\u2580\u2588${RESET} `;
+  const bottom = `${fg(BLUE)}\u2588\u2580${RESET} ${fg(YELLOW)}\u2588${RESET}`;
   return [top, bottom];
 }
 __name(piLogoLines, "piLogoLines");
@@ -9270,23 +8788,12 @@ function supportsPiLogo() {
 __name(supportsPiLogo, "supportsPiLogo");
 function piWordmark() {
   const mode = theme.getColorMode();
-  return `${foregroundAnsi(CORAL, mode)}P${RESET2}${foregroundAnsi(YELLOW, mode)}i${RESET2}`;
+  return `${foregroundAnsi(CORAL, mode)}P${RESET}${foregroundAnsi(YELLOW, mode)}i${RESET}`;
 }
 __name(piWordmark, "piWordmark");
 
-// pi-dist/pi-coding-agent/modes/interactive/components/pi-logo-animation.lazy.js
-import { TuiAltScreen } from "../../../pi-tui.mjs";
-function playPiLogoAnimation(tui, logoColumn, logoRow) {
-  if (!(tui instanceof TuiAltScreen) || tui.hasOverlay())
-    return;
-  const screen = tui.getScreenLines();
-  import("./chunk-GGTSZARE.js").then((module) => module.playPiLogoAnimation(tui, { screen, logoColumn, logoRow }), () => {
-  });
-}
-__name(playPiLogoAnimation, "playPiLogoAnimation");
-
 // pi-dist/pi-coding-agent/modes/interactive/components/radius-login-selector.js
-import { foregroundAnsi as foregroundAnsi2, mixColors, parseColor, Text as Text18 } from "../../../pi-tui.mjs";
+import { foregroundAnsi as foregroundAnsi2, mixColors, parseColor, Text as Text19 } from "../../../pi-tui.mjs";
 var RADIUS_COLORS = ["#4d9abf", "#83ccd2", "#f1be57", "#f09082"].map((hex) => parseColor(hex));
 var CHARS_PER_COLOR = 4;
 var CHARS_PER_SECOND = 10;
@@ -9336,13 +8843,13 @@ var RadiusLoginMenuComponent = class extends ExtensionSelectorComponent {
   render(width) {
     const lines = super.render(width);
     const { label, text } = this.radiusOption;
-    const selectedLine = new Text18(theme.fg("accent", "\u2192 ") + theme.fg("accent", label), 1, 0).render(width)[0];
+    const selectedLine = new Text19(theme.fg("accent", "\u2192 ") + theme.fg("accent", label), 1, 0).render(width)[0];
     const index = selectedLine === void 0 ? -1 : lines.indexOf(selectedLine);
     this.animating = index >= 0;
     if (this.animating) {
       const shimmer = radiusShimmer(text, performance.now() - this.animationStart);
       const animatedLine = theme.fg("accent", "\u2192 ") + shimmer + label.slice(text.length);
-      lines[index] = new Text18(animatedLine, 1, 0).render(width)[0] ?? "";
+      lines[index] = new Text19(animatedLine, 1, 0).render(width)[0] ?? "";
     }
     return lines;
   }
@@ -9362,7 +8869,7 @@ function createLoginMenuSelector(tui, title, options, radiusOption, onSelect, on
 __name(createLoginMenuSelector, "createLoginMenuSelector");
 
 // pi-dist/pi-coding-agent/modes/interactive/components/scoped-models-selector.js
-import { Container as Container19, fuzzyFilter as fuzzyFilter5, getKeybindings as getKeybindings9, Input as Input8, Key, matchesKey, Spacer as Spacer19, Text as Text19 } from "../../../pi-tui.mjs";
+import { Container as Container20, fuzzyFilter as fuzzyFilter5, getKeybindings as getKeybindings9, Input as Input8, Key, matchesKey, Spacer as Spacer19, Text as Text20 } from "../../../pi-tui.mjs";
 function isEnabled2(enabledIds, id) {
   return enabledIds === null || enabledIds.includes(id);
 }
@@ -9422,7 +8929,7 @@ function getSortedIds(enabledIds, allIds) {
   return [...enabledIds, ...allIds.filter((id) => !enabledSet.has(id))];
 }
 __name(getSortedIds, "getSortedIds");
-var ScopedModelsSelectorComponent = class extends Container19 {
+var ScopedModelsSelectorComponent = class extends Container20 {
   static {
     __name(this, "ScopedModelsSelectorComponent");
   }
@@ -9459,20 +8966,20 @@ var ScopedModelsSelectorComponent = class extends Container19 {
     this.filteredItems = this.buildItems();
     this.addChild(new DynamicBorder());
     this.addChild(new Spacer19(1));
-    this.addChild(new Text19(theme.fg("accent", theme.bold("Model Configuration")), 0, 0));
-    this.addChild(new Text19(theme.fg("muted", `Session-only. ${keyDisplayText("app.models.save")} to save to settings.`), 0, 0));
+    this.addChild(new Text20(theme.fg("accent", theme.bold("Model Configuration")), 0, 0));
+    this.addChild(new Text20(theme.fg("muted", `Session-only. ${keyDisplayText("app.models.save")} to save to settings.`), 0, 0));
     this.addChild(new Spacer19(1));
     this.searchInput = new Input8();
     this.addChild(this.searchInput);
     this.addChild(new Spacer19(1));
-    this.listContainer = new Container19();
+    this.listContainer = new Container20();
     this.addChild(this.listContainer);
     this.addChild(new Spacer19(1));
     if (config.refreshStatus) {
-      this.refreshStatusText = new Text19(theme.fg("muted", `  ${config.refreshStatus}`), 0, 0);
+      this.refreshStatusText = new Text20(theme.fg("muted", `  ${config.refreshStatus}`), 0, 0);
       this.addChild(this.refreshStatusText);
     }
-    this.footerText = new Text19(this.getFooterText(), 0, 0);
+    this.footerText = new Text20(this.getFooterText(), 0, 0);
     this.addChild(this.footerText);
     this.addChild(new DynamicBorder());
     this.updateList();
@@ -9535,7 +9042,7 @@ var ScopedModelsSelectorComponent = class extends Container19 {
   updateList() {
     this.listContainer.clear();
     if (this.filteredItems.length === 0) {
-      this.listContainer.addChild(new Text19(theme.fg("muted", "  No matching models"), 0, 0));
+      this.listContainer.addChild(new Text20(theme.fg("muted", "  No matching models"), 0, 0));
       return;
     }
     const startIndex = Math.max(0, Math.min(this.selectedIndex - Math.floor(this.maxVisible / 2), this.filteredItems.length - this.maxVisible));
@@ -9549,15 +9056,15 @@ var ScopedModelsSelectorComponent = class extends Container19 {
       const modelText = isSelected ? theme.fg("accent", styledId) : styledId;
       const providerBadge = theme.fg("muted", item.model ? ` [${item.model.provider}]` : " [unavailable]");
       const status = item.model && item.enabled ? theme.fg("accent", "\u2713 ") : "  ";
-      this.listContainer.addChild(new Text19(`${prefix}${status}${modelText}${providerBadge}`, 0, 0));
+      this.listContainer.addChild(new Text20(`${prefix}${status}${modelText}${providerBadge}`, 0, 0));
     }
     if (startIndex > 0 || endIndex < this.filteredItems.length) {
-      this.listContainer.addChild(new Text19(theme.fg("muted", `  (${this.selectedIndex + 1}/${this.filteredItems.length})`), 0, 0));
+      this.listContainer.addChild(new Text20(theme.fg("muted", `  (${this.selectedIndex + 1}/${this.filteredItems.length})`), 0, 0));
     }
     if (this.filteredItems.length > 0) {
       const selected = this.filteredItems[this.selectedIndex];
       this.listContainer.addChild(new Spacer19(1));
-      this.listContainer.addChild(new Text19(theme.fg("muted", `  ${selected.model ? `Model Name: ${selected.model.name}` : "Model unavailable"}`), 0, 0));
+      this.listContainer.addChild(new Text20(theme.fg("muted", `  ${selected.model ? `Model Name: ${selected.model.name}` : "Model unavailable"}`), 0, 0));
     }
   }
   handleInput(data) {
@@ -9664,15 +9171,15 @@ var ScopedModelsSelectorComponent = class extends Container19 {
 
 // pi-dist/pi-coding-agent/modes/interactive/components/settings-selector.js
 import { getSupportedThinkingLevels } from "../../pi-ai/sdk-bundle/index.js";
-import { Container as Container21, getCapabilities, SettingsList, Spacer as Spacer21, Text as Text21 } from "../../../pi-tui.mjs";
+import { Container as Container22, getCapabilities, SettingsList, Spacer as Spacer21, Text as Text22 } from "../../../pi-tui.mjs";
 
 // pi-dist/pi-coding-agent/modes/interactive/components/settings-submenu.js
-import { Container as Container20, fuzzyFilter as fuzzyFilter6, getKeybindings as getKeybindings10, Input as Input9, SelectList as SelectList3, Spacer as Spacer20, Text as Text20 } from "../../../pi-tui.mjs";
+import { Container as Container21, fuzzyFilter as fuzzyFilter6, getKeybindings as getKeybindings10, Input as Input9, SelectList as SelectList3, Spacer as Spacer20, Text as Text21 } from "../../../pi-tui.mjs";
 var SUBMENU_SELECT_LIST_LAYOUT = {
   minPrimaryColumnWidth: 12,
   maxPrimaryColumnWidth: 32
 };
-var SelectSubmenu = class extends Container20 {
+var SelectSubmenu = class extends Container21 {
   static {
     __name(this, "SelectSubmenu");
   }
@@ -9691,10 +9198,10 @@ var SelectSubmenu = class extends Container20 {
     this.onSelectCb = onSelect;
     this.onCancelCb = onCancel;
     this.onSelectionChangeCb = onSelectionChange;
-    this.addChild(new Text20(theme.bold(theme.fg("accent", title)), 0, 0));
+    this.addChild(new Text21(theme.bold(theme.fg("accent", title)), 0, 0));
     if (description) {
       this.addChild(new Spacer20(1));
-      this.addChild(new Text20(theme.fg("muted", description), 0, 0));
+      this.addChild(new Text21(theme.fg("muted", description), 0, 0));
     }
     if (submenuOptions?.searchable) {
       this.addChild(new Spacer20(1));
@@ -9710,7 +9217,7 @@ var SelectSubmenu = class extends Container20 {
     this.addChild(this.selectList);
     this.addChild(new Spacer20(1));
     const hint = submenuOptions?.searchable ? "  Type to filter \xB7 Enter to select \xB7 Esc to go back" : "  Enter to select \xB7 Esc to go back";
-    this.addChild(new Text20(theme.fg("dim", hint), 0, 0));
+    this.addChild(new Text21(theme.fg("dim", hint), 0, 0));
   }
   buildSelectList(options, preselect) {
     const list = new SelectList3(options, Math.min(options.length, 10), getSelectListTheme(), this.listLayout);
@@ -9746,7 +9253,7 @@ var SelectSubmenu = class extends Container20 {
     }
   }
 };
-var SteppedSubmenu = class extends Container20 {
+var SteppedSubmenu = class extends Container21 {
   static {
     __name(this, "SteppedSubmenu");
   }
@@ -9823,7 +9330,7 @@ var DEFAULT_PROJECT_TRUST_LABELS = {
   never: "Never trust"
 };
 var DEFAULT_PROJECT_TRUST_BY_LABEL = new Map(Object.entries(DEFAULT_PROJECT_TRUST_LABELS).map(([value, label]) => [label, value]));
-var WarningSettingsSubmenu = class extends Container21 {
+var WarningSettingsSubmenu = class extends Container22 {
   static {
     __name(this, "WarningSettingsSubmenu");
   }
@@ -9916,7 +9423,7 @@ function defaultAutomaticThemes(currentThemeSetting, availableThemes) {
   return { lightTheme: themeName, darkTheme: themeName };
 }
 __name(defaultAutomaticThemes, "defaultAutomaticThemes");
-var ThemeSubmenu = class extends Container21 {
+var ThemeSubmenu = class extends Container22 {
   static {
     __name(this, "ThemeSubmenu");
   }
@@ -9976,11 +9483,11 @@ var ThemeSubmenu = class extends Container21 {
   }
   showAutomaticMenu() {
     this.mode = "automatic";
-    const content = new Container21();
-    content.addChild(new Text21(theme.bold(theme.fg("accent", "Automatic Theme")), 0, 0));
+    const content = new Container22();
+    content.addChild(new Text22(theme.bold(theme.fg("accent", "Automatic Theme")), 0, 0));
     content.addChild(new Spacer21(1));
-    content.addChild(new Text21(theme.fg("muted", "Choose themes for terminal light and dark appearance."), 0, 0));
-    content.addChild(new Text21(theme.fg("muted", "Light/dark detection requires terminal support."), 0, 0));
+    content.addChild(new Text22(theme.fg("muted", "Choose themes for terminal light and dark appearance."), 0, 0));
+    content.addChild(new Text22(theme.fg("muted", "Light/dark detection requires terminal support."), 0, 0));
     content.addChild(new Spacer21(1));
     const items = [
       {
@@ -10059,7 +9566,7 @@ var ThemeSubmenu = class extends Container21 {
     this.onDone();
   }
 };
-var SettingsSelectorComponent = class extends Container21 {
+var SettingsSelectorComponent = class extends Container22 {
   static {
     __name(this, "SettingsSelectorComponent");
   }
@@ -10535,7 +10042,7 @@ var SettingsSelectorComponent = class extends Container21 {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/skill-invocation-message.js
-import { Box as Box5, Container as Container22, Markdown as Markdown5, MouseRegion as MouseRegion4, Text as Text22 } from "../../../pi-tui.mjs";
+import { Box as Box5, Container as Container23, Markdown as Markdown5, MouseRegion as MouseRegion4, Text as Text23 } from "../../../pi-tui.mjs";
 var SkillInvocationMessageComponent = class extends Box5 {
   static {
     __name(this, "SkillInvocationMessageComponent");
@@ -10559,10 +10066,10 @@ var SkillInvocationMessageComponent = class extends Box5 {
   }
   updateDisplay() {
     this.clear();
-    const content = new Container22();
+    const content = new Container23();
     if (this.expanded) {
       const label = theme.fg("customMessageLabel", `\x1B[1m[skill]\x1B[22m`);
-      content.addChild(new Text22(label, 0, 0));
+      content.addChild(new Text23(label, 0, 0));
       const header = `**${this.skillBlock.name}**
 
 `;
@@ -10571,7 +10078,7 @@ var SkillInvocationMessageComponent = class extends Box5 {
       }));
     } else {
       const line = theme.fg("customMessageLabel", `\x1B[1m[skill]\x1B[22m `) + theme.fg("customMessageText", this.skillBlock.name) + theme.fg("dim", ` (${keyText("app.tools.expand")} to expand)`);
-      content.addChild(new Text22(line, 0, 0));
+      content.addChild(new Text23(line, 0, 0));
     }
     this.addChild(new MouseRegion4(content, (event) => {
       if (event.type !== "click" || event.button !== "left")
@@ -10663,8 +10170,8 @@ var IdleStatus = class {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/themed-text.js
-import { Text as Text23 } from "../../../pi-tui.mjs";
-var ThemedText = class extends Text23 {
+import { Text as Text24 } from "../../../pi-tui.mjs";
+var ThemedText = class extends Text24 {
   static {
     __name(this, "ThemedText");
   }
@@ -10688,7 +10195,7 @@ var ThemedText = class extends Text23 {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/thinking-selector.js
-import { Container as Container23, fuzzyFilter as fuzzyFilter7, getKeybindings as getKeybindings11, Input as Input10, SelectList as SelectList4, Spacer as Spacer22, Text as Text24 } from "../../../pi-tui.mjs";
+import { Container as Container24, fuzzyFilter as fuzzyFilter7, getKeybindings as getKeybindings11, Input as Input10, SelectList as SelectList4, Spacer as Spacer22, Text as Text25 } from "../../../pi-tui.mjs";
 var THINKING_SELECT_LIST_LAYOUT = {
   minPrimaryColumnWidth: 12,
   maxPrimaryColumnWidth: 32
@@ -10702,7 +10209,7 @@ var LEVEL_DESCRIPTIONS = {
   xhigh: "Extra-high reasoning (~32k tokens)",
   max: "Maximum reasoning"
 };
-var ThinkingSelectorComponent = class extends Container23 {
+var ThinkingSelectorComponent = class extends Container24 {
   static {
     __name(this, "ThinkingSelectorComponent");
   }
@@ -10733,9 +10240,9 @@ var ThinkingSelectorComponent = class extends Container23 {
     }));
     this.addChild(new DynamicBorder());
     this.addChild(new Spacer22(1));
-    this.addChild(new Text24("Thinking Level", 0, 0));
+    this.addChild(new Text25("Thinking Level", 0, 0));
     this.addChild(new Spacer22(1));
-    this.addChild(new Text24(`${keyDisplayText("app.thinking.cycle")} cycles thinking levels in-session`, 0, 0));
+    this.addChild(new Text25(`${keyDisplayText("app.thinking.cycle")} cycles thinking levels in-session`, 0, 0));
     this.addChild(new Spacer22(1));
     this.searchInput = new Input10();
     this.searchInput.onSubmit = () => this.selectList.handleInput("\r");
@@ -10745,7 +10252,7 @@ var ThinkingSelectorComponent = class extends Container23 {
     this.selectListChildIndex = this.children.length;
     this.addChild(this.selectList);
     this.addChild(new Spacer22(1));
-    this.addChild(new Text24(theme.fg("dim", `  ${keyDisplayText("tui.select.confirm")} to select \xB7 ${keyDisplayText("app.thinking.save")} to set as default \xB7 ${keyDisplayText("tui.select.cancel")} to cancel`), 0, 0));
+    this.addChild(new Text25(theme.fg("dim", `  ${keyDisplayText("tui.select.confirm")} to select \xB7 ${keyDisplayText("app.thinking.save")} to set as default \xB7 ${keyDisplayText("tui.select.cancel")} to cancel`), 0, 0));
     this.addChild(new DynamicBorder());
   }
   buildSelectList(items, preselect) {
@@ -10787,9 +10294,9 @@ var ThinkingSelectorComponent = class extends Container23 {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/tool-execution.js
-import { Box as Box6, Container as Container24, getCapabilities as getCapabilities2, Image as Image2, MouseRegion as MouseRegion5, Spacer as Spacer23, Text as Text25 } from "../../../pi-tui.mjs";
+import { Box as Box6, Container as Container25, getCapabilities as getCapabilities2, Image as Image2, MouseRegion as MouseRegion5, Spacer as Spacer23, Text as Text26 } from "../../../pi-tui.mjs";
 var FALLBACK_PREVIEW_LINES = 10;
-var ToolExecutionComponent = class extends Container24 {
+var ToolExecutionComponent = class extends Container25 {
   static {
     __name(this, "ToolExecutionComponent");
   }
@@ -10802,6 +10309,8 @@ var ToolExecutionComponent = class extends Container24 {
   resultRendererComponent;
   rendererState = {};
   imageComponents = [];
+  /** Inputs of imageComponents, so updateDisplay can reuse images and keep their converted PNG data. */
+  imageSources = [];
   imageSpacers = [];
   toolName;
   toolCallId;
@@ -10816,7 +10325,6 @@ var ToolExecutionComponent = class extends Container24 {
   executionStarted = false;
   argsComplete = false;
   result;
-  convertedImages = /* @__PURE__ */ new Map();
   hideComponent = false;
   constructor(toolName, toolCallId, args, options = {}, toolDefinition, ui, cwd) {
     super();
@@ -10830,9 +10338,9 @@ var ToolExecutionComponent = class extends Container24 {
     this.cwd = cwd;
     this.addChild(new Spacer23(1));
     this.contentBox = new Box6(1, 1, (text) => theme.bg("toolPendingBg", text));
-    this.contentText = new Text25("", 1, 1, (text) => theme.bg("toolPendingBg", text));
+    this.contentText = new Text26("", 1, 1, (text) => theme.bg("toolPendingBg", text));
     this.contentTextRegion = this.createResultRegion(this.contentText);
-    this.selfRenderContainer = new Container24();
+    this.selfRenderContainer = new Container25();
     if (this.hasRendererDefinition()) {
       this.addChild(this.getRenderShell() === "self" ? this.selfRenderContainer : this.contentBox);
     } else {
@@ -10872,7 +10380,7 @@ var ToolExecutionComponent = class extends Container24 {
     };
   }
   createCallFallback() {
-    return new Text25(formatToolCallWithArgs(this.toolName, this.args, theme, this.expanded), 0, 0);
+    return new Text26(formatToolCallWithArgs(this.toolName, this.args, theme, this.expanded), 0, 0);
   }
   createResultFallback() {
     const output = this.getTextOutput();
@@ -10887,7 +10395,7 @@ var ToolExecutionComponent = class extends Container24 {
       text += `${theme.fg("muted", `
 ... (${remaining} more lines,`)} ${keyHint("app.tools.expand", "to expand")}${theme.fg("muted", ")")}`;
     }
-    return new Text25(text, 0, 0);
+    return new Text26(text, 0, 0);
   }
   createResultRegion(component) {
     return new MouseRegion5(component, (event) => {
@@ -10915,40 +10423,6 @@ var ToolExecutionComponent = class extends Container24 {
     this.result = result;
     this.isPartial = isPartial;
     this.updateDisplay();
-    this.maybeConvertImagesForKitty();
-  }
-  maybeConvertImagesForKitty() {
-    const caps = getCapabilities2();
-    if (caps.images !== "kitty")
-      return;
-    if (!this.result)
-      return;
-    const imageBlocks = this.result.content.filter((c2) => c2.type === "image");
-    for (let i = 0; i < imageBlocks.length; i++) {
-      const img = imageBlocks[i];
-      if (!img.data || !img.mimeType)
-        continue;
-      const sourceData = img.data;
-      const sourceMimeType = img.mimeType;
-      if (sourceMimeType === "image/png")
-        continue;
-      const cached = this.convertedImages.get(i);
-      if (cached?.sourceData === sourceData && cached.sourceMimeType === sourceMimeType)
-        continue;
-      const index = i;
-      convertToPng(sourceData, sourceMimeType).then((converted) => {
-        const currentImage = this.result?.content.filter((content) => content.type === "image")[index];
-        if (!converted || currentImage?.data !== sourceData || currentImage.mimeType !== sourceMimeType)
-          return;
-        this.convertedImages.set(index, {
-          sourceData,
-          sourceMimeType,
-          ...converted
-        });
-        this.updateDisplay();
-        this.ui.requestRender();
-      });
-    }
   }
   setExpanded(expanded) {
     this.expanded = expanded;
@@ -11061,10 +10535,13 @@ var ToolExecutionComponent = class extends Container24 {
       this.contentText.setText(this.formatToolExecution());
       hasContent = true;
     }
+    const previousImages = this.imageComponents;
+    const previousSources = this.imageSources;
     for (const img of this.imageComponents) {
       this.removeChild(img);
     }
     this.imageComponents = [];
+    this.imageSources = [];
     for (const spacer of this.imageSpacers) {
       this.removeChild(spacer);
     }
@@ -11072,20 +10549,23 @@ var ToolExecutionComponent = class extends Container24 {
     if (this.result) {
       const imageBlocks = this.result.content.filter((c2) => c2.type === "image");
       const caps = getCapabilities2();
-      for (let i = 0; i < imageBlocks.length; i++) {
-        const img = imageBlocks[i];
+      for (const img of imageBlocks) {
         if (caps.images && this.showImages && img.data && img.mimeType) {
-          const cached = this.convertedImages.get(i);
-          const converted = cached?.sourceData === img.data && cached.sourceMimeType === img.mimeType ? cached : void 0;
-          const imageData = converted?.data ?? img.data;
-          const imageMimeType = converted?.mimeType ?? img.mimeType;
-          if (caps.images === "kitty" && imageMimeType !== "image/png")
-            continue;
           const spacer = new Spacer23(1);
           this.addChild(spacer);
           this.imageSpacers.push(spacer);
-          const imageComponent = new Image2(imageData, imageMimeType, { fallbackColor: /* @__PURE__ */ __name((s) => theme.fg("toolOutput", s), "fallbackColor") }, { maxWidthCells: this.imageWidthCells });
+          const source = { data: img.data, mimeType: img.mimeType, widthCells: this.imageWidthCells };
+          const index = this.imageComponents.length;
+          const previous = previousSources[index];
+          const imageComponent = previous?.data === source.data && previous.mimeType === source.mimeType && previous.widthCells === source.widthCells ? previousImages[index] : new Image2(source.data, source.mimeType, { fallbackColor: /* @__PURE__ */ __name((s) => theme.fg("toolOutput", s), "fallbackColor") }, { maxWidthCells: source.widthCells });
+          if (source.mimeType !== "image/png") {
+            ensurePngTranscoder(() => {
+              this.invalidate();
+              this.ui.requestRender();
+            });
+          }
           this.imageComponents.push(imageComponent);
+          this.imageSources.push(source);
           this.addChild(imageComponent);
         }
       }
@@ -11115,7 +10595,7 @@ ${output}`;
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/tree-selector.js
-import { Container as Container25, getKeybindings as getKeybindings12, Input as Input11, Spacer as Spacer24, sliceByColumn, Text as Text26, truncateToWidth as truncateToWidth6, visibleWidth as visibleWidth6, wrapTextWithAnsi } from "../../../pi-tui.mjs";
+import { Container as Container26, getKeybindings as getKeybindings12, Input as Input11, Spacer as Spacer24, sliceByColumn, Text as Text27, truncateToWidth as truncateToWidth6, visibleWidth as visibleWidth6, wrapTextWithAnsi } from "../../../pi-tui.mjs";
 var TREE_GUTTER_WIDTH = 2;
 var MIN_VISIBLE_ANCHOR_CONTENT_WIDTH = 4;
 var MAX_VISIBLE_ANCHOR_CONTENT_WIDTH = 20;
@@ -12130,7 +11610,7 @@ var LabelInput = class {
     }
   }
 };
-var TreeSelectorComponent = class extends Container25 {
+var TreeSelectorComponent = class extends Container26 {
   static {
     __name(this, "TreeSelectorComponent");
   }
@@ -12160,12 +11640,12 @@ var TreeSelectorComponent = class extends Container25 {
     this.treeList.onCancel = onCancel;
     this.treeList.onCopy = (text) => this.onCopy?.(text);
     this.treeList.onLabelEdit = (entryId, currentLabel) => this.showLabelInput(entryId, currentLabel);
-    this.treeContainer = new Container25();
+    this.treeContainer = new Container26();
     this.treeContainer.addChild(this.treeList);
-    this.labelInputContainer = new Container25();
+    this.labelInputContainer = new Container26();
     this.addChild(new Spacer24(1));
     this.addChild(new DynamicBorder());
-    this.addChild(new Text26(theme.bold("  Session Tree"), 1, 0));
+    this.addChild(new Text27(theme.bold("  Session Tree"), 1, 0));
     this.addChild(new TreeHelp());
     this.addChild(new SearchLine(this.treeList));
     this.addChild(new DynamicBorder());
@@ -12210,7 +11690,7 @@ var TreeSelectorComponent = class extends Container25 {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/trust-selector.js
-import { Container as Container26, getKeybindings as getKeybindings13, Spacer as Spacer25, Text as Text27 } from "../../../pi-tui.mjs";
+import { Container as Container27, getKeybindings as getKeybindings13, Spacer as Spacer25, Text as Text28 } from "../../../pi-tui.mjs";
 function formatDecision(trustPath, decision) {
   if (decision === null) {
     return "none";
@@ -12222,7 +11702,7 @@ function formatDecision(trustPath, decision) {
   return `${label} (${decision.path})`;
 }
 __name(formatDecision, "formatDecision");
-var TrustSelectorComponent = class extends Container26 {
+var TrustSelectorComponent = class extends Container27 {
   static {
     __name(this, "TrustSelectorComponent");
   }
@@ -12241,16 +11721,16 @@ var TrustSelectorComponent = class extends Container26 {
     this.onCancelCallback = options.onCancel;
     this.addChild(new DynamicBorder());
     this.addChild(new Spacer25(1));
-    this.addChild(new Text27(theme.fg("accent", theme.bold("Project trust")), 1, 0));
-    this.addChild(new Text27(theme.fg("muted", options.cwd), 1, 0));
+    this.addChild(new Text28(theme.fg("accent", theme.bold("Project trust")), 1, 0));
+    this.addChild(new Text28(theme.fg("muted", options.cwd), 1, 0));
     this.addChild(new Spacer25(1));
-    this.addChild(new Text27(theme.fg("muted", `Saved decision: ${formatDecision(this.trustOptions[0]?.savedPath, options.savedDecision)}`), 1, 0));
-    this.addChild(new Text27(theme.fg("muted", `Current session: ${options.projectTrusted ? "trusted" : "untrusted"}`), 1, 0));
+    this.addChild(new Text28(theme.fg("muted", `Saved decision: ${formatDecision(this.trustOptions[0]?.savedPath, options.savedDecision)}`), 1, 0));
+    this.addChild(new Text28(theme.fg("muted", `Current session: ${options.projectTrusted ? "trusted" : "untrusted"}`), 1, 0));
     this.addChild(new Spacer25(1));
-    this.listContainer = new Container26();
+    this.listContainer = new Container27();
     this.addChild(this.listContainer);
     this.addChild(new Spacer25(1));
-    this.addChild(new Text27(rawKeyHint("\u2191\u2193", "navigate") + "  " + keyHint("tui.select.confirm", "save") + "  " + keyHint("tui.select.cancel", "cancel"), 1, 0));
+    this.addChild(new Text28(rawKeyHint("\u2191\u2193", "navigate") + "  " + keyHint("tui.select.confirm", "save") + "  " + keyHint("tui.select.cancel", "cancel"), 1, 0));
     this.addChild(new Spacer25(1));
     this.addChild(new DynamicBorder());
     this.updateList();
@@ -12270,7 +11750,7 @@ var TrustSelectorComponent = class extends Container26 {
       const currentMarker = isCurrent ? theme.fg("accent", "\u2713 ") : "  ";
       const prefix = isSelected ? theme.fg("accent", "\u2192 ") : "  ";
       const label = isSelected ? theme.fg("accent", option.label) : theme.fg("text", option.label);
-      this.listContainer.addChild(new Text27(`${prefix}${currentMarker}${label}`, 1, 0));
+      this.listContainer.addChild(new Text28(`${prefix}${currentMarker}${label}`, 1, 0));
     }
   }
   handleInput(keyData) {
@@ -12293,11 +11773,11 @@ var TrustSelectorComponent = class extends Container26 {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/user-message.js
-import { Container as Container27, Markdown as Markdown6 } from "../../../pi-tui.mjs";
+import { Container as Container28, Markdown as Markdown6 } from "../../../pi-tui.mjs";
 var OSC133_ZONE_START2 = "\x1B]133;A\x07";
 var OSC133_ZONE_END2 = "\x1B]133;B\x07";
 var OSC133_ZONE_FINAL2 = "\x1B]133;C\x07";
-var UserMessageComponent = class extends Container27 {
+var UserMessageComponent = class extends Container28 {
   static {
     __name(this, "UserMessageComponent");
   }
@@ -12340,7 +11820,7 @@ var UserMessageComponent = class extends Container27 {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/user-message-selector.js
-import { Container as Container28, getKeybindings as getKeybindings14, Spacer as Spacer26, Text as Text28, truncateToWidth as truncateToWidth7 } from "../../../pi-tui.mjs";
+import { Container as Container29, getKeybindings as getKeybindings14, Spacer as Spacer26, Text as Text29, truncateToWidth as truncateToWidth7 } from "../../../pi-tui.mjs";
 var UserMessageList = class {
   static {
     __name(this, "UserMessageList");
@@ -12405,7 +11885,7 @@ var UserMessageList = class {
     }
   }
 };
-var UserMessageSelectorComponent = class extends Container28 {
+var UserMessageSelectorComponent = class extends Container29 {
   static {
     __name(this, "UserMessageSelectorComponent");
   }
@@ -12413,8 +11893,8 @@ var UserMessageSelectorComponent = class extends Container28 {
   constructor(messages, onSelect, onCancel, initialSelectedId) {
     super();
     this.addChild(new Spacer26(1));
-    this.addChild(new Text28(theme.bold("Fork from Message"), 1, 0));
-    this.addChild(new Text28(theme.fg("muted", "Select a user message to copy the active path up to that point into a new session"), 1, 0));
+    this.addChild(new Text29(theme.bold("Fork from Message"), 1, 0));
+    this.addChild(new Text29(theme.fg("muted", "Select a user message to copy the active path up to that point into a new session"), 1, 0));
     this.addChild(new Spacer26(1));
     this.addChild(new DynamicBorder());
     this.addChild(new Spacer26(1));
@@ -12545,7 +12025,7 @@ function isUsageSessionEntry(item) {
   return "type" in item && item.type === "usage";
 }
 __name(isUsageSessionEntry, "isUsageSessionEntry");
-var DEAD_TERMINAL_ERROR_CODES = /* @__PURE__ */ new Set(["EIO", "EPIPE", "ENOTCONN"]);
+var DEAD_TERMINAL_ERROR_CODES = /* @__PURE__ */ new Set(["EIO", "EPIPE", "ENOTCONN", "ENOTTY"]);
 function isDeadTerminalError(error) {
   if (!error || typeof error !== "object" || !("code" in error)) {
     return false;
@@ -12733,6 +12213,7 @@ var InteractiveMode = class _InteractiveMode {
   shutdownRequested = false;
   /** The `/bug` hint is shown at most once per session so error output stays readable. */
   bugReportHintShown = false;
+  installChangeWarningShown = false;
   // Extension UI state
   extensionSelector = void 0;
   extensionInput = void 0;
@@ -12795,17 +12276,17 @@ var InteractiveMode = class _InteractiveMode {
     });
     this.ui = createInteractiveTuiReference(() => this.renderer);
     this.ui.setClearOnShrink(this.settingsManager.getClearOnShrink());
-    this.headerContainer = new Container29();
-    this.loadedResourcesContainer = new Container29();
-    this.chatContainer = new Container29();
-    this.documentContainer = new Container29();
+    this.headerContainer = new Container30();
+    this.loadedResourcesContainer = new Container30();
+    this.chatContainer = new Container30();
+    this.documentContainer = new Container30();
     this.documentContainer.addChild(this.headerContainer);
     this.documentContainer.addChild(this.loadedResourcesContainer);
     this.documentContainer.addChild(this.chatContainer);
-    this.pendingMessagesContainer = new Container29();
-    this.statusContainer = new Container29();
-    this.widgetContainerAbove = new Container29();
-    this.widgetContainerBelow = new Container29();
+    this.pendingMessagesContainer = new Container30();
+    this.statusContainer = new Container30();
+    this.widgetContainerAbove = new Container30();
+    this.widgetContainerBelow = new Container30();
     this.keybindings = KeybindingsManager.create();
     setKeybindings3(this.keybindings);
     const editorPaddingX = this.settingsManager.getEditorPaddingX();
@@ -12816,12 +12297,12 @@ var InteractiveMode = class _InteractiveMode {
       embedWorkingStatus: true
     });
     this.editor = this.defaultEditor;
-    this.editorContainer = new Container29();
+    this.editorContainer = new Container30();
     this.editorContainer.addChild(this.editor);
     this.footerDataProvider = new FooterDataProvider(this.sessionManager.getCwd());
     this.footer = new FooterComponent(this.session, this.footerDataProvider);
     this.footer.setAutoCompactEnabled(this.session.autoCompactionEnabled);
-    this.footerContainer = new Container29();
+    this.footerContainer = new Container30();
     this.footerContainer.addChild(this.footer);
     this.hideThinkingBlock = this.settingsManager.getHideThinkingBlock();
     this.outputPad = this.settingsManager.getOutputPad();
@@ -12969,7 +12450,7 @@ var InteractiveMode = class _InteractiveMode {
       const versionMatch = this.changelogMarkdown.match(/##\s+\[?(\d+\.\d+\.\d+)\]?/);
       const latestVersion = versionMatch ? versionMatch[1] : this.version;
       const condensedText = `Updated to v${latestVersion}. Use ${theme.bold("/changelog")} to view full changelog.`;
-      this.chatContainer.addChild(new Text29(condensedText, 1, 0));
+      this.chatContainer.addChild(new Text30(condensedText, 1, 0));
     } else {
       this.chatContainer.addChild(new ThemedText(() => theme.bold(theme.fg("accent", "What's New")), 1, 0));
       this.chatContainer.addChild(new Spacer27(1));
@@ -13089,6 +12570,7 @@ var InteractiveMode = class _InteractiveMode {
     this.ui.setFocus(this.editor);
     this.ui.start();
     this.isInitialized = true;
+    this.ensurePngTranscoder();
     this.themeController.applyFromSettings();
     await this.themeController.waitForTerminalColors();
     if (this.shouldShowStartupHeader()) {
@@ -13140,13 +12622,13 @@ ${onboarding()}`, () => `${withLogo(expandedInstructions())}
 
 ${onboarding()}`, this.getStartupExpansionState(), 1, 0);
       if (showLogo)
-        header.onLogoClick = (column, row) => playPiLogoAnimation(this.renderer, column, row);
+        header.onLogoClick = (column, row) => playPiLogo3d(this.renderer, column, row);
       this.builtInHeader = header;
       this.headerContainer.addChild(new Spacer27(1));
       this.headerContainer.addChild(this.builtInHeader);
       this.headerContainer.addChild(new Spacer27(1));
     } else {
-      this.builtInHeader = new Text29("", 0, 0);
+      this.builtInHeader = new Text30("", 0, 0);
       this.headerContainer.addChild(this.builtInHeader);
     }
     this.ui.requestRender();
@@ -13876,8 +13358,16 @@ ${warningLines()}`, 0, 0));
   applyFullscreenScrollbarSetting() {
     this.transcriptScrollView?.setScrollbar(this.settingsManager.getFullscreenScrollbar());
   }
+  /** Lets extension images use the PNG transcoder; tool results register it themselves. */
+  ensurePngTranscoder() {
+    ensurePngTranscoder(() => {
+      this.ui.invalidate();
+      this.ui.requestRender();
+    });
+  }
   applyRuntimeSettings() {
     setCapabilityOverrides2(this.settingsManager.getTerminalCapabilityOverrides());
+    this.ensurePngTranscoder();
     configureHttpDispatcher(this.settingsManager.getHttpIdleTimeoutMs());
     this.applyFullscreenScrollbarSetting();
     if (this.renderer instanceof TuiAltScreen3) {
@@ -13975,7 +13465,27 @@ ${warningLines()}`, 0, 0));
       return;
     if (/\b(?:abort(?:ed)?|cancel(?:l?ed)?)\b/i.test(message.errorMessage ?? ""))
       return;
+    if (this.maybeShowInstallChangeWarning())
+      return;
     this.suggestBugReport();
+  }
+  /**
+   * After an error, check whether an update replaced or removed this install while the session ran.
+   * Code loaded on demand then fails with missing modules until restart (#10439). Returns true when
+   * the install changed.
+   */
+  maybeShowInstallChangeWarning() {
+    if (this.installChangeWarningShown)
+      return true;
+    const change = detectInstallChange();
+    if (!change)
+      return false;
+    this.installChangeWarningShown = true;
+    const cause = change.kind === "updated" ? `${APP_NAME} was updated to ${change.version} while this session was running (${VERSION})` : `The ${APP_NAME} installation this session runs from was removed or replaced`;
+    const resumeCommand = formatResumeCommand(this.sessionManager);
+    const restart = resumeCommand ? `Restart with \`${resumeCommand}\` to continue this session.` : `Restart ${APP_NAME}.`;
+    this.showWarning(`${cause}. Features that load code on demand can fail until restart. ${restart}`);
+    return true;
   }
   renderCurrentSessionState() {
     this.loadedResourcesContainer.clear();
@@ -13995,7 +13505,7 @@ ${warningLines()}`, 0, 0));
    * whatever this returns, so they never reach into the tool registry themselves.
    */
   getRegisteredToolDefinition(toolName) {
-    return withBuiltInRenderers(toolName, this.session.getToolDefinition(toolName));
+    return this.session.extensionRunner.resolveToolRenderers(toolName, () => withBuiltInRenderers(toolName, this.session.getToolDefinition(toolName)));
   }
   getMarkdownTransformers() {
     return [this.mermaidMarkdownTransformer, ...this.session.extensionRunner.getMarkdownTransformers()];
@@ -14148,9 +13658,9 @@ ${warningLines()}`, 0, 0));
     }
     let component;
     if (Array.isArray(content)) {
-      const container = new Container29();
+      const container = new Container30();
       for (const line of content.slice(0, _InteractiveMode.MAX_WIDGET_LINES)) {
-        container.addChild(new Text29(line, 1, 0));
+        container.addChild(new Text30(line, 1, 0));
       }
       if (content.length > _InteractiveMode.MAX_WIDGET_LINES) {
         container.addChild(new ThemedText(() => theme.fg("muted", "... (widget truncated)"), 1, 0));
@@ -15130,6 +14640,8 @@ ${message}`, ["Yes", "No"], opts);
         break;
       }
       case "tool_execution_end": {
+        if (event.isError)
+          this.maybeShowInstallChangeWarning();
         const component = this.pendingTools.get(event.toolCallId);
         if (component) {
           component.updateResult({ ...event.result, isError: event.isError });
@@ -15658,6 +15170,9 @@ ${message}`, ["Yes", "No"], opts);
    * paste / Kitty / modifyOtherKeys sequences.
    */
   uncaughtCrash(error) {
+    if (isDeadTerminalError(error)) {
+      this.emergencyTerminalExit();
+    }
     if (this.isShuttingDown) {
       process.exit(1);
     }
@@ -15714,10 +15229,10 @@ ${this.crashReportInstructions()}`);
       }
       throw error;
     }, "terminalErrorHandler");
-    process.stdout.on("error", terminalErrorHandler);
-    process.stderr.on("error", terminalErrorHandler);
-    this.signalCleanupHandlers.push(() => process.stdout.off("error", terminalErrorHandler));
-    this.signalCleanupHandlers.push(() => process.stderr.off("error", terminalErrorHandler));
+    for (const stream2 of [process.stdin, process.stdout, process.stderr]) {
+      stream2.on("error", terminalErrorHandler);
+      this.signalCleanupHandlers.push(() => stream2.off("error", terminalErrorHandler));
+    }
     const uncaughtExceptionHandler = /* @__PURE__ */ __name((error) => this.uncaughtCrash(error), "uncaughtExceptionHandler");
     process.prependListener("uncaughtException", uncaughtExceptionHandler);
     this.signalCleanupHandlers.push(() => process.off("uncaughtException", uncaughtExceptionHandler));
@@ -15896,7 +15411,7 @@ ${this.crashReportInstructions()}`);
     const updateInstruction = /* @__PURE__ */ __name(() => theme.fg("muted", `New version ${release.version} is available. Run `) + theme.fg("accent", `${APP_NAME} update`), "updateInstruction");
     const changelogUrl = "https://pi.dev/changelog";
     const changelogLine = /* @__PURE__ */ __name(() => {
-      const changelogLink = getCapabilities3().hyperlinks ? hyperlink4(theme.fg("accent", changelogUrl), changelogUrl) : theme.fg("accent", changelogUrl);
+      const changelogLink = getCapabilities3().hyperlinks ? hyperlink3(theme.fg("accent", changelogUrl), changelogUrl) : theme.fg("accent", changelogUrl);
       return theme.fg("muted", "Changelog: ") + changelogLink;
     }, "changelogLine");
     const note = release.note?.trim();
@@ -16400,7 +15915,6 @@ ${packageLines}`, 1, 0));
         this.updateEditorBorderColor();
         this.showStatus(`Model: ${model.id}`);
         void this.maybeWarnAboutAnthropicSubscriptionAuth(model);
-        this.checkDaxnutsEasterEgg(model);
       } catch (error) {
         this.showError(error instanceof Error ? error.message : String(error));
       }
@@ -16520,7 +16034,6 @@ ${packageLines}`, 1, 0));
           done();
           this.showStatus(persist ? `Default model: ${model.provider}/${model.id}` : `Model: ${model.id}`);
           void this.maybeWarnAboutAnthropicSubscriptionAuth(model);
-          this.checkDaxnutsEasterEgg(model);
         } catch (error) {
           done();
           this.showError(error instanceof Error ? error.message : String(error));
@@ -17087,7 +16600,6 @@ ${packageLines}`, 1, 0));
       if (selectedModel) {
         this.showStatus(`${actionLabel}. Selected ${selectedModel.id}. Credentials saved to ${getAuthPath()}`);
         void this.maybeWarnAboutAnthropicSubscriptionAuth(selectedModel);
-        this.checkDaxnutsEasterEgg(selectedModel);
       } else {
         this.showStatus(`${actionLabel}. Credentials saved to ${getAuthPath()}`);
         if (selectionError) {
@@ -17329,7 +16841,7 @@ ${packageLines}`, 1, 0));
       return;
     }
     this.resetExtensionUI();
-    const reloadBox = new Container29();
+    const reloadBox = new Container30();
     const borderColor = /* @__PURE__ */ __name((s) => theme.fg("border", s), "borderColor");
     reloadBox.addChild(new DynamicBorder(borderColor));
     reloadBox.addChild(new Spacer27(1));
@@ -17805,6 +17317,8 @@ ${theme.fg("muted", debugLogPath)}`, 1, 1));
     this.ui.requestRender();
   }
   handleArminSaysHi() {
+    if (playArmin3d(this.renderer))
+      return;
     this.chatContainer.addChild(new Spacer27(1));
     this.chatContainer.addChild(new ArminComponent(this.ui));
     this.ui.requestRender();
@@ -17813,16 +17327,6 @@ ${theme.fg("muted", debugLogPath)}`, 1, 1));
     this.chatContainer.addChild(new Spacer27(1));
     this.chatContainer.addChild(new EarendilAnnouncementComponent());
     this.ui.requestRender();
-  }
-  handleDaxnuts() {
-    this.chatContainer.addChild(new Spacer27(1));
-    this.chatContainer.addChild(new DaxnutsComponent(this.ui));
-    this.ui.requestRender();
-  }
-  checkDaxnutsEasterEgg(model) {
-    if (model.provider === "opencode" && model.id.toLowerCase().includes("kimi-k2.5")) {
-      this.handleDaxnuts();
-    }
   }
   async handleBashCommand(command, excludeFromContext = false) {
     const extensionRunner = this.session.extensionRunner;
@@ -19332,7 +18836,7 @@ import { ProcessTerminal as ProcessTerminal3, TuiMainScreen as TuiMainScreen4 } 
 // pi-dist/pi-coding-agent/modes/interactive/components/config-selector.js
 import { homedir as homedir4 } from "node:os";
 import { basename as basename2, dirname as dirname4, join as join12, relative as relative3 } from "node:path";
-import { Container as Container30, getKeybindings as getKeybindings15, Input as Input12, matchesKey as matchesKey3, Spacer as Spacer28, truncateToWidth as truncateToWidth8, visibleWidth as visibleWidth8 } from "../../../pi-tui.mjs";
+import { Container as Container31, getKeybindings as getKeybindings15, Input as Input12, matchesKey as matchesKey3, Spacer as Spacer28, truncateToWidth as truncateToWidth8, visibleWidth as visibleWidth8 } from "../../../pi-tui.mjs";
 var RESOURCE_TYPES = ["extensions", "skills", "prompts", "themes"];
 var RESOURCE_TYPE_LABELS = {
   extensions: "Extensions",
@@ -19993,7 +19497,7 @@ var ResourceList = class {
     return relative3(baseDir, item.path);
   }
 };
-var ConfigSelectorComponent = class extends Container30 {
+var ConfigSelectorComponent = class extends Container31 {
   static {
     __name(this, "ConfigSelectorComponent");
   }
@@ -21058,6 +20562,14 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
             return true;
           }
           console.log(chalk6.green(`Updated ${APP_NAME} from ${VERSION} to ${selfUpdatePlan.version}`));
+          if (installMethod === "npm") {
+            const installerCommand = process.platform === "win32" ? 'powershell -c "irm https://pi.dev/install.ps1 | iex"' : "curl -fsSL https://pi.dev/install.sh | sh";
+            console.log();
+            console.log(chalk6.yellow(`This npm installation of ${APP_NAME} does not pin its dependencies.`));
+            console.log(chalk6.yellow("Run the installer to migrate to a managed installation that does:"));
+            console.log();
+            console.log(`  ${chalk6.bold(installerCommand)}`);
+          }
         }
         return true;
       }
@@ -21792,12 +21304,12 @@ async function main(args, options) {
 __name(main, "main");
 
 // pi-dist/pi-coding-agent/modes/interactive/components/show-images-selector.js
-import { Container as Container31, SelectList as SelectList5 } from "../../../pi-tui.mjs";
+import { Container as Container32, SelectList as SelectList5 } from "../../../pi-tui.mjs";
 var SHOW_IMAGES_SELECT_LIST_LAYOUT = {
   minPrimaryColumnWidth: 12,
   maxPrimaryColumnWidth: 32
 };
-var ShowImagesSelectorComponent = class extends Container31 {
+var ShowImagesSelectorComponent = class extends Container32 {
   static {
     __name(this, "ShowImagesSelectorComponent");
   }
@@ -21826,12 +21338,12 @@ var ShowImagesSelectorComponent = class extends Container31 {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/theme-selector.js
-import { Container as Container32, SelectList as SelectList6 } from "../../../pi-tui.mjs";
+import { Container as Container33, SelectList as SelectList6 } from "../../../pi-tui.mjs";
 var THEME_SELECT_LIST_LAYOUT = {
   minPrimaryColumnWidth: 12,
   maxPrimaryColumnWidth: 32
 };
-var ThemeSelectorComponent = class extends Container32 {
+var ThemeSelectorComponent = class extends Container33 {
   static {
     __name(this, "ThemeSelectorComponent");
   }

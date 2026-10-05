@@ -102,7 +102,7 @@ func TestOpenAIResponsesNamespaceUpstream(t *testing.T) {
 			ToolCall{ID: "call_function|fc_test", Name: "lookup", Arguments: JsonObject{"value": "hello"}, Namespace: "dynamic_tools"},
 			ToolCall{ID: "call_custom|ctc_test", Name: "query", Arguments: JsonObject{"input": "hello"}, Namespace: "dynamic_tools"},
 		}}
-		for _, cfg := range []OpenAIResponsesConfig{{Model: "gpt-5.2", ProviderID: "openai"}, {Model: "gpt-5.4", ProviderID: "azure-openai-responses"}, {Model: "gpt-5.3-codex-spark", ProviderID: "openai-codex", Codex: true}} {
+		for _, cfg := range []OpenAIResponsesConfig{{Model: "gpt-5.2", ProviderID: "openai"}, {Model: "gpt-5.4", ProviderID: "azure"}, {Model: "gpt-5.3-codex-spark", ProviderID: "openai-codex", Codex: true}} {
 			provider := &openAIResponsesProvider{cfg: cfg}
 			input, err := provider.convertMessages([]Message{output}, map[string]string{"query": "input"})
 			if err != nil {

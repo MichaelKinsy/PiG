@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -62,6 +63,22 @@ func TestOutputAccumulatorTempFileHoldsRawBytes(t *testing.T) {
 	got, err := os.ReadFile(snap.FullOutputPath)
 	if err != nil || string(got) != "\x1b[31mred\x1b[0m and more\n" {
 		t.Fatalf("temp file = %q, %v", got, err)
+	}
+	requireUserOnlyFile(t, snap.FullOutputPath)
+}
+
+// Output can carry private data, so only the user may read the full-output files.
+func requireUserOnlyFile(t *testing.T, path string) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		return
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := info.Mode().Perm(); got&0o077 != 0 {
+		t.Errorf("%s mode = %o, want no access for group and others", path, got)
 	}
 }
 

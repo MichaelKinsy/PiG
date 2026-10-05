@@ -100,7 +100,11 @@ type Options struct {
 	LogPath string
 	// OpenURL opens the OAuth authorization URL. Defaults to doing nothing; the host supplies the platform browser.
 	OpenURL func(url string)
-	// UpdateConfig saves `/mcp` changes to the server's config file. Defaults to editing its `mcp.json`.
+	// CopyToClipboard copies the OAuth authorization URL when `app.message.copy` is pressed on the sign-in screen.
+	// Defaults to nil, which ignores the key; the host supplies the system clipboard.
+	CopyToClipboard func(text string) error
+	// UpdateConfig saves `/mcp` changes to the server's config file: its project Override when set, else its
+	// Source. Defaults to editing that `mcp.json`.
 	UpdateConfig func(entry McpServerEntry, patch McpServerConfigPatch) error
 	// StartupWait is how long the first prompt waits for servers that are still
 	// connecting at startup. Their tools become available when they connect.
@@ -324,10 +328,12 @@ type Extension struct {
 	host    Host
 	options Options
 
-	mu                 sync.Mutex
-	servers            []*server
-	configuredEntries  []McpServerEntry
-	configErrors       []string
+	mu                sync.Mutex
+	servers           []*server
+	configuredEntries []McpServerEntry
+	configErrors      []string
+	// projectConfig is the trusted project's `mcp.json`, where `/mcp` saves project overrides of global servers.
+	projectConfig      string
 	overridden         []string
 	sessionActive      bool
 	autoEnableCodemode bool
@@ -980,20 +986,35 @@ func sourcePath(tool extension.ToolInfo) string {
 
 // saveConfig saves a config change; it returns an error message when the file
 // could not be updated. Changes to registered servers only apply to the
-// current session.
-func (e *Extension) saveConfig(s *server, patch McpServerConfigPatch) string {
+// current session. inProject adds a project override.
+// upstream: packages/coding-agent/src/extensions/mcp/index.ts:saveConfig
+func (e *Extension) saveConfig(s *server, patch McpServerConfigPatch, inProject bool) string {
 	e.mu.Lock()
 	entry := s.entry
+	override := entry.Override
+	if inProject {
+		override = e.projectConfig
+	}
 	e.mu.Unlock()
+	if override != "" {
+		entry.Override = override
+	}
 	if entry.Scope != "extension" {
 		update := e.options.UpdateConfig
 		if update == nil {
 			update = func(entry McpServerEntry, patch McpServerConfigPatch) error {
-				return UpdateMcpServerConfig(entry.Source, entry.Name, patch)
+				if entry.Override != "" {
+					return UpdateMcpServerConfig(entry.Override, entry.Name, patch, UpdateMcpServerConfigOptions{Override: true})
+				}
+				return UpdateMcpServerConfig(entry.Source, entry.Name, patch, UpdateMcpServerConfigOptions{})
 			}
 		}
 		if err := update(entry, patch); err != nil {
-			return fmt.Sprintf("Could not update %s: %s", entry.Source, err)
+			target := entry.Source
+			if entry.Override != "" {
+				target = entry.Override
+			}
+			return fmt.Sprintf("Could not update %s: %s", target, err)
 		}
 	}
 	config := entry.Config
@@ -1003,8 +1024,9 @@ func (e *Extension) saveConfig(s *server, patch McpServerConfigPatch) string {
 	if patch.Exposure != "" {
 		config.Exposure = patch.Exposure
 	}
+	entry.Config = config
 	e.mu.Lock()
-	s.entry.Config = config
+	s.entry = entry
 	e.mu.Unlock()
 	return ""
 }
@@ -1140,15 +1162,16 @@ func (e *Extension) Reconnect(ctx context.Context, name string) string {
 	return ""
 }
 
-// SetEnabled enables or disables a server and saves the choice. It returns
-// an error message when the config could not be saved; connection errors show
-// in the state.
-func (e *Extension) SetEnabled(ctx EventContext, name string, enabled bool) string {
+// SetEnabled enables or disables a server and saves the choice, as a project
+// override with inProject (upstream's optional `inProject`, default false). It
+// returns an error message when the config could not be saved; connection
+// errors show in the state.
+func (e *Extension) SetEnabled(ctx EventContext, name string, enabled bool, inProject ...bool) string {
 	s := e.findServer(name)
 	if s == nil {
 		return fmt.Sprintf(`No MCP server named "%s".`, name)
 	}
-	if failed := e.saveConfig(s, McpServerConfigPatch{Enabled: &enabled}); failed != "" {
+	if failed := e.saveConfig(s, McpServerConfigPatch{Enabled: &enabled}, len(inProject) > 0 && inProject[0]); failed != "" {
 		return failed
 	}
 	if !enabled {
@@ -1174,7 +1197,7 @@ func (e *Extension) SetExposure(name string, exposure extension.McpExposure) str
 	if s == nil {
 		return fmt.Sprintf(`No MCP server named "%s".`, name)
 	}
-	if failed := e.saveConfig(s, McpServerConfigPatch{Exposure: exposure}); failed != "" {
+	if failed := e.saveConfig(s, McpServerConfigPatch{Exposure: exposure}, false); failed != "" {
 		return failed
 	}
 	e.mu.Lock()
@@ -1315,6 +1338,7 @@ func (e *Extension) SessionStart(ctx EventContext) {
 	loaded := e.loadConfig(ctx)
 	e.mu.Lock()
 	e.configErrors = loaded.Errors
+	e.projectConfig = loaded.ProjectConfig
 	e.autoEnableCodemode = loaded.AutoEnableCodemode == nil || *loaded.AutoEnableCodemode
 	e.warnedUnreachable = false
 	e.waitedForStartup = false

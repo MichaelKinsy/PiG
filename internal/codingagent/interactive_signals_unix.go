@@ -69,6 +69,7 @@ func (m *InteractiveMode) suspendOperations() suspendOperations {
 		start: func() error {
 			restore, drain, err := tui.EnterRawModeWithDrain()
 			if err != nil {
+				m.exitIfDeadTerminal(err)
 				return err
 			}
 			m.rawRestore = restore

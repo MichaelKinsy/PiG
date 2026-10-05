@@ -111,19 +111,19 @@ func TestApplyConvertedImageIgnoresFailureAndOutOfRange(t *testing.T) {
 	}
 }
 
-// Upstream updateDisplay skips a non-PNG image on Kitty (no spacer, no image)
-// until its conversion lands, then renders the converted PNG.
+// .upstream/v1.0.1/packages/tui/src/components/image.ts render: on Kitty, a non-PNG image without PNG data shows its text
+// fallback after the spacer (1.0.0 skipped it), then the converted PNG once the conversion lands.
 func TestKittyRendersNonPNGOnlyAfterConversion(t *testing.T) {
 	withImageCapabilities(t, ImageProtocolKitty)
 	c := imageToolComponent(ImageBlock{Data: "jpeg-data", MIMEType: "image/jpeg"})
 	before := c.Render(120)
-	if got := strings.Join(before, "\n"); strings.Contains(got, "jpeg-data") || strings.Contains(got, "\x1b_G") {
-		t.Fatalf("unconverted jpeg rendered on kitty:\n%q", got)
+	if got := strings.Join(before, "\n"); strings.Contains(got, "jpeg-data") || strings.Contains(got, "\x1b_G") || !strings.Contains(got, "[Image: [image/jpeg] 800x600]") {
+		t.Fatalf("unconverted jpeg on kitty:\n%q", got)
 	}
 	noImage := NewToolExecutionComponent("custom_tool", "")
 	noImage.SetResult("", false, time.Second)
-	if len(before) != len(noImage.Render(120)) {
-		t.Fatalf("skipped image left rows: %d vs %d", len(before), len(noImage.Render(120)))
+	if len(before) != len(noImage.Render(120))+2 {
+		t.Fatalf("fallback rows: %d vs %d without the image", len(before), len(noImage.Render(120)))
 	}
 
 	pending := c.PendingKittyImageConversions()

@@ -29,6 +29,7 @@ type TestHarness struct {
 // Session event.
 func NewTestHarness(t testing.TB, opts InteractiveOptions, onEvent func(h *TestHarness, ev agent.AgentEvent)) *TestHarness {
 	t.Helper()
+	restoreStartupTheme(t)
 	m := NewInteractiveMode(opts)
 	m.chatContainer = tui.NewContainer()
 	m.loadedResourcesContainer = tui.NewContainer()

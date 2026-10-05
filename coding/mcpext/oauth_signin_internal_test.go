@@ -2,11 +2,9 @@ package mcpext
 
 import (
 	"net/url"
-	"runtime"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
-	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // oauth.ts responseFromRedirectURL: a pasted redirect URL carries its `iss` parameter to the code exchange, and
@@ -20,8 +18,9 @@ func TestResponseFromRedirectURLKeepsTheIssParameter(t *testing.T) {
 		{"code=c&state=s&iss=https%3A%2F%2Fas.example", new("https://as.example")},
 		{"code=c&state=s&iss=", new("")},
 	}
+	redirect, _ := url.Parse("http://127.0.0.1:1/callback")
 	for _, c := range cases {
-		response, err := responseFromRedirectURL("http://127.0.0.1:1/callback?"+c.query, "s")
+		response, err := responseFromRedirectURL("http://127.0.0.1:1/callback?"+c.query, "s", redirect)
 		if err != nil {
 			t.Fatalf("%s: %v", c.query, err)
 		}
@@ -31,19 +30,15 @@ func TestResponseFromRedirectURLKeepsTheIssParameter(t *testing.T) {
 	}
 }
 
-// index.ts loginCommand showAuthorizationUrl: in the terminal UI the URL and a short line both link to it, so a
-// wrapped URL stays openable; other modes print the URL alone.
-func TestSignInShowsTheAuthorizationURLAsLinksInTheTerminalUI(t *testing.T) {
+// index.ts loginCommand showAuthorizationUrl (1.0.1): the notice shows the plain URL in every mode it is used in; the
+// terminal UI signs in on the manager's sign-in screen, which links the URL and copies it.
+func TestSignInNoticeShowsThePlainAuthorizationURL(t *testing.T) {
 	u, _ := url.Parse("https://as.example/authorize?client_id=c&state=s")
-	open := "Ctrl+click to open"
-	if runtime.GOOS == "darwin" {
-		open = "Cmd+click to open"
-	}
 	cases := []struct {
 		mode extension.ExtensionMode
 		want string
 	}{
-		{extension.ModeTUI, "Sign in to MCP server \"docs\" in your browser:\n" + tui.Hyperlink(u.String(), u.String()) + "\n" + tui.Hyperlink(open, u.String())},
+		{extension.ModeTUI, "Sign in to MCP server \"docs\" in your browser:\n" + u.String()},
 		{extension.ModeRPC, "Sign in to MCP server \"docs\" in your browser:\n" + u.String()},
 	}
 	for _, c := range cases {

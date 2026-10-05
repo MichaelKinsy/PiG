@@ -150,7 +150,7 @@ func TestSupportsXHighUpstream(t *testing.T) {
 			levels   []ThinkingLevel
 		}{
 			{"openai", []ThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh, ThinkingMax}},
-			{"azure-openai-responses", []ThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh, ThinkingMax}},
+			{"azure", []ThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh, ThinkingMax}},
 			{"openai-codex", []ThinkingLevel{ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh, ThinkingMax}},
 		} {
 			m := upstreamThinkingModel(t, tc.provider+"/gpt-6.1-sol")

@@ -164,12 +164,15 @@ func TestCatalogCyclesReachJSONError(t *testing.T) {
 	list := make([]any, 1)
 	list[0] = list
 	for _, data := range []map[string]any{object, {"list": list}} {
-		catalog := []*ai.Model{{ID: "cycle", SamplingParams: data}}
-		_, want := json.Marshal(ExtensionModelRegistryState(nil, catalog))
-		cache := &extensionCatalogEncoding{}
-		_, got := json.Marshal(cache.state(nil, catalog))
-		if got == nil || want == nil || got.Error() != want.Error() || cache.models != nil {
-			t.Fatalf("cycle errors differ: cached=%v original=%v", got, want)
+		// The per-level sampling parameters carry the same free-form JSON as samplingParams.
+		for _, model := range []*ai.Model{{ID: "cycle", SamplingParams: data}, {ID: "cycle", SamplingParamsByThinkingLevel: ai.SamplingParamsByThinkingLevel{ai.ThinkingHigh: data}}} {
+			catalog := []*ai.Model{model}
+			_, want := json.Marshal(ExtensionModelRegistryState(nil, catalog))
+			cache := &extensionCatalogEncoding{}
+			_, got := json.Marshal(cache.state(nil, catalog))
+			if got == nil || want == nil || got.Error() != want.Error() || cache.models != nil {
+				t.Fatalf("cycle errors differ: cached=%v original=%v", got, want)
+			}
 		}
 	}
 }

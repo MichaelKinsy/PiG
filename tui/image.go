@@ -1,6 +1,70 @@
 package tui
 
-import "github.com/MichaelKinsy/PiG/tui/widthx"
+import (
+	"container/list"
+	"sync"
+
+	"github.com/MichaelKinsy/PiG/tui/widthx"
+)
+
+// ImageTranscoder converts base64 image data to base64 PNG data, or reports
+// false if it cannot. It is called synchronously during rendering.
+// upstream: packages/tui/src/components/image.ts:ImageTranscoder
+type ImageTranscoder func(base64Data, mimeType string) (string, bool)
+
+// pngCacheCap bounds the shared conversions.
+// upstream: packages/tui/src/components/image.ts:toPng
+const pngCacheCap = 32
+
+type pngCacheEntry struct {
+	source string
+	png    string
+	ok     bool
+}
+
+var (
+	imageTranscoderMu sync.Mutex
+	imageTranscoder   ImageTranscoder
+	// pngCache is a backstop for callers that recreate Image instances, keyed by source data, least recently used first.
+	pngCache      = list.New()
+	pngCacheIndex = map[string]*list.Element{}
+)
+
+// SetImageTranscoder registers the converter used for non-PNG images on
+// Kitty-protocol terminals, which only accept PNG. Without one, such images
+// render as text fallbacks. It clears the shared conversions.
+// upstream: packages/tui/src/components/image.ts:setImageTranscoder
+func SetImageTranscoder(transcoder ImageTranscoder) {
+	imageTranscoderMu.Lock()
+	defer imageTranscoderMu.Unlock()
+	imageTranscoder = transcoder
+	pngCache.Init()
+	clear(pngCacheIndex)
+}
+
+// toPng converts through the registered transcoder and the shared cache.
+func toPng(base64Data, mimeType string) (string, bool) {
+	imageTranscoderMu.Lock()
+	defer imageTranscoderMu.Unlock()
+	if imageTranscoder == nil {
+		return "", false
+	}
+	var entry pngCacheEntry
+	if element, cached := pngCacheIndex[base64Data]; cached {
+		entry = element.Value.(pngCacheEntry)
+		pngCache.Remove(element)
+	} else {
+		png, ok := imageTranscoder(base64Data, mimeType)
+		entry = pngCacheEntry{source: base64Data, png: png, ok: ok}
+	}
+	pngCacheIndex[base64Data] = pngCache.PushBack(entry)
+	if pngCache.Len() > pngCacheCap {
+		oldest := pngCache.Front()
+		pngCache.Remove(oldest)
+		delete(pngCacheIndex, oldest.Value.(pngCacheEntry).source)
+	}
+	return entry.png, entry.ok
+}
 
 type ImageTheme struct {
 	FallbackColor func(string) string
@@ -24,6 +88,8 @@ type Image struct {
 	cachedLines []string
 	cachedWidth int
 	imageID     int
+	// pngData is the converted PNG data for Kitty. Failures are not stored so a later transcoder can retry.
+	pngData string
 }
 
 func NewImage(base64Data, mimeType string, options ImageOptions, dimensions *ImageDimensions) *Image {
@@ -76,12 +142,28 @@ func (i *Image) Render(width int) []string {
 	}
 
 	caps := GetCapabilities()
+	data, hasData := i.Base64Data, true
+	dimensions := i.Dimensions
+	if caps.Images == ImageProtocolKitty && i.MIMEType != "image/png" {
+		if i.pngData == "" {
+			if png, ok := toPng(i.Base64Data, i.MIMEType); ok {
+				i.pngData = png
+			}
+		}
+		data, hasData = i.pngData, i.pngData != ""
+		// Conversion may apply EXIF rotation, so prefer the PNG's own dimensions.
+		if hasData {
+			if png := GetPNGDimensions(data); png != nil {
+				dimensions = *png
+			}
+		}
+	}
 	var lines []string
-	if caps.Images != "" {
+	if caps.Images != "" && hasData {
 		if caps.Images == ImageProtocolKitty && i.imageID == 0 {
 			i.imageID = AllocateImageID()
 		}
-		result := RenderImage(i.Base64Data, i.Dimensions, ImageRenderOptions{
+		result := RenderImage(data, dimensions, ImageRenderOptions{
 			MaxWidthCells:  maxWidth,
 			MaxHeightCells: maxHeight,
 			ImageID:        i.imageID,

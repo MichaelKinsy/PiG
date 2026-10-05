@@ -51,8 +51,8 @@ type ProviderStreamSimple = func(model Model, ctx AIContext, opts SimpleStreamOp
 // fields of all three variants, so an entry round-trips through the extension
 // wire and the registries unchanged. Type omitted is normalized to "chat".
 // A chat entry uses ID, Name, API, BaseURL, Reasoning, ThinkingLevelMap, Input,
-// InputLimits, Cost, PromptCache, SamplingParams, ContextWindow, MaxTokens,
-// Headers and Compat. An image entry uses ID, Name, API (an image API), BaseURL,
+// InputLimits, Cost, PromptCache, SamplingParams, SamplingParamsByThinkingLevel,
+// ContextWindow, MaxTokens, Headers and Compat. An image entry uses ID, Name, API (an image API), BaseURL,
 // Input, InputLimits, Cost, Headers and Output. A classifier entry uses ID,
 // Name, API (a classifier API), BaseURL, Input, InputLimits, Cost, Headers and
 // ContextWindow. A field outside its variant is not marshalled.
@@ -79,11 +79,14 @@ type ProviderModelConfig struct {
 	// per retention tier.
 	PromptCache    ai.ModelPromptCache `json:"promptCache,omitempty"`
 	SamplingParams map[string]any      `json:"samplingParams,omitempty"`
-	ContextWindow  int                 `json:"contextWindow"`
-	MaxTokens      int                 `json:"maxTokens"`
-	Headers        map[string]string   `json:"headers,omitempty"`
-	headerEntries  []providerHeaderEntry
-	Compat         any `json:"compat,omitempty"`
+	// SamplingParamsByThinkingLevel overrides SamplingParams for the effective Pi thinking level of a chat entry.
+	// upstream: packages/coding-agent/src/core/provider-composer.ts:72 (ProviderChatModelConfig.samplingParamsByThinkingLevel), carried by extensionModelFromDefinition's spread.
+	SamplingParamsByThinkingLevel ai.SamplingParamsByThinkingLevel `json:"samplingParamsByThinkingLevel,omitempty"`
+	ContextWindow                 int                              `json:"contextWindow"`
+	MaxTokens                     int                              `json:"maxTokens"`
+	Headers                       map[string]string                `json:"headers,omitempty"`
+	headerEntries                 []providerHeaderEntry
+	Compat                        any `json:"compat,omitempty"`
 }
 
 type providerHeaderEntry struct {
@@ -151,9 +154,9 @@ func (config ProviderModelConfig) MarshalJSON() ([]byte, error) {
 func nonChatOmittedFields(modelType ai.ModelType) []string {
 	switch modelType {
 	case ai.ModelTypeImage:
-		return []string{"reasoning", "thinkingLevelMap", "promptCache", "samplingParams", "contextWindow", "maxTokens", "compat"}
+		return []string{"reasoning", "thinkingLevelMap", "promptCache", "samplingParams", "samplingParamsByThinkingLevel", "contextWindow", "maxTokens", "compat"}
 	case ai.ModelTypeClassifier:
-		return []string{"reasoning", "thinkingLevelMap", "promptCache", "samplingParams", "maxTokens", "compat"}
+		return []string{"reasoning", "thinkingLevelMap", "promptCache", "samplingParams", "samplingParamsByThinkingLevel", "maxTokens", "compat"}
 	}
 	return nil
 }

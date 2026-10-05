@@ -6,6 +6,7 @@ package ai
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -39,6 +40,8 @@ type OpenAIConfig struct {
 	// ExtraHeaders are added to every request.
 	ExtraHeaders   map[string]string
 	SamplingParams map[string]any
+	// SamplingParamsByThinkingLevel overrides SamplingParams for the effective thinking level.
+	SamplingParamsByThinkingLevel SamplingParamsByThinkingLevel
 	// Env holds provider-scoped environment overrides that take precedence over
 	// the process environment when resolving provider configuration such as
 	// PI_CACHE_RETENTION and Cloudflare base-URL placeholders. Mirrors the
@@ -62,6 +65,11 @@ type OpenAIConfig struct {
 	DynamicHeaders func(transcript TranscriptContext, opts StreamOptions) map[string]string
 	// pig additive (D36): opt in to TLS without certificate verification.
 	Insecure bool
+
+	// azure resolves the Azure endpoint and deployment per request (NewAzureCompletionsProvider).
+	azure *azureCompletionsEndpoint
+	// requestModel is the model sent on the wire (an Azure deployment name) without changing the logical model.
+	requestModel string
 }
 
 // OpenAICompat controls behavior for non-standard OpenAI-compatible endpoints
@@ -157,6 +165,7 @@ type openAIProvider struct {
 
 // NewOpenAIProvider creates a Provider backed by the OpenAI Completions API.
 func NewOpenAIProvider(cfg OpenAIConfig) Provider {
+	cfg = withAzureEndpoint(cfg)
 	if cfg.BaseURL == "" {
 		cfg.BaseURL = "https://api.openai.com/v1"
 	}
@@ -167,6 +176,53 @@ func NewOpenAIProvider(cfg OpenAIConfig) Provider {
 }
 
 func (p *openAIProvider) ID() string { return p.cfg.ProviderID }
+
+// thinkingModel resolves the selected model's thinking metadata: the selected ModelMetadata, else the catalog entry for the configured model, with an explicit ThinkingLevelMap taking precedence.
+func (p *openAIProvider) thinkingModel() *Model {
+	if p.cfg.ModelMetadata != nil {
+		return p.cfg.ModelMetadata
+	}
+	model := &Model{ID: p.cfg.Model, Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh}}
+	if generated, ok := LookupModelExact(p.cfg.ProviderID + "/" + p.cfg.Model); ok {
+		model = generated.ToModel()
+	} else if p.cfg.ProviderID == "openrouter" {
+		if generated, ok := LookupModel(p.cfg.Model); ok {
+			model = generated.ToModel()
+		} else if generated, ok := LookupModel(strings.TrimPrefix(p.cfg.Model, "openrouter/")); ok {
+			model = generated.ToModel()
+		}
+	} else if generated, ok := LookupModel(p.cfg.ProviderID + "/" + p.cfg.Model); ok {
+		model = generated.ToModel()
+	} else if generated, ok := LookupModel(p.cfg.Model); ok {
+		model = generated.ToModel()
+	}
+	if p.cfg.ThinkingLevelMap != nil {
+		model.ThinkingLevelMap = cloneThinkingLevelMap(p.cfg.ThinkingLevelMap)
+		model.Capabilities.MaxThinking = thinkingMaxLevel(true, model.ThinkingLevelMap)
+	}
+	return model
+}
+
+// samplingModel is the model view resolveSamplingParams reads: reasoning support and the thinking map clamp the level, and the configured defaults and per-level overrides are merged.
+func (p *openAIProvider) samplingModel(reasoning bool) *Model {
+	model := &Model{SamplingParams: p.cfg.SamplingParams, SamplingParamsByThinkingLevel: p.cfg.SamplingParamsByThinkingLevel}
+	if reasoning {
+		model.ProviderMeta.Reasoning = true
+		model.ThinkingLevelMap = p.thinkingModel().ThinkingLevelMap
+	}
+	return model
+}
+
+// completionsSamplingLevel is the thinking level whose sampling overrides apply: the request effort, else the simple reasoning level, else off (openai-completions.ts buildParams).
+func completionsSamplingLevel(opts StreamOptions) ThinkingLevel {
+	switch {
+	case opts.ReasoningEffort != "":
+		return ThinkingLevel(opts.ReasoningEffort)
+	case opts.Thinking != "":
+		return opts.Thinking
+	}
+	return ThinkingOff
+}
 
 // systemPromptRole returns "developer" for reasoning models on supported endpoints,
 // "system" otherwise. Mirrors upstream openai-completions.ts:683-684:
@@ -1278,6 +1334,13 @@ func (p *openAIProvider) convertTools(tools []ToolSchema) ([]oaiTool, error) {
 
 // Stream returns before HTTP setup settles. Successful setup admits start before waiting for body data.
 func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContext, opts StreamOptions) (*AssistantMessageEventStream, error) {
+	if p.cfg.azure != nil {
+		resolved, err := p.cfg.azure.resolve(p, opts)
+		if err != nil {
+			return nil, err
+		}
+		p = resolved
+	}
 	ctx = withProviderRequestOptions(ctx, opts)
 	if err := validateProviderRequest(ctx, transcript); err != nil {
 		return nil, fmt.Errorf("openai: invalid transcript: %w", err)
@@ -1322,7 +1385,7 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 	}
 
 	req := oaiRequest{
-		Model:    p.cfg.Model,
+		Model:    cmp.Or(p.cfg.requestModel, p.cfg.Model),
 		Messages: msgs,
 		Stream:   true,
 	}
@@ -1372,27 +1435,7 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 	thinkingBudgetField := ""
 	thinkingBudget := 0
 	if opts.IsReasoning {
-		model := p.cfg.ModelMetadata
-		if model == nil {
-			model = &Model{ID: p.cfg.Model, Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh}}
-			if generated, ok := LookupModelExact(p.cfg.ProviderID + "/" + p.cfg.Model); ok {
-				model = generated.ToModel()
-			} else if p.cfg.ProviderID == "openrouter" {
-				if generated, ok := LookupModel(p.cfg.Model); ok {
-					model = generated.ToModel()
-				} else if generated, ok := LookupModel(strings.TrimPrefix(p.cfg.Model, "openrouter/")); ok {
-					model = generated.ToModel()
-				}
-			} else if generated, ok := LookupModel(p.cfg.ProviderID + "/" + p.cfg.Model); ok {
-				model = generated.ToModel()
-			} else if generated, ok := LookupModel(p.cfg.Model); ok {
-				model = generated.ToModel()
-			}
-			if p.cfg.ThinkingLevelMap != nil {
-				model.ThinkingLevelMap = cloneThinkingLevelMap(p.cfg.ThinkingLevelMap)
-				model.Capabilities.MaxThinking = thinkingMaxLevel(true, model.ThinkingLevelMap)
-			}
-		}
+		model := p.thinkingModel()
 		if model.Capabilities.MaxThinking == "" {
 			model = new(*model)
 			model.Capabilities.MaxThinking = ThinkingHigh
@@ -1595,7 +1638,9 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 	}
 
 	payload := any(req)
-	if len(p.cfg.SamplingParams) > 0 || len(opts.SamplingParams) > 0 || (thinkingBudget > 0 && thinkingBudgetField != "" && thinkingBudgetField != "thinking_token_budget") {
+	// Last so model and request sampling parameters override named request fields (openai-completions.ts buildParams).
+	samplingParams := ResolveSamplingParams(p.samplingModel(opts.IsReasoning), completionsSamplingLevel(opts), opts.SamplingParams)
+	if samplingParams != nil || (thinkingBudget > 0 && thinkingBudgetField != "" && thinkingBudgetField != "thinking_token_budget") {
 		encoded, err := json.Marshal(req)
 		if err != nil {
 			return nil, fmt.Errorf("openai: marshal sampling base: %w", err)
@@ -1607,8 +1652,7 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 		if thinkingBudget > 0 && thinkingBudgetField != "" && thinkingBudgetField != "thinking_token_budget" {
 			merged[thinkingBudgetField] = thinkingBudget
 		}
-		maps.Copy(merged, p.cfg.SamplingParams)
-		maps.Copy(merged, opts.SamplingParams)
+		maps.Copy(merged, samplingParams)
 		payload = merged
 	}
 	if opts.OnPayload != nil {

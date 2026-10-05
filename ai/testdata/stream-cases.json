@@ -406,7 +406,7 @@
     "line": 526,
     "name": "Generate E2E Tests/Azure OpenAI Responses Provider (gpt-4o-mini)/should complete basic text generation",
     "kind": "basicTextGeneration",
-    "provider": "azure-openai-responses",
+    "provider": "azure",
     "model": "gpt-4o-mini",
     "api": "azure-openai-responses",
     "hasCompat": false,
@@ -417,7 +417,7 @@
     "line": 530,
     "name": "Generate E2E Tests/Azure OpenAI Responses Provider (gpt-4o-mini)/should handle tool calling",
     "kind": "handleToolCall",
-    "provider": "azure-openai-responses",
+    "provider": "azure",
     "model": "gpt-4o-mini",
     "api": "azure-openai-responses",
     "hasCompat": false,
@@ -428,7 +428,7 @@
     "line": 534,
     "name": "Generate E2E Tests/Azure OpenAI Responses Provider (gpt-4o-mini)/should handle streaming",
     "kind": "handleStreaming",
-    "provider": "azure-openai-responses",
+    "provider": "azure",
     "model": "gpt-4o-mini",
     "api": "azure-openai-responses",
     "hasCompat": false,
@@ -439,7 +439,7 @@
     "line": 538,
     "name": "Generate E2E Tests/Azure OpenAI Responses Provider (gpt-4o-mini)/should handle image input",
     "kind": "handleImage",
-    "provider": "azure-openai-responses",
+    "provider": "azure",
     "model": "gpt-4o-mini",
     "api": "azure-openai-responses",
     "hasCompat": false,
@@ -822,10 +822,10 @@
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:713",
     "line": 713,
-    "name": "Generate E2E Tests/Cloudflare AI Gateway → Anthropic BYOK (claude-sonnet-4.5 via /anthropic messages)/should complete basic text generation",
+    "name": "Generate E2E Tests/Cloudflare AI Gateway → Anthropic BYOK (claude-sonnet-4-5 via /anthropic messages)/should complete basic text generation",
     "kind": "basicTextGeneration",
     "provider": "cloudflare-ai-gateway",
-    "model": "claude-sonnet-4.5",
+    "model": "claude-sonnet-4-5",
     "api": "anthropic-messages",
     "hasCompat": true,
     "options": {
@@ -837,10 +837,10 @@
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:717",
     "line": 717,
-    "name": "Generate E2E Tests/Cloudflare AI Gateway → Anthropic BYOK (claude-sonnet-4.5 via /anthropic messages)/should handle tool calling",
+    "name": "Generate E2E Tests/Cloudflare AI Gateway → Anthropic BYOK (claude-sonnet-4-5 via /anthropic messages)/should handle tool calling",
     "kind": "handleToolCall",
     "provider": "cloudflare-ai-gateway",
-    "model": "claude-sonnet-4.5",
+    "model": "claude-sonnet-4-5",
     "api": "anthropic-messages",
     "hasCompat": true,
     "options": {
@@ -852,10 +852,10 @@
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:721",
     "line": 721,
-    "name": "Generate E2E Tests/Cloudflare AI Gateway → Anthropic BYOK (claude-sonnet-4.5 via /anthropic messages)/should handle streaming",
+    "name": "Generate E2E Tests/Cloudflare AI Gateway → Anthropic BYOK (claude-sonnet-4-5 via /anthropic messages)/should handle streaming",
     "kind": "handleStreaming",
     "provider": "cloudflare-ai-gateway",
-    "model": "claude-sonnet-4.5",
+    "model": "claude-sonnet-4-5",
     "api": "anthropic-messages",
     "hasCompat": true,
     "options": {
@@ -867,10 +867,10 @@
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:725",
     "line": 725,
-    "name": "Generate E2E Tests/Cloudflare AI Gateway → Anthropic BYOK (claude-sonnet-4.5 via /anthropic messages)/should handle thinking mode",
+    "name": "Generate E2E Tests/Cloudflare AI Gateway → Anthropic BYOK (claude-sonnet-4-5 via /anthropic messages)/should handle thinking mode",
     "kind": "handleThinking",
     "provider": "cloudflare-ai-gateway",
-    "model": "claude-sonnet-4.5",
+    "model": "claude-sonnet-4-5",
     "api": "anthropic-messages",
     "hasCompat": true,
     "options": {
@@ -884,10 +884,10 @@
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:729",
     "line": 729,
-    "name": "Generate E2E Tests/Cloudflare AI Gateway → Anthropic BYOK (claude-sonnet-4.5 via /anthropic messages)/should handle multi-turn with thinking and tools",
+    "name": "Generate E2E Tests/Cloudflare AI Gateway → Anthropic BYOK (claude-sonnet-4-5 via /anthropic messages)/should handle multi-turn with thinking and tools",
     "kind": "multiTurn",
     "provider": "cloudflare-ai-gateway",
-    "model": "claude-sonnet-4.5",
+    "model": "claude-sonnet-4-5",
     "api": "anthropic-messages",
     "hasCompat": true,
     "options": {
@@ -1095,10 +1095,10 @@
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:815",
     "line": 815,
-    "name": "Generate E2E Tests/NVIDIA NIM Provider (Nemotron 3 Super via OpenAI Completions)/should complete basic text generation",
+    "name": "Generate E2E Tests/NVIDIA NIM Provider (Nemotron 3 Ultra via OpenAI Completions)/should complete basic text generation",
     "kind": "basicTextGeneration",
     "provider": "nvidia",
-    "model": "nvidia/nemotron-3-super-120b-a12b",
+    "model": "nvidia/nemotron-3-ultra-550b-a55b",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {}
@@ -1106,10 +1106,10 @@
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:819",
     "line": 819,
-    "name": "Generate E2E Tests/NVIDIA NIM Provider (Nemotron 3 Super via OpenAI Completions)/should handle tool calling",
+    "name": "Generate E2E Tests/NVIDIA NIM Provider (Nemotron 3 Ultra via OpenAI Completions)/should handle tool calling",
     "kind": "handleToolCall",
     "provider": "nvidia",
-    "model": "nvidia/nemotron-3-super-120b-a12b",
+    "model": "nvidia/nemotron-3-ultra-550b-a55b",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {}
@@ -1117,10 +1117,10 @@
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:823",
     "line": 823,
-    "name": "Generate E2E Tests/NVIDIA NIM Provider (Nemotron 3 Super via OpenAI Completions)/should handle streaming",
+    "name": "Generate E2E Tests/NVIDIA NIM Provider (Nemotron 3 Ultra via OpenAI Completions)/should handle streaming",
     "kind": "handleStreaming",
     "provider": "nvidia",
-    "model": "nvidia/nemotron-3-super-120b-a12b",
+    "model": "nvidia/nemotron-3-ultra-550b-a55b",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {}
@@ -1128,10 +1128,10 @@
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:827",
     "line": 827,
-    "name": "Generate E2E Tests/NVIDIA NIM Provider (Nemotron 3 Super via OpenAI Completions)/should handle thinking mode",
+    "name": "Generate E2E Tests/NVIDIA NIM Provider (Nemotron 3 Ultra via OpenAI Completions)/should handle thinking mode",
     "kind": "handleThinking",
     "provider": "nvidia",
-    "model": "nvidia/nemotron-3-super-120b-a12b",
+    "model": "nvidia/nemotron-3-ultra-550b-a55b",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {
@@ -1141,10 +1141,10 @@
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:831",
     "line": 831,
-    "name": "Generate E2E Tests/NVIDIA NIM Provider (Nemotron 3 Super via OpenAI Completions)/should handle multi-turn with thinking and tools",
+    "name": "Generate E2E Tests/NVIDIA NIM Provider (Nemotron 3 Ultra via OpenAI Completions)/should handle multi-turn with thinking and tools",
     "kind": "multiTurn",
     "provider": "nvidia",
-    "model": "nvidia/nemotron-3-super-120b-a12b",
+    "model": "nvidia/nemotron-3-ultra-550b-a55b",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {

@@ -37,6 +37,26 @@ func ConvertToPng(base64Data, mimeType string) *tui.ConvertedImage {
 	}
 }
 
+// PngTranscoder is upstream loadPngTranscoder's transcoder: base64 image data to oriented base64 PNG data, or false when
+// the data does not decode.
+func PngTranscoder(base64Data, _ string) (string, bool) {
+	pngBytes := ConvertImageBytesToPng(decodeNodeBase64(base64Data))
+	if pngBytes == nil {
+		return "", false
+	}
+	return base64.StdEncoding.EncodeToString(pngBytes), true
+}
+
+// ensurePngTranscoder registers [PngTranscoder] as the tui image transcoder on a Kitty-protocol terminal, so non-PNG
+// images render. The Go transcoder needs no asynchronous load, so it registers at once.
+// upstream: packages/coding-agent/src/utils/image-convert.ts:ensurePngTranscoder
+func ensurePngTranscoder() {
+	if tui.GetCapabilities().Images != tui.ImageProtocolKitty {
+		return
+	}
+	tui.SetImageTranscoder(PngTranscoder)
+}
+
 func decodeNodeBase64(data string) []byte { return imageprocessing.DecodeNodeBase64(data) }
 
 // maybeConvertImagesForKitty mirrors upstream tool-execution.ts

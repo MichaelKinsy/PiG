@@ -2,13 +2,11 @@
  * Runs one codemode script in the sandbox. Split from tool.ts and loaded through
  * execute.lazy.ts so the sandbox runtime only loads when a script runs.
  */
-import { randomBytes } from "node:crypto";
-import { writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { CodemodeSandbox, loadQuickJSWasm, parseCodemodeSource, renderToolSample, toCodemodeIdentifier, } from "../../../pi-codemode/index.js";
 import { getCodemodeWorkerSpecifier, getQuickJSWasmPath } from "../../config.js";
+import { formatSize } from "../../core/tools/truncate.js";
 import { combineUsage } from "../../core/usage-totals.js";
+import { writeOutputFile } from "../../utils/output-files.js";
 import { Bm25Ranker, createToolSearchDocument, DEFAULT_TOOL_SEARCH_LIMIT } from "../tool-search/tool.js";
 import { CODEMODE_DOCS_PATH, CODEMODE_STORE_ENTRY_TYPE, getCodemodeCallableTools, toCodemodeDeclaration, } from "./tool.js";
 const ARGS_PREVIEW_CHARS = 200;
@@ -211,14 +209,54 @@ function formatError(result, calls) {
 }
 /** Write the full text output to a temp file, like bash does for truncated output. */
 async function spillOutput(text) {
-    const path = join(tmpdir(), `pi-codemode-${randomBytes(8).toString("hex")}.txt`);
     try {
-        await writeFile(path, text);
-        return { path };
+        return { path: await writeOutputFile("pi-codemode", ".txt", text) };
     }
     catch (error) {
         return { error: error instanceof Error ? error.message : String(error) };
     }
+}
+/** File extensions of the image types `image()` accepts. Must list every type the sandbox's `image()` detects. */
+const IMAGE_EXTENSIONS = {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/gif": ".gif",
+    "image/webp": ".webp",
+};
+/**
+ * Save each image to a temp file and put a text item with its path before it. The model sees the
+ * image but has no other way to reach its bytes: scripts cannot write files, and `write` only takes
+ * text. Images shown more than once are saved once.
+ */
+async function saveImages(items) {
+    const labels = new Map();
+    const label = async ({ data, mimeType }) => {
+        const bytes = Buffer.from(data, "base64");
+        const kind = `${mimeType}, ${formatSize(bytes.length)}`;
+        const extension = IMAGE_EXTENSIONS[mimeType];
+        if (!extension)
+            throw new Error(`No file extension for image type ${mimeType}`);
+        // A failed write (disk full, unwritable temp dir) must not discard the result of a script whose
+        // tool calls already ran, so it becomes part of the label.
+        try {
+            const path = await writeOutputFile("pi-codemode", extension, bytes);
+            return `[Image saved to ${path} (${kind})]`;
+        }
+        catch (error) {
+            return `[Image (${kind}) could not be saved: ${error instanceof Error ? error.message : String(error)}]`;
+        }
+    };
+    const result = await Promise.all(items.map(async (item) => {
+        if (item.type !== "image")
+            return [item];
+        let pending = labels.get(item.data);
+        if (!pending) {
+            pending = label(item);
+            labels.set(item.data, pending);
+        }
+        return [{ type: "text", text: await pending }, item];
+    }));
+    return result.flat();
 }
 /**
  * Apply the token budget: when the combined text exceeds it, the text items become one
@@ -361,13 +399,16 @@ export async function executeCodemode(toolCallId, input, signal, onUpdate, ctx, 
         });
     }
     const truncated = await truncateOutput(items, sourceOptions.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS);
+    // After truncation, which joins the text items and moves images after them, so each path stays
+    // next to its image and is never cut.
+    const output = await saveImages(truncated.items);
     const wallTime = ((performance.now() - startedAt) / 1000).toFixed(1);
     const header = `${result.ok ? "Script completed" : "Script failed"}\nWall time ${wallTime} seconds\nOutput:\n`;
     const details = snapshot();
     if (truncated.fullOutputPath)
         details.fullOutputPath = truncated.fullOutputPath;
     return {
-        content: [{ type: "text", text: header }, ...truncated.items],
+        content: [{ type: "text", text: header }, ...output],
         details,
         ...(modelUsage ? { usage: modelUsage } : {}),
         ...(result.ok ? {} : { isError: true }),

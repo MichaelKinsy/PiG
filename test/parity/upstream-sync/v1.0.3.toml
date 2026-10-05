@@ -1,0 +1,156 @@
+from = "1.0.2"
+to = "1.0.3"
+
+[[files]]
+path = "packages/ai/src/api/azure-openai-config.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:ai/azure_openai_responses_test.go#TestResolveAzureBaseURL", "test:ai/azure_openai_responses_test.go#TestResolveAzureDeploymentName", "test:ai/azure_upstream_test.go#TestAzureUpstreamBaseURL", "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"]
+rationale = "Endpoint, API version and deployment resolution move into azure_config.go (ResolveAzureBaseURL, ResolveAzureConfig, ResolveAzureDeploymentName), shared by the Responses and Chat Completions sides with Pi's order (option, AZURE_OPENAI_BASE_URL, resource name, model base URL)."
+
+[[files]]
+path = "packages/ai/src/api/azure-openai-responses.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/azure_openai_reasoning_replay_upstream_test.go#TestAzureOpenAIResponsesReasoningReplayUpstream", "test:ai/openai_responses_test.go#TestNormalizeResponsesToolCallIDProviderSets", "test:ai/azure_openai_responses_test.go#TestResolveAzureBaseURL"]
+rationale = "AZURE_TOOL_CALL_PROVIDERS lists the azure provider (azureToolCallProviders) and the configuration helpers moved to azure-openai-config.ts."
+
+[[files]]
+path = "packages/ai/src/auth/resolve.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/auth_refresh_signal_test.go#TestOAuthRefreshSignalIgnoresCallerDeadline", "test:ai/auth_storage_memory_queue_test.go#TestResolveProviderAuthCancelledMemoryRefresh", "test:ai/oauth_registry_lock_upstream_test.go#TestRegistryOAuthRefreshCancelledDuringTheRefreshPersistsTheCredentialUpstream", "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream"]
+rationale = "refreshStoredOAuthCredential (ai/auth_resolve.go): the caller's context cancels only the wait for the credential lock; a started refresh is bounded by the 15 s timeout alone and persists the rotated credential."
+
+[[files]]
+path = "packages/ai/src/env-api-keys.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/auth_env_keys_test.go#TestEnvAPIKeysTableMatchesUpstream"]
+rationale = "The azure provider reads AZURE_OPENAI_API_KEY."
+
+[[files]]
+path = "packages/ai/src/models.generated.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/registry_test.go#TestRegistryHasModels", "test:ai/registry_test.go#TestCatalogPin100"]
+rationale = "The generated catalog barrel lists the azure provider; make model-catalogs regenerates ai/models_generated.go and ai/providers_generated.go from the published package."
+
+[[files]]
+path = "packages/ai/src/models.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream", "test:ai/credential_expiry_test.go#TestCredentialExpiryMatchesPi"]
+rationale = "Models.refresh refreshes a stored OAuth credential through refreshStoredOAuthCredential, so a refresh that started before the model refresh was cancelled persists its rotated token; the expiry oracle is regenerated against Pi 1.0.3."
+
+[[files]]
+path = "packages/ai/src/providers/all.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/registry_test.go#TestCatalogPin100"]
+rationale = "The barrel registers azureProvider; Go's GeneratedProviders lists azure in barrel order."
+
+[[files]]
+path = "packages/ai/src/providers/azure-openai-responses.models.ts"
+change = "removed"
+disposition = "designed-out"
+evidence = []
+rationale = "Replaced by azure.models.ts; Go reads the generated catalog (ai/models_generated.go), not per-provider TypeScript shards."
+
+[[files]]
+path = "packages/ai/src/providers/azure-openai-responses.ts"
+change = "removed"
+disposition = "designed-out"
+evidence = []
+rationale = "Replaced by azure.ts; the Go provider routing is ai.directAPIProvider and coding.BuildModel, which build the azure-openai-responses and openai-completions providers."
+
+[[files]]
+path = "packages/ai/src/providers/azure.models.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "A generated TypeScript catalog shard; Go reads ai/models_generated.go produced by make model-catalogs from the same data."
+
+[[files]]
+path = "packages/ai/src/providers/azure.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream", "test:ai/registry_test.go#TestCatalogPin100"]
+rationale = "azureProvider: the provider is azure with name Azure; its openai-completions models resolve the Azure endpoint and send the deployment name as the request model (ai/azure.go, applied by NewOpenAIProvider for the azure provider ID)."
+
+[[files]]
+path = "packages/ai/src/types.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/registry_test.go#TestCatalogPin100"]
+rationale = "KnownProvider lists azure instead of azure-openai-responses; PiG's provider IDs are strings checked against the generated catalog."
+
+[[files]]
+path = "packages/coding-agent/src/config.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/installchange/installchange_test.go#TestDetectInstallChangeReportsARemovedInstallInsteadOfReadingAFileFurtherUp", "test:internal/installchange/installchange_test.go#TestDetectInstallChangeReportsAReplacedExecutable", "test:internal/installchange/installchange_test.go#TestTrackerFollowsASymlinkedExecutable"]
+rationale = "1.0.3 (#10439) caches the QuickJS wasm path, spawns the codemode worker from an in-memory data: URL and adds detectInstallChange, so an update that removes the install cannot break a running pi. PiG embeds the QuickJS module in one native executable and runs codemode in process, so the wasm path cache and the data: URL worker are designed out. detectInstallChange is ported as the additive D95: PiG records its executable's identity at startup (path, device and inode or Windows file index, size, mtime) and the extension cell files it starts, and reports a replaced or removed executable or a pruned cell when an error is shown."
+
+[[files]]
+path = "packages/coding-agent/src/core/bash-executor.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/outputfiles/outputfiles_test.go#TestCreateStreamIsUserOnlyAndWritable", "test:internal/codingagent/tools/tools_bash_port_test.go#TestToolsBashPort"]
+rationale = "The full-output log of executeBash is created through the shared output-file helper: pi-bash-<16 hex>.log, exclusive create, user-only mode (internal/outputfiles, ExecuteBashWithOperations)."
+
+[[files]]
+path = "packages/coding-agent/src/core/model-resolver.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:cmd/pig/model_resolver_cli_upstream_test.go#TestModelResolverCLIUpstream", "test:internal/codingagent/auth_filter_test.go#TestAuthenticatedProviders_AzureEnvVar_Includes"]
+rationale = "defaultModelPerProvider keys azure (default model gpt-5.4)."
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/output-accumulator.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/output_accumulator_test.go#TestOutputAccumulatorTempFileHoldsRawBytes", "test:internal/outputfiles/outputfiles_unix_test.go#TestOutputFilesAreUserOnlyWithoutAUmask"]
+rationale = "The accumulator's temp file comes from the shared output-file helper and is user-only."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/codemode/execute.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/extension/builtin/codemode/save_images_test.go#TestSaveImagesPutsEachSavedPathBeforeItsImage", "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"]
+rationale = "image() output is saved to temp files after truncation, each image preceded by a text item naming its path, a repeated image saved once, a failed write kept as a label (#10310); the text spill file is user-only."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/codemode/tool.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/extension/builtin/codemode/description_upstream_test.go"]
+rationale = "The codemode description tells the model that image() also saves the image to a temp file and the result names its path."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/tools.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/mcpext/tools_test.go#TestMCPToolsSavesOutputInAUserOnlyTempFile"]
+rationale = "saveToTempFile writes through the shared output-file helper (exclusive create, user-only)."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/dead_terminal_test.go#TestDeadTerminalExitsQuietlyWithoutRecordingACrash", "test:internal/codingagent/dead_terminal_test.go#TestIsDeadTerminalError", "test:internal/codingagent/dead_terminal_test.go#TestInputHandlersAreRemovedOnUnregister", "test:internal/codingagent/install_change_test.go#TestInstallChangeWarningShownInsteadOfABugReportHint", "test:internal/codingagent/install_change_test.go#TestInstallChangeWarningOnAFailedToolCall"]
+rationale = "ENOTTY joins the dead-terminal codes, a failed raw mode entry on a dead terminal and an uncaught dead-terminal error exit 129 without a crash record. The install-change warning (maybeShowInstallChangeWarning) is ported with config.ts as the additive D95: it shows after an assistant error instead of the bug report hint, on a failed tool call, and where PiG shows an error."
+
+[[files]]
+path = "packages/coding-agent/src/utils/output-files.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:internal/outputfiles/outputfiles_test.go#TestWriteFileIsUserOnlyInTheTempDirectory", "test:internal/outputfiles/outputfiles_unix_test.go#TestOutputFilesAreUserOnlyWithoutAUmask"]
+rationale = "internal/outputfiles: <tmpdir>/<prefix>-<16 hex><extension>, created exclusively with mode 0600, for a whole write and for a stream."
+
+[[files]]
+path = "packages/tui/src/keybindings.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/keybindings_test.go#TestTUIKeybindingsUpstream", "test:tui/tui_alt_screen_v087_test.go#TestAltScreenModifiedNavigationReachesFocusedComponent"]
+rationale = "Home/End always move the editor cursor; tui.altScreen.top/bottom move to ctrl+home/ctrl+end and the editor no longer binds them (#10314)."

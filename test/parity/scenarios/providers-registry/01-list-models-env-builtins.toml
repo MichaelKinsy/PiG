@@ -68,7 +68,7 @@ exit_code = 0
 both_contain = [
   "amazon-bedrock",
   "anthropic",
-  "azure-openai-responses",
+  "azure",
   "google",
   "google-vertex",
   "mistral",

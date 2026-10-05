@@ -538,6 +538,12 @@ export class ExtensionRunner {
     getMarkdownTransformers() {
         return this.extensions.flatMap((ext) => (ext.markdownTransformer ? [ext.markdownTransformer] : []));
     }
+    /** Renderers of calls to `toolName`: extension resolvers in load order, then `base`. */
+    resolveToolRenderers(toolName, base) {
+        const resolvers = this.extensions.flatMap((ext) => ext.toolRenderers ?? []);
+        const resolve = (index) => index < resolvers.length ? resolvers[index](toolName, () => resolve(index + 1)) : base();
+        return resolve(0);
+    }
     getEntryRenderer(customType) {
         for (const ext of this.extensions) {
             const renderer = ext.entryRenderers?.get(customType);

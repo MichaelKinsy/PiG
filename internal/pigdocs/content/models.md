@@ -56,6 +56,32 @@ A model is reasoning-capable when its generated entry sets `Reasoning: true`; `T
 
 Extensions can read this via `getModelInfo()` (returns `*ModelInfo`) inside any handler.
 
+## Configure sampling by thinking level
+
+OpenAI-compatible APIs support free-form `samplingParams` model defaults and `samplingParamsByThinkingLevel` overrides in `models.json`. The keys of `samplingParamsByThinkingLevel` are PiG thinking levels (`off`, `minimal`, `low`, `medium`, `high`, `xhigh` and `max`), not the provider values from `thinkingLevelMap`:
+
+```json
+{
+  "id": "qwen-thinking-model",
+  "reasoning": true,
+  "samplingParams": {
+    "temperature": 1.0,
+    "top_p": 0.95
+  },
+  "samplingParamsByThinkingLevel": {
+    "off": {
+      "temperature": 0.7,
+      "top_p": 0.8
+    },
+    "high": {
+      "top_k": 20
+    }
+  }
+}
+```
+
+PiG first clamps an unsupported thinking level to a supported one. It then merges the model's `samplingParams`, the effective level's entry and the request's `samplingParams`, in that order; a later value wins per key. A level without an entry uses the model defaults. A `modelOverrides` entry merges each level per key with the base model's entry. These fields apply only to `openai-completions`, `openai-responses` and `azure-openai-responses`; other APIs ignore them.
+
 ## Use image models
 
 Image models generate images from a prompt and optional input images. PiG lists OpenRouter's image models, such as `google/gemini-2.5-flash-image` and `black-forest-labs/flux.2-pro`, under the `openrouter` provider; they use the same `OPENROUTER_API_KEY` or `/login` credential as its chat models.

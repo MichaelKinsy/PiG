@@ -1405,6 +1405,14 @@ rust = "Extension::markdown_transformer"
 python = "Extension.markdown_transformer"
 
 [[row]]
+key = "pi.registerToolRenderer"
+node = "api.registerToolRenderer"
+go = "Extension.ToolRenderer"
+rust = "Extension::tool_renderer"
+python = "Extension.tool_renderer"
+wire = "literal:resolve_tool_renderers"
+
+[[row]]
 key = "markdown transform context.messageType"
 node = "api.registerMarkdownTransformer"
 go = "MarkdownTransformContext.MessageType"

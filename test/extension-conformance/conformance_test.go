@@ -1116,6 +1116,31 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 		MarkdownTransformer: func(markdown string, context extension.MarkdownTransformContext) string {
 			return fmt.Sprintf("md:%s:%s:streaming=%t:width=%d", markdown, context.MessageType, context.IsStreaming, context.AvailableWidth)
 		},
+		ToolRenderers: []extension.ToolRendererResolver{func(tool string, next func() *extension.ToolRenderers) *extension.ToolRenderers {
+			line := func(prefix string) extension.ToolRenderCallFunc {
+				return func(args json.RawMessage, _ extension.Theme, _ extension.ToolRenderContext) extension.Component {
+					var parsed map[string]any
+					_ = json.Unmarshal(args, &parsed)
+					return &conformanceLinesComponent{lines: []string{fmt.Sprintf("%s:%s:%v", prefix, tool, parsed["q"])}}
+				}
+			}
+			switch tool {
+			case "conformance_tool_renderer":
+				return &extension.ToolRenderers{RenderCall: line("resolved")}
+			case "conformance_no_renderer":
+				return nil
+			case "conformance_fill":
+				if renderers := next(); renderers != nil {
+					return renderers
+				}
+				return &extension.ToolRenderers{RenderCall: line("filled")}
+			case "conformance_wrap":
+				wrapped := *next()
+				wrapped.RenderCall = line("wrapped")
+				return &wrapped
+			}
+			return next()
+		}},
 		Tools: map[string]extension.RegisteredTool{
 			"render_probe": {
 				Definition: extension.ToolDefinition{

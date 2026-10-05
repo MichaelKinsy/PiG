@@ -773,20 +773,29 @@ func TestAltScreenKeyboardPageAndEdgeScroll(t *testing.T) {
 	if afterPageUp >= bottom {
 		t.Errorf("pageUp should decrease ViewportTop: %d -> %d", bottom, afterPageUp)
 	}
-	// Home jumps to the very top.
-	tui.HandleViewportInput("\x1b[H")
+	// Ctrl+Home jumps to the very top.
+	tui.HandleViewportInput("\x1b[1;5H")
 	if tui.ViewportTop() != 0 {
-		t.Errorf("home should scroll to top, got %d", tui.ViewportTop())
+		t.Errorf("ctrl+home should scroll to top, got %d", tui.ViewportTop())
 	}
 	// Page down scrolls back down from the top.
 	tui.HandleViewportInput("\x1b[6~")
 	if tui.ViewportTop() == 0 {
 		t.Errorf("pageDown from top should scroll down")
 	}
-	// End jumps back to the bottom.
-	tui.HandleViewportInput("\x1b[F")
+	// Ctrl+End jumps back to the bottom.
+	tui.HandleViewportInput("\x1b[1;5F")
 	if tui.ViewportTop() != bottom {
-		t.Errorf("end should scroll to bottom %d, got %d", bottom, tui.ViewportTop())
+		t.Errorf("ctrl+end should scroll to bottom %d, got %d", bottom, tui.ViewportTop())
+	}
+	// Unmodified Home and End belong to the focused component (#10314): the viewport declines them.
+	for _, input := range []string{"\x1b[H", "\x1bOH", "\x1b[F", "\x1bOF"} {
+		if tui.HandleViewportInput(input) {
+			t.Errorf("%q should not be consumed by the viewport", input)
+		}
+	}
+	if tui.ViewportTop() != bottom {
+		t.Errorf("home/end moved the viewport to %d, want %d", tui.ViewportTop(), bottom)
 	}
 }
 

@@ -174,8 +174,8 @@ func TUIKeybindingDefinitionsFor(platform KeybindingPlatform) map[string]TUIKeyb
 		KBEditorCursorRight:       {DefaultKeys: []string{"right", "ctrl+f"}, Description: "Move cursor right"},
 		KBEditorCursorWordLeft:    {DefaultKeys: []string{"alt+left", "ctrl+left", "alt+b"}, Description: "Move cursor word left"},
 		KBEditorCursorWordRight:   {DefaultKeys: []string{"alt+right", "ctrl+right", "alt+f"}, Description: "Move cursor word right"},
-		KBEditorCursorLineStart:   {DefaultKeys: []string{"home", "ctrl+home", "ctrl+a"}, Description: "Move to line start"},
-		KBEditorCursorLineEnd:     {DefaultKeys: []string{"end", "ctrl+end", "ctrl+e"}, Description: "Move to line end"},
+		KBEditorCursorLineStart:   {DefaultKeys: []string{"home", "ctrl+a"}, Description: "Move to line start"},
+		KBEditorCursorLineEnd:     {DefaultKeys: []string{"end", "ctrl+e"}, Description: "Move to line end"},
 		KBEditorJumpForward:       {DefaultKeys: []string{"ctrl+]"}, Description: "Jump forward to character"},
 		KBEditorJumpBackward:      {DefaultKeys: []string{"ctrl+alt+]"}, Description: "Jump backward to character"},
 		KBEditorPageUp:            {DefaultKeys: []string{"pageUp", "ctrl+pageUp"}, Description: "Page up"},
@@ -217,8 +217,8 @@ func TUIKeybindingDefinitionsFor(platform KeybindingPlatform) map[string]TUIKeyb
 		KBAltScreenSearchNext:     {DefaultKeys: []string{"enter", "ctrl+g"}, Description: "Select the next search match"},
 		KBAltScreenSearchPrevious: {DefaultKeys: []string{"shift+enter", "ctrl+shift+g"}, Description: "Select the previous search match"},
 		KBAltScreenSearchClose:    {DefaultKeys: []string{"escape"}, Description: "Close transcript search"},
-		KBAltScreenTop:            {DefaultKeys: []string{"home"}, Description: "Scroll viewport to top"},
-		KBAltScreenBottom:         {DefaultKeys: []string{"end"}, Description: "Scroll viewport to bottom"},
+		KBAltScreenTop:            {DefaultKeys: []string{"ctrl+home"}, Description: "Scroll viewport to top"},
+		KBAltScreenBottom:         {DefaultKeys: []string{"ctrl+end"}, Description: "Scroll viewport to bottom"},
 	}
 }
 

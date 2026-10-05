@@ -138,7 +138,7 @@ func TestInMemoryAuthStorageQueueOrderAfterFailure(t *testing.T) {
 	})
 }
 
-// The real request-auth boundary must stop waiting on a canceled refresh without allowing the still-active callback to overwrite the stored credential.
+// The real request-auth boundary stops waiting on a canceled refresh, and the refresh that already started still persists its rotated credential (Pi: "persists an OAuth refresh that started before the request was cancelled").
 func TestResolveProviderAuthCancelledMemoryRefresh(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		previous := Credential{Type: CredentialOAuth, Access: "expired", Refresh: "refresh-token"}
@@ -173,7 +173,8 @@ func TestResolveProviderAuthCancelledMemoryRefresh(t *testing.T) {
 			t.Error("request auth retained its canceled caller")
 		}
 		close(release)
-		memoryAuthRead(t, store, "oauth", &previous)
+		oauthRefreshWork.Wait()
+		memoryAuthRead(t, store, "oauth", &Credential{Type: CredentialOAuth, Access: "refreshed", Expires: time.Now().Add(time.Hour).UnixMilli()})
 	})
 }
 

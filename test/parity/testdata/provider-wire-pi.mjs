@@ -251,7 +251,7 @@ async function probeAzureOpenAIResponses() {
   process.env.AZURE_OPENAI_API_KEY = 'azure-test';
   try {
     return await runProbe(azureOpenAIResponses.stream, {
-      id: 'gpt-4', api: 'azure-openai-responses', provider: 'azure-openai-responses',
+      id: 'gpt-4', api: 'azure-openai-responses', provider: 'azure',
     }, cap, { env: { AZURE_OPENAI_BASE_URL: url } });
   } finally { await closeServer(server); }
 }
@@ -428,7 +428,7 @@ function providerKey(provider) {
   if (provider === 'google') return 'gemini-test';
   if (provider === 'google-vertex') return 'vertex-test';
   if (provider === 'mistral') return 'mistral-test';
-  if (provider === 'azure-openai-responses') return 'azure-test';
+  if (provider === 'azure') return 'azure-test';
   if (provider === 'openai-codex') return makeCodexJWT('acct_probe');
   return 'sk-test';
 }

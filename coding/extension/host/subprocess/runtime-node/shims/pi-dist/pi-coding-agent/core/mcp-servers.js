@@ -54,6 +54,17 @@ function validateOAuth(value) {
     if (value.clientName !== undefined && (typeof value.clientName !== "string" || !value.clientName.trim())) {
         return "oauth.clientName must be a non-empty string";
     }
+    if (value.clientRegistration !== undefined && value.clientRegistration !== "dcr") {
+        if (value.clientRegistration !== "cimd")
+            return 'oauth.clientRegistration must be "dcr" or "cimd"';
+        if (value.clientId !== undefined || value.clientName !== undefined) {
+            return 'oauth.clientRegistration "cimd" cannot be combined with oauth.clientId or oauth.clientName';
+        }
+        const callback = typeof value.callbackUrl === "string" ? new URL(value.callbackUrl) : undefined;
+        if (callback && (callback.hostname === "[::1]" || callback.pathname !== "/callback")) {
+            return 'oauth.clientRegistration "cimd" requires oauth.callbackUrl on localhost or 127.0.0.1 with path /callback';
+        }
+    }
     const metadataUrl = value.authServerMetadataUrl;
     if (metadataUrl !== undefined) {
         const url = typeof metadataUrl === "string" && URL.canParse(metadataUrl) ? new URL(metadataUrl) : undefined;

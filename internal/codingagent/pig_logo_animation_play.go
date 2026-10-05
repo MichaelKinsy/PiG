@@ -1,7 +1,7 @@
 package codingagent
 
-// Ports packages/coding-agent/src/modes/interactive/components/pi-logo-animation.lazy.ts
-// Ports packages/coding-agent/src/modes/interactive/components/pi-logo-animation.ts (playPiLogoAnimation)
+// Ports packages/coding-agent/src/modes/interactive/components/easter-egg-3d.lazy.ts (playPiLogo3d, playArmin3d)
+// Ports packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts (playEasterEgg3d)
 
 import (
 	"time"
@@ -11,7 +11,7 @@ import (
 )
 
 // logoTerminalColorQueryTimeout is the wait in milliseconds for the terminal's default colors before the animation starts.
-// upstream: packages/coding-agent/src/modes/interactive/components/pi-logo-animation.ts:playPiLogoAnimation
+// upstream: packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts:playEasterEgg3d
 const logoTerminalColorQueryTimeout = 100
 
 var logoOverlaySpec = tui.OverlaySpec{
@@ -26,16 +26,37 @@ var logoOverlaySpec = tui.OverlaySpec{
 // and returns focus when hidden, so the rest of the UI keeps running underneath untouched. Pi loads the module on the
 // first click; PiG links it.
 func (m *InteractiveMode) playPigLogoAnimation(logoColumn, logoRow, logoColumns, logoRows int) {
-	if m.altScreen == nil || m.tuiInst.HasOverlay() {
-		return
+	m.playEgg3d(func(rows func() int, screen []string, variant piglogin.Variant, foreground, background logoRgb, onDone func()) *pigLogoAnimation {
+		return newPigLogoAnimation(rows, pigLogoAnimationOptions{screen: screen, logoColumn: logoColumn, logoRow: logoRow, clearColumns: logoColumns, clearRows: logoRows}, variant, foreground, background, time.Now, onDone)
+	})
+}
+
+// playPig3d plays the 3D pig of /arminsayshi and /pigsayhi (Pi's playArmin3d). It reports false when it cannot play, so
+// the caller can fall back to the inline pig head: only fullscreen mode can show it.
+func (m *InteractiveMode) playPig3d() bool {
+	return m.playEgg3d(func(rows func() int, screen []string, variant piglogin.Variant, foreground, background logoRgb, onDone func()) *pigLogoAnimation {
+		return newPig3dAnimation(rows, screen, variant, foreground, background, time.Now, onDone)
+	})
+}
+
+// egg3dFactory builds an easter egg's animation once the colors are known.
+type egg3dFactory func(rows func() int, screen []string, variant piglogin.Variant, foreground, background logoRgb, onDone func()) *pigLogoAnimation
+
+// playEgg3d is Pi's lazy playEasterEgg3d: false outside fullscreen mode, true without playing while an overlay is shown.
+func (m *InteractiveMode) playEgg3d(build egg3dFactory) bool {
+	if m.altScreen == nil {
+		return false
+	}
+	if m.tuiInst.HasOverlay() {
+		return true
 	}
 	screen := m.altScreen.GetScreenLines()
 	if m.logoAnimationPlaying {
-		return
+		return true
 	}
 	ctx := m.backgroundCtx
 	if ctx == nil {
-		return
+		return true
 	}
 	m.logoAnimationPlaying = true
 	ui := m.tuiInst
@@ -48,14 +69,15 @@ func (m *InteractiveMode) playPigLogoAnimation(logoColumn, logoRow, logoColumns,
 			return
 		}
 		_ = m.postToMain(ctx, func() {
-			m.showPigLogoAnimation(ui, screen, pigLogoAnimationOptions{logoColumn: logoColumn, logoRow: logoRow, clearColumns: logoColumns, clearRows: logoRows}, result)
+			m.showPigLogoAnimation(ui, screen, build, result)
 		})
 	})
+	return true
 }
 
 // showPigLogoAnimation runs on the owner loop once the color query completed. A failed query or a renderer replaced in
 // the meantime shows nothing.
-func (m *InteractiveMode) showPigLogoAnimation(ui tui.Renderer, screen []string, options pigLogoAnimationOptions, result tui.TerminalColorsResult) {
+func (m *InteractiveMode) showPigLogoAnimation(ui tui.Renderer, screen []string, build egg3dFactory, result tui.TerminalColorsResult) {
 	if result.Err != nil || ui != m.tuiInst || m.backgroundCtx == nil {
 		m.logoAnimationPlaying = false
 		return
@@ -77,8 +99,7 @@ func (m *InteractiveMode) showPigLogoAnimation(ui tui.Renderer, screen []string,
 		return
 	}
 	var overlay *tui.OverlayHandle
-	options.screen = screen
-	animation := newPigLogoAnimation(ui.Height, options, piglogin.Active(), foreground, background, time.Now, func() {
+	animation := build(ui.Height, screen, piglogin.Active(), foreground, background, func() {
 		m.logoAnimationPlaying = false
 		m.logoAnimation = nil
 		overlay.Hide()

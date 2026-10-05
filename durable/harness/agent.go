@@ -30,6 +30,12 @@ var DefaultCompactionPolicy = durable.CompactionPolicy{
 	BackgroundTokens: 32768,
 }
 
+// DefaultProgressPolicy is the built-in progress policy.
+var DefaultProgressPolicy = durable.ProgressPolicy{
+	PartialIntervalMs: 100,
+	OutputIntervalMs:  100,
+}
+
 // InstructionsKey is the reserved section key of the agent's instructions.
 const InstructionsKey = "instructions"
 
@@ -228,6 +234,7 @@ type HarnessSettings struct {
 	Stream     *durable.ConversationStreamOptions
 	Retry      *RetryPolicyPatch
 	Compaction *CompactionPolicyPatch
+	Progress   *ProgressPolicyPatch
 	// ToolExecution, SteeringMode, and FollowUpMode are empty when unset.
 	ToolExecution durable.ToolExecutionMode
 	SteeringMode  durable.QueueMode
@@ -250,11 +257,18 @@ type CompactionPolicyPatch struct {
 	BackgroundTokens *int
 }
 
+// ProgressPolicyPatch is Partial<ProgressPolicy>; nil fields keep the defaults.
+type ProgressPolicyPatch struct {
+	PartialIntervalMs *float64
+	OutputIntervalMs  *float64
+}
+
 // ResolveSettings resolves host settings: every field over its built-in default, object fields merged.
 func ResolveSettings(settings *HarnessSettings) durable.Settings {
 	resolved := durable.Settings{
 		Retry:         DefaultRetryPolicy,
 		Compaction:    DefaultCompactionPolicy,
+		Progress:      DefaultProgressPolicy,
 		ToolExecution: durable.ToolExecutionParallel,
 		SteeringMode:  durable.QueueOneAtATime,
 		FollowUpMode:  durable.QueueOneAtATime,
@@ -279,6 +293,10 @@ func ResolveSettings(settings *HarnessSettings) durable.Settings {
 		assign(&resolved.Compaction.ReserveTokens, compaction.ReserveTokens)
 		assign(&resolved.Compaction.KeepRecentTokens, compaction.KeepRecentTokens)
 		assign(&resolved.Compaction.BackgroundTokens, compaction.BackgroundTokens)
+	}
+	if progress := settings.Progress; progress != nil {
+		assign(&resolved.Progress.PartialIntervalMs, progress.PartialIntervalMs)
+		assign(&resolved.Progress.OutputIntervalMs, progress.OutputIntervalMs)
 	}
 	if settings.ToolExecution != "" {
 		resolved.ToolExecution = settings.ToolExecution

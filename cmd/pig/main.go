@@ -37,6 +37,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/installchange"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"golang.org/x/term"
@@ -517,6 +518,8 @@ func runStableCLI() {
 	defer exitOnRenderOverflow()
 
 	termuxenv.Configure()
+	// pig additive (D95): record the executable before anything can replace it, so an error can report that this process runs a replaced install.
+	installchange.Record()
 	binaryPath := guardBinaryIdentity()
 	setupCli()
 

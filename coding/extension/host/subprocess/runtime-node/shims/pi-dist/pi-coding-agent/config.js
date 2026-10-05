@@ -122,6 +122,9 @@ function getSelfUpdateCommandForMethod(method, installedPackageName, updatePacka
             const [command = "npm", ...npmArgs] = npmCommand ?? [];
             const inferred = npmCommand?.length ? undefined : getInferredNpmInstall();
             const prefixArgs = [...npmArgs, ...(inferred ? ["--prefix", inferred.prefix] : [])];
+            // pi.dev advertises releases immediately, so a configured npm age gate would
+            // block the update. npm has no per-package age gate, so this also lets new
+            // transitive dependency releases through. Managed installs avoid this.
             const installStep = makeSelfUpdateCommandStep(command, [
                 ...prefixArgs,
                 "install",
@@ -388,14 +391,18 @@ export function getInteractiveAssetsDir() {
 export function getBundledInteractiveAssetPath(name) {
     return join(getInteractiveAssetsDir(), name);
 }
-let embeddedQuickJSWasmPath;
+let quickJSWasmPath;
 /** Called by the Bun entry with the path of the QuickJS wasm file embedded in the compiled executable. */
 export function setEmbeddedQuickJSWasmPath(path) {
-    embeddedQuickJSWasmPath = path;
+    quickJSWasmPath = path;
 }
-/** Get path to `quickjs-wasi/quickjs.wasm`, the VM that runs codemode scripts. */
+/**
+ * Get path to `quickjs-wasi/quickjs.wasm`, the VM that runs codemode scripts. Resolved once so the
+ * compiled module cached per path keeps working after an update removes this install (#10439).
+ */
 export function getQuickJSWasmPath() {
-    return embeddedQuickJSWasmPath ?? fileURLToPath(new URL("../../quickjs-wasi/quickjs.wasm", import.meta.url));
+    quickJSWasmPath ??= fileURLToPath(new URL("../../quickjs-wasi/quickjs.wasm", import.meta.url));
+    return quickJSWasmPath;
 }
 /** Resolve the codemode worker entry for a release runtime. */
 export function resolveCodemodeWorkerSpecifier(runtime, moduleUrl) {
@@ -408,17 +415,47 @@ export function resolveCodemodeWorkerSpecifier(runtime, moduleUrl) {
         return new URL("./extensions/codemode/worker.js", moduleUrl);
     return undefined;
 }
+let codemodeWorkerDataUrl;
 /**
  * Get the codemode worker entry, or undefined to use the worker that ships next to pi-codemode.
  * The Bun and Node release builds both pass the worker as an extra entrypoint.
  */
 export function getCodemodeWorkerSpecifier() {
     const runtime = isBunBinary ? "bun-binary" : isBundledNode ? "bundled-node" : "unbundled";
-    return resolveCodemodeWorkerSpecifier(runtime, import.meta.url);
+    const specifier = resolveCodemodeWorkerSpecifier(runtime, import.meta.url);
+    if (runtime !== "bundled-node" || !(specifier instanceof URL))
+        return specifier;
+    return specifier;
+}
+/**
+ * Detect that the package this process runs from changed on disk, for example after `pi update`
+ * in another terminal. Code loaded on demand can then be missing or from another version.
+ *
+ * Checks the package.json read at startup. Resolving it again would walk up past a deleted install
+ * and could find an unrelated package.json, such as one in the home directory.
+ */
+export function detectInstallChange(packageJsonPath = startupPackageJsonPath) {
+    // The Bun binary embeds its code, so replacing the executable does not affect this process.
+    if (isBunBinary || !packageJsonPath)
+        return undefined;
+    let installed;
+    try {
+        installed = JSON.parse(stripBom(readFileSync(packageJsonPath, "utf-8")));
+    }
+    catch (error) {
+        return error.code === "ENOENT" ? { kind: "removed" } : undefined;
+    }
+    return installed.version && installed.version !== VERSION
+        ? { kind: "updated", version: installed.version }
+        : undefined;
 }
 let pkg = {};
+/** The package.json this process started from, if one existed. */
+let startupPackageJsonPath;
 try {
-    pkg = JSON.parse(stripBom(readFileSync(getPackageJsonPath(), "utf-8")));
+    const packageJsonPath = getPackageJsonPath();
+    pkg = JSON.parse(stripBom(readFileSync(packageJsonPath, "utf-8")));
+    startupPackageJsonPath = packageJsonPath;
 }
 catch (e) {
     const err = e;

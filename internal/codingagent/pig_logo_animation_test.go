@@ -44,10 +44,13 @@ func newTestPigLogoAnimation(t *testing.T, clock *logoTestClock, rows int, optio
 // logoTestScreen is a fullscreen frame with the PiG header (the pig head, as the header draws it) and lines that exercise
 // the SGR parser: basic, bright, 256-color and truecolor colors in both syntaxes, dim, inverse, resets, an OSC 8 link, an
 // APC, a cursor sequence, wide graphemes, box drawing and punctuation.
+// logoTestVersion stands in for the release version on the test screen, so goldens do not change with each release.
+const logoTestVersion = "0.0.0-test+pi"
+
 func logoTestScreen() []string {
 	head := piglogin.HeadLines(piglogin.Default(), tui.TerminalColorModeTrueColor)
 	beside := []string{
-		" \x1b[2mv" + pigversion.Version + "\x1b[22m",
+		" \x1b[2mv" + logoTestVersion + "\x1b[22m",
 		" \x1b[38;5;244mescape\x1b[39m \x1b[90minterrupt\x1b[0m · \x1b[2;38;2;120;130;140mctrl+c\x1b[0m",
 		" \x1b[2mPress ctrl+o to show full startup help.\x1b[0m",
 	}
@@ -306,6 +309,15 @@ func headLogoOptions() pigLogoAnimationOptions {
 	return pigLogoAnimationOptions{logoColumn: 1, logoRow: 1, clearColumns: piglogin.HeadCells, clearRows: piglogin.HeadRows}
 }
 
+// headLogoBuild builds the header pig's animation as a click on the head at (1, 1) does.
+func headLogoBuild() egg3dFactory {
+	return func(rows func() int, screen []string, variant piglogin.Variant, foreground, background logoRgb, onDone func()) *pigLogoAnimation {
+		options := headLogoOptions()
+		options.screen = screen
+		return newPigLogoAnimation(rows, options, variant, foreground, background, time.Now, onDone)
+	}
+}
+
 func clickCell(t *testing.T, m *InteractiveMode, column, row int) {
 	t.Helper()
 	for _, sequence := range []string{fmt.Sprintf("\x1b[<0;%d;%dM", column+1, row+1), fmt.Sprintf("\x1b[<0;%d;%dm", column+1, row+1)} {
@@ -538,7 +550,7 @@ func TestPigLogoAnimationColors(t *testing.T) {
 	m, _ := newLogoClickMode(t, 100, 30)
 	screen := m.altScreen.GetScreenLines()
 	m.logoAnimationPlaying = true
-	m.showPigLogoAnimation(m.tuiInst, screen, headLogoOptions(), tui.TerminalColorsResult{Colors: tui.TerminalColors{
+	m.showPigLogoAnimation(m.tuiInst, screen, headLogoBuild(), tui.TerminalColorsResult{Colors: tui.TerminalColors{
 		Foreground: &tui.RgbColor{R: 1, G: 2, B: 3}, Background: &tui.RgbColor{R: 4, G: 5, B: 6},
 	}})
 	if a := m.logoAnimation; a == nil || a.foreground != (logoRgb{1, 2, 3}) || a.background != (logoRgb{4, 5, 6}) {
@@ -549,7 +561,7 @@ func TestPigLogoAnimationColors(t *testing.T) {
 
 	m, _ = newLogoClickMode(t, 100, 30)
 	m.logoAnimationPlaying = true
-	m.showPigLogoAnimation(m.tuiInst, nil, headLogoOptions(), tui.TerminalColorsResult{})
+	m.showPigLogoAnimation(m.tuiInst, nil, headLogoBuild(), tui.TerminalColorsResult{})
 	theme := tui.ActiveTheme()
 	wantBackground := logoRgb{255, 255, 255}
 	if theme.Appearance() == "dark" {
@@ -563,7 +575,7 @@ func TestPigLogoAnimationColors(t *testing.T) {
 	// A failed query shows nothing and lets the next click play.
 	m, alt := newLogoClickMode(t, 100, 30)
 	m.logoAnimationPlaying = true
-	m.showPigLogoAnimation(m.tuiInst, nil, headLogoOptions(), tui.TerminalColorsResult{Err: fmt.Errorf("write failed")})
+	m.showPigLogoAnimation(m.tuiInst, nil, headLogoBuild(), tui.TerminalColorsResult{Err: fmt.Errorf("write failed")})
 	if m.logoAnimationPlaying || alt.HasOverlay() {
 		t.Fatal("a failed color query showed the animation")
 	}
@@ -1074,7 +1086,7 @@ func TestPigLogoRasterHoldsMoreThan255Faces(t *testing.T) {
 		}
 	}
 	boxes[len(boxes)-1].color = logoRgb{255, 0, 0}
-	var raster logoRaster
+	raster := logoRaster{cameraDistance: logoCameraDistance}
 	raster.render(width, height, logoPose{centerX: width, centerY: height * 2, scale: 6}, boxes, logoRgb{}, 0)
 	if len(raster.faces) <= 256 {
 		t.Fatalf("%d faces; the test needs more than 256", len(raster.faces))

@@ -26,7 +26,13 @@ export { getAgentDir };`);
 // The private copy mirrors dist directly under its package root.
 replace('const srcOrDist = existsSync(join(packageDir, "src")) ? "src" : "dist";', 'const srcOrDist = ".";');
 // Codemode assets: the private quickjs-wasi copy is not under a node_modules directory, so the wasm resolves beside it; isBundledNode names the worker entry that the closure copies from dist/extensions/codemode/worker.js (Pi's Bun layout, config.ts getCodemodeWorkerUrl).
-replace('return embeddedQuickJSWasmPath ?? createRequire(import.meta.url).resolve("quickjs-wasi/quickjs.wasm");', 'return embeddedQuickJSWasmPath ?? fileURLToPath(new URL("../../quickjs-wasi/quickjs.wasm", import.meta.url));');
+replace('quickJSWasmPath ??= createRequire(import.meta.url).resolve("quickjs-wasi/quickjs.wasm");', 'quickJSWasmPath ??= fileURLToPath(new URL("../../quickjs-wasi/quickjs.wasm", import.meta.url));');
+// Pi 1.0.3 (#10439) spawns the bundled-node worker from a data: URL so an update cannot remove it. The private copy sits in PiG's content-addressed runtime directory, which an update does not replace, and the vendored worker keeps its relative imports, which need a file location.
+replace(`    // Spawn workers from an in-memory copy. An update replaces or deletes the file while this
+    // process keeps running (#10439). The bundle build keeps the worker free of relative imports
+    // and import.meta, so it runs from a data: URL.
+    codemodeWorkerDataUrl ??= new URL(\`data:text/javascript;base64,\${readFileSync(specifier).toString("base64")}\`);
+    return codemodeWorkerDataUrl;`, "    return specifier;");
 replace('return new URL("./codemode-worker.js", moduleUrl);', 'return new URL("./extensions/codemode/worker.js", moduleUrl);');
 writeFileSync(configPath, config);
 mkdirSync(join(output, "dist"), { recursive: true });

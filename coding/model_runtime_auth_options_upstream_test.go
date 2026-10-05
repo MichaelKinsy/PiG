@@ -21,7 +21,7 @@ import (
 // Ports packages/coding-agent/test/model-runtime-auth-options.test.ts. Cases already covered elsewhere:
 // :73 projects provider-owned methods (internal/codingagent TestRuntimeProjectsProviderOwnedMethodsUpstream),
 // :126 subscription OAuth (TestModelRuntimeDistinguishesSubscriptionOAuthUpstream),
-// :266 extension OAuth refresh cancellation (TestRuntimeForwardsExtensionRefreshCancellationUpstream).
+// :266 extension OAuth refresh cancellation (TestRuntimeDoesNotCancelExtensionRefreshWithRequestUpstream).
 // :36 and :44 run on CreateModelRuntimeOptions.Credentials.
 
 func authOptionsTestModel(id string) *ai.Model {

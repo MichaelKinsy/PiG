@@ -1,9 +1,9 @@
 package ai
 
 import (
+	"cmp"
 	"context"
 	"fmt"
-	"maps"
 	"strings"
 )
 
@@ -39,14 +39,8 @@ func StreamSimple(ctx context.Context, model *Model, transcript TranscriptContex
 		options.MaxTokens = model.Capabilities.MaxOutputTokens
 	}
 	options.MaxTokens = ClampMaxTokensToContext(model, transcript, options.MaxTokens)
-	if model.SamplingParams != nil || options.SamplingParams != nil {
-		sampling := maps.Clone(model.SamplingParams)
-		if sampling == nil {
-			sampling = map[string]any{}
-		}
-		maps.Copy(sampling, options.SamplingParams)
-		options.SamplingParams = sampling
-	}
+	// upstream: packages/ai/src/api/simple-options.ts:buildBaseOptions resolves the simple reasoning level's sampling parameters.
+	options.SamplingParams = ResolveSamplingParams(model, cmp.Or(options.Thinking, ThinkingOff), options.SamplingParams)
 	if model.ProviderMeta.API == APIGoogleGenerativeAI && options.GoogleThinking == nil && options.Thinking == "" {
 		// upstream: packages/ai/src/api/google-generative-ai.ts:streamSimple distinguishes omitted simple reasoning from omitted native thinking.
 		options.Thinking = ThinkingOff
@@ -94,11 +88,11 @@ func directAPIProvider(model *Model, key string, env ProviderEnv) (Provider, err
 	case APIAnthropicMessages:
 		return NewAnthropicProvider(AnthropicConfig{ModelMetadata: model, APIKey: key, Model: model.ID, ProviderID: meta.ProviderID, BaseURL: meta.BaseURL, ExtraHeaders: meta.Headers, Compat: meta.Compat, Env: env}), nil
 	case APIOpenAICompletions:
-		return NewOpenAIProvider(OpenAIConfig{ModelMetadata: model, APIKey: key, Model: model.ID, ProviderID: meta.ProviderID, BaseURL: meta.BaseURL, ExtraHeaders: meta.Headers, Compat: meta.Compat, Env: env, ThinkingLevelMap: model.ThinkingLevelMap, SamplingParams: model.SamplingParams}), nil
+		return NewOpenAIProvider(OpenAIConfig{ModelMetadata: model, APIKey: key, Model: model.ID, ProviderID: meta.ProviderID, BaseURL: meta.BaseURL, ExtraHeaders: meta.Headers, Compat: meta.Compat, Env: env, ThinkingLevelMap: model.ThinkingLevelMap, SamplingParams: model.SamplingParams, SamplingParamsByThinkingLevel: model.SamplingParamsByThinkingLevel}), nil
 	case APIOpenAIResponses:
-		return NewOpenAIResponsesProvider(OpenAIResponsesConfig{ModelMetadata: model, APIKey: key, Model: model.ID, ProviderID: meta.ProviderID, BaseURL: meta.BaseURL, ExtraHeaders: meta.Headers, Compat: meta.Compat, Env: env, ThinkingLevelMap: model.ThinkingLevelMap, SamplingParams: model.SamplingParams, IsReasoning: meta.Reasoning}), nil
+		return NewOpenAIResponsesProvider(OpenAIResponsesConfig{ModelMetadata: model, APIKey: key, Model: model.ID, ProviderID: meta.ProviderID, BaseURL: meta.BaseURL, ExtraHeaders: meta.Headers, Compat: meta.Compat, Env: env, ThinkingLevelMap: model.ThinkingLevelMap, SamplingParams: model.SamplingParams, SamplingParamsByThinkingLevel: model.SamplingParamsByThinkingLevel, IsReasoning: meta.Reasoning}), nil
 	case APIAzureOpenAIResponses:
-		return NewAzureOpenAIResponsesProvider(AzureOpenAIResponsesConfig{ModelMetadata: model, APIKey: key, Model: model.ID, ProviderID: meta.ProviderID, BaseURL: meta.BaseURL, ExtraHeaders: meta.Headers, Compat: meta.Compat, Env: env, ThinkingLevelMap: model.ThinkingLevelMap, SamplingParams: model.SamplingParams}), nil
+		return NewAzureOpenAIResponsesProvider(AzureOpenAIResponsesConfig{ModelMetadata: model, APIKey: key, Model: model.ID, ProviderID: meta.ProviderID, BaseURL: meta.BaseURL, ExtraHeaders: meta.Headers, Compat: meta.Compat, Env: env, ThinkingLevelMap: model.ThinkingLevelMap, SamplingParams: model.SamplingParams, SamplingParamsByThinkingLevel: model.SamplingParamsByThinkingLevel}), nil
 	case APIOpenAICodexResponses:
 		return NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{ModelMetadata: model, APIKey: key, Model: model.ID, ProviderID: meta.ProviderID, BaseURL: meta.BaseURL, Compat: meta.Compat, ThinkingLevelMap: model.ThinkingLevelMap}), nil
 	case APIBedrockConverseStream:

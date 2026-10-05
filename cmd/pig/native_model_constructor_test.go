@@ -19,13 +19,13 @@ import (
 // from model.compat. Exercise the CLI resolver and runtime model constructor,
 // not a provider configured directly by the test.
 func TestModelConstructorsPreserveNativeResponsesCompat(t *testing.T) {
-	for _, provider := range []string{"openai", "openai-codex", "azure-openai-responses"} {
+	for _, provider := range []string{"openai", "openai-codex", "azure"} {
 		for _, capability := range []string{"supportsAdditionalTools", "supportsToolSearch"} {
 			for _, constructor := range []string{"cli", "runtime"} {
 				t.Run(provider+"/"+capability+"/"+constructor, func(t *testing.T) {
 					apiKey := nativeResponsesTestAPIKey(provider)
 					server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-						if provider == "azure-openai-responses" {
+						if provider == "azure" {
 							if r.Header.Get("api-key") != apiKey {
 								t.Errorf("Azure api-key = %q", r.Header.Get("api-key"))
 							}
@@ -44,6 +44,8 @@ func TestModelConstructorsPreserveNativeResponsesCompat(t *testing.T) {
 						api = "openai-responses"
 					case "openai-codex":
 						api = "openai-codex-responses"
+					case "azure":
+						api = "azure-openai-responses"
 					}
 					config := fmt.Sprintf(`{"providers":{%q:{"baseUrl":%q,"apiKey":%q,"api":%q,"models":[{"id":"native-constructor-fixture","name":"Native fixture","reasoning":true,"compat":{"supportsMidConvoSystemMessages":true,%q:true}}]}}}`, provider, server.URL, apiKey, api, capability)
 					if err := os.WriteFile(filepath.Join(dir, "models.json"), []byte(config), 0o600); err != nil {

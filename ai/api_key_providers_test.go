@@ -120,7 +120,7 @@ func TestAPIKeyProvidersCoverCatalogEnvAuth(t *testing.T) {
 		"minimax-cn":                 "MiniMax CN",
 		"moonshotai-cn":              "Moonshot AI CN",
 		"google":                     "Google",
-		"azure-openai-responses":     "Azure OpenAI",
+		"azure":                      "Azure",
 		"anthropic":                  "Anthropic",
 		"github-copilot":             "GitHub Copilot",
 		"meta":                       "Meta",

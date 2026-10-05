@@ -46,7 +46,7 @@ covers = [
   "packages/ai/src/providers/amazon-bedrock.models.ts",
   "packages/ai/src/providers/ant-ling.models.ts",
   "packages/ai/src/providers/anthropic.models.ts",
-  "packages/ai/src/providers/azure-openai-responses.models.ts",
+  "packages/ai/src/providers/azure.models.ts",
   "packages/ai/src/providers/cerebras.models.ts",
   "packages/ai/src/providers/cloudflare-ai-gateway.models.ts",
   "packages/ai/src/providers/cloudflare-workers-ai.models.ts",
@@ -111,7 +111,7 @@ covers = [
   "packages/ai/src/providers/google.ts",
   "packages/ai/src/providers/google-vertex.ts",
   "packages/ai/src/providers/amazon-bedrock.ts",
-  "packages/ai/src/providers/azure-openai-responses.ts",
+  "packages/ai/src/providers/azure.ts",
   "packages/ai/src/providers/mistral.ts",
 ]
 tags = ["fast", "hermetic"]

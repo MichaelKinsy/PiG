@@ -197,6 +197,9 @@ func openCompaction(t *testing.T, options ...compactionOptions) *compactionChat 
 		policy = manualPolicy()
 	}
 	setup.SetSettings(func(settings *HarnessSettings) {
+		// These tests exercise compaction accounting and thresholds, not the faux provider's cache simulation
+		// (harness-compaction.test.ts:143, Pi 1.0.2).
+		settings.Stream = &durable.ConversationStreamOptions{CacheRetention: ai.CacheRetention("none")}
 		settings.Compaction = policy
 		settings.Retry = &RetryPolicyPatch{Enabled: new(true), MaxRetries: new(2), BaseDelayMs: new(1)}
 	})
@@ -340,6 +343,7 @@ func expectCut(t *testing.T, view durable.ContextView, keepRecentTokens int, wan
 
 func TestRangeSelection(t *testing.T) {
 	t.Run("keeps about keepRecentTokens and cuts at the first candidate at or after the budget (spec §8.7 example)", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:226
 		ids := &rangeEntries{}
 		entries := []durable.EntryRecord{
 			ids.entry("pi.user", []ai.Message{rangeUser(sized("1", 10))}),
@@ -353,6 +357,7 @@ func TestRangeSelection(t *testing.T) {
 	})
 
 	t.Run("cuts at a user entry", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:238
 		ids := &rangeEntries{}
 		entries := []durable.EntryRecord{
 			ids.entry("pi.user", []ai.Message{rangeUser(sized("u1", 100))}),
@@ -364,6 +369,7 @@ func TestRangeSelection(t *testing.T) {
 	})
 
 	t.Run("cuts at an assistant in the middle of one long run and never at a tool result", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:248
 		ids := &rangeEntries{}
 		entries := []durable.EntryRecord{ids.entry("pi.user", []ai.Message{rangeUser("do it")})}
 		for index := range 5 {
@@ -379,6 +385,7 @@ func TestRangeSelection(t *testing.T) {
 	})
 
 	t.Run("keeps a huge last tool result together with its assistant", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:260
 		ids := &rangeEntries{}
 		entries := []durable.EntryRecord{
 			ids.entry("pi.user", []ai.Message{rangeUser("u")}),
@@ -389,6 +396,7 @@ func TestRangeSelection(t *testing.T) {
 	})
 
 	t.Run("never cuts at a system entry or an excluded error or aborted answer", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:269
 		ids := &rangeEntries{}
 		entries := []durable.EntryRecord{
 			ids.entry("pi.user", []ai.Message{rangeUser(sized("u1", 100))}),
@@ -403,6 +411,7 @@ func TestRangeSelection(t *testing.T) {
 	})
 
 	t.Run("follows edited contributions: an omitted entry adds nothing and is no candidate", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:282
 		ids := &rangeEntries{}
 		entries := []durable.EntryRecord{
 			ids.entry("pi.user", []ai.Message{rangeUser(sized("u1", 100))}),
@@ -424,6 +433,7 @@ func TestRangeSelection(t *testing.T) {
 	})
 
 	t.Run("does not cut at a user entry that a result of the preceding call still follows", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:296
 		ids := &rangeEntries{}
 		entries := []durable.EntryRecord{
 			ids.entry("pi.user", []ai.Message{rangeUser(sized("u1", 100))}),
@@ -437,6 +447,7 @@ func TestRangeSelection(t *testing.T) {
 	})
 
 	t.Run("finds nothing when the budget is never reached or only the marker precedes the cut", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:308
 		ids := &rangeEntries{}
 		small := []durable.EntryRecord{ids.entry("pi.user", []ai.Message{rangeUser("hi")}), ids.entry("pi.assistant", []ai.Message{rangeAssistant("hello", nil, "")})}
 		expectCut(t, rangeView(small, nil), 150, -1)
@@ -446,6 +457,7 @@ func TestRangeSelection(t *testing.T) {
 	})
 
 	t.Run("summarizes an earlier summary marker first", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:316
 		ids := &rangeEntries{}
 		marker := ids.entry("pi.compaction", []ai.Message{rangeUser("EARLIER")}, 0)
 		kept := []durable.EntryRecord{
@@ -468,6 +480,7 @@ func TestRangeSelection(t *testing.T) {
 
 func TestSerialization(t *testing.T) {
 	t.Run("writes a transcript, truncates tool results, and omits system messages", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:331
 		call := ai.ToolCall{ID: "c", Name: "read", Arguments: ai.JsonObject{"path": "a.ts"}}
 		messages := []ai.Message{
 			ai.SystemMessage{Content: ai.SystemText(""), Sections: ai.OrderedSections{{Name: "s", Value: new("hidden")}}},
@@ -489,6 +502,7 @@ func TestSerialization(t *testing.T) {
 
 func TestManualCompaction(t *testing.T) {
 	t.Run("places the summary at once when idle and keeps raw history", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:354
 		chat := openCompaction(t)
 		chat.history(t)
 		before := allEntries(t, chat.root)
@@ -536,7 +550,7 @@ func TestManualCompaction(t *testing.T) {
 		if !regexp.MustCompile(`^<conversation>\n\[User\]: u1 `).MatchString(prompt) || !strings.Contains(prompt, "[Assistant]: a2 ") || strings.Contains(prompt, "u3 ") || !strings.Contains(prompt, "## Goal") || !strings.HasSuffix(prompt, "\n\nAdditional focus: focus on files") {
 			t.Fatalf("prompt = %q", prompt)
 		}
-		if request.options.CacheRetention != ai.CacheRetentionNone || request.options.MaxTokens != 800 || request.options.Deferred != nil {
+		if request.options.CacheRetention != ai.CacheRetentionNone || request.options.MaxTokens != 800 || request.options.Deferred != nil || request.options.SessionID != providerSessionId(t, chat.harness, chat.root.Id()) {
 			t.Fatalf("options = %+v", request.options)
 		}
 
@@ -553,7 +567,28 @@ func TestManualCompaction(t *testing.T) {
 		chat.close(t)
 	})
 
+	// Regression coverage for #10424 (harness-compaction.test.ts:411, Pi 1.0.2).
+	t.Run("creates provider state before a legacy conversation's summarization request", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:411
+		chat := openCompaction(t)
+		chat.history(t)
+		retireProviderDoc(t, chat.root)
+		if stored := providerSessionId(t, chat.harness, chat.root.Id()); stored != "" {
+			t.Fatalf("pi.provider survived retirement: %q", stored)
+		}
+		chat.faux.pushSummary(scriptSummary())
+		if outcome := chat.outcome(t, chat.compact(t, nil)); outcome.Status != durable.OutcomeCompleted {
+			t.Fatalf("outcome = %s", outcome.Status)
+		}
+		stored := expectProviderSessionId(t, chat.harness, chat.root.Id())
+		if sent := chat.faux.summaryRequestsCopy()[0].options.SessionID; sent != stored {
+			t.Fatalf("summary request session ID %q, stored %q", sent, stored)
+		}
+		chat.close(t)
+	})
+
 	t.Run("keeps working while busy and places the summary at the next final boundary", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:424
 		chat := openCompaction(t)
 		chat.history(t)
 		gate, reached := deferred(), deferred()
@@ -576,6 +611,7 @@ func TestManualCompaction(t *testing.T) {
 	})
 
 	t.Run("places a queued summary at postTools and the run continues in the compacted context", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:445
 		chat := openCompaction(t)
 		addTool(t, chat.setup.Registry, new(durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: "wait", Description: "wait", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}}, Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			return durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "waited"}}}, nil
@@ -603,6 +639,7 @@ func TestManualCompaction(t *testing.T) {
 	})
 
 	t.Run("runs follow-ups left by a failed run after placing the summary", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:482
 		chat := openCompaction(t)
 		chat.history(t)
 		gate, reached := deferred(), deferred()
@@ -630,6 +667,7 @@ func TestManualCompaction(t *testing.T) {
 	})
 
 	t.Run("settles stale when a reset lands while it summarizes", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:505
 		chat := openCompaction(t)
 		chat.history(t)
 		gate, reached := deferred(), deferred()
@@ -675,6 +713,7 @@ func awaitGate(t *testing.T, gate *deferredGate) {
 
 func TestManualCompactionConcurrency(t *testing.T) {
 	t.Run("does not make the conversation busy: a submission during summarization starts its run at once", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:525
 		chat := openCompaction(t)
 		chat.history(t)
 		summaryGate, summaryReached := deferred(), deferred()
@@ -706,6 +745,7 @@ func TestManualCompactionConcurrency(t *testing.T) {
 	})
 
 	t.Run("counts the spend of a summary that ends stale, and writes no entry for it", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:556
 		chat := openCompaction(t)
 		chat.history(t)
 		before := chat.usageInput(t)
@@ -726,6 +766,7 @@ func TestManualCompactionConcurrency(t *testing.T) {
 	})
 
 	t.Run("lets the compaction that cuts furthest win, whatever finishes first", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:580
 		chat := openCompaction(t)
 		chat.history(t)
 		first, firstReached := deferred(), deferred()
@@ -747,6 +788,7 @@ func TestManualCompactionConcurrency(t *testing.T) {
 	})
 
 	t.Run("places an older-selected summary that cuts later than the newer one", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:604
 		chat := openCompaction(t)
 		chat.history(t)
 		// A: small budget, late cut; selected first, finishes last.
@@ -783,6 +825,7 @@ func TestManualCompactionConcurrency(t *testing.T) {
 		stale bool
 	}{{"before", []int{150, 350}, true}, {"at", []int{150, 150}, false}, {"after", []int{350, 150}, false}} {
 		t.Run("places two queued summaries in one boundary when the second cuts "+variant.order+" the first", func(t *testing.T) {
+			// upstream: packages/durable/test/harness-compaction.test.ts:633
 			chat := openCompaction(t)
 			chat.history(t)
 			gate, reached := deferred(), deferred()
@@ -811,6 +854,7 @@ func TestManualCompactionConcurrency(t *testing.T) {
 	}
 
 	t.Run("is aborted by Conversation.abort(); an already queued summary survives it", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:658
 		chat := openCompaction(t)
 		chat.history(t)
 		reached := deferred()
@@ -858,6 +902,7 @@ func TestManualCompactionConcurrency(t *testing.T) {
 	})
 
 	t.Run("is ordinary work: idle waits include it", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:690
 		chat := openCompaction(t)
 		chat.history(t)
 		gate, reached := deferred(), deferred()
@@ -882,6 +927,7 @@ func TestManualCompactionConcurrency(t *testing.T) {
 	})
 
 	t.Run("enables scheduling right after open", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:710
 		setup := chatSetup(t)
 		faux := newScript(setup)
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
@@ -917,6 +963,7 @@ func (chat *compactionChat) compactionInput(t *testing.T, run func()) int {
 
 func TestCompactionOutcomes(t *testing.T) {
 	t.Run("completes without a summary when there is nothing to compact", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:727
 		chat := openCompaction(t)
 		chat.turn(t, "hi", "hello")
 		expectEqualJSON(t, chat.outcome(t, chat.compact(t, nil)), `{"status":"completed","result":{}}`)
@@ -927,6 +974,7 @@ func TestCompactionOutcomes(t *testing.T) {
 	})
 
 	t.Run("asks beforeCompact: the first decision wins, a throw is reported and skipped", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:737
 		chat := openCompaction(t)
 		var seen []CompactionRequest
 		addHooks(t, chat.setup.Registry, CompactionTask, beforeCompact(func(CompactionRequest) (*CompactionDecision, error) {
@@ -969,6 +1017,7 @@ func TestCompactionOutcomes(t *testing.T) {
 	})
 
 	t.Run("completes without a summary when a hook declines", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:776
 		chat := openCompaction(t)
 		addHooks(t, chat.setup.Registry, CompactionTask, beforeCompact(func(CompactionRequest) (*CompactionDecision, error) {
 			return &CompactionDecision{Decline: true}, nil
@@ -982,6 +1031,7 @@ func TestCompactionOutcomes(t *testing.T) {
 	})
 
 	t.Run("fails with no_model without a configured model", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:788
 		chat := openCompaction(t)
 		chat.history(t)
 		if err := chat.root.Configure(testContext, AgentChange{Model: Cleared[durable.ModelRef]()}); err != nil {
@@ -995,6 +1045,7 @@ func TestCompactionOutcomes(t *testing.T) {
 	})
 
 	t.Run("retries a retryable error with the pinned request and counts every attempt once", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:807
 		single := openCompaction(t)
 		single.history(t)
 		if err := single.root.Configure(testContext, AgentChange{ThinkingLevel: SetTo(ai.ModelThinkingLevel("high"))}); err != nil {
@@ -1034,16 +1085,18 @@ func TestCompactionOutcomes(t *testing.T) {
 		if len(requests) != 2 || twice != 2*once {
 			t.Fatalf("requests = %d, twice = %d, once = %d", len(requests), twice, once)
 		}
+		sessionId := providerSessionId(t, chat.harness, chat.root.Id())
 		for _, request := range requests {
 			options := request.options
-			if options.Thinking != "high" || options.TimeoutMs == nil || *options.TimeoutMs != 1234 || options.CacheRetention != ai.CacheRetentionNone || options.Deferred != nil {
-				t.Fatalf("options = %+v", options)
+			if options.Thinking != "high" || options.TimeoutMs == nil || *options.TimeoutMs != 1234 || options.CacheRetention != ai.CacheRetentionNone || options.Deferred != nil || options.SessionID != sessionId {
+				t.Fatalf("options = %+v, want sessionId %q", options, sessionId)
 			}
 		}
 		chat.close(t)
 	})
 
 	t.Run("adds no usage when a hook declines or supplies the summary", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:847
 		for _, decision := range []CompactionDecision{{Decline: true}, {Summary: new("HOOK")}} {
 			chat := openCompaction(t)
 			addHooks(t, chat.setup.Registry, CompactionTask, beforeCompact(func(CompactionRequest) (*CompactionDecision, error) {
@@ -1058,6 +1111,7 @@ func TestCompactionOutcomes(t *testing.T) {
 	})
 
 	t.Run("caps maxTokens at the model's output limit and sends no tools", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:859
 		chat := openCompaction(t)
 		addTool(t, chat.setup.Registry, noopTool("read"))
 		if err := chat.root.Configure(testContext, AgentChange{Tools: SetTo(ToolChange{Exact: true, List: toolsNamed(t, chat.setup, "read")})}); err != nil {
@@ -1096,6 +1150,7 @@ func TestCompactionOutcomes(t *testing.T) {
 		{"empty text", ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("  ")}}, "Summarization produced no text"},
 	} {
 		t.Run("fails with model_error on "+variant.name, func(t *testing.T) {
+			// upstream: packages/durable/test/harness-compaction.test.ts:900
 			chat := openCompaction(t)
 			chat.history(t)
 			for range 3 {
@@ -1145,6 +1200,7 @@ func (chat *compactionChat) compactionTasks(t *testing.T) []durable.TaskRecord[d
 
 func TestBackgroundThresholdCompaction(t *testing.T) {
 	t.Run("starts above the background threshold without blocking the run; idle waits and Esc ignore it", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:933
 		chat := openCompaction(t, compactionOptions{contextWindow: 2000})
 		chat.history(t)
 		chat.setPolicy(backgroundPolicy())
@@ -1199,6 +1255,7 @@ func TestBackgroundThresholdCompaction(t *testing.T) {
 		}},
 	} {
 		t.Run("does not start when "+variant.name, func(t *testing.T) {
+			// upstream: packages/durable/test/harness-compaction.test.ts:965
 			chat := openCompaction(t, compactionOptions{contextWindow: 2000})
 			chat.history(t)
 			chat.setPolicy(variant.policy())
@@ -1211,6 +1268,7 @@ func TestBackgroundThresholdCompaction(t *testing.T) {
 	}
 
 	t.Run("does not start while another compaction is listed", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:976
 		chat := openCompaction(t, compactionOptions{contextWindow: 2000})
 		chat.history(t)
 		reached := deferred()
@@ -1228,6 +1286,7 @@ func TestBackgroundThresholdCompaction(t *testing.T) {
 	})
 
 	t.Run("stops through abortTask() and Conversation.abort() with background", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:990
 		for _, stop := range []string{"task", "conversation"} {
 			chat := openCompaction(t, compactionOptions{contextWindow: 2000})
 			chat.history(t)
@@ -1252,6 +1311,7 @@ func TestBackgroundThresholdCompaction(t *testing.T) {
 
 func TestBlockingThresholdCompaction(t *testing.T) {
 	t.Run("waits for its compaction, which appends the summary before the request", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1010
 		chat := openCompaction(t, compactionOptions{contextWindow: 1000})
 		chat.history(t)
 		chat.setPolicy(blockingPolicy())
@@ -1295,6 +1355,7 @@ func TestBlockingThresholdCompaction(t *testing.T) {
 	})
 
 	t.Run("sends the request once, without a second compaction, when the kept part is still above the threshold", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1049
 		chat := openCompaction(t, compactionOptions{contextWindow: 1000})
 		chat.history(t)
 		policy := blockingPolicy()
@@ -1326,6 +1387,7 @@ func TestBlockingThresholdCompaction(t *testing.T) {
 		{"fails", func(_ *testing.T, chat *compactionChat) { chat.faux.pushSummary(scriptFailure("bad request")) }},
 	} {
 		t.Run("sends the request anyway when its compaction "+variant.name, func(t *testing.T) {
+			// upstream: packages/durable/test/harness-compaction.test.ts:1067
 			chat := openCompaction(t, compactionOptions{contextWindow: 1000})
 			chat.history(t)
 			chat.setPolicy(blockingPolicy())
@@ -1342,6 +1404,7 @@ func TestBlockingThresholdCompaction(t *testing.T) {
 	}
 
 	t.Run("sends the request anyway when its compaction is aborted directly", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1079
 		chat := openCompaction(t, compactionOptions{contextWindow: 1000})
 		chat.history(t)
 		chat.setPolicy(blockingPolicy())
@@ -1359,6 +1422,7 @@ func TestBlockingThresholdCompaction(t *testing.T) {
 	})
 
 	t.Run("is aborted with its generation by Esc, before the generation's abort handler", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1095
 		chat := openCompaction(t, compactionOptions{contextWindow: 1000})
 		chat.history(t)
 		chat.setPolicy(blockingPolicy())
@@ -1399,6 +1463,7 @@ func TestBlockingThresholdCompaction(t *testing.T) {
 	})
 
 	t.Run("wins over a background compaction still in flight, which then settles stale", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1119
 		chat := openCompaction(t, compactionOptions{contextWindow: 2000})
 		chat.history(t)
 		chat.setPolicy(backgroundPolicy())
@@ -1440,6 +1505,7 @@ func toolCallScript(name string) scriptStep {
 
 func TestOverflowCompaction(t *testing.T) {
 	t.Run("compacts and retries with the same attempt, leaving the error out of the retry", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1146
 		chat := openCompaction(t)
 		chat.history(t)
 		chat.setPolicy(enabledPolicy())
@@ -1472,6 +1538,7 @@ func TestOverflowCompaction(t *testing.T) {
 	})
 
 	t.Run("fails a second overflow with its error entry", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1175
 		chat := openCompaction(t)
 		chat.history(t)
 		chat.setPolicy(enabledPolicy())
@@ -1488,6 +1555,7 @@ func TestOverflowCompaction(t *testing.T) {
 	})
 
 	t.Run("fails without compacting when compaction is disabled, even for a retryable-looking overflow", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1192
 		chat := openCompaction(t)
 		chat.history(t)
 		chat.faux.pushAgent(scriptFailure("overloaded: " + overflowText))
@@ -1499,6 +1567,7 @@ func TestOverflowCompaction(t *testing.T) {
 	})
 
 	t.Run("fails after a blocking threshold compaction in the same generation", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1203
 		chat := openCompaction(t, compactionOptions{contextWindow: 1000})
 		chat.history(t)
 		chat.setPolicy(blockingPolicy())
@@ -1530,6 +1599,7 @@ func TestOverflowCompaction(t *testing.T) {
 		}, 0},
 	} {
 		t.Run("fails with the overflow text when compaction "+variant.name, func(t *testing.T) {
+			// upstream: packages/durable/test/harness-compaction.test.ts:1231
 			chat := openCompaction(t)
 			chat.turn(t, sized("u1", 100), sized("a1", 100))
 			chat.setPolicy(enabledPolicy())
@@ -1549,6 +1619,7 @@ func TestOverflowCompaction(t *testing.T) {
 func TestCompactionEstimates(t *testing.T) {
 	for _, clock := range []string{"real", "fixed"} {
 		t.Run("ignores usage measured before a summary placed mid-run ("+clock+" clock)", func(t *testing.T) {
+			// upstream: packages/durable/test/harness-compaction.test.ts:1251
 			setup := chatSetup(t, ai.FauxConfig{Models: []ai.FauxModelDefinition{{ID: "faux-1", ContextWindow: 2000, MaxTokens: 900}}})
 			if clock == "fixed" {
 				setup.SetNow(func() float64 { return 1_000 })
@@ -1599,6 +1670,7 @@ func TestCompactionEstimates(t *testing.T) {
 	}
 
 	t.Run("rebaselines the system prompt over kept system deltas", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1300
 		chat := openCompaction(t)
 		var mu sync.Mutex
 		mood := "cheerful"
@@ -1666,6 +1738,7 @@ func defineChildTask(gate *deferredGate) durable.Task[struct{}, childState, dura
 
 func TestCompactionInteractions(t *testing.T) {
 	t.Run("summarizes a replaced entry's replacement and shows it to the hook", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1320
 		chat := openCompaction(t)
 		chat.history(t)
 		u1 := allEntries(t, chat.root)[0]
@@ -1684,6 +1757,7 @@ func TestCompactionInteractions(t *testing.T) {
 	})
 
 	t.Run("compacts a fork whose cut falls on a parent entry", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1354
 		chat := openCompaction(t)
 		chat.history(t)
 		entries := allEntries(t, chat.root)
@@ -1716,6 +1790,7 @@ func TestCompactionInteractions(t *testing.T) {
 	})
 
 	t.Run("settles stale in a fork reset while it summarizes", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1376
 		chat := openCompaction(t)
 		chat.history(t)
 		entries := allEntries(t, chat.root)
@@ -1734,6 +1809,7 @@ func TestCompactionInteractions(t *testing.T) {
 	})
 
 	t.Run("places an older queued summary and the current one together when idle admission drains the inbox", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1398
 		chat := openCompaction(t)
 		chat.history(t)
 		gate, reached := deferred(), deferred()
@@ -1759,6 +1835,7 @@ func TestCompactionInteractions(t *testing.T) {
 	})
 
 	t.Run("places a hook's summary and holds while work the hook created runs", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1423
 		chat := openCompaction(t)
 		childGate := deferred()
 		child := defineChildTask(childGate)
@@ -1788,6 +1865,7 @@ func TestCompactionInteractions(t *testing.T) {
 	})
 
 	t.Run("removes the status of a faulted compaction", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1451
 		chat := openCompaction(t)
 		chat.history(t)
 		// The Go form of replacing Models.getModel with a throwing function: the provider's model listing panics.
@@ -1815,6 +1893,7 @@ func eventValue(t *testing.T, event AgentEvent) map[string]any {
 
 func TestCompactionEventsAndLiveStatus(t *testing.T) {
 	t.Run("reports start and end, and the retry backoff in a late joiner's snapshot", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1487
 		chat := openCompaction(t)
 		chat.history(t)
 		chat.setup.SetSettings(func(settings *HarnessSettings) {
@@ -1862,6 +1941,7 @@ func TestCompactionEventsAndLiveStatus(t *testing.T) {
 	})
 
 	t.Run("lists concurrent compactions in task ID order", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1520
 		chat := openCompaction(t)
 		chat.history(t)
 		first, second := deferred(), deferred()
@@ -1912,6 +1992,7 @@ func firstCompactionChat(t *testing.T, path string) *compactionChat {
 
 func TestCompactionRecovery(t *testing.T) {
 	t.Run("repeats nothing after reopen once the summary is placed", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1558
 		path := filepath.Join(t.TempDir(), "session.sqlite")
 		chat := firstCompactionChat(t, path)
 		chat.faux.pushSummary(scriptSummary())
@@ -1936,6 +2017,7 @@ func TestCompactionRecovery(t *testing.T) {
 	})
 
 	t.Run("fails an overflow run with its text when its compaction fails after reopen", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1576
 		path := filepath.Join(t.TempDir(), "session.sqlite")
 		chat := firstCompactionChat(t, path)
 		chat.setPolicy(enabledPolicy())
@@ -1956,6 +2038,7 @@ func TestCompactionRecovery(t *testing.T) {
 	})
 
 	t.Run("reruns select and its hook after a crash in select", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1598
 		path := filepath.Join(t.TempDir(), "session.sqlite")
 		chat := firstCompactionChat(t, path)
 		var mu sync.Mutex
@@ -1989,6 +2072,7 @@ func TestCompactionRecovery(t *testing.T) {
 	})
 
 	t.Run("resends an interrupted summarization once and counts only the answered attempt", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1623
 		path := filepath.Join(t.TempDir(), "session.sqlite")
 		chat := firstCompactionChat(t, path)
 		reached := deferred()
@@ -2025,6 +2109,7 @@ func TestCompactionRecovery(t *testing.T) {
 	})
 
 	t.Run("resumes a retry backoff after reopen", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1647
 		path := filepath.Join(t.TempDir(), "session.sqlite")
 		chat := firstCompactionChat(t, path)
 		var mu sync.Mutex
@@ -2060,6 +2145,7 @@ func TestCompactionRecovery(t *testing.T) {
 	})
 
 	t.Run("keeps a generation waiting on its blocking compaction across reopen", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1668
 		path := filepath.Join(t.TempDir(), "session.sqlite")
 		chat := firstCompactionChat(t, path)
 		reached := deferred()
@@ -2080,6 +2166,7 @@ func TestCompactionRecovery(t *testing.T) {
 	})
 
 	t.Run("keeps a queued summary across reopen and places it at the next boundary", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1687
 		path := filepath.Join(t.TempDir(), "session.sqlite")
 		chat := firstCompactionChat(t, path)
 		reached := deferred()
@@ -2123,6 +2210,7 @@ func (chat *compactionChat) busy(t *testing.T, reply ...scriptStep) busyRun {
 
 func TestCompactionAndTheInbox(t *testing.T) {
 	t.Run("places a reset queued after the summary last, and makes a summary queued after a reset stale", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1725
 		for _, order := range []string{"summary first", "reset first"} {
 			chat := openCompaction(t)
 			chat.history(t)
@@ -2151,6 +2239,7 @@ func TestCompactionAndTheInbox(t *testing.T) {
 	})
 
 	t.Run("places a summary left queued by a failed run at the next submission, before its input", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1748
 		chat := openCompaction(t)
 		chat.history(t)
 		run := chat.busy(t, scriptFailure("bad request"))
@@ -2172,6 +2261,7 @@ func TestCompactionAndTheInbox(t *testing.T) {
 	})
 
 	t.Run("keeps the full retry budget after an overflow compaction", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1764
 		chat := openCompaction(t)
 		chat.history(t)
 		chat.setPolicy(enabledPolicy())
@@ -2182,6 +2272,7 @@ func TestCompactionAndTheInbox(t *testing.T) {
 	})
 
 	t.Run("loses an application edit placed while a compaction summarizes (spec §12)", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1780
 		chat := openCompaction(t)
 		chat.history(t)
 		u1 := allEntries(t, chat.root)[0]
@@ -2205,6 +2296,7 @@ func TestCompactionAndTheInbox(t *testing.T) {
 	})
 
 	t.Run("keeps the kept entries mounted in the conversation view", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1799
 		chat := openCompaction(t)
 		chat.history(t)
 		state := must(chat.root.ViewState(testContext))
@@ -2222,6 +2314,7 @@ func TestCompactionAndTheInbox(t *testing.T) {
 
 func TestCompactionEdgeCases(t *testing.T) {
 	t.Run("keeps the one-compaction limit through a retry backoff", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1813
 		chat := openCompaction(t, compactionOptions{contextWindow: 1000})
 		chat.history(t)
 		chat.setPolicy(blockingPolicy())
@@ -2245,6 +2338,7 @@ func TestCompactionEdgeCases(t *testing.T) {
 	})
 
 	t.Run("does not start a background compaction when a manual one was admitted during preparation", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1832
 		chat := openCompaction(t, compactionOptions{contextWindow: 2000})
 		chat.history(t)
 		chat.setPolicy(backgroundPolicy())
@@ -2283,6 +2377,7 @@ func TestCompactionEdgeCases(t *testing.T) {
 	})
 
 	t.Run("starts no background compaction after a blocking one in the same generation", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1863
 		chat := openCompaction(t, compactionOptions{contextWindow: 2000})
 		chat.history(t)
 		// Blocking at 1500, background at 200: the kept part stays above the background threshold.
@@ -2299,6 +2394,7 @@ func TestCompactionEdgeCases(t *testing.T) {
 	})
 
 	t.Run("sends the request anyway when its blocking compaction faults", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1875
 		chat := openCompaction(t, compactionOptions{contextWindow: 1000})
 		chat.history(t)
 		chat.setPolicy(blockingPolicy())
@@ -2324,6 +2420,7 @@ func TestCompactionEdgeCases(t *testing.T) {
 	})
 
 	t.Run("fails an overflow run with its text when its compaction is aborted directly or itself overflows", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1890
 		for _, how := range []string{"abort", "overflow"} {
 			chat := openCompaction(t)
 			chat.history(t)
@@ -2351,6 +2448,7 @@ func TestCompactionEdgeCases(t *testing.T) {
 	})
 
 	t.Run("treats a length stop as an ordinary answer, not an overflow", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1915
 		chat := openCompaction(t)
 		chat.history(t)
 		chat.setPolicy(enabledPolicy())
@@ -2409,6 +2507,7 @@ func (log *eventLog) batchWith(eventType string) []string {
 
 func TestCompactionEdgeCasesLater(t *testing.T) {
 	t.Run("orders the events of a summary placed at once", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1926
 		chat := openCompaction(t)
 		chat.history(t)
 		log, stream := watchEventLog(t, chat)
@@ -2423,6 +2522,7 @@ func TestCompactionEdgeCasesLater(t *testing.T) {
 	})
 
 	t.Run("puts compaction_start last in the batch of the preparation commit", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1944
 		chat := openCompaction(t, compactionOptions{contextWindow: 2000})
 		chat.history(t)
 		chat.setPolicy(backgroundPolicy())
@@ -2439,6 +2539,7 @@ func TestCompactionEdgeCasesLater(t *testing.T) {
 	})
 
 	t.Run("keeps a background summary queued through a retry backoff while a blocking compaction wins", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1965
 		chat := openCompaction(t, compactionOptions{contextWindow: 2000})
 		chat.history(t)
 		chat.setPolicy(backgroundPolicy())
@@ -2479,6 +2580,7 @@ func TestCompactionEdgeCasesLater(t *testing.T) {
 	})
 
 	t.Run("summarizes the previous summary in a second compaction", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1999
 		chat := openCompaction(t)
 		chat.history(t)
 		chat.faux.pushSummary(scriptSummary("FIRST"))
@@ -2498,6 +2600,7 @@ func TestCompactionEdgeCasesLater(t *testing.T) {
 	})
 
 	t.Run("leaves no usage, submission, summary, or outcome when the classifying commit is rejected", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:2015
 		store := newControlledStorage()
 		chat := openCompaction(t, compactionOptions{storage: store})
 		chat.history(t)
@@ -2546,6 +2649,7 @@ func (chat *compactionChat) blockingRun(t *testing.T) blockingRunState {
 
 func TestBlockingAndManualCompaction(t *testing.T) {
 	t.Run("places a manual summary selected before the blocking one landed; its equal cut replaces it", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:2051
 		chat := openCompaction(t, compactionOptions{contextWindow: 1000})
 		run := chat.blockingRun(t)
 		// Selected from the same context as the blocking compaction, so it cuts at the same entry.
@@ -2578,6 +2682,7 @@ func TestBlockingAndManualCompaction(t *testing.T) {
 	})
 
 	t.Run("finds nothing to compact for a manual compaction selected after the blocking summary landed", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:2077
 		chat := openCompaction(t, compactionOptions{contextWindow: 1000})
 		run := chat.blockingRun(t)
 		answerGate, answerReached := deferred(), deferred()
@@ -2594,6 +2699,7 @@ func TestBlockingAndManualCompaction(t *testing.T) {
 	})
 
 	t.Run("aborts the run and both compactions on Esc and appends nothing", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:2095
 		chat := openCompaction(t, compactionOptions{contextWindow: 1000})
 		run := chat.blockingRun(t)
 		manualReached := deferred()
@@ -2620,6 +2726,7 @@ func TestBlockingAndManualCompaction(t *testing.T) {
 	})
 
 	t.Run("places a summary that survived Esc at the next submission, before its input", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:2114
 		chat := openCompaction(t)
 		chat.history(t)
 		reached := deferred()
@@ -2649,6 +2756,7 @@ func TestBlockingAndManualCompaction(t *testing.T) {
 
 func TestCompactionPinning(t *testing.T) {
 	t.Run("keeps the pinned model through a retry and advances the live attempt", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:2142
 		setup := chatSetup(t, ai.FauxConfig{Models: []ai.FauxModelDefinition{{ID: "faux-1", ContextWindow: 100_000, MaxTokens: 900}, {ID: "faux-2", ContextWindow: 100_000, MaxTokens: 900}}})
 		chat := openCompaction(t, compactionOptions{setup: setup})
 		chat.history(t)
@@ -2684,6 +2792,7 @@ func TestCompactionPinning(t *testing.T) {
 	})
 
 	t.Run("shows a late joiner a compaction that is summarizing", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:2169
 		chat := openCompaction(t)
 		chat.history(t)
 		reached := deferred()
@@ -2705,6 +2814,7 @@ func TestCompactionPinning(t *testing.T) {
 		{"a length stop that fills the window without output", ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("")}, StopReason: "length"}},
 	} {
 		t.Run("treats silent overflow as an ordinary answer: "+variant.name, func(t *testing.T) {
+			// upstream: packages/durable/test/harness-compaction.test.ts:2187
 			chat := openCompaction(t, compactionOptions{contextWindow: 300})
 			chat.history(t)
 			// Thresholds out of reach, so only overflow classification could compact.
@@ -2721,6 +2831,7 @@ func TestCompactionPinning(t *testing.T) {
 	}
 
 	t.Run("sends the request when a blocking compaction finds nothing under a policy changed after preparation", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:2208
 		chat := openCompaction(t, compactionOptions{contextWindow: 1000})
 		chat.history(t)
 		chat.setPolicy(blockingPolicy())
@@ -2748,6 +2859,7 @@ func TestCompactionPinning(t *testing.T) {
 
 func TestBlockedCompaction(t *testing.T) {
 	t.Run("survives reopen blocked and is orphaned on abort with its status removed", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:2233
 		path := filepath.Join(t.TempDir(), "session.sqlite")
 		setup := chatSetup(t)
 		harness, root := openChat(t, openSqlite(t, path), setup)
@@ -2790,6 +2902,7 @@ func TestBlockedCompaction(t *testing.T) {
 
 func TestContextContributions(t *testing.T) {
 	t.Run("apply edits carried by an older head marker in the range", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:2272
 		chat := openCompaction(t)
 		rootId := chat.root.Id()
 		type noteIds struct{ a, b, c durable.EntryId }

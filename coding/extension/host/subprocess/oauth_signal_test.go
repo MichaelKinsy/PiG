@@ -54,8 +54,8 @@ func expectNoFrame(t *testing.T, frames <-chan Envelope) {
 	}
 }
 
-// Pi composes AbortSignal.timeout into the refresh signal only in resolveStoredOAuth (auth/resolve.ts:149-153); Models.refresh passes the caller's signal alone (models.ts:474).
-func TestOAuthProxyRefreshSignalTimeoutFollowsTheCaller(t *testing.T) {
+// A stored-credential refresh gets AbortSignal.timeout alone (auth/resolve.ts:refreshStoredOAuthCredential): the request carries signal_timeout_ms. Any other refresh carries the caller's cancellation and no timeout.
+func TestOAuthProxyRefreshSignalTimeoutIsSentForStoredRefreshOnly(t *testing.T) {
 	p, _, requests, _ := refreshRig(t)
 	caller, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -64,29 +64,29 @@ func TestOAuthProxyRefreshSignalTimeoutFollowsTheCaller(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got := (<-requests).Request.SignalTimeoutMS; got != nil {
-		t.Errorf("Models.refresh path sent signal_timeout_ms = %v", *got)
+		t.Errorf("caller-signal refresh sent signal_timeout_ms = %v", *got)
 	}
-	if _, err := p.RefreshTokenContext(ai.WithOAuthRefreshTimeout(caller, caller, 15*time.Second), ai.OAuthCredentials{Refresh: "r"}); err != nil {
+	if _, err := p.RefreshTokenContext(ai.WithOAuthRefreshTimeout(context.WithoutCancel(caller), 15*time.Second), ai.OAuthCredentials{Refresh: "r"}); err != nil {
 		t.Fatal(err)
 	}
 	if got := (<-requests).Request.SignalTimeoutMS; got == nil || *got != 15000 {
-		t.Errorf("resolveStoredOAuth path signal_timeout_ms = %v, want 15000", got)
+		t.Errorf("stored refresh signal_timeout_ms = %v, want 15000", got)
 	}
 }
 
-// A signal the extension keeps after its request settled still follows the caller: Pi's refresh signal is AbortSignal.any([caller, ...]). The composed timeout is the runtime's own timer, so the refresh context's deadline is not forwarded.
+// A signal the extension keeps after its request settled follows the caller's cancellation, except for a stored-credential refresh, whose signal is AbortSignal.timeout alone.
 func TestOAuthProxyForwardsCallerAbortAfterSettlement(t *testing.T) {
-	for _, composed := range []bool{false, true} {
-		name := map[bool]string{false: "caller signal alone", true: "composed with the timeout"}[composed]
+	for _, timeoutOnly := range []bool{false, true} {
+		name := map[bool]string{false: "caller signal", true: "timeout alone"}[timeoutOnly]
 		t.Run(name, func(t *testing.T) {
 			p, _, requests, frames := refreshRig(t)
 			caller, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			ctx := caller
-			if composed {
-				refresh, stop := context.WithTimeout(caller, 40*time.Millisecond)
+			if timeoutOnly {
+				refresh, stop := context.WithTimeout(context.WithoutCancel(caller), 40*time.Millisecond)
 				defer stop()
-				ctx = ai.WithOAuthRefreshTimeout(refresh, caller, 40*time.Millisecond)
+				ctx = ai.WithOAuthRefreshTimeout(refresh, 40*time.Millisecond)
 			}
 			if _, err := p.RefreshTokenContext(ctx, ai.OAuthCredentials{Refresh: "r"}); err != nil {
 				t.Fatal(err)
@@ -94,6 +94,10 @@ func TestOAuthProxyForwardsCallerAbortAfterSettlement(t *testing.T) {
 			id := (<-requests).ID
 			expectNoFrame(t, frames) // settlement and the refresh context's own deadline abort nothing
 			cancel()
+			if timeoutOnly {
+				expectNoFrame(t, frames)
+				return
+			}
 			expectCancelFrame(t, frames, id)
 		})
 	}

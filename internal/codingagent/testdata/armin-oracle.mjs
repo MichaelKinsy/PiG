@@ -9,14 +9,14 @@ import { createHash } from "node:crypto";
 const image = JSON.parse(process.argv[2]);
 let source = readFileSync(new URL(`../../../.upstream/v${image.upstream}/packages/coding-agent/src/modes/interactive/components/armin.ts`, import.meta.url), "utf8")
   .replace(/^import .*;\n/gm, "")
-  .replace("export class ArminComponent", "class ArminComponent");
+  .replace(/^export /gm, "");
 const replaceOnce = (pattern, replacement) => {
   const matches = source.match(new RegExp(pattern.source, "g")) ?? [];
   if (matches.length !== 1) throw new Error(`expected one ${pattern}, found ${matches.length}`);
   source = source.replace(pattern, replacement);
 };
-replaceOnce(/const WIDTH = \d+;/, `const WIDTH = ${image.width};`);
-replaceOnce(/const HEIGHT = \d+;/, `const HEIGHT = ${image.height};`);
+replaceOnce(/const ARMIN_WIDTH = \d+;/, `const ARMIN_WIDTH = ${image.width};`);
+replaceOnce(/const ARMIN_HEIGHT = \d+;/, `const ARMIN_HEIGHT = ${image.height};`);
 replaceOnce(/const BITS = \[[^\]]*\];/, `const BITS = ${JSON.stringify(image.bits)};`);
 replaceOnce(/const message = "ARMIN SAYS HI";/, `const message = ${JSON.stringify(image.label)};`);
 const effects = ["typewriter", "scanline", "rain", "fade", "crt", "glitch", "dissolve"];

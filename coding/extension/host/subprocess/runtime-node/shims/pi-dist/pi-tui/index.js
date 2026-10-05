@@ -9,7 +9,7 @@ export { Box } from "./components/box.js";
 export { CancellableLoader } from "./components/cancellable-loader.js";
 export { Editor } from "./components/editor.js";
 export { HStack } from "./components/h-stack.js";
-export { Image } from "./components/image.js";
+export { Image, setImageTranscoder, } from "./components/image.js";
 export { Input } from "./components/input.js";
 export { Loader } from "./components/loader.js";
 export { Markdown } from "./components/markdown.js";

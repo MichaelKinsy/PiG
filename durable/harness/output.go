@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/durable/env"
 )
 
 // OutputLimits are the retention limits of one tool's output. Retain is "head" or "tail".
@@ -231,6 +233,43 @@ func (buffer *OutputBuffer) PushBytes(chunk []byte) bool {
 	return buffer.accept(buffer.decoder.decode(chunk, true))
 }
 
+// PushStringSkipping accepts a text chunk that follows omitted output: skipped is output omitted right before the chunk,
+// which must be more than the tail window by at least one byte or line (ShellOutputInfo.Skipped). Only tail retention
+// accepts it; head retention returns an error. It reports that the chunk was accepted.
+func (buffer *OutputBuffer) PushStringSkipping(chunk string, skipped env.ShellOutputSkip) (bool, error) {
+	return buffer.pushSkipping(buffer.decoder.decode(nil, false), chunk, skipped)
+}
+
+// PushBytesSkipping is PushStringSkipping for a byte chunk, decoding UTF-8 across the omission as upstream does: bytes of
+// an incomplete character before it end as a replacement character.
+func (buffer *OutputBuffer) PushBytesSkipping(chunk []byte, skipped env.ShellOutputSkip) (bool, error) {
+	pending := buffer.decoder.decode(nil, false)
+	return buffer.pushSkipping(pending, buffer.decoder.decode(chunk, true), skipped)
+}
+
+func (buffer *OutputBuffer) pushSkipping(pending, text string, skipped env.ShellOutputSkip) (bool, error) {
+	if buffer.limits.Retain != "tail" {
+		return false, errors.New("Skipped output requires tail retention")
+	}
+	buffer.accept(pending)
+	buffer.skip(skipped)
+	buffer.accept(text)
+	return true, nil
+}
+
+// skip counts omitted output; nothing stored before it can be in the window once the text after it arrives.
+func (buffer *OutputBuffer) skip(skipped env.ShellOutputSkip) {
+	if skipped.Bytes == 0 {
+		return
+	}
+	buffer.totalBytes += skipped.Bytes
+	buffer.totalNewlines += skipped.Newlines
+	buffer.endsWithNL = skipped.EndsWithNewline
+	buffer.chunks = nil
+	buffer.storedBytes = 0
+	buffer.storedNewlines = 0
+}
+
 // End flushes an incomplete trailing character as a replacement character; call when the stream ends.
 func (buffer *OutputBuffer) End() {
 	buffer.accept(buffer.decoder.decode(nil, false))
@@ -286,11 +325,13 @@ func (buffer *OutputBuffer) Snapshot() BoundedOutput {
 	kept := BoundOutput(stored, buffer.limits)
 	storedLines := outputLines(buffer.storedNewlines, stored == "" || strings.HasSuffix(stored, "\n"))
 	keptLines := storedLines - kept.DroppedLines
-	// Tail windows never reach back before this one, so only the kept slice needs storing.
+	// Tail windows never reach back before this one, but finding a later window's first line needs what precedes it:
+	// keep the shortest suffix longer than the window by a byte or a line, as accept does.
 	if buffer.limits.Retain == "tail" || len(buffer.chunks) > 1 {
 		text, size := stored, buffer.storedBytes
 		if buffer.limits.Retain == "tail" {
-			text, size = kept.Text, kept.Bytes
+			text = tailMargin(stored, buffer.limits)
+			size = len(text)
 		}
 		buffer.chunks = nil
 		buffer.storedNewlines = 0
@@ -305,6 +346,33 @@ func (buffer *OutputBuffer) Snapshot() BoundedOutput {
 		DroppedBytes: buffer.totalBytes - kept.Bytes,
 		DroppedLines: outputLines(buffer.totalNewlines, buffer.endsWithNL) - keptLines,
 	}
+}
+
+// tailMargin is the shortest suffix of text with more than MaxBytes bytes or more than MaxLines newlines, or all of it.
+// The tail window of any text that ends with this suffix, followed by anything, is the same as of text followed by it.
+func tailMargin(text string, limits OutputLimits) string {
+	data := []byte(text)
+	byteStart := 0
+	if len(data) > limits.MaxBytes {
+		byteStart = CharacterEnd(data, len(data)-limits.MaxBytes-1)
+	}
+	lineStart := 0
+	newlines := 0
+	for index := lastIndexFrom(data, len(data)-1); index != -1; index = lastIndexFrom(data, index-1) {
+		newlines++
+		if newlines > limits.MaxLines {
+			lineStart = index
+			break
+		}
+		if index == 0 {
+			break
+		}
+	}
+	start := max(byteStart, lineStart)
+	if start == 0 {
+		return text
+	}
+	return decodeUTF8(data[start:])
 }
 
 // outputLines counts the lines of text with newlines newlines; a final unterminated line counts.
@@ -403,9 +471,8 @@ func (decoder *utf8StreamDecoder) decode(chunk []byte, stream bool) string {
 	return out.String()
 }
 
-// Minimum pause between progress commits; each commit also buys a pause proportional to what it wrote (output.ts:236).
+// Each progress commit also buys a pause proportional to what it wrote (output.ts:250).
 const (
-	minProgressIntervalMS   = 100
 	progressBytesPerSecond  = 100 * 1024
 	progressMillisPerSecond = 1000
 )
@@ -459,11 +526,12 @@ func (waiter *ProgressWaiter) Wait(ctx context.Context) error {
 
 var errProgressStopped = errors.New("progress stopped before the change could be published")
 
-// Progress schedules adaptive progress commits, like the environment's shell output capture: the first change after an idle period commits at once; each commit then delays the next by at least 100 ms and by its written size at 100 KiB/s. At most one commit is in flight; changes made meanwhile coalesce into the next one. Write runs on a goroutine Progress owns; Stop joins it.
+// Progress schedules adaptive progress commits: the first change after an idle period commits at once; each commit then delays the next by at least the minimum interval and by its written size at 100 KiB/s. At most one commit is in flight; changes made meanwhile coalesce into the next one. Write runs on a goroutine Progress owns; Stop joins it.
 type Progress struct {
-	write   func() (int, error)
-	onError func(error)
-	clock   progressClock
+	write         func() (int, error)
+	onError       func(error)
+	minIntervalMs float64
+	clock         progressClock
 
 	mu        sync.Mutex
 	waiters   []*ProgressWaiter
@@ -474,13 +542,13 @@ type Progress struct {
 	stopped   bool
 }
 
-// NewProgress returns a Progress that commits through write, which reports the bytes it wrote; onError receives a failed commit's error.
-func NewProgress(write func() (int, error), onError func(error)) *Progress {
-	return newProgressWithClock(write, onError, systemProgressClock{})
+// NewProgress returns a Progress that commits through write, which reports the bytes it wrote; onError receives a failed commit's error. minIntervalMs is the least pause between commits.
+func NewProgress(write func() (int, error), onError func(error), minIntervalMs float64) *Progress {
+	return newProgressWithClock(write, onError, minIntervalMs, systemProgressClock{})
 }
 
-func newProgressWithClock(write func() (int, error), onError func(error), clock progressClock) *Progress {
-	return &Progress{write: write, onError: onError, clock: clock}
+func newProgressWithClock(write func() (int, error), onError func(error), minIntervalMs float64, clock progressClock) *Progress {
+	return &Progress{write: write, onError: onError, minIntervalMs: minIntervalMs, clock: clock}
 }
 
 // Mark schedules a commit.
@@ -568,9 +636,9 @@ func (progress *Progress) commit(started float64, waiters []*ProgressWaiter, don
 	written, err := progress.write()
 	progress.mu.Lock()
 	if err == nil {
-		progress.nextAt = started + math.Max(minProgressIntervalMS, float64(written)*progressMillisPerSecond/progressBytesPerSecond)
+		progress.nextAt = started + math.Max(progress.minIntervalMs, float64(written)*progressMillisPerSecond/progressBytesPerSecond)
 	} else {
-		progress.nextAt = started + minProgressIntervalMS
+		progress.nextAt = started + progress.minIntervalMs
 	}
 	progress.mu.Unlock()
 	// Upstream rejects the waiters and reports in one synchronous handler, so no waiter continuation observes the report missing; report first to keep that.

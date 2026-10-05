@@ -85,6 +85,7 @@ func TestWindowsTestsCreateSymlinksThroughSymlink(t *testing.T) {
 
 // fileSymlinkCallers lists every function that may call Symlink, keyed by "module-relative file::function". Symlink skips on a Windows host without the symlink privilege, so a caller belongs here only when its behavior depends on a file symbolic link or on a link whose target is missing or cyclic, which a privilege-free junction cannot stand in for. A link to an existing directory uses RequireDirectoryLink and runs on stock Windows.
 var fileSymlinkCallers = map[string]string{
+	"internal/installchange/installchange_test.go::TestTrackerFollowsASymlinkedExecutable":                                     "file link; the tracked install is an executable file reached through a link",
 	"cmd/pig/self_update_contract_test.go::TestStandaloneUpdateLocksThroughReceiptRollback":                                    "file link; the Windows branch returns first",
 	"cmd/pig/self_update_npm_registry_test.go::isolatedNpmBin":                                                                 "file link",
 	"cmd/pig/self_update_npm_registry_test.go::TestIsolatedNpmBinBypassesVersionManagerWrapper":                                "file link",

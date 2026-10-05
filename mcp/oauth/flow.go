@@ -82,7 +82,7 @@ func (t *TokenParams) Get(key string) (string, bool) { return t.p.Get(key) }
 // OAuthClientProvider supplies the state of one OAuth client: registration,
 // tokens, and the PKCE verifier. The optional capabilities are separate
 // interfaces: [StateProvider], [ClientInformationSaver],
-// [ClientMetadataURLProvider], [ClientAuthenticator],
+// [ClientMetadataDocumentProvider], [ClientAuthenticator],
 // [CredentialInvalidator], and [DiscoveryStateStore].
 type OAuthClientProvider interface {
 	RedirectURL() string
@@ -105,9 +105,20 @@ type ClientInformationSaver interface {
 	SaveClientInformation(ctx context.Context, information OAuthClientInformationMixed) error
 }
 
-// ClientMetadataURLProvider names a client metadata document URL.
-type ClientMetadataURLProvider interface {
-	ClientMetadataURL() string
+// OAuthClientMetadataDocument is a Client ID Metadata Document: an https URL
+// used as `client_id`, and a redirect URI it lists.
+type OAuthClientMetadataDocument struct {
+	URL         string
+	RedirectURL string
+}
+
+// ClientMetadataDocumentProvider names the Client ID Metadata Document to
+// identify as instead of registering dynamically, or nil to register. It is
+// called when no client information is stored; the document is not stored.
+// metadata is nil when the authorization server has none; check
+// `client_id_metadata_document_supported`.
+type ClientMetadataDocumentProvider interface {
+	ClientMetadataDocument(metadata *AuthorizationServerMetadata) (*OAuthClientMetadataDocument, error)
 }
 
 // ClientAuthenticator overrides client authentication on token requests.
@@ -607,44 +618,45 @@ func runFlow(ctx context.Context, provider OAuthClientProvider, options OAuthFlo
 	if err != nil {
 		return "", err
 	}
+	var clientDocument *OAuthClientMetadataDocument
+	if p, ok := provider.(ClientMetadataDocumentProvider); ok && client == nil {
+		if clientDocument, err = p.ClientMetadataDocument(metadata); err != nil {
+			return "", err
+		}
+	}
+	if clientDocument != nil {
+		u, err := parseURL(clientDocument.URL)
+		if err != nil {
+			return "", err
+		}
+		if u.Scheme != "https" || u.Path == "/" {
+			return "", errors.New("Invalid OAuth client metadata URL")
+		}
+		client = &OAuthClientInformationMixed{ClientID: clientDocument.URL}
+	}
 	if client == nil {
 		if options.AuthorizationCode != "" {
 			return "", errors.New("OAuth client information is missing during code exchange")
 		}
-		var metadataURL string
-		if p, ok := provider.(ClientMetadataURLProvider); ok {
-			metadataURL = p.ClientMetadataURL()
-		}
 		saver, canSave := provider.(ClientInformationSaver)
-		if metadata != nil && metadata.ClientIDMetadataDocumentSupported != nil && *metadata.ClientIDMetadataDocumentSupported && metadataURL != "" {
-			u, err := parseURL(metadataURL)
-			if err != nil {
-				return "", err
-			}
-			if u.Scheme != "https" || u.Path == "/" {
-				return "", errors.New("Invalid OAuth client metadata URL")
-			}
-			client = &OAuthClientInformationMixed{ClientID: metadataURL}
-			if canSave {
-				if err := saver.SaveClientInformation(ctx, *client); err != nil {
-					return "", err
-				}
-			}
-		} else {
-			if !canSave {
-				return "", errors.New("OAuth client information cannot be persisted")
-			}
-			registered, err := RegisterClient(ctx, discovered.AuthorizationServerURL, RegisterClientOptions{
-				Metadata: metadata, ClientMetadata: provider.ClientMetadata(), Scope: scope, Fetch: options.Fetch,
-			})
-			if err != nil {
-				return "", err
-			}
-			client = registered
-			if err := saver.SaveClientInformation(ctx, *client); err != nil {
-				return "", err
-			}
+		if !canSave {
+			return "", errors.New("OAuth client information cannot be persisted")
 		}
+		registered, err := RegisterClient(ctx, discovered.AuthorizationServerURL, RegisterClientOptions{
+			Metadata: metadata, ClientMetadata: provider.ClientMetadata(), Scope: scope, Fetch: options.Fetch,
+		})
+		if err != nil {
+			return "", err
+		}
+		client = registered
+		if err := saver.SaveClientInformation(ctx, *client); err != nil {
+			return "", err
+		}
+	}
+	// The document's redirect URI may differ from the provider's, for example by a server-specific path.
+	redirectURL := provider.RedirectURL()
+	if clientDocument != nil {
+		redirectURL = clientDocument.RedirectURL
 	}
 	tokenOptions := TokenRequestOptions{Metadata: metadata, ClientInformation: *client, Resource: resource, Fetch: options.Fetch}
 	if authenticator, ok := provider.(ClientAuthenticator); ok {
@@ -663,7 +675,7 @@ func runFlow(ctx context.Context, provider OAuthClientProvider, options OAuthFlo
 			return "", err
 		}
 		tokens, err := ExchangeAuthorizationCode(ctx, discovered.AuthorizationServerURL, ExchangeAuthorizationCodeOptions{
-			TokenRequestOptions: tokenOptions, Code: options.AuthorizationCode, CodeVerifier: verifier, RedirectURL: provider.RedirectURL(),
+			TokenRequestOptions: tokenOptions, Code: options.AuthorizationCode, CodeVerifier: verifier, RedirectURL: redirectURL,
 		})
 		if err != nil {
 			return "", err
@@ -707,7 +719,7 @@ func runFlow(ctx context.Context, provider OAuthClientProvider, options OAuthFlo
 		}
 	}
 	authorizationURL, verifier, err := StartAuthorization(discovered.AuthorizationServerURL, StartAuthorizationOptions{
-		Metadata: metadata, ClientInformation: *client, RedirectURL: provider.RedirectURL(), Scope: scope, State: state, Resource: resource,
+		Metadata: metadata, ClientInformation: *client, RedirectURL: redirectURL, Scope: scope, State: state, Resource: resource,
 	})
 	if err != nil {
 		return "", err

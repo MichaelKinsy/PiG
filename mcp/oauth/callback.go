@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -37,6 +38,9 @@ type OAuthCallbackServerOptions struct {
 	RedirectHost string
 	Port         int
 	Path         string
+	// ExtraPaths are more paths that receive the callback, for example a
+	// server-specific path of a redirect URI.
+	ExtraPaths []string
 	// Timeout bounds each wait for a callback. Default: 5 minutes.
 	Timeout time.Duration
 	// RenderPage renders the browser page as HTML. Default: a plain-text message.
@@ -61,6 +65,8 @@ type callbackResult struct {
 type pendingCallback struct {
 	result chan callbackResult
 	timer  *time.Timer
+	// path is the only path the response may arrive on, or "" for any.
+	path string
 }
 
 // CallbackWait is a registered wait for one OAuth state.
@@ -86,7 +92,7 @@ type OAuthCallbackServer struct {
 	RedirectURL string
 	server      *http.Server
 	listener    net.Listener
-	path        string
+	paths       []string
 	timeout     time.Duration
 	renderPage  func(OAuthCallbackPage) string
 
@@ -129,7 +135,7 @@ func ListenOAuthCallbackServer(options OAuthCallbackServerOptions) (*OAuthCallba
 	s := &OAuthCallbackServer{
 		RedirectURL: fmt.Sprintf("http://%s:%d%s", shownHost, address.Port, path),
 		listener:    listener,
-		path:        path,
+		paths:       append([]string{path}, options.ExtraPaths...),
 		timeout:     timeout,
 		renderPage:  options.RenderPage,
 		pending:     map[string]*pendingCallback{},
@@ -143,15 +149,22 @@ func ListenOAuthCallbackServer(options OAuthCallbackServerOptions) (*OAuthCallba
 	return s, nil
 }
 
-// WaitForCallback registers a wait for state. It fails when state is already
-// pending.
-func (s *OAuthCallbackServer) WaitForCallback(state string) (*CallbackWait, error) {
+// WaitForCallback registers a wait for the authorization response with state.
+// It fails when state is already pending. With a non-empty path (upstream's
+// optional `path`), a response on another path fails, so a server-specific
+// redirect URI can tell authorization servers apart (RFC 9700 section
+// 4.4.2.2).
+func (s *OAuthCallbackServer) WaitForCallback(state string, path ...string) (*CallbackWait, error) {
+	only := ""
+	if len(path) > 0 {
+		only = path[0]
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, ok := s.pending[state]; ok {
 		return nil, errors.New("OAuth state is already pending")
 	}
-	entry := &pendingCallback{result: make(chan callbackResult, 1)}
+	entry := &pendingCallback{result: make(chan callbackResult, 1), path: only}
 	entry.timer = time.AfterFunc(s.timeout, func() {
 		s.mu.Lock()
 		current := s.pending[state]
@@ -201,7 +214,7 @@ func (s *OAuthCallbackServer) reply(w http.ResponseWriter, status int, page OAut
 }
 
 func (s *OAuthCallbackServer) handle(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != s.path {
+	if !slices.Contains(s.paths, r.URL.Path) {
 		s.reply(w, http.StatusNotFound, OAuthCallbackPage{Message: "Not found"})
 		return
 	}
@@ -217,6 +230,11 @@ func (s *OAuthCallbackServer) handle(w http.ResponseWriter, r *http.Request) {
 	entry.timer.Stop()
 	delete(s.pending, state)
 	s.mu.Unlock()
+	if entry.path != "" && r.URL.Path != entry.path {
+		entry.result <- callbackResult{err: errors.New("The authorization response arrived on another redirect URI")}
+		s.reply(w, http.StatusBadRequest, OAuthCallbackPage{Message: "Unexpected redirect URI"})
+		return
+	}
 	if failure := query.Get("error"); failure != "" {
 		description := failure
 		if query.Has("error_description") {

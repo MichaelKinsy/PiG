@@ -9,7 +9,7 @@ var GeneratedProviders = []string{
 	"amazon-bedrock",
 	"ant-ling",
 	"anthropic",
-	"azure-openai-responses",
+	"azure",
 	"baseten",
 	"cerebras",
 	"cloudflare-ai-gateway",

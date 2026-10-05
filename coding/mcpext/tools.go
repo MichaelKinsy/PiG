@@ -2,19 +2,17 @@ package mcpext
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 	"unicode/utf16"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/outputfiles"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -77,12 +75,7 @@ type McpOutputSaver func(data []byte, extension string) (string, error)
 // SaveToTempFile is the default [McpOutputSaver]. Results can carry private
 // data, so only the user may read the file.
 func SaveToTempFile(data []byte, extension string) (string, error) {
-	random := make([]byte, 8)
-	if _, err := rand.Read(random); err != nil {
-		return "", err
-	}
-	path := filepath.Join(os.TempDir(), "pi-mcp-"+hex.EncodeToString(random)+extension)
-	return path, os.WriteFile(path, data, 0o600)
+	return outputfiles.WriteFile("pi-mcp", extension, data)
 }
 
 // McpToolCaller calls tools of one server.

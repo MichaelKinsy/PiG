@@ -136,6 +136,7 @@ func TestSettingsSelectorUpstream(t *testing.T) {
 
 // ThemeSubmenu.createThemeSelect restores the parent's pending automatic pair on cancel, not the edited branch's fixed theme or the saved original pair.
 func TestAutomaticThemeSubmenuCancelRestoresPendingPair(t *testing.T) {
+	restoreStartupTheme(t)
 	previous := tui.GetCapabilities()
 	t.Cleanup(func() { tui.SetCapabilities(previous) })
 	for _, trueColor := range []bool{true, false} {

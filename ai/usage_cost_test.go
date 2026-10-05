@@ -160,7 +160,7 @@ data: [DONE]
 			want: `{"input":100000,"output":100000,"cacheRead":0,"cacheWrite":0,"reasoning":0,"totalTokens":200000,"cost":{"input":1.25,"output":7.5,"cacheRead":0,"cacheWrite":0,"total":8.75}}`,
 		},
 		{
-			name: "azure ignores service tier", kind: "azure", spec: "azure-openai-responses/gpt-5.5",
+			name: "azure ignores service tier", kind: "azure", spec: "azure/gpt-5.5",
 			body: `data: {"type":"response.completed","response":{"id":"resp_1","status":"completed","service_tier":"priority","usage":{"input_tokens":100000,"output_tokens":100000,"total_tokens":200000,"input_tokens_details":{"cached_tokens":0}}}}
 
 `,

@@ -125,6 +125,8 @@ An extension in any supported language can register MCP servers (`registerMcpSer
 
 Register a display-only Markdown transformer with `pi.registerMarkdownTransformer` in Node, `MarkdownTransformer` in Go, or `markdown_transformer` in Rust and Python. Transformers receive the message type, streaming state, and current content width. They change the displayed user, assistant, and visible-thinking text, not the stored message or provider input. A string replaces the current Markdown, including an empty string. Node Promise results and other non-string results are ignored, as in Pi.
 
+`pi.registerToolRenderer((toolName, next) => renderers)` in Node, `ToolRenderer` in Go, `tool_renderer` in Python and Rust (`Context::register_tool_renderer` after loading in Rust) chooses renderers for calls to any tool, including tools that are not registered yet, such as MCP tools in a resumed session before their server connected. `next()` returns what the remaining resolvers (in extension load order), then the registered tool, would use, so `next() ?? mine` only fills in. PiG asks an extension's resolvers once per tool, off the interactive loop: until the answer arrives, a card draws with `next()`'s renderers, and `next()` is a marker that a resolver can return but whose render functions it cannot call; a copy of it given a call or result renderer draws with only the renderers the resolver set (D89).
+
 PiG runs the complete chain off the render loop through its multi-language bridge (D19). Normal updates preserve render-admission order across components. A replacement discards obsolete output without ending an admitted callback's wait early. Equal-text content updates rerun stateful transformers. Removing a message removes its queued work and prevents late publication.
 
 Renderer inactivity, disconnect, and shutdown retain the subprocess isolation boundary (D56). Cancellation of a host request does not prove that the extension callback body has returned. Keep synchronous transformers short and do not depend on side effects from an abandoned callback.
@@ -365,7 +367,7 @@ Before you install an extension:
 
 ## Breaking changes / Go SDK migration to 0.3.0
 
-Pi 1.0.0 represents unknown context usage as null, not zero. Go therefore keeps `ContextUsage.Tokens` as `*int` and `Percent` as `*float64`. `GetContextUsage()` returns nil when there is no usable model window, and a host failure as an error in every SDK (Go `error`, Rust `io::Result`, Python `HostCallError`). After compaction, a non-nil usage can contain nil counts. Rust uses `Option`; Python uses `None` for the same states.
+Pi 1.0.3 represents unknown context usage as null, not zero. Go therefore keeps `ContextUsage.Tokens` as `*int` and `Percent` as `*float64`. `GetContextUsage()` returns nil when there is no usable model window, and a host failure as an error in every SDK (Go `error`, Rust `io::Result`, Python `HostCallError`). After compaction, a non-nil usage can contain nil counts. Rust uses `Option`; Python uses `None` for the same states.
 
 Before:
 

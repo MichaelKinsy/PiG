@@ -98,10 +98,10 @@ func (p *oauthProxy) RefreshTokenContext(ctx context.Context, creds ai.OAuthCred
 	if err != nil {
 		return ai.OAuthCredentials{}, err
 	}
-	// Pi composes AbortSignal.any([caller, AbortSignal.timeout]) only in resolveStoredOAuth; Models.refresh hands the caller's signal alone.
+	// Pi hands a stored-credential refresh AbortSignal.timeout alone (auth/resolve.ts:refreshStoredOAuthCredential): the caller's cancellation never reaches the extension. A refresh with any other context carries that context's cancellation.
 	signalCtx, req := ctx, RequestPayload{Method: MethodOAuthRefresh, Tool: p.name, Args: args}
-	if caller, timeout, composed := ai.OAuthRefreshTimeout(ctx); composed {
-		signalCtx = caller
+	if timeout, timeoutOnly := ai.OAuthRefreshTimeout(ctx); timeoutOnly {
+		signalCtx = context.WithoutCancel(ctx)
 		milliseconds := float64(timeout.Milliseconds())
 		req.SignalTimeoutMS = &milliseconds
 	}

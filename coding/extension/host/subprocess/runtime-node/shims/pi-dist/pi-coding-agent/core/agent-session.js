@@ -3442,7 +3442,7 @@ export class AgentSession {
         const themeName = [options.themeName, this.settingsManager.getTheme()].find((candidate) => candidate !== undefined && getThemeByName(candidate) !== undefined);
         // Create tool renderer if we have an extension runner (for custom tool HTML rendering)
         const toolRenderer = createToolHtmlRenderer({
-            getToolDefinition: (name) => this.getToolDefinition(name),
+            getToolRenderers: (name) => this._extensionRunner.resolveToolRenderers(name, () => this.getToolDefinition(name)),
             theme,
             cwd: this.sessionManager.getCwd(),
         });

@@ -871,22 +871,11 @@ func (m *copilotTokenManager) getAccessToken(ctx context.Context) (string, error
 	if !expiresSoon(cred) {
 		return cred.Access, nil
 	}
-	// Copilot API token expired: refresh it with the stored GitHub access token (ghu_), with upstream resolveStoredOAuth's double-checked locking (resolve.ts:126-150). The refresh runs under the store's cancellable lock, and only when the credential still expires once the lock is held, because another process may have refreshed it meanwhile.
-	var refreshErr error
-	post, err := m.auth.Modify(ctx, "github-copilot", func(current *Credential) (*Credential, error) {
-		if current == nil || current.Type != CredentialOAuth || !expiresSoon(*current) {
-			return nil, nil
-		}
-		// Pi bounds the refresh with AbortSignal.any([signal, AbortSignal.timeout(15_000)]) (resolve.ts:149-153), which also bounds how long this process holds the lock.
-		refreshCtx, cancel := context.WithTimeout(ctx, defaultOAuthRefreshTimeout)
-		defer cancel()
-		fresh, err := refreshCopilotCredential(refreshCtx, current.Refresh, current.EnterpriseDomain)
-		if err != nil {
-			refreshErr = err
-			return nil, err
-		}
-		return &fresh, nil
-	})
+	// Copilot API token expired: refresh it with the stored GitHub access token (ghu_), with upstream resolveStoredOAuth's double-checked locking and its cancellation contract (resolve.ts:refreshStoredOAuthCredential): the refresh runs under the store's cancellable lock, only when the credential still expires once the lock is held, because another process may have refreshed it meanwhile, and once started it ignores the caller's cancellation so the rotated token is persisted.
+	oauth := &OAuthAuth{Name: "GitHub Copilot", Refresh: func(ctx context.Context, current Credential) (Credential, error) {
+		return refreshCopilotCredential(ctx, current.Refresh, current.EnterpriseDomain)
+	}}
+	post, err := refreshStoredOAuthCredential(ctx, m.auth, "github-copilot", oauth, expiresSoon)
 	if err != nil {
 		// If the context was canceled (user abort), propagate the
 		// cancellation directly so callers can distinguish user abort
@@ -896,13 +885,13 @@ func (m *copilotTokenManager) getAccessToken(ctx context.Context) (string, error
 		if ctx.Err() != nil {
 			return "", ctx.Err()
 		}
-		if refreshErr != nil {
+		if modelsErr, ok := errors.AsType[*ModelsError](err); ok && modelsErr.Code == ModelsErrorOAuth {
 			// Upstream does not classify this failure: refreshGitHubCopilotToken
 			// simply throws, the credential resolves to undefined, and the session
 			// reports a hedged message naming both causes. Mirror that wording
 			// rather than asserting expiry: a refresh also fails on rate limits,
 			// network loss, and provider outages, none of which a login fixes.
-			return "", fmt.Errorf("github-copilot: token refresh failed: credentials may have expired or the network is unavailable: %w", refreshErr)
+			return "", fmt.Errorf("github-copilot: token refresh failed: credentials may have expired or the network is unavailable: %w", modelsErr.Cause)
 		}
 		return "", fmt.Errorf("github-copilot: persist refreshed token: %w", err)
 	}

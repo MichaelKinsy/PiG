@@ -18,8 +18,8 @@ func registerRefreshSignalProvider(t *testing.T, services *Services, id string, 
 	}
 }
 
-// .upstream/v0.87.1/packages/coding-agent/test/model-runtime-auth-options.test.ts:266
-func TestRuntimeForwardsExtensionRefreshCancellationUpstream(t *testing.T) {
+// .upstream/v1.0.3/packages/coding-agent/test/model-runtime-auth-options.test.ts:266 ("does not cancel an extension OAuth refresh with the request"; 1.0.2 forwarded the cancellation)
+func TestRuntimeDoesNotCancelExtensionRefreshWithRequestUpstream(t *testing.T) {
 	services := newRuntimeTestServices(t)
 	if err := services.Auth().Set("extension-oauth", ai.Credential{Type: ai.CredentialOAuth, Access: "expired", Refresh: "refresh"}); err != nil {
 		t.Fatal(err)
@@ -39,7 +39,8 @@ func TestRuntimeForwardsExtensionRefreshCancellationUpstream(t *testing.T) {
 	}
 	reason := errors.New("cancelled")
 	cancel(reason)
-	if signal == nil || signal.Err() == nil || context.Cause(signal) != reason {
-		t.Fatalf("refresh signal=%v want cause=%v", signal, reason)
+	// A started refresh may already have rotated the refresh token and must be persisted.
+	if signal == nil || signal.Done() == nil || signal.Err() != nil {
+		t.Fatalf("refresh signal=%v want a live signal after the request was cancelled", signal)
 	}
 }

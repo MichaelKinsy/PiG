@@ -31,6 +31,16 @@ Use `/mcp` inside an interactive session to inspect connections, sign in, reconn
 
 PiG reads user-level servers from `~/.pig/agent/mcp.json` and project servers from `.pig/mcp.json`. Project configuration is read only after [project trust](security.md#project-trust) is granted. A project entry replaces a user-level entry with the same name.
 
+A project entry without `command`, `url`, or `type` overrides only `enabled`, `exposure`, and `toolExposure` of the user-level server with the same name and keeps the rest, including `env`, `headers`, and `auth`. For example, this turns off a user-level server in one project:
+
+```json
+{
+  "mcpServers": {
+    "internal-tools": { "enabled": false }
+  }
+}
+```
+
 The format matches other MCP clients:
 
 ```json
@@ -107,7 +117,7 @@ Options for `add`:
 
 `/mcp` lists configured servers with their state, tool count, exposure, and configuration source. Servers that need attention appear first. Select a server to inspect its tools and connection details, reconnect, sign in or out, change exposure, or enable and disable it.
 
-Exposure and enabled-state changes are saved to the file that defines the server without replacing unrelated content. Disabled servers remain listed. Outside the interactive TUI, `/mcp` prints server status; `/mcp login <server>`, `/mcp logout <server>`, and `/mcp reconnect <server>` perform those actions directly.
+Exposure and enabled-state changes are saved to the file that defines the server without replacing unrelated content. In a trusted project, "Enable in this project" and "Disable in this project" add a project override for a user-level server; later changes to that server are saved to the override. Disabled servers remain listed. Outside the interactive TUI, `/mcp` prints server status; `/mcp login <server>`, `/mcp logout <server>`, and `/mcp reconnect <server>` perform those actions directly.
 
 Shell commands work without a session: `pig mcp add`, `pig mcp remove`, `pig mcp list`, `pig mcp login`, and `pig mcp logout`. Shell commands do not load extensions.
 
@@ -178,6 +188,18 @@ PiG registers under its application name, `pig`. Some servers only accept regist
 ```
 
 The name is only sent when PiG registers a client. To register again under a new name, sign out first.
+
+Some authorization servers allow clients by their Client ID Metadata Document URL instead of registering them. Set `clientRegistration` to `cimd` to identify as Pi's document on pi.dev instead of registering:
+
+```json
+{
+  "mcpServers": {
+    "example": { "url": "https://mcp.example.com/mcp", "oauth": { "clientRegistration": "cimd" } }
+  }
+}
+```
+
+The client ID is `https://pi.dev/oauth/client.json` with the redirect URI `http://127.0.0.1:<port>/callback`. If the authorization server does not send the `iss` parameter in authorization responses (RFC 9207), PiG uses a document and redirect path specific to the MCP server instead: `https://pi.dev/oauth/<id>/client.json` with `http://127.0.0.1:<port>/callback/<id>`. The authorization server must advertise Client ID Metadata Document support and public clients, or sign-in fails. `cimd` cannot be combined with `clientId` or `clientName`, and a `callbackUrl` must use `localhost` or `127.0.0.1` with the path `/callback`.
 
 PiG finds the authorization server through the server's protected resource metadata (RFC 9728) and checks that the authorization server's metadata names the expected issuer (RFC 8414). Some servers advertise the wrong authorization server or none, so sign-in opens a page that does not exist. Set `authServerMetadataUrl` to the metadata document of the right authorization server:
 

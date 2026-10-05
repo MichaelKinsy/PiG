@@ -259,22 +259,15 @@ func TestNodeOAuthRefreshSignalFollowsItsCaller(t *testing.T) {
 	abort()
 	retained("reason:true:context canceled")
 
-	// resolveStoredOAuth: the timeout is composed into the signal and fires after the callback returned.
-	composed := t.Context()
-	refresh, stop := context.WithTimeout(composed, time.Hour)
+	// A stored-credential refresh gets AbortSignal.timeout alone: the timeout fires after the callback returned, and the caller's abort never reaches the signal.
+	caller2, abortCaller2 := context.WithCancel(t.Context())
+	defer abortCaller2()
+	refresh, stop := context.WithTimeout(context.WithoutCancel(caller2), time.Hour)
 	defer stop()
-	if _, err := bridged.RefreshTokenContext(ai.WithOAuthRefreshTimeout(refresh, composed, timeout), ai.OAuthCredentials{Refresh: "r"}); err != nil {
+	if _, err := bridged.RefreshTokenContext(ai.WithOAuthRefreshTimeout(refresh, timeout), ai.OAuthCredentials{Refresh: "r"}); err != nil {
 		t.Fatal(err)
 	}
+	abortCaller2()
+	steady("reason:false:undefined", timeout/2)
 	retained("reason:true:TimeoutError")
-
-	// The composed signal also follows the caller when that abort comes first.
-	early, abortEarly := context.WithCancel(context.Background())
-	defer abortEarly()
-	if _, err := bridged.RefreshTokenContext(ai.WithOAuthRefreshTimeout(early, early, time.Hour), ai.OAuthCredentials{Refresh: "r"}); err != nil {
-		t.Fatal(err)
-	}
-	steady("reason:false:undefined", 2*timeout)
-	abortEarly()
-	retained("reason:true:context canceled")
 }

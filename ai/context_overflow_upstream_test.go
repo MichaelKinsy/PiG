@@ -24,7 +24,7 @@ func TestContextOverflowMatrixUpstream(t *testing.T) {
 		{"anthropic", "claude-haiku-4-5", "anthropic", "prompt is too long"}, {"anthropic", "claude-sonnet-4-6", "anthropic", "prompt is too long"},
 		{"github-copilot", "", "copilot", `exceeds the limit of \d+`}, {"github-copilot", "claude-sonnet-4.6", "copilot", `exceeds the limit of \d+|input is too long`},
 		{"openai", "gpt-4o-mini", "completions", "maximum context length"}, {"openai", "gpt-4o", "responses", "exceeds the context window"},
-		{"azure-openai-responses", "gpt-4o-mini", "responses", "context|maximum"}, {"google", "gemini-2.5-flash", "google", "input token count.*exceeds the maximum"},
+		{"azure", "gpt-4o-mini", "responses", "context|maximum"}, {"google", "gemini-2.5-flash", "google", "input token count.*exceeds the maximum"},
 		{"openai-codex", "gpt-5.5", "responses", ""}, {"amazon-bedrock", "global.anthropic.claude-sonnet-4-5-20250929-v1:0", "bedrock", ""},
 		{"xai", "grok-4.3", "xai", `maximum prompt length is \d+`}, {"groq", "llama-3.3-70b-versatile", "groq", "reduce the length of the messages"},
 		{"cerebras", "gpt-oss-120b", "cerebras", `4(00|13|29).*\(no body\)`}, {"huggingface", "moonshotai/Kimi-K2.5", "generic", ""},

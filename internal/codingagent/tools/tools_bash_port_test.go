@@ -56,6 +56,7 @@ func assertFullBashOutput(t *testing.T, path string) {
 			t.Error(err)
 		}
 	})
+	requireUserOnlyFile(t, path)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)

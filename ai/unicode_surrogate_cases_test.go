@@ -21,11 +21,11 @@ func unicodeUpstreamCases() []unicodeUpstreamCase {
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:329
 		{"should handle unpaired high surrogate (0xD83D) in tool results", "openai", "gpt-5-mini", 2, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:339
-		{"should handle emoji in tool results", "azure-openai-responses", "gpt-4o-mini", 0, false, ""},
+		{"should handle emoji in tool results", "azure", "gpt-4o-mini", 0, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:343
-		{"should handle real-world LinkedIn comment data with emoji", "azure-openai-responses", "gpt-4o-mini", 1, false, ""},
+		{"should handle real-world LinkedIn comment data with emoji", "azure", "gpt-4o-mini", 1, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:347
-		{"should handle unpaired high surrogate (0xD83D) in tool results", "azure-openai-responses", "gpt-4o-mini", 2, false, ""},
+		{"should handle unpaired high surrogate (0xD83D) in tool results", "azure", "gpt-4o-mini", 2, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:355
 		{"should handle emoji in tool results", "anthropic", "claude-haiku-4-5", 0, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:359

@@ -16,6 +16,8 @@ import (
 	"os"
 	"strings"
 	"unicode/utf16"
+
+	"github.com/MichaelKinsy/PiG/internal/outputfiles"
 )
 
 // BashResult mirrors upstream BashResult (bash-executor.ts).
@@ -72,8 +74,9 @@ func ExecuteBashWithOperations(ctx context.Context, command, cwd string, operati
 			return
 		}
 		tempFileOpened = true
-		tempFilePath = defaultTempFilePath("pi-bash")
-		if f, err := os.Create(tempFilePath); err == nil {
+		path, f, err := outputfiles.CreateStream("pi-bash", ".log")
+		tempFilePath = path
+		if err == nil {
 			tempFile = f
 			for _, chunk := range outputChunks {
 				_, _ = f.WriteString(chunk)

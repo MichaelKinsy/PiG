@@ -273,8 +273,8 @@ make async-contracts` or `make verify` from `docs/parity/PORT_MAP.md` and `test/
   port. Everything else is invariant rule, not progress narrative.
 -->
 
-**Porting:** 376 / 489 intended-portable entries ✅ (76.9%); **Verification:** 355 behavioral (94.4%), 3 weak-only (no behavioral verification), 18 untested.
-Raw PORT_MAP rows: 547. Breakdown: 58 n/a (designed out) · 101 🟡 partial · 12 ⬜ not started. See docs/parity/DIVERGENCES.md for the documented exceptions.
+**Porting:** 379 / 493 intended-portable entries ✅ (76.9%); **Verification:** 355 behavioral (93.7%), 3 weak-only (no behavioral verification), 21 untested.
+Raw PORT_MAP rows: 550. Breakdown: 57 n/a (designed out) · 102 🟡 partial · 12 ⬜ not started. See docs/parity/DIVERGENCES.md for the documented exceptions.
 Behavioral evidence includes paired scenarios and reviewed mutation-proven unit tests; the family table below counts paired scenarios only.
 Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registration-only, 1 smoke-only.
 
@@ -288,9 +288,9 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `compaction` | 14 | 14 | 0 | 0 | 0 | 10 | not run |
 | `export-html` | 6 | 6 | 0 | 0 | 0 | 1 | not run |
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
-| `extensions-runtime` | 96 | 95 | 0 | 1 | 0 | 58 | not run |
+| `extensions-runtime` | 97 | 96 | 0 | 1 | 0 | 58 | not run |
 | `footer` | 11 | 11 | 0 | 0 | 0 | 9 | not run |
-| `fullscreen` | 11 | 11 | 0 | 0 | 0 | 9 | not run |
+| `fullscreen` | 12 | 12 | 0 | 0 | 0 | 9 | not run |
 | `interactive-rendering` | 46 | 45 | 1 | 0 | 0 | 34 | not run |
 | `json` | 10 | 10 | 0 | 0 | 0 | 7 | not run |
 | `model-resolver-selector` | 24 | 24 | 0 | 0 | 0 | 15 | not run |
@@ -298,7 +298,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `oauth` | 29 | 29 | 0 | 0 | 0 | 18 | not run |
 | `print` | 7 | 7 | 0 | 0 | 0 | 6 | not run |
 | `project-trust` | 23 | 23 | 0 | 0 | 0 | 18 | not run |
-| `providers-faux-streaming` | 64 | 63 | 0 | 1 | 0 | 47 | not run |
+| `providers-faux-streaming` | 65 | 64 | 0 | 1 | 0 | 48 | not run |
 | `providers-registry` | 7 | 4 | 0 | 3 | 0 | 26 | not run |
 | `rpc` | 49 | 49 | 0 | 0 | 0 | 23 | not run |
 | `selectors` | 14 | 14 | 0 | 0 | 1 | 15 | not run |

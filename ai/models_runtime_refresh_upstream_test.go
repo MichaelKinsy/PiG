@@ -239,6 +239,34 @@ func TestModelsRuntimeRefreshUpstream(t *testing.T) {
 			t.Fatalf("stored=%+v err=%v", stored, err)
 		}
 	})
+	// .upstream/v1.0.3/packages/ai/test/models-runtime.test.ts:476
+	t.Run("persists an OAuth refresh that started before the model refresh was cancelled", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			credentials := NewInMemoryCredentialStore()
+			modelsRuntimePut(t, credentials, "p1", Credential{Type: CredentialOAuth, Access: "old", Refresh: "old-refresh", Expires: 0})
+			ctx, abort := context.WithCancel(t.Context())
+			defer abort()
+			oauth := modelsRuntimeOAuth()
+			oauth.Refresh = func(_ context.Context, credential Credential) (Credential, error) {
+				abort()
+				credential.Access, credential.Refresh = "new", "new-refresh"
+				credential.Expires = time.Now().Add(time.Minute).UnixMilli()
+				return credential, nil
+			}
+			models := CreateModels(CreateModelsOptions{Credentials: credentials})
+			models.SetProvider(modelsRuntimeProvider(modelsRuntimeProviderInput{id: "p1", auth: &ProviderAuth{OAuth: oauth}, refreshModels: func(RefreshModelsContext) error { return nil }}))
+			if result := models.Refresh(ctx); !result.Aborted {
+				t.Fatalf("result=%+v, want aborted", result)
+			}
+			models.operations.Wait()
+			oauthRefreshWork.Wait()
+			credentials.operations.Wait()
+			got, err := credentials.Read(t.Context(), "p1")
+			if err != nil || got == nil || got.Refresh != "new-refresh" {
+				t.Fatalf("credential=%+v err=%v; want the rotated refresh token", got, err)
+			}
+		})
+	})
 	// .upstream/v0.87.1/packages/ai/test/models-runtime.test.ts:462
 	t.Run("always gives providers a concrete signal", func(t *testing.T) {
 		var signal context.Context

@@ -8,8 +8,26 @@ classification = "upstream"
 rationale = "Exact literal from pinned ai/api/anthropic-messages.ts's claudeCodeVersion, sent in the same user-agent header."
 
 [[fields]]
-id = "ai/azure_openai_responses.go#const.defaultAzureAPIVersion:go:-"
-path = "ai/azure_openai_responses.go"
+id = "ai/azure_config.go#AzureConfig.APIVersion:go:-"
+path = "ai/azure_config.go"
+owner = "AzureConfig"
+field = "APIVersion"
+wire_name = "-"
+classification = "external"
+rationale = "Azure OpenAI API version is owned by the external provider contract."
+
+[[fields]]
+id = "ai/azure_config.go#AzureEndpointOptions.APIVersion:go:-"
+path = "ai/azure_config.go"
+owner = "AzureEndpointOptions"
+field = "APIVersion"
+wire_name = "-"
+classification = "external"
+rationale = "Azure OpenAI API version is owned by the external provider contract."
+
+[[fields]]
+id = "ai/azure_config.go#const.defaultAzureAPIVersion:go:-"
+path = "ai/azure_config.go"
 owner = "<package>"
 field = "defaultAzureAPIVersion"
 wire_name = "-"

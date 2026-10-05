@@ -187,8 +187,8 @@ func TestTUIKeybindingsUpstream(t *testing.T) {
 	// upstream: packages/tui/test/keybindings.test.ts:14
 	t.Run("binds modified and unmodified editor viewport navigation", func(t *testing.T) {
 		manager := newManager(nil)
-		assertKeys(t, manager, KBEditorCursorLineStart, []string{"home", "ctrl+home", "ctrl+a"})
-		assertKeys(t, manager, KBEditorCursorLineEnd, []string{"end", "ctrl+end", "ctrl+e"})
+		assertKeys(t, manager, KBEditorCursorLineStart, []string{"home", "ctrl+a"})
+		assertKeys(t, manager, KBEditorCursorLineEnd, []string{"end", "ctrl+e"})
 		assertKeys(t, manager, KBEditorPageUp, []string{"pageUp", "ctrl+pageUp"})
 		assertKeys(t, manager, KBEditorPageDown, []string{"pageDown", "ctrl+pageDown"})
 	})
@@ -219,8 +219,8 @@ func TestTUIKeybindingsUpstream(t *testing.T) {
 			{KBAltScreenSearchNext, []string{"enter", "ctrl+g"}},
 			{KBAltScreenSearchPrevious, []string{"shift+enter", "ctrl+shift+g"}},
 			{KBAltScreenSearchClose, []string{"escape"}},
-			{KBAltScreenTop, []string{"home"}},
-			{KBAltScreenBottom, []string{"end"}},
+			{KBAltScreenTop, []string{"ctrl+home"}},
+			{KBAltScreenBottom, []string{"ctrl+end"}},
 		} {
 			assertKeys(t, manager, row.action, row.keys)
 		}

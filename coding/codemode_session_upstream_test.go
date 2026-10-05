@@ -1,11 +1,13 @@
 package coding
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"math"
 	"os"
 	"reflect"
 	"regexp"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -22,6 +24,33 @@ import (
 // pipeline (ctx.executeTool), tool exposure and the settings, classifier and usage plumbing are other families'.
 
 const tinyPNGBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg=="
+
+var tinyPNGLabel = regexp.MustCompile(`^\[Image saved to (\S+\.png) \(image/png, \d+B\)\]$`)
+
+// checkSavedImages is upstream's checkSavedImages: it replaces the `[Image saved to ...]` labels in text with `<saved>`
+// after checking that each file holds the tiny PNG, and removes the files.
+func checkSavedImages(t *testing.T, text string) string {
+	t.Helper()
+	lines := strings.Split(text, "\n")
+	for i, line := range lines {
+		match := tinyPNGLabel.FindStringSubmatch(line)
+		if match == nil {
+			continue
+		}
+		data, err := os.ReadFile(match[1])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := base64.StdEncoding.EncodeToString(data); got != tinyPNGBase64 {
+			t.Errorf("saved image %s = %q, want the tiny PNG", match[1], got)
+		}
+		if err := os.Remove(match[1]); err != nil {
+			t.Fatal(err)
+		}
+		lines[i] = "<saved>"
+	}
+	return strings.Join(lines, "\n")
+}
 
 func codemodeCall(code string) scriptedResponse {
 	return boundaryToolReply("codemode", ai.JsonObject{"code": code}, ai.StopReasonToolUse)
@@ -296,20 +325,27 @@ func TestUpstreamAgentSessionCodemodeTool(t *testing.T) {
 		}
 	})
 
-	t.Run("attaches only the images the script passes to image(), in output order", func(t *testing.T) {
+	// Saved images: https://github.com/earendil-works/pi/issues/10310
+	t.Run("attaches only the images the script passes to image(), in output order, each after its saved path", func(t *testing.T) {
 		h := setup(t)
 		result := codemodeRun(t, h, `
 							// Tools without an outputSchema resolve to their text; images are not passed on.
 							const shot = await tools.screenshot({});
 							text(shot);
 							image("data:image/png;base64,`+tinyPNGBase64+`");
+							image("data:image/png;base64,`+tinyPNGBase64+`");
 							text("after");
 						`)
-		if got, want := codemodeResultText(t, result), "captured\n<image>\nafter"; got != want {
-			t.Errorf("result = %q, want %q", got, want)
+		// The same image shown twice is saved once, so both labels name one file.
+		lines := strings.Split(codemodeResultText(t, result), "\n")
+		if want := []string{"captured", lines[1], "<image>", lines[1], "<image>", "after"}; !slices.Equal(lines, want) || !tinyPNGLabel.MatchString(lines[1]) {
+			t.Fatalf("result lines = %q, want %q", lines, want)
 		}
-		if image, ok := result.Content[2].(ai.ImageContent); !ok || image.Data != tinyPNGBase64 || image.MimeType != "image/png" {
-			t.Errorf("content[2] = %#v", result.Content[2])
+		if got := checkSavedImages(t, lines[1]); got != "<saved>" {
+			t.Errorf("saved label = %q", got)
+		}
+		if image, ok := result.Content[3].(ai.ImageContent); !ok || image.Data != tinyPNGBase64 || image.MimeType != "image/png" {
+			t.Errorf("content[3] = %#v", result.Content[3])
 		}
 	})
 
@@ -422,9 +458,17 @@ func TestUpstreamCodemodeOptionsAndStore(t *testing.T) {
 		if strings.Contains(text, "row 50\n") {
 			t.Error("text keeps row 50")
 		}
-		// Images follow the truncated text.
+		// Images follow the truncated text, each after the path it was saved to.
+		if got := checkSavedImages(t, strings.Split(text, "\n")[len(strings.Split(text, "\n"))-2]); got != "<saved>" {
+			t.Errorf("label before the image = %q", got)
+		}
 		if last, ok := result.Content[len(result.Content)-1].(ai.ImageContent); !ok || last.Data != tinyPNGBase64 || last.MimeType != "image/png" {
 			t.Errorf("last block = %#v", result.Content[len(result.Content)-1])
+		}
+		if runtime.GOOS != "windows" {
+			if info, err := os.Stat(path); err != nil || info.Mode().Perm()&0o077 != 0 {
+				t.Errorf("spill file %s: %v, %v, want user-only", path, info, err)
+			}
 		}
 		data, err := os.ReadFile(path)
 		if err != nil {
@@ -687,16 +731,16 @@ func TestUpstreamCodemodeModels(t *testing.T) {
 		if result.IsError {
 			t.Errorf("isError: %s", codemodeResultText(t, result))
 		}
-		lines := strings.Split(codemodeResultText(t, result), "\n")
+		lines := strings.Split(checkSavedImages(t, codemodeResultText(t, result)), "\n")
 		if lines[0] != "painted a fox" {
 			t.Errorf("text = %q, want %q", lines[0], "painted a fox")
 		}
-		if len(lines) < 2 || lines[1] != "<image>" {
-			t.Fatalf("result lines = %q, want the text, then <image>, then the returned value", lines)
+		if len(lines) < 3 || lines[1] != "<saved>" || lines[2] != "<image>" {
+			t.Fatalf("result lines = %q, want the text, then <saved>, <image>, then the returned value", lines)
 		}
 		var value map[string]any
-		if err := json.Unmarshal([]byte(strings.Join(lines[2:], "\n")), &value); err != nil {
-			t.Fatalf("returned value %q: %v", strings.Join(lines[2:], "\n"), err)
+		if err := json.Unmarshal([]byte(strings.Join(lines[3:], "\n")), &value); err != nil {
+			t.Fatalf("returned value %q: %v", strings.Join(lines[3:], "\n"), err)
 		}
 		want := map[string]any{
 			"id":         "painter",
@@ -707,8 +751,8 @@ func TestUpstreamCodemodeModels(t *testing.T) {
 		if !reflect.DeepEqual(value, want) {
 			t.Errorf("value = %v, want %v", value, want)
 		}
-		if len(result.Content) < 3 || !reflect.DeepEqual(result.Content[2], ai.ToolResultMessageContent(ai.ImageContent{Data: tinyPNGBase64, MimeType: "image/png"})) {
-			t.Errorf("content = %#v, want the generated image at index 2", result.Content)
+		if len(result.Content) < 4 || !reflect.DeepEqual(result.Content[3], ai.ToolResultMessageContent(ai.ImageContent{Data: tinyPNGBase64, MimeType: "image/png"})) {
+			t.Errorf("content = %#v, want the generated image at index 3", result.Content)
 		}
 		requests := imageRequests()
 		var pairs [][2]string

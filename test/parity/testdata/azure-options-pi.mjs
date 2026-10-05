@@ -3,11 +3,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const root = fileURLToPath(new URL("../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url));
-if (JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version !== "1.0.0") throw new Error("Expected Pi 1.0.0");
+if (JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version !== "1.0.3") throw new Error("Expected Pi 1.0.3");
 const aiRoot = join(root, "node_modules/@earendil-works/pi-ai/dist");
 const { stream } = await import(pathToFileURL(join(aiRoot, "api/azure-openai-responses.js")));
 const { normalizeContext } = await import(pathToFileURL(join(aiRoot, "utils/transcript.js")));
-const model = { id:"test-deployment", name:"Test Deployment", api:"azure-openai-responses", provider:"azure-openai-responses", baseUrl:"http://127.0.0.1:9/openai/v1", reasoning:false, input:["text"], cost:{input:0,output:0,cacheRead:0,cacheWrite:0}, contextWindow:10000,maxTokens:1000 };
+const model = { id:"test-deployment", name:"Test Deployment", api:"azure-openai-responses", provider:"azure", baseUrl:"http://127.0.0.1:9/openai/v1", reasoning:false, input:["text"], cost:{input:0,output:0,cacheRead:0,cacheWrite:0}, contextWindow:10000,maxTokens:1000 };
 const context = normalizeContext({ messages:[{role:"user",content:"Summarize this",timestamp:1}], tools:[{name:"read",description:"Read a file",parameters:{type:"object",properties:{path:{type:"string"}},required:["path"]}}] });
 for (const choice of ["required", "none", {type:"function",name:"read"}]) {
  let payload;

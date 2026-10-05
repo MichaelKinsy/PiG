@@ -1,4 +1,4 @@
-# Faux provider oracle (Pi 1.0.0)
+# Faux provider oracle (Pi 1.0.3)
 
 `probe.mjs` drives Pi's real pipeline for `packages/ai/src/providers/faux.ts` and `extension.mjs` is loaded into the real `pi --mode rpc` process. `pi.json` is the retained raw output (Node 24.19.0; Node 26.7.0 produced identical records). Do not replace it with Go output.
 

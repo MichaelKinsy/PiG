@@ -6,6 +6,76 @@ import "bytes"
 
 var pngSignature = []byte{0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a}
 
+const (
+	// headerBytes is what every check except the APNG chunk walk needs: BMP reads up to offset 29.
+	headerBytes = 32
+	blockBytes  = 64 * 1024
+)
+
+// byteSource is positional reads of a file of size bytes.
+type byteSource struct {
+	size int64
+	// read returns up to length bytes at offset.
+	read func(offset, length int64) ([]byte, error)
+}
+
+// detectSupportedImageMimeTypeOf is detectSupportedImageMimeType of a whole file, reading only its header and, for PNG,
+// the chunk headers up to the first acTL or IDAT.
+func detectSupportedImageMimeTypeOf(source byteSource) (string, error) {
+	header, err := source.read(0, headerBytes)
+	if err != nil {
+		return "", err
+	}
+	if !bytes.HasPrefix(header, pngSignature) {
+		return detectSupportedImageMimeType(header), nil
+	}
+	if !isPng(header) {
+		return "", nil
+	}
+	animated, err := isAnimatedPngOf(source)
+	if err != nil || animated {
+		return "", err
+	}
+	return "image/png", nil
+}
+
+// isAnimatedPngOf is isAnimatedPng over a file read in blocks.
+func isAnimatedPngOf(source byteSource) (bool, error) {
+	var block []byte
+	var blockStart int64
+	bytesAt := func(offset, length int64) ([]byte, error) {
+		if offset < blockStart || offset+length > blockStart+int64(len(block)) {
+			blockStart = offset
+			var err error
+			if block, err = source.read(offset, blockBytes); err != nil {
+				return nil, err
+			}
+		}
+		from := min(offset-blockStart, int64(len(block)))
+		return block[from:min(from+length, int64(len(block)))], nil
+	}
+	offset := int64(len(pngSignature))
+	for offset+8 <= source.size {
+		chunkHeader, err := bytesAt(offset, 8)
+		if err != nil {
+			return false, err
+		}
+		chunkLength := readUint32BE(chunkHeader, 0)
+		if startsWithAscii(chunkHeader, 4, "acTL") {
+			return true, nil
+		}
+		if startsWithAscii(chunkHeader, 4, "IDAT") {
+			return false, nil
+		}
+		nextOffset := offset + 8 + chunkLength + 4
+		if nextOffset <= offset || nextOffset > source.size {
+			return false, nil
+		}
+		offset = nextOffset
+	}
+	return false, nil
+}
+
 // detectSupportedImageMimeType is the MIME type of a supported still image by
 // its content, or "" when the bytes are not one. An animated PNG is not still.
 func detectSupportedImageMimeType(data []byte) string {

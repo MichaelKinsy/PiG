@@ -482,7 +482,7 @@ func builtinAPIKeyAuth(providerID string) (*APIKeyAuth, bool) {
 // come from the env-api-keys table.
 var builtinAPIKeyNames = map[string]string{
 	"ant-ling":                   "Ant Ling API key",
-	"azure-openai-responses":     "Azure OpenAI API key",
+	"azure":                      "Azure OpenAI API key",
 	"baseten":                    "Baseten API key",
 	"cerebras":                   "Cerebras API key",
 	"deepseek":                   "DeepSeek API key",

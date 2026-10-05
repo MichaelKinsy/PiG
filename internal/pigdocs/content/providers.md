@@ -6,14 +6,14 @@ Most hosted providers accept an API key, and some also accept a browser or devic
 
 ## Built-in providers
 
-PiG ships the same built-in chat providers and classifier models as Pi 1.0.0. `typesafe` has only classifier models, and `cloudflare-workers-ai`, `opencode`, `openrouter` and `vercel-ai-gateway` list them beside their chat models. The provider key is the first part of a `provider/model` spec. The wire column lists the APIs that the provider's built-in chat models use.
+PiG ships the same built-in chat providers and classifier models as Pi 1.0.3. `typesafe` has only classifier models, and `cloudflare-workers-ai`, `opencode`, `openrouter` and `vercel-ai-gateway` list them beside their chat models. The provider key is the first part of a `provider/model` spec. The wire column lists the APIs that the provider's built-in chat models use.
 
 | Provider key | Name | Wire | Credential |
 |---|---|---|---|
 | `amazon-bedrock` | Amazon Bedrock | `bedrock-converse-stream` | AWS credential chain or `AWS_BEARER_TOKEN_BEDROCK`. See [Amazon Bedrock](#amazon-bedrock). |
 | `ant-ling` | Ant Ling | `openai-completions` | `ANT_LING_API_KEY` |
 | `anthropic` | Anthropic | `anthropic-messages` | `ANTHROPIC_API_KEY`, `ANTHROPIC_OAUTH_TOKEN`, `ANTHROPIC_AUTH_TOKEN`, or OAuth |
-| `azure-openai-responses` | Azure OpenAI Responses | `azure-openai-responses` | `AZURE_OPENAI_API_KEY` plus an endpoint. See [Azure OpenAI](#azure-openai). |
+| `azure` | Azure | `azure-openai-responses`, `openai-completions` | `AZURE_OPENAI_API_KEY` plus an endpoint. See [Azure OpenAI](#azure-openai). |
 | `baseten` | Baseten | `openai-completions` | `BASETEN_API_KEY` |
 | `cerebras` | Cerebras | `openai-completions` | `CEREBRAS_API_KEY` |
 | `cloudflare-ai-gateway` | Cloudflare AI Gateway | `anthropic-messages`, `openai-completions`, `openai-responses` | `CLOUDFLARE_API_KEY`, `CLOUDFLARE_ACCOUNT_ID`, and `CLOUDFLARE_GATEWAY_ID` |
@@ -89,7 +89,7 @@ PiG stores credentials in `~/.pig/agent/auth.json`. Agent startup creates a miss
 
 `auth.json` can contain API keys and OAuth tokens. Keep it private and do not commit it.
 
-Interactive login prompts marked as secret use PiG's `maskSecretInput` setting (default `true`). **Mask secret input** in `/settings` shows dots, a character count and the last four characters while typing, then retains only the masked preview after submission. Inputs shorter than five characters show no suffix. Set `maskSecretInput` to `false` to restore Pi 1.0.0's plain-text behavior. This configurable feature is recorded as divergence D80. Ordinary text and manual-code prompts remain visible. Credentials still belong in `auth.json` or the provider's credential store; the setting protects dialog and authentication-diagnostic output, not credential storage.
+Interactive login prompts marked as secret use PiG's `maskSecretInput` setting (default `true`). **Mask secret input** in `/settings` shows dots, a character count and the last four characters while typing, then retains only the masked preview after submission. Inputs shorter than five characters show no suffix. Set `maskSecretInput` to `false` to restore Pi 1.0.3's plain-text behavior. This configurable feature is recorded as divergence D80. Ordinary text and manual-code prompts remain visible. Credentials still belong in `auth.json` or the provider's credential store; the setting protects dialog and authentication-diagnostic output, not credential storage.
 
 ### Load an API key from a command
 
@@ -184,7 +184,11 @@ export AZURE_OPENAI_RESOURCE_NAME=your-resource
 | `AZURE_OPENAI_BASE_URL` | Azure OpenAI or Foundry endpoint. `.openai.azure.com`, `.cognitiveservices.azure.com`, and `.ai.azure.com` hosts are normalized to `/openai/v1`. |
 | `AZURE_OPENAI_RESOURCE_NAME` | Alternative to `AZURE_OPENAI_BASE_URL`; builds `https://<resource>.openai.azure.com/openai/v1`. |
 | `AZURE_OPENAI_API_VERSION` | API version. Default `v1`. |
-| `AZURE_OPENAI_DEPLOYMENT_NAME_MAP` | Optional comma-separated `model=deployment` map for Azure deployments. |
+| `AZURE_OPENAI_DEPLOYMENT_NAME_MAP` | Optional comma-separated `model=deployment` map for Azure deployments. It applies to both APIs. |
+
+The `azure` provider serves the OpenAI Responses API and, for Foundry deployments, Chat Completions. The built-in `azure/deepseek-v4-pro` uses Chat Completions. Add other Foundry models to the `azure` provider in `models.json` with `"api": "openai-completions"` and a `"baseUrl"` on the provider or the model, because the built-in Azure models have none. Without one, the `azure` entry of `models.json` is rejected with `"baseUrl" is required when defining custom models.`
+
+The provider ID was `azure-openai-responses` before Pi 1.0.3. The API ID and the `AZURE_OPENAI_*` variables are unchanged. PiG does not migrate old entries. Rename the provider key in `auth.json` (or run `/login` again), in `models.json`, and in `settings.json` (`defaultProvider`, `enabledModels` patterns, and `modelThinkingLevels` keys). A session that used the old provider falls back to another model when resumed, and its prompt cache is not reused.
 
 ### Amazon Bedrock
 

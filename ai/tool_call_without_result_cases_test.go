@@ -9,7 +9,7 @@ func toolWithoutResultUpstreamCases() []toolWithoutResultCase {
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:122
 		{"should filter out tool calls without corresponding tool results", "openai", "gpt-5-mini", "", false, ""},
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:132
-		{"should filter out tool calls without corresponding tool results", "azure-openai-responses", "gpt-4o-mini", "", false, ""},
+		{"should filter out tool calls without corresponding tool results", "azure", "gpt-4o-mini", "", false, ""},
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:140
 		{"should filter out tool calls without corresponding tool results", "anthropic", "claude-haiku-4-5", "", false, ""},
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:148

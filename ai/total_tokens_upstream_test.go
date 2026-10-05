@@ -26,7 +26,7 @@ func TestTotalTokensUpstream(t *testing.T) {
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:180
 		{"openai", "gpt-4o", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:199
-		{"azure-openai-responses", "gpt-4o-mini", "", false, false, ""},
+		{"azure", "gpt-4o-mini", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:224
 		{"google", "gemini-2.5-flash", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:247

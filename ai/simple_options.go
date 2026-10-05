@@ -3,6 +3,8 @@ package ai
 //
 // upstream: ai/src/providers/simple-options.ts
 
+import "maps"
+
 // ThinkingBudgets maps thinking level names to token budgets.
 type ThinkingBudgets struct {
 	Minimal int
@@ -90,4 +92,23 @@ func ClampMaxTokensToContext(model *Model, context TranscriptContext, maxTokens 
 	}
 	available := contextWindow - EstimateContextTokens(context.messages).Tokens - contextSafetyTokens
 	return min(maxTokens, max(minMaxTokens, available))
+}
+
+// ResolveSamplingParams merges the model's sampling defaults, the overrides for the effective thinking level, and the request's sampling keys, later keys winning. The level is first clamped to one the model supports. It returns nil when none of the three is set.
+// Mirrors upstream resolveSamplingParams (simple-options.ts:24-34).
+func ResolveSamplingParams(model *Model, thinkingLevel ThinkingLevel, requestParams SamplingParams) SamplingParams {
+	var defaults SamplingParams
+	var levelParams SamplingParams
+	if model != nil {
+		defaults = model.SamplingParams
+		levelParams = model.SamplingParamsByThinkingLevel[ClampThinkingLevel(model, thinkingLevel)]
+	}
+	if defaults == nil && levelParams == nil && requestParams == nil {
+		return nil
+	}
+	merged := make(SamplingParams, len(defaults)+len(levelParams)+len(requestParams))
+	maps.Copy(merged, defaults)
+	maps.Copy(merged, levelParams)
+	maps.Copy(merged, requestParams)
+	return merged
 }

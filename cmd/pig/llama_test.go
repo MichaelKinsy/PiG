@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -127,5 +130,69 @@ func TestRPCCatalogRunsAnotherExtensionsLlamaCommandThroughTheRunner(t *testing.
 	}
 	if want := [][2]string{{"/llama is available in interactive mode", "warning"}}; !reflect.DeepEqual(notices, want) || len(runner.executed) != 1 {
 		t.Fatalf("/llama:2: notices %v, runner executed %v; want the llama host only", notices, runner.executed)
+	}
+}
+
+// Issue #129, D90: a llama.cpp model whose chat template reads enable_thinking offers every budgeted thinking level, and each level sends its own thinking_budget_tokens. Pi's toPiModel (extensions/llama/provider.ts:113-115) maps only off and medium, and its qwen-chat-template request carries no budget, so Pi offers two levels with nothing between them. llama-server reads a per-request thinking_budget_tokens when no budget is set on its command line.
+func TestLlamaReasoningModelOffersBudgetedThinkingLevels(t *testing.T) {
+	t.Setenv("LLAMA_API_KEY", "")
+	bodies := make(chan map[string]any, 8)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/models":
+			_ = json.NewEncoder(w).Encode(map[string]any{"data": []any{map[string]any{"id": "qwen", "status": map[string]any{"value": "loaded"}, "meta": map[string]any{"n_ctx": 32768}}}})
+		case "/props":
+			_ = json.NewEncoder(w).Encode(map[string]any{"chat_template": "{% if enable_thinking %}think{% endif %}"})
+		case "/v1/chat/completions":
+			var body map[string]any
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			bodies <- body
+			w.Header().Set("Content-Type", "text/event-stream")
+			_, _ = io.WriteString(w, "data: {\"choices\":[{\"index\":0,\"delta\":{\"content\":\"ok\"},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n")
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+	t.Setenv("LLAMA_BASE_URL", server.URL)
+	dir := t.TempDir()
+	services, err := coding.NewServices(coding.ServicesOptions{CWD: dir, AgentDir: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	host := startBuiltInLlama(context.Background(), services)
+	if result := host.Refresh(context.Background(), true); result.Err != nil {
+		t.Fatal(result.Err)
+	}
+	model, err := coding.BuildModel(llama.LlamaProviderID+"/qwen", services)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if levels, want := ai.GetSupportedThinkingLevels(model), []ai.ThinkingLevel{ai.ThinkingOff, ai.ThinkingMinimal, ai.ThinkingLow, ai.ThinkingMedium, ai.ThinkingHigh}; !reflect.DeepEqual(levels, want) {
+		t.Fatalf("supported thinking levels = %v, want %v", levels, want)
+	}
+	for _, tc := range []struct {
+		level  ai.ThinkingLevel
+		budget any
+		enable bool
+	}{
+		{ai.ThinkingOff, nil, false},
+		{ai.ThinkingMinimal, float64(1024), true},
+		{ai.ThinkingLow, float64(2048), true},
+		{ai.ThinkingMedium, float64(8192), true},
+		{ai.ThinkingHigh, float64(16384), true},
+	} {
+		stream, err := model.Provider.Stream(t.Context(), ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hi")}}}), ai.StreamOptions{Thinking: tc.level, IsReasoning: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result := stream.Result(); result.StopReason != ai.StopReasonStop {
+			t.Fatalf("%s: result = %+v", tc.level, result)
+		}
+		body := <-bodies
+		kwargs, _ := body["chat_template_kwargs"].(map[string]any)
+		if kwargs["enable_thinking"] != tc.enable || body["thinking_budget_tokens"] != tc.budget {
+			t.Errorf("%s: chat_template_kwargs = %v, thinking_budget_tokens = %v; want enable_thinking %v and budget %v", tc.level, kwargs, body["thinking_budget_tokens"], tc.enable, tc.budget)
+		}
 	}
 }

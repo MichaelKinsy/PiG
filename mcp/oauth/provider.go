@@ -81,10 +81,12 @@ type McpOAuthProviderOptions struct {
 	// ClientMetadata's RedirectURIs, GrantTypes, ResponseTypes, and
 	// TokenEndpointAuthMethod default from the redirect URL and client secret.
 	ClientMetadata OAuthClientMetadata
-	ClientID       string
-	ClientSecret   string
-	Store          McpOAuthStateStore
-	OnRedirect     func(ctx context.Context, url *url.URL) error
+	// ClientMetadataDocument implements [ClientMetadataDocumentProvider]. Default: register dynamically.
+	ClientMetadataDocument func(metadata *AuthorizationServerMetadata) (*OAuthClientMetadataDocument, error)
+	ClientID               string
+	ClientSecret           string
+	Store                  McpOAuthStateStore
+	OnRedirect             func(ctx context.Context, url *url.URL) error
 }
 
 // McpOAuthProvider is the default stateful [OAuthClientProvider] for one exact
@@ -95,6 +97,7 @@ type McpOAuthProviderOptions struct {
 type McpOAuthProvider struct {
 	redirectURL      string
 	clientMetadata   OAuthClientMetadata
+	clientDocument   func(metadata *AuthorizationServerMetadata) (*OAuthClientMetadataDocument, error)
 	serverURL        string
 	configuredClient *OAuthClientInformation
 	store            McpOAuthStateStore
@@ -104,6 +107,15 @@ type McpOAuthProvider struct {
 	writeErr error
 }
 
+// ClientMetadataDocument implements [ClientMetadataDocumentProvider] with the
+// configured function; without one, the flow registers dynamically.
+func (p *McpOAuthProvider) ClientMetadataDocument(metadata *AuthorizationServerMetadata) (*OAuthClientMetadataDocument, error) {
+	if p.clientDocument == nil {
+		return nil, nil
+	}
+	return p.clientDocument(metadata)
+}
+
 // NewMcpOAuthProvider returns a provider. It fails when the server URL does not parse.
 func NewMcpOAuthProvider(options McpOAuthProviderOptions) (*McpOAuthProvider, error) {
 	server, err := parseURL(options.ServerURL)
@@ -111,10 +123,11 @@ func NewMcpOAuthProvider(options McpOAuthProviderOptions) (*McpOAuthProvider, er
 		return nil, err
 	}
 	p := &McpOAuthProvider{
-		redirectURL: options.RedirectURL,
-		serverURL:   server.String(),
-		store:       options.Store,
-		onRedirect:  options.OnRedirect,
+		redirectURL:    options.RedirectURL,
+		serverURL:      server.String(),
+		store:          options.Store,
+		onRedirect:     options.OnRedirect,
+		clientDocument: options.ClientMetadataDocument,
 	}
 	metadata := options.ClientMetadata
 	if metadata.RedirectURIs == nil {

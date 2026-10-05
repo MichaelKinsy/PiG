@@ -805,21 +805,31 @@ func TestAnthropicNativeToolChangesApplyStrictSchemasToInitialAndDeferredTools(t
 		SystemMessage{ToolsAdded: []ToolSchema{later}},
 	}
 	params := anthropicParams{nativeToolChanges: true, tools: []ToolSchema{initial, later}}
-	tools, err := anthropicRequestTools(messages, params, []ToolSchema{initial}, false, true, true, nil)
+	tools, err := anthropicRequestTools(params, []ToolSchema{initial}, false, true, true, nil)
 	if err != nil {
 		t.Fatalf("anthropicRequestTools: %v", err)
 	}
-	if len(tools) != 3 {
-		t.Fatalf("tools = %#v, want initial, placeholder, deferred", tools)
+	// anthropic-messages.ts buildParams: the request-level list holds only the initial tools and the placeholder.
+	if len(tools) != 2 || tools[1].Name != deferredToolPlaceholder().Name {
+		t.Fatalf("tools = %#v, want initial, placeholder", tools)
 	}
-	for _, index := range []int{0, 2} {
-		tool := tools[index]
-		if tool.Strict == nil || !*tool.Strict || tool.InputSchema["additionalProperties"] != false {
-			t.Fatalf("tool[%d] = %#v, want strict converted schema", index, tool)
-		}
+	if tool := tools[0]; tool.Strict == nil || !*tool.Strict || tool.InputSchema["additionalProperties"] != false {
+		t.Fatalf("initial tool = %#v, want strict converted schema", tool)
 	}
-	if !tools[2].DeferLoading {
-		t.Fatalf("deferred tool = %#v, want defer_loading", tools[2])
+	params.toolDefinitions = func(tools []ToolSchema) ([]anthTool, error) {
+		return anthConvertTools(tools, false, true, true, nil)
+	}
+	converted, err := params.convertMessages(messages[1:], false)
+	if err != nil {
+		t.Fatalf("convertMessages: %v", err)
+	}
+	blocks := converted[len(converted)-1].Content.([]anthContentBlock)
+	addition := blocks[len(blocks)-1]
+	if addition.Type != "tool_addition" || addition.Tool == nil || addition.Tool.Type != "tool_definition" || addition.Tool.Definition == nil {
+		t.Fatalf("update = %#v, want an inline tool_addition definition", blocks)
+	}
+	if definition := addition.Tool.Definition; definition.Strict == nil || !*definition.Strict || definition.InputSchema["additionalProperties"] != false || definition.DeferLoading {
+		t.Fatalf("inline definition = %#v, want strict converted schema without defer_loading", definition)
 	}
 }
 

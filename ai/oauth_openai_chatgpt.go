@@ -22,6 +22,7 @@ import (
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 )
 
 const (
@@ -293,15 +294,17 @@ func LoginOpenAIChatGPT(ctx context.Context, callbacks OAuthLoginCallbacks) (OAu
 	if err != nil {
 		return OAuthCredentials{}, err
 	}
+	// Without this server, the browser's callback would reach whatever else holds the port (another
+	// pending login or the Codex CLI), which rejects it as a state mismatch. Fail with a clear error instead.
+	// upstream: packages/ai/src/auth/oauth/openai-chatgpt.ts:loginOpenAIChatGPT (startCallbackServer(...).catch).
 	callback, err := startChatGPTCallbackServer(state)
 	if err != nil {
-		if callbacks.OnInfo != nil {
-			callbacks.OnInfo(fmt.Sprintf("Could not listen on %s; paste the final redirect URL to continue. %s", chatgptRedirectURI, err))
+		if nodeerrno.ErrorCode(err) != "EADDRINUSE" {
+			return OAuthCredentials{}, err
 		}
-		callback = nil
-	} else {
-		defer callback.close()
+		return OAuthCredentials{}, fmt.Errorf("Port %d is in use, probably by an unfinished login in another pi session or by the Codex CLI. Cancel that login and try again.", chatgptCallbackPort)
 	}
+	defer callback.close()
 
 	authorizeURL := chatgptAuthorizeURL + "?" + orderedQuery(
 		"client_id", chatgptDynamicClientID, "agent_name_hint", chatgptAgentNameHint, "ext_agent_host_id", hostID,
@@ -330,13 +333,9 @@ func LoginOpenAIChatGPT(ctx context.Context, callbacks OAuthLoginCallbacks) (OAu
 		<-manualDone
 	}()
 
-	var callbackResult <-chan chatgptAuthorizationResultOrError
-	if callback != nil {
-		callbackResult = callback.result
-	}
 	var outcome chatgptAuthorizationResultOrError
 	select {
-	case outcome = <-callbackResult:
+	case outcome = <-callback.result:
 	case outcome = <-manual:
 	case <-ctx.Done():
 		return OAuthCredentials{}, errors.New("Login cancelled")

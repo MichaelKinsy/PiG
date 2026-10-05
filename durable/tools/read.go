@@ -8,6 +8,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/env"
 	"github.com/MichaelKinsy/PiG/durable/harness"
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
@@ -55,28 +56,55 @@ func CreateReadTool() *durable.ToolRegistration {
 	}
 }
 
-// jsSliceLines is allLines.slice(start, end) with JavaScript's integer
-// conversion: a bound is truncated toward zero, and a negative bound counts from
-// the end.
-func jsSliceLines(lines []string, start, end float64) []string {
-	bound := func(value float64) int {
-		value = math.Trunc(value)
-		if value < 0 {
-			return int(math.Max(float64(len(lines))+value, 0))
-		}
-		return int(math.Min(value, float64(len(lines))))
+// readChunk is the largest single read while collecting the shown head.
+const readChunk = 64 * 1024
+
+// sliceIndex is Array.prototype.slice's conversion of an index: NaN is 0, other values truncate toward zero.
+func sliceIndex(value float64) float64 {
+	if math.IsNaN(value) {
+		return 0
 	}
-	from, to := bound(start), bound(end)
-	if from >= to {
-		return nil
-	}
-	return lines[from:to]
+	return math.Trunc(value)
+}
+
+// isSafeInteger is Number.isSafeInteger.
+func isSafeInteger(value float64) bool {
+	return value == math.Trunc(value) && math.Abs(value) <= 1<<53-1
 }
 
 // decodeText decodes bytes like TextDecoder: invalid sequences become U+FFFD and
 // a leading byte order mark is dropped.
 func decodeText(data []byte) string {
 	return strings.TrimPrefix(jsstring.FromUTF8(data), "\uFEFF")
+}
+
+// readHead is the decoded start of bytes [start, end) of the file, decoded as part of the whole file: all of it, or
+// enough for TruncateHeadOf (more than DEFAULT_MAX_BYTES + 1 bytes, or DEFAULT_MAX_LINES newlines).
+func readHead(ctx context.Context, reader env.BinaryReader, start, end int64, skipBom bool) (string, error) {
+	decoder := env.NewRangeDecoder()
+	var text strings.Builder
+	newlines := 0
+	position := start
+	if skipBom && start == 0 {
+		position = 3
+	}
+	for position < end {
+		bytes, err := reader.Read(ctx, position, min(readChunk, end-position))
+		if err != nil {
+			return "", err
+		}
+		if len(bytes) == 0 {
+			break
+		}
+		position += int64(len(bytes))
+		decoded := decoder.Decode(bytes)
+		text.WriteString(decoded)
+		newlines += strings.Count(decoded, "\n")
+		if newlines >= durable.DEFAULT_MAX_LINES || text.Len() > durable.DEFAULT_MAX_BYTES+1 {
+			return text.String(), nil
+		}
+	}
+	return text.String() + decoder.Flush(), nil
 }
 
 func executeRead(ctx context.Context, args any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
@@ -88,15 +116,54 @@ func executeRead(ctx context.Context, args any, api durable.ToolExecutionApi) (d
 	if err != nil {
 		return durable.ToolExecutionResult{}, err
 	}
+	return readFile(ctx, executionEnv, input)
+}
+
+// readFile reads the file input names through the environment's binary reader.
+func readFile(ctx context.Context, executionEnv env.ExecutionEnv, input ReadToolInput) (durable.ToolExecutionResult, error) {
 	absolutePath, err := resolveReadToolPath(ctx, executionEnv, input.Path)
 	if err != nil {
 		return durable.ToolExecutionResult{}, err
 	}
-	data, err := executionEnv.ReadBinaryFile(ctx, absolutePath)
+	reader, err := executionEnv.OpenBinaryReader(ctx, absolutePath, nil)
 	if err != nil {
 		return durable.ToolExecutionResult{}, err
 	}
-	if mimeType := detectSupportedImageMimeType(data); mimeType != "" {
+	defer func() { _ = reader.Close(ctx) }()
+	// A concurrent writer can change the file between the scan and the reads; retry once from a fresh scan.
+	for attempt := 0; ; attempt++ {
+		before, err := reader.Info(ctx)
+		if err != nil {
+			return durable.ToolExecutionResult{}, err
+		}
+		result, err := readText(ctx, reader, before, input)
+		if err != nil {
+			return durable.ToolExecutionResult{}, err
+		}
+		after, err := reader.Info(ctx)
+		if err != nil {
+			return durable.ToolExecutionResult{}, err
+		}
+		if after.Size == before.Size && after.MtimeMs == before.MtimeMs {
+			return result, nil
+		}
+		if attempt == 1 {
+			return durable.ToolExecutionResult{}, fmt.Errorf("%s changed while it was read", input.Path)
+		}
+	}
+}
+
+// readText is the read result for the opened file. It equals decoding the whole file with TextDecoder, splitting it on
+// "\n", and bounding the selected lines with TruncateHead, while reading only one scan's worth of the file plus the
+// head.
+func readText(ctx context.Context, reader env.BinaryReader, info env.FileInfo, input ReadToolInput) (durable.ToolExecutionResult, error) {
+	mimeType, err := detectSupportedImageMimeTypeOf(byteSource{size: info.Size, read: func(offset, length int64) ([]byte, error) {
+		return reader.Read(ctx, offset, length)
+	}})
+	if err != nil {
+		return durable.ToolExecutionResult{}, err
+	}
+	if mimeType != "" {
 		// Image content is not supported yet.
 		isError := true
 		return durable.ToolExecutionResult{
@@ -110,28 +177,81 @@ func executeRead(ctx context.Context, args any, api durable.ToolExecutionApi) (d
 		}, nil
 	}
 
-	allLines := strings.Split(decodeText(data), "\n")
-	totalFileLines := len(allLines)
 	startLine := 0.0
-	if input.Offset != nil && *input.Offset != 0 {
+	if input.Offset != nil && *input.Offset != 0 && !math.IsNaN(*input.Offset) {
 		startLine = math.Max(0, *input.Offset-1)
 	}
 	startLineDisplay := startLine + 1
-	if startLine >= float64(len(allLines)) {
-		return durable.ToolExecutionResult{}, fmt.Errorf("Offset %s is beyond end of file (%d lines total)", jsnumber.String(*input.Offset), len(allLines))
+	// Lines are selected like allLines.slice(startLine, endLine), which truncates fractional indices.
+	sliceStart := sliceIndex(startLine)
+	// One pass finds the line count and the selection; a selection past the last line ends with it, as slice does, and
+	// an empty one (a zero or negative limit) is scanned as one line and then ignored. A start beyond any file is
+	// scanned from 0 only to count lines; the offset check below then fails as before.
+	scanStart := 0.0
+	if isSafeInteger(sliceStart) {
+		scanStart = sliceStart
 	}
-
-	var selectedContent string
-	userLimitedLines := math.NaN()
+	var scanEnd *int64
 	if input.Limit != nil {
-		endLine := math.Min(startLine+*input.Limit, float64(len(allLines)))
-		selectedContent = strings.Join(jsSliceLines(allLines, startLine, endLine), "\n")
-		userLimitedLines = endLine - startLine
-	} else {
-		selectedContent = strings.Join(jsSliceLines(allLines, startLine, float64(len(allLines))), "\n")
+		if requestedEnd := math.Max(scanStart+1, sliceIndex(startLine+*input.Limit)); isSafeInteger(requestedEnd) {
+			scanEnd = new(int64(requestedEnd))
+		}
+	}
+	scanOf := func(endLine *int64) (env.LineScan, error) {
+		return reader.ScanLines(ctx, env.ScanLinesOptions{StartLine: int64(scanStart), EndLine: endLine})
+	}
+	scan, err := scanOf(scanEnd)
+	if err != nil {
+		return durable.ToolExecutionResult{}, err
+	}
+	totalFileLines := scan.Newlines + 1
+	if startLine >= float64(totalFileLines) {
+		return durable.ToolExecutionResult{}, fmt.Errorf("Offset %s is beyond end of file (%d lines total)", jsnumber.String(*input.Offset), totalFileLines)
 	}
 
-	truncation := durable.TruncateHead(selectedContent, durable.TruncationOptions{})
+	userLimitedLines := math.NaN()
+	selectedLineCount := float64(totalFileLines) - sliceStart
+	if input.Limit != nil {
+		endLine := math.Min(startLine+*input.Limit, float64(totalFileLines))
+		userLimitedLines = endLine - startLine
+		// slice counts a negative end from the end of the lines, which only the line count tells; scan again for it.
+		relativeEnd := sliceIndex(endLine)
+		sliceEnd := relativeEnd
+		if relativeEnd < 0 {
+			sliceEnd = math.Max(float64(totalFileLines)+relativeEnd, 0)
+		}
+		selectedLineCount = math.Max(0, sliceEnd-sliceStart)
+		if selectedLineCount > 0 && relativeEnd < 0 {
+			if scan, err = scanOf(new(int64(sliceEnd))); err != nil {
+				return durable.ToolExecutionResult{}, err
+			}
+		}
+	}
+	empty := selectedLineCount == 0
+	// Counted like TruncateHead: a trailing newline adds no line, and empty text has none.
+	endsWithNewline := !empty && scan.LastLineStart == scan.End && scan.LastLineStart > scan.Start
+	totals := durable.TruncationTotals{}
+	if !empty {
+		totals.Bytes = int(scan.SelectedBytes)
+		if scan.SelectedBytes != 0 {
+			totals.Lines = int(selectedLineCount)
+			if endsWithNewline {
+				totals.Lines--
+			}
+		}
+	}
+	firstBytes, err := reader.Read(ctx, 0, 3)
+	if err != nil {
+		return durable.ToolExecutionResult{}, err
+	}
+	head := ""
+	if !empty {
+		if head, err = readHead(ctx, reader, scan.Start, scan.End, env.StartsWithBom(firstBytes)); err != nil {
+			return durable.ToolExecutionResult{}, err
+		}
+	}
+
+	truncation := durable.TruncateHeadOf(head, totals, durable.TruncationOptions{})
 	diagnostics := []durable.ToolDiagnostic{}
 	outputText := truncation.Content
 	var details *ReadToolDetails
@@ -147,8 +267,11 @@ func executeRead(ctx context.Context, args any, api durable.ToolExecutionApi) (d
 		// Show the start of the line, cut at the byte limit on a character boundary. A fractional start line
 		// indexes no line, which upstream encodes as no bytes.
 		var lineBytes []byte
+		lineSize := 0
 		if startLine == math.Trunc(startLine) {
-			lineBytes = []byte(allLines[int(startLine)])
+			firstLine, _, _ := strings.Cut(head, "\n")
+			lineBytes = []byte(firstLine)
+			lineSize = int(scan.FirstLineBytes)
 		}
 		end := harness.CharacterEnd(lineBytes, durable.DEFAULT_MAX_BYTES)
 		outputText = decodeText(lineBytes[:min(end, len(lineBytes))])
@@ -156,7 +279,7 @@ func executeRead(ctx context.Context, args any, api durable.ToolExecutionApi) (d
 			Severity: durable.SeverityWarn,
 			Code:     "truncated",
 			Message: fmt.Sprintf("Line %s is %s, exceeds the %s limit; showing its first %s. Use bash: sed -n %s%sp%s %s | tail -c +%d",
-				jsnumber.String(startLineDisplay), durable.FormatSize(len(lineBytes)), durable.FormatSize(durable.DEFAULT_MAX_BYTES),
+				jsnumber.String(startLineDisplay), durable.FormatSize(lineSize), durable.FormatSize(durable.DEFAULT_MAX_BYTES),
 				durable.FormatSize(end), "'", jsnumber.String(startLineDisplay), "'", input.Path, end+1),
 		})
 		shown.OutputBytes, shown.OutputLines = end, 1
@@ -175,8 +298,8 @@ func executeRead(ctx context.Context, args any, api durable.ToolExecutionApi) (d
 				jsnumber.String(startLineDisplay), jsnumber.String(endLineDisplay), totalFileLines, limitText, jsnumber.String(nextOffset)),
 		})
 		details = &ReadToolDetails{Truncation: &shown}
-	case !math.IsNaN(userLimitedLines) && startLine+userLimitedLines < float64(len(allLines)):
-		remaining := float64(len(allLines)) - (startLine + userLimitedLines)
+	case !math.IsNaN(userLimitedLines) && startLine+userLimitedLines < float64(totalFileLines):
+		remaining := float64(totalFileLines) - (startLine + userLimitedLines)
 		nextOffset := startLine + userLimitedLines + 1
 		diagnostics = append(diagnostics, durable.ToolDiagnostic{
 			Severity: durable.SeverityInfo,

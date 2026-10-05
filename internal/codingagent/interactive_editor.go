@@ -45,6 +45,7 @@ func (m *InteractiveMode) openExternalEditorBuffer(ctx context.Context, initial 
 			}
 			restore, drain, rawErr := tui.EnterRawModeWithDrain()
 			if rawErr != nil {
+				m.exitIfDeadTerminal(rawErr)
 				m.failInputLoop(rawErr)
 				return
 			}

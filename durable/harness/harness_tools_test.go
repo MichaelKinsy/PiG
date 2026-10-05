@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -451,6 +452,57 @@ func TestToolResults(t *testing.T) {
 		if got := tlDiagnosticCodes(tlFirstToolResultEntry(t, run.entries)); !reflect.DeepEqual(got, []string{"", "", "truncated"}) {
 			t.Fatalf("diagnostic codes %v, want [  truncated]", got)
 		}
+		mustClose(t, run.harness)
+	})
+
+	t.Run("offers the tail window with the configured pace, not a head window, and accepts skipped output", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-tools.test.ts:328
+		setup := chatSetup(t)
+		setup.SetSettings(func(settings *HarnessSettings) {
+			settings.Progress = &ProgressPolicyPatch{OutputIntervalMs: new(250.0)}
+		})
+		var mu sync.Mutex
+		var windows []*env.ShellOutputWindow
+		record := func(window *env.ShellOutputWindow) {
+			mu.Lock()
+			defer mu.Unlock()
+			windows = append(windows, window)
+		}
+		addTool(t, setup.Registry, tlTool("tailed", func(_ context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+			record(api.OutputWindow())
+			api.Output("dropped\n")
+			api.OutputSkipping("x\ny\n", env.ShellOutputSkip{Bytes: 8, Newlines: 1, EndsWithNewline: true})
+			return durable.ToolExecutionResult{}, nil
+		}, func(tool *durable.ToolRegistration) {
+			lines := 1
+			tool.OutputLimits = &durable.ToolOutputLimits{MaxLines: &lines, Retain: durable.RetainTail}
+		}))
+		addTool(t, setup.Registry, tlTool("headed", func(_ context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+			record(api.OutputWindow())
+			return durable.ToolExecutionResult{}, nil
+		}, func(tool *durable.ToolRegistration) {
+			lines := 1
+			tool.OutputLimits = &durable.ToolOutputLimits{MaxLines: &lines}
+		}))
+		run := tlRun(t, setup, []ai.FauxResponseStep{tlCallsStep(tlCall{"tailed", map[string]any{}, "c1"}, tlCall{"headed", map[string]any{}, "c2"}), tlDone()}, nil)
+		want := env.ShellOutputWindow{MaxBytes: 50 * 1024, MaxLines: 1, MinIntervalMs: 250, BytesPerSecond: 100 * 1024}
+		mu.Lock()
+		offered := slices.Clone(windows)
+		mu.Unlock()
+		if !slices.ContainsFunc(offered, func(window *env.ShellOutputWindow) bool { return window != nil && *window == want }) {
+			t.Fatalf("windows %v, want one equal to %+v", offered, want)
+		}
+		if !slices.Contains(offered, nil) {
+			t.Fatalf("windows %v, want a nil window for the head-retaining tool", offered)
+		}
+		// 8 bytes written, 8 skipped, then "x\n" dropped by the window: 3 lines, 18 bytes in all.
+		var tailed ai.ToolResultMessage
+		for _, result := range tlResults(run.entries) {
+			if result.ToolCallID == "c1" {
+				tailed = result
+			}
+		}
+		tlExpectText(t, tlResultText(tailed), "y\n|<harness>\n[warn] Output truncated to its end: 3 lines, 18 bytes dropped\n</harness>")
 		mustClose(t, run.harness)
 	})
 

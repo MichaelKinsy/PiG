@@ -17,7 +17,7 @@ func main() {
 	}
 }
 func run() error {
-	for _, target := range []struct{ label, model, provider string }{{"same", "gpt-5.4", "openai"}, {"model-switch", "gpt-5.2", "openai"}, {"provider-switch", "gpt-5.4", "azure-openai-responses"}} {
+	for _, target := range []struct{ label, model, provider string }{{"same", "gpt-5.4", "openai"}, {"model-switch", "gpt-5.2", "openai"}, {"provider-switch", "gpt-5.4", "azure"}} {
 		for _, custom := range []bool{false, true} {
 			name, id, args := "lookup", "fc_test", ai.JsonObject{"value": "hello"}
 			var tools []ai.ToolSchema

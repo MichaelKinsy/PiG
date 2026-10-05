@@ -30,7 +30,7 @@ func TestEmptyMessagesUpstream(t *testing.T) {
 	t.Cleanup(server.Close)
 	type modelCase struct{ provider, model string }
 	models := []modelCase{
-		{"google", "gemini-2.5-flash"}, {"openai", "gpt-4o-mini"}, {"openai", "gpt-5-mini"}, {"azure-openai-responses", "gpt-4o-mini"},
+		{"google", "gemini-2.5-flash"}, {"openai", "gpt-4o-mini"}, {"openai", "gpt-5-mini"}, {"azure", "gpt-4o-mini"},
 		{"anthropic", "claude-haiku-4-5"}, {"xai", "grok-4.3"}, {"groq", "openai/gpt-oss-20b"}, {"cerebras", "gpt-oss-120b"},
 		{"cloudflare-workers-ai", "@cf/moonshotai/kimi-k2.6"}, {"cloudflare-ai-gateway", "workers-ai/@cf/moonshotai/kimi-k2.6"},
 		{"huggingface", "moonshotai/Kimi-K2.5"}, {"together", "moonshotai/Kimi-K3"}, {"baseten", "zai-org/GLM-5.2"}, {"zai", "glm-5.2"},

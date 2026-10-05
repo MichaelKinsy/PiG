@@ -161,6 +161,10 @@
   },
   {
     "provider": "opencode",
+    "id": "ling-3.1-flash-free"
+  },
+  {
+    "provider": "opencode",
     "id": "longcat-2.5-preview-free"
   },
   {
@@ -321,7 +325,15 @@
   },
   {
     "provider": "opencode-go",
+    "id": "qwen3.7-plus"
+  },
+  {
+    "provider": "opencode-go",
     "id": "qwen3.8-flash"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "qwen3.8-max"
   },
   {
     "provider": "opencode-go",
@@ -394,14 +406,6 @@
   {
     "provider": "opencode-go",
     "id": "minimax-m2.7"
-  },
-  {
-    "provider": "opencode-go",
-    "id": "qwen3.7-plus"
-  },
-  {
-    "provider": "opencode-go",
-    "id": "qwen3.8-max"
   },
   {
     "provider": "opencode-go",

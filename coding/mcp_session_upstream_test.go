@@ -83,15 +83,18 @@ func TestAgentSessionMCPExposesCodemodeOnlyMCPToolsThroughCodemodeAndHidesThemFr
 	if result.IsError {
 		t.Errorf("codemode failed: %s", mcpText(result))
 	}
-	// Output items keep the order the script produced them in.
-	if len(result.Content) != 3 {
-		t.Fatalf("content = %#v, want 3 items", result.Content)
+	// Output items keep the order the script produced them in; each image follows the path it was saved to.
+	if len(result.Content) != 4 {
+		t.Fatalf("content = %#v, want 4 items", result.Content)
 	}
-	if image, ok := result.Content[1].(ai.ImageContent); !ok || image.Data != mcpTinyPNGBase64 || image.MimeType != "image/png" {
+	if got := checkSavedImages(t, result.Content[1].(ai.TextContent).Text); got != "<saved>" {
 		t.Errorf("content[1] = %#v", result.Content[1])
 	}
+	if image, ok := result.Content[2].(ai.ImageContent); !ok || image.Data != mcpTinyPNGBase64 || image.MimeType != "image/png" {
+		t.Errorf("content[2] = %#v", result.Content[2])
+	}
 	var got map[string]any
-	if err := json.Unmarshal([]byte(result.Content[2].(ai.TextContent).Text), &got); err != nil {
+	if err := json.Unmarshal([]byte(result.Content[3].(ai.TextContent).Text), &got); err != nil {
 		t.Fatal(err)
 	}
 	requireEqual(t, "script output", got, map[string]any{

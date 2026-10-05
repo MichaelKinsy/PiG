@@ -1,4 +1,4 @@
-// Azure OpenAI Responses start state through the real Pi CLI RPC path. Pi 1.0.0 / OpenAI 7.19.0.
+// Azure OpenAI Responses start state through the real Pi CLI RPC path. Pi 1.0.3 / OpenAI 7.19.0.
 // Usage: node rpc.mjs <rpc.json> [runs]
 //
 // Runs `pi --mode rpc` (dist/bundle/cli.js) against one loopback server whose provider is api "azure-openai-responses".
@@ -18,7 +18,7 @@ import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 
 const root = process.env.PI_PACKAGE_ROOT;
-assert.equal(JSON.parse(readFileSync(root + '/package.json', 'utf8')).version, '1.0.0');
+assert.equal(JSON.parse(readFileSync(root + '/package.json', 'utf8')).version, '1.0.3');
 const runs = Number(process.argv[3] ?? 8);
 const args = '{"path":"parity-read-target.txt"}';
 const sse = evs => evs.map(e => 'event: ' + e.type + '\ndata: ' + JSON.stringify(e) + '\n\n').join('');
@@ -104,4 +104,4 @@ for (const shape of ['tool', 'text']) for (const fixture of ['buffered', 'pendin
   console.log(JSON.stringify({shape, fixture, runs, start: {content: start.content, stopReason: start.stopReason, responseId: start.responseId, total: start.usage.totalTokens}, updates: first.length - 2}));
   out.push({api:'azure-openai-responses', shape, fixture, runs, records: first});
 }
-await writeFile(process.argv[2], JSON.stringify({piVersion:'1.0.0', openaiVersion:'7.19.0', bodies, cases: out}, null, 2) + '\n');
+await writeFile(process.argv[2], JSON.stringify({piVersion:'1.0.3', openaiVersion:'7.19.0', bodies, cases: out}, null, 2) + '\n');

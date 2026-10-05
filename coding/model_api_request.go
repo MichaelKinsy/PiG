@@ -18,7 +18,7 @@ func (runtime *ModelRuntime) prepareAPIRequest(ctx context.Context, model *ai.Mo
 		Reasoning: model.ProviderMeta.Reasoning, Compat: model.ProviderMeta.Compat,
 		ThinkingLevelMap: cloneThinkingLevelMap(model.ThinkingLevelMap), Input: append([]string(nil), model.Input...), InputLimits: model.InputLimits.Clone(),
 		ContextWindow: model.Capabilities.ContextWindow, MaxTokens: model.Capabilities.MaxOutputTokens,
-		SamplingParams: model.SamplingParams, Env: maps.Clone(options.Env),
+		SamplingParams: model.SamplingParams, SamplingParamsByThinkingLevel: model.SamplingParamsByThinkingLevel, Env: maps.Clone(options.Env),
 	}
 	provider, err := buildProviderForEntry(entry.ProviderID, entry.ModelID, model.ProviderMeta.API, entry, runtime.services, options.APIKey, true)
 	if err != nil {

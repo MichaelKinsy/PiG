@@ -1,13 +1,6 @@
-import { randomBytes } from "node:crypto";
-import { createWriteStream } from "node:fs";
 import { open } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { createOutputFileStream } from "../../utils/output-files.js";
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, truncateTail } from "./truncate.js";
-function defaultTempFilePath(prefix) {
-    const id = randomBytes(8).toString("hex");
-    return join(tmpdir(), `${prefix}-${id}.log`);
-}
 function byteLength(text) {
     return Buffer.byteLength(text, "utf-8");
 }
@@ -209,8 +202,9 @@ export class OutputAccumulator {
         if (this.tempFilePath) {
             return;
         }
-        this.tempFilePath = defaultTempFilePath(this.tempFilePrefix);
-        this.tempFileStream = createWriteStream(this.tempFilePath);
+        const { path, stream } = createOutputFileStream(this.tempFilePrefix, ".log");
+        this.tempFilePath = path;
+        this.tempFileStream = stream;
         for (const chunk of this.rawChunks) {
             this.tempFileStream.write(chunk);
         }

@@ -69,11 +69,15 @@ func TestMessageTextSanitizesLoneSurrogatesOnTheWire(t *testing.T) {
 
 func TestAnthropicSanitizesBeforeOrAfterBlankChecksLikeUpstream(t *testing.T) {
 	// anthropic-messages.ts:1274-1300: a string user message is trimmed before sanitizing, but block text is sanitized and then filtered. 1316-1351: assistant text is trimmed first; thinking is sanitized on both wire shapes.
-	got := anthConvertMessagesDetailed([]Message{
+	converted, err := anthConvertMessagesDetailed([]Message{
 		UserMessage{Content: UserText(" " + loneHigh)},
 		UserMessage{Content: UserContentBlocks{TextContent{Text: " " + loneHigh}, TextContent{Text: "b" + loneHigh}}},
 		AssistantMessage{Content: []AssistantContentBlock{TextContent{Text: loneHigh}, ThinkingContent{Thinking: "t" + loneHigh, ThinkingSignature: "sig"}, ThinkingContent{Thinking: "u" + loneHigh}}},
-	}, false, false, "", false).messages
+	}, false, false, "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := converted.messages
 	want := []anthMessage{
 		{Role: "user", Content: " "},
 		{Role: "user", Content: []anthContentBlock{{Type: "text", Text: "b"}}},

@@ -345,12 +345,8 @@ func TestFilesystemFlushesExistingFilesWithoutChangingContentAndReportsMissingPa
 		t.Fatal("flush created a missing file")
 	}
 	mustDo(t, env.CreateDir(background, "dir", nil))
-	// Windows cannot open a directory for writing; it reports permission denied.
-	want := durableenv.FileErrorIsDirectory
-	if runtime.GOOS == "windows" {
-		want = durableenv.FileErrorPermissionDenied
-	}
-	expectFileError(t, env.FlushFile(background, "dir"), want, "")
+	// upstream: packages/durable/CHANGELOG.md 1.0.3 Fixed: flushFile() on a directory fails with is_directory on Windows, as on POSIX.
+	expectFileError(t, env.FlushFile(background, "dir"), durableenv.FileErrorIsDirectory, "")
 }
 
 func TestFilesystemSyncsThroughAnOpenedHandleReturnsSyncFailuresAndAlwaysClosesTheHandle(t *testing.T) {
@@ -527,5 +523,28 @@ func TestTextLineReaderDropsAByteOrderMarkAtTheStartOfTheFileOnly(t *testing.T) 
 	}
 	if got := must(env.ReadTextFile(background, "bom.txt")); !strings.HasPrefix(got, "\ufeff") {
 		t.Fatalf("ReadTextFile dropped the byte order mark: %q", got)
+	}
+}
+
+// Not an upstream case: Pi 1.0.3 decodes with a StreamDecoder that keeps a U+FEFF after a chunk boundary; this reader
+// splits raw bytes, so a mark that begins exactly at the next chunk is kept too.
+func TestTextLineReaderKeepsAByteOrderMarkThatFollowsAChunkBoundary(t *testing.T) {
+	env, _ := newTestEnv(t)
+	content := append(bytes.Repeat([]byte("a"), textLineChunkBytes-1), '\n')
+	content = append(content, "\xef\xbb\xbfb"...)
+	mustDo(t, env.WriteFile(background, "bom.txt", content))
+	reader := must(env.OpenTextLineReader(background, "bom.txt"))
+	defer func() { _ = reader.Close(background) }()
+	lines := readAllLines(t, reader)
+	if len(lines) != 2 || lines[1].Text != "\ufeffb" {
+		t.Fatalf("lines = %d, last %+v, want the mark kept", len(lines), lines[len(lines)-1])
+	}
+}
+
+func TestExecRejectsACommandThatIsNeitherAStringNorAnArgv(t *testing.T) {
+	env, _ := newTestEnv(t)
+	_, err := env.Exec(background, 42, nil)
+	if executionError(t, err).Code != durableenv.ExecutionErrorSpawnError {
+		t.Fatalf("error = %v, want a spawn_error", err)
 	}
 }

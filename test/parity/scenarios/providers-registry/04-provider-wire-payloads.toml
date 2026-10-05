@@ -41,7 +41,7 @@ covers = [
   "packages/ai/src/bedrock-provider.ts",
   "packages/ai/src/providers/amazon-bedrock.ts",
   "packages/ai/src/providers/anthropic.ts",
-  "packages/ai/src/providers/azure-openai-responses.ts",
+  "packages/ai/src/providers/azure.ts",
   "packages/ai/src/api/google-shared.ts",
   "packages/ai/src/providers/google-vertex.ts",
   "packages/ai/src/providers/google.ts",

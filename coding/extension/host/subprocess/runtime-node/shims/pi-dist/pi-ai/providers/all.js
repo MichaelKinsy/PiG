@@ -3,7 +3,7 @@ import { createModels } from "../models.js";
 import { amazonBedrockProvider } from "./amazon-bedrock.js";
 import { antLingProvider } from "./ant-ling.js";
 import { anthropicProvider } from "./anthropic.js";
-import { azureOpenAIResponsesProvider } from "./azure-openai-responses.js";
+import { azureProvider } from "./azure.js";
 import { basetenProvider } from "./baseten.js";
 import { cerebrasProvider } from "./cerebras.js";
 import { cloudflareAIGatewayProvider } from "./cloudflare-ai-gateway.js";
@@ -85,7 +85,7 @@ export function builtinProviders() {
         amazonBedrockProvider(),
         antLingProvider(),
         anthropicProvider(),
-        azureOpenAIResponsesProvider(),
+        azureProvider(),
         basetenProvider(),
         cerebrasProvider(),
         cloudflareAIGatewayProvider(),

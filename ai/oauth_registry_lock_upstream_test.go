@@ -35,11 +35,11 @@ type cancellingOAuthProvider struct {
 	cancel context.CancelFunc
 }
 
+// RefreshTokenContext cancels the caller mid-refresh, after the provider has rotated the refresh token.
 func (p cancellingOAuthProvider) RefreshTokenContext(ctx context.Context, _ OAuthCredentials) (OAuthCredentials, error) {
 	*p.refreshCalls++
 	p.cancel()
-	<-ctx.Done()
-	return OAuthCredentials{}, ctx.Err()
+	return OAuthCredentials{Access: "rotated-access", Refresh: "rotated-refresh", Expires: time.Now().Add(time.Hour).UnixMilli()}, nil
 }
 
 // Pi resolves a stored OAuth credential for a request with resolveStoredOAuth: when it expires it calls credentials.modify, checks the credential again under the lock, refreshes only when it still expires, and bounds the refresh with AbortSignal.timeout(15_000) (resolve.ts:143-167; 0.99.1 resolve.ts:126-150). credentials.modify is withLockAsync, which waits up to 30 seconds for another process's lock. So while another process holds the lock and refreshes the same credential, Pi waits, finds the new credential and uses it without refreshing again. TestCopilotTokenRefreshWaitsForAnotherProcessUpstream runs Pi's resolveProviderAuth on this state. PiG's request auth for registry OAuth providers must do the same: refreshing outside the lock lets two processes both refresh and one overwrite the other's rotated refresh token.
@@ -121,8 +121,8 @@ func TestRegistryOAuthRefreshIsBoundedUpstream(t *testing.T) {
 	if !bounded || deadline.After(start.Add(defaultOAuthRefreshTimeout+time.Second)) || deadline.Before(start.Add(defaultOAuthRefreshTimeout-time.Second)) {
 		t.Fatalf("refresh deadline = %v (bounded %v), want about %v after the call", deadline.Sub(start), bounded, defaultOAuthRefreshTimeout)
 	}
-	if caller, timeout, marked := OAuthRefreshTimeout(received); !marked || timeout != defaultOAuthRefreshTimeout || caller == nil {
-		t.Fatalf("refresh signal composition = %v, %v, %v; want the caller's context and the 15 s timeout", caller, timeout, marked)
+	if timeout, marked := OAuthRefreshTimeout(received); !marked || timeout != defaultOAuthRefreshTimeout {
+		t.Fatalf("refresh signal = %v, %v; want the 15 s timeout alone", timeout, marked)
 	}
 	if err := received.Err(); err != nil {
 		t.Fatalf("refresh context after the refresh settled = %v; settling must abort nothing", err)
@@ -151,8 +151,8 @@ func TestRegistryOAuthRefreshesWithinTheMinimumValidityUpstream(t *testing.T) {
 	}
 }
 
-// A caller cancelled while its refresh runs gets the cancellation, and the stored credential is left as it was: Pi's refresh rejects with the aborted signal inside credentials.modify, which then writes nothing.
-func TestRegistryOAuthRefreshCancelledDuringTheRefreshKeepsTheCredentialUpstream(t *testing.T) {
+// A refresh that has started survives its caller's cancellation: the caller gets the cancellation, and the rotated credential is persisted, because the provider may already have invalidated the old refresh token (auth/resolve.ts:refreshStoredOAuthCredential; Pi's "persists an OAuth refresh that started before the request was cancelled").
+func TestRegistryOAuthRefreshCancelledDuringTheRefreshPersistsTheCredentialUpstream(t *testing.T) {
 	calls := 0
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -170,12 +170,16 @@ func TestRegistryOAuthRefreshCancelledDuringTheRefreshKeepsTheCredentialUpstream
 		t.Fatal(err)
 	}
 	key, ok, err := ResolveStoredAPIKeyFromStorageContext(ctx, storage, "spy-oauth-cancel")
-	if !errors.Is(err, context.Canceled) || ok || key != "" || calls != 1 {
-		t.Fatalf("request auth cancelled during its refresh = %q, %v, %v with %d refreshes; want the cancellation after one refresh", key, ok, err, calls)
+	if !errors.Is(err, context.Canceled) || ok || key != "" {
+		t.Fatalf("request auth cancelled during its refresh = %q, %v, %v; want the cancellation", key, ok, err)
+	}
+	oauthRefreshWork.Wait()
+	if calls != 1 {
+		t.Fatalf("refreshes = %d, want 1", calls)
 	}
 	var data map[string]map[string]any
-	if raw, err := os.ReadFile(path); err != nil || json.Unmarshal(raw, &data) != nil || data["spy-oauth-cancel"]["refresh"] != "old-refresh" {
-		t.Fatalf("store after the cancelled refresh = %v, %v; want the credential unchanged", data, err)
+	if raw, err := os.ReadFile(path); err != nil || json.Unmarshal(raw, &data) != nil || data["spy-oauth-cancel"]["refresh"] != "rotated-refresh" {
+		t.Fatalf("store after the cancelled refresh = %v, %v; want the rotated credential", data, err)
 	}
 }
 

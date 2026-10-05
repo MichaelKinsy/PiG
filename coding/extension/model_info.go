@@ -63,6 +63,13 @@ func ModelInfo(model *ai.Model) map[string]any {
 	if model.InputLimits != nil {
 		projected["inputLimits"] = model.InputLimits.Clone()
 	}
+	if model.SamplingParamsByThinkingLevel != nil {
+		byLevel := make(map[string]any, len(model.SamplingParamsByThinkingLevel))
+		for level, params := range model.SamplingParamsByThinkingLevel {
+			byLevel[string(level)] = cloneJSONMap(params)
+		}
+		projected["samplingParamsByThinkingLevel"] = byLevel
+	}
 	return projected
 }
 

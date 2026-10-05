@@ -23,7 +23,7 @@ func TestImageToolResultMatrixUpstream(t *testing.T) {
 	image := base64.StdEncoding.EncodeToString(asset)
 	cases := upstreamCaseSites(t, "packages/ai/test/image-tool-result.test.ts")
 	specs := []struct{ provider, model string }{
-		{"google", "gemini-2.5-flash"}, {"openai", "gpt-4o-mini"}, {"openai", "gpt-5-mini"}, {"azure-openai-responses", "gpt-4o-mini"},
+		{"google", "gemini-2.5-flash"}, {"openai", "gpt-4o-mini"}, {"openai", "gpt-5-mini"}, {"azure", "gpt-4o-mini"},
 		{"anthropic", "claude-haiku-4-5"}, {"openrouter", "z-ai/glm-4.5v"}, {"mistral", "pixtral-12b"}, {"together", "moonshotai/Kimi-K3"},
 		{"baseten", "moonshotai/Kimi-K2.6"}, {"xiaomi", "mimo-v2.5-pro"}, {"xiaomi-token-plan-cn", "mimo-v2.5-pro"},
 		{"xiaomi-token-plan-ams", "mimo-v2.5-pro"}, {"xiaomi-token-plan-sgp", "mimo-v2.5-pro"}, {"qwen-token-plan", "qwen3.7-max"},

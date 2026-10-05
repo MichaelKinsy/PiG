@@ -353,7 +353,7 @@ func TestProgress(t *testing.T) {
 			defer mu.Unlock()
 			commits = append(commits, clock.now())
 			return size, nil
-		}, func(error) {}, clock)
+		}, func(error) {}, 100, clock)
 		expect := func(want ...float64) {
 			t.Helper()
 			mu.Lock()
@@ -383,10 +383,38 @@ func TestProgress(t *testing.T) {
 		expect(0, 500, 600)
 	})
 
+	t.Run("waits the configured minimum interval between small commits", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-output.test.ts:237
+		clock := &fakeProgressClock{}
+		var mu sync.Mutex
+		var commits []float64
+		progress := newProgressWithClock(func() (int, error) {
+			mu.Lock()
+			defer mu.Unlock()
+			commits = append(commits, clock.now())
+			return 10, nil
+		}, func(error) {}, 500, clock)
+		expect := func(want ...float64) {
+			t.Helper()
+			mu.Lock()
+			defer mu.Unlock()
+			if !slices.Equal(commits, want) {
+				t.Fatalf("commits %v, want %v", commits, want)
+			}
+		}
+		progress.Mark()
+		clock.advance(progress, 0)
+		progress.Mark()
+		clock.advance(progress, 499)
+		expect(0)
+		clock.advance(progress, 1)
+		expect(0, 500)
+	})
+
 	t.Run("rejects the waiters of a failed commit and reports its error", func(t *testing.T) {
 		var errs []error
 		failure := errors.New("commit failed")
-		progress := NewProgress(func() (int, error) { return 0, failure }, func(err error) { errs = append(errs, err) })
+		progress := NewProgress(func() (int, error) { return 0, failure }, func(err error) { errs = append(errs, err) }, 100)
 		if err := progress.MarkAndWait().Wait(context.Background()); !errors.Is(err, failure) {
 			t.Fatalf("got %v, want %v", err, failure)
 		}
@@ -401,7 +429,7 @@ func TestProgress(t *testing.T) {
 		progress := newProgressWithClock(func() (int, error) {
 			<-inFlight
 			return 0, nil
-		}, func(error) {}, clock)
+		}, func(error) {}, 100, clock)
 		first := progress.MarkAndWait()
 		second := progress.MarkAndWait()
 		stopped := make(chan []*ProgressWaiter)

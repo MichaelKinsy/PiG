@@ -7,14 +7,14 @@ function plainText(page) {
 export class OAuthCallbackServer {
     redirectUrl;
     server;
-    path;
+    paths;
     timeoutMs;
     renderPage;
     pending = new Map();
-    constructor(server, redirectUrl, path, timeoutMs, renderPage) {
+    constructor(server, redirectUrl, paths, timeoutMs, renderPage) {
         this.server = server;
         this.redirectUrl = redirectUrl;
-        this.path = path;
+        this.paths = paths;
         this.timeoutMs = timeoutMs;
         this.renderPage = renderPage;
     }
@@ -34,10 +34,14 @@ export class OAuthCallbackServer {
         const address = server.address();
         if (!address || typeof address === "string")
             throw new Error("OAuth callback server did not bind to TCP");
-        instance = new OAuthCallbackServer(server, `http://${redirectHost.includes(":") ? `[${redirectHost}]` : redirectHost}:${address.port}${path}`, path, options.timeoutMs ?? 5 * 60_000, options.renderPage);
+        instance = new OAuthCallbackServer(server, `http://${redirectHost.includes(":") ? `[${redirectHost}]` : redirectHost}:${address.port}${path}`, [path, ...(options.extraPaths ?? [])], options.timeoutMs ?? 5 * 60_000, options.renderPage);
         return instance;
     }
-    waitForCallback(state) {
+    /**
+     * Wait for the authorization response with `state`. With `path`, a response on another path fails, so
+     * a server-specific redirect URI can tell authorization servers apart (RFC 9700 section 4.4.2.2).
+     */
+    waitForCallback(state, path) {
         if (this.pending.has(state))
             throw new Error("OAuth state is already pending");
         return new Promise((resolve, reject) => {
@@ -45,7 +49,7 @@ export class OAuthCallbackServer {
                 this.pending.delete(state);
                 reject(new Error("OAuth callback timed out"));
             }, this.timeoutMs);
-            this.pending.set(state, { resolve, reject, timer });
+            this.pending.set(state, { resolve, reject, timer, path });
         });
     }
     async close() {
@@ -69,7 +73,7 @@ export class OAuthCallbackServer {
     }
     handle(rawUrl, response) {
         const url = new URL(rawUrl, this.redirectUrl);
-        if (url.pathname !== this.path) {
+        if (!this.paths.includes(url.pathname)) {
             this.reply(response, 404, { ok: false, message: "Not found" });
             return;
         }
@@ -81,6 +85,11 @@ export class OAuthCallbackServer {
         }
         clearTimeout(pending.timer);
         this.pending.delete(state);
+        if (pending.path !== undefined && url.pathname !== pending.path) {
+            pending.reject(new Error("The authorization response arrived on another redirect URI"));
+            this.reply(response, 400, { ok: false, message: "Unexpected redirect URI" });
+            return;
+        }
         const error = url.searchParams.get("error");
         if (error) {
             const description = url.searchParams.get("error_description") ?? error;

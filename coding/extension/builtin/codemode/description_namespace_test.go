@@ -16,7 +16,7 @@ const descriptionIntro = "Run JavaScript that calls other tools. The input is ra
 	"- Optional first line: `// @options: {\"max_output_tokens\": 10000, \"timeout_ms\": 60000}`"
 
 const describeGlobals = "Globals:\n" +
-	"- `text(value)`, `image(dataUrlOrImageBlock)`, `console.log(...)`, and top-level `return` add output; `exit()` ends the script.\n" +
+	"- `text(value)`, `image(dataUrlOrImageBlock)`, `console.log(...)`, and top-level `return` add output; `exit()` ends the script. `image()` also saves the image to a temp file and the result names its path.\n" +
 	"- `store(key, value)` and `load(key)` keep JSON values across codemode calls.\n" +
 	"- `ALL_TOOLS`, `searchTools(query, { limit?, namespace? })`, `describeTool(name)`, `describeNamespace(name)`: find unlisted tools, such as MCP tools."
 

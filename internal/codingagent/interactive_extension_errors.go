@@ -40,6 +40,8 @@ func (m *InteractiveMode) showPendingExtensionErrors() {
 		m.showExtensionError(err.ExtensionPath, err.Error, err.Stack)
 	}
 	if len(pending) > 0 {
+		// pig additive (D95): a failed extension may be a cell file another pig pruned.
+		m.maybeShowInstallChangeWarning()
 		m.requestRender()
 	}
 }

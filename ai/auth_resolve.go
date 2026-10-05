@@ -15,6 +15,7 @@ import (
 	"math"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -303,21 +304,10 @@ func refreshStoredOAuth(ctx context.Context, credentials CredentialStore, provid
 	}
 	credential := stored
 	if expiresSoon(credential) {
-		post, err := credentials.Modify(ctx, providerID, func(current *Credential) (*Credential, error) {
-			if current == nil || current.Type != CredentialOAuth || !expiresSoon(*current) {
-				return nil, nil
-			}
-			refreshed, err := refreshOAuthWithTimeout(ctx, oauth, *current)
-			if err != nil {
-				return nil, NewModelsError(ModelsErrorOAuth, fmt.Sprintf("OAuth refresh failed for %s", providerID), err)
-			}
-			return &refreshed, nil
-		})
+		// Optimistic check said expired; the authoritative check runs under the lock.
+		post, err := refreshStoredOAuthCredential(ctx, credentials, providerID, oauth, expiresSoon)
 		if err != nil {
-			if _, ok := errors.AsType[*ModelsError](err); ok {
-				return nil, err
-			}
-			return nil, NewModelsError(ModelsErrorAuth, fmt.Sprintf("Credential store modify failed for %s", providerID), err)
+			return nil, err
 		}
 		if post == nil || post.Type != CredentialOAuth {
 			return nil, nil
@@ -333,31 +323,87 @@ func refreshStoredOAuth(ctx context.Context, credentials CredentialStore, provid
 	return &credential, nil
 }
 
-// refreshOAuthWithTimeout keeps the signal live through refresh settlement and GC. The caller or original fifteen-second deadline owns cancellation, including when only Done is retained.
-// upstream: packages/ai/src/auth/resolve.ts:resolveStoredOAuth
+// oauthRefreshWork owns the stored-credential refreshes that outlive a cancelled caller. Each is bounded by the store's lock and the fifteen-second refresh timeout.
+var oauthRefreshWork sync.WaitGroup
+
+// refreshStoredOAuthCredential refreshes a stored OAuth credential under the credential store's lock and persists the result before the lock is released. needsRefresh is re-checked under the lock, so concurrent callers and processes refresh once.
+// ctx cancels only the wait for the lock. Once a refresh starts, the provider may already have rotated the refresh token, so the refresh and its persistence ignore ctx and are bounded only by the fifteen-second timeout; otherwise a cancelled caller could discard the only valid refresh token. Upstream's callers race the promise with their signal; this call does that itself, so a cancelled caller returns the cancellation cause while the refresh finishes and persists in the background. It returns nil when the credential was removed or replaced by a non-OAuth one meanwhile.
+// upstream: packages/ai/src/auth/resolve.ts:refreshStoredOAuthCredential
+func refreshStoredOAuthCredential(ctx context.Context, credentials CredentialStore, providerID string, oauth *OAuthAuth, needsRefresh func(Credential) bool) (*Credential, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, context.Cause(ctx)
+	}
+	type outcome struct {
+		credential *Credential
+		err        error
+	}
+	done := make(chan outcome, 1)
+	oauthRefreshWork.Go(func() {
+		credential, err := refreshStoredOAuthLocked(ctx, credentials, providerID, oauth, needsRefresh)
+		done <- outcome{credential, err}
+	})
+	select {
+	case result := <-done:
+		return result.credential, result.err
+	case <-ctx.Done():
+		return nil, context.Cause(ctx)
+	}
+}
+
+func refreshStoredOAuthLocked(ctx context.Context, credentials CredentialStore, providerID string, oauth *OAuthAuth, needsRefresh func(Credential) bool) (*Credential, error) {
+	lockWait, cancelLockWait := context.WithCancelCause(context.WithoutCancel(ctx))
+	defer cancelLockWait(nil)
+	stopLockWait := context.AfterFunc(ctx, func() { cancelLockWait(context.Cause(ctx)) })
+	defer stopLockWait()
+	post, err := credentials.Modify(lockWait, providerID, func(current *Credential) (*Credential, error) {
+		stopLockWait()
+		if err := ctx.Err(); err != nil {
+			return nil, context.Cause(ctx)
+		}
+		if current == nil || current.Type != CredentialOAuth || !needsRefresh(*current) {
+			return nil, nil // logged out meanwhile, or another process or request refreshed
+		}
+		refreshed, err := refreshOAuthWithTimeout(ctx, oauth, *current)
+		if err != nil {
+			return nil, NewModelsError(ModelsErrorOAuth, fmt.Sprintf("OAuth refresh failed for %s", providerID), err)
+		}
+		return &refreshed, nil
+	})
+	if err != nil {
+		if _, ok := errors.AsType[*ModelsError](err); ok {
+			return nil, err
+		}
+		if ctx.Err() != nil {
+			return nil, context.Cause(ctx)
+		}
+		return nil, NewModelsError(ModelsErrorAuth, fmt.Sprintf("Credential store modify failed for %s", providerID), err)
+	}
+	if post == nil || post.Type != CredentialOAuth {
+		return nil, nil
+	}
+	return post, nil
+}
+
+// refreshOAuthWithTimeout refreshes with a signal bounded only by the fifteen-second timeout, which stays live through refresh settlement and GC: ctx's cancellation does not reach the provider.
+// upstream: packages/ai/src/auth/resolve.ts:refreshStoredOAuthCredential (AbortSignal.timeout(DEFAULT_OAUTH_REFRESH_TIMEOUT_MS))
 func refreshOAuthWithTimeout(ctx context.Context, oauth *OAuthAuth, credential Credential) (Credential, error) {
-	refreshCtx, cancel := context.WithTimeout(ctx, defaultOAuthRefreshTimeout)
-	// Cleanup follows natural signal cancellation; refresh return and Context-wrapper collection are not cancellation events.
+	refreshCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), defaultOAuthRefreshTimeout)
+	// Cleanup follows the timeout; refresh return and Context-wrapper collection are not cancellation events.
 	context.AfterFunc(refreshCtx, cancel)
-	return oauth.Refresh(WithOAuthRefreshTimeout(refreshCtx, ctx, defaultOAuthRefreshTimeout), credential)
+	return oauth.Refresh(WithOAuthRefreshTimeout(refreshCtx, defaultOAuthRefreshTimeout), credential)
 }
 
 type oauthRefreshTimeoutKey struct{}
 
-type oauthRefreshTimeout struct {
-	caller  context.Context
-	timeout time.Duration
+// WithOAuthRefreshTimeout marks the context of a provider refresh whose signal Pi builds as AbortSignal.timeout(timeout): the caller's cancellation does not reach it (auth/resolve.ts:refreshStoredOAuthCredential). A provider that hands its callback a signal, such as an extension bridge, reads the timeout with OAuthRefreshTimeout.
+func WithOAuthRefreshTimeout(ctx context.Context, timeout time.Duration) context.Context {
+	return context.WithValue(ctx, oauthRefreshTimeoutKey{}, timeout)
 }
 
-// WithOAuthRefreshTimeout marks the context of a provider refresh that Pi composes as AbortSignal.any([caller, AbortSignal.timeout(timeout)]) (auth/resolve.ts:149-153). Pi's Models.refresh passes only the caller's signal (models.ts:474) and leaves a context unmarked. A provider that hands its callback a signal, such as an extension bridge, reads the composition with OAuthRefreshTimeout.
-func WithOAuthRefreshTimeout(ctx, caller context.Context, timeout time.Duration) context.Context {
-	return context.WithValue(ctx, oauthRefreshTimeoutKey{}, oauthRefreshTimeout{caller: caller, timeout: timeout})
-}
-
-// OAuthRefreshTimeout returns the caller's context and the timeout composed into the refresh signal, or ok false when the refresh signal is the caller's alone.
-func OAuthRefreshTimeout(ctx context.Context) (caller context.Context, timeout time.Duration, ok bool) {
-	marked, ok := ctx.Value(oauthRefreshTimeoutKey{}).(oauthRefreshTimeout)
-	return marked.caller, marked.timeout, ok
+// OAuthRefreshTimeout returns the timeout that alone bounds the refresh signal, or ok false when the refresh signal is a caller's cancellation.
+func OAuthRefreshTimeout(ctx context.Context) (timeout time.Duration, ok bool) {
+	timeout, ok = ctx.Value(oauthRefreshTimeoutKey{}).(time.Duration)
+	return timeout, ok
 }
 
 func resolveAPIKey(ctx context.Context, authContext AuthContext, apiKey *APIKeyAuth, providerID string, credential *Credential) (*AuthResult, error) {

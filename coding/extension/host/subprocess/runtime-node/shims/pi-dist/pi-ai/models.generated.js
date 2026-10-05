@@ -3,7 +3,7 @@
 import { AMAZON_BEDROCK_CLASSIFIER_MODELS, AMAZON_BEDROCK_IMAGE_MODELS, AMAZON_BEDROCK_MODELS } from "./providers/amazon-bedrock.models.js";
 import { ANT_LING_CLASSIFIER_MODELS, ANT_LING_IMAGE_MODELS, ANT_LING_MODELS } from "./providers/ant-ling.models.js";
 import { ANTHROPIC_CLASSIFIER_MODELS, ANTHROPIC_IMAGE_MODELS, ANTHROPIC_MODELS } from "./providers/anthropic.models.js";
-import { AZURE_OPENAI_RESPONSES_CLASSIFIER_MODELS, AZURE_OPENAI_RESPONSES_IMAGE_MODELS, AZURE_OPENAI_RESPONSES_MODELS } from "./providers/azure-openai-responses.models.js";
+import { AZURE_CLASSIFIER_MODELS, AZURE_IMAGE_MODELS, AZURE_MODELS } from "./providers/azure.models.js";
 import { BASETEN_CLASSIFIER_MODELS, BASETEN_IMAGE_MODELS, BASETEN_MODELS } from "./providers/baseten.models.js";
 import { CEREBRAS_CLASSIFIER_MODELS, CEREBRAS_IMAGE_MODELS, CEREBRAS_MODELS } from "./providers/cerebras.models.js";
 import { CLOUDFLARE_AI_GATEWAY_CLASSIFIER_MODELS, CLOUDFLARE_AI_GATEWAY_IMAGE_MODELS, CLOUDFLARE_AI_GATEWAY_MODELS } from "./providers/cloudflare-ai-gateway.models.js";
@@ -46,7 +46,7 @@ export const MODELS = {
     "amazon-bedrock": AMAZON_BEDROCK_MODELS,
     "ant-ling": ANT_LING_MODELS,
     "anthropic": ANTHROPIC_MODELS,
-    "azure-openai-responses": AZURE_OPENAI_RESPONSES_MODELS,
+    "azure": AZURE_MODELS,
     "baseten": BASETEN_MODELS,
     "cerebras": CEREBRAS_MODELS,
     "cloudflare-ai-gateway": CLOUDFLARE_AI_GATEWAY_MODELS,
@@ -90,7 +90,7 @@ export const IMAGE_MODELS = {
     "amazon-bedrock": AMAZON_BEDROCK_IMAGE_MODELS,
     "ant-ling": ANT_LING_IMAGE_MODELS,
     "anthropic": ANTHROPIC_IMAGE_MODELS,
-    "azure-openai-responses": AZURE_OPENAI_RESPONSES_IMAGE_MODELS,
+    "azure": AZURE_IMAGE_MODELS,
     "baseten": BASETEN_IMAGE_MODELS,
     "cerebras": CEREBRAS_IMAGE_MODELS,
     "cloudflare-ai-gateway": CLOUDFLARE_AI_GATEWAY_IMAGE_MODELS,
@@ -134,7 +134,7 @@ export const CLASSIFIER_MODELS = {
     "amazon-bedrock": AMAZON_BEDROCK_CLASSIFIER_MODELS,
     "ant-ling": ANT_LING_CLASSIFIER_MODELS,
     "anthropic": ANTHROPIC_CLASSIFIER_MODELS,
-    "azure-openai-responses": AZURE_OPENAI_RESPONSES_CLASSIFIER_MODELS,
+    "azure": AZURE_CLASSIFIER_MODELS,
     "baseten": BASETEN_CLASSIFIER_MODELS,
     "cerebras": CEREBRAS_CLASSIFIER_MODELS,
     "cloudflare-ai-gateway": CLOUDFLARE_AI_GATEWAY_CLASSIFIER_MODELS,

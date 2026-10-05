@@ -31,7 +31,7 @@ func TestModelResolverCLIUpstream(t *testing.T) {
 		reasoning                                                                 bool
 	}
 	all := upstreamResolverModels()
-	ambiguous := []codingagent.RuntimeModel{{Provider: "azure-openai-responses", ID: "gpt-5.6-sol", Name: "GPT 5.6 Sol"}, {Provider: "openai-codex", ID: "gpt-5.6-sol", Name: "GPT 5.6 Sol"}}
+	ambiguous := []codingagent.RuntimeModel{{Provider: "azure", ID: "gpt-5.6-sol", Name: "GPT 5.6 Sol"}, {Provider: "openai-codex", ID: "gpt-5.6-sol", Name: "GPT 5.6 Sol"}}
 	cases := []cliCase{
 		// .upstream/v0.87.1/packages/coding-agent/test/model-resolver.test.ts:322
 		{name: "resolves --model provider/id without --provider", model: "openai/gpt-4o", wantProvider: "openai", wantID: "gpt-4o", models: all},
@@ -50,7 +50,7 @@ func TestModelResolverCLIUpstream(t *testing.T) {
 		// .upstream/v0.87.1/packages/coding-agent/test/model-resolver.test.ts:430
 		{name: "prefers the sole authenticated provider for an ambiguous bare exact model id", model: "gpt-5.6-sol", models: ambiguous, auth: "openai-codex", wantProvider: "openai-codex", wantID: "gpt-5.6-sol"},
 		// .upstream/v0.87.1/packages/coding-agent/test/model-resolver.test.ts:458
-		{name: "requires an explicit provider for an ambiguous bare exact model id without a unique authenticated provider", model: "gpt-5.6-sol", models: ambiguous, auth: "none", errorParts: []string{`Model "gpt-5.6-sol" is ambiguous across providers`, "azure-openai-responses/gpt-5.6-sol", "openai-codex/gpt-5.6-sol", "Use --provider or provider/model"}},
+		{name: "requires an explicit provider for an ambiguous bare exact model id without a unique authenticated provider", model: "gpt-5.6-sol", models: ambiguous, auth: "none", errorParts: []string{`Model "gpt-5.6-sol" is ambiguous across providers`, "azure/gpt-5.6-sol", "openai-codex/gpt-5.6-sol", "Use --provider or provider/model"}},
 		// .upstream/v0.87.1/packages/coding-agent/test/model-resolver.test.ts:488
 		{name: "prefers provider/model split over gateway model with matching id", model: "zai/glm-5", models: append(upstreamResolverModels(), codingagent.RuntimeModel{Provider: "zai", ID: "glm-5", Name: "GLM-5", Reasoning: true}, codingagent.RuntimeModel{Provider: "vercel-ai-gateway", ID: "zai/glm-5", Name: "GLM-5", Reasoning: true}), wantProvider: "zai", wantID: "glm-5"},
 		// .upstream/v0.87.1/packages/coding-agent/test/model-resolver.test.ts:530

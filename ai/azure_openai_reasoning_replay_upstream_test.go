@@ -24,8 +24,8 @@ func TestAzureOpenAIResponsesReasoningReplayUpstream(t *testing.T) {
 				t.Fatal(err)
 			}
 			sse := fmt.Sprintf("data: {\"type\":\"response.output_item.added\",\"output_index\":0,\"sequence_number\":0,\"item\":{\"type\":\"reasoning\",\"id\":%q,\"summary\":[]}}\n\ndata: {\"type\":\"response.output_item.done\",\"output_index\":0,\"sequence_number\":1,\"item\":%s}\n\ndata: {\"type\":\"response.completed\",\"sequence_number\":2,\"response\":{\"id\":\"resp_test\",\"status\":\"completed\",\"output\":[{\"type\":\"reasoning\",\"id\":%q,\"summary\":[],\"encrypted_content\":\"from-response-completed\"}]}}\n\n", tc.id, doneJSON, tc.id)
-			provider := &openAIResponsesProvider{cfg: OpenAIResponsesConfig{ProviderID: "azure-openai-responses", Model: "gpt-5-mini"}}
-			builder := newAssistantStreamBuilder(t.Context(), APIAzureOpenAIResponses, "azure-openai-responses", "gpt-5-mini")
+			provider := &openAIResponsesProvider{cfg: OpenAIResponsesConfig{ProviderID: "azure", Model: "gpt-5-mini"}}
+			builder := newAssistantStreamBuilder(t.Context(), APIAzureOpenAIResponses, "azure", "gpt-5-mini")
 			provider.parseResponsesSSE(t.Context(), strings.NewReader(sse), builder, nil)
 			output := builder.stream.Result()
 			input, err := provider.convertMessages([]Message{UserMessage{Content: UserText("first")}, *output, UserMessage{Content: UserText("follow-up")}}, nil)

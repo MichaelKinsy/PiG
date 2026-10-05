@@ -281,6 +281,10 @@ const pigRunFade = 0.6
 // shuffle ends, and during the exit while a running pig dissolves back into the head. It runs in place where the head
 // spins.
 func (a *pigLogoAnimation) runner(time float64) *pigRunner {
+	// Only the logo's header pig runs; a model with a puzzle plays Pi's puzzle.
+	if a.model.puzzleMoves != nil {
+		return nil
+	}
 	if a.exit != nil {
 		run := a.exit.run
 		if run == nil {

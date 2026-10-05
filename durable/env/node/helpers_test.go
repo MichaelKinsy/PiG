@@ -62,7 +62,7 @@ func collectShellOutput(env *NodeExecutionEnv, command string, options *durablee
 	if options != nil {
 		merged = *options
 	}
-	merged.OnOutput = func(_ context.Context, text string) {
+	merged.OnOutput = func(_ context.Context, text string, _ durableenv.ShellOutputInfo) {
 		mu.Lock()
 		defer mu.Unlock()
 		output.WriteString(text)

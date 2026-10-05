@@ -66,11 +66,11 @@ The test labels in this table expand to exact test names in the next section. En
 | `ANTHROPIC_API_KEY` | `anthropic` | Anthropic, Compatibility, Replay, Thinking; alternative to `ANTHROPIC_OAUTH_TOKEN` |
 | `ANTHROPIC_OAUTH_TOKEN` | `anthropic` | Same cases; resolved OAuth token takes precedence over the API key |
 | `OPENAI_API_KEY` | `openai` | Responses cache affinity, Replay, Images, Thinking |
-| `AZURE_OPENAI_API_KEY` | `azure-openai-responses` | Images; also requires one Azure endpoint variable |
-| `AZURE_OPENAI_BASE_URL` | `azure-openai-responses` | Images; alternative to `AZURE_OPENAI_RESOURCE_NAME` |
-| `AZURE_OPENAI_RESOURCE_NAME` | `azure-openai-responses` | Images; alternative to `AZURE_OPENAI_BASE_URL` |
-| `AZURE_OPENAI_DEPLOYMENT_NAME_MAP` | `azure-openai-responses` | Images; optional model-to-deployment mapping |
-| `AZURE_OPENAI_API_VERSION` | `azure-openai-responses` | Images; optional API version override |
+| `AZURE_OPENAI_API_KEY` | `azure` | Images; also requires one Azure endpoint variable |
+| `AZURE_OPENAI_BASE_URL` | `azure` | Images; alternative to `AZURE_OPENAI_RESOURCE_NAME` |
+| `AZURE_OPENAI_RESOURCE_NAME` | `azure` | Images; alternative to `AZURE_OPENAI_BASE_URL` |
+| `AZURE_OPENAI_DEPLOYMENT_NAME_MAP` | `azure` | Images; optional model-to-deployment mapping |
+| `AZURE_OPENAI_API_VERSION` | `azure` | Images; optional API version override |
 | `COPILOT_GITHUB_TOKEN` | `github-copilot` | Compatibility, Images, Integration; resolved Copilot bearer, used as supplied without refresh |
 | `GEMINI_API_KEY` | `google` | Thinking |
 | `GOOGLE_CLOUD_API_KEY` | `google-vertex` | Thinking; alternative to ADC |

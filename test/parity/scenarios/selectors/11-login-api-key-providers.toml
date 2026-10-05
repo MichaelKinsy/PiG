@@ -17,6 +17,10 @@
 # option without credentials " • not configured" instead of " • unconfigured".
 # Re-probed against Pi 1.0.0: the first page reads "Amazon Bedrock • not
 # configured", "Ant Ling • not configured", ... with the same (1/41) count.
+#
+# Pi 1.0.3 names the Azure provider "Azure" instead of "Azure OpenAI"
+# (packages/ai/src/providers/azure.ts:47); both binaries print
+# "Azure • not configured" on the first page.
 
 name = "11-login-api-key-providers"
 description = "/login API-key provider picker lists every API-key-provider catalog entry with upstream labels."
@@ -63,7 +67,7 @@ both_contain = [
   "Select provider to configure",
   "Ant Ling • not configured",
   "Anthropic • not configured",
-  "Azure OpenAI • not configured",
+  "Azure • not configured",
   "Cloudflare Workers AI • not configured",
   "(1/41)",
 ]

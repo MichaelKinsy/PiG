@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"os"
+	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -172,5 +175,30 @@ func TestMCPToolsCutsTheMiddleOfModelFacingTextOver20KBAndKeepsTheFullResultForS
 	}
 	if len(saved) != 1 {
 		t.Fatalf("saved %d outputs", len(saved))
+	}
+}
+
+// Results can carry private data, so only the user may read the saved file.
+func TestMCPToolsSavesOutputInAUserOnlyTempFile(t *testing.T) {
+	path, err := mcpext.SaveToTempFile([]byte("secret"), ".txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Remove(path) })
+	if !regexp.MustCompile(`^pi-mcp-[0-9a-f]{16}\.txt$`).MatchString(filepath.Base(path)) {
+		t.Errorf("path = %q", path)
+	}
+	if data, err := os.ReadFile(path); err != nil || string(data) != "secret" {
+		t.Errorf("content = %q, %v", data, err)
+	}
+	if runtime.GOOS == "windows" {
+		return
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := info.Mode().Perm(); got&0o077 != 0 {
+		t.Errorf("mode = %o, want no access for group and others", got)
 	}
 }

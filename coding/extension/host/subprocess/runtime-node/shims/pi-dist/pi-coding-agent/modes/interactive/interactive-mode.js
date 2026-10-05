@@ -11,7 +11,7 @@ import * as TuiLayouts from "../../../../pi-tui.mjs";
 import { CombinedAutocompleteProvider, Container, fuzzyFilter, getCapabilities, hyperlink, Markdown, matchesKey, Spacer, setCapabilityOverrides, setKeybindings, Text, TruncatedText, TuiAltScreen, TuiMainScreen, visibleWidth, } from "../../../../pi-tui.mjs";
 import chalk from "../../../../chalk/source/index.js";
 import { spawn } from "child_process";
-import { APP_NAME, APP_TITLE, CONFIG_DIR_NAME, getAgentDir, getAuthPath, getDebugLogPath, getDocsPath, VERSION, } from "../../config.js";
+import { APP_NAME, APP_TITLE, CONFIG_DIR_NAME, detectInstallChange, getAgentDir, getAuthPath, getDebugLogPath, getDocsPath, VERSION, } from "../../config.js";
 import { parseSkillBlock } from "../../core/agent-session.js";
 import { SessionImportFileNotFoundError } from "../../core/agent-session-runtime.js";
 import { CACHE_TTL_MS, collectCacheMisses, computeCacheWaste, detectCacheMiss, } from "../../core/cache-stats.js";
@@ -38,6 +38,7 @@ import { getChangelogPath, getNewEntries, normalizeChangelogLinks, parseChangelo
 import { copyToClipboard, readClipboardFilePaths, readClipboardText } from "../../utils/clipboard.js";
 import { extensionForImageMimeType, readClipboardImage } from "../../utils/clipboard-image.js";
 import { parseGitUrl } from "../../utils/git.js";
+import { ensurePngTranscoder } from "../../utils/image-convert.js";
 import { getCwdRelativePath } from "../../utils/paths.js";
 import { getPiUserAgent } from "../../utils/pi-user-agent.js";
 import { killTrackedDetachedChildren } from "../../utils/shell.js";
@@ -54,9 +55,9 @@ import { CompactionSummaryMessageComponent } from "./components/compaction-summa
 import { CustomEditor } from "./components/custom-editor.js";
 import { CustomEntryComponent } from "./components/custom-entry.js";
 import { CustomMessageComponent } from "./components/custom-message.js";
-import { DaxnutsComponent } from "./components/daxnuts.js";
 import { DynamicBorder } from "./components/dynamic-border.js";
 import { EarendilAnnouncementComponent } from "./components/earendil-announcement.js";
+import { playArmin3d, playPiLogo3d } from "./components/easter-egg-3d.lazy.js";
 import { ExtensionEditorComponent } from "./components/extension-editor.js";
 import { ExtensionInputComponent } from "./components/extension-input.js";
 import { ExtensionSelectorComponent } from "./components/extension-selector.js";
@@ -67,7 +68,6 @@ import { createMermaidMarkdownTransformer } from "./components/mermaid.js";
 import { ModelSelectorComponent } from "./components/model-selector.js";
 import { formatAuthSelectorProviderStatus, formatAuthSelectorProviderType, OAuthSelectorComponent, } from "./components/oauth-selector.js";
 import { piLogoLines, piWordmark, supportsPiLogo } from "./components/pi-logo.js";
-import { playPiLogoAnimation } from "./components/pi-logo-animation.lazy.js";
 import { createLoginMenuSelector } from "./components/radius-login-selector.js";
 import { ScopedModelsSelectorComponent } from "./components/scoped-models-selector.js";
 import { SessionSelectorComponent } from "./components/session-selector.js";
@@ -129,7 +129,9 @@ function isCompactionCostNotice(item) {
 function isUsageSessionEntry(item) {
     return "type" in item && item.type === "usage";
 }
-const DEAD_TERMINAL_ERROR_CODES = new Set(["EIO", "EPIPE", "ENOTCONN"]);
+// EIO: tty reads/ioctls from an orphaned background process group, or writes after hangup.
+// ENOTTY: the tty was revoked (macOS) and stdin is no longer a terminal.
+const DEAD_TERMINAL_ERROR_CODES = new Set(["EIO", "EPIPE", "ENOTCONN", "ENOTTY"]);
 function isDeadTerminalError(error) {
     if (!error || typeof error !== "object" || !("code" in error)) {
         return false;
@@ -314,6 +316,7 @@ export class InteractiveMode {
     shutdownRequested = false;
     /** The `/bug` hint is shown at most once per session so error output stays readable. */
     bugReportHintShown = false;
+    installChangeWarningShown = false;
     // Extension UI state
     extensionSelector = undefined;
     extensionInput = undefined;
@@ -699,6 +702,7 @@ export class InteractiveMode {
         // Start the UI before initializing extensions so session_start handlers can use interactive dialogs
         this.ui.start();
         this.isInitialized = true;
+        this.ensurePngTranscoder();
         this.themeController.applyFromSettings();
         // The header and startup notices bake theme colors into their text, so build them once the terminal
         // reported its colors. This ends at the terminal's DA1 reply, or after 100 ms if it answers nothing.
@@ -750,7 +754,7 @@ export class InteractiveMode {
             const onboarding = () => theme.fg("dim", `Pi can explain its own features and look up its docs. Ask it how to use or extend Pi.`);
             const header = new BuiltInHeader(() => `${withLogo(compactInstructions())}\n${compactOnboarding()}\n\n${onboarding()}`, () => `${withLogo(expandedInstructions())}\n\n${onboarding()}`, this.getStartupExpansionState(), 1, 0);
             if (showLogo)
-                header.onLogoClick = (column, row) => playPiLogoAnimation(this.renderer, column, row);
+                header.onLogoClick = (column, row) => playPiLogo3d(this.renderer, column, row);
             this.builtInHeader = header;
             // Setup UI layout
             this.headerContainer.addChild(new Spacer(1));
@@ -1541,8 +1545,16 @@ export class InteractiveMode {
     applyFullscreenScrollbarSetting() {
         this.transcriptScrollView?.setScrollbar(this.settingsManager.getFullscreenScrollbar());
     }
+    /** Lets extension images use the PNG transcoder; tool results register it themselves. */
+    ensurePngTranscoder() {
+        ensurePngTranscoder(() => {
+            this.ui.invalidate();
+            this.ui.requestRender();
+        });
+    }
     applyRuntimeSettings() {
         setCapabilityOverrides(this.settingsManager.getTerminalCapabilityOverrides());
+        this.ensurePngTranscoder();
         configureHttpDispatcher(this.settingsManager.getHttpIdleTimeoutMs());
         this.applyFullscreenScrollbarSetting();
         if (this.renderer instanceof TuiAltScreen) {
@@ -1642,7 +1654,31 @@ export class InteractiveMode {
             return;
         if (/\b(?:abort(?:ed)?|cancel(?:l?ed)?)\b/i.test(message.errorMessage ?? ""))
             return;
+        if (this.maybeShowInstallChangeWarning())
+            return;
         this.suggestBugReport();
+    }
+    /**
+     * After an error, check whether an update replaced or removed this install while the session ran.
+     * Code loaded on demand then fails with missing modules until restart (#10439). Returns true when
+     * the install changed.
+     */
+    maybeShowInstallChangeWarning() {
+        if (this.installChangeWarningShown)
+            return true;
+        const change = detectInstallChange();
+        if (!change)
+            return false;
+        this.installChangeWarningShown = true;
+        const cause = change.kind === "updated"
+            ? `${APP_NAME} was updated to ${change.version} while this session was running (${VERSION})`
+            : `The ${APP_NAME} installation this session runs from was removed or replaced`;
+        const resumeCommand = formatResumeCommand(this.sessionManager);
+        const restart = resumeCommand
+            ? `Restart with \`${resumeCommand}\` to continue this session.`
+            : `Restart ${APP_NAME}.`;
+        this.showWarning(`${cause}. Features that load code on demand can fail until restart. ${restart}`);
+        return true;
     }
     renderCurrentSessionState() {
         this.loadedResourcesContainer.clear();
@@ -1662,7 +1698,7 @@ export class InteractiveMode {
      * whatever this returns, so they never reach into the tool registry themselves.
      */
     getRegisteredToolDefinition(toolName) {
-        return withBuiltInRenderers(toolName, this.session.getToolDefinition(toolName));
+        return this.session.extensionRunner.resolveToolRenderers(toolName, () => withBuiltInRenderers(toolName, this.session.getToolDefinition(toolName)));
     }
     getMarkdownTransformers() {
         return [this.mermaidMarkdownTransformer, ...this.session.extensionRunner.getMarkdownTransformers()];
@@ -2886,6 +2922,8 @@ export class InteractiveMode {
                 break;
             }
             case "tool_execution_end": {
+                if (event.isError)
+                    this.maybeShowInstallChangeWarning();
                 const component = this.pendingTools.get(event.toolCallId);
                 if (component) {
                     component.updateResult({ ...event.result, isError: event.isError });
@@ -3470,6 +3508,10 @@ export class InteractiveMode {
      * paste / Kitty / modifyOtherKeys sequences.
      */
     uncaughtCrash(error) {
+        // A dead terminal is not a pi crash. Do not try to restore it or record it.
+        if (isDeadTerminalError(error)) {
+            this.emergencyTerminalExit();
+        }
         if (this.isShuttingDown) {
             process.exit(1);
         }
@@ -3528,10 +3570,13 @@ export class InteractiveMode {
             }
             throw error;
         };
-        process.stdout.on("error", terminalErrorHandler);
-        process.stderr.on("error", terminalErrorHandler);
-        this.signalCleanupHandlers.push(() => process.stdout.off("error", terminalErrorHandler));
-        this.signalCleanupHandlers.push(() => process.stderr.off("error", terminalErrorHandler));
+        // stdin needs the handler too: once the terminal is gone, reads and setRawMode
+        // fail with EIO (orphaned background process group) or ENOTTY (revoked tty).
+        // Node emits these as stream errors, which are uncaught without a listener.
+        for (const stream of [process.stdin, process.stdout, process.stderr]) {
+            stream.on("error", terminalErrorHandler);
+            this.signalCleanupHandlers.push(() => stream.off("error", terminalErrorHandler));
+        }
         // Restore the terminal before the process dies on any uncaught throw.
         // Without this, an unhandled exception from extension code (or anywhere
         // in pi) leaves the terminal in raw mode with no cursor.
@@ -4258,7 +4303,6 @@ export class InteractiveMode {
                 this.updateEditorBorderColor();
                 this.showStatus(`Model: ${model.id}`);
                 void this.maybeWarnAboutAnthropicSubscriptionAuth(model);
-                this.checkDaxnutsEasterEgg(model);
             }
             catch (error) {
                 this.showError(error instanceof Error ? error.message : String(error));
@@ -4391,7 +4435,6 @@ export class InteractiveMode {
                     done();
                     this.showStatus(persist ? `Default model: ${model.provider}/${model.id}` : `Model: ${model.id}`);
                     void this.maybeWarnAboutAnthropicSubscriptionAuth(model);
-                    this.checkDaxnutsEasterEgg(model);
                 }
                 catch (error) {
                     done();
@@ -5033,7 +5076,6 @@ export class InteractiveMode {
             if (selectedModel) {
                 this.showStatus(`${actionLabel}. Selected ${selectedModel.id}. Credentials saved to ${getAuthPath()}`);
                 void this.maybeWarnAboutAnthropicSubscriptionAuth(selectedModel);
-                this.checkDaxnutsEasterEgg(selectedModel);
             }
             else {
                 this.showStatus(`${actionLabel}. Credentials saved to ${getAuthPath()}`);
@@ -5780,6 +5822,8 @@ export class InteractiveMode {
         this.ui.requestRender();
     }
     handleArminSaysHi() {
+        if (playArmin3d(this.renderer))
+            return;
         this.chatContainer.addChild(new Spacer(1));
         this.chatContainer.addChild(new ArminComponent(this.ui));
         this.ui.requestRender();
@@ -5788,16 +5832,6 @@ export class InteractiveMode {
         this.chatContainer.addChild(new Spacer(1));
         this.chatContainer.addChild(new EarendilAnnouncementComponent());
         this.ui.requestRender();
-    }
-    handleDaxnuts() {
-        this.chatContainer.addChild(new Spacer(1));
-        this.chatContainer.addChild(new DaxnutsComponent(this.ui));
-        this.ui.requestRender();
-    }
-    checkDaxnutsEasterEgg(model) {
-        if (model.provider === "opencode" && model.id.toLowerCase().includes("kimi-k2.5")) {
-            this.handleDaxnuts();
-        }
     }
     async handleBashCommand(command, excludeFromContext = false) {
         const extensionRunner = this.session.extensionRunner;

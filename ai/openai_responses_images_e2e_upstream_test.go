@@ -28,7 +28,7 @@ func responsesImageCases() []responsesImageTestCase {
 		// .upstream/v0.87.1/packages/ai/test/openai-responses-tool-result-images.test.ts:150
 		{"openai", "gpt-5-mini", "PIG_LIVE_OPENAI_API_KEY"},
 		// .upstream/v0.87.1/packages/ai/test/openai-responses-tool-result-images.test.ts:160
-		{"azure-openai-responses", "gpt-4o-mini", "PIG_LIVE_AZURE_OPENAI_API_KEY"},
+		{"azure", "gpt-4o-mini", "PIG_LIVE_AZURE_OPENAI_API_KEY"},
 		// .upstream/v0.87.1/packages/ai/test/openai-responses-tool-result-images.test.ts:168
 		{"github-copilot", "gpt-5-mini", "PIG_LIVE_COPILOT_TOKEN"},
 		// .upstream/v0.87.1/packages/ai/test/openai-responses-tool-result-images.test.ts:183
@@ -64,13 +64,13 @@ func TestAzureDeploymentPreservesLogicalModelAndImageReplay(t *testing.T) {
 	}
 	encoded := base64.StdEncoding.EncodeToString(image)
 	baseURL := responsesImageFauxEndpoint(t, false, encoded, "image-deployment")
-	runResponsesImageCase(t, t.Context(), "azure-openai-responses", "gpt-4o-mini", "test", baseURL, encoded, true)
+	runResponsesImageCase(t, t.Context(), "azure", "gpt-4o-mini", "test", baseURL, encoded, true)
 }
 
 func responsesImageProvider(t *testing.T, providerID, model, key, baseURL string) Provider {
 	t.Helper()
 	switch providerID {
-	case "azure-openai-responses":
+	case "azure":
 		return NewAzureOpenAIResponsesProvider(AzureOpenAIResponsesConfig{APIKey: key, Model: model, BaseURL: baseURL})
 	case "openai-codex":
 		return NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{APIKey: key, Model: model, BaseURL: baseURL})
@@ -103,7 +103,7 @@ func runResponsesImageCase(t *testing.T, ctx context.Context, providerID, model,
 		}
 	})
 	options := StreamOptions{}
-	if providerID != "azure-openai-responses" {
+	if providerID != "azure" {
 		options.Thinking = ThinkingLow
 		options.IsReasoning = true
 	}

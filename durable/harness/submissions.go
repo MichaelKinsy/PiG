@@ -5,7 +5,7 @@ package harness
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
@@ -44,7 +44,9 @@ type Submissions struct {
 	// resume enables task scheduling; submitting or waiting asks for progress.
 	resume  func()
 	waiters Waiters[durable.SubmissionId, durable.SettledSubmissionRecord]
-	closed  atomic.Bool
+	// closeMu makes Wait's closed check and waiter registration one step with respect to close, which upstream's single thread gives for free: a waiter registered after RejectAll would never settle.
+	closeMu sync.Mutex
+	closed  bool
 }
 
 // NewSubmissions subscribes to the Session's commits and close.
@@ -52,7 +54,9 @@ func NewSubmissions(line *session.SessionImpl, storage durable.Storage, now func
 	submissions := &Submissions{line: line, storage: storage, now: now, queueModes: queueModes, resume: resume}
 	line.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) { submissions.observe(publication) })
 	line.SubscribeClose(func() {
-		submissions.closed.Store(true)
+		submissions.closeMu.Lock()
+		submissions.closed = true
+		submissions.closeMu.Unlock()
 		submissions.waiters.RejectAll(ErrClosed)
 	})
 	return submissions
@@ -115,7 +119,9 @@ func (submissions *Submissions) Wait(ctx context.Context, id durable.SubmissionI
 			return found{record: record}, nil
 		}
 		// Close rejects registered waiters synchronously and may begin during the read.
-		if submissions.closed.Load() {
+		submissions.closeMu.Lock()
+		defer submissions.closeMu.Unlock()
+		if submissions.closed {
 			return found{}, ErrClosed
 		}
 		return found{waiter: submissions.waiters.Add(ctx, id)}, nil

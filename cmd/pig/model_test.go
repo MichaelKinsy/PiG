@@ -158,12 +158,12 @@ func TestResolveModel_ThreadsAzureScopedEnv(t *testing.T) {
 	defer srv.Close()
 
 	dir := t.TempDir()
-	models := `{"providers":{"azure-openai-responses":{"baseUrl":"` + srv.URL + `","apiKey":"k",` +
+	models := `{"providers":{"azure":{"baseUrl":"` + srv.URL + `","apiKey":"k",` +
 		`"api":"azure-openai-responses","models":[{"id":"m1","name":"M1"}]}}}`
 	if err := os.WriteFile(filepath.Join(dir, "models.json"), []byte(models), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	authJSON := `{"azure-openai-responses":{"type":"api_key","key":"k","env":{"AZURE_OPENAI_API_VERSION":"scoped-ver"}}}`
+	authJSON := `{"azure":{"type":"api_key","key":"k","env":{"AZURE_OPENAI_API_VERSION":"scoped-ver"}}}`
 	if err := os.WriteFile(filepath.Join(dir, "auth.json"), []byte(authJSON), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +175,7 @@ func TestResolveModel_ThreadsAzureScopedEnv(t *testing.T) {
 	t.Setenv("AZURE_OPENAI_API_VERSION", "process-ver")
 	t.Setenv("AZURE_OPENAI_API_KEY", "k")
 
-	model, _, _, err := resolveModel("azure-openai-responses/m1", "", codingagent.Settings{}, testServices(t, dir))
+	model, _, _, err := resolveModel("azure/m1", "", codingagent.Settings{}, testServices(t, dir))
 	if err != nil {
 		t.Fatalf("resolveModel: %v", err)
 	}

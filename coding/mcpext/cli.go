@@ -135,9 +135,11 @@ Other options:
 
 // serverReport is the state of one server as `list` prints it.
 type serverReport struct {
-	name      string
-	scope     string
-	source    string
+	name   string
+	scope  string
+	source string
+	// override is the project `mcp.json` that overrides `enabled`, `exposure`, or `toolExposure` of this global server.
+	override  string
 	enabled   bool
 	exposure  string
 	transport string
@@ -595,7 +597,7 @@ func (c *mcpCLI) report(ctx context.Context, entry McpServerEntry, credentials *
 		scope = "global"
 	}
 	report := serverReport{
-		name: entry.Name, scope: scope, source: entry.Source,
+		name: entry.Name, scope: scope, source: entry.Source, override: entry.Override,
 		enabled:   config.Enabled == nil || *config.Enabled,
 		exposure:  string(exposureOf(entry)),
 		transport: describeTransport(entry),
@@ -635,6 +637,9 @@ func (r serverReport) jsonObject() *orderedjson.Object {
 	_ = object.SetValue("name", r.name)
 	_ = object.SetValue("scope", r.scope)
 	_ = object.SetValue("source", r.source)
+	if r.override != "" {
+		_ = object.SetValue("override", r.override)
+	}
 	_ = object.SetValue("enabled", r.enabled)
 	_ = object.SetValue("exposure", r.exposure)
 	_ = object.SetValue("transport", r.transport)
@@ -718,6 +723,9 @@ func (c *mcpCLI) list(ctx context.Context, loaded LoadedMcpConfig, asJSON bool, 
 		}
 		c.log(fmt.Sprintf("%s: %s (%s, %s)", report.name, state, report.exposure, report.scope))
 		c.log("  " + report.transport)
+		if report.override != "" {
+			c.log("  project override: " + report.override)
+		}
 		if report.state == string(StateNeedsAuth) {
 			c.log(fmt.Sprintf("  sign in with: %s mcp login %s", c.app, report.name))
 		}
