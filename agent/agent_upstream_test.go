@@ -91,9 +91,11 @@ func TestAgent_EmitsFullLifecycleEventsForThrownRunFailures(t *testing.T) {
 // still busy with the turn's last events holds the run (and agent_end) open.
 func TestAgent_AwaitsSubscribersBeforePromptResolves(t *testing.T) {
 	barrier := make(chan struct{})
+	listenerHolding := make(chan struct{})
 	listenerFinished := make(chan struct{})
 	rec := newEventRecorder(func(ev AgentEvent) {
 		if _, ok := ev.(TurnEndEvent); ok {
+			close(listenerHolding)
 			<-barrier
 			close(listenerFinished)
 		}
@@ -101,7 +103,8 @@ func TestAgent_AwaitsSubscribersBeforePromptResolves(t *testing.T) {
 	a := NewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("ok")}), EventCh: rec.ch})
 
 	resolved := sendAsync(t, a, "hello")
-	time.Sleep(10 * time.Millisecond)
+	// The listener now holds the run open at turn_end.
+	waitSignal(t, listenerHolding, "listener holding turn_end")
 	select {
 	case <-resolved:
 		t.Fatal("prompt resolved before the listener finished")
