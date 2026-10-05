@@ -3,7 +3,6 @@ package codingagent
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 	"time"
 
@@ -177,9 +176,10 @@ func TestInputHandlerDeclinedQuestionSendsNothing(t *testing.T) {
 }
 
 // Two submissions made back to back reach the extensions in the order they were
-// typed, one dispatch at a time, and neither is lost: the second is delivered as
-// a steering message into the turn the first started, which is what upstream does
-// with a prompt submitted while a run is active.
+// typed, one dispatch at a time, and neither is lost: the second was typed while
+// idle, so it never steers the turn the first started; it is delivered after it,
+// as upstream runs a held idle submission as its own prompt once the active
+// prompt settles.
 func TestPromptDispatchSerialisesSubmissionsInOrder(t *testing.T) {
 	m, ctx, seen := newQuestionAskingMode(t)
 	var order []string
@@ -201,13 +201,7 @@ func TestPromptDispatchSerialisesSubmissionsInOrder(t *testing.T) {
 	for len(delivered) < 2 {
 		select {
 		case request := <-seen:
-			for _, message := range request.Messages {
-				if user, isUser := message.(ai.UserMessage); isUser {
-					if text := textOf(t, user.Content); text != "" {
-						delivered = append(delivered, text)
-					}
-				}
-			}
+			delivered = append(delivered, lastUserMessageText(t, request.Messages))
 		case <-deadline:
 			t.Fatalf("the provider saw %v, want both prompts", delivered)
 		}
@@ -219,24 +213,5 @@ func TestPromptDispatchSerialisesSubmissionsInOrder(t *testing.T) {
 	}
 	if delivered[0] != "first" || delivered[1] != "second" {
 		t.Fatalf("provider saw %v, want [first second]", delivered)
-	}
-}
-
-// textOf renders one user message's text content.
-func textOf(t *testing.T, content ai.UserContent) string {
-	t.Helper()
-	switch typed := content.(type) {
-	case ai.UserText:
-		return string(typed)
-	case ai.UserContentBlocks:
-		var parts []string
-		for _, block := range typed {
-			if text, isText := block.(ai.TextContent); isText {
-				parts = append(parts, text.Text)
-			}
-		}
-		return strings.Join(parts, "\n")
-	default:
-		return ""
 	}
 }

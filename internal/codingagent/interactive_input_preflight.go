@@ -45,6 +45,18 @@ type inputPreflight struct {
 	// text typed while idle starts a turn.
 	streaming bool
 	source    extension.InputSource
+	// session is the Session the submission was typed into. Upstream's prompt
+	// stays bound to the AgentSession it was called on, so a result that
+	// returns after /new, /resume or /fork replaced it is dropped.
+	session InteractiveSessionHandle
+}
+
+// heldPrompt is one idle submission waiting for the active run to settle.
+type heldPrompt struct {
+	ctx     context.Context
+	text    string
+	images  []ai.ImageContent
+	session InteractiveSessionHandle
 }
 
 // inputPreflightResult is what the handlers returned for one submission.
@@ -92,8 +104,12 @@ func (m *InteractiveMode) dispatchNextPreflight() {
 	m.preflight = &next
 	m.preflightMu.Unlock()
 
+	// Resolve the dispatch target here, on the owner loop: reload and session
+	// replacement reassign m.newRunner and m.opts.SessionHandle on the loop, so
+	// the worker must not read them.
+	run := m.inputHandlerDispatcher()
 	go func() {
-		text, images, handled, err := m.runInputHandlers(next.ctx, next.text, next.images, next.source, next.behavior)
+		text, images, handled, err := run(next.ctx, next.text, next.images, next.source, next.behavior)
 		// Everything the handlers produced is host state: expansion, queueing and
 		// the turn itself all belong to the owner loop. The result is posted there
 		// rather than applied here, and postToMain drops it once the session ends,
@@ -102,6 +118,18 @@ func (m *InteractiveMode) dispatchNextPreflight() {
 			m.finishPreflight(next, inputPreflightResult{text: text, images: images, handled: handled, err: err})
 		})
 	}()
+}
+
+// inputHandlerDispatcher captures the current input-handler entry point. It
+// runs on the owner loop.
+func (m *InteractiveMode) inputHandlerDispatcher() func(context.Context, string, []ai.ImageContent, extension.InputSource, string) (string, []ai.ImageContent, bool, error) {
+	if session := m.opts.SessionHandle; session != nil {
+		return session.RunInputHandlers
+	}
+	runner := m.newRunner
+	return func(ctx context.Context, text string, images []ai.ImageContent, source extension.InputSource, behavior string) (string, []ai.ImageContent, bool, error) {
+		return RunInputHandlers(ctx, runner, text, images, source, behavior)
+	}
 }
 
 // endPreflightDispatch clears the in-flight submission and starts the next one.
@@ -126,6 +154,9 @@ func (m *InteractiveMode) preflightPending() bool {
 func (m *InteractiveMode) finishPreflight(submission inputPreflight, result inputPreflightResult) {
 	defer m.endPreflightDispatch()
 	switch {
+	case submission.session != m.opts.SessionHandle:
+		// The Session was replaced while the handlers ran; the result belonged
+		// to the old one.
 	case result.err != nil:
 		// Upstream prompt() rejects and the input is not sent; the error is
 		// shown.
@@ -144,9 +175,8 @@ func (m *InteractiveMode) finishPreflight(submission inputPreflight, result inpu
 		}
 		// Upstream rechecks streaming after the input await (agent-session.ts
 		// `_queueUserInput`): a run that started while the handlers ran receives
-		// the text instead of a second concurrent turn. Text typed while idle
-		// with no run to receive it still starts a turn.
-		if (submission.streaming || m.runStreaming()) && m.enqueueIfTurnActive(func() {
+		// text the user typed while working as a steer or follow-up.
+		if submission.streaming && m.enqueueIfTurnActive(func() {
 			if submission.followUp {
 				m.followUpMessageWithImages(text, result.images)
 			} else {
@@ -155,6 +185,49 @@ func (m *InteractiveMode) finishPreflight(submission inputPreflight, result inpu
 		}) {
 			break
 		}
+		// Text typed while idle never joins another run. Upstream holds it in
+		// pendingUserInputs (interactive-mode.ts onSubmit) and its main loop
+		// prompts each entry only after the previous prompt settled
+		// (getUserInput / session.prompt), so it waits here, behind any text
+		// already held, and runs as its own prompt.
+		if m.runStreaming() || len(m.heldPrompts) > 0 {
+			m.heldPrompts = append(m.heldPrompts, heldPrompt{ctx: submission.ctx, text: text, images: result.images, session: submission.session})
+			m.runHeldPrompts()
+			break
+		}
 		m.runPromptTurnWithImages(submission.ctx, text, result.images)
 	}
+}
+
+// runHeldPrompts starts the oldest held prompt when no run is active, or waits
+// off the loop for the active run to settle and tries again. It runs on the
+// owner loop.
+func (m *InteractiveMode) runHeldPrompts() {
+	if m.heldWaiting || len(m.heldPrompts) == 0 {
+		return
+	}
+	if m.runStreaming() {
+		m.heldWaiting = true
+		ctx := m.runCtx
+		if ctx == nil {
+			ctx = context.Background()
+		}
+		go func() {
+			if m.waitForIdle(ctx) != nil {
+				return
+			}
+			m.runOnMain(ctx, func() {
+				m.heldWaiting = false
+				m.runHeldPrompts()
+			})
+		}()
+		return
+	}
+	next := m.heldPrompts[0]
+	m.heldPrompts[0] = heldPrompt{}
+	m.heldPrompts = m.heldPrompts[1:]
+	if next.session == m.opts.SessionHandle {
+		m.runPromptTurnWithImages(next.ctx, next.text, next.images)
+	}
+	m.runHeldPrompts()
 }

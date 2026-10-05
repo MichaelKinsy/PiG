@@ -123,8 +123,11 @@ func (m *InteractiveMode) promptUserInput(ctx context.Context, text string, imag
 		behavior:  behavior,
 		streaming: streaming,
 		source:    source,
+		session:   m.opts.SessionHandle,
 	}
-	if !m.inputHandlersRegistered() {
+	// The synchronous path must not overtake, or clear, a dispatch still in
+	// flight (handlers can be unloaded by /reload while one runs).
+	if !m.inputHandlersRegistered() && !m.preflightPending() {
 		text, images, handled, err := m.runInputHandlers(ctx, text, images, source, behavior)
 		m.finishPreflight(submission, inputPreflightResult{text: text, images: images, handled: handled, err: err})
 		return

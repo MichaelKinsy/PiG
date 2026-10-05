@@ -401,6 +401,12 @@ type InteractiveMode struct {
 	preflightMu    sync.Mutex
 	preflight      *inputPreflight
 	preflightQueue []inputPreflight
+	// heldPrompts is upstream's pendingUserInputs for submissions typed while
+	// idle whose handlers returned after a run had started; each runs as its own
+	// prompt once the run settles. heldWaiting marks a goroutine waiting for
+	// that. The owner loop owns both.
+	heldPrompts []heldPrompt
+	heldWaiting bool
 
 	// eventCh is the agent's live event stream (m.opts.SessionHandle.Events()).
 	// The inputLoop select drains it and calls handleAgentEvent on the main
