@@ -1276,6 +1276,8 @@ Parity allowance: Pi keeps the old code of an edited ES module, so no paired sce
 
 Remove when: Pi's loader evaluates an edited ES module extension again on `/reload` (upstream issue drafted 2026-10-04).
 
+SCRUTINIZED:approved
+
 ## D94 Subprocess editor working status runs from host snapshots
 
 What: When a subprocess editor opts into embedded working status, Pi runs the StatusIndicator's own animation timer inside the editor and re-checks `isWorkingStatusEditor` each time a status is shown. PiG advances the animation on the host and sends the editor snapshots (`RemoteEditorStatus`), so the JavaScript side builds the indicator with empty initial frames and takes the frames and frame index from the snapshot. PiG also reads the opt-in once, at editor install, and the Go host places the status from it; an editor that changes `embedWorkingStatus` afterwards is not re-checked. The working colors match Pi: the editor's own `borderColor`, read at render time.
