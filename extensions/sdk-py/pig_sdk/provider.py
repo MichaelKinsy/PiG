@@ -17,11 +17,8 @@ def _release_provider(extension, handle, token):
     owner = extension()
     if owner is None or owner._shutdown.is_set():
         return
-    try:
-        owner._send({"type": "call", "call": {"method": "provider.release", "args": {"handle": handle, "token": token}}})
-    except OSError:
-        # Connection shutdown also releases every reference owned by this peer.
-        return
+    # A finalizer may run on a thread that holds the write lock; queue the release instead of sending it.
+    owner._send_from_finalizer({"type": "call", "call": {"method": "provider.release", "args": {"handle": handle, "token": token}}})
 
 
 class ProviderSignal(threading.Event):

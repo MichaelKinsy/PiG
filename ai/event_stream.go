@@ -249,6 +249,17 @@ func (s *AssistantMessageEventStream) ResultContext(ctx context.Context) (*Assis
 		observation := executor.observation
 		executor.mu.Unlock()
 		if observation != nil && observation.ownedByCaller() {
+			select {
+			case <-s.done:
+				if ctx.Err() == nil {
+					// An already settled result is an await of a resolved promise: its resume reaction is queued before execution is released, so it does not depend on when this goroutine is next scheduled.
+					observation.Yield()
+					s.mu.Lock()
+					defer s.mu.Unlock()
+					return s.result, nil
+				}
+			default:
+			}
 			resume := observation.suspend()
 			defer func() { resume(ctx.Err() == nil) }()
 		}
