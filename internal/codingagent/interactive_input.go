@@ -473,6 +473,11 @@ func (m *InteractiveMode) dispatchKey(ctx context.Context, data string) error {
 // subprocess terminal-input listener must answer first, it returns before the
 // keystroke is handled, and handling resumes on the main loop with the verdict.
 func (m *InteractiveMode) dispatchInputChunk(ctx context.Context, data string, ticket *inputTicket) error {
+	// pig additive (D91): frontend protocol replies and events never reach
+	// key handling.
+	if m.frontendInput(data) {
+		return nil
+	}
 	if m.consumeTerminalThemeInput(data) {
 		return nil
 	}

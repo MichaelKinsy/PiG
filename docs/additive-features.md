@@ -864,6 +864,31 @@ SCRUTINIZED:approved
 
 ---
 
+## D91 Piglet frontend members draw the interactive mode
+
+Stock disposition: required substrate. A Piglet cannot supply the seam that lets its own frontend member take the interactive screen; the seam selects nothing on its own.
+
+What: a Piglet Binary can fuse one Go frontend member (`build.frontend`, a directory of a Go module whose root package exports `func Frontend() frontend.Frontend` from `github.com/MichaelKinsy/PiG/extensions/sdk/frontend`). The member's `Open` runs once per interactive run, after raw mode and before the first paint. A member that returns a session draws the run: PiG keeps building Pi's component tree, and the `tui.TuiSurface` renderer reports each frame as retained-tree ops keyed by stable component ids, transcript entries in the main region and the input dock in the dock region. Tool cards arrive as semantic `ToolCard` nodes (name, decoded arguments, plain call header, status, output, a registered definition's result rendering); every other component arrives as the ANSI lines it rendered, at the region width the session reports. Terminal input that the session claims, during startup and in the input loop, never reaches key handling. A session that asks for a fallback, or fails to draw a frame, is closed and the run continues with the configured ANSI renderer, repainting the whole tree with a warning. While a session draws, a TUI mode switch is refused. Teardown closes the session before input pauses, so the drain discards its in-flight answers. The member is not part of the extension API: it has no wire protocol and no subprocess realization, and only the native builder fuses it.
+
+Pi source: Pi 1.0.1 paints the interactive mode only through `TuiMainScreen` and `TuiAltScreen` (`packages/coding-agent/src/modes/interactive/tui-renderer.ts`). It has no Piglet and no frontend member.
+
+Why: the owner approved a renderer seam for Tern-native rendering through Piglets (issue #92; Piglet slots design, D91), with the first slice limited to the seam and tool cards (2026-10-04). The P0 spike showed that D89 tool renderers alone cannot place native cards: a rendered line cannot leave the alternate screen, address a card after another surface opens, or account for the grid rows a surface anchors.
+
+Stock behavior: Stock PiG compiles `internal/frontendpack` with no member, so `InteractiveOptions.Frontend` is nil and every frontend path returns before it acts. Stock output is unchanged.
+
+Call-site markers: `extensions/sdk/frontend/frontend.go` (contract), `tui/tui_surface.go` (`TuiSurface`), `internal/codingagent/interactive_frontend.go` (`openFrontend`, `leaveFrontend`, `closeFrontend`), `internal/codingagent/interactive_input.go` (`dispatchInputChunk`), `internal/codingagent/startup_input.go` (`handleStartupInput`), `internal/codingagent/interactive_tui.go` (`mountInteractiveTui`, `switchTuiMode`, `stopInteractiveTui`), `internal/codingagent/interactive.go` (`InteractiveOptions.Frontend`), `cmd/pig/main.go`, `internal/frontendpack/frontendpack.go`, `coding/piglet/types.go` (`BuildSpec.Frontend`), `coding/piglet/origins.go` (`FrontendDir`), `coding/pigletbuild/native_build.go` (`overlayFuse`, `resolveFrontendMember`), `coding/pigletbuild/records.go` (frontend build input), `coding/pigletbuild/container_builder.go`.
+
+Locked by: `TestDiffSurfaceRegionReplaysToNext` (2000 random region changes replay to the next tree), `TestTuiSurfaceParallelToolsUpdateTheirOwnNodes`, `TestTuiSurfaceToolStatusFollowsTheCardLifecycle`, `TestTuiSurfaceRendersRegionsAtSessionWidths`, `TestTuiSurfaceSendsADefinitionsResultWithoutItsCall` and the other `TestTuiSurface*` tests in `tui/tui_surface_test.go`; `TestFrontendSessionDrawsTheRunInsteadOfTheTerminal`, `TestFrontendThatDeclinesLeavesTheANSIRenderer`, `TestFrontendFallbackRepaintsWithTheConfiguredRenderer` (regular and fullscreen), `TestFrontendInputNeverReachesTheEditor` (startup and loop input), `TestFrontendKeepsTheScreenAgainstATuiModeSwitch` and `TestFrontendSessionClosesOnceAtTeardown` in `internal/codingagent/interactive_frontend_test.go`; `TestOverlayFuseRegistersFrontendMember` (the generated registry compiles), `TestValidateRejectsUnresolvedAndEmptyPiglets` and `TestFrontendDirResolvesInsideThePigletDirectory`. Mutation checks: dropping the moved-entry removal in `diffSurfaceRegion`, mapping started cards to pending, and removing the startup input route each fail their test.
+
+Parity allowance: no Pi scenario selects a frontend member; Stock PiG runs none.
+
+Remove when: Pi gains an equivalent frontend seam, or PiG stops supporting Piglet frontend members.
+
+Approval: owner Michael Kinsy, 2026-10-04 (seam and tool cards as the first D91 pull request).
+SCRUTINIZED:approved
+
+---
+
 ## D95 Install-change restart warning for a running native executable
 
 Stock disposition: inert capability. It detects a changed install and shows one warning. It selects no product behavior and runs no extension code.

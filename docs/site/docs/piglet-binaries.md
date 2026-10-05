@@ -267,6 +267,29 @@ PiG Standard uses this requirement. Every extension added to PiG Standard must:
 - work as a fused component;
 - pass the same behavior and lifecycle tests in both modes.
 
+## Frontend members
+
+A Piglet Binary can fuse one frontend member that draws the interactive mode in place of PiG's terminal renderer (D91). Pi has no equivalent: Stock PiG and a Piglet without a frontend member paint exactly as Pi does.
+
+```yaml
+build:
+  frontend: ./frontend
+```
+
+`build.frontend` names a directory inside the Piglet's directory. It holds a Go module whose root package exports:
+
+```go
+func Frontend() frontend.Frontend
+```
+
+The `frontend` package is `github.com/MichaelKinsy/PiG/extensions/sdk/frontend`. A frontend member uses only the Go SDK module. It is not an extension: it has no wire protocol and runs only fused, and only the native builder fuses it. A Piglet may have a frontend member and no extensions.
+
+On every interactive start, PiG calls the member's `Open` after the terminal enters raw mode and before the first paint. A member that returns no session leaves the terminal renderer in place. A session receives the interactive screen as retained-tree frames: transcript entries in the main region and the input dock in the dock region. Tool calls arrive as tool nodes with their arguments, status and output. Every other component arrives as the terminal lines it rendered, at the width the session reports for its region. Terminal input that the session claims never reaches the editor.
+
+When a session asks to fall back, or fails to draw a frame, PiG closes it, repaints with its configured terminal renderer and shows a warning. While a session draws, PiG refuses to switch the TUI mode. `--print`, JSON and RPC modes never consult the member.
+
+The member's source is part of the Binary's identity: its tree digest is a `frontend` input in the resolution record.
+
 ## Startup verification
 
 A Piglet Binary verifies its embedded Piglet, component closure, and optional Ed25519 signature before command dispatch. A signed Binary refuses to run when any executable or signature byte changes. An unsigned Binary reports unsigned and runs unless the local trust policy requires every Piglet Binary to carry a trusted signature.

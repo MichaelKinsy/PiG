@@ -19,10 +19,12 @@ func (m *InteractiveMode) handleStartupSubmit(text string) {
 	m.showStatus("Startup is still in progress")
 }
 
-// handleStartupInput gives one early input sequence to the editor, keeping terminal theme replies out of it.
+// handleStartupInput gives one early input sequence to the editor, keeping frontend protocol input and terminal theme replies out of it.
 func (m *InteractiveMode) handleStartupInput(input inputChunk, render bool) {
 	defer input.ticket.settle()
-	if m.consumeTerminalThemeInput(string(input.data)) {
+	// pig additive (D91): a frontend's answers to its Open queries arrive
+	// during startup.
+	if m.frontendInput(string(input.data)) || m.consumeTerminalThemeInput(string(input.data)) {
 		return
 	}
 	m.editor.HandleInput(string(input.data))

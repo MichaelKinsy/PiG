@@ -176,15 +176,16 @@ type Verdict struct {
 }
 
 // Validate rejects unresolved or empty Piglet extension sets and enforces an
-// authored realization requirement. Advisory target compatibility warnings are
-// represented in the plan and do not masquerade as a successful self-contained
-// target.
-func Validate(plan Plan, resolutionWarnings []string, extensionCount int, requireFused bool) Verdict {
+// authored realization requirement. A Piglet with a frontend member has
+// something to build without extensions. Advisory target compatibility
+// warnings are represented in the plan and do not masquerade as a successful
+// self-contained target.
+func Validate(plan Plan, resolutionWarnings []string, extensionCount int, hasFrontend, requireFused bool) Verdict {
 	blockers := make([]string, 0, len(resolutionWarnings))
 	for _, warning := range resolutionWarnings {
 		blockers = append(blockers, "unresolved extension: "+warning)
 	}
-	if extensionCount == 0 {
+	if extensionCount == 0 && !hasFrontend {
 		blockers = append(blockers, "piglet resolves to no extensions")
 	}
 	for _, extension := range plan.Ext {

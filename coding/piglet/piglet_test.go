@@ -99,6 +99,9 @@ func TestParseBuildSpecRejectsInvalidDefaults(t *testing.T) {
 		{"duplicate target", "targets: [linux/amd64, linux/amd64]", "duplicates"},
 		{"output path", "outputName: dist/pig", "binary basename"},
 		{"extension realization", "extensionRealization: subprocess", "must be fused"},
+		{"absolute frontend", "frontend: /opt/tern", "relative path inside the Piglet directory"},
+		{"escaping frontend", "frontend: ../tern", "relative path inside the Piglet directory"},
+		{"nested escaping frontend", "frontend: member/../../tern", "relative path inside the Piglet directory"},
 		{"unknown field", "builder: docker", "field builder not found"},
 	}
 	for _, tc := range cases {

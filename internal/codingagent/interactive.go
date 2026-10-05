@@ -26,6 +26,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/llama"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
@@ -293,7 +294,14 @@ type InteractiveMode struct {
 	// mainScreenRenderState persists the regular renderer's captured render state
 	// across switch calls so a fullscreen round trip restores scrollback position.
 	// Mirrors upstream InteractiveMode.mainScreenRenderState.
-	mainScreenRenderState          *tui.TUIRenderState
+	mainScreenRenderState *tui.TUIRenderState
+	// surface is the frontend renderer while a Piglet frontend draws this run;
+	// m.tuiInst is the same object then. nil otherwise.
+	surface *tui.TuiSurface
+	// frontendStartupWarning reports a frontend that failed to open.
+	frontendStartupWarning string
+	// frontendCloseErr is reported once cooked output returns.
+	frontendCloseErr               error
 	workingMessage                 string
 	workingVisible                 bool
 	statusContainer                *tui.Container // standalone fallback when the editor does not embed status
@@ -828,6 +836,10 @@ type InteractiveOptions struct {
 	InitialThemeSetting *string
 	// TuiMode selects "regular" or "fullscreen" for this run without changing the SettingsManager. Empty captures Settings.TuiMode at construction; only a live mode switch changes it afterwards.
 	TuiMode string
+	// Frontend is the Piglet frontend member that may draw this run in place
+	// of the ANSI renderer; nil in Stock PiG.
+	// pig additive (D91): Pi has no frontend member.
+	Frontend frontend.Frontend
 	// SettingsManager provides read/write access to global settings.
 	// Wired by main.go via coding.Services.
 	SettingsManager *SettingsManager
@@ -1346,6 +1358,7 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 	mark("raw-mode-entered")
 	m.rawRestore = restore
 	m.rawDrain = drain
+	m.openFrontend()
 	m.tuiInst.HideCursor()
 	defer m.tuiInst.ShowCursor()
 	// Centralized, idempotent renderer teardown runs before the deferred cursor and cooked-mode restoration on normal quit or graceful signal shutdown. A dead-terminal emergency exits without unwinding these terminal writes.
@@ -1570,6 +1583,9 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 		m.showWarning(m.opts.NoModelWarning)
 	}
 	m.showCrashNotice()
+	if m.frontendStartupWarning != "" {
+		m.showWarning(m.frontendStartupWarning)
+	}
 
 	// Render resumed messages after loaded resources without clearing either.
 	if m.opts.ResumePath != "" {
@@ -1716,6 +1732,7 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 		})
 	}
 	mark("interactive-ready")
+	m.frontendInputReady()
 	return m.inputLoop(ctx, os.Stdin)
 }
 
