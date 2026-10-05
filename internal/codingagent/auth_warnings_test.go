@@ -121,3 +121,14 @@ func TestMaybeWarnAboutAnthropicSubscriptionAuthHonorsDisabledSetting(t *testing
 		t.Fatalf("shown = %t children = %d, want no warning", m.anthropicSubWarningShown, m.chatContainer.ChildCount())
 	}
 }
+
+// Pi passes the installation's device ID to every interactive login (interactive-mode.ts:6297); Sign in with
+// ChatGPT fails without it (#146).
+func TestInteractiveLoginDeviceIDComesFromSettings(t *testing.T) {
+	sm := NewSettingsManager(t.TempDir(), t.TempDir())
+	m := &InteractiveMode{opts: InteractiveOptions{SettingsManager: sm}}
+	id := m.loginDeviceID()
+	if id == "" || id != sm.GetOrCreateDeviceID() {
+		t.Fatalf("login device ID = %q, settings = %q", id, sm.GetOrCreateDeviceID())
+	}
+}

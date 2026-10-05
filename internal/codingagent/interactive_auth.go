@@ -326,6 +326,7 @@ func (m *InteractiveMode) runLoginRegisteredOAuth(loginCtx context.Context, prov
 	}
 
 	cb := ai.OAuthLoginCallbacks{
+		GetDeviceID:     m.loginDeviceID,
 		OnPrompt:        func(value ai.OAuthPrompt) (string, error) { return prompt(context.Background(), value) },
 		OnPromptContext: prompt,
 		OnDeviceCode: func(info ai.OAuthDeviceCodeInfo) {
@@ -468,6 +469,7 @@ func (m *InteractiveMode) runLoginOpenAICodex(loginCtx context.Context) error {
 	}
 
 	cb := ai.OAuthLoginCallbacks{
+		GetDeviceID: m.loginDeviceID,
 		OnSelect: func(ai.OAuthSelectPrompt) (string, error) {
 			return loginMethod, nil
 		},
@@ -804,4 +806,13 @@ var openBrowser = func(url string) error {
 func saveLoginCredential(ctx context.Context, auth *ai.AuthStorage, providerID string, credential ai.Credential) error {
 	_, err := auth.Modify(ctx, providerID, func(*ai.Credential) (*ai.Credential, error) { return &credential, nil })
 	return err
+}
+
+// loginDeviceID is the installation's device ID, which Pi passes to every login (interactive-mode.ts:6297) and Sign in
+// with ChatGPT sends as its agent host ID.
+func (m *InteractiveMode) loginDeviceID() string {
+	if m.opts.SettingsManager == nil {
+		return ""
+	}
+	return m.opts.SettingsManager.GetOrCreateDeviceID()
 }
