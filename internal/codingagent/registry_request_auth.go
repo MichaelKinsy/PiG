@@ -21,29 +21,55 @@ func (r *ModelRegistry) registryAuthConfig(id string) (ai.ProviderAuth, provider
 		base = ai.RadiusProviderAuth(radius)
 		baseErr = nil
 	}
-	config, configured := providerConfig{}, false
-	if r.config != nil {
-		config, configured = r.config.Providers[id]
-	}
-	if dynamic, ok := r.dynamic[id]; ok {
-		configured = true
-		if dynamic.APIKey != "" {
-			config.APIKey = dynamic.APIKey
-		}
-		if dynamic.AuthHeader != nil {
-			config.AuthHeader = dynamic.AuthHeader
-		}
-		config.Headers = maps.Clone(config.Headers)
-		if config.Headers == nil {
-			config.Headers = map[string]*string{}
-		}
-		maps.Copy(config.Headers, dynamic.Headers)
-		config.headerEntries = overlayHeaders(orderedHeaders(config.Headers, config.headerEntries), orderedHeaders(dynamic.Headers, dynamic.headerEntries))
-	}
+	config, configured := r.effectiveProviderConfigLocked(id)
 	if !configured {
 		return base, config, baseErr == nil
 	}
 	return ai.ProviderAuth{APIKey: composeAPIKeyAuth(id, base, config), OAuth: composeOAuthAuth(id, base.OAuth, config)}, config, true
+}
+
+// effectiveProviderConfigLocked composes the models.json provider configuration
+// with the extension registration that overrides it. Each field comes from the
+// registration when that registration defines one, else from models.json, as
+// upstream provider-composer.ts composes a provider's configuration and its
+// extension registration (configuredApiKey, configuredHeaders,
+// extension?.authHeader ?? config?.authHeader, extension?.oauth ??
+// base.auth.oauth). A registration that defines neither an apiKey nor an oauth
+// therefore leaves the models.json provider configuration in effect. The second
+// result reports whether either layer names the provider. The caller holds r.mu.
+func (r *ModelRegistry) effectiveProviderConfigLocked(id string) (providerConfig, bool) {
+	config, configured := providerConfig{}, false
+	if r.config != nil {
+		config, configured = r.config.Providers[id]
+	}
+	dynamic, registered := r.dynamic[id]
+	if !registered {
+		return config, configured
+	}
+	if dynamic.APIKey != "" {
+		config.APIKey = dynamic.APIKey
+	}
+	if dynamic.AuthHeader != nil {
+		config.AuthHeader = dynamic.AuthHeader
+	}
+	if dynamic.OAuth != nil {
+		config.OAuth = dynamic.OAuth
+	}
+	config.Headers = maps.Clone(config.Headers)
+	if config.Headers == nil {
+		config.Headers = map[string]*string{}
+	}
+	maps.Copy(config.Headers, dynamic.Headers)
+	config.headerEntries = overlayHeaders(orderedHeaders(config.Headers, config.headerEntries), orderedHeaders(dynamic.Headers, dynamic.headerEntries))
+	return config, true
+}
+
+// effectiveAPIKeyFromRegistration reports whether the extension registration, not
+// models.json, supplies the effective API key. Upstream reports that value's
+// source as "fallback" rather than "models_json_key" in the same case
+// (provider-composer.ts:configuredRequestAuthStatus). The caller holds r.mu.
+func (r *ModelRegistry) effectiveAPIKeyFromRegistration(id string) bool {
+	return r.dynamic[id].APIKey != ""
 }
 
 // CheckRegistryAuth checks provider configuration without resolving command-backed fallback keys.
