@@ -141,3 +141,27 @@ func TestNodeSessionStartProviderRegistrationIsVisibleToTheRegistry(t *testing.T
 		t.Fatalf("session_start: %v", err)
 	}
 }
+
+// A provider the snapshot has never seen, with no models yet, is visible as soon
+// as registerProvider returns: Pi composes it from the extension layer alone
+// (model-runtime.ts:919-940).
+func TestNodeRegisterProviderMakesANewProviderVisibleAtOnce(t *testing.T) {
+	script := `
+import assert from "node:assert/strict";
+import { Runtime } from "./runtime-node/runtime.mjs";
+
+const runtime = new Runtime("/ext/new-provider.mjs");
+runtime.applyModelRegistryState({ providers: {} });
+const registry = runtime.contextValues.modelRegistry;
+assert.equal(registry.getProvider("brand-new"), undefined);
+runtime.registerProvider("brand-new", { api: "openai-completions", baseUrl: "https://brand-new.test", streamSimple: () => { throw new Error("unused"); } });
+const provider = registry.getProvider("brand-new");
+assert.ok(provider, "a newly registered provider is not visible to getProvider");
+runtime.unregisterProvider("brand-new");
+assert.equal(registry.getProvider("brand-new"), undefined, "an unregistered provider is still visible");
+`
+	cmd := exec.CommandContext(t.Context(), "node", "--input-type=module", "--eval", script)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("new provider: %v\n%s", err, output)
+	}
+}

@@ -2892,8 +2892,9 @@ export class Runtime {
     if (native) return native;
     const state = this.registryState.providers?.[id];
     const models = [...this.models.values()].filter((model) => model.provider === id);
-    if (!state && models.length === 0) return undefined;
     const config = this.registeredProviderConfig(id) ?? this.registryState.registered?.find(entry => entry.name === id)?.config ?? state?.extensionConfig;
+    // A registration held here is a provider even when the snapshot and the model list have none yet.
+    if (!state && models.length === 0 && config === undefined) return undefined;
     // The snapshot predates a registration this process made since, and Pi recomposes inside registerProvider (model-runtime.ts:919-940), so a registration held here makes the provider composed whatever the snapshot says.
     if (!state?.composed && config === undefined) {
       const builtin = piBuiltinProvider(id);
