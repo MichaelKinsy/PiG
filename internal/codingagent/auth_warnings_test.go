@@ -1,6 +1,8 @@
 package codingagent
 
 import (
+	"context"
+	"errors"
 	"io"
 	"path/filepath"
 	"strings"
@@ -131,4 +133,50 @@ func TestInteractiveLoginDeviceIDComesFromSettings(t *testing.T) {
 	if id == "" || id != sm.GetOrCreateDeviceID() {
 		t.Fatalf("login device ID = %q, settings = %q", id, sm.GetOrCreateDeviceID())
 	}
+}
+
+// Both interactive login paths hand the provider the settings manager's device ID (#146): a registered provider and
+// the OpenAI Codex flow.
+func TestRegisteredOAuthLoginReceivesSettingsDeviceID(t *testing.T) {
+	sm := NewSettingsManager(t.TempDir(), t.TempDir())
+	provider := &initiationCaptureOAuthProvider{callbacks: make(chan ai.OAuthLoginCallbacks, 1)}
+	mode := NewInteractiveMode(InteractiveOptions{AgentDir: t.TempDir(), SettingsManager: sm})
+	if err := mode.runLoginRegisteredOAuth(t.Context(), provider, ""); err != nil {
+		t.Fatal(err)
+	}
+	callbacks := <-provider.callbacks
+	if callbacks.GetDeviceID == nil {
+		t.Fatal("registered OAuth login has no GetDeviceID callback")
+	}
+	if got, want := callbacks.GetDeviceID(), sm.GetOrCreateDeviceID(); want == "" || got != want {
+		t.Fatalf("device ID = %q, settings = %q", got, want)
+	}
+}
+
+func TestOpenAICodexLoginReceivesSettingsDeviceID(t *testing.T) {
+	captured := make(chan ai.OAuthLoginCallbacks, 1)
+	original := loginOpenAICodex
+	t.Cleanup(func() { loginOpenAICodex = original })
+	loginOpenAICodex = func(_ context.Context, cb ai.OAuthLoginCallbacks) (ai.OAuthCredentials, error) {
+		captured <- cb
+		return ai.OAuthCredentials{}, errors.New("stop after callback capture")
+	}
+	m := newPostLoginTestMode(t)
+	m.layout = tui.NewContainer(m.chatContainer, m.editorContainer)
+	sm := NewSettingsManager(t.TempDir(), t.TempDir())
+	m.opts.SettingsManager = sm
+	done := make(chan error, 1)
+	go func() { done <- m.runLoginOpenAICodex(t.Context()) }()
+	waitForRender(t, m.editorContainer, "Select OpenAI Codex login method")
+	deliverModalInput(t, m, []byte("\r"))
+	callbacks := <-captured
+	if callbacks.GetDeviceID == nil {
+		t.Fatal("Codex login has no GetDeviceID callback")
+	}
+	if got, want := callbacks.GetDeviceID(), sm.GetOrCreateDeviceID(); want == "" || got != want {
+		t.Fatalf("device ID = %q, settings = %q", got, want)
+	}
+	waitForRender(t, m.editorContainer, "Login failed")
+	deliverModalInput(t, m, []byte("\x1b"))
+	<-done
 }
