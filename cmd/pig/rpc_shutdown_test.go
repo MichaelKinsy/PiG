@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"slices"
 	"strings"
 	"syscall"
@@ -655,9 +656,13 @@ func TestRPCShutdownTriggers(t *testing.T) {
 // phase and before its next poll phase.
 func TestRPCInputEndWindowClosesBeforeNextPollComparedWithPi(t *testing.T) {
 	const runs = 5
-	// piRacy marks a threadpool row: Pi answered 0 of 20 runs of each in one
-	// measurement, but under load in this harness it answered fs.readdir once in
-	// 5, so only pig's side is asserted for these rows.
+	// piRacy marks a row whose Pi answer is not fixed, so only pig's side is
+	// asserted for it. The threadpool rows: Pi answered 0 of 20 runs of each in
+	// one measurement, but under load in this harness it answered fs.readdir
+	// once in 5. immediate2 on Windows: libuv reads pipe stdin through IOCP and a
+	// reader thread there, not the poll phase, so whether two nested
+	// setImmediate ticks beat the end of input is not fixed; Pi answered 1 of 5
+	// runs on a loaded Windows runner.
 	kinds := []struct {
 		kind    string
 		answers bool
@@ -665,7 +670,7 @@ func TestRPCInputEndWindowClosesBeforeNextPollComparedWithPi(t *testing.T) {
 	}{
 		{"microimmediate", true, false},
 		{"awaits5immediate", true, false},
-		{"immediate2", false, false},
+		{"immediate2", false, runtime.GOOS == "windows"},
 		{"fsstat", false, true},
 		{"fsaccess", false, true},
 		{"fsreaddir", false, true},
