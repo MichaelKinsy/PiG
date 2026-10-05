@@ -46,9 +46,9 @@ func (runtime *ModelRuntime) Refresh(ctx context.Context, options ...ai.ModelsRe
 	return runtime.services.Registry().RefreshModelRuntime(ctx, opts)
 }
 
-// Login awaits same-provider credential operations, native authentication, and local synchronization. A committed login whose synchronization fails returns CredentialSynchronizationError.
-func (runtime *ModelRuntime) Login(ctx context.Context, id string, kind ai.AuthType, interaction ai.AuthInteraction) (ai.Credential, error) {
-	return runtime.services.Registry().LoginNativeProvider(ctx, id, kind, interaction)
+// Login awaits same-provider credential operations, authentication by the auth methods of the composed provider GetProvider returns for the ID, and local synchronization. Optional LoginOptions reach the provider's OAuth login, as Pi's login(providerId, type, interaction, options) does (model-runtime.ts:817-825). A committed login whose synchronization fails returns CredentialSynchronizationError.
+func (runtime *ModelRuntime) Login(ctx context.Context, id string, kind ai.AuthType, interaction ai.AuthInteraction, options ...ai.LoginOptions) (ai.Credential, error) {
+	return runtime.services.Registry().LoginNativeProvider(ctx, id, kind, interaction, options...)
 }
 
 // Logout awaits same-provider credential operations before deleting credentials and synchronizing local models. A committed deletion whose synchronization fails returns CredentialSynchronizationError.

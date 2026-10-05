@@ -304,18 +304,27 @@ func (m *Models) checkProviderAuth(ctx context.Context, provider *ModelsProvider
 	return &AuthCheck{Source: resolution.Source, Type: CredentialAPIKey}, nil
 }
 
-// Login runs a provider-owned login flow and persists its returned credential.
+// Login runs a provider-owned login flow of a provider registered with this collection and persists its returned credential.
 func (m *Models) Login(ctx context.Context, providerID string, authType AuthType, interaction AuthInteraction, options ...LoginOptions) (Credential, error) {
-	var loginOptions LoginOptions
-	if len(options) > 0 {
-		loginOptions = options[0]
-	}
 	if ctx.Err() != nil {
 		return Credential{}, context.Cause(ctx)
 	}
 	provider := m.GetProvider(providerID)
 	if provider == nil {
 		return Credential{}, NewModelsError(ModelsErrorProvider, "Unknown provider: "+providerID, nil)
+	}
+	return m.LoginProvider(ctx, provider, authType, interaction, options...)
+}
+
+// LoginProvider runs the provider's own login flow and persists the returned credential in this collection's credential store under the provider's ID. The provider need not be registered here, so a caller can log in a provider it composed itself.
+func (m *Models) LoginProvider(ctx context.Context, provider *ModelsProvider, authType AuthType, interaction AuthInteraction, options ...LoginOptions) (Credential, error) {
+	var loginOptions LoginOptions
+	if len(options) > 0 {
+		loginOptions = options[0]
+	}
+	providerID := provider.ID
+	if ctx.Err() != nil {
+		return Credential{}, context.Cause(ctx)
 	}
 	var login func(context.Context, AuthInteraction, LoginOptions) (Credential, error)
 	if authType == CredentialOAuth && provider.Auth.OAuth != nil {
@@ -332,6 +341,17 @@ func (m *Models) Login(ctx context.Context, providerID string, authType AuthType
 	credential, err := awaitModelsOperation(ctx, &m.operations, func() (Credential, error) { return login(ctx, interaction, loginOptions) })
 	if err != nil {
 		return Credential{}, err
+	}
+	if authType == CredentialOAuth && provider.Auth.OAuth.store != nil {
+		// pig additive (D40): an extension OAuth provider with its own credential store saves there, never in the core store, as /login and pig login do.
+		store := provider.Auth.OAuth.store
+		if _, err := awaitModelsOperation(ctx, &m.operations, func() (string, error) { return store.StoreOAuthCredentials(credential.OAuthCredentials()) }); err != nil {
+			if ctx.Err() != nil {
+				return Credential{}, context.Cause(ctx)
+			}
+			return Credential{}, NewModelsError(ModelsErrorAuth, "Credential store modify failed for "+providerID, err)
+		}
+		return credential, nil
 	}
 	started := make(chan struct{})
 	mutation := make(chan error, 1)
