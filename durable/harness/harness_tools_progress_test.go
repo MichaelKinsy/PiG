@@ -359,6 +359,10 @@ func TestToolProgressAndLifetime(t *testing.T) {
 	})
 
 	t.Run("rejects details() still waiting when the call is aborted during afterTool", func(t *testing.T) {
+		// Hold every throttled progress commit, so only the abort can settle the details' waiter.
+		previous := toolProgressClock
+		toolProgressClock = heldProgressClock{}
+		t.Cleanup(func() { toolProgressClock = previous })
 		setup := chatSetup(t)
 		pendingDetails := make(chan error, 1)
 		inAfterTool := deferred()
@@ -428,6 +432,14 @@ func TestToolProgressAndLifetime(t *testing.T) {
 // awaitDetailsRecorded waits until the call has recorded count details values. Upstream's api.details records its value
 // before it returns the Promise (tool.ts:202-209); the Go Details records and then blocks until the commit, so a caller
 // that leaves the wait pending runs it on a goroutine and observes the record here before going on.
+// heldProgressClock stands still and never fires a throttled commit: the first commit, due at once, runs, and every
+// later one waits on a timer that does not fire, however slow the first commit was.
+type heldProgressClock struct{}
+
+func (heldProgressClock) now() float64 { return 0 }
+
+func (heldProgressClock) afterFunc(float64, func()) func() { return func() {} }
+
 // awaitDetailsWaiting returns once a details() call has queued its progress waiter.
 func awaitDetailsWaiting(ctx context.Context, api durable.ToolExecutionApi) error {
 	internal, ok := api.(*toolApi)
