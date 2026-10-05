@@ -254,12 +254,14 @@ func (d *LoginDialog) HandleInput(data string) {
 	if GetTUIKeybindings().Matches(data, KBSelectCancel) {
 		d.done = true
 		d.cancelled = true
+		// Pi's cancel aborts the login's signal before it rejects the pending input (login-dialog.ts:86-93), so a prompt
+		// that sees its input end already finds the login cancelled.
+		if d.onCancel != nil {
+			d.onCancel()
+		}
 		if d.inputCh != nil {
 			close(d.inputCh)
 			d.inputCh = nil
-		}
-		if d.onCancel != nil {
-			d.onCancel()
 		}
 		return
 	}
