@@ -14,7 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
-// pythonReloadCacheHarness loads the rendered runner without starting it and runs one case of its module cache. load is one admission's factory call and reload one reload pass: its first admission decides, then every member's factory runs again. Every case starts with ext, inner and twin loaded and a module of each root imported after the factories, as a handler imports one.
+// pythonReloadCacheHarness loads the rendered runner without starting it and runs one case of its module cache. load is one admission's factory call and reload one reload pass: its first admission decides, then every member's factory runs again. Every case starts with ext, inner and twin loaded and a module of each root imported after the factories, as a handler imports one. The factories run in the order ext, inner, twin, or twin, inner, ext for a case whose name ends in _twin_first, because the runner starts them on concurrent threads.
 const pythonReloadCacheHarness = `import importlib.util, io, os, sys, threading, time, types
 
 runner_path, case = sys.argv[1], sys.argv[2]
@@ -22,6 +22,7 @@ runner = {'__name__': 'pig_runner', '__file__': runner_path}
 exec(compile(open(runner_path, encoding='utf-8').read(), runner_path, 'exec'), runner)
 ITEM = {item[0]: item for item in runner['ITEMS']}
 NAMES = ('ext', 'inner', 'twin')
+ORDER = tuple(reversed(NAMES)) if case.endswith('_twin_first') else NAMES
 ROOT = ITEM['ext'][4]
 sys.path.insert(0, os.path.join(ROOT, '.venv', 'lib', 'site-packages'))
 sys.path.insert(0, os.path.dirname(runner_path))
@@ -51,7 +52,7 @@ def load(name):
 
 def reload(reload_pass):
     runner['_reload_edited'](reload_pass)
-    return {name: load(name) for name in NAMES}
+    return {name: load(name) for name in ORDER}
 
 
 def write(name, text, mtime_ns):
@@ -72,7 +73,7 @@ def source(name):
         return f.read()
 
 
-first = {name: load(name) for name in NAMES}
+first = {name: load(name) for name in ORDER}
 import ext_lazy, inner_lazy, fake_sdk, dep, cache_mod
 before = dict(sys.modules)
 after_start = time.time_ns()
@@ -146,7 +147,7 @@ def case_nested_unclaimed():
 def case_claim_beats_location():
     edit('inner/ext_owned.py', 'state = ["edited"]\n')
     second = reload('1')
-    assert second['ext'] is not first['ext'] and sys.modules['inner.ext_owned'].state == ['edited'], 'the extension whose factory imported a module first owns it'
+    assert second['ext'] is not first['ext'] and sys.modules['inner.ext_owned'].state == ['edited'], 'the extension whose factory imported a module owns it'
     assert second['inner'] is first['inner'] and second['twin'] is first['twin'], 'the module does not belong to the extension whose directory holds it'
     kept('inner_helper', 'inner_lazy', 'twin_helper', 'ext_lazy')
 
@@ -268,7 +269,7 @@ def case_failed_factory():
     edit('twin_helper.py', 'state = ["edited"]\n')
     third = reload('3')
     assert third['twin'] is not fixed, 'the edited extension reloads'
-    assert third['ext'] is first['ext'], 'a module that a failed factory call imported first belongs to that extension'
+    assert third['ext'] is first['ext'], 'a module that a failed factory call imported belongs to that extension'
 
 
 def case_failed_decision():
@@ -326,6 +327,162 @@ def case_import_in_progress():
     assert 'inner_helper' not in sys.modules, 'the edited extension is dropped'
 
 
+def case_shared_edited():
+    edit('common.py', 'import common_dep\nstate = ["edited"]\n')
+    second = reload('1')
+    assert second['ext'] is not first['ext'] and second['twin'] is not first['twin'], 'an edit to a module two factories import reloads both extensions'
+    assert second['ext'].common.state == ['edited'] and second['twin'].common.state == ['edited'], 'both extensions import the edited source'
+    assert second['inner'] is first['inner'], 'an extension that does not import the module keeps its factory module'
+    kept('inner_helper', 'inner_lazy')
+    edit('common.py', 'import common_dep\nstate = ["edited again"]\n')
+    third = reload('2')
+    assert third['ext'] is not second['ext'] and third['twin'] is not second['twin'], 'a later edit reloads both extensions again'
+    assert third['ext'].common.state == ['edited again'] and third['twin'].common.state == ['edited again'], 'both extensions import the later edit'
+
+
+case_shared_edited_twin_first = case_shared_edited
+
+
+def case_shared_kept():
+    edit('ext_helper.py', 'state = ["edited"]\n')
+    second = reload('1')
+    assert second['ext'] is not first['ext'] and second['twin'] is first['twin'], 'an edit to a module of one extension reloads that extension alone'
+    kept('common', 'common_dep', 'twin_helper')
+    assert second['ext'].common is second['twin'].common, 'the reloaded extension imports the shared module that the unedited extension still uses'
+    edit('common.py', 'import common_dep\nstate = ["edited"]\n')
+    third = reload('2')
+    assert third['ext'] is not second['ext'] and third['twin'] is not first['twin'], 'an edit to the shared module then reloads both extensions'
+    assert third['ext'].common.state == ['edited'] and third['twin'].common.state == ['edited'], 'both extensions import the edited source'
+
+
+case_shared_kept_twin_first = case_shared_kept
+
+
+def case_shared_indirect():
+    edit('common_dep.py', 'state = ["edited"]\n')
+    second = reload('1')
+    assert second['ext'] is not first['ext'] and second['twin'] is not first['twin'], 'an edit to a module that a shared module imports reloads every extension that imports the shared module'
+    assert second['ext'].common.common_dep.state == ['edited'] and second['twin'].common.common_dep.state == ['edited'], 'both extensions import the edited source'
+    assert second['inner'] is first['inner'], 'an extension that does not import the module keeps its factory module'
+
+
+case_shared_indirect_twin_first = case_shared_indirect
+
+
+def shared_modules(files, ext_import, twin_import):
+    # Writes modules for both factories to import and reloads once; ext's factory imports them before twin's does.
+    for name, text in files.items():
+        os.makedirs(os.path.dirname(os.path.join(ROOT, *name.split('/'))), exist_ok=True)
+        write(name, text, time.time_ns())
+    edit('ext_main.py', source('ext_main.py').replace('import common\n', 'import common\n' + ext_import + '\n'))
+    edit('twin_main.py', source('twin_main.py').replace('import common\n', 'import common\n' + twin_import + '\n'))
+    second = reload('1')
+    assert second['ext'] is not first['ext'] and second['twin'] is not first['twin'], 'both edited factory modules are imported again'
+    return second
+
+
+def case_shared_package():
+    second = shared_modules({'spkg/__init__.py': 'state = []\n', 'spkg/part.py': 'state = []\n'}, 'import spkg.part', 'import spkg.part')
+    edit('spkg/__init__.py', 'state = ["edited"]\n')
+    third = reload('2')
+    assert third['ext'] is not second['ext'] and third['twin'] is not second['twin'], 'an edit to a package reloads every extension that imports one of its modules'
+    package = sys.modules['spkg']
+    assert package.state == ['edited'] and third['twin'].spkg is package, 'both extensions import the edited package'
+    assert getattr(package, 'part', None) is sys.modules['spkg.part'], 'the package and its module are imported again together'
+
+
+def case_shared_relative():
+    second = shared_modules({'spkg/__init__.py': 'state = []\n', 'spkg/part.py': 'state = []\n', 'spkg/rel.py': 'from . import part\n'}, 'import spkg.part', 'import spkg.rel')
+    edit('spkg/part.py', 'state = ["edited"]\n')
+    third = reload('2')
+    assert third['ext'] is not second['ext'] and third['twin'] is not second['twin'], 'a relative import of a module that another factory imported first counts for both extensions'
+    assert third['twin'].spkg.rel.part.state == ['edited'], 'both extensions import the edited source'
+
+
+def case_shared_star():
+    second = shared_modules({'spkg/__init__.py': '__all__ = ["part"]\n', 'spkg/part.py': 'state = []\n'}, 'import spkg.part', 'from spkg import *')
+    edit('spkg/part.py', 'state = ["edited"]\n')
+    third = reload('2')
+    assert third['ext'] is not second['ext'] and third['twin'] is not second['twin'], 'a star import of a package counts each module that __all__ names'
+    assert third['twin'].part.state == ['edited'], 'both extensions import the edited source'
+
+
+def case_shared_import_module():
+    # twin's factory imports via through an installed plugin loader, so only the factory call's own record makes twin a user of via.
+    loader = '.venv/lib/site-packages/plugin_loader.py'
+    second = shared_modules({'via.py': 'import importlib\nvia_dep = importlib.import_module("via_dep")\nstate = []\n', 'via_dep.py': 'state = []\n', loader: 'import importlib\n\ndef load(name):\n    return importlib.import_module(name)\n'}, 'import via', 'import plugin_loader\nvia = plugin_loader.load("via")')
+    edit('via.py', 'import importlib\nvia_dep = importlib.import_module("via_dep")\nstate = ["edited"]\n')
+    third = reload('2')
+    assert third['ext'] is not second['ext'] and third['twin'] is not second['twin'], 'importlib.import_module in a factory call counts as an import'
+    assert third['twin'].via.state == ['edited'] and third['ext'].via is third['twin'].via, 'both extensions import the edited source'
+    edit('via_dep.py', 'state = ["edited"]\n')
+    fourth = reload('3')
+    assert fourth['ext'] is not third['ext'] and fourth['twin'] is not third['twin'], 'importlib.import_module in a module that a factory call imports counts as an import'
+    assert fourth['twin'].via.via_dep.state == ['edited'], 'both extensions import the edited source'
+
+
+case_shared_import_module_twin_first = case_shared_import_module
+
+
+def case_shared_relative_import_module():
+    second = shared_modules({'spkg/__init__.py': 'state = []\n', 'spkg/part.py': 'state = []\n'}, 'import spkg.part', 'import importlib\npart = importlib.import_module(".part", "spkg")')
+    edit('spkg/part.py', 'state = ["edited"]\n')
+    third = reload('2')
+    assert third['ext'] is not second['ext'] and third['twin'] is not second['twin'], 'importlib.import_module with a relative name counts as an import of the module it resolves to'
+    assert third['twin'].part.state == ['edited'], 'both extensions import the edited source'
+
+
+def case_shared_import_after_load():
+    write('inner/inner_late.py', 'state = []\n', time.time_ns())
+    edit('common.py', 'import common_dep\nstate = []\n\ndef later():\n    global late\n    import inner_late as late\n')
+    second = reload('1')
+    assert second['ext'] is not first['ext'] and second['twin'] is not first['twin'], 'both extensions import the edited shared module'
+    # A handler calls later, which imports a module of the nested directory after common's import.
+    sys.modules['common'].later()
+    edit('inner/inner_late.py', 'state = ["edited"]\n')
+    third = reload('2')
+    assert third['ext'] is not second['ext'] and third['twin'] is not second['twin'], 'a module that a used module imports after its own import counts for every extension that uses it'
+    assert third['inner'] is not first['inner'], 'the module still belongs to the extension of its directory'
+    assert 'inner_late' not in sys.modules, 'the edited module is dropped'
+
+
+def case_shared_dropped_use_twin_first():
+    edit('twin_main.py', source('twin_main.py').replace('import common\n', ''))
+    second = reload('1')
+    assert second['twin'] is not first['twin'] and second['ext'] is first['ext'], 'the edited factory module is imported again'
+    kept('common', 'common_dep')
+    edit('common.py', 'import common_dep\nstate = ["edited"]\n')
+    third = reload('2')
+    assert third['ext'] is not first['ext'] and third['ext'].common.state == ['edited'], 'the extension that still imports the module reloads'
+    assert third['twin'] is second['twin'], 'an extension whose reloaded factory no longer imports the module keeps its factory module'
+
+
+def case_unclaimed_edit_during_reload():
+    edit('twin_helper.py', 'state = ["edited"]\n')
+    runner['_reload_edited']('1')
+    # The edit lands after the reload decision and before the factory calls that follow it.
+    time.sleep(0.05)
+    write('ext_lazy.py', 'state = ["edited"]\n', time.time_ns())
+    time.sleep(0.05)
+    second = {name: load(name) for name in ORDER}
+    assert second['twin'] is not first['twin'] and second['ext'] is first['ext'], 'the edited extension reloads'
+    third = reload('2')
+    assert third['ext'] is not first['ext'] and third['twin'] is not second['twin'], 'an edit older than one user\'s last factory call still reloads every extension that uses the module'
+    assert 'ext_lazy' not in sys.modules, 'the edited module is dropped'
+
+
+def case_shared_edit_before_admission_outside_reload():
+    edit('twin_main.py', source('twin_main.py').replace('def new_extension():\n', 'def new_extension():\n    import common\n'))
+    second = reload('1')
+    assert second['twin'] is not first['twin'] and second['ext'] is first['ext'], 'the edited factory module is imported again'
+    edit('common.py', 'import common_dep\nstate = ["edited"]\n')
+    runner['_reload_edited']('0')
+    assert load('twin') is second['twin'], 'an admission outside a reload keeps the module'
+    third = reload('2')
+    assert third['ext'] is not first['ext'] and third['twin'] is not second['twin'], 'a factory call outside a reload that imports an edited module again does not hide the edit'
+    assert third['ext'].common.state == ['edited'] and third['twin'].common.state == ['edited'], 'both extensions import the edited source'
+
+
 if case == 'list':
     print('\n'.join(sorted(name[5:] for name in globals() if name.startswith('case_'))))
 else:
@@ -333,12 +490,14 @@ else:
     print('ok')
 `
 
-// pythonReloadCacheFixture is one extension directory that holds two extensions, ext and twin, a nested extension directory inner, the SDK, an installed package and the runner's own directory, as a home directory does. ext's factory imports inner.ext_owned, a module under inner's directory. A fourth member, idle, shares the directory and never starts, as a member outside PIG_EXT_ACTIVE_MEMBERS does.
+// pythonReloadCacheFixture is one extension directory that holds two extensions, ext and twin, a nested extension directory inner, the SDK, an installed package and the runner's own directory, as a home directory does. ext's factory imports inner.ext_owned, a module under inner's directory. The factories of ext and twin both import common, which imports common_dep. A fourth member, idle, shares the directory and never starts, as a member outside PIG_EXT_ACTIVE_MEMBERS does.
 var pythonReloadCacheFixture = map[string]string{
-	"ext_main.py":                    "import sys\nimport harness_probe\nimport ext_helper\nimport inner.ext_owned\nstate = []\n\ndef new_extension():\n    return harness_probe.Ext(sys.modules[__name__])\n",
+	"ext_main.py":                    "import sys\nimport harness_probe\nimport ext_helper\nimport inner.ext_owned\nimport common\nstate = []\n\ndef new_extension():\n    return harness_probe.Ext(sys.modules[__name__])\n",
 	"ext_helper.py":                  "state = []\n",
 	"ext_lazy.py":                    "state = []\n",
-	"twin_main.py":                   "import sys\nimport harness_probe\nimport twin_helper\nstate = []\n\ndef new_extension():\n    return harness_probe.Ext(sys.modules[__name__])\n",
+	"common.py":                      "import common_dep\nstate = []\n",
+	"common_dep.py":                  "state = []\n",
+	"twin_main.py":                   "import sys\nimport harness_probe\nimport twin_helper\nimport common\nstate = []\n\ndef new_extension():\n    return harness_probe.Ext(sys.modules[__name__])\n",
 	"twin_helper.py":                 "state = []\n",
 	"inner/inner_main.py":            "import sys\nimport harness_probe\nimport inner_helper\nstate = []\n\ndef new_extension():\n    return harness_probe.Ext(sys.modules[__name__])\n",
 	"inner/inner_helper.py":          "state = []\n",

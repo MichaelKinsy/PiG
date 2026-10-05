@@ -182,7 +182,7 @@ func findPythonSDKRoot() (string, error) {
 
 func renderPythonRunner(extensions []PythonExtension, sdkRoot string) string {
 	var b strings.Builder
-	b.WriteString("import importlib.util\nimport hashlib\nimport os\nimport sys\nimport threading\nimport time\n\n")
+	b.WriteString("import builtins\nimport importlib.util\nimport hashlib\nimport os\nimport sys\nimport threading\nimport time\n\n")
 	b.WriteString("sys.dont_write_bytecode = True\nos.environ.setdefault('PYTHONDONTWRITEBYTECODE', '1')\n\n")
 	fmt.Fprintf(&b, "sys.path.insert(0, %q)\n", filepath.ToSlash(sdkRoot))
 	for _, ext := range extensions {
@@ -273,26 +273,77 @@ if __name__ == '__main__':
     main()
 `
 
-// pythonRunnerModuleCache keeps each extension's modules for the life of the process, as Pi keeps an .mjs module, so module state survives /reload and Session replacement. An extension owns each module its factory call imported first, and each other module whose deepest extension root is its own; extensions with that same root share such a module. The first admission of a reload pass the runner has not seen finds each extension one of whose own modules changed since its import, drops that extension's own modules except a shared module that an unchanged extension also owns, and leaves every other module in place, so the extension's next factory call imports the edited source, as Pi's jiti import re-evaluates an edited .ts extension. Every admission of one reload carries the same pass. A decision that fails is reported on stderr and keeps every module. The SDK, the Python installation, the runner's own directory and packages installed under an extension's directory stay imported, so an extension in the home directory reloads only its own source.
+// pythonRunnerModuleCache keeps each extension's modules for the life of the process, as Pi keeps an .mjs module, so module state survives /reload and Session replacement. An extension uses each module its factory call imports, also a module that another extension imported before, each module that a used module imports, and the packages of a used submodule. The runner sees an import of a module already imported because it wraps builtins.__import__ and importlib.import_module. A module that no factory call imported belongs to every extension whose root is the deepest extension root that holds it. The first admission of a reload pass the runner has not seen finds each module changed since its import, reloads every extension that uses one, drops each module whose loaded users all reload, and leaves every other module in place, so each reloading extension's next factory call imports the edited source, as Pi's jiti import re-evaluates an edited .ts extension. Every admission of one reload carries the same pass. A decision that fails is reported on stderr and keeps every module. The SDK, the Python installation, the runner's own directory and the site-packages and dist-packages directories under an extension's directory stay imported, so an extension in the home directory reloads only its own source.
 const pythonRunnerModuleCache = `_MODULES = {}
 _STAMPS = {}
 _CLAIMS = {}
+_DEPENDS = {}
 _LOADED = {}
 _RELOAD = {'pass': '0'}
 _ROOT = {item[0]: os.path.normcase(os.path.join(os.path.abspath(item[4]), '')) for item in ITEMS}
 _ROOTS = sorted(set(_ROOT.values()), key=len, reverse=True)
-_WINDOW = threading.local()
+
+class _Window(threading.local):
+    # The modules the current thread's factory call imports first and every module it imports; None outside a factory call.
+    first = None
+    used = None
+
+_WINDOW = _Window()
+_BUILTIN_IMPORT = builtins.__import__
+_IMPORT_MODULE = importlib.import_module
 
 class _Claims:
     # Records each module the current thread's factory call imports first; it never finds a module itself.
     @staticmethod
     def find_spec(fullname, path=None, target=None):
-        names = getattr(_WINDOW, 'names', None)
-        if names is not None:
-            names.add(fullname)
+        first = _WINDOW.first
+        if first is not None:
+            first.add(fullname)
         return None
 
+def _record(importer, name, module, fromlist, returned):
+    # Records the absolute names of the modules one import used, for the current thread's factory call and for the importing module. When returned is set, the import is recorded by the name of the module it returned, which resolves a relative name as the import system did. A failure to record never fails the import.
+    try:
+        if returned:
+            name = object.__getattribute__(module, '__dict__')['__name__']
+        names = {name}
+        for item in fromlist or ():
+            if item == '*':
+                for public in getattr(sys.modules.get(name), '__all__', ()):
+                    if isinstance(public, str) and name + '.' + public in sys.modules:
+                        names.add(name + '.' + public)
+            elif isinstance(item, str) and name + '.' + item in sys.modules:
+                names.add(name + '.' + item)
+        used = _WINDOW.used
+        if used is not None:
+            used.update(names)
+        owner = importer.get('__name__') if importer is not None else None
+        if owner is not None:
+            depends = _DEPENDS.get(owner)
+            if depends is None:
+                _DEPENDS[owner] = names
+            elif not names <= depends:
+                depends.update(names)
+    except Exception:
+        pass
+
+def _import(name, globals=None, locals=None, fromlist=(), level=0):
+    module = _BUILTIN_IMPORT(name, globals, locals, fromlist, level)
+    _record(globals, name, module, fromlist, level > 0)
+    return module
+
+def _import_module(name, package=None):
+    module = _IMPORT_MODULE(name, package)
+    try:
+        importer = sys._getframe(1).f_globals
+    except Exception:
+        importer = None
+    _record(importer, name, module, (), True)
+    return module
+
 sys.meta_path.insert(0, _Claims)
+builtins.__import__ = _import
+importlib.import_module = _import_module
 
 def _module(module_name, root):
     # An imported module stays until _reload_edited drops it, so module state survives each factory call that reuses it.
@@ -305,9 +356,9 @@ def _module(module_name, root):
     spec = importlib.util.spec_from_file_location(key, path, submodule_search_locations=[os.path.dirname(path)])
     mod = importlib.util.module_from_spec(spec)
     sys.modules[key] = mod
-    names = getattr(_WINDOW, 'names', None)
-    if names is not None:
-        names.add(key)
+    first = _WINDOW.first
+    if first is not None:
+        first.add(key)
     spec.loader.exec_module(mod)
     _MODULES[key] = mod
     return mod
@@ -347,39 +398,52 @@ def _root_of(path):
 def _begin(name):
     _LOADED.setdefault(name, time.time_ns())
 
-def _claim(name, modules):
-    for module in modules:
+def _claim(name, first, used):
+    # Only a module the factory call imported first is stamped: a module imported before may have changed since its import.
+    for module in first | used:
         path = _source_of(sys.modules.get(module))
         if path and _root_of(path):
-            _CLAIMS[module] = name
-            _STAMPS[module] = _stamp_of(path)
+            _CLAIMS.setdefault(module, set()).add(name)
+            if module in first:
+                _STAMPS[module] = _stamp_of(path)
 
 def _factory(item):
     name, env, module_name, factory_name, root = item
     _begin(name)
-    _WINDOW.names = set()
+    _WINDOW.first, _WINDOW.used = set(), set()
     try:
         return getattr(_module(module_name, root), factory_name)()
     finally:
-        modules, _WINDOW.names = _WINDOW.names, None
-        _claim(name, modules)
+        first, used = _WINDOW.first, _WINDOW.used
+        _WINDOW.first = _WINDOW.used = None
+        _claim(name, first, used)
 
 def _owners():
-    # Maps each extension-owned module to its source and owners: the extension whose factory call imported it first, or else every extension whose root is the deepest that holds it.
+    # Maps each extension-owned module to its source and users: the extensions whose factory calls imported it, or else every extension whose root is the deepest that holds it. The users of a module also use each module it imports, and the users of a submodule use its packages.
     owners = {}
     for module, mod in list(sys.modules.items()):
         path = _source_of(mod)
         prefix = _root_of(path) if path else None
         if prefix:
-            claim = _CLAIMS.get(module)
-            owners[module] = (path, {claim} if claim else {name for name, root in _ROOT.items() if root == prefix})
+            claims = _CLAIMS.get(module)
+            owners[module] = (path, set(claims) if claims is not None else {name for name, root in _ROOT.items() if root == prefix})
+    pending = list(owners)
+    while pending:
+        module = pending.pop()
+        names = owners[module][1]
+        parts = module.split('.')
+        for dependency in (*_DEPENDS.get(module, ()), *('.'.join(parts[:i]) for i in range(1, len(parts)))):
+            entry = owners.get(dependency)
+            if entry is not None and not names <= entry[1]:
+                entry[1].update(names)
+                pending.append(dependency)
     return owners
 
 def _edited(module, path, since):
     stamp = _stamp_of(path)
     if module in _STAMPS:
         return stamp != _STAMPS[module]
-    # A module no factory call imported first has no stamp; its source changed if the file is newer than the factory call that loaded the extension.
+    # A module no factory call imported first has no stamp; its source changed if the file is newer than the first factory call of an extension that uses it.
     return stamp is None or stamp[0] > since
 
 def _reload_edited(reload):
@@ -390,9 +454,9 @@ def _reload_edited(reload):
         owners = _owners()
         reloading = set()
         for module, (path, names) in owners.items():
-            for name in names - reloading:
-                if name in _LOADED and _edited(module, path, _LOADED[name]):
-                    reloading.add(name)
+            loaded = {name for name in names if name in _LOADED}
+            if loaded - reloading and _edited(module, path, min(_LOADED[name] for name in loaded)):
+                reloading |= loaded
         importlib.invalidate_caches()
         for module, (path, names) in owners.items():
             loaded = {name for name in names if name in _LOADED}
@@ -401,6 +465,10 @@ def _reload_edited(reload):
                 _MODULES.pop(module, None)
                 _STAMPS.pop(module, None)
                 _CLAIMS.pop(module, None)
+                _DEPENDS.pop(module, None)
+        # A reloading extension's next factory call records the modules it still uses.
+        for claims in list(_CLAIMS.values()):
+            claims -= reloading
         for name in reloading:
             _LOADED.pop(name, None)
     except Exception as exc:

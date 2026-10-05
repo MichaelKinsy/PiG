@@ -11,12 +11,11 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
-// pythonModuleStateProbeSource is a Python extension whose factory logs the version its helper module defines, the number of factory calls its module has seen and its process. Each probe writes its own log, because the probes' factories run on concurrent threads of one process.
+// pythonModuleStateProbeSource is a Python extension whose factory logs the versions its helper modules define, joined by "+", the number of factory calls its module has seen and its process. Each probe writes its own log, because the probes' factories run on concurrent threads of one process.
 const pythonModuleStateProbeSource = `import os
 
 import pig_sdk
-import HELPER
-
+IMPORTS
 calls = 0
 
 
@@ -25,30 +24,37 @@ def new_extension() -> pig_sdk.Extension:
     calls += 1
     ext = pig_sdk.Extension("NAME")
     with open(os.path.join(os.environ["RELOAD_PROBE_LOG"], "NAME.log"), "a", newline="") as log:
-        log.write("NAME:" + HELPER.VERSION + ":" + str(calls) + ":" + str(os.getpid()) + "\n")
+        log.write("NAME:" + VERSIONS + ":" + str(calls) + ":" + str(os.getpid()) + "\n")
 COMMAND    return ext
 `
 
-func pythonModuleStateProbe(name, helper string, command bool) string {
+func pythonModuleStateProbe(name string, command bool, helpers ...string) string {
 	register := ""
 	if command {
 		register = "    ext.command(\"rl\", \"Reload\", lambda ctx, args: ctx.reload())\n"
 	}
-	return strings.NewReplacer("NAME", name, "HELPER", helper, "COMMAND", register).Replace(pythonModuleStateProbeSource)
+	var imports strings.Builder
+	versions := make([]string, len(helpers))
+	for i, helper := range helpers {
+		fmt.Fprintf(&imports, "import %s\n", helper)
+		versions[i] = helper + ".VERSION"
+	}
+	return strings.NewReplacer("NAME", name, "IMPORTS", imports.String(), "VERSIONS", strings.Join(versions, ` + "+" + `), "COMMAND", register).Replace(pythonModuleStateProbeSource)
 }
 
-// The Python runner holds every packed Python extension in one process and re-imports an extension on /reload only when its own source changed. An edit to one extension must not reset the module state of another: rp_b shares rp_a's directory and imports a different helper, and rp_c lies in a directory nested under it. Each /reload re-invokes every factory in the retained process; an extension that kept its module counts on.
+// The Python runner holds every packed Python extension in one process and re-imports an extension on /reload only when a module it uses changed. An edit to a module of one extension must not reset the module state of another: rp_b shares rp_a's directory and imports a different helper, and rp_c lies in a directory nested under it. rp_a and rp_b both import rp_shared, and their factories start on concurrent threads, so either may import it first; an edit to rp_shared re-imports both. Each /reload re-invokes every factory in the retained process; an extension that kept its module counts on.
 func TestReloadKeepsTheModuleStateOfAnUneditedPythonExtensionBesideAnEditedOne(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds the pig binary and starts Python extensions")
 	}
 	dir := t.TempDir()
 	files := map[string]string{
-		"rp_a.py":            pythonModuleStateProbe("rp_a", "rp_a_helper", true),
+		"rp_a.py":            pythonModuleStateProbe("rp_a", true, "rp_a_helper", "rp_shared"),
 		"rp_a_helper.py":     "VERSION = \"v1\"\n",
-		"rp_b.py":            pythonModuleStateProbe("rp_b", "rp_b_helper", false),
+		"rp_b.py":            pythonModuleStateProbe("rp_b", false, "rp_b_helper", "rp_shared"),
 		"rp_b_helper.py":     "VERSION = \"v1\"\n",
-		"sub/rp_c.py":        pythonModuleStateProbe("rp_c", "rp_c_helper", false),
+		"rp_shared.py":       "VERSION = \"v1\"\n",
+		"sub/rp_c.py":        pythonModuleStateProbe("rp_c", false, "rp_c_helper"),
 		"sub/rp_c_helper.py": "VERSION = \"v1\"\n",
 	}
 	for name, content := range files {
@@ -74,20 +80,23 @@ func TestReloadKeepsTheModuleStateOfAnUneditedPythonExtensionBesideAnEditedOne(t
 	wait := testbudget.Wait(t)
 	probes := []string{"rp_a", "rp_b", "rp_c"}
 	steps := []struct {
-		edit string
-		want map[string]string
+		edit, version string
+		want          map[string]string
 	}{
-		{want: map[string]string{"rp_a": "v1:1", "rp_b": "v1:1", "rp_c": "v1:1"}},
-		// An edit beside rp_b re-imports rp_a alone.
-		{edit: "rp_a_helper.py", want: map[string]string{"rp_a": "v2:1", "rp_b": "v1:2", "rp_c": "v1:2"}},
+		{want: map[string]string{"rp_a": "v1+v1:1", "rp_b": "v1+v1:1", "rp_c": "v1:1"}},
+		// An edit beside rp_b re-imports rp_a alone; rp_a imports the rp_shared that rp_b still uses.
+		{edit: "rp_a_helper.py", version: "v2", want: map[string]string{"rp_a": "v2+v1:1", "rp_b": "v1+v1:2", "rp_c": "v1:2"}},
 		// An edit in the nested directory re-imports rp_c alone.
-		{edit: "sub/rp_c_helper.py", want: map[string]string{"rp_a": "v2:2", "rp_b": "v1:3", "rp_c": "v2:1"}},
+		{edit: "sub/rp_c_helper.py", version: "v2", want: map[string]string{"rp_a": "v2+v1:2", "rp_b": "v1+v1:3", "rp_c": "v2:1"}},
+		// An edit to the module rp_a and rp_b both import re-imports both, and so does a later one.
+		{edit: "rp_shared.py", version: "v2", want: map[string]string{"rp_a": "v2+v2:1", "rp_b": "v1+v2:1", "rp_c": "v2:2"}},
+		{edit: "rp_shared.py", version: "v3", want: map[string]string{"rp_a": "v2+v3:1", "rp_b": "v1+v3:1", "rp_c": "v2:3"}},
 	}
 	pid := ""
 	for i, step := range steps {
 		if step.edit != "" {
 			path := filepath.Join(dir, filepath.FromSlash(step.edit))
-			if err := os.WriteFile(path, []byte("VERSION = \"v2\"\n"), 0o600); err != nil {
+			if err := os.WriteFile(path, []byte("VERSION = \""+step.version+"\"\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			id := fmt.Sprintf("reload-%d", i)
