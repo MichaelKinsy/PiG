@@ -618,3 +618,42 @@ func TestModelRegistryEnvDiscoveryUsesCurrentProviderTable(t *testing.T) {
 		}
 	}
 }
+
+// TestModelRegistry_ExtensionRegistrationKeepsModelsJSONAuth proves that an
+// extension registerProvider() call supplying only an api and a streamSimple
+// callback does not hide a models.json provider. Upstream composes the
+// registration over the models.json configuration field by field
+// (provider-composer.ts:208-210 configuredApiKey returns extension?.apiKey ??
+// config?.apiKey), and model-runtime.ts:672 marks the provider configured from
+// that composed value. A registration that defines no apiKey therefore keeps the
+// models.json key, its availability, and its models_json_key source label.
+func TestModelRegistry_ExtensionRegistrationKeepsModelsJSONAuth(t *testing.T) {
+	dir := t.TempDir()
+	modelsPath := filepath.Join(dir, "models.json")
+	data := `{"providers":{"vllm":{"baseUrl":"http://vllm.example/v1","api":"openai-completions","apiKey":"configured-key","models":[{"id":"qwen3.8-27b","name":"qwen3.8-27b"}]}}}`
+	if err := os.WriteFile(modelsPath, []byte(data), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	r := NewModelRegistry(dir)
+	if !r.HasConfiguredAuth("vllm") {
+		t.Fatalf("models.json provider is not configured before the registration")
+	}
+	if err := r.RegisterProvider("vllm", extension.ProviderConfig{API: ai.APIOpenAICompletions}); err != nil {
+		t.Fatal(err)
+	}
+	if !r.HasConfiguredAuth("vllm") {
+		t.Errorf("HasConfiguredAuth(vllm) = false after a registration that defines no apiKey")
+	}
+	var found bool
+	for _, e := range r.GetAvailable() {
+		if e.ProviderID == "vllm" && e.ModelID == "qwen3.8-27b" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("the models.json model left GetAvailable() after the registration")
+	}
+	if status := r.GetProviderAuthStatus("vllm"); !status.Configured || status.Source != ai.AuthSourceModelsJSONKey {
+		t.Errorf("GetProviderAuthStatus = %+v, want configured with source %q", status, ai.AuthSourceModelsJSONKey)
+	}
+}

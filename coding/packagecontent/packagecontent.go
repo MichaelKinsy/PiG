@@ -1533,7 +1533,7 @@ func Collect(paths []string, kind Kind) []string {
 				files = append(files, DiscoverSkillDirs(resourcePath)...)
 			}
 		case Extensions:
-			files = append(files, discoverExtensionEntries(resourcePath)...)
+			files = append(files, discoverExtensionEntries(resourcePath, namedRoot)...)
 		case Prompts:
 			files = append(files, collectFiles(resourcePath, ".md")...)
 		case Themes:
@@ -1559,7 +1559,7 @@ func DiscoverAutomatic(dir string, kind Kind) []string {
 	case Skills:
 		return DiscoverSkillDirs(dir)
 	case Extensions:
-		return discoverExtensionEntries(dir)
+		return discoverExtensionEntries(dir, conventionalRoot)
 	case AgentEnvironments:
 		return discoverAgentEnvironmentPaths(dir)
 	default:
@@ -2187,7 +2187,12 @@ func fileExists(path string) bool {
 
 func collectManifestResources(root string, kind Kind, entries *[]string) []string {
 	if entries == nil {
-		return Collect([]string{filepath.Join(root, string(kind))}, kind)
+		conventional := filepath.Join(root, string(kind))
+		if info, err := os.Stat(conventional); kind == Extensions && err == nil && info.IsDir() {
+			// A Package's extensions/ is a conventional directory, as upstream collectPackageResources reads it with collectAutoExtensionEntries (package-manager.ts:2250-2256).
+			return discoverExtensionEntries(conventional, conventionalRoot)
+		}
+		return Collect([]string{conventional}, kind)
 	}
 	if len(*entries) == 0 {
 		return nil
@@ -2278,9 +2283,20 @@ func discoverFlatFiles(dir, suffix string) []string {
 	return paths
 }
 
-func discoverExtensionEntries(dir string) []string {
-	if root := resolveExtensionEntries(dir); len(root) > 0 {
-		return root
+// extensionRoot says whether discoverExtensionEntries may take the directory it is given as one Python extension by its factory module.
+type extensionRoot int
+
+const (
+	// conventionalRoot is an extensions directory: the global or project one, or a Package's extensions/. Pi discovers only .ts and .js files at its top, so a Python module there makes no extension.
+	conventionalRoot extensionRoot = iota
+	// namedRoot is a path that names an extension or a collection of them: a settings or manifest entry, or a Package root that contributes nothing else.
+	namedRoot
+)
+
+// discoverExtensionEntries lists the extension entries of dir.
+func discoverExtensionEntries(dir string, root extensionRoot) []string {
+	if entries := resolveExtensionEntries(dir, root == namedRoot); len(entries) > 0 {
+		return entries
 	}
 	// Upstream collectAutoExtensionEntries: symlinks are followed and the
 	// directory's own .gitignore, .ignore and .fdignore apply.
@@ -2303,7 +2319,7 @@ func discoverExtensionEntries(dir string) []string {
 			continue
 		}
 		if info.IsDir() {
-			paths = append(paths, resolveExtensionEntries(full)...)
+			paths = append(paths, resolveExtensionEntries(full, true)...)
 			continue
 		}
 		if info.Mode().IsRegular() && (strings.HasSuffix(entry.Name(), ".ts") || strings.HasSuffix(entry.Name(), ".js")) {
@@ -2313,10 +2329,12 @@ func discoverExtensionEntries(dir string) []string {
 	return paths
 }
 
-// resolveExtensionEntries follows Pi's manifest entries, index.ts, then index.js rule. A manifest that declares only missing entries, with no index, contributes nothing. Go and Rust build roots load as one extension for source.Resolve to classify.
+// resolveExtensionEntries follows Pi's manifest entries, index.ts, then index.js rule. A manifest that declares only missing entries, with no index, contributes nothing.
+//
+// pig additive (D19): a Go, Rust or Python root loads as one extension for source.Resolve to classify. go.mod, Cargo.toml or pyproject.toml marks one; so, when python allows, does the new_extension factory module or executable main.py that source.Resolve accepts, as `pig install DIR --validate-only` does.
 //
 // A directory holding go.work without go.mod is ambiguous: source.Resolve loads it as one extension that selects the modules it uses, but it is also the usual development workspace over sibling extension modules. It is one extension only when none of its children is an extension entry, so a workspace over extensions/a and extensions/b still yields both.
-func resolveExtensionEntries(dir string) []string {
+func resolveExtensionEntries(dir string, python bool) []string {
 	if dir == "" {
 		return nil
 	}
@@ -2332,10 +2350,19 @@ func resolveExtensionEntries(dir string) []string {
 	if fileExists(filepath.Join(dir, "go.work")) && !hasChildExtensionEntry(dir) {
 		return []string{dir}
 	}
+	if python && isPythonFactoryRoot(dir) {
+		return []string{dir}
+	}
 	return nil
 }
 
-// hasChildExtensionEntry reports whether discoverExtensionEntries would find an entry among the children of dir. A child directory counts when it carries an index, a manifest entry, or a native build marker; go.work in a child is not searched further, which bounds the check to one level.
+// isPythonFactoryRoot reports whether source.Resolve classifies dir as a Python extension by its one new_extension factory module or executable main.py.
+func isPythonFactoryRoot(dir string) bool {
+	definition, err := extsource.Resolve(dir)
+	return err == nil && definition.Language == "python"
+}
+
+// hasChildExtensionEntry reports whether discoverExtensionEntries would find an entry among the children of dir. A child directory counts when it carries an index, a manifest entry, or a Go, Rust or Python root marker; go.work in a child is not searched further, which bounds the check to one level.
 func hasChildExtensionEntry(dir string) bool {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -2475,9 +2502,9 @@ func mustRel(baseDir, target string) string {
 	return relative
 }
 
-// hasBuildFile reports whether dir is a Go module or Rust crate root. A go.work-only root is decided by resolveExtensionEntries.
+// hasBuildFile reports whether dir is a Go module, Rust crate or Python project root. A go.work-only root is decided by resolveExtensionEntries.
 func hasBuildFile(dir string) bool {
-	for _, name := range []string{"go.mod", "Cargo.toml"} {
+	for _, name := range []string{"go.mod", "Cargo.toml", "pyproject.toml"} {
 		if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
 			return true
 		}

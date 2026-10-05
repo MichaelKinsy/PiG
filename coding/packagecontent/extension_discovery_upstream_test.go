@@ -40,7 +40,7 @@ func TestNodeConventionalExtensionDiscovery(t *testing.T) {
 }
 
 func TestNativeBuildDirectoriesRemainExtensionEntries(t *testing.T) {
-	for _, marker := range []string{"go.mod", "go.work", "Cargo.toml"} {
+	for _, marker := range []string{"go.mod", "go.work", "Cargo.toml", "pyproject.toml"} {
 		t.Run(marker, func(t *testing.T) {
 			root := t.TempDir()
 			writeTestFile(t, filepath.Join(root, marker), "")

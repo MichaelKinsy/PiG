@@ -23,6 +23,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 )
 
 // Upstream's fixed waits: the start settle delay, the per-request response
@@ -152,6 +154,9 @@ func (c *RpcClient) spawn() (*agentProcess, io.ReadCloser, io.ReadCloser, error)
 	for _, key := range slices.Sorted(maps.Keys(c.options.Env)) {
 		cmd.Env = append(cmd.Env, key+"="+c.options.Env[key])
 	}
+	// Prepare after Dir and Env: a relative CliPath resolves against Cwd, and a script's interpreter is found in the
+	// child's PATH.
+	linkerexec.Prepare(cmd)
 	// Own both ends until Start succeeds, including failures while opening a
 	// later pipe. StdinPipe would hide the child's read end on those failures.
 	var owned []io.Closer

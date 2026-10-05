@@ -14,6 +14,11 @@ func setProcessGroup(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 }
 
+// attachProcessGroup and releaseProcessGroup are no-ops: the process group is
+// set before the start and needs no handle.
+func attachProcessGroup(*os.Process)  {}
+func releaseProcessGroup(*os.Process) {}
+
 // killProcessGroup SIGKILLs the whole process group (negative pid).
 func killProcessGroup(p *os.Process) error {
 	return syscall.Kill(-p.Pid, syscall.SIGKILL)

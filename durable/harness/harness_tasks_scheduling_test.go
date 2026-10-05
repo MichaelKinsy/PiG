@@ -1188,12 +1188,16 @@ func TestTaskClose(t *testing.T) {
 			if err := held.entered.wait(testContext); err != nil {
 				return err
 			}
+			// The commit must be queued on the line behind the held one before close seals it.
+			jobs := (*harnessRef.Load()).(*harnessImpl).LineJobs()
 			go func() {
 				queued <- runtime.Commit(testContext, func(durable.Tx, stepRecord) (*durable.NextTaskState[stepState, durable.JsonValue], error) {
 					return completed[stepState, durable.JsonValue](nil), nil
 				})
 			}()
-			flush()
+			for (*harnessRef.Load()).(*harnessImpl).LineJobs() <= jobs {
+				flush()
+			}
 			// Ignores the close signal, so the invocation is still alive when the queued commit reaches the line.
 			return proceed.wait(testContext)
 		})

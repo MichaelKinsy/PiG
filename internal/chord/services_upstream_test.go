@@ -157,6 +157,21 @@ func loopbackBinding(t *testing.T, provider *RemoteServiceProvider, options Remo
 	return binding
 }
 
+// subscribeGateTransport holds Subscribe until release is closed.
+type subscribeGateTransport struct {
+	RemoteServiceTransport
+	release <-chan struct{}
+}
+
+func (gate subscribeGateTransport) Subscribe(ctx context.Context, serviceId string, mode ServiceMode, listener UpdateListener) (ServiceSubscription, error) {
+	select {
+	case <-gate.release:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	return gate.RemoteServiceTransport.Subscribe(ctx, serviceId, mode, listener)
+}
+
 func provideModels(t *testing.T, provider *RemoteServiceProvider, models *modelsImpl) {
 	t.Helper()
 	if err := Provide[Models](provider, modelsDefinition, models); err != nil {
@@ -326,7 +341,13 @@ func TestRemoteServices(t *testing.T) {
 		}
 		provideModels(t, provider, models)
 		errs := &locked[error]{}
-		binding := loopbackBinding(t, provider, RemoteServiceBindingOptions{Services: []string{modelsDefinition.Id()}, OnError: func(err error) { errs.add(err) }})
+		// Upstream use() starts the subscription eagerly and installs the
+		// snapshot after `await transport.subscribe` (consumer.ts:466,576,607);
+		// the synchronous assertion runs before that microtask. Go starts the
+		// subscription on a goroutine, so hold it until after the assertion.
+		release := make(chan struct{})
+		transport := subscribeGateTransport{RemoteServiceTransport: NewLoopbackTransport(provider), release: release}
+		binding := loopbackBinding(t, provider, RemoteServiceBindingOptions{Services: []string{modelsDefinition.Id()}, Transport: transport, OnError: func(err error) { errs.add(err) }})
 		first, second := use(t, binding, modelsDefinition.Id()), use(t, binding, modelsDefinition.Id())
 		if first.facade != second.facade {
 			t.Fatal("a service has two facades")
@@ -334,6 +355,7 @@ func TestRemoteServices(t *testing.T) {
 		if _, hydrated := revisionOf(t, modelsReplica(t, first)); hydrated {
 			t.Fatal("state is hydrated before ready")
 		}
+		close(release)
 		if err := binding.Ready(ctx); err != nil {
 			t.Fatal(err)
 		}
