@@ -304,18 +304,27 @@ func (m *Models) checkProviderAuth(ctx context.Context, provider *ModelsProvider
 	return &AuthCheck{Source: resolution.Source, Type: CredentialAPIKey}, nil
 }
 
-// Login runs a provider-owned login flow and persists its returned credential.
+// Login runs a provider-owned login flow of a provider registered with this collection and persists its returned credential.
 func (m *Models) Login(ctx context.Context, providerID string, authType AuthType, interaction AuthInteraction, options ...LoginOptions) (Credential, error) {
-	var loginOptions LoginOptions
-	if len(options) > 0 {
-		loginOptions = options[0]
-	}
 	if ctx.Err() != nil {
 		return Credential{}, context.Cause(ctx)
 	}
 	provider := m.GetProvider(providerID)
 	if provider == nil {
 		return Credential{}, NewModelsError(ModelsErrorProvider, "Unknown provider: "+providerID, nil)
+	}
+	return m.LoginProvider(ctx, provider, authType, interaction, options...)
+}
+
+// LoginProvider runs the provider's own login flow and persists the returned credential in this collection's credential store under the provider's ID. The provider need not be registered here, so a caller can log in a provider it composed itself.
+func (m *Models) LoginProvider(ctx context.Context, provider *ModelsProvider, authType AuthType, interaction AuthInteraction, options ...LoginOptions) (Credential, error) {
+	var loginOptions LoginOptions
+	if len(options) > 0 {
+		loginOptions = options[0]
+	}
+	providerID := provider.ID
+	if ctx.Err() != nil {
+		return Credential{}, context.Cause(ctx)
 	}
 	var login func(context.Context, AuthInteraction, LoginOptions) (Credential, error)
 	if authType == CredentialOAuth && provider.Auth.OAuth != nil {
