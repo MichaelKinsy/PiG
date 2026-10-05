@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
@@ -238,6 +239,13 @@ func TestPig3dFramesGolden(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(got, want) {
+		gotLines, wantLines := strings.Split(string(got), "\n"), strings.Split(string(want), "\n")
+		for i := range min(len(gotLines), len(wantLines)) {
+			if gotLines[i] != wantLines[i] {
+				t.Errorf("first difference at line %d:\n got %q\nwant %q", i+1, gotLines[i], wantLines[i])
+				break
+			}
+		}
 		t.Fatalf("3D pig frames differ from %s; rerun with -update-pig3d-golden after reviewing the change", path)
 	}
 }
