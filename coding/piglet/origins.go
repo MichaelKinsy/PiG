@@ -32,6 +32,31 @@ func (p *Piglet) SourcePath() string {
 	return p.sourcePath
 }
 
+// FrontendDir returns the absolute directory of build.frontend, or "" when
+// the Piglet has no frontend member. The directory must exist inside the
+// Piglet file's directory.
+// pig additive (D91): a Piglet frontend member draws the interactive mode.
+func (p *Piglet) FrontendDir() (string, error) {
+	if p.Build == nil || p.Build.Frontend == "" {
+		return "", nil
+	}
+	if p.sourceDir == "" {
+		return "", fmt.Errorf("build.frontend %q needs a Piglet file to resolve against", p.Build.Frontend)
+	}
+	dir := canonicalPath(filepath.Join(p.sourceDir, p.Build.Frontend))
+	if !isWithin(p.sourceDir, dir) {
+		return "", fmt.Errorf("build.frontend %q leaves the Piglet directory", p.Build.Frontend)
+	}
+	info, err := os.Stat(dir)
+	if err != nil {
+		return "", fmt.Errorf("build.frontend %q: %w", p.Build.Frontend, err)
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("build.frontend %q is not a directory", p.Build.Frontend)
+	}
+	return dir, nil
+}
+
 // ResolvePackages materializes every declared Package without mutating Package
 // settings and returns its canonical root for lock/record construction.
 func ResolvePackages(p *Piglet) ([]ResolvedPackage, error) {

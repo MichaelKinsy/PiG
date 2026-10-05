@@ -116,7 +116,8 @@ func runBinaryBuild(ctx context.Context, progress *buildprogress.Reporter, pigle
 	cells, warnings := resolvePigletCells(p)
 	exts := extensionInputsFromCells(cells)
 	requireFused := p.Build != nil && p.Build.ExtensionRealization == "fused"
-	verdict := Validate(BuildPlan(exts, opts), warnings, len(exts), requireFused)
+	hasFrontend := p.Build != nil && p.Build.Frontend != ""
+	verdict := Validate(BuildPlan(exts, opts), warnings, len(exts), hasFrontend, requireFused)
 	if !verdict.OK {
 		return fail(p.Name, fmt.Errorf("Piglet will not build: %s", strings.Join(verdict.Blockers, "; ")))
 	}

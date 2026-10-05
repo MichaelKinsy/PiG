@@ -2,6 +2,7 @@ package codingagent
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -84,6 +85,18 @@ func (m *InteractiveMode) mountInteractiveTui(start bool) {
 		m.statusLine,
 	}
 	m.layout = tui.NewContainer(layoutChildren...)
+	if m.surface != nil {
+		// pig additive (D91): the frontend draws the transcript and the
+		// dock as separate regions of the same component tree.
+		m.surface.SetLayout(
+			tui.NewContainer(m.headerContainer(), m.loadedResourcesContainer, m.chatContainer),
+			tui.NewContainer(m.pendingMessagesContainer, m.statusContainer, m.widgetContainer, m.editorContainer, m.widgetContainerBelow, m.extFooter, m.statusLine),
+		)
+		if start {
+			m.surface.Start()
+		}
+		return
+	}
 	if m.altScreen == nil {
 		m.tuiInst.Add(m.layout)
 		if !start {
@@ -114,6 +127,11 @@ func (m *InteractiveMode) switchTuiMode(mode string, restoreProgress, startRende
 	}
 	if mode == current {
 		return true
+	}
+	// pig additive (D91): a frontend session owns the screen, so the run
+	// keeps it until the session falls back.
+	if m.surface != nil {
+		return false
 	}
 	if m.tuiInst.HasOverlay() {
 		return false
@@ -164,23 +182,8 @@ func (m *InteractiveMode) switchTuiMode(mode string, restoreProgress, startRende
 		next.RestoreRenderState(*m.mainScreenRenderState)
 	}
 
-	// Re-apply Run's renderer-level wiring to the new renderer, sourced from
-	// settings/host state so the current configuration carries across the swap.
-	// Inlined rather than shared because Run interleaves this with one-time setup
-	// (the initial extension width kick) a live swap must not repeat.
-	m.tuiInst.SetShowHardwareCursor(m.opts.Settings.GetShowHardwareCursor())
-	m.tuiInst.SetClearOnShrink(m.opts.Settings.GetClearOnShrink())
-	m.installRenderDispatcher()
-	m.tuiInst.SetOverlayCommandDispatcher(func(command func()) {
-		m.runOnMain(m.runCtx, command)
-	})
-	m.tuiInst.SetFocus(m.editor)
-	if m.opts.SubprocessHost != nil {
-		m.tuiInst.SetOnWidthChange(func(width int) { m.opts.SubprocessHost.NotifyWidth(width) })
-	}
-	// Registered unconditionally: the dialog chat cap depends on height even
-	// when no subprocess extensions are loaded.
-	m.tuiInst.SetOnHeightChange(m.onTerminalHeightChange)
+	// Re-apply Run's renderer-level wiring to the new renderer.
+	m.rewireRenderer()
 
 	// Remount the complete shared component tree into the new renderer, mirroring
 	// upstream remounting every previous child.
@@ -338,6 +341,9 @@ func (m *InteractiveMode) stopInteractiveTui() {
 	m.tuiTornDown = true
 	m.tuiStopped.Store(true)
 	m.disposeTheme()
+	// pig additive (D91): the frontend closes its surface before input
+	// pauses, so the drain below discards its in-flight replies.
+	m.closeFrontend()
 	if m.inputReader != nil {
 		m.inputReader.pause()
 	}
@@ -367,6 +373,9 @@ func (m *InteractiveMode) stopInteractiveTui() {
 	if m.rawRestore != nil {
 		m.rawRestore()
 		m.rawRestore = nil
+	}
+	if m.frontendCloseErr != nil {
+		fmt.Fprintf(os.Stderr, "Closing native rendering failed: %v\n", m.frontendCloseErr)
 	}
 	// The fullscreen transcript view is owned here, not by the renderer's
 	// implicitScrollView, so its scrollbar-hide timer must be disposed by the

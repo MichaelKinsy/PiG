@@ -352,6 +352,19 @@ func buildInputs(p *piglet.Piglet, cells []subprocess.CellSpec) ([]buildInput, e
 		}
 		inputs = append(inputs, buildInput{Kind: "skill", Name: skill.Entry.Name, Source: source, Package: packageAlias, Digest: digest})
 	}
+	// pig additive (D91): the frontend member's source is part of the
+	// Binary's identity.
+	frontendDir, err := p.FrontendDir()
+	if err != nil {
+		return nil, err
+	}
+	if frontendDir != "" {
+		digest, err := hashTree(frontendDir)
+		if err != nil {
+			return nil, fmt.Errorf("lock frontend: %w", err)
+		}
+		inputs = append(inputs, buildInput{Kind: "frontend", Name: "frontend", Source: "local:" + filepath.ToSlash(p.Build.Frontend), Digest: digest})
+	}
 	slices.SortFunc(inputs, func(a, b buildInput) int {
 		if value := strings.Compare(a.Kind, b.Kind); value != 0 {
 			return value

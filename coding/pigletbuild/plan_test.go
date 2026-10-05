@@ -64,14 +64,18 @@ func TestValidateRejectsUnresolvedAndEmptyPiglets(t *testing.T) {
 	plan := BuildPlan([]ExtensionInput{{Name: "go", Language: Go, Fusible: true}}, Options{
 		Targets: []Target{host}, Sandbox: Sandbox{Native: host},
 	})
-	if verdict := Validate(plan, nil, 1, false); !verdict.OK {
+	if verdict := Validate(plan, nil, 1, false, false); !verdict.OK {
 		t.Fatalf("verdict = %#v", verdict)
 	}
-	if verdict := Validate(plan, []string{"missing"}, 1, false); verdict.OK || len(verdict.Blockers) != 1 {
+	if verdict := Validate(plan, []string{"missing"}, 1, false, false); verdict.OK || len(verdict.Blockers) != 1 {
 		t.Fatalf("unresolved verdict = %#v", verdict)
 	}
-	if verdict := Validate(BuildPlan(nil, Options{Targets: []Target{host}, Sandbox: Sandbox{Native: host}}), nil, 0, false); verdict.OK {
+	empty := BuildPlan(nil, Options{Targets: []Target{host}, Sandbox: Sandbox{Native: host}})
+	if verdict := Validate(empty, nil, 0, false, false); verdict.OK {
 		t.Fatalf("empty verdict = %#v", verdict)
+	}
+	if verdict := Validate(empty, nil, 0, true, false); !verdict.OK {
+		t.Fatalf("frontend-only verdict = %#v", verdict)
 	}
 }
 
@@ -81,7 +85,7 @@ func TestValidateRejectsNonFusedExtensionWhenRequired(t *testing.T) {
 		{Name: "login", Language: Go, Fusible: true},
 		{Name: "runner", Language: Python, NotFusibleReason: "language:python"},
 	}, Options{Targets: []Target{host}, Sandbox: Sandbox{Native: host}})
-	verdict := Validate(plan, nil, 2, true)
+	verdict := Validate(plan, nil, 2, false, true)
 	if verdict.OK || len(verdict.Blockers) != 1 {
 		t.Fatalf("verdict = %#v", verdict)
 	}

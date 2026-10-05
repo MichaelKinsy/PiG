@@ -11,4 +11,5 @@ D85: RPC stdin-end residuals (suspended command continuation, cross-process shut
 D86: RPC settle-tail stdin hold for a handler of a runtime that cannot report its wait; fix-992-stdin-eof; approved by owner Michael Kinsy 2026-10-01.
 D87: PiG's versions of Pi's easter eggs (logo-click animation with the PiG mark's running pig, /arminsayshi pig head and /pigsayhi); pig-eggs; approved by owner Michael Kinsy 2026-10-01.
 D88: PiG's own first-time setup (theme, sprite, analytics) on an interactive start without settings.json; first-run-sprite; approved by owner Michael Kinsy 2026-10-02.
+D91: Piglet frontend members draw the interactive mode (renderer seam, additive); tern-d91-frontend-seam; approved by owner Michael Kinsy 2026-10-04.
 Next free ID: D89.

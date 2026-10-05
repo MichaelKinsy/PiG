@@ -544,7 +544,8 @@ func (r publishRelease) prepareBuilds(ctx context.Context, stdout, stderr io.Wri
 	cells, warnings := resolvePigletCells(r.piglet)
 	exts := extensionInputsFromCells(cells)
 	requireFused := r.piglet.Build != nil && r.piglet.Build.ExtensionRealization == "fused"
-	if verdict := Validate(BuildPlan(exts, Options{}), warnings, len(exts), requireFused); !verdict.OK {
+	hasFrontend := r.piglet.Build != nil && r.piglet.Build.Frontend != ""
+	if verdict := Validate(BuildPlan(exts, Options{}), warnings, len(exts), hasFrontend, requireFused); !verdict.OK {
 		return nil, fmt.Errorf("Piglet will not build: %s", strings.Join(verdict.Blockers, "; "))
 	}
 	var baked Options

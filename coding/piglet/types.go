@@ -345,6 +345,11 @@ type BuildSpec struct {
 	Targets              []string `yaml:"targets,omitempty"`
 	OutputName           string   `yaml:"outputName,omitempty"`
 	ExtensionRealization string   `yaml:"extensionRealization,omitempty"`
+	// Frontend is the directory, relative to the Piglet file, of a Go module
+	// whose root package exports func Frontend() frontend.Frontend. The
+	// native builder fuses it into the Binary.
+	// pig additive (D91): a Piglet frontend member draws the interactive mode.
+	Frontend string `yaml:"frontend,omitempty"`
 }
 
 // ReleaseSpec carries Piglet release identity, separate from portable build
@@ -751,6 +756,12 @@ func validateBuildSpec(build *BuildSpec) error {
 	}
 	if build.ExtensionRealization != "" && build.ExtensionRealization != "fused" {
 		return fmt.Errorf("build.extensionRealization %q must be fused", build.ExtensionRealization)
+	}
+	if build.Frontend != "" {
+		clean := filepath.ToSlash(filepath.Clean(build.Frontend))
+		if filepath.IsAbs(build.Frontend) || clean == ".." || strings.HasPrefix(clean, "../") || strings.Contains(build.Frontend, "\\") {
+			return fmt.Errorf("build.frontend %q must be a relative path inside the Piglet directory", build.Frontend)
+		}
 	}
 	if build.OutputName != "" {
 		if build.OutputName == "." || build.OutputName == ".." || filepath.Base(build.OutputName) != build.OutputName || strings.ContainsAny(build.OutputName, `/\\`) {
