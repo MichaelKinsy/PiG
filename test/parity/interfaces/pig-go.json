@@ -50598,9 +50598,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(provider github.com/MichaelKinsy/PiG/ai.OAuthProviderInterface, noInput bool) (github.com/MichaelKinsy/PiG/ai.OAuthCredentials, error)"
+        "type": "func(provider github.com/MichaelKinsy/PiG/ai.OAuthProviderInterface, noInput bool, getDeviceID func() string) (github.com/MichaelKinsy/PiG/ai.OAuthCredentials, error)"
       },
-      "shapeHash": "sha256:29b42a0f61962c7fe21d89a2b784d791234a392de6bc3b074a81b8fa2f9b8b6e"
+      "shapeHash": "sha256:6bc4631d33dc652087b4f68ac6a5a58ad02a62a5f60a3cb33a8aba84572affe7"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/cmd/pig#runPackageCommand",
@@ -134641,6 +134641,17 @@
         "type": "func() context.Context"
       },
       "shapeHash": "sha256:a670f80d9d343290c72d955f9b551785e49cb0b898c60c1c710e194570222157"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.loginDeviceID",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.loginDeviceID",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.loginProviderSubscription",
