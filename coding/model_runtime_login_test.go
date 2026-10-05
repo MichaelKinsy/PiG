@@ -169,10 +169,17 @@ func TestModelRuntimeLoginForwardsLoginOptions(t *testing.T) {
 	}
 }
 
-// model-runtime.ts:817-829 serializes same-provider credential operations through enqueueCredentialOperation. A second login on a built-in provider starts only after the first one finishes.
-func TestModelRuntimeLoginSerializesBuiltInProvider(t *testing.T) {
+// model-runtime.ts:817-829 serializes same-provider credential operations through enqueueCredentialOperation. A second login on a built-in or models.json provider starts only after the first one finishes.
+func TestModelRuntimeLoginSerializesComposedProvider(t *testing.T) {
+	const modelsJSON = `{"providers":{"login-custom":{"baseUrl":"https://custom.invalid/v1","apiKey":"$LOGIN_TEST_API_KEY","api":"openai-completions","models":[{"id":"custom-model"}]}}}`
+	for _, id := range []string{"anthropic", "login-custom"} {
+		t.Run(id, func(t *testing.T) { testModelRuntimeLoginSerializes(t, id, modelsJSON) })
+	}
+}
+
+func testModelRuntimeLoginSerializes(t *testing.T, id, modelsJSON string) {
 	synctest.Test(t, func(t *testing.T) {
-		runtime, _ := loginTestRuntime(t, "")
+		runtime, _ := loginTestRuntime(t, modelsJSON)
 		var mu sync.Mutex
 		var order []string
 		release := make(chan struct{})
@@ -197,11 +204,11 @@ func TestModelRuntimeLoginSerializesBuiltInProvider(t *testing.T) {
 		var wg sync.WaitGroup
 		errs := make([]error, 2)
 		wg.Go(func() {
-			_, errs[0] = runtime.Login(t.Context(), "anthropic", ai.CredentialAPIKey, prompt("first", true))
+			_, errs[0] = runtime.Login(t.Context(), id, ai.CredentialAPIKey, prompt("first", true))
 		})
 		synctest.Wait()
 		wg.Go(func() {
-			_, errs[1] = runtime.Login(t.Context(), "anthropic", ai.CredentialAPIKey, prompt("second", false))
+			_, errs[1] = runtime.Login(t.Context(), id, ai.CredentialAPIKey, prompt("second", false))
 		})
 		// Every goroutine is durably blocked here, so a second login that is not queued behind the first has already prompted.
 		synctest.Wait()
@@ -223,4 +230,59 @@ func TestModelRuntimeLoginSerializesBuiltInProvider(t *testing.T) {
 			t.Fatalf("order = %v, want %v", order, want)
 		}
 	})
+}
+
+// storeOwningOAuthProvider is an extension OAuth provider that keeps its credentials in its own store (pig additive D40).
+type storeOwningOAuthProvider struct {
+	mu     sync.Mutex
+	stored []ai.OAuthCredentials
+}
+
+func (*storeOwningOAuthProvider) ID() string               { return "anthropic" }
+func (*storeOwningOAuthProvider) Name() string             { return "Extension Anthropic" }
+func (*storeOwningOAuthProvider) UsesCallbackServer() bool { return false }
+func (*storeOwningOAuthProvider) Login(ai.OAuthLoginCallbacks) (ai.OAuthCredentials, error) {
+	return ai.OAuthCredentials{Access: "dummy-access", Refresh: "dummy-refresh", Expires: time.Now().Add(time.Hour).UnixMilli()}, nil
+}
+func (*storeOwningOAuthProvider) RefreshToken(c ai.OAuthCredentials) (ai.OAuthCredentials, error) {
+	return c, nil
+}
+func (*storeOwningOAuthProvider) GetAPIKey(c ai.OAuthCredentials) string { return c.Access }
+func (p *storeOwningOAuthProvider) OAuthCredentialStatus() (ai.OAuthCredentialStatus, bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return ai.OAuthCredentialStatus{AuthType: "oauth", Source: "stored"}, len(p.stored) > 0
+}
+func (p *storeOwningOAuthProvider) StoreOAuthCredentials(c ai.OAuthCredentials) (string, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.stored = append(p.stored, c)
+	return "extension store", nil
+}
+func (p *storeOwningOAuthProvider) DeleteOAuthCredentials() (bool, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	deleted := len(p.stored) > 0
+	p.stored = nil
+	return deleted, nil
+}
+
+// pig additive D40: an extension OAuth provider that shadows a built-in ID and owns a credential store saves its login there, as /login (runLoginRegisteredOAuth) and pig login do; the core store stays untouched.
+func TestModelRuntimeLoginSavesExtensionOAuthToItsCredentialStore(t *testing.T) {
+	provider := &storeOwningOAuthProvider{}
+	ai.RegisterOAuthProvider("anthropic", provider)
+	t.Cleanup(func() { ai.UnregisterOAuthProvider("anthropic") })
+	runtime, credentials := loginTestRuntime(t, "")
+	if _, err := runtime.Login(t.Context(), "anthropic", ai.CredentialOAuth, ai.AuthInteraction{Notify: func(ai.AuthEvent) {}}); err != nil {
+		t.Fatal(err)
+	}
+	provider.mu.Lock()
+	stored := slices.Clone(provider.stored)
+	provider.mu.Unlock()
+	if len(stored) != 1 || stored[0].Access != "dummy-access" || stored[0].Refresh != "dummy-refresh" {
+		t.Fatalf("extension store = %+v, want the one login credential", stored)
+	}
+	if core, err := credentials.Read(t.Context(), "anthropic"); err != nil || core != nil {
+		t.Fatalf("core store = %+v, %v; want untouched", core, err)
+	}
 }

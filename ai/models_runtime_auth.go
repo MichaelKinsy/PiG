@@ -342,6 +342,17 @@ func (m *Models) LoginProvider(ctx context.Context, provider *ModelsProvider, au
 	if err != nil {
 		return Credential{}, err
 	}
+	if authType == CredentialOAuth && provider.Auth.OAuth.store != nil {
+		// pig additive (D40): an extension OAuth provider with its own credential store saves there, never in the core store, as /login and pig login do.
+		store := provider.Auth.OAuth.store
+		if _, err := awaitModelsOperation(ctx, &m.operations, func() (string, error) { return store.StoreOAuthCredentials(credential.OAuthCredentials()) }); err != nil {
+			if ctx.Err() != nil {
+				return Credential{}, context.Cause(ctx)
+			}
+			return Credential{}, NewModelsError(ModelsErrorAuth, "Credential store modify failed for "+providerID, err)
+		}
+		return credential, nil
+	}
 	started := make(chan struct{})
 	mutation := make(chan error, 1)
 	m.operations.Go(func() {

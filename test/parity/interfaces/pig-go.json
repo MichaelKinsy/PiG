@@ -33718,6 +33718,17 @@
       "shapeHash": "sha256:c78d1afb4adbd782903b193c9d8fe433c7571c003a91a2285cecc62e06f7e94b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#oauthCredentialStore",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "oauthCredentialStore",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(provider OAuthProviderInterface) OAuthCredentialStore"
+      },
+      "shapeHash": "sha256:304288a5580c8f0ab554e6757ad10ba867a7560fee37dc528f644dff89040bea"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#oauthNativeLogin",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "oauthNativeLogin",

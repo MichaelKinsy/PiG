@@ -125,6 +125,8 @@ type OAuthAuth struct {
 	Login          func(context.Context, AuthInteraction, LoginOptions) (Credential, error)
 	Refresh        func(ctx context.Context, credential Credential) (Credential, error)
 	ToAuth         func(credential Credential) (ModelAuth, error)
+	// store is the D40 extension-owned credential store of the OAuth provider whose flow Login runs; a login through it saves there instead of the core credential store.
+	store OAuthCredentialStore
 }
 
 // ProviderAuth lists the auth methods a provider supports.
