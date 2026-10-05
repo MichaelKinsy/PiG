@@ -119,7 +119,7 @@ func (m *InteractiveMode) renderBuiltInHeader(width int) []string {
 }
 
 // piWordmark is the text fallback for the logo in a terminal color mode (pi-logo.ts piWordmark).
-// pig divergence (D2): it is the bold "PiG." text mark of the active sprite, not Pi's coral and yellow "Pi".
+// pig divergence (D2): it is the bold "PiG." text mark of the active sprite, its letters in the sprite's wordmark ramp (as Pi colors "Pi" in coral and yellow) and its period in the accent, not Pi's "Pi".
 func piWordmark(mode tui.TerminalColorMode) string {
 	return piglogin.TextMark(piglogin.Active(), mode)
 }

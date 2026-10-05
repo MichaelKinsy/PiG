@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
@@ -606,5 +607,22 @@ func Extension() *sdk.Extension {
 	}
 	if len(reports) != 1 || !slices.Equal(reports[0].Tools, []string{"runtime_only"}) {
 		t.Fatalf("validation tools = %#v", reports)
+	}
+}
+
+// A fixed two-minute bound killed a slow Rust build that PIG_CELL_BUILD_TIMEOUT
+// allows, so validation's bound must follow the variable.
+func TestValidationTimeoutHonoursPigCellBuildTimeout(t *testing.T) {
+	t.Setenv("PIG_CELL_BUILD_TIMEOUT", "")
+	if got, want := validationTimeout(), 10*time.Minute+validationLoadTimeout; got != want {
+		t.Fatalf("default = %v, want %v", got, want)
+	}
+	t.Setenv("PIG_CELL_BUILD_TIMEOUT", "45m")
+	if got, want := validationTimeout(), 45*time.Minute+validationLoadTimeout; got != want {
+		t.Fatalf("45m = %v, want %v", got, want)
+	}
+	t.Setenv("PIG_CELL_BUILD_TIMEOUT", "1s")
+	if got := validationTimeout(); got < 1*time.Second+validationLoadTimeout {
+		t.Fatalf("1s = %v", got)
 	}
 }

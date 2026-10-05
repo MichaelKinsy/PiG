@@ -607,8 +607,8 @@ export default function (pi) {
 	}
 }
 
-// Pi 0.87.1 /reload keeps a native ESM .js entry (a "type": "module" package) in Node's module cache: jiti imports it natively, so an edit, even a syntax error, is not seen, and the factory runs again with the module's state. Probed with Pi's own loadExtensionsCached after clearExtensionCache per reload: old-1, old-2, old-3 and no load error.
-func TestNodeReloadKeepsATypeModuleJsEntryInNodesModuleCache(t *testing.T) {
+// Pi /reload keeps a native ESM .js entry (a "type": "module" package) in Node's module cache: jiti imports it natively, so an edit, even a syntax error, is not seen, and the factory runs again with the module's state. Probed with Pi 0.87.1's own loadExtensionsCached after clearExtensionCache per reload: old-1, old-2, old-3 and no load error. PiG evaluates an edited ES module entry again (D93), so an edit runs, an edit that breaks the module fails its load as an edited TypeScript extension's does in Pi, and the next valid edit loads; an unedited reload keeps the module and its state.
+func TestNodeReloadEvaluatesAnEditedTypeModuleJsEntryAgain(t *testing.T) {
 	nodeCellRequireNode(t)
 	root := t.TempDir()
 	dir := filepath.Join(root, "ext")
@@ -620,7 +620,13 @@ func TestNodeReloadKeepsATypeModuleJsEntryInNodesModuleCache(t *testing.T) {
 	}
 	write := func(source string) {
 		t.Helper()
-		if err := os.WriteFile(filepath.Join(dir, "main.js"), []byte(source), 0o644); err != nil {
+		path := filepath.Join(dir, "main.js")
+		if err := os.WriteFile(path, []byte(source), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		// A later modification time keeps the edit visible on a file system with a coarse clock.
+		later := time.Now().Add(2 * time.Second)
+		if err := os.Chtimes(path, later, later); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -654,24 +660,41 @@ export default function (pi) {
 		}
 		return result.(agent.AgentToolResult).Text()
 	}
+	reload := func() []string {
+		t.Helper()
+		if _, err := h.Reload(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+		return h.LastReloadReport().Issues
+	}
 	if got := probe(); got != "old-1" {
 		t.Fatalf("load probe = %q, want old-1", got)
 	}
-	write(version("new"))
-	if _, err := h.Reload(t.Context()); err != nil {
-		t.Fatal(err)
+	if issues := reload(); len(issues) != 0 {
+		t.Fatalf("unedited reload issues = %q", issues)
 	}
 	if got := probe(); got != "old-2" {
-		t.Fatalf("first reload probe = %q, want old-2 (Node keeps the first module)", got)
+		t.Fatalf("unedited reload probe = %q, want old-2 (the module keeps its state)", got)
+	}
+	write(version("new"))
+	if issues := reload(); len(issues) != 0 {
+		t.Fatalf("edited reload issues = %q", issues)
+	}
+	if got := probe(); got != "new-1" {
+		t.Fatalf("edited reload probe = %q, want new-1 (the edited module evaluated again)", got)
 	}
 	write("export default function register(pi) { pi.registerShortcut(\"ctrl+shift+right\", { handler: () => {\n")
-	if _, err := h.Reload(t.Context()); err != nil {
-		t.Fatal(err)
+	if issues := reload(); len(issues) != 1 || !strings.Contains(issues[0], "Failed to load extension") {
+		t.Fatalf("reload of a broken edit: issues = %q, want the extension's load failure", issues)
 	}
-	if issues := h.LastReloadReport().Issues; len(issues) != 0 {
-		t.Fatalf("reload issues = %q, want none: Pi does not re-read a cached ESM module", issues)
+	if extensions := h.Extensions(); len(extensions) != 0 {
+		t.Fatalf("after a broken edit %d extensions stay loaded, want none", len(extensions))
 	}
-	if got := probe(); got != "old-3" {
-		t.Fatalf("second reload probe = %q, want old-3", got)
+	write(version("fixed"))
+	if issues := reload(); len(issues) != 0 {
+		t.Fatalf("reload after the fix: issues = %q", issues)
+	}
+	if got := probe(); got != "fixed-1" {
+		t.Fatalf("reload after the fix probe = %q, want fixed-1", got)
 	}
 }

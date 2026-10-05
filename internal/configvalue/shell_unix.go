@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 )
 
 // defaultShell is the shell Node's execSync runs: /bin/sh, or /system/bin/sh
@@ -28,11 +30,11 @@ func runShellCommand(ctx context.Context, payload string) (string, bool) {
 }
 
 func configuredShellCommand(ctx context.Context, path string, _ bool, args ...string) *exec.Cmd {
-	return exec.CommandContext(ctx, path, args...)
+	return linkerexec.CommandContext(ctx, path, args...)
 }
 
 func runDefaultShell(ctx context.Context, payload string) (string, bool) {
-	cmd := exec.CommandContext(ctx, defaultShell(runtime.GOOS), "-c", payload)
+	cmd := linkerexec.CommandContext(ctx, defaultShell(runtime.GOOS), "-c", payload)
 	cmd.Stdin = nil
 	cmd.Stderr = nil
 	out, err := cmd.Output()

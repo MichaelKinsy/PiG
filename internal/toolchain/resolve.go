@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 )
 
 // pig additive (D20): PiG compiles extensions, which Pi does not, and resolves one Go toolchain for every build.
@@ -149,7 +150,7 @@ func fileExists(path string) bool {
 func askGoRoot(command string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, command, "env", "GOROOT")
+	cmd := linkerexec.CommandContext(ctx, command, "env", "GOROOT")
 	cmd.Env = append(slices.DeleteFunc(os.Environ(), func(kv string) bool {
 		return envKey(kv, "GOROOT") || envKey(kv, "GOTOOLCHAIN")
 	}), "GOTOOLCHAIN=local")

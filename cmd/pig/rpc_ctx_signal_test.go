@@ -104,6 +104,21 @@ func awaitCtxSignalRow(t *testing.T, p *rpcProcess, report, where string) {
 
 var ctxSignalNone = ctxSignalRow{Signal: "undefined"}
 
+// awaitCtxSignalPollRow waits until the timer extension has recorded the given state.
+func awaitCtxSignalPollRow(t *testing.T, p *rpcProcess, report, signal string) {
+	t.Helper()
+	deadline := time.Now().Add(p.budget)
+	for time.Now().Before(deadline) {
+		for _, row := range readCtxSignalReport(t, ctxSignalPollReport(report)) {
+			if row.Signal == signal {
+				return
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("the timer extension never recorded ctx.signal %s\n%s", signal, p.stderr.String())
+}
+
 func ctxSignalPollWant(signal string) ctxSignalRow {
 	return ctxSignalRow{Where: "poll", Signal: signal}
 }
@@ -211,6 +226,9 @@ func TestExtensionContextSignalComparedWithPi(t *testing.T) {
 			drive: func(t *testing.T, p *rpcProcess, report string) {
 				p.sendJSON(map[string]any{"id": "prompt", "type": "prompt", "message": "Run: extension echo hello"})
 				awaitCtxSignalRow(t, p, report, "turn_start")
+				// The run is short; abort only once the timer extension has seen it, since a Windows timer ticks about every
+				// 15.6 ms and could otherwise miss the whole run.
+				awaitCtxSignalPollRow(t, p, report, "live")
 				p.sendJSON(map[string]any{"id": "abort", "type": "abort"})
 				awaitCtxSignalRow(t, p, report, "agent_settled")
 			},
