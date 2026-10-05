@@ -12,19 +12,33 @@ type workingIndicatorOptions struct {
 	IntervalMs float64  `json:"intervalMs"`
 }
 
-// showStatusIndicator checks the active editor's opt-in; a remote editor does not inherit the dormant default editor's border status.
+// Only the active editor can opt into border status.
 // upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:setEditorWorkingStatusIndicator
+func (m *InteractiveMode) setEditorWorkingStatusIndicator(indicator *tui.StatusIndicator) bool {
+	if m.editor == nil {
+		return false
+	}
+	if m.remoteEditor != nil {
+		m.editor.SetWorkingStatusIndicator(nil)
+		return m.remoteEditor.editor.EmbedWorkingStatus()
+	}
+	if !m.editor.EmbedWorkingStatus {
+		indicator = nil
+	}
+	m.editor.SetWorkingStatusIndicator(indicator)
+	return m.editor.EmbedWorkingStatus
+}
+
 func (m *InteractiveMode) showStatusIndicator(indicator *tui.StatusIndicator) {
 	m.clearStatusIndicator("")
 	m.activeStatusIndicator = indicator
-	m.activeWorkingIndicatorEmbedded = m.editor != nil && !m.editor.IsRemote() && m.editor.EmbedWorkingStatus
+	m.activeWorkingIndicatorEmbedded = m.setEditorWorkingStatusIndicator(indicator)
 	m.statusLastFrame = time.Now()
 	m.statusContainer.Clear()
-	if m.activeWorkingIndicatorEmbedded {
-		m.editor.SetWorkingStatusIndicator(indicator)
-	} else {
+	if !m.activeWorkingIndicatorEmbedded {
 		m.statusContainer.Add(indicator)
 	}
+	m.reconfigureRemoteEditor()
 	m.resetSpinnerInterval()
 }
 
@@ -40,15 +54,14 @@ func (m *InteractiveMode) clearStatusIndicator(kind string) {
 	}
 	m.activeStatusIndicator = nil
 	m.activeWorkingIndicatorEmbedded = false
-	if m.editor != nil {
-		m.editor.SetWorkingStatusIndicator(nil)
-	}
+	m.setEditorWorkingStatusIndicator(nil)
 	if m.statusContainer != nil {
 		m.statusContainer.Clear()
 		if previous != nil && !embedded && m.opts.TuiMode != "fullscreen" && m.tuiInst != nil && m.statusClearOnShrink() {
 			m.statusContainer.Add(&tui.IdleStatus{})
 		}
 	}
+	m.reconfigureRemoteEditor()
 	m.resetSpinnerInterval()
 }
 
@@ -150,6 +163,7 @@ func (m *InteractiveMode) setWorkingIndicator(options *workingIndicatorOptions) 
 	if indicator := m.activeStatusIndicator; indicator != nil && indicator.Kind == "working" {
 		m.applyWorkingIndicatorOptions(indicator)
 		m.statusLastFrame = time.Now()
+		m.reconfigureRemoteEditor()
 	}
 	m.resetSpinnerInterval()
 	if m.tuiInst != nil {
@@ -167,6 +181,7 @@ func (m *InteractiveMode) setWorkingMessage(message string) {
 			message = "Working"
 		}
 		indicator.SetMessage(message)
+		m.reconfigureRemoteEditor()
 		if m.tuiInst != nil {
 			m.tuiInst.RequestRender()
 		}
@@ -202,6 +217,7 @@ func (m *InteractiveMode) postRetryStatusUpdate(stop <-chan struct{}, label stri
 			return
 		}
 		m.activeStatusIndicator.SetMessage(label)
+		m.reconfigureRemoteEditor()
 		m.tuiInst.Render()
 	}
 	select {

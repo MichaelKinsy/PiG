@@ -126,6 +126,8 @@ export class EditorComponentHost {
       return;
     }
     session.component = component;
+    // pig divergence (D94): Pi re-checks isWorkingStatusEditor each time a status is shown; PiG reads the opt-in once here and the Go host places status from it.
+    session.embedWorkingStatus = component.embedWorkingStatus === true && typeof component.setWorkingStatusIndicator === "function";
     component.onSubmit = (text) => this.submit(session, text);
     component.onChange = (text) => this.changed(session, text);
     if (component.borderColor !== undefined) component.borderColor = this.borderColor(session);
@@ -148,7 +150,7 @@ export class EditorComponentHost {
     this.session = session;
     // The host answers with the editor text, padding, autocomplete size and
     // focus it copies, then the editor renders.
-    runtime.notify("ui.editor.install", { key: session.key });
+    runtime.notify("ui.editor.install", { key: session.key, embedWorkingStatus: session.embedWorkingStatus });
   }
 
   // Pi's setEditorComponent(undefined) restores the default editor.
@@ -349,6 +351,27 @@ export class EditorComponentHost {
           if (editor.setPaddingX !== undefined) editor.setPaddingX(Number(args.paddingX || 0));
           if (editor.setAutocompleteMaxVisible !== undefined) editor.setAutocompleteMaxVisible(Number(args.autocompleteMaxVisible || 5));
           if (require("./shims/pi-dist/pi-tui/tui.js").isFocusable(editor)) editor.focused = args.focused !== false;
+          if (session.embedWorkingStatus) {
+            const status = args.workingStatus;
+            let indicator;
+            if (status) {
+              const { StatusIndicator } = require("./shims/pi-dist/pi-coding-agent/modes/interactive/components/status-indicator.js");
+              // pig divergence (D94): the host advances the animation and sends snapshots, so empty initial frames prevent a second animation timer.
+              const working = status.kind === "working";
+              // upstream: interactive-mode.ts showWorkingStatusIndicator
+              const spinnerColor = working ? (text) => editor.borderColor(text)
+                : (text) => status.spinnerColor ? status.spinnerColor + text + "\x1b[0m" : text;
+              const messageColor = working ? (text) => editor.borderColor(text)
+                : (text) => status.messageColor ? status.messageColor + text + "\x1b[0m" : text;
+              indicator = new StatusIndicator(status.kind, undefined, spinnerColor, messageColor,
+                status.message, { frames: [] });
+              indicator.frames = status.frames;
+              indicator.currentFrame = status.frames.length ? status.frame % status.frames.length : 0;
+              indicator.renderIndicatorVerbatim = status.indicatorVerbatim;
+              indicator.invalidate();
+            }
+            editor.setWorkingStatusIndicator(indicator);
+          }
           // Pi's updateEditorBorderColor on a thinking level change.
           if (recolor && !session.isBashMode) editor.borderColor = this.borderColor(session);
         });

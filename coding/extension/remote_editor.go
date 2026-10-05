@@ -27,6 +27,8 @@ type RemoteEditor interface {
 	// default editor's text, padding and autocomplete size when it installs
 	// the editor, and the TUI sets its focus.
 	Configure(config RemoteEditorConfig)
+	// EmbedWorkingStatus reports whether this editor wants status in its border.
+	EmbedWorkingStatus() bool
 	// Bind attaches the host that receives the editor's frames and
 	// callbacks. Events that arrive before Bind are delivered on binding.
 	Bind(host RemoteEditorHost)
@@ -69,6 +71,20 @@ type RemoteEditorConfig struct {
 	Compacting       bool     `json:"compacting"`
 	BashRunning      bool     `json:"bashRunning"`
 	InterruptHandled bool     `json:"interruptHandled"`
+	// WorkingStatus is the current border status; nil clears it.
+	WorkingStatus *RemoteEditorStatus `json:"workingStatus"`
+}
+
+// RemoteEditorStatus is a border-status snapshot.
+// pig divergence (D94): the host advances the animation and sends snapshots; Pi's editor-side indicator runs its own timer.
+type RemoteEditorStatus struct {
+	Kind              string   `json:"kind"`
+	Message           string   `json:"message"`
+	Frames            []string `json:"frames"`
+	Frame             int      `json:"frame"`
+	SpinnerColor      string   `json:"spinnerColor"`
+	MessageColor      string   `json:"messageColor"`
+	IndicatorVerbatim bool     `json:"indicatorVerbatim"`
 }
 
 // RemoteEditorAction snapshots the editor at the app-action boundary. Local means the component already applied the synchronous editor mutations; the host must not replay them into that component.

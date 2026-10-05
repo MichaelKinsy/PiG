@@ -30,7 +30,7 @@ Every active divergence must have:
 
 - D54 — Fenced-code wrapping. Retired after re-probing Pi: `Markdown.render` already wraps every non-image rendered row, including code rows (`markdown.ts` at 0.99.1 still passes each non-image line through `wrapTextWithAnsi`; the only change since 0.87.1 is a token cache). PiG now uses that same final content-width pass and its continuation breakpoints. The ID remains reserved. Evidence: `tui/markdown_upstream_test.go`, `tui/markdown_codeblock_wrap_test.go`, and `test/parity/scenarios/tui-components/16-markdown-user-components.toml`.
 
-## Active divergences (35)
+## Active divergences (36)
 
 D78, D82 and D83 record owner-approved known gaps for 0.3.x (decision 2026-09-28). Approval records a difference; it does not prove parity, waive an unrelated defect, or turn a failing comparison into a pass. Same-process object behavior must remain Pi-exact. See `docs/findings/0.3.0-known-gaps.md` for the integration boundary and retained failures.
 
@@ -1275,5 +1275,23 @@ Each test fails with an earlier runtime: the CLI test with the runtime before D9
 Parity allowance: Pi keeps the old code of an edited ES module, so no paired scenario compares the reload; the tests above pin PiG's behavior.
 
 Remove when: Pi's loader evaluates an edited ES module extension again on `/reload` (upstream issue drafted 2026-10-04).
+
+SCRUTINIZED:approved
+
+## D94 Subprocess editor working status runs from host snapshots
+
+What: When a subprocess editor opts into embedded working status, Pi runs the StatusIndicator's own animation timer inside the editor and re-checks `isWorkingStatusEditor` each time a status is shown. PiG advances the animation on the host and sends the editor snapshots (`RemoteEditorStatus`), so the JavaScript side builds the indicator with empty initial frames and takes the frames and frame index from the snapshot. PiG also reads the opt-in once, at editor install, and the Go host places the status from it; an editor that changes `embedWorkingStatus` afterwards is not re-checked. The working colors match Pi: the editor's own `borderColor`, read at render time.
+
+Why: One animation timer on the host keeps the spinner in step with the rest of the UI across the process boundary, and the host decides placement before the editor can answer.
+
+Owner decision: 2026-10-05, owner Michael Kinsy (pr137).
+
+Call-site markers: `coding/extension/host/subprocess/runtime-node/editor-component.mjs` (install opt-in and indicator construction), `coding/extension/remote_editor.go` (`RemoteEditorStatus`).
+
+Evidence: the Node editor test in `coding/extension/host/subprocess/runtime_node_editor_component_test.go` compares border rows with Pi's own CustomEditor and StatusIndicator.
+
+Parity allowance: observable rows match Pi; only timer ownership and opt-in re-check timing differ.
+
+Remove when: the editor protocol can return a live opt-in and snapshots are replaced by an editor-side timer.
 
 SCRUTINIZED:approved

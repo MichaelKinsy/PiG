@@ -33,6 +33,7 @@ const pigTui = await import(%q);
 const piKeybindings = await import(%q);
 const piCustomEditor = await import(%q);
 const piTui = await import(%q);
+const piStatus = await import(%q);
 
 // The host's table: Pi's KEYBINDINGS with a user override.
 const definitions = {};
@@ -173,10 +174,63 @@ assert.equal(editor.getText(), before);
 runtime.ui.setEditorComponent(undefined);
 assert.equal(take("ui.editor.clear").length, 1);
 assert.equal(runtime.ui.getEditorComponent(), undefined);
+
+// Pi's isWorkingStatusEditor requires both the explicit opt-in and the setter.
+assert.equal(install.args.embedWorkingStatus, false);
+runtime.ui.setEditorComponent((tui, theme, keys) => new pigAgent.CustomEditor(tui, theme, keys, { embedWorkingStatus: true }));
+const embeddedKey = take("ui.editor.install").at(-1).args.key;
+assert.equal(take("ui.editor.install").at(-1).args.embedWorkingStatus, true);
+const statusConfig = { key: embeddedKey, paddingX: 1, focused: true, thinkingLevel: "off", shortcuts: [],
+  workingStatus: { kind: "working", message: "Indexing wide 文本", frames: ["A", "B"], frame: 5,
+    spinnerColor: "\x1b[34m", messageColor: "\x1b[35m", indicatorVerbatim: false } };
+runtime.handleNotify({ method: "ui.editor.configure", args: statusConfig });
+assert.match(take("ui.editor.render").at(-1).args.lines[0], /── .*B.*Indexing wide 文本/);
+assert.equal(runtime.editorHost.session.component.workingStatusIndicator.intervalId, null, "only the host owns animation");
+const oracleEditor = new piCustomEditor.CustomEditor({ requestRender() {}, terminal: { rows: 24, columns: 60 } },
+  { ...piTheme, borderColor: (text) => "\x1b[36m" + text + "\x1b[39m" }, factoryArgs.keybindings, { embedWorkingStatus: true });
+// Pi colors a working status with the editor's own borderColor, read at render time.
+oracleEditor.setPaddingX(1);
+oracleEditor.focused = true;
+const oracleStatus = new piStatus.StatusIndicator("working", undefined,
+  (text) => oracleEditor.borderColor(text), (text) => oracleEditor.borderColor(text),
+  "Indexing wide 文本", { frames: [] });
+oracleStatus.frames = ["A", "B"];
+oracleStatus.currentFrame = 1;
+oracleStatus.renderIndicatorVerbatim = false;
+oracleStatus.invalidate();
+oracleEditor.setWorkingStatusIndicator(oracleStatus);
+for (const text of ["", Array.from({ length: 40 }, (_, i) => "line " + i).join("\n")]) {
+  oracleEditor.setText(text);
+  runtime.handleNotify({ method: "ui.editor.setText", args: { key: embeddedKey, text } });
+  for (const width of [4, 12, 40, 60]) {
+    runtime.ready.width = width;
+    runtime.handleNotify({ method: "ui.editor.configure", args: statusConfig });
+    assert.deepEqual(take("ui.editor.render").at(-1).args.lines, oracleEditor.render(width), "Pi border rows at width " + width);
+  }
+}
+runtime.handleNotify({ method: "ui.editor.setText", args: { key: embeddedKey, text: "" } });
+statusConfig.workingStatus.frame = 0;
+statusConfig.workingStatus.message = "Compacting context... (escape to cancel)";
+runtime.handleNotify({ method: "ui.editor.configure", args: statusConfig });
+assert.match(take("ui.editor.render").at(-1).args.lines[0], /── .*A.*Compacting context/);
+statusConfig.workingStatus.frames = [];
+runtime.handleNotify({ method: "ui.editor.configure", args: statusConfig });
+assert.match(take("ui.editor.render").at(-1).args.lines[0], /── .*Compacting context/);
+statusConfig.workingStatus = null;
+runtime.handleNotify({ method: "ui.editor.configure", args: statusConfig });
+assert.doesNotMatch(take("ui.editor.render").at(-1).args.lines[0], /Working|Indexing|Compacting/);
+runtime.ui.setEditorComponent((tui, theme, keys) => {
+  const component = new pigAgent.CustomEditor(tui, theme, keys, { embedWorkingStatus: true });
+  component.setWorkingStatusIndicator = undefined;
+  return component;
+});
+assert.equal(take("ui.editor.install").at(-1).args.embedWorkingStatus, false);
+runtime.ui.setEditorComponent(undefined);
 `, abs("runtime-node/runtime.mjs"), abs("runtime-node/shims/pi-coding-agent.mjs"), abs("runtime-node/shims/pi-tui.mjs"),
 		abs(filepath.Join(pinnedPiPackages, "dist", "core", "keybindings.js")),
 		abs(filepath.Join(pinnedPiPackages, "dist", "modes", "interactive", "components", "custom-editor.js")),
-		abs(filepath.Join(pinnedPiPackages, "node_modules", "@earendil-works", "pi-tui", "dist", "index.js")))
+		abs(filepath.Join(pinnedPiPackages, "node_modules", "@earendil-works", "pi-tui", "dist", "index.js")),
+		abs(filepath.Join(pinnedPiPackages, "dist", "modes", "interactive", "components", "status-indicator.js")))
 	if output, err := exec.CommandContext(t.Context(), "node", "--input-type=module", "--eval", script).CombinedOutput(); err != nil {
 		t.Fatalf("editor component: %v\n%s", err, output)
 	}
