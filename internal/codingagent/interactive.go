@@ -1033,6 +1033,9 @@ type InteractiveOptions struct {
 	// pig-specific: no upstream equivalent.
 	SubprocessHost SubprocessHost
 
+	// TerminateExtensionProcesses, when set, kills every extension process without running extension callbacks. It runs before an emergency exit on a dead terminal, which skips orderly shutdown.
+	TerminateExtensionProcesses func()
+
 	// StageExtensionSDKs, when non-nil, materializes the SDKs this binary
 	// embeds before /reload recompiles out-of-tree extensions, and prunes
 	// builds whose fingerprint proves they came from an older SDK.
