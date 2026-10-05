@@ -100,7 +100,6 @@ func runLoginCommand(args []string) int {
 	}
 	agentDir := codingagent.AgentDir()
 	authPath := filepath.Join(agentDir, "auth.json")
-	_ = cwd
 
 	switch opts.command {
 	case authLogin:
@@ -109,7 +108,9 @@ func runLoginCommand(args []string) int {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
-		cred, err := runOAuthProviderLogin(provider, opts.noInput)
+		// Pi passes the installation's device ID to every login (interactive-mode.ts:6297).
+		settings := codingagent.NewSettingsManager(cwd, agentDir)
+		cred, err := runOAuthProviderLogin(provider, opts.noInput, settings.GetOrCreateDeviceID)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error:", err)
 			return 1
@@ -323,8 +324,9 @@ func resolveLogoutProvider(store *ai.AuthStorage, input string) (string, error) 
 	return providers[idx-1], nil
 }
 
-func runOAuthProviderLogin(provider ai.OAuthProviderInterface, noInput bool) (ai.OAuthCredentials, error) {
+func runOAuthProviderLogin(provider ai.OAuthProviderInterface, noInput bool, getDeviceID func() string) (ai.OAuthCredentials, error) {
 	callbacks := ai.OAuthLoginCallbacks{
+		GetDeviceID: getDeviceID,
 		OnAuth: func(info ai.OAuthAuthInfo) {
 			fmt.Printf("\nOpen this URL in your browser:\n%s\n", info.URL)
 			if info.Instructions != "" {

@@ -326,6 +326,7 @@ func (m *InteractiveMode) runLoginRegisteredOAuth(loginCtx context.Context, prov
 	}
 
 	cb := ai.OAuthLoginCallbacks{
+		GetDeviceID:     m.loginDeviceID,
 		OnPrompt:        func(value ai.OAuthPrompt) (string, error) { return prompt(context.Background(), value) },
 		OnPromptContext: prompt,
 		OnDeviceCode: func(info ai.OAuthDeviceCodeInfo) {
@@ -431,6 +432,9 @@ func loginDialogOutcome(dlg *tui.LoginDialog, failed *atomic.Bool, providerName 
 	return nil
 }
 
+// loginOpenAICodex is the Codex flow runLoginOpenAICodex starts; tests replace it to observe the callbacks.
+var loginOpenAICodex = ai.LoginOpenAICodex
+
 // runLoginOpenAICodex runs the OpenAI Codex (ChatGPT) OAuth flow.
 // Mirrors upstream openai-codex.ts login(), which first presents a method
 // selector (browser vs device-code) via onSelect, then runs the chosen flow.
@@ -468,6 +472,7 @@ func (m *InteractiveMode) runLoginOpenAICodex(loginCtx context.Context) error {
 	}
 
 	cb := ai.OAuthLoginCallbacks{
+		GetDeviceID: m.loginDeviceID,
 		OnSelect: func(ai.OAuthSelectPrompt) (string, error) {
 			return loginMethod, nil
 		},
@@ -503,7 +508,7 @@ func (m *InteractiveMode) runLoginOpenAICodex(loginCtx context.Context) error {
 	go func() {
 		defer loginCancel()
 
-		cred, err := ai.LoginOpenAICodex(loginCtx, cb)
+		cred, err := loginOpenAICodex(loginCtx, cb)
 		if err != nil {
 			if loginCtx.Err() == nil {
 				failed.Store(true)
@@ -804,4 +809,13 @@ var openBrowser = func(url string) error {
 func saveLoginCredential(ctx context.Context, auth *ai.AuthStorage, providerID string, credential ai.Credential) error {
 	_, err := auth.Modify(ctx, providerID, func(*ai.Credential) (*ai.Credential, error) { return &credential, nil })
 	return err
+}
+
+// loginDeviceID is the installation's device ID, which Pi passes to every login (interactive-mode.ts:6297) and Sign in
+// with ChatGPT sends as its agent host ID.
+func (m *InteractiveMode) loginDeviceID() string {
+	if m.opts.SettingsManager == nil {
+		return ""
+	}
+	return m.opts.SettingsManager.GetOrCreateDeviceID()
 }
