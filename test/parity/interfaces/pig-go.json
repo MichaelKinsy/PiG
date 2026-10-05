@@ -111224,6 +111224,17 @@
       "shapeHash": "sha256:e97bf7bf1ecfdfceef9dc48e038cbf324758ba5a8557005c28b1eea4898962d3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglogin#legibleOnLightAndDark",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglogin",
+      "name": "legibleOnLightAndDark",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(c image/color.RGBA) bool"
+      },
+      "shapeHash": "sha256:d34e89042490baa5f0f1dab8e00edc1b02222046b5d68a761613e11fc160ff68"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglogin#letterG",
       "package": "github.com/MichaelKinsy/PiG/coding/piglogin",
       "name": "letterG",
@@ -111301,6 +111312,17 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglogin#luminance",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglogin",
+      "name": "luminance",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(c image/color.RGBA) float64"
+      },
+      "shapeHash": "sha256:e1d5919640ac9284132a22455b58a5d7cb6f4ab94810126a3e41d54179ef3c79"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglogin#markBold",
       "package": "github.com/MichaelKinsy/PiG/coding/piglogin",
       "name": "markBold",
@@ -111323,6 +111345,28 @@
       "shapeHash": "sha256:4da044f28b2cc55dc4f22fc74f7796bd7562d89c144421522c93fd62d743a778"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglogin#markLetterColor",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglogin",
+      "name": "markLetterColor",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(logo Logo, n int) image/color.RGBA"
+      },
+      "shapeHash": "sha256:375b53551a8d279dc4d7ceec01dffac3e78b2434968b643c8e430769be0ca322"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglogin#markLetterRows",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglogin",
+      "name": "markLetterRows",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "[3]int"
+      },
+      "shapeHash": "sha256:6cb453ef815147f40b9aa346ff20ced88caa0579fb0cfa09412c542b900cb10f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglogin#markReset",
       "package": "github.com/MichaelKinsy/PiG/coding/piglogin",
       "name": "markReset",
@@ -111343,6 +111387,17 @@
         "type": "map[byte]image/color.RGBA"
       },
       "shapeHash": "sha256:e21c192769147baa4de192eaa446169de7ad0b62baaa7d7ef93d55cb5886e050"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglogin#minMarkContrast",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglogin",
+      "name": "minMarkContrast",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped float"
+      },
+      "shapeHash": "sha256:b997d0783dc31cd4ffb0eefe71094792416ab88a90341e44e49eba6282f8ea81"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglogin#paletteFor",
