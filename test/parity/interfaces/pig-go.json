@@ -55014,6 +55014,28 @@
       "shapeHash": "sha256:eb6bd2c66239c05f4aac928c37f8b99e8b0c8f2c00348df68a6fc1c56eff5ee7"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.effectiveAPIKeyFromRegistration",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "ModelRegistry.effectiveAPIKeyFromRegistration",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id string) bool"
+      },
+      "shapeHash": "sha256:f1627669917a681a2d0de09c82296a20744a3daf51f53956333b1e782e2400d3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.effectiveProviderConfigLocked",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "ModelRegistry.effectiveProviderConfigLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id string) (github.com/MichaelKinsy/PiG/internal/codingagent.providerConfig, bool)"
+      },
+      "shapeHash": "sha256:82780192fce9010193ad968ed3bbdc88f654254beffb8235d03adcc070a383e6"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.extensionModelOrder",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "ModelRegistry.extensionModelOrder",
@@ -138799,6 +138821,28 @@
         "type": "func(providerID string)"
       },
       "shapeHash": "sha256:eb6bd2c66239c05f4aac928c37f8b99e8b0c8f2c00348df68a6fc1c56eff5ee7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.effectiveAPIKeyFromRegistration",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ModelRegistry.effectiveAPIKeyFromRegistration",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id string) bool"
+      },
+      "shapeHash": "sha256:f1627669917a681a2d0de09c82296a20744a3daf51f53956333b1e782e2400d3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.effectiveProviderConfigLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ModelRegistry.effectiveProviderConfigLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id string) (providerConfig, bool)"
+      },
+      "shapeHash": "sha256:61ef3edba6b01e98974e12b15cb89baad0b7ffa484b4f7366232904b822f6d3a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.extensionModelOrder",

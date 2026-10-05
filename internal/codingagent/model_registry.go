@@ -1304,13 +1304,8 @@ func (r *ModelRegistry) HasConfiguredAuth(providerID string) bool {
 	if r.runtimeCredentials != nil && r.runtimeCredentials.HasRuntimeAPIKey(providerID) {
 		return true
 	}
-	if prov, ok := r.dynamic[providerID]; ok {
+	if prov, configured := r.effectiveProviderConfigLocked(providerID); configured {
 		return r.hasConfiguredAuthLocked(providerID, &prov)
-	}
-	if r.config != nil {
-		if prov, ok := r.config.Providers[providerID]; ok {
-			return r.hasConfiguredAuthLocked(providerID, &prov)
-		}
 	}
 	return r.HasAnyKey(providerID) || r.hasStoredCredential(providerID)
 }
@@ -1328,10 +1323,7 @@ func (r *ModelRegistry) GetProviderAuthStatus(providerID string) ai.AuthStatus {
 			return fallback
 		}
 	}
-	prov, dynamic := r.dynamic[providerID]
-	if !dynamic && r.config != nil {
-		prov = r.config.Providers[providerID]
-	}
+	prov, _ := r.effectiveProviderConfigLocked(providerID)
 	if prov.APIKey != "" {
 		if configvalue.IsCommandConfigValue(prov.APIKey) {
 			return ai.AuthStatus{Configured: true, Source: ai.AuthSourceModelsJSONCommand}
@@ -1343,7 +1335,7 @@ func (r *ModelRegistry) GetProviderAuthStatus(providerID string) ai.AuthStatus {
 			return ai.AuthStatus{}
 		}
 		source := ai.AuthSourceModelsJSONKey
-		if dynamic {
+		if r.effectiveAPIKeyFromRegistration(providerID) {
 			source = ai.AuthSourceFallback
 		}
 		return ai.AuthStatus{Configured: true, Source: source}
