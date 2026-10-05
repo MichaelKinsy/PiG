@@ -2470,6 +2470,9 @@ class Extension:
         self._theme = Theme()
         self._sock: socket.socket | None = None
         self._write_lock = threading.Lock()
+        # Frames queued by weakref finalizers. A finalizer runs on whichever thread triggers garbage collection, possibly
+        # one already holding _write_lock, so it only enqueues here (SimpleQueue.put is safe there) and never sends.
+        self._finalizer_frames: queue.SimpleQueue[dict[str, Any]] = queue.SimpleQueue()
         self._state_lock = threading.Lock()
         self._session_mirror = SessionMirror()
         # Serializes the one-time session-log subscribe so concurrent first
@@ -3054,6 +3057,7 @@ class Extension:
             except EOFError:
                 self._stop_runtime()
                 return
+            self._flush_finalizer_frames()
             if env.get("type") == "ping":
                 ping = env.get("ping") or {}
                 self._send({"type": "pong", "pong": {"nonce": ping.get("nonce", "")}})
@@ -3977,6 +3981,23 @@ class Extension:
     def _send(self, env: dict[str, Any]) -> None:
         with self._write_lock:
             self._send_locked(env)
+        self._flush_finalizer_frames()
+
+    def _send_from_finalizer(self, env: dict[str, Any]) -> None:
+        """Queue a frame from a weakref finalizer; the next send or read writes it."""
+        self._finalizer_frames.put(env)
+
+    def _flush_finalizer_frames(self) -> None:
+        while True:
+            try:
+                env = self._finalizer_frames.get_nowait()
+            except queue.Empty:
+                return
+            try:
+                with self._write_lock:
+                    self._send_locked(env)
+            except (OSError, RuntimeError):
+                pass  # Connection close releases everything the finalizers would release.
 
     def _send_locked(self, env: dict[str, Any]) -> None:
         if self._sock is None:
