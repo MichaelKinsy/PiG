@@ -30,7 +30,7 @@ Every active divergence must have:
 
 - D54 — Fenced-code wrapping. Retired after re-probing Pi: `Markdown.render` already wraps every non-image rendered row, including code rows (`markdown.ts` at 0.99.1 still passes each non-image line through `wrapTextWithAnsi`; the only change since 0.87.1 is a token cache). PiG now uses that same final content-width pass and its continuation breakpoints. The ID remains reserved. Evidence: `tui/markdown_upstream_test.go`, `tui/markdown_codeblock_wrap_test.go`, and `test/parity/scenarios/tui-components/16-markdown-user-components.toml`.
 
-## Active divergences (34)
+## Active divergences (35)
 
 D78, D82 and D83 record owner-approved known gaps for 0.3.x (decision 2026-09-28). Approval records a difference; it does not prove parity, waive an unrelated defect, or turn a failing comparison into a pass. Same-process object behavior must remain Pi-exact. See `docs/findings/0.3.0-known-gaps.md` for the integration boundary and retained failures.
 
@@ -1233,7 +1233,7 @@ SCRUTINIZED:approved
 
 ## D93 /reload evaluates an edited ES module extension again
 
-What: Pi 1.0.0 imports each extension through jiti with `moduleCache: false` (`core/extensions/loader.ts:569-572`, `loadExtensionModule`), so `/reload` evaluates a TypeScript or CommonJS extension and its local imports again. jiti 2.7.0 hands a file it treats as an ES module, an `.mjs` file or a `.js` file under `"type": "module"`, to Node's own `import()` when it imports asynchronously (`eval_evalModule`), and Node keeps an ES module for the life of the process by its URL. Pi therefore keeps running an edited ES module, an extension's entry or a local module it imports, until it restarts, even when the edit is a syntax error. This also holds for an `.mjs` module that a TypeScript extension imports. A TypeScript extension's own source runs its edit. This was probed with Pi 1.0.0 in RPC mode and with Pi 0.87.1's own loader; Pi 1.0.2 has the same loader and jiti.
+What: Pi 1.0.0 imports each extension through jiti with `moduleCache: false` (`core/extensions/loader.ts:569-572`, `loadExtensionModule`), so `/reload` evaluates a TypeScript or CommonJS extension and its local imports again. jiti 2.7.0 hands a file it treats as an ES module, an `.mjs` file or a `.js` file under `"type": "module"`, to Node's own `import()` when it imports asynchronously (`eval_evalModule`), and Node keeps an ES module for the life of the process by its URL. Pi therefore keeps running an edited ES module, an extension's entry or a local module it imports, until it restarts, even when the edit is a syntax error. This also holds for an `.mjs` module that a TypeScript extension imports. A TypeScript extension's own source runs its edit. This was probed with the pinned Pi in RPC mode.
 
 PiG's runtime hooks record, for each local extension module that Node loads, the source it loaded and the extension modules each evaluation imports. Local means outside the runtime and outside `node_modules`. When a reload pass starts, PiG gives a new URL, with a `pig-reload=<pass>` query, to each ES module whose source changed since Node loaded it and to each ES module that imports one, directly or through others. The resolve hook resolves every import of such a module to that URL, so the reload evaluates exactly those modules again:
 - Every other module keeps its instance and its state, as in Pi.
