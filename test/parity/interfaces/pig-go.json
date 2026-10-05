@@ -180073,6 +180073,17 @@
       "shapeHash": "sha256:95f3e88e3c75259d7badb7028165b23a6526051640f64334c7dc457c1fbfb2e8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#processGroupMayHoldOutput",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "processGroupMayHoldOutput",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(*os.Process) bool"
+      },
+      "shapeHash": "sha256:ec1334147a53d45f465a53610f38638d9541c7d5399803ac55a1895b17bc035b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#processReadImage",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
       "name": "processReadImage",
@@ -180634,6 +180645,28 @@
       "shapeHash": "sha256:745c198d1e8b89727fedc49d3ee1a081d44e828b69940e1f62928394d51a0f12"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#testHookBeforeStdioRead",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "testHookBeforeStdioRead",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#testHookStdioGraceExpired",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "testHookStdioGraceExpired",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#toWireTruncation",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
       "name": "toWireTruncation",
@@ -181058,9 +181091,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(readDone \u003c-chan struct{}, activity \u003c-chan struct{}) bool"
+        "type": "func(readDone \u003c-chan struct{}, activity \u003c-chan struct{}, mayHoldOutput func() bool) bool"
       },
-      "shapeHash": "sha256:d6937386832db976d63905016d4b06364aa63c84a999f4c4ca3e7b3c284a66b8"
+      "shapeHash": "sha256:0e7c4a6ffb8b1911dfd8584fe1773a6943dece9fa33860d746256e52710a71da"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#writeParams",
