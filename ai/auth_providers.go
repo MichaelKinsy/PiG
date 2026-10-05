@@ -448,7 +448,7 @@ func oauthProviderAuth(providerID string, provider OAuthProviderInterface) *OAut
 	}
 }
 
-// oauthCredentialStore returns the extension-owned credential store an OAuth provider contributes (pig additive D40), or nil when its credentials belong in the core store.
+// oauthCredentialStore returns the extension-owned credential store an OAuth provider contributes (pig additive (D40)), or nil when its credentials belong in the core store.
 func oauthCredentialStore(provider OAuthProviderInterface) OAuthCredentialStore {
 	store, _ := provider.(OAuthCredentialStore)
 	return store

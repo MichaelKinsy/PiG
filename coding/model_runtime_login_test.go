@@ -232,7 +232,7 @@ func testModelRuntimeLoginSerializes(t *testing.T, id, modelsJSON string) {
 	})
 }
 
-// storeOwningOAuthProvider is an extension OAuth provider that keeps its credentials in its own store (pig additive D40).
+// storeOwningOAuthProvider is an extension OAuth provider that keeps its credentials in its own store (pig additive (D40)).
 type storeOwningOAuthProvider struct {
 	mu     sync.Mutex
 	stored []ai.OAuthCredentials
@@ -267,7 +267,7 @@ func (p *storeOwningOAuthProvider) DeleteOAuthCredentials() (bool, error) {
 	return deleted, nil
 }
 
-// pig additive D40: an extension OAuth provider that shadows a built-in ID and owns a credential store saves its login there, as /login (runLoginRegisteredOAuth) and pig login do; the core store stays untouched.
+// pig additive (D40): an extension OAuth provider that shadows a built-in ID and owns a credential store saves its login there, as /login (runLoginRegisteredOAuth) and pig login do; the core store stays untouched.
 func TestModelRuntimeLoginSavesExtensionOAuthToItsCredentialStore(t *testing.T) {
 	provider := &storeOwningOAuthProvider{}
 	ai.RegisterOAuthProvider("anthropic", provider)
