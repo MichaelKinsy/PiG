@@ -22,11 +22,16 @@ import (
 
 // exitIfDeadTerminal bypasses terminal restoration on a disconnected terminal. A PTY master close can surface as EOF from the input reader; querying the terminal then reports the dead-device error without writing restore sequences.
 // Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (emergencyTerminalExit).
-func exitIfDeadTerminal(err error) {
+//
+// Pi's extensions run inside the exiting process and die with it; pig's run as child processes in their own process groups, so they are killed here or they would outlive the exit and keep writing into the session's directories.
+func (m *InteractiveMode) exitIfDeadTerminal(err error) {
 	if errors.Is(err, io.EOF) {
 		_, _, err = term.GetSize(int(os.Stdout.Fd()))
 	}
 	if errors.Is(err, syscall.EIO) || errors.Is(err, syscall.EPIPE) || errors.Is(err, syscall.ENOTCONN) {
+		if m.opts.TerminateExtensionProcesses != nil {
+			m.opts.TerminateExtensionProcesses()
+		}
 		os.Exit(129)
 	}
 }
@@ -342,7 +347,7 @@ func (m *InteractiveMode) pumpTerminalInput(ctx context.Context, source io.Reade
 		case <-ctx.Done():
 			return
 		case err := <-rawErrCh:
-			exitIfDeadTerminal(err)
+			m.exitIfDeadTerminal(err)
 			batch(input.FlushPending)
 			select {
 			case errCh <- err:

@@ -133730,6 +133730,17 @@
       "shapeHash": "sha256:f221d0a6f2f1f86bde1c4fe2c5e011e28899594bfefda9f9f5ff7cf364355014"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.exitIfDeadTerminal",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.exitIfDeadTerminal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(err error)"
+      },
+      "shapeHash": "sha256:93a6c6c514b3d04f95e2b5274d3e899928348deef941bd76a022f9ea0f5ed2eb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.expandSkillCommand",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.expandSkillCommand",
@@ -152813,17 +152824,6 @@
         "type": "eventBarrier"
       },
       "shapeHash": "sha256:daba4faf67b771a791b0a935e9ecadf1573c7ef51177e183a2266257abdc2bb8"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#exitIfDeadTerminal",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "exitIfDeadTerminal",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(err error)"
-      },
-      "shapeHash": "sha256:93a6c6c514b3d04f95e2b5274d3e899928348deef941bd76a022f9ea0f5ed2eb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#expandKeyHint",
