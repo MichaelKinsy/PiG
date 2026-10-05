@@ -2,7 +2,7 @@
 // bash.
 //
 // Mirrors upstream core/tools/bash.ts BashOperations and
-// createLocalShellOperations, plus utils/child-process.ts
+// createLocalShellOperations. internal/childwait applies utils/child-process.ts
 // waitForChildProcess for the post-exit stdio grace.
 package tools
 
@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/childwait"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
@@ -115,7 +116,7 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 	nodespawn.SetEnv(cmd, env)
 	// The shell writes straight into an OS pipe (no exec copy goroutine), so
 	// Wait returns when the shell exits even if a background descendant still
-	// holds the write end. waitForStdioIdle then applies upstream's grace.
+	// holds the write end. childwait then applies upstream's grace.
 	pr, pw, err := os.Pipe()
 	if err != nil {
 		return BashOperationsResult{}, err
@@ -196,50 +197,15 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 		}
 	}()
 
-	readDone := make(chan struct{})
-	activity := make(chan struct{}, 1)
-	var (
-		acceptMu  sync.Mutex
-		accepting = true
-	)
-	go func() {
-		defer close(readDone)
-		if testHookBeforeStdioRead != nil {
-			testHookBeforeStdioRead()
+	pipes := childwait.Start([]*os.File{pr}, func(_ int, chunk []byte) {
+		if opts.OnData != nil {
+			opts.OnData(chunk)
 		}
-		for {
-			buf := make([]byte, 32*1024)
-			n, readErr := pr.Read(buf)
-			if n > 0 {
-				acceptMu.Lock()
-				if !accepting {
-					acceptMu.Unlock()
-					return
-				}
-				if opts.OnData != nil {
-					opts.OnData(buf[:n])
-				}
-				acceptMu.Unlock()
-				select {
-				case activity <- struct{}{}:
-				default:
-				}
-			}
-			if readErr != nil {
-				return
-			}
-		}
-	}()
+	}, childwait.Hooks{BeforeRead: testHookBeforeStdioRead, GraceExpired: testHookStdioGraceExpired})
 
 	waitErr := cmd.Wait()
 	input.Wait()
-	if !waitForStdioIdle(readDone, activity, func() bool { return processGroupMayHoldOutput(cmd.Process) }) {
-		acceptMu.Lock()
-		accepting = false
-		acceptMu.Unlock()
-	}
-	_ = pr.Close()
-	<-readDone
+	pipes.Wait(func() bool { return processGroupMayHoldOutput(cmd.Process) })
 	close(stopWatch)
 	<-watchDone
 
@@ -290,46 +256,6 @@ func (e *shellSpawnError) Is(target error) bool {
 // reports a missing one as exec.ErrNotFound; libuv reports the same spawn as
 // ENOENT.
 func (e *shellSpawnError) notFound() bool { return errors.Is(e.cause, exec.ErrNotFound) }
-
-// exitStdioGrace mirrors upstream EXIT_STDIO_GRACE_MS (utils/child-process.ts).
-const exitStdioGrace = 100 * time.Millisecond
-
-// waitForStdioIdle mirrors the post-exit half of upstream waitForChildProcess
-// (.upstream/v0.87.1/packages/coding-agent/src/utils/child-process.ts:86-122):
-// once the shell has exited, keep reading until the output pipe closes, or
-// until no data has arrived for exitStdioGrace (re-armed on every chunk). A
-// background descendant that inherited the pipe therefore neither blocks the
-// call nor truncates output it is still writing. It reports whether the pipe
-// closed.
-//
-// The grace exists only for a descendant that still holds the pipe. When it
-// expires, mayHoldOutput reports whether any such process can still be alive.
-// If none can, every write end is closed, so EOF follows once the reader has
-// drained what the shell's tree already wrote, and the wait reads to EOF.
-// Otherwise a reader that fell behind (a loaded Windows runner) would drop
-// output the exited command had already written: the grace measures the
-// reader's own latency, not the writer's silence.
-func waitForStdioIdle(readDone, activity <-chan struct{}, mayHoldOutput func() bool) bool {
-	timer := time.NewTimer(exitStdioGrace)
-	defer timer.Stop()
-	for {
-		select {
-		case <-readDone:
-			return true
-		case <-activity:
-			timer.Reset(exitStdioGrace)
-		case <-timer.C:
-			if testHookStdioGraceExpired != nil {
-				testHookStdioGraceExpired()
-			}
-			if mayHoldOutput() {
-				return false
-			}
-			<-readDone
-			return true
-		}
-	}
-}
 
 // Test hooks that order the reader, the shell's exit and the grace without
 // sleeps. Nil outside tests.

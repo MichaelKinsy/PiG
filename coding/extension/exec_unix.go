@@ -2,10 +2,16 @@
 
 package extension
 
-import "syscall"
+import (
+	"os"
+	"syscall"
+)
 
-// newProcAttr detaches the child into a new process group (Setpgid) so a
-// timeout/cancel can target the tree without signalling pig itself.
-func newProcAttr() *syscall.SysProcAttr {
-	return &syscall.SysProcAttr{Setpgid: true}
+// terminate mirrors upstream's proc.kill("SIGTERM"): it signals the child and
+// nothing else. It reports false: whether the child then has an exit code
+// depends on how it ends, which its ProcessState reports.
+func terminate(process *os.Process) (noExitCode bool) {
+	// The child may already have exited; there is nothing to signal.
+	_ = process.Signal(syscall.SIGTERM)
+	return false
 }

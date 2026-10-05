@@ -420,7 +420,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/modes/index.ts` | `(barrel)` | n/a |
 | `packages/coding-agent/src/utils/changelog.ts` | `embed.go + internal/codingagent/changelog.go` | ✅ |
 | `packages/coding-agent/src/utils/ansi.ts` | `internal/codingagent/export/ansi_html.go` | ✅ |
-| `packages/coding-agent/src/utils/child-process.ts` | `internal/crossspawn (spawnProcess/spawnProcessSync Windows shebang routing and cross-spawn escaping); internal/codingagent/tools/bash_operations.go (waitForChildProcess post-exit stdio grace, EXIT_STDIO_GRACE_MS)` | ✅ |
+| `packages/coding-agent/src/utils/child-process.ts` | `internal/crossspawn (spawnProcess/spawnProcessSync Windows shebang routing and cross-spawn escaping); internal/childwait (waitForChildProcess post-exit stdio grace, EXIT_STDIO_GRACE_MS, used by core/exec.ts and the bash tool)` | ✅ |
 | `packages/coding-agent/src/utils/clipboard.ts` | `internal/codingagent/clipboard.go + internal/codingagent/clipboard_copy.go + internal/codingagent/clipboard_text.go (readClipboardText command fallbacks, then the getNativeClipboard getText reader on every platform, and interactive Ctrl+V/right-click paths; internal/codingagent/clipboard_read_text_test.go)` | ✅ |
 | `packages/coding-agent/src/utils/clipboard-image.ts` | `internal/codingagent/clipboard.go + internal/codingagent/clipboard_paste.go (backend read and paste caller; unsupported formats are normalized to PNG; native clipboard parity remains incomplete)` | 🟡 |
 | `packages/coding-agent/src/utils/exif-orientation.ts` | `internal/imageprocessing/images.go` | ✅ |

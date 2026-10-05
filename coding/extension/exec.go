@@ -10,11 +10,13 @@ package extension
 import (
 	"context"
 	"errors"
+	"os"
 	"os/exec"
 	"strings"
 	"sync/atomic"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/childwait"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
@@ -33,8 +35,19 @@ import (
 // PATHEXT, such as npm for npm.cmd, cannot start. A batch file name fails the
 // call with Node's "spawn EINVAL" error, which upstream's spawn throws.
 //
-// Timeout and context cancellation both trigger SIGTERM followed by
-// SIGKILL after 5 seconds.
+// Like upstream, the call waits for the child, then for its output pipes to
+// end or to fall idle for 100 ms (utils/child-process.ts waitForChildProcess),
+// so a descendant that keeps a pipe open does not block it, and output the
+// descendant writes while the pipes stay active is kept.
+//
+// Timeout and context cancellation signal the child alone with SIGTERM
+// (Process.Kill on Windows, where Node's kill terminates the process). Like
+// upstream, nothing follows it: Node sets proc.killed once SIGTERM is
+// delivered, so upstream's SIGKILL after 5 seconds never runs, and no
+// descendant is signalled. The result's code is the child's exit code; a child
+// that a signal ended has none, and upstream resolves it as 0 (`code ?? 0`).
+// On Windows a child that the kill ended has none either: libuv reports the
+// signal it was sent instead of the exit status 1, so the code is 0 there too.
 //
 // upstream: core/exec.ts execCommand
 func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *ExecOptions) (ExecResult, error) {
@@ -54,29 +67,29 @@ func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *
 		defer cancel()
 	}
 
-	cmd := exec.CommandContext(ctx, command, args...)
+	// The child writes straight into OS pipes, so Wait returns when the child
+	// exits even if a descendant still holds a write end.
+	stdoutRead, stdoutWrite, pipeErr := os.Pipe()
+	if pipeErr != nil {
+		return ExecResult{Code: 1}, nil
+	}
+	stderrRead, stderrWrite, pipeErr := os.Pipe()
+	if pipeErr != nil {
+		_ = stdoutRead.Close()
+		_ = stdoutWrite.Close()
+		return ExecResult{Code: 1}, nil
+	}
+	cmd := exec.Command(command, args...)
 	cmd.Dir = dir
-	// Detach the child into its own process group so a timeout/cancel can
-	// target the whole tree without signalling pig itself.
-	cmd.SysProcAttr = newProcAttr()
+	cmd.Stdout = stdoutWrite
+	cmd.Stderr = stderrWrite
 	// Upstream spawns with shell: false, so on Windows libuv finds the
 	// program and the child receives Node's libuv command line.
 	nodespawn.SetProgram(cmd)
 	nodespawn.SetCommandLine(cmd)
-	// Like upstream, killed reports that the timeout or cancellation killed
-	// the process. The exit status cannot tell: a process killed on Windows
-	// exits with status 1.
-	var killed atomic.Bool
-	cmd.Cancel = func() error {
-		killed.Store(true)
-		return cmd.Process.Kill()
-	}
 
-	var stdout, stderr strings.Builder
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	err := cmd.Start()
+	// Start closes the child's ends of the pipes.
+	err := nodespawn.Start(cmd)
 	// exec() has now completed its synchronous prefix: the spawn was attempted
 	// and, on success, the child is running. A subprocess host may advance the
 	// extension's ordered call lane while this command completes independently.
@@ -85,34 +98,66 @@ func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *
 	// call.
 	var spawnErr *nodespawn.Error
 	if errors.As(err, &spawnErr) && spawnErr.Thrown {
+		_ = stdoutRead.Close()
+		_ = stderrRead.Close()
 		return ExecResult{}, err
 	}
-	if err == nil {
-		err = cmd.Wait()
+	if err != nil {
+		_ = stdoutRead.Close()
+		_ = stderrRead.Close()
+		// Like upstream, a program that cannot start (missing program or
+		// working directory) resolves with code 1 instead of failing, and an
+		// abort that came first has already set killed.
+		return ExecResult{Code: 1, Killed: ctx.Err() != nil}, nil
 	}
+
+	var stdout, stderr strings.Builder
+	pipes := childwait.Start([]*os.File{stdoutRead, stderrRead}, func(index int, chunk []byte) {
+		if index == 0 {
+			stdout.Write(chunk)
+		} else {
+			stderr.Write(chunk)
+		}
+	}, childwait.Hooks{})
+
+	// Like upstream, killed reports that the timeout or cancellation fired,
+	// even after the child exited: upstream's abort listener and timer stay
+	// attached until the call settles, after the pipes' grace.
+	var killed, terminated atomic.Bool
+	stopWatch := make(chan struct{})
+	watchDone := make(chan struct{})
+	go func() {
+		defer close(watchDone)
+		select {
+		case <-ctx.Done():
+			killed.Store(true)
+			terminated.Store(terminate(cmd.Process))
+		case <-stopWatch:
+		}
+	}()
+
+	// Wait returns the exit error of a failed status, which the state carries.
+	_ = cmd.Wait()
+	// A descendant that holds a pipe may still be running on every platform.
+	pipes.Wait(func() bool { return true })
+	close(stopWatch)
+	<-watchDone
 
 	result := ExecResult{
 		Stdout: stdout.String(),
 		Stderr: stderr.String(),
+		Killed: killed.Load(),
 	}
-
-	if err != nil {
-		exitErr := &exec.ExitError{}
-		switch {
-		case errors.As(err, &exitErr):
-			result.Code = exitErr.ExitCode()
-			result.Killed = killed.Load()
-		case ctx.Err() != nil:
-			// Context cancelled or timed out before process started.
-			result.Killed = true
-			result.Code = 1
-		default:
-			// Like upstream, a program that cannot start (missing program
-			// or working directory) resolves with code 1 instead of failing.
-			result.Code = 1
-		}
+	// A child that a signal ended has no exit code (ExitCode is -1), nor has
+	// a Windows child that terminate ended, and upstream resolves `code ?? 0`.
+	switch state := cmd.ProcessState; {
+	case state == nil:
+		result.Code = 1
+	case terminated.Load():
+		result.Code = 0
+	default:
+		result.Code = max(state.ExitCode(), 0)
 	}
-
 	return result, nil
 }
 
