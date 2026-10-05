@@ -112,7 +112,12 @@ var bashJobs sync.Map
 // all its descendants join the job, then resumes it. A failure leaves taskkill
 // as the only reaper.
 func attachProcessGroup(p *os.Process) {
-	defer resumeProcess(p.Pid)
+	defer func() {
+		// A shell left suspended would hang the command forever; kill it so the run fails instead.
+		if !resumeProcess(p.Pid) {
+			_ = p.Kill()
+		}
+	}()
 	job, err := windows.CreateJobObject(nil, nil)
 	if err != nil {
 		return
@@ -130,23 +135,30 @@ func attachProcessGroup(p *os.Process) {
 }
 
 // resumeProcess resumes every thread of the suspended process pid (its main
-// thread, the only one a CREATE_SUSPENDED start creates).
-func resumeProcess(pid int) {
+// thread, the only one a CREATE_SUSPENDED start creates). It reports whether
+// it resumed one.
+func resumeProcess(pid int) bool {
 	snapshot, err := windows.CreateToolhelp32Snapshot(windows.TH32CS_SNAPTHREAD, 0)
 	if err != nil {
-		return
+		return false
 	}
 	defer windows.CloseHandle(snapshot)
+	resumed := false
 	entry := windows.ThreadEntry32{Size: uint32(unsafe.Sizeof(windows.ThreadEntry32{}))}
 	for err = windows.Thread32First(snapshot, &entry); err == nil; err = windows.Thread32Next(snapshot, &entry) {
 		if entry.OwnerProcessID != uint32(pid) {
 			continue
 		}
-		if h, err := windows.OpenThread(windows.THREAD_SUSPEND_RESUME, false, entry.ThreadID); err == nil {
-			_, _ = windows.ResumeThread(h)
-			_ = windows.CloseHandle(h)
+		h, openErr := windows.OpenThread(windows.THREAD_SUSPEND_RESUME, false, entry.ThreadID)
+		if openErr != nil {
+			continue
 		}
+		if _, resumeErr := windows.ResumeThread(h); resumeErr == nil {
+			resumed = true
+		}
+		_ = windows.CloseHandle(h)
 	}
+	return resumed
 }
 
 // releaseProcessGroup closes the job handle. Closing it does not kill the job.
