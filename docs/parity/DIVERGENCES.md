@@ -1243,7 +1243,8 @@ PiG's runtime hooks record, for each local extension module that Node loads, the
 - An installed package under `node_modules` keeps its module, and so does a CommonJS module, which Node keeps in its `require` cache: an edit of either takes effect after a restart, and does not evaluate its importers again.
 - A later unedited reload keeps the latest evaluation, and a Session replacement never evaluates a module again.
 - An old generation that still serves until the swap and imports such a module dynamically gets the new evaluation.
-- A module evaluated again has the query in its `import.meta.url` and in the file names of its stack traces.
+- A module evaluated again has the query in its `import.meta.url`, in what `import.meta.resolve` returns for it, and in the file names of its stack traces.
+- An import that adds its own query, such as `import("./x.mjs?t=1")`, counts as an import of `x.mjs`, so an edit of `x.mjs` evaluates the importer again.
 - The hooks need Node's synchronous module hooks (`module.registerHooks`, Node 22.15 or later); with an older Node release PiG keeps Pi's behavior.
 - Node keeps every evaluation of a module until the process ends.
 
