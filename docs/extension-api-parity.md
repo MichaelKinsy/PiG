@@ -70,6 +70,14 @@ Interactive UI calls automatically report `blocked:user`; other awaited host
 calls report `blocked:host_call` and then `progress`.
 The blocking-reason vocabulary is `user`, `host_call`, and `external_io`.
 
+A callback that the Host declares for one request stays owned by that request. A
+Provider that owns its transport invokes its `onPayload`, `prompt`, `env`,
+`fileExists`, and `publish` callbacks from its own chain, which is often while the
+extension handles another Host request. Each SDK binds those callbacks to the
+request that declared them, and the Host answers them there.
+`TestNodeNativeProviderCallbackFromAnotherRequest` gates that binding in the Node
+runtime.
+
 The host sends heartbeat only while the connection owns outstanding work or
 live provider state. A frame the host has queued or is writing is outstanding
 work, and every byte the extension reads renews the pong deadline, so a slow
