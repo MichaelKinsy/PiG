@@ -18,6 +18,8 @@ import (
 // loginTestRuntime builds a ModelRuntime on an in-memory credential store and an optional models.json inside a temp agent dir. It never reads ~/.pig or a real auth.json.
 func loginTestRuntime(t *testing.T, modelsJSON string) (*ModelRuntime, ai.CredentialStore) {
 	t.Helper()
+	// The ambient environment must not configure the providers under test.
+	clearProviderEnvKeys(t)
 	credentials := ai.NewInMemoryCredentialStore()
 	modelsPath := new((*string)(nil))
 	if modelsJSON != "" {
