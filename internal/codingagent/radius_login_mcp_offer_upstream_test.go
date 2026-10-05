@@ -41,15 +41,41 @@ func pumpUntilRendered(t *testing.T, m *InteractiveMode, component tui.Component
 	}
 }
 
+// pumpUntilLoginReturns runs queued UI tasks until the login flow returns. offerRadiusMcpServer writes mcp.json
+// (os.WriteFile truncates, then writes) before the flow returns, so a read after this sees the finished file; polling
+// the file while the write is in flight can read it empty.
+func pumpUntilLoginReturns(t *testing.T, m *InteractiveMode, done <-chan error) {
+	t.Helper()
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	for {
+		select {
+		case err := <-done:
+			if err != nil {
+				t.Fatalf("Radius login: %v", err)
+			}
+			return
+		case task := <-m.uiTaskCh:
+			task()
+		case <-deadline.C:
+			t.Fatal("Radius login did not return")
+		}
+	}
+}
+
 func startRadiusLogin(t *testing.T, m *InteractiveMode) <-chan error {
 	t.Helper()
 	m.layout = tui.NewContainer(m.chatContainer, m.editorContainer)
 	provider := successfulLoginProvider{parityOAuthProvider{id: "radius", name: "Radius"}}
 	done := make(chan error, 1)
-	go func() { done <- m.runLoginRegisteredOAuth(t.Context(), provider, "") }()
+	exited := make(chan struct{})
+	go func() {
+		defer close(exited)
+		done <- m.runLoginRegisteredOAuth(t.Context(), provider, "")
+	}()
 	t.Cleanup(func() {
 		select {
-		case <-done:
+		case <-exited:
 		case <-time.After(5 * time.Second):
 			t.Error("Radius login did not return")
 		}
@@ -66,25 +92,14 @@ func TestRadiusLoginOffersTheRadiusMCPServerUpstream(t *testing.T) {
 	t.Run("offers the server and writes it on Yes", func(t *testing.T) {
 		m := newPostLoginTestMode(t)
 		mcpPath := filepath.Join(m.opts.AgentDir, "mcp.json")
-		startRadiusLogin(t, m)
+		done := startRadiusLogin(t, m)
 		pumpUntilRendered(t, m, m.editorContainer, "Configure Radius MCP in "+mcpPath+"?", "Yes", "No")
 		deliverModalInput(t, m, []byte("\r"))
+		pumpUntilLoginReturns(t, m, done)
 
-		deadline := time.Now().Add(5 * time.Second)
-		var data []byte
-		for {
-			var err error
-			if data, err = os.ReadFile(mcpPath); err == nil {
-				break
-			}
-			if time.Now().After(deadline) {
-				t.Fatalf("mcp.json not written: %v", err)
-			}
-			select {
-			case task := <-m.uiTaskCh:
-				task()
-			case <-time.After(5 * time.Millisecond):
-			}
+		data, err := os.ReadFile(mcpPath)
+		if err != nil {
+			t.Fatalf("mcp.json not written: %v", err)
 		}
 		var got map[string]any
 		if err := json.Unmarshal(data, &got); err != nil {
@@ -104,32 +119,22 @@ func TestRadiusLoginOffersTheRadiusMCPServerUpstream(t *testing.T) {
 		if err := os.WriteFile(mcpPath, []byte(existing), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		startRadiusLogin(t, m)
+		done := startRadiusLogin(t, m)
 		pumpUntilRendered(t, m, m.editorContainer, "Configure Radius MCP in "+mcpPath+"?")
 		deliverModalInput(t, m, []byte("\r"))
+		pumpUntilLoginReturns(t, m, done)
 
-		deadline := time.Now().Add(5 * time.Second)
-		for {
-			data, err := os.ReadFile(mcpPath)
-			if err != nil {
-				t.Fatal(err)
-			}
-			var got map[string]any
-			if err := json.Unmarshal(data, &got); err != nil {
-				t.Fatalf("mcp.json %q: %v", data, err)
-			}
-			want := map[string]any{"mcpServers": map[string]any{"gateway": map[string]any{"url": upstreamRadiusMCPURL + "/", "auth": map[string]any{"provider": "radius"}}}}
-			if reflect.DeepEqual(got, want) {
-				return
-			}
-			if time.Now().After(deadline) {
-				t.Fatalf("mcp.json = %s, want %v", data, want)
-			}
-			select {
-			case task := <-m.uiTaskCh:
-				task()
-			case <-time.After(5 * time.Millisecond):
-			}
+		data, err := os.ReadFile(mcpPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got map[string]any
+		if err := json.Unmarshal(data, &got); err != nil {
+			t.Fatalf("mcp.json %q: %v", data, err)
+		}
+		want := map[string]any{"mcpServers": map[string]any{"gateway": map[string]any{"url": upstreamRadiusMCPURL + "/", "auth": map[string]any{"provider": "radius"}}}}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("mcp.json = %s, want %v", data, want)
 		}
 	})
 }

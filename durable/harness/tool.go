@@ -622,13 +622,16 @@ func (api *toolApi) WatchDocErased(ctx context.Context, token durable.AnyDocToke
 
 // publishProgress returns throttled commits of what the tool reported into its pi.live.tools slot, each writing only
 // what changed since the last one (tool.ts:268-318).
+// toolProgressClock times tool progress commits; tests replace it to hold the throttled commits.
+var toolProgressClock progressClock = systemProgressClock{}
+
 func publishProgress(ctx context.Context, runtime toolRuntime, reported *toolReported) *Progress {
 	written := struct {
 		text           string
 		detailsVersion int
 		diagnostics    int
 	}{}
-	return NewProgress(func() (int, error) {
+	return newProgressWithClock(func() (int, error) {
 		// Capture everything at once: the tool keeps reporting while the commit is in flight.
 		reported.mu.Lock()
 		snapshot := reported.output.Snapshot()
@@ -710,7 +713,7 @@ func publishProgress(ctx context.Context, runtime toolRuntime, reported *toolRep
 		if runtime.Signal().Err() == nil {
 			runtime.Report(err)
 		}
-	})
+	}, toolProgressClock)
 }
 
 // finalResult is the settled result (tool.ts:325-353): the tool's result with the retained output and last details
