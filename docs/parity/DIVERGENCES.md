@@ -1230,3 +1230,21 @@ Parity allowance: Pi never shows the dialog for a fork, and parity fixtures carr
 Remove when: never; the first-run setup is PiG's.
 
 SCRUTINIZED:approved
+
+## D89 Subprocess editor working status runs from host snapshots
+
+What: When a subprocess editor opts into embedded working status, Pi runs the StatusIndicator's own animation timer inside the editor and re-checks `isWorkingStatusEditor` each time a status is shown. PiG advances the animation on the host and sends the editor snapshots (`RemoteEditorStatus`), so the JavaScript side builds the indicator with empty initial frames and takes the frames and frame index from the snapshot. PiG also reads the opt-in once, at editor install, and the Go host places the status from it; an editor that changes `embedWorkingStatus` afterwards is not re-checked. The working colors match Pi: the editor's own `borderColor`, read at render time.
+
+Why: One animation timer on the host keeps the spinner in step with the rest of the UI across the process boundary, and the host decides placement before the editor can answer.
+
+Owner decision: 2026-10-04, owner Michael Kinsy (pr137).
+
+Call-site markers: `coding/extension/host/subprocess/runtime-node/editor-component.mjs` (install opt-in and indicator construction), `coding/extension/remote_editor.go` (`RemoteEditorStatus`).
+
+Evidence: the Node editor test in `coding/extension/host/subprocess/runtime_node_editor_component_test.go` compares border rows with Pi's own CustomEditor and StatusIndicator.
+
+Parity allowance: observable rows match Pi; only timer ownership and opt-in re-check timing differ.
+
+Remove when: the editor protocol can return a live opt-in and snapshots are replaced by an editor-side timer.
+
+SCRUTINIZED:approved

@@ -188,10 +188,11 @@ assert.match(take("ui.editor.render").at(-1).args.lines[0], /── .*B.*Indexin
 assert.equal(runtime.editorHost.session.component.workingStatusIndicator.intervalId, null, "only the host owns animation");
 const oracleEditor = new piCustomEditor.CustomEditor({ requestRender() {}, terminal: { rows: 24, columns: 60 } },
   { ...piTheme, borderColor: (text) => "\x1b[36m" + text + "\x1b[39m" }, factoryArgs.keybindings, { embedWorkingStatus: true });
+// Pi colors a working status with the editor's own borderColor, read at render time.
 oracleEditor.setPaddingX(1);
 oracleEditor.focused = true;
 const oracleStatus = new piStatus.StatusIndicator("working", undefined,
-  (text) => "\x1b[34m" + text + "\x1b[0m", (text) => "\x1b[35m" + text + "\x1b[0m",
+  (text) => oracleEditor.borderColor(text), (text) => oracleEditor.borderColor(text),
   "Indexing wide 文本", { frames: [] });
 oracleStatus.frames = ["A", "B"];
 oracleStatus.currentFrame = 1;
