@@ -31,7 +31,7 @@ func markColor(value color.RGBA) tui.Color {
 var markLetterRows = [3]int{7, 8, 9}
 
 // minMarkContrast is the least WCAG contrast a letter color must have against both white and black.
-const minMarkContrast = 3.0
+const minMarkContrast = 3.0 // pig divergence (D2): PiG's own text-mark colors; Pi's wordmark uses fixed colors.
 
 func luminance(c color.RGBA) float64 {
 	lin := func(v uint8) float64 {
