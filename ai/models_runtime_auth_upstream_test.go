@@ -114,43 +114,32 @@ func TestModelsRuntimeAuthUpstream(t *testing.T) {
 			}
 		})
 	})
-	// .upstream/v0.87.1/packages/ai/test/models-runtime.test.ts:735
-	t.Run("passes cancellation to OAuth refresh and preserves the previous credential", func(t *testing.T) {
+	// .upstream/v1.0.3/packages/ai/test/models-runtime.test.ts:780 (Radius bug report 01a10855-43d8-7447-a710-2acf5ee0b2ee: refresh_token_invalidated after a cancelled refresh)
+	t.Run("persists an OAuth refresh that started before the request was cancelled", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			credentials := NewInMemoryCredentialStore()
-			previous := Credential{Type: CredentialOAuth, Access: "old", Refresh: "old-refresh", Expires: 0}
-			modelsRuntimePut(t, credentials, "p1", previous)
-			started, finish := make(chan struct{}), make(chan Credential, 1)
-			defer close(finish)
-			var received context.Context
+			modelsRuntimePut(t, credentials, "p1", Credential{Type: CredentialOAuth, Access: "old", Refresh: "old-refresh", Expires: 0})
+			ctx, abort := context.WithCancelCause(t.Context())
+			defer abort(context.Canceled)
 			oauth := modelsRuntimeOAuth()
-			oauth.Refresh = func(ctx context.Context, _ Credential) (Credential, error) {
-				received = ctx
-				close(started)
-				return <-finish, nil
+			oauth.Refresh = func(_ context.Context, credential Credential) (Credential, error) {
+				// The provider has rotated old-refresh by the time the request is cancelled.
+				abort(context.Canceled)
+				credential.Access, credential.Refresh = "new", "new-refresh"
+				credential.Expires = time.Now().Add(time.Minute).UnixMilli()
+				return credential, nil
 			}
 			models := CreateModels(CreateModelsOptions{Credentials: credentials})
 			models.SetProvider(modelsRuntimeProvider(modelsRuntimeProviderInput{id: "p1", auth: &ProviderAuth{OAuth: oauth}}))
-			ctx, abort := context.WithCancelCause(t.Context())
-			defer abort(context.Canceled)
-			done := make(chan error, 1)
-			go func() { _, err := models.GetAuth(ctx, "p1"); done <- err }()
-			<-started
-			cause := errors.New("request aborted")
-			abort(cause)
-			err := <-done
-			if err != cause || received == nil || received.Err() == nil || context.Cause(received) != cause {
-				t.Fatalf("err=%v received=%v cause=%v", err, received, context.Cause(received))
+			if _, err := models.GetAuth(ctx, "p1"); !errors.Is(err, context.Canceled) {
+				t.Fatalf("err=%v, want the cancellation", err)
 			}
-			fresh := previous
-			fresh.Access = "new"
-			fresh.Expires = time.Now().Add(time.Minute).UnixMilli()
-			finish <- fresh
 			models.operations.Wait()
+			oauthRefreshWork.Wait()
 			credentials.operations.Wait()
 			got, err := credentials.Read(t.Context(), "p1")
-			if err != nil || !reflect.DeepEqual(got, &previous) {
-				t.Fatalf("credential=%+v err=%v", got, err)
+			if err != nil || got == nil || got.Refresh != "new-refresh" {
+				t.Fatalf("credential=%+v err=%v; want the rotated refresh token", got, err)
 			}
 		})
 	})

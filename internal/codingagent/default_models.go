@@ -1,6 +1,6 @@
 package codingagent
 
-// Ports packages/coding-agent/src/core/model-resolver.ts (.upstream/v0.99.1/packages/coding-agent/src/core/model-resolver.ts:19-59).
+// Ports packages/coding-agent/src/core/model-resolver.ts (.upstream/v1.0.1/packages/coding-agent/src/core/model-resolver.ts:19-59).
 
 // DefaultModelPerProviderOrder preserves the declaration order used by findInitialModel.
 var DefaultModelPerProviderOrder = []struct{ Provider, ModelID string }{
@@ -8,10 +8,10 @@ var DefaultModelPerProviderOrder = []struct{ Provider, ModelID string }{
 	{"ant-ling", "Ring-2.6-1T"},
 	{"anthropic", "claude-opus-4-8"},
 	{"openai", "gpt-5.5"},
-	{"azure-openai-responses", "gpt-5.4"},
+	{"azure", "gpt-5.4"},
 	{"openai-codex", "gpt-6.1-sol"},
 	{"radius", "balanced"},
-	{"nvidia", "nvidia/nemotron-3-super-120b-a12b"},
+	{"nvidia", "nvidia/nemotron-3-ultra-550b-a55b"},
 	{"deepseek", "deepseek-v4-pro"},
 	{"google", "gemini-3.1-pro-preview"},
 	{"google-vertex", "gemini-3.1-pro-preview"},

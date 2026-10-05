@@ -8,7 +8,7 @@ var builtinProviderNames = map[string]string{
 	"amazon-bedrock":             "Amazon Bedrock",
 	"ant-ling":                   "Ant Ling",
 	"anthropic":                  "Anthropic",
-	"azure-openai-responses":     "Azure OpenAI",
+	"azure":                      "Azure",
 	"baseten":                    "Baseten",
 	"cerebras":                   "Cerebras",
 	"cloudflare-ai-gateway":      "Cloudflare AI Gateway",

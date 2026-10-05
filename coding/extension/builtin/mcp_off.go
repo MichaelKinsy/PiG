@@ -8,4 +8,4 @@ type McpOptions struct{}
 func mcpEntries(Options) []Extension { return nil }
 
 // ConfigureMcp does nothing: this build has no MCP.
-func (o *Options) ConfigureMcp(string, string, func(string)) {}
+func (o *Options) ConfigureMcp(string, string, func(string), ...func(string) error) {}

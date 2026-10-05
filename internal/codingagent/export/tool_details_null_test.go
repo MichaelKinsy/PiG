@@ -37,7 +37,7 @@ func TestRenderCustomToolsKeepsStoredNullDetails(t *testing.T) {
 					},
 				},
 			}}
-			RenderCustomTools(sd, tools, "/tmp", 80)
+			RenderCustomTools(sd, ToolRenderersOf(tools), "/tmp", 80)
 			if len(seen) == 0 {
 				t.Fatal("renderResult was not called")
 			}

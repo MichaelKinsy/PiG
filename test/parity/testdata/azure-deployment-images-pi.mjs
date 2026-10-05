@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
 const root = new URL("../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/", import.meta.url);
-if (JSON.parse(readFileSync(new URL("package.json", root), "utf8")).version !== "1.0.0") throw new Error("Expected Pi 1.0.0");
+if (JSON.parse(readFileSync(new URL("package.json", root), "utf8")).version !== "1.0.3") throw new Error("Expected Pi 1.0.3");
 const { stream } = await import(new URL("dist/api/azure-openai-responses.js", root));
 const { getModel, normalizeContext } = await import(new URL("dist/compat.js", root));
 const image = readFileSync(new URL("../../../ai/testdata/upstream-red-circle.png", import.meta.url)).toString("base64");
@@ -22,7 +22,7 @@ const server = createServer(async (req,res) => {
 });
 await new Promise(resolve => server.listen(0,"127.0.0.1",resolve));
 try {
- const model = { ...getModel("azure-openai-responses","gpt-4o-mini"), baseUrl: `http://127.0.0.1:${server.address().port}` };
+ const model = { ...getModel("azure","gpt-4o-mini"), baseUrl: `http://127.0.0.1:${server.address().port}` };
  const options = { apiKey: "test", azureDeploymentName: "image-deployment" };
  const context = { messages: [{ role: "user", content: "Describe the image.", timestamp: 0 }], tools: [{ name: "image", description: "", parameters: { type: "object", properties: {} } }] };
  const first = await stream(model,normalizeContext(context),options).result();

@@ -392,6 +392,10 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		m.tuiInst.RequestRender()
 
 	case agent.ToolExecutionEndEvent:
+		// Pi checks before it looks up the component (interactive-mode.ts tool_execution_end).
+		if e.IsError {
+			m.maybeShowInstallChangeWarning()
+		}
 		m.toolMu.Lock()
 		comp := m.toolByID[e.ToolCallID]
 		delete(m.toolByID, e.ToolCallID)

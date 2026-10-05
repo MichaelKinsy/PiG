@@ -1,4 +1,4 @@
-upstream_version = "1.0.0"
+upstream_version = "1.0.3"
 
 [[contract]]
 id = "coding-agent/extension-input/remapped-confirm"
@@ -817,3 +817,89 @@ start = "\thandleInput(data: string): void {"
 end = "\n\t}\n}\n"
 sha256 = "17e85c22925c34b2e99ec1cc3d1d6be4b7a2dec7040dd8a9aefb8f821889860b"
 keybindings = ["app.clipboard.pasteImage", "app.exit", "app.interrupt", "tui.editor.historyNext", "tui.editor.historyPrevious"]
+
+# D87: Pi's 3D easter egg plays with PiG's models (the PiG mark's pig on a header click, the sprite's pig head for fullscreen /arminsayshi and /pigsayhi); the input handler is Pi's.
+[[contract]]
+id = "coding-agent/easter-egg-3d/exit-keys"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts#EasterEgg3dAnimation.handleInput"
+family = "interactive-rendering"
+kind = "boundary-transition"
+claim = "tui.select.cancel and app.clear start the exit, which gathers the blocks home and lands the model; a second press skips it; other keys and non-click mouse events leave the animation playing"
+status = "ported"
+pig_targets = ["internal/codingagent/pig_logo_animation.go#HandleInput", "internal/codingagent/pig_logo_animation.go#close", "internal/codingagent/pig_egg3d.go#blockOffsets"]
+evidence = [
+  "internal/codingagent/pig_egg3d_test.go#TestPig3dAnimationMatchesPinnedPi",
+  "internal/codingagent/pig_logo_animation_test.go#TestPigLogoAnimationMatchesPinnedPi",
+  "test/parity/scenarios/fullscreen/12-arminsayshi-3d.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts"
+start = "\thandleInput(data: string): void {"
+end = "\thandleMouse(event: TuiMouseEvent): TuiMouseEventResult {"
+sha256 = "cea38a2123d3fb9170080fb7ce24b6e8e02f053fe2c2a2b6a636f052d71f6fb1"
+keybindings = ["tui.select.cancel", "app.clear"]
+
+[[contract]]
+id = "coding-agent/easter-egg-3d/block-raster"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts#BlockRaster.render"
+family = "interactive-rendering"
+kind = "braille-ray-cast"
+claim = "the blocks are ray cast per braille dot at the model's camera distance with a depth buffer over the visible faces; colors are shaded, fogged and quantized as Pi's, and face indices are not limited to 255 (D87)"
+status = "ported"
+pig_targets = ["internal/codingagent/pig_logo_animation.go#renderLayer"]
+evidence = [
+  "internal/codingagent/pig_egg3d_test.go#TestPig3dAnimationMatchesPinnedPi",
+  "internal/codingagent/pig_logo_animation_test.go#TestPigLogoRasterHoldsMoreThan255Faces",
+  "test/parity/scenarios/fullscreen/12-arminsayshi-3d.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts"
+start = "\trender(\n\t\twidth: number,"
+end = "\tprivate renderHalo(strength: number): void {"
+sha256 = "c05d585cbd687db00e507613783853641ec7a60807372bef9319d2ff7bc5912e"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/easter-egg-3d/light-halo"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts#BlockRaster.renderHalo"
+family = "interactive-rendering"
+kind = "braille-ray-cast"
+claim = "on a light background the model's colors and coverage blur into the cell backgrounds over Pi's tent radii and levels"
+status = "ported"
+pig_targets = ["internal/codingagent/pig_logo_animation.go#renderHalo"]
+evidence = [
+  "internal/codingagent/pig_egg3d_test.go#TestPig3dAnimationMatchesPinnedPi",
+  "test/parity/scenarios/fullscreen/12-arminsayshi-3d.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts"
+start = "\tprivate renderHalo(strength: number): void {"
+end = "\tprivate visibleFaces("
+sha256 = "bd2144cc0e2803dbd15e40271533d20a4d4a3566141ad2786b709485fee62712"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/easter-egg-3d/frame"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts#EasterEgg3dAnimation.render"
+family = "interactive-rendering"
+kind = "timeline-frame"
+claim = "each frame dissolves the captured screen into braille dust from the model's start, flies or grows the model, spins it, slides its blocks as a puzzle, fades in the starfield and the hint, and plays the same timeline backwards on exit; PiG's models differ (D87)"
+status = "ported"
+pig_targets = ["internal/codingagent/pig_logo_animation.go#renderFrame", "internal/codingagent/pig_egg3d.go#blockOffsets"]
+evidence = [
+  "internal/codingagent/pig_egg3d_test.go#TestPig3dAnimationMatchesPinnedPi",
+  "internal/codingagent/pig_egg3d_test.go#TestPig3dFramesGolden",
+  "internal/codingagent/pig_logo_animation_test.go#TestPigLogoAnimationMatchesPinnedPi",
+  "test/parity/scenarios/fullscreen/12-arminsayshi-3d.toml",
+  "test/parity/scenarios/fullscreen/11-logo-click-animation.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts"
+start = "\trender(width: number): string[] {"
+end = "\t/** Each block's displacement from its place in the model at `time`, in grid units. */"
+sha256 = "bfa35aed241718b212e70e680f64c3ca47ab57615580177fe56f5a10293ebbef"
+keybindings = []

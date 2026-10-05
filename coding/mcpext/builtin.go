@@ -121,6 +121,10 @@ func (a *builtinAPI) RegisterCommand(name string, options extension.CommandOptio
 // tool is shown to the user, since the caller has no error to return it to.
 //
 // upstream: core/extensions/loader.ts:273-284 (registerTool)
+func (a *builtinAPI) RegisterToolRenderer(resolver extension.ToolRendererResolver) {
+	a.ext.ToolRenderers = append(a.ext.ToolRenderers, resolver)
+}
+
 func (a *builtinAPI) RegisterTool(definition extension.ToolDefinition) {
 	a.ext.SetRegisteredTool(extension.RegisteredTool{Definition: definition})
 	c := a.context.Load()

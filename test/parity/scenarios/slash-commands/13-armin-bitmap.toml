@@ -13,6 +13,9 @@
 # lint-known-gap: D87 replaces the whole crop (Armin's image and label) with PiG's pig head and label, so no equality
 # comparator applies; the [diverge] rows assert each binary's settled image instead.
 # The crop retains the spacer, all image rows and the label, excluding startup/footer identity.
+# Pi 1.0.1 plays a 3D Armin (easter-egg-3d.ts playArmin3d) in fullscreen mode, its default, and the inline armin.ts
+# component only outside it; PiG shows the inline pig head in every mode (D87). Both binaries run --tui-mode regular so
+# the inline components are compared.
 name = "13-armin-bitmap"
 description = "Hidden Armin command converges to the complete accent-colored half-block bitmap: Pi's Armin, PiG's pig head (D87)"
 covers = ["packages/coding-agent/src/modes/interactive/components/armin.ts"]
@@ -62,8 +65,8 @@ wait_contains = ["Session name set: armin-end"]
 [env]
 pig = ["PIG_CODING_AGENT_DIR=../model-resolver-selector/testdata/model-picker-defaults"]
 pi = ["PI_CODING_AGENT_DIR=../model-resolver-selector/testdata/model-picker-defaults"]
-pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
-pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pig_args = ["--no-extensions", "--offline", "--tui-mode", "regular", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--tui-mode", "regular", "--session-dir", "{{TEMP}}/sessions"]
 
 [assert]
 both_reach_ready = true

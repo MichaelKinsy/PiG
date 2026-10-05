@@ -24,7 +24,7 @@ function walk(node) {
 walk(source);
 if (selected.size) throw new Error(`Missing original cases: ${[...selected]}`);
 const pkg = path.join(root, "extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-if (JSON.parse(fs.readFileSync(path.join(pkg, "package.json"), "utf8")).version !== "1.0.0") throw new Error("Pi version mismatch");
+if (JSON.parse(fs.readFileSync(path.join(pkg, "package.json"), "utf8")).version !== "1.0.3") throw new Error("Pi version mismatch");
 const dist = path.join(pkg, "node_modules/@earendil-works/pi-tui/dist");
 const harness = `
 import assert from "node:assert";

@@ -64,7 +64,7 @@ func TestOpenAIResponsesWireToolCallsOverrideCompleted(t *testing.T) {
 	}{
 		{name: "openai", api: APIOpenAIResponses, providerID: "openai"},
 		{name: "github-copilot", api: APIOpenAIResponses, providerID: "github-copilot"},
-		{name: "azure", api: APIAzureOpenAIResponses, providerID: "azure-openai-responses"},
+		{name: "azure", api: APIAzureOpenAIResponses, providerID: "azure"},
 		{name: "codex", api: APIOpenAICodexResponses, providerID: "openai-codex"},
 	}
 	for _, test := range tests {

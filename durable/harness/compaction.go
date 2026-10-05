@@ -247,6 +247,9 @@ func compactionSummarizeHandler(ctx context.Context, task compactionTask, runtim
 	options := streamOptionsOf(forwarded, runtime.Signal(), request.ThinkingLevel)
 	options.CacheRetention = ai.CacheRetention("none")
 	options.MaxTokens = request.MaxTokens
+	if options.SessionID, err = ensureProviderSessionId(ctx, runtime); err != nil {
+		return err
+	}
 	result := runtime.Models().CompleteSimple(runtime.Signal(), model, ai.Context{Messages: messages}, options)
 	// An abort mark or close: the abort invocation or the reopened task handles the committed state.
 	if runtime.Signal().Err() != nil {

@@ -8,6 +8,7 @@ export async function probeFailedAPI(api, onLateEvent = () => {}) {
     ["registerFlag", () => api.registerFlag("late-flag", { type: "boolean", default: true })],
     ["registerMessageRenderer", () => api.registerMessageRenderer("late-message", () => {})],
     ["registerMarkdownTransformer", () => api.registerMarkdownTransformer(text => text)],
+    ["registerToolRenderer", () => api.registerToolRenderer(() => undefined)],
     ["registerEntryRenderer", () => api.registerEntryRenderer("late-entry", () => {})],
     ["getFlag", () => api.getFlag("failed-flag")],
     ["sendMessage", () => api.sendMessage({ customType: "late", content: "late", display: true })],

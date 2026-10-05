@@ -37,18 +37,20 @@ type ModelEntry struct {
 	Reasoning        bool              // whether the model supports reasoning/thinking
 	ThinkingLevelMap ai.ThinkingLevelMap
 	SamplingParams   map[string]any
-	InputLimits      *ai.ModelInputLimits
-	Input            []string // ["text"] or ["text","image"]
-	ContextWindow    int      // default: 128000
-	MaxTokens        int      // default: 16384
-	InputCost        float64
-	OutputCost       float64
-	CacheReadCost    float64
-	CacheWriteCost   float64
-	CostTiers        []ai.CostTier
-	PromptCache      ai.ModelPromptCache
-	Env              map[string]string // provider-scoped env overrides (auth.json env)
-	Insecure         bool              // skip TLS verification (self-signed/internal-CA on-prem endpoints)
+	// SamplingParamsByThinkingLevel overrides SamplingParams for the effective Pi thinking level.
+	SamplingParamsByThinkingLevel ai.SamplingParamsByThinkingLevel
+	InputLimits                   *ai.ModelInputLimits
+	Input                         []string // ["text"] or ["text","image"]
+	ContextWindow                 int      // default: 128000
+	MaxTokens                     int      // default: 16384
+	InputCost                     float64
+	OutputCost                    float64
+	CacheReadCost                 float64
+	CacheWriteCost                float64
+	CostTiers                     []ai.CostTier
+	PromptCache                   ai.ModelPromptCache
+	Env                           map[string]string // provider-scoped env overrides (auth.json env)
+	Insecure                      bool              // skip TLS verification (self-signed/internal-CA on-prem endpoints)
 }
 
 // ─── models.json schema (upstream-compatible) ────────────────────────────────
@@ -108,23 +110,25 @@ type modelDefinition struct {
 	// Type is "chat", "image" or "classifier"; empty is chat (types.ts:1953-1976). Only extension registrations carry a non-chat type.
 	Type ai.ModelType `json:"type,omitempty"`
 	// Output is the output types of an image model (types.ts:1969).
-	Output           []string             `json:"output,omitempty"`
-	ID               string               `json:"id"`
-	Name             string               `json:"name,omitempty"`
-	API              string               `json:"api,omitempty"`
-	BaseURL          string               `json:"baseUrl,omitempty"`
-	Reasoning        *bool                `json:"reasoning,omitempty"`
-	ThinkingLevelMap ai.ThinkingLevelMap  `json:"thinkingLevelMap,omitempty"`
-	SamplingParams   map[string]any       `json:"samplingParams,omitempty"`
-	InputLimits      *ai.ModelInputLimits `json:"inputLimits,omitempty"`
-	Input            *[]string            `json:"input,omitempty"`
-	Cost             *modelCostJSON       `json:"cost,omitempty"`
-	PromptCache      ai.ModelPromptCache  `json:"promptCache,omitempty"`
-	ContextWindow    *int                 `json:"contextWindow,omitempty"`
-	MaxTokens        *int                 `json:"maxTokens,omitempty"`
-	Headers          map[string]*string   `json:"headers,omitempty"`
-	headerEntries    []orderedHeaderEntry
-	Compat           *providerCompat `json:"compat,omitempty"`
+	Output           []string            `json:"output,omitempty"`
+	ID               string              `json:"id"`
+	Name             string              `json:"name,omitempty"`
+	API              string              `json:"api,omitempty"`
+	BaseURL          string              `json:"baseUrl,omitempty"`
+	Reasoning        *bool               `json:"reasoning,omitempty"`
+	ThinkingLevelMap ai.ThinkingLevelMap `json:"thinkingLevelMap,omitempty"`
+	SamplingParams   map[string]any      `json:"samplingParams,omitempty"`
+	// SamplingParamsByThinkingLevel is model-config.ts SamplingParamsByThinkingLevelSchema.
+	SamplingParamsByThinkingLevel ai.SamplingParamsByThinkingLevel `json:"samplingParamsByThinkingLevel,omitempty"`
+	InputLimits                   *ai.ModelInputLimits             `json:"inputLimits,omitempty"`
+	Input                         *[]string                        `json:"input,omitempty"`
+	Cost                          *modelCostJSON                   `json:"cost,omitempty"`
+	PromptCache                   ai.ModelPromptCache              `json:"promptCache,omitempty"`
+	ContextWindow                 *int                             `json:"contextWindow,omitempty"`
+	MaxTokens                     *int                             `json:"maxTokens,omitempty"`
+	Headers                       map[string]*string               `json:"headers,omitempty"`
+	headerEntries                 []orderedHeaderEntry
+	Compat                        *providerCompat `json:"compat,omitempty"`
 }
 
 type modelCostJSON struct {
@@ -144,19 +148,21 @@ type modelCostOverrideJSON struct {
 }
 
 type modelOverrideJSON struct {
-	Name             string                 `json:"name,omitempty"`
-	Reasoning        *bool                  `json:"reasoning,omitempty"`
-	ThinkingLevelMap ai.ThinkingLevelMap    `json:"thinkingLevelMap,omitempty"`
-	SamplingParams   map[string]any         `json:"samplingParams,omitempty"`
-	InputLimits      *ai.ModelInputLimits   `json:"inputLimits,omitempty"`
-	Input            *[]string              `json:"input,omitempty"`
-	Cost             *modelCostOverrideJSON `json:"cost,omitempty"`
-	PromptCache      ai.ModelPromptCache    `json:"promptCache,omitempty"`
-	ContextWindow    *int                   `json:"contextWindow,omitempty"`
-	MaxTokens        *int                   `json:"maxTokens,omitempty"`
-	Headers          map[string]*string     `json:"headers,omitempty"`
-	headerEntries    []orderedHeaderEntry
-	Compat           *providerCompat `json:"compat,omitempty"`
+	Name             string              `json:"name,omitempty"`
+	Reasoning        *bool               `json:"reasoning,omitempty"`
+	ThinkingLevelMap ai.ThinkingLevelMap `json:"thinkingLevelMap,omitempty"`
+	SamplingParams   map[string]any      `json:"samplingParams,omitempty"`
+	// SamplingParamsByThinkingLevel merges per level and per key over the base model's (provider-composer.ts mergeSamplingParamsByThinkingLevel).
+	SamplingParamsByThinkingLevel ai.SamplingParamsByThinkingLevel `json:"samplingParamsByThinkingLevel,omitempty"`
+	InputLimits                   *ai.ModelInputLimits             `json:"inputLimits,omitempty"`
+	Input                         *[]string                        `json:"input,omitempty"`
+	Cost                          *modelCostOverrideJSON           `json:"cost,omitempty"`
+	PromptCache                   ai.ModelPromptCache              `json:"promptCache,omitempty"`
+	ContextWindow                 *int                             `json:"contextWindow,omitempty"`
+	MaxTokens                     *int                             `json:"maxTokens,omitempty"`
+	Headers                       map[string]*string               `json:"headers,omitempty"`
+	headerEntries                 []orderedHeaderEntry
+	Compat                        *providerCompat `json:"compat,omitempty"`
 }
 
 type orderedHeaderEntry struct {
@@ -450,9 +456,6 @@ func (r *ModelRegistry) validate(cfg *modelsConfig) error {
 	}
 	return nil
 }
-
-// isBuiltInProvider reports whether the pinned catalog supplies provider defaults.
-func isBuiltInProvider(name string) bool { return len(ai.ListModels(name)) > 0 }
 
 // LoadError returns model configuration read, parse, and schema errors with the source path. Provider refresh failures surface through the Model Runtime's availability error, as in Pi.
 func (r *ModelRegistry) LoadError() string {
@@ -1502,6 +1505,43 @@ func cloneThinkingLevelMap(in ai.ThinkingLevelMap) ai.ThinkingLevelMap {
 		out[k] = &value
 	}
 	return out
+}
+
+// cloneSamplingParamsByThinkingLevel copies each level's sampling parameters.
+func cloneSamplingParamsByThinkingLevel(in ai.SamplingParamsByThinkingLevel) ai.SamplingParamsByThinkingLevel {
+	if in == nil {
+		return nil
+	}
+	out := make(ai.SamplingParamsByThinkingLevel, len(in))
+	for level, params := range in {
+		out[level] = maps.Clone(params)
+	}
+	return out
+}
+
+// mergeSamplingParamsByThinkingLevel merges a model override's per-level sampling parameters over the base model's, per key within each Pi thinking level.
+// Mirrors upstream provider-composer.ts mergeSamplingParamsByThinkingLevel.
+func mergeSamplingParamsByThinkingLevel(base, override ai.SamplingParamsByThinkingLevel) ai.SamplingParamsByThinkingLevel {
+	if override == nil {
+		return base
+	}
+	merged := cloneSamplingParamsByThinkingLevel(base)
+	if merged == nil {
+		merged = ai.SamplingParamsByThinkingLevel{}
+	}
+	for _, level := range []ai.ThinkingLevel{ai.ThinkingOff, ai.ThinkingMinimal, ai.ThinkingLow, ai.ThinkingMedium, ai.ThinkingHigh, ai.ThinkingXHigh, ai.ThinkingMax} {
+		params := override[level]
+		if params == nil {
+			continue
+		}
+		next := maps.Clone(base[level])
+		if next == nil {
+			next = make(ai.SamplingParams, len(params))
+		}
+		maps.Copy(next, params)
+		merged[level] = next
+	}
+	return merged
 }
 
 func mergeThinkingLevelMaps(base, override ai.ThinkingLevelMap) ai.ThinkingLevelMap {

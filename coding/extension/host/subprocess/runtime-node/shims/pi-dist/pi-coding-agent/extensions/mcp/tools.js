@@ -9,16 +9,14 @@
  * the tool's `structuredContent`, and every MCP tool declares a `CallToolResult` output schema. MCP
  * errors (`isError`) are error results for the model, but scripts still resolve to the result.
  */
-import { createHash, randomBytes } from "node:crypto";
-import { writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { createHash } from "node:crypto";
 import { toLlmContent, } from "../../../pi-mcp/index.js";
 import { Container, Spacer, Text } from "../../../../pi-tui.mjs";
 import { formatToolCallWithArgs, getTextOutput, replaceTabs } from "../../core/tools/render-utils.js";
 import { formatSize, truncateMiddle } from "../../core/tools/truncate.js";
 import { keyHint } from "../../modes/interactive/components/keybinding-hints.js";
 import { VisualLinePreview } from "../../modes/interactive/components/visual-truncate.js";
+import { writeOutputFile } from "../../utils/output-files.js";
 /**
  * Tool exposure of an MCP exposure. `codemode` and `deferred` both leave tools out of the codemode
  * description; they differ only in which tool the MCP extension activates to reach them.
@@ -34,11 +32,8 @@ export const MCP_OUTPUT_MAX_BYTES = 20 * 1024;
 const OUTPUT_PREVIEW_LINES = 5;
 /** Tool that reads the resources named by resource links. */
 export const READ_MCP_RESOURCE_TOOL = "read_mcp_resource";
-export async function saveToTempFile(data, extension) {
-    const path = join(tmpdir(), `pi-mcp-${randomBytes(8).toString("hex")}${extension}`);
-    // Results can carry private data, so only the user may read the file.
-    await writeFile(path, data, { mode: 0o600 });
-    return path;
+export function saveToTempFile(data, extension) {
+    return writeOutputFile("pi-mcp", extension, data);
 }
 /**
  * `mcp__<server>__<tool>`, sanitized and shortened with a hash suffix when too long. Like Codex,
@@ -199,6 +194,25 @@ export function createMcpToolDefinition(options) {
         exposure: toToolExposure(options.exposure),
         namespace: options.namespace,
         ...(annotations ? { annotations } : {}),
+        ...createMcpToolRenderers(label),
+        async execute(_toolCallId, params, signal, onUpdate) {
+            const client = await options.getClient();
+            const result = await client.callTool(tool.name, (params ?? {}), {
+                signal,
+                timeoutMs: options.timeoutMs,
+                onProgress: (progress) => {
+                    const total = progress.total === undefined ? "" : `/${progress.total}`;
+                    const text = progress.message ?? `Progress ${progress.progress}${total}`;
+                    onUpdate?.({ content: [{ type: "text", text }], details: { server, tool: tool.name } });
+                },
+            });
+            return convertMcpResult(server, tool.name, result, { readableResources: options.readableResources?.() });
+        },
+    };
+}
+/** Renderers of calls to an MCP tool, labeled `server/tool`, also used before the tool is registered. */
+export function createMcpToolRenderers(label) {
+    return {
         renderCall(args, theme, context) {
             const component = context.lastComponent ?? new Text("", 0, 0);
             component.setText(formatToolCallWithArgs(label, args, theme, context.expanded));
@@ -232,19 +246,6 @@ export function createMcpToolDefinition(options) {
                     component.addChild(new Text(theme.fg("muted", `Full output: ${fullOutputPath}`), 0, 0));
             }
             return component;
-        },
-        async execute(_toolCallId, params, signal, onUpdate) {
-            const client = await options.getClient();
-            const result = await client.callTool(tool.name, (params ?? {}), {
-                signal,
-                timeoutMs: options.timeoutMs,
-                onProgress: (progress) => {
-                    const total = progress.total === undefined ? "" : `/${progress.total}`;
-                    const text = progress.message ?? `Progress ${progress.progress}${total}`;
-                    onUpdate?.({ content: [{ type: "text", text }], details: { server, tool: tool.name } });
-                },
-            });
-            return convertMcpResult(server, tool.name, result, { readableResources: options.readableResources?.() });
         },
     };
 }

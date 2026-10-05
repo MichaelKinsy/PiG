@@ -176,12 +176,12 @@ func TestProviderStreamEventsUpstream(t *testing.T) {
 	})
 
 	// .upstream/v0.99.1/packages/ai/test/azure-openai-base-url.test.ts:233
-	t.Run("azure-openai-responses forwards parsed events in order before normalizing the response", func(t *testing.T) {
+	t.Run("azure forwards parsed events in order before normalizing the response", func(t *testing.T) {
 		created := `{"type":"response.created","sequence_number":0,"response":{"id":"resp_azure"}}`
 		completed := `{"type":"response.completed","sequence_number":1,"response":{"id":"resp_azure","status":"completed"}}`
 		server := serveSSE(t, sseFrames(created, completed))
 		// Upstream passes the catalog model with azureBaseUrl; the Go model carries the local server as its base URL.
-		model := mustGeneratedModel(t, "azure-openai-responses", "gpt-4o-mini").ToModel()
+		model := mustGeneratedModel(t, "azure", "gpt-4o-mini").ToModel()
 		model.ProviderMeta.BaseURL = server.URL
 		recorder := &providerEventRecorder{}
 		stream, err := StreamSimple(t.Context(), model, userTranscript("hello"), StreamOptions{APIKey: "test-api-key", OnProviderStreamEvent: recorder.observe})

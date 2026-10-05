@@ -8,6 +8,7 @@ import (
 	"image"
 	"image/color"
 	"image/gif"
+	"strings"
 	"testing"
 	"time"
 
@@ -209,5 +210,42 @@ func TestMaybeConvertImagesForKittyNoopOffKitty(t *testing.T) {
 	case <-m.uiTaskCh:
 		t.Fatal("a conversion was posted off Kitty")
 	case <-time.After(200 * time.Millisecond):
+	}
+}
+
+// .upstream/v1.0.1/packages/coding-agent/test/image-processing.test.ts:86 (#10292): pi-tui uses this transcoder to
+// show non-PNG images on Kitty-protocol terminals.
+func TestPngTranscoderConvertsSynchronouslyToOrientedPNGData(t *testing.T) {
+	png, ok := PngTranscoder(jpegWithXmpBeforeOrientation(t), "image/jpeg")
+	if !ok {
+		t.Fatal("transcoder failed")
+	}
+	if w, h := pngDimensions(t, png); w != 1 || h != 2 {
+		t.Fatalf("oriented size = %dx%d, want 1x2", w, h)
+	}
+	if _, ok := PngTranscoder(base64.StdEncoding.EncodeToString([]byte("not an image")), "image/jpeg"); ok {
+		t.Fatal("transcoded non-image data")
+	}
+}
+
+// interactive-mode.ts applyRuntimeSettings (1.0.1): on Kitty the interactive mode registers the transcoder, so a
+// non-PNG tui.Image renders as an image instead of its text fallback.
+func TestEnsurePngTranscoderRegistersOnKittyOnly(t *testing.T) {
+	prev := tui.GetCapabilities()
+	t.Cleanup(func() {
+		tui.SetCapabilities(prev)
+		tui.SetImageTranscoder(nil)
+	})
+	jpeg := jpegWithXmpBeforeOrientation(t)
+	tui.SetImageTranscoder(nil)
+	tui.SetCapabilities(tui.TerminalCapabilities{Images: tui.ImageProtocolITerm2})
+	ensurePngTranscoder()
+	tui.SetCapabilities(tui.TerminalCapabilities{Images: tui.ImageProtocolKitty})
+	if got := tui.NewImage(jpeg, "image/jpeg", tui.ImageOptions{}, nil).Render(80)[0]; strings.Contains(got, "\x1b_G") || !strings.Contains(got, "[Image: [image/jpeg]") {
+		t.Fatalf("transcoder registered off Kitty: %q", got)
+	}
+	ensurePngTranscoder()
+	if got := tui.NewImage(jpeg, "image/jpeg", tui.ImageOptions{}, nil).Render(80)[0]; !strings.Contains(got, "\x1b_G") {
+		t.Fatalf("kitty image not transcoded: %q", got)
 	}
 }

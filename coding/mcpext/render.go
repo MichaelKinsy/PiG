@@ -11,6 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -32,6 +33,16 @@ func reusableText(last extension.Component) *tui.Text {
 		return text
 	}
 	return tui.NewPaddedText("", 0, 0, nil)
+}
+
+// mcpToolNamePattern is /^mcp__(.+?)__(.+)$/, whose `.` excludes JavaScript line terminators.
+var mcpToolNamePattern = lazyregexp.New(`^mcp__([^\n\r\x{2028}\x{2029}]+?)__([^\n\r\x{2028}\x{2029}]+)$`)
+
+// CreateMcpToolRenderers returns the renderers of calls to an MCP tool, labeled `server/tool`, also used before the tool
+// is registered.
+// upstream: packages/coding-agent/src/extensions/mcp/tools.ts:createMcpToolRenderers
+func CreateMcpToolRenderers(label string) *extension.ToolRenderers {
+	return &extension.ToolRenderers{RenderCall: renderCall(label), RenderResult: renderResult}
 }
 
 // renderCall shows the call as `server/tool` and its arguments.

@@ -26,14 +26,31 @@ import (
 // Pi's extensions run inside the exiting process and die with it; pig's run as child processes in their own process groups, so they are killed here or they would outlive the exit and keep writing into the session's directories.
 func (m *InteractiveMode) exitIfDeadTerminal(err error) {
 	if errors.Is(err, io.EOF) {
-		_, _, err = term.GetSize(int(os.Stdout.Fd()))
+		// ENOTTY here only says stdout is not a terminal, as under a pipe or a test, not that the terminal went away.
+		if _, _, err = term.GetSize(int(os.Stdout.Fd())); errors.Is(err, syscall.ENOTTY) {
+			return
+		}
 	}
-	if errors.Is(err, syscall.EIO) || errors.Is(err, syscall.EPIPE) || errors.Is(err, syscall.ENOTCONN) {
+	if isDeadTerminalError(err) {
 		if m.opts.TerminateExtensionProcesses != nil {
 			m.opts.TerminateExtensionProcesses()
 		}
-		os.Exit(129)
+		emergencyTerminalExit()
 	}
+}
+
+// emergencyTerminalExit exits without terminal restoration: the terminal is gone, and restore writes would fail again.
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (emergencyTerminalExit).
+func emergencyTerminalExit() {
+	os.Exit(129)
+}
+
+// isDeadTerminalError reports whether err says the terminal is gone. EIO is a tty read or ioctl from an orphaned
+// background process group, or a write after hangup. ENOTTY is a revoked tty (macOS) that stdin no longer reports as
+// a terminal.
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (isDeadTerminalError).
+func isDeadTerminalError(err error) bool {
+	return errors.Is(err, syscall.EIO) || errors.Is(err, syscall.EPIPE) || errors.Is(err, syscall.ENOTCONN) || errors.Is(err, syscall.ENOTTY)
 }
 
 // inputLoop reads terminal input from source and dispatches to the editor or

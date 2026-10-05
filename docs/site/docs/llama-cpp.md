@@ -86,6 +86,10 @@ Only loaded models appear in `/model`. After loading a model, run `/model` to se
 
 If the router disconnects, `/llama` shows **Retry** and **Close**. Retry reconnects and refreshes model state without replaying the interrupted operation.
 
+## Thinking levels
+
+A model whose chat template reads `enable_thinking` is a reasoning model. PiG offers it the `off`, `minimal`, `low`, `medium` and `high` thinking levels. Each level other than `off` sends `chat_template_kwargs.enable_thinking: true` and a per-request `thinking_budget_tokens` of 1024, 2048, 8192 or 16384 tokens (or your `thinkingBudgets`). `off` sends `enable_thinking: false`. llama-server applies the budget only when its command line sets no `--reasoning-budget`. Pi offers only `off` and `medium` and sends no budget (D90).
+
 ## Troubleshooting
 
 Check that the router is reachable:

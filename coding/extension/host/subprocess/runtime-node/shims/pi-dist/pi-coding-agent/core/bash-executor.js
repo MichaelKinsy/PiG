@@ -5,11 +5,8 @@
  * - AgentSession.executeBash() for interactive and RPC modes
  * - Direct calls from modes that need bash execution
  */
-import { randomBytes } from "node:crypto";
-import { createWriteStream } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { stripAnsi } from "../utils/ansi.js";
+import { createOutputFileStream } from "../utils/output-files.js";
 import { sanitizeBinaryOutput } from "../utils/shell.js";
 import { DEFAULT_MAX_BYTES, truncateTail } from "./tools/truncate.js";
 // ============================================================================
@@ -30,9 +27,7 @@ export async function executeBashWithOperations(command, cwd, operations, option
         if (tempFilePath) {
             return;
         }
-        const id = randomBytes(8).toString("hex");
-        tempFilePath = join(tmpdir(), `pi-bash-${id}.log`);
-        tempFileStream = createWriteStream(tempFilePath);
+        ({ path: tempFilePath, stream: tempFileStream } = createOutputFileStream("pi-bash", ".log"));
         for (const chunk of outputChunks) {
             tempFileStream.write(chunk);
         }

@@ -118,6 +118,20 @@ func FormatSize(bytes int) string {
 // It never returns partial lines. When the first line exceeds the byte limit, it returns empty content with
 // FirstLineExceedsLimit set.
 func TruncateHead(content string, options TruncationOptions) TruncationResult {
+	return TruncateHeadOf(content, TruncationTotals{Lines: len(splitLinesForCounting(content)), Bytes: Utf8ByteLength(content)}, options)
+}
+
+// TruncationTotals are the line and byte counts of a whole text: lines counted like TruncateHead, ignoring a trailing
+// newline.
+type TruncationTotals struct {
+	Lines int
+	Bytes int
+}
+
+// TruncateHeadOf is TruncateHead of a text known by a prefix and its totals. The prefix must be the whole text, or
+// longer than MaxBytes + 1 UTF-8 bytes, or hold at least MaxLines newlines; then the result equals TruncateHead of the
+// whole text.
+func TruncateHeadOf(prefix string, totals TruncationTotals, options TruncationOptions) TruncationResult {
 	maxLines := DEFAULT_MAX_LINES
 	if options.MaxLines != nil {
 		maxLines = *options.MaxLines
@@ -127,13 +141,13 @@ func TruncateHead(content string, options TruncationOptions) TruncationResult {
 		maxBytes = *options.MaxBytes
 	}
 
-	totalBytes := Utf8ByteLength(content)
-	lines := splitLinesForCounting(content)
-	totalLines := len(lines)
+	totalBytes := totals.Bytes
+	lines := splitLinesForCounting(prefix)
+	totalLines := totals.Lines
 
 	if totalLines <= maxLines && totalBytes <= maxBytes {
 		return TruncationResult{
-			Content:     content,
+			Content:     prefix,
 			TotalLines:  totalLines,
 			TotalBytes:  totalBytes,
 			OutputLines: totalLines,

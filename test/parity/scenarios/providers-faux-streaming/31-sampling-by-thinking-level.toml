@@ -1,0 +1,33 @@
+# Pi 1.0.2 (#9776) simple-options.ts resolveSamplingParams clamps the thinking
+# level, then merges model samplingParams, the level's samplingParamsByThinkingLevel
+# entry and request samplingParams; provider-composer.ts merges modelOverrides per
+# level and per key. The real CLIs run print mode against one local server with a
+# models.json custom provider (openai-completions with unsupported low/medium,
+# openai-responses with an unsupported xhigh, and a non-reasoning model), plus an
+# extension-registered model (provider-composer.ts extensionModelFromDefinition
+# spreads its samplingParamsByThinkingLevel), at every thinking level. Every
+# recorded sampling and reasoning field is compared. The extension case fails on
+# a PiG build whose registerProvider decode drops the field.
+name = "31-sampling-by-thinking-level"
+description = "models.json samplingParamsByThinkingLevel reaches OpenAI-compatible requests at the effective thinking level"
+covers = ["packages/ai/src/api/openai-completions.ts", "packages/ai/src/api/openai-responses.ts", "packages/ai/src/api/simple-options.ts", "packages/coding-agent/src/core/model-config.ts", "packages/coding-agent/src/core/provider-composer.ts"]
+tags = ["hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+# The probe defaults to PIG_PARITY_PIG_BIN so it uses the verified harness build.
+pig_args = ["python3", "test/parity/testdata/sampling-by-thinking-level.py"]
+pi_args = ["python3", "test/parity/testdata/sampling-by-thinking-level.py", "--bin", "extensions/sdk-ts/node_modules/.bin/pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 240
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"model":"completions","requests":[{"temperature":0.7,"top_p":0.95}]', '{"min_p":0.05,"reasoning_effort":"high","temperature":0.8,"top_k":20,"top_p":0.95}', '"model":"responses","requests":[{"reasoning":{"effort":"low","summary":"auto"},"temperature":0.6,"top_p":0.9}]', '"model":"extension","requests":[{"min_p":0.2,"reasoning_effort":"low","temperature":0.3,"top_p":0.5}]']
+runs = 3

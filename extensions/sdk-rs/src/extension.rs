@@ -6,7 +6,7 @@ use crate::context::{
 use crate::oauth::{OAuthLoginCallbacks, OAuthProvider, ProviderOAuthConfig};
 use crate::protocol::*;
 use crate::theme::UiState;
-use crate::tool_render::{
+use crate::tool_render::{ToolRendererSet, 
     ToolRenderCallHandler, ToolRenderContext, ToolRenderResult, ToolRenderResultHandler,
     ToolRenderResultOptions, ToolRenderShell, ToolRenderers,
 };
@@ -1026,6 +1026,15 @@ impl Extension {
         self.markdown_transformer = Some(Box::new(transformer));
     }
 
+    /// Register a tool renderer resolver (Pi's `pi.registerToolRenderer`). Resolvers run in extension load order, and
+    /// an extension's resolvers in registration order. After loading, use [`crate::Context::register_tool_renderer`].
+    pub fn tool_renderer(
+        &mut self,
+        resolver: impl Fn(&str, &dyn Fn() -> Option<ToolRendererSet>) -> Option<ToolRendererSet> + Send + Sync + 'static,
+    ) {
+        self.tool_renderers.resolvers.push(Box::new(resolver));
+    }
+
     /// Register an event handler. Mutations to boundary entries are retained.
     /// Return `Some(value)` to pass data back to the host, `None` to ack.
     pub fn on_event(
@@ -1124,6 +1133,7 @@ impl Extension {
             }
         }
 
+        conn.late_tool_renderers.loaded.store(self.tool_renderers.resolvers.len(), std::sync::atomic::Ordering::SeqCst);
         // Send register.
         conn.write_envelope(&Envelope {
             msg_type: "register".to_string(),
@@ -1138,6 +1148,7 @@ impl Extension {
                 renderers: self.renderers.clone(),
                 entry_renderers: self.entry_renderers.clone(),
                 markdown_transformer: self.markdown_transformer.is_some(),
+                tool_renderers: self.tool_renderers.resolvers.len(),
                 mcp_servers: self.mcp_servers.clone(),
                 virtual_models: self.virtual_models.iter().map(|model| model.declaration()).collect(),
                 unregister_virtual_models: self.virtual_model_unregistrations.clone(),
@@ -2125,6 +2136,23 @@ impl Extension {
                             message: format!("command {} has no getArgumentCompletions", cmd_name),
                         }),
                     );
+                }
+            }
+            "resolve_tool_renderers" => {
+                // A resolver that panics answers an error, as a resolver that throws upstream.
+                match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    self.tool_renderers.resolve(conn, req.args.as_ref())
+                })) {
+                    Ok(answer) => {
+                        let _ = conn.respond(id, Some(answer), None);
+                    }
+                    Err(_) => {
+                        let _ = conn.respond(
+                            id,
+                            None,
+                            Some(ErrorInfo { code: None, message: "tool renderer resolver panicked".to_string() }),
+                        );
+                    }
                 }
             }
             "render_tool" => {

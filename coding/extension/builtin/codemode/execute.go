@@ -3,17 +3,14 @@ package codemode
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
 	"math"
-	"os"
-	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -21,7 +18,10 @@ import (
 	sandbox "github.com/MichaelKinsy/PiG/codemode"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
+	"github.com/MichaelKinsy/PiG/internal/imageprocessing"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/outputfiles"
 )
 
 const (
@@ -210,15 +210,69 @@ func sessionOf(tc *extension.ToolContext) *session {
 }
 
 func spillOutput(text string) (string, error) {
-	var random [8]byte
-	if _, err := rand.Read(random[:]); err != nil {
-		return "", err
+	return outputfiles.WriteFile("pi-codemode", ".txt", []byte(text))
+}
+
+// imageExtensions are the file extensions of the image types `image()` accepts. It must list every type the
+// sandbox's `image()` detects.
+var imageExtensions = map[string]string{
+	"image/png":  ".png",
+	"image/jpeg": ".jpg",
+	"image/gif":  ".gif",
+	"image/webp": ".webp",
+}
+
+// saveImages saves each image to a temp file and puts a text item with its path before it. The model sees the image
+// but has no other way to reach its bytes: scripts cannot write files, and `write` only takes text. Images shown more
+// than once are saved once. A failed write (disk full, unwritable temp dir) must not discard the result of a script
+// whose tool calls already ran, so it becomes part of the label. An image type without a file extension fails the
+// call, after the other images were saved.
+func saveImages(items []ai.ToolResultMessageContent) ([]ai.ToolResultMessageContent, error) {
+	type pending struct {
+		label string
+		err   error
 	}
-	path := filepath.Join(os.TempDir(), "pi-codemode-"+hex.EncodeToString(random[:])+".txt")
-	if err := os.WriteFile(path, []byte(text), 0o600); err != nil {
-		return "", err
+	labels := map[string]*pending{}
+	var order []*pending
+	var wg sync.WaitGroup
+	for _, item := range items {
+		image, ok := item.(ai.ImageContent)
+		if !ok || labels[image.Data] != nil {
+			continue
+		}
+		entry := &pending{}
+		labels[image.Data] = entry
+		order = append(order, entry)
+		wg.Go(func() {
+			data := imageprocessing.DecodeNodeBase64(image.Data)
+			kind := image.MimeType + ", " + tools.FormatSize(len(data))
+			extension, known := imageExtensions[image.MimeType]
+			if !known {
+				entry.err = errors.New("No file extension for image type " + image.MimeType)
+				return
+			}
+			path, err := outputfiles.WriteFile("pi-codemode", extension, data)
+			if err != nil {
+				entry.label = "[Image (" + kind + ") could not be saved: " + err.Error() + "]"
+				return
+			}
+			entry.label = "[Image saved to " + path + " (" + kind + ")]"
+		})
 	}
-	return path, nil
+	wg.Wait()
+	for _, entry := range order {
+		if entry.err != nil {
+			return nil, entry.err
+		}
+	}
+	out := make([]ai.ToolResultMessageContent, 0, len(items)+len(labels))
+	for _, item := range items {
+		if image, ok := item.(ai.ImageContent); ok {
+			out = append(out, ai.TextContent{Text: labels[image.Data].label})
+		}
+		out = append(out, item)
+	}
+	return out, nil
 }
 
 // truncateOutput applies the token budget: when the combined text exceeds it, the text items become one item that
@@ -415,6 +469,12 @@ func Execute(ctx context.Context, toolCallID string, params json.RawMessage, onU
 		maxTokens = *parsed.Options.MaxOutputTokens
 	}
 	truncated, fullOutputPath := truncateOutput(items, maxTokens)
+	// After truncation, which joins the text items and moves images after them, so each path stays next to its image
+	// and is never cut.
+	output, err := saveImages(truncated)
+	if err != nil {
+		return agent.AgentToolResult{}, err
+	}
 	title := "Script failed"
 	if result.OK {
 		title = "Script completed"
@@ -422,7 +482,7 @@ func Execute(ctx context.Context, toolCallID string, params json.RawMessage, onU
 	header := title + "\nWall time " + jsstring.ToFixed(time.Since(startedAt).Seconds(), 1) + " seconds\nOutput:\n"
 	details := ToolDetails{Calls: calls, FullOutputPath: fullOutputPath}
 	return agent.AgentToolResult{
-		Content: append([]ai.ToolResultMessageContent{ai.TextContent{Text: header}}, truncated...),
+		Content: append([]ai.ToolResultMessageContent{ai.TextContent{Text: header}}, output...),
 		Details: details,
 		IsError: !result.OK,
 		Usage:   run.modelUsage,

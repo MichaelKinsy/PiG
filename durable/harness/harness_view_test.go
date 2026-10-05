@@ -22,7 +22,7 @@ type viewFrame struct {
 	ops   []durable.Op
 }
 
-var viewMounted = []string{"pi.agent", "pi.inbox", "pi.live", "pi.usage"}
+var viewMounted = []string{"pi.agent", "pi.inbox", "pi.live", "pi.provider", "pi.usage"}
 
 type recording struct {
 	initial ConversationView
@@ -71,7 +71,7 @@ func fresh(t *testing.T, conversation Conversation) ConversationView {
 func committed(t *testing.T, harness Harness, conversation Conversation, record durable.ConversationRecord) ConversationView {
 	t.Helper()
 	docs := map[string]durable.JsonObject{}
-	for _, token := range []durable.AnyDocToken{AgentDoc, LiveDoc, InboxDoc, UsageDoc} {
+	for _, token := range []durable.AnyDocToken{AgentDoc, LiveDoc, InboxDoc, ProviderDoc, UsageDoc} {
 		value := must(harness.SnapshotErased(testContext, token, conversation.Id()))
 		if value != nil {
 			docs[token.AnyDefinition().Kind] = value
@@ -188,6 +188,7 @@ func noteEntry(t *testing.T, conversation Conversation, kind string, head ...dur
 
 func TestConversationView(t *testing.T) {
 	t.Run("hydrates the active entries and the built-in documents", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-view.test.ts:89
 		setup := chatSetup(t)
 		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("hello")})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
@@ -208,6 +209,7 @@ func TestConversationView(t *testing.T) {
 	})
 
 	t.Run("publishes one frame per touching commit, whose operations rebuild every revision", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-view.test.ts:103
 		setup := chatSetup(t)
 		release := deferred()
 		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAfter(release, "a longer answer")})
@@ -259,6 +261,7 @@ func TestConversationView(t *testing.T) {
 	})
 
 	t.Run("shares unchanged parts between revisions and skips commits that touch nothing mounted", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-view.test.ts:133
 		harness, root := openChat(t, storage.NewMemoryStorage(), chatSetup(t))
 		other := must(harness.CreateConversation(testContext, ConversationCreateOptions{Ownership: durable.ConversationOwnership{Kind: durable.ConversationOwnerless}}))
 		recorded := record(t, root)
@@ -287,6 +290,7 @@ func TestConversationView(t *testing.T) {
 	})
 
 	t.Run("cuts the entries at a head marker, keeping the entries from its head", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-view.test.ts:151
 		harness, root := openChat(t, storage.NewMemoryStorage(), chatSetup(t))
 		noteEntry(t, root, "a")
 		b := noteEntry(t, root, "b")
@@ -311,6 +315,7 @@ func TestConversationView(t *testing.T) {
 	})
 
 	t.Run("keeps only mounted entries for a raw head write that targets before the active range", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-view.test.ts:170
 		harness, root := openChat(t, storage.NewMemoryStorage(), chatSetup(t))
 		old := noteEntry(t, root, "old")
 		if err := root.Reset(testContext, nil); err != nil {
@@ -327,6 +332,7 @@ func TestConversationView(t *testing.T) {
 	})
 
 	t.Run("cuts a fork's view into its inherited entries", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-view.test.ts:184
 		harness, root := openChat(t, storage.NewMemoryStorage(), chatSetup(t))
 		a := noteEntry(t, root, "a")
 		b := noteEntry(t, root, "b")
@@ -347,6 +353,7 @@ func TestConversationView(t *testing.T) {
 	})
 
 	t.Run("shows a fork's inherited entries and follows only the fork's own commits", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-view.test.ts:199
 		harness, root := openChat(t, storage.NewMemoryStorage(), chatSetup(t))
 		first := noteEntry(t, root, "first")
 		fork := must(root.Fork(testContext, first.Id, ConversationCreateOptions{Ownership: durable.ConversationOwnership{Kind: durable.ConversationOwnerless}}))
@@ -366,6 +373,7 @@ func TestConversationView(t *testing.T) {
 	})
 
 	t.Run("unmounts a retired document and mounts its recreation whole", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-view.test.ts:214
 		harness, root := openChat(t, storage.NewMemoryStorage(), chatSetup(t))
 		recorded := record(t, root)
 		commitValue(t, root, func(tx durable.Tx) (any, error) { return nil, tx.RetireDoc(LiveDoc, root.Id()) })
@@ -394,6 +402,7 @@ func TestConversationView(t *testing.T) {
 	})
 
 	t.Run("replaces undelivered frames with the newest view after 100 pending frames", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-view.test.ts:231
 		harness, root := openChat(t, storage.NewMemoryStorage(), chatSetup(t))
 		watch := must(root.Watch(testContext))
 		for range 101 {
@@ -423,6 +432,7 @@ func TestConversationView(t *testing.T) {
 	})
 
 	t.Run("keeps states and watches of one conversation independent and remounts after the last one detaches", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-view.test.ts:249
 		harness, root := openChat(t, storage.NewMemoryStorage(), chatSetup(t))
 		state := must(root.ViewState(testContext))
 		recorded := record(t, root)
@@ -448,6 +458,7 @@ func TestConversationView(t *testing.T) {
 	})
 
 	t.Run("ends states and watches at close and rejects later acquisition", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-view.test.ts:270
 		harness, root := openChat(t, storage.NewMemoryStorage(), chatSetup(t))
 		watch := must(root.Watch(testContext))
 		state := must(root.ViewState(testContext))
@@ -468,6 +479,7 @@ func TestConversationView(t *testing.T) {
 	})
 
 	t.Run("rejects an acquisition cancelled or closed while it waits for the Session line", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-view.test.ts:281
 		harness, root := openChat(t, storage.NewMemoryStorage(), chatSetup(t))
 		hold := func() (func(), <-chan error) {
 			release := deferred()
@@ -523,6 +535,7 @@ func TestConversationView(t *testing.T) {
 	})
 
 	t.Run("shares one mount between concurrent observers and isolates a failing listener", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-view.test.ts:307
 		harness, root := openChat(t, storage.NewMemoryStorage(), chatSetup(t))
 		failing := must(root.Watch(testContext))
 		recorded := record(t, root)
@@ -547,6 +560,7 @@ func TestConversationView(t *testing.T) {
 	})
 
 	t.Run("publishes one frame for a commit that appends several entries and edits a document", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-view.test.ts:326
 		harness, root := openChat(t, storage.NewMemoryStorage(), chatSetup(t))
 		type other struct {
 			N int `json:"n"`

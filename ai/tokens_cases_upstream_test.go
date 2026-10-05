@@ -9,7 +9,7 @@ func tokensUpstreamCases() []tokensUpstreamCase {
 		// .upstream/v0.87.1/packages/ai/test/tokens.test.ts:111
 		{"should include token stats when aborted mid-stream", "openai", "gpt-5.4-mini", "", false, "low", false},
 		// .upstream/v0.87.1/packages/ai/test/tokens.test.ts:121
-		{"should include token stats when aborted mid-stream", "azure-openai-responses", "gpt-4o-mini", "", false, "", false},
+		{"should include token stats when aborted mid-stream", "azure", "gpt-4o-mini", "", false, "", false},
 		// .upstream/v0.87.1/packages/ai/test/tokens.test.ts:129
 		{"should include token stats when aborted mid-stream", "anthropic", "claude-sonnet-4-6", "", false, "", false},
 		// .upstream/v0.87.1/packages/ai/test/tokens.test.ts:137

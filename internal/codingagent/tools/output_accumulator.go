@@ -4,15 +4,14 @@
 package tools
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"io"
 	"os"
-	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/internal/outputfiles"
 )
 
 // OutputSnapshot mirrors upstream OutputSnapshot.
@@ -214,10 +213,10 @@ func (a *OutputAccumulator) ensureTempFile() {
 	if a.tempFilePath != "" {
 		return
 	}
-	a.tempFilePath = defaultTempFilePath(a.tempFilePrefix)
 	// Upstream's write stream reports open failures asynchronously and keeps
 	// the path; a failed create likewise only loses the file contents.
-	f, err := os.Create(a.tempFilePath)
+	path, f, err := outputfiles.CreateStream(a.tempFilePrefix, ".log")
+	a.tempFilePath = path
 	if err == nil {
 		a.tempFile = f
 		for _, chunk := range a.rawChunks {
@@ -225,14 +224,6 @@ func (a *OutputAccumulator) ensureTempFile() {
 		}
 	}
 	a.rawChunks = nil
-}
-
-// defaultTempFilePath mirrors upstream defaultTempFilePath:
-// <tmpdir>/<prefix>-<16 hex>.log.
-func defaultTempFilePath(prefix string) string {
-	var id [8]byte
-	_, _ = rand.Read(id[:])
-	return filepath.Join(os.TempDir(), prefix+"-"+hex.EncodeToString(id[:])+".log")
 }
 
 // utf8StreamDecoder mirrors the WHATWG UTF-8 decoder behind TextDecoder with

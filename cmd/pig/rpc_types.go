@@ -276,22 +276,24 @@ type RPCModelCost struct {
 }
 
 type RPCModel struct {
-	ID               string               `json:"id"`
-	Name             string               `json:"name"`
-	API              ai.API               `json:"api"`
-	Provider         string               `json:"provider"`
-	BaseURL          string               `json:"baseUrl"`
-	Reasoning        bool                 `json:"reasoning"`
-	ThinkingLevelMap ai.ThinkingLevelMap  `json:"thinkingLevelMap,omitempty"`
-	Input            []string             `json:"input"`
-	Cost             RPCModelCost         `json:"cost"`
-	PromptCache      ai.ModelPromptCache  `json:"promptCache,omitempty"`
-	ContextWindow    int                  `json:"contextWindow"`
-	MaxTokens        int                  `json:"maxTokens"`
-	SamplingParams   map[string]any       `json:"samplingParams,omitempty"`
-	Headers          map[string]string    `json:"headers,omitempty"`
-	Compat           *ai.ModelCompat      `json:"compat,omitempty"`
-	InputLimits      *ai.ModelInputLimits `json:"inputLimits,omitempty"`
+	ID               string              `json:"id"`
+	Name             string              `json:"name"`
+	API              ai.API              `json:"api"`
+	Provider         string              `json:"provider"`
+	BaseURL          string              `json:"baseUrl"`
+	Reasoning        bool                `json:"reasoning"`
+	ThinkingLevelMap ai.ThinkingLevelMap `json:"thinkingLevelMap,omitempty"`
+	Input            []string            `json:"input"`
+	Cost             RPCModelCost        `json:"cost"`
+	PromptCache      ai.ModelPromptCache `json:"promptCache,omitempty"`
+	ContextWindow    int                 `json:"contextWindow"`
+	MaxTokens        int                 `json:"maxTokens"`
+	SamplingParams   map[string]any      `json:"samplingParams,omitempty"`
+	// SamplingParamsByThinkingLevel is Model.samplingParamsByThinkingLevel.
+	SamplingParamsByThinkingLevel ai.SamplingParamsByThinkingLevel `json:"samplingParamsByThinkingLevel,omitempty"`
+	Headers                       map[string]string                `json:"headers,omitempty"`
+	Compat                        *ai.ModelCompat                  `json:"compat,omitempty"`
+	InputLimits                   *ai.ModelInputLimits             `json:"inputLimits,omitempty"`
 }
 
 // RPCSessionState is the payload for a get_state response.
@@ -642,22 +644,23 @@ func rpcModelValue(model *ai.Model) *RPCModel {
 		}
 	}
 	return &RPCModel{
-		ID:               model.ID,
-		Name:             model.DisplayName,
-		API:              model.ProviderMeta.API,
-		Provider:         provider,
-		BaseURL:          model.ProviderMeta.BaseURL,
-		Reasoning:        model.ProviderMeta.Reasoning || model.Capabilities.MaxThinking != "",
-		ThinkingLevelMap: model.ThinkingLevelMap,
-		Input:            input,
-		Cost:             cost,
-		PromptCache:      model.PromptCache,
-		ContextWindow:    model.Capabilities.ContextWindow,
-		MaxTokens:        model.Capabilities.MaxOutputTokens,
-		SamplingParams:   model.SamplingParams,
-		Headers:          model.ProviderMeta.Headers,
-		Compat:           model.ProviderMeta.Compat,
-		InputLimits:      model.InputLimits.Clone(),
+		ID:                            model.ID,
+		Name:                          model.DisplayName,
+		API:                           model.ProviderMeta.API,
+		Provider:                      provider,
+		BaseURL:                       model.ProviderMeta.BaseURL,
+		Reasoning:                     model.ProviderMeta.Reasoning || model.Capabilities.MaxThinking != "",
+		ThinkingLevelMap:              model.ThinkingLevelMap,
+		Input:                         input,
+		Cost:                          cost,
+		PromptCache:                   model.PromptCache,
+		ContextWindow:                 model.Capabilities.ContextWindow,
+		MaxTokens:                     model.Capabilities.MaxOutputTokens,
+		SamplingParams:                model.SamplingParams,
+		SamplingParamsByThinkingLevel: model.SamplingParamsByThinkingLevel,
+		Headers:                       model.ProviderMeta.Headers,
+		Compat:                        model.ProviderMeta.Compat,
+		InputLimits:                   model.InputLimits.Clone(),
 	}
 }
 

@@ -19,10 +19,10 @@
     "test": "node --test scripts/check-upstream-pin.test.mjs && node scripts/check-upstream-pin.mjs && node scripts/check-runtime-compat.mjs && tsc --noEmit -p tsconfig.json"
   },
   "peerDependencies": {
-    "@earendil-works/pi-coding-agent": "1.0.0"
+    "@earendil-works/pi-coding-agent": "1.0.3"
   },
   "devDependencies": {
-    "@earendil-works/pi-coding-agent": "1.0.0",
+    "@earendil-works/pi-coding-agent": "1.0.3",
     "typescript": "5.9.3"
   },
   "engines": {

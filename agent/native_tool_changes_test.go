@@ -58,6 +58,19 @@ func nativeToolChangeNames(value any, path ...string) []string {
 	return names
 }
 
+// nativeToolChangeTool describes the tool of an Anthropic tool_addition or
+// tool_removal block as "<type>:<name>": a tool_reference names the tool, and
+// a tool_definition carries it by value (Pi 1.0.1 anthropic-messages.ts:1351).
+func nativeToolChangeTool(block map[string]any) string {
+	tool, _ := block["tool"].(map[string]any)
+	kind, _ := tool["type"].(string)
+	name, _ := tool["name"].(string)
+	if definition, ok := tool["definition"].(map[string]any); ok {
+		name, _ = definition["name"].(string)
+	}
+	return kind + ":" + name
+}
+
 // TestAgentToolLoadoutChangesUseNativeProviderToolChanges drives the agent loop
 // through each provider path with native mid-conversation tool changes: the
 // agent declares the loadout change as a system message delta, and the second
@@ -82,14 +95,22 @@ func TestAgentToolLoadoutChangesUseNativeProviderToolChanges(t *testing.T) {
 				}}), ai.APIAnthropicMessages
 			},
 			check: func(t *testing.T, body map[string]any) {
-				if got := nativeToolChangeNames(body["tools"]); !slices.Equal(got, []string{"first", "__pi_deferred_placeholder__", "second"}) {
+				// Pi 1.0.1 anthropic-messages.ts:1205-1219: the request tools stay the
+				// initial tools plus the placeholder; later tools are defined by value.
+				if got := nativeToolChangeNames(body["tools"]); !slices.Equal(got, []string{"first", "__pi_deferred_placeholder__"}) {
 					t.Errorf("tools = %v", got)
 				}
 				messages := nativeToolChangeItems(body["messages"])
 				update := messages[len(messages)-1]
 				blocks := nativeToolChangeItems(update["content"])
 				if update["role"] != "system" || len(blocks) != 2 || blocks[0]["type"] != "tool_removal" || blocks[1]["type"] != "tool_addition" {
-					t.Errorf("update = %#v", update)
+					t.Fatalf("update = %#v", update)
+				}
+				if got := nativeToolChangeTool(blocks[0]); got != "tool_reference:first" {
+					t.Errorf("tool_removal tool = %q, want tool_reference:first", got)
+				}
+				if got := nativeToolChangeTool(blocks[1]); got != "tool_definition:second" {
+					t.Errorf("tool_addition tool = %q, want tool_definition:second", got)
 				}
 			},
 		},
@@ -226,8 +247,8 @@ func TestNativeToolChangesPoisonedPersistedHistoryRequests(t *testing.T) {
 								entry += ":" + id
 							}
 						}
-						if tool, ok := block["tool"].(map[string]any); ok {
-							entry += ":" + tool["name"].(string)
+						if _, ok := block["tool"].(map[string]any); ok {
+							entry += ":" + nativeToolChangeTool(block)
 						}
 					}
 					shape = append(shape, entry)
@@ -238,8 +259,8 @@ func TestNativeToolChangesPoisonedPersistedHistoryRequests(t *testing.T) {
 			// stays directly followed by its tool_result.
 			want: []string{
 				"user text", "assistant tool_use:call_a_fc_a", "user tool_result:call_a_fc_a",
-				"user text", "system tool_addition:read", "assistant tool_use:toolu_1", "user tool_result:toolu_1",
-				"user text", "tools=bash,__pi_deferred_placeholder__,read",
+				"user text", "system tool_addition:tool_definition:read", "assistant tool_use:toolu_1", "user tool_result:toolu_1",
+				"user text", "tools=bash,__pi_deferred_placeholder__",
 			},
 		},
 		{

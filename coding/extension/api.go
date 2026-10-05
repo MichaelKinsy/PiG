@@ -297,6 +297,11 @@ type API interface {
 	// upstream: types.ts:1266
 	RegisterEntryRenderer(customType string, renderer EntryRenderer)
 
+	// RegisterToolRenderer chooses how tool calls are drawn. Resolvers run in
+	// extension load order.
+	// upstream: types.ts registerToolRenderer
+	RegisterToolRenderer(resolver ToolRendererResolver)
+
 	// RegisterMarkdownTransformer registers a display-only Markdown transform.
 	// upstream: types.ts:1287
 	RegisterMarkdownTransformer(transformer MarkdownTransformer)

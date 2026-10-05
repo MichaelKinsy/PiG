@@ -140,7 +140,8 @@ type SlashContext struct {
 	// SelectedModelKey is `provider/id` of the session's selected model, the key of a single-model /session cost total.
 	SelectedModelKey func() string
 	ToolNames        func() []string
-	RegisteredTools  func() []extension.RegisteredTool
+	// ToolRenderers returns how HTML exports draw tool calls; see [ExportToolRenderers].
+	ToolRenderers func() func(name string) *extension.ToolRenderers
 	// ShareState returns the system prompt and active tool schemas for the
 	// pi.share entry attached to exported transcripts.
 	ShareState func() ShareState

@@ -1,0 +1,67 @@
+# Issue #128. Pi's AgentSession sets the model and thinking level before it
+# emits model_select and thinking_level_select (agent-session.ts setModel,
+# cycleModel, setThinkingLevel), and an extension's ctx.model reads the Session
+# live (runner.ts createContext `get model()`). Interactive PiG bound ctx.model
+# to the mode's own copy, updated after the Session returned, so the handlers
+# saw the previous model. The extension lists every observation in a widget;
+# Ctrl+P (hex 10) cycles the scoped models (beta clamps low to high) and Shift+Tab (CSI Z)
+# cycles the thinking level.
+#
+# Upstream evidence (manual tmux probe of Pi 1.0.2, 120x30, this agent dir and
+# extension, 2026-10-04): after Ctrl+P, Ctrl+P, Shift+Tab the widget reads
+#   MODEL SELECT PROBE
+#   thinking_level_select low->high ctx=beta level=high
+#   model_select cycle alpha->beta ctx=beta level=high
+#   thinking_level_select high->low ctx=alpha level=low
+#   model_select cycle beta->alpha ctx=alpha level=low
+#   thinking_level_select low->medium ctx=alpha level=medium
+# Every handler sees the new model and level, and the clamp's
+# thinking_level_select precedes model_select.
+name = "71-model-select-live-context"
+description = "model_select and thinking_level_select handlers observe the selected model and thinking level"
+covers = ["packages/coding-agent/src/core/extensions/runner.ts", "packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "fixture/alpha"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/model-select-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/model-select-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--offline", "--models", "fixture/alpha,fixture/beta", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--models", "fixture/alpha,fixture/beta", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/ext/model-select-context.mjs"]
+pi_extensions = ["testdata/ext/model-select-context.mjs"]
+
+[tmux]
+width = 120
+height = 30
+ready_pattern_pig = "MODEL SELECT PROBE"
+ready_pattern_pi = "MODEL SELECT PROBE"
+ready_timeout_seconds = 30
+capture_start = "MODEL SELECT PROBE"
+capture_end = "level=medium"
+
+[[tmux.steps]]
+keys = ["hex:10"]
+wait_visible_contains = ["model_select cycle alpha->beta"]
+wait_timeout_seconds = 20
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["hex:10"]
+wait_visible_contains = ["model_select cycle beta->alpha"]
+wait_timeout_seconds = 20
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["hex:1b 5b 5a"]
+wait_visible_contains = ["level=medium"]
+wait_timeout_seconds = 20
+settle_seconds = 1
+
+[assert]
+both_reach_ready = true
+both_contain = ["model_select cycle alpha->beta ctx=beta level=high", "model_select cycle beta->alpha ctx=alpha"]
+both_not_contain = ["panic:", "goroutine "]
+output_equal = true
+runs = 3

@@ -67,6 +67,10 @@ type Extension struct {
 	// Custom entries (appended via AppendEntry) do not participate in LLM context.
 	EntryRenderers map[string]EntryRenderer
 
+	// ToolRenderers are the extension's tool renderer resolvers, in registration order.
+	// upstream: types.ts Extension.toolRenderers
+	ToolRenderers []ToolRendererResolver
+
 	// MarkdownTransformer is the extension's display-only Markdown transform,
 	// if it registered one; a later registration replaces an earlier one.
 	// upstream: types.ts Extension.markdownTransformer

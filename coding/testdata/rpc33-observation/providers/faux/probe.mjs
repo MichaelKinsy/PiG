@@ -1,4 +1,4 @@
-// Drives Pi 1.0.0 against the faux provider (packages/ai/src/providers/faux.ts) for every fixture.
+// Drives Pi 1.0.3 against the faux provider (packages/ai/src/providers/faux.ts) for every fixture.
 //  - `rpc`: the real CLI in `--mode rpc`; records the ordered interleaving of faux `stream.push` calls and RPC
 //    serialization of assistant records (extension.mjs).
 //  - `direct`: the real pi-ai faux core behind 0..2 `lazyStream` layers, consumed by `for await` (direct) or by
@@ -16,8 +16,8 @@ import { fauxResponses } from './responses.mjs';
 
 const root = process.env.PI_PACKAGE_ROOT;
 assert.ok(root, 'PI_PACKAGE_ROOT must name the pinned pi-coding-agent package');
-assert.equal(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version, '1.0.0');
-assert.equal(JSON.parse(readFileSync(join(root, 'node_modules/@earendil-works/pi-ai/package.json'), 'utf8')).version, '1.0.0');
+assert.equal(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version, '1.0.3');
+assert.equal(JSON.parse(readFileSync(join(root, 'node_modules/@earendil-works/pi-ai/package.json'), 'utf8')).version, '1.0.3');
 const extension = new URL('./extension.mjs', import.meta.url).pathname;
 const [out, runsArg] = process.argv.slice(2);
 const runs = Number(runsArg ?? 1);
@@ -173,4 +173,4 @@ for (const fixture of fixtures) {
   directRuns.push(await ticks(fixture));
   results.push({ fixture, rpc, direct: directRuns });
 }
-writeFileSync(out, JSON.stringify({ pi: '1.0.0', node: process.version, results, deferred: await deferredTicks() }, null, 1));
+writeFileSync(out, JSON.stringify({ pi: '1.0.3', node: process.version, results, deferred: await deferredTicks() }, null, 1));

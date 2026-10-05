@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// Pi auth/resolve.ts:149-153 retains AbortSignal.any([caller, AbortSignal.timeout(15000)]) even after the callback settles, on success or rejection.
+// Pi auth/resolve.ts:refreshStoredOAuthCredential gives the provider AbortSignal.timeout(15000) alone: the signal outlives the callback, on success or rejection, and the caller's cancellation never reaches it.
 func TestOAuthRefreshSignalSurvivesSettlement(t *testing.T) {
 	for _, fail := range []bool{false, true} {
 		t.Run(map[bool]string{false: "success", true: "failure"}[fail], func(t *testing.T) {
@@ -31,10 +31,9 @@ func TestOAuthRefreshSignalSurvivesSettlement(t *testing.T) {
 				if signal.Err() != nil {
 					t.Errorf("settlement canceled retained signal: %v", context.Cause(signal))
 				}
-				cause := errors.New("later caller cancellation")
-				cancel(cause)
-				if !errors.Is(context.Cause(signal), cause) {
-					t.Fatalf("retained signal cause = %v, want %v", context.Cause(signal), cause)
+				cancel(errors.New("later caller cancellation"))
+				if signal.Err() != nil {
+					t.Fatalf("caller cancellation reached the retained signal: %v", context.Cause(signal))
 				}
 			})
 		})
@@ -68,24 +67,24 @@ func TestOAuthRefreshSignalKeepsOriginalTimeout(t *testing.T) {
 	})
 }
 
-func TestOAuthRefreshSignalKeepsCallerDeadline(t *testing.T) {
+// The caller's deadline bounds the wait for the lock, not the refresh: the callback's signal ends at the fifteen-second timeout.
+func TestOAuthRefreshSignalIgnoresCallerDeadline(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 		defer cancel()
-		deadline, _ := ctx.Deadline()
-		oauth := &OAuthAuth{Refresh: func(ctx context.Context, _ Credential) (Credential, error) {
-			if got, ok := ctx.Deadline(); !ok || !got.Equal(deadline) {
-				t.Errorf("callback deadline = %v, %t; want %v", got, ok, deadline)
+		start := time.Now()
+		oauth := &OAuthAuth{Refresh: func(ctx context.Context, c Credential) (Credential, error) {
+			if got, ok := ctx.Deadline(); !ok || !got.Equal(start.Add(defaultOAuthRefreshTimeout)) {
+				t.Errorf("callback deadline = %v, %t; want the %s timeout", got, ok, defaultOAuthRefreshTimeout)
 			}
-			<-ctx.Done()
-			if !errors.Is(ctx.Err(), context.DeadlineExceeded) {
-				t.Errorf("callback Err = %v", ctx.Err())
+			time.Sleep(2 * time.Second)
+			if ctx.Err() != nil {
+				t.Errorf("callback signal ended with the caller's deadline: %v", ctx.Err())
 			}
-			return Credential{}, context.Cause(ctx)
+			return c, nil
 		}}
-		_, err := refreshOAuthWithTimeout(ctx, oauth, Credential{})
-		if !errors.Is(err, context.DeadlineExceeded) {
-			t.Fatalf("caller timeout = %v", err)
+		if _, err := refreshOAuthWithTimeout(ctx, oauth, Credential{}); err != nil {
+			t.Fatalf("refresh outliving the caller's deadline = %v", err)
 		}
 	})
 }
@@ -104,16 +103,17 @@ func TestOAuthRefreshSignalCancelsActiveCallback(t *testing.T) {
 	})
 }
 
-// Pi composes the refresh signal as AbortSignal.any([caller, AbortSignal.timeout(15_000)]) only in resolveStoredOAuth (auth/resolve.ts:149-153); Models.refresh passes the caller's signal alone (models.ts:474). A provider that hands its callback a signal reads the composition from the refresh context.
-func TestOAuthRefreshTimeoutMarksOnlyStoredResolution(t *testing.T) {
+// Pi builds the refresh signal as AbortSignal.timeout(15_000) alone for a stored credential and for Models.refresh (auth/resolve.ts:refreshStoredOAuthCredential, models.ts). A provider that hands its callback a signal reads that from the refresh context.
+func TestOAuthRefreshTimeoutMarksStoredResolutionAndModelsRefresh(t *testing.T) {
 	stored := Credential{Type: CredentialOAuth, Access: "old", Refresh: "r"}
 	stored.SetExpiresMillis(1)
 	type observed struct {
 		called  bool
-		caller  context.Context
+		value   any
 		timeout time.Duration
 		marked  bool
 	}
+	type key struct{}
 	observe := func(seen *observed) *ModelsProvider {
 		return &ModelsProvider{
 			ID:   "p",
@@ -122,7 +122,8 @@ func TestOAuthRefreshTimeoutMarksOnlyStoredResolution(t *testing.T) {
 				Name: "o",
 				Refresh: func(ctx context.Context, credential Credential) (Credential, error) {
 					seen.called = true
-					seen.caller, seen.timeout, seen.marked = OAuthRefreshTimeout(ctx)
+					seen.value = ctx.Value(key{})
+					seen.timeout, seen.marked = OAuthRefreshTimeout(ctx)
 					next := cloneCredential(credential)
 					next.SetExpiresMillis(float64(nowMillis()) + 3_600_000)
 					return next, nil
@@ -133,22 +134,21 @@ func TestOAuthRefreshTimeoutMarksOnlyStoredResolution(t *testing.T) {
 			RefreshModels: func(RefreshModelsContext) error { return nil },
 		}
 	}
-	type key struct{}
 	caller := context.WithValue(t.Context(), key{}, "caller")
 
 	var resolved observed
 	if _, err := expiryModels(t, stored, observe(&resolved)).GetAuth(caller, "p", AuthResolutionOverrides{}); err != nil {
 		t.Fatal(err)
 	}
-	if !resolved.called || !resolved.marked || resolved.timeout != 15*time.Second || resolved.caller.Value(key{}) != "caller" {
-		t.Errorf("stored resolution refresh context: timeout %v, marked %v, caller %v", resolved.timeout, resolved.marked, resolved.caller)
+	if !resolved.called || !resolved.marked || resolved.timeout != 15*time.Second || resolved.value != "caller" {
+		t.Errorf("stored resolution refresh context: timeout %v, marked %v, caller value %v", resolved.timeout, resolved.marked, resolved.value)
 	}
 
 	var refreshed observed
 	if result := expiryModels(t, stored, observe(&refreshed)).Refresh(caller); len(result.Errors) != 0 {
 		t.Fatalf("Refresh errors: %v", result.Errors)
 	}
-	if !refreshed.called || refreshed.marked {
-		t.Errorf("Models.refresh refresh context: called %v, composed timeout %v", refreshed.called, refreshed.marked)
+	if !refreshed.called || !refreshed.marked || refreshed.timeout != 15*time.Second {
+		t.Errorf("Models.refresh refresh context: called %v, timeout %v, marked %v", refreshed.called, refreshed.timeout, refreshed.marked)
 	}
 }

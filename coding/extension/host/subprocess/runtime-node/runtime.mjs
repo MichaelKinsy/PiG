@@ -1526,6 +1526,9 @@ export class Runtime {
     this.registryProviders = new Map();
     this.renderers = new Map();
     this.entryRenderers = new Map();
+    this.toolRendererResolvers = [];
+    this.resolvedToolRenderers = new Map();
+    this.resolvedToolRendererCount = 0;
     // Upstream ToolExecutionComponent keeps one renderer state per tool card,
     // shared by renderCall and renderResult, and each renderer's last
     // component. The host names the card and releases it when the card is gone.
@@ -1606,6 +1609,7 @@ export class Runtime {
       registerMarkdownTransformer: (transformer) => {
         this.markdownTransformer = transformer;
       },
+      registerToolRenderer: (resolver) => this.registerToolRenderer(resolver),
       registerProvider: (name, config) => this.registerProvider(name, config),
       unregisterProvider: (name) => this.unregisterProvider(name),
       sendMessage: action((message, options = {}) => this.fireAndForget("sendMessage", { message, options })),
@@ -1960,6 +1964,33 @@ export class Runtime {
     this.entryRenderers.set(customType, handler);
   }
 
+  // pi.registerToolRenderer: resolvers run in registration order; a registration after loading reports the count.
+  registerToolRenderer(resolver) {
+    this.toolRendererResolvers.push(resolver);
+    if (this.conn) this.notify("tool_renderers", { count: this.toolRendererResolvers.length });
+  }
+
+  // resolve_tool_renderers: the host evaluated next() and sends what it draws. pig divergence (D89): next() returns a
+  // marker the host recognizes, so a resolver can keep next()'s renderers but not call them.
+  resolveToolRenderers(payload) {
+    const marker = payload?.next ? { renderShell: payload.next.render_shell || undefined } : undefined;
+    const resolvers = [...this.toolRendererResolvers];
+    const resolve = (index) => index < resolvers.length ? resolvers[index](payload.tool, () => resolve(index + 1)) : marker;
+    const got = resolve(0);
+    if (got === undefined || got === null) return { use: "none" };
+    // A marker given render functions is the resolver's own renderers.
+    if (got === marker && typeof got.renderCall !== "function" && typeof got.renderResult !== "function") return { use: "next" };
+    const id = `r${++this.resolvedToolRendererCount}`;
+    this.resolvedToolRenderers.set(id, got);
+    return {
+      use: "own",
+      render_shell: got.renderShell === "self" ? "self" : undefined,
+      renders_call: typeof got.renderCall === "function" || undefined,
+      renders_result: typeof got.renderResult === "function" || undefined,
+      renderers: id,
+    };
+  }
+
   // A factory that uses the shared bus while loading needs its connection before it registers. The IO worker's readiness is awaited synchronously, as any synchronous host call waits.
   // The registered connection, or the connection a loading factory opened for the shared bus.
   connection() {
@@ -2105,6 +2136,7 @@ export class Runtime {
         message_renderers: [...this.renderers.keys()].map((customType) => ({ custom_type: customType })),
         entry_renderers: [...this.entryRenderers.keys()].map((customType) => ({ custom_type: customType })),
         markdown_transformer: typeof this.markdownTransformer === "function" || undefined,
+        tool_renderers: this.toolRendererResolvers.length || undefined,
         mcp_servers: this.mcpServersPending.size > 0 ? [...this.mcpServersPending].map(([name, config]) => ({ name, config })) : undefined,
         virtual_models: this.virtualModelsPending.length > 0 ? this.virtualModelsPending : undefined,
         unregister_virtual_models: this.virtualModelUnregistrations.length > 0 ? this.virtualModelUnregistrations : undefined,
@@ -3276,7 +3308,7 @@ export class Runtime {
       }
       case "oauth_refresh": {
         if (typeof provider.refreshToken !== "function") throw new Error("provider does not support refresh");
-        // The Host says whether the caller is resolveStoredOAuth, which composes the timeout; a refresh from Models.refresh gets the caller's signal alone.
+        // The Host sends signal_timeout_ms for a stored-credential refresh, whose signal is AbortSignal.timeout alone (the Host never cancels it for the caller); any other refresh gets the request's cancellation.
         const refreshSignal = typeof request.signal_timeout_ms === "number" ? AbortSignal.any([signal, AbortSignal.timeout(request.signal_timeout_ms)]) : signal;
         this.retainSignal(id, signal, refreshSignal);
         const creds = await provider.refreshToken(oauthCredsFromWire(request.args), refreshSignal);
@@ -3585,9 +3617,13 @@ export class Runtime {
           await this.respond(id, { lines: Array.isArray(lines) ? lines : [] });
           return;
         }
+        case "resolve_tool_renderers": {
+          await this.respond(id, this.resolveToolRenderers(request.args || {}));
+          return;
+        }
         case "render_tool": {
-          const tool = this.tools.get(request.tool);
           const payload = request.args || {};
+          const tool = payload.renderers ? this.resolvedToolRenderers.get(payload.renderers) : this.tools.get(request.tool);
           const isResult = payload.phase === "result";
           const renderer = isResult ? tool?.renderResult : tool?.renderCall;
           if (typeof renderer !== "function") throw new Error(`tool ${request.tool} has no ${isResult ? "renderResult" : "renderCall"}`);

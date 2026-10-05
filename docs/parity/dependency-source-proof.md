@@ -26,15 +26,15 @@ The provider scenario executes the actual pinned Pi dispatcher and provider. Its
 | Property | Proof |
 |---|---|
 | Upstream owner | `.upstream/current/packages/ai/package.json` |
-| Exact dependency | `@anthropic-ai/sdk` 0.124.0 |
-| Source | `test/parity/dependency-sources/@anthropic-ai/sdk/0.124.0/lib/credentials/types.mjs` and `oidc-federation.mjs` |
-| License | `test/parity/dependency-sources/@anthropic-ai/sdk/0.124.0/LICENSE` |
+| Exact dependency | `@anthropic-ai/sdk` 0.129.0 |
+| Source | `test/parity/dependency-sources/@anthropic-ai/sdk/0.129.0/lib/credentials/types.mjs` and `oidc-federation.mjs` |
+| License | `test/parity/dependency-sources/@anthropic-ai/sdk/0.129.0/LICENSE` |
 | Symbols | `MAX_TOKEN_RESPONSE_BYTES`, `MAX_ERROR_BODY_CHARS`, `ADVISORY_REFRESH_BACKOFF_IN_SECONDS`, and the 16 KiB identity-token check in `oidc-federation.mjs` |
 | Rule | The SDK's workload identity federation reads at most 1 MiB of a token response, quotes at most 2000 characters of an error body, backs off 5 seconds after a failed advisory refresh, and rejects an identity token longer than 16 * 1024 characters |
 | Literal consumer | `ai/anthropic_federation.go` (`anthropicMaxTokenResponseBytes`, `anthropicMaxErrorBodyChars`, `anthropicAdvisoryBackoffSeconds`, `anthropicMaxIdentityTokenChars`) |
 | Behavioral proof | `ai/anthropic_federation_sdk_upstream_test.go`, `ai/anthropic_token_cache_test.go` |
 
-The capture follows the same steps as for undici, with `lib/credentials/types.mjs`, `lib/credentials/oidc-federation.mjs` and `LICENSE` extracted from the 0.124.0 archive after its `dist.integrity` matched.
+The capture follows the same steps as for undici, with `lib/credentials/types.mjs`, `lib/credentials/oidc-federation.mjs` and `LICENSE` extracted from the 0.129.0 archive (unchanged from 0.124.0) after its `dist.integrity` matched.
 
 ## Capture and review
 

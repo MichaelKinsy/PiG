@@ -449,20 +449,22 @@ func (c *ToolExecutionComponent) renderImages(width int) []string {
 	}
 	var out []string
 	for i, img := range c.ImageBlocks {
-		// Upstream updateDisplay: prefer a conversion made from this exact
-		// source block, and on Kitty skip a non-PNG image entirely (no
-		// spacer) until its conversion lands.
+		// Prefer a conversion made from this exact source block. On Kitty, a
+		// non-PNG image shows its text fallback until the conversion lands, and
+		// after a failed one, as upstream's Image does without PNG data
+		// (pi-tui image.ts render, 1.0.1).
 		if cached, ok := c.convertedImages[i]; ok && cached.sourceData == img.Data && cached.sourceMimeType == img.MIMEType {
 			img = ImageBlock{Data: cached.Data, MIMEType: cached.MimeType}
-		}
-		if caps.Images == ImageProtocolKitty && img.MIMEType != "image/png" {
-			continue
 		}
 		dims := ImageDimensions{WidthPx: 800, HeightPx: 600}
 		if got := GetImageDimensions(img.Data, img.MIMEType); got != nil {
 			dims = *got
 		}
 		out = append(out, "") // spacer between images
+		if caps.Images == ImageProtocolKitty && img.MIMEType != "image/png" {
+			out = append(out, ImageFallback(img.MIMEType, &dims, ""))
+			continue
+		}
 		result := RenderImage(img.Data, dims, ImageRenderOptions{
 			MaxWidthCells:       maxW,
 			PreserveAspectRatio: new(true),

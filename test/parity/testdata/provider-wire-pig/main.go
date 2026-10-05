@@ -291,7 +291,7 @@ func probeAzureOpenAIResponses() any {
 	return runProbe(ai.NewAzureOpenAIResponsesProvider(ai.AzureOpenAIResponsesConfig{
 		APIKey:     "azure-test",
 		Model:      "gpt-4",
-		ProviderID: "azure-openai-responses",
+		ProviderID: "azure",
 		Env:        ai.ProviderEnv{"AZURE_OPENAI_BASE_URL": server.URL},
 	}), cap, false)
 }

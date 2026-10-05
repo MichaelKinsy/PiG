@@ -34,7 +34,7 @@ func loadCredentialExpiryOracle(t *testing.T) credentialExpiryOracle {
 	if err := stdjson.Unmarshal(data, &oracle); err != nil {
 		t.Fatal(err)
 	}
-	if oracle.Pi != "0.99.2" || len(oracle.Rows) == 0 {
+	if oracle.Pi != "1.0.3" || len(oracle.Rows) == 0 {
 		t.Fatalf("oracle = %+v", oracle)
 	}
 	return oracle
@@ -66,7 +66,7 @@ func semanticJSON(t *testing.T, text string) any {
 	return value
 }
 
-// TestCredentialExpiryMatchesPi compares persistence and every Pi expiry decision against ai/testdata/credential-expiry.json, which test/parity/probes/credential-expiry.mjs records from Pi 0.99.1 (auth-storage.ts JSON round-trip, resolve.ts:119-155, models.ts:575 and 608-625).
+// TestCredentialExpiryMatchesPi compares persistence and every Pi expiry decision against ai/testdata/credential-expiry.json, which test/parity/probes/credential-expiry.mjs records from Pi 1.0.3 (auth-storage.ts JSON round-trip, resolve.ts:refreshStoredOAuthCredential, models.ts:resolveRefreshCredential).
 func TestCredentialExpiryMatchesPi(t *testing.T) {
 	oracle := loadCredentialExpiryOracle(t)
 	withNowMillis(t, oracle.Now)

@@ -1,4 +1,4 @@
-// Execute the pinned pi-logo-animation.ts, not a second implementation. Pi's logo is swapped for the PiG pig head (D87)
+// Execute Pi 1.0.0's pi-logo-animation.ts, not a second implementation. Pi's logo is swapped for the PiG pig head (D87)
 // by generalizing the logo's 4-by-2-cell geometry to the head's cells, its pixel size in grid units and the clicked logo's
 // cells, and by taking the blocks, the radius and, after Pi's puzzle starts, the block offsets and colors from the Go side. Time, timers, the theme and the keybindings are stubbed; no user config.
 import { readFileSync } from "node:fs";
@@ -8,7 +8,8 @@ import * as colors from "../../../coding/extension/host/subprocess/runtime-node/
 import { visibleWidth } from "../../../coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-tui/utils.js";
 
 const input = JSON.parse(readFileSync(0, "utf8"));
-const path = new URL(`../../../.upstream/v${input.upstream}/packages/coding-agent/src/modes/interactive/components/pi-logo-animation.ts`, import.meta.url);
+// Pi 1.0.2 replaced pi-logo-animation.ts with easter-egg-3d.ts; D87 ports the 1.0.0 file (testdata/pi-v1.0.0/README.md).
+const path = new URL("pi-v1.0.0/pi-logo-animation.ts", import.meta.url);
 let source = readFileSync(path, "utf8");
 const replaceOnce = (from, to) => {
   const count = source.split(from).length - 1;

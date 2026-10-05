@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -68,6 +67,8 @@ type McpManagerView struct {
 	inputHandler func(data string)
 	inputTarget  interface{ SetFocused(bool) }
 	focused      bool
+	// copyToClipboard copies the sign-in URL on `app.message.copy`.
+	copyToClipboard func(text string) error
 }
 
 // NewMcpManagerView returns the view, showing "Loading…" until the manager shows its first menu.
@@ -242,6 +243,14 @@ func (v *McpManagerView) Status(title, message string) {
 	v.setContent(v.frame(title, []tui.Component{tui.NewSpacer(1), tui.NewPaddedText(v.theme.FgText("muted", message), 1, 0, nil)}, ""), nil, nil)
 }
 
+// SetCopyToClipboard supplies the clipboard writer `app.message.copy` uses for the authorization URL on the sign-in
+// screen. Without one, the key is ignored.
+func (v *McpManagerView) SetCopyToClipboard(copyToClipboard func(text string) error) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	v.copyToClipboard = copyToClipboard
+}
+
 // RedirectURL shows the authorization URL and waits for a pasted redirect URL.
 func (v *McpManagerView) RedirectURL(ctx context.Context, title, authorizationURL string) (string, bool) {
 	if ctx.Err() != nil {
@@ -255,15 +264,17 @@ func (v *McpManagerView) RedirectURL(ctx context.Context, title, authorizationUR
 	var once sync.Once
 	finish := func(value string, ok bool) { once.Do(func() { result <- answer{value, ok} }) }
 	input := tui.NewInput(tui.InputOptions{})
-	clickHint := "Ctrl+click to open"
-	if runtime.GOOS == "darwin" {
-		clickHint = "Cmd+click to open"
-	}
+	v.mu.Lock()
+	copyToClipboard := v.copyToClipboard
+	v.mu.Unlock()
+	link := tui.NewAuthURL(authorizationURL, copyToClipboard, func() {
+		v.Invalidate()
+		v.host.RequestRender()
+	})
 	body := []tui.Component{
 		tui.NewSpacer(1),
 		tui.NewPaddedText(v.theme.FgText("muted", "Approve access in your browser. If it did not open, visit:"), 1, 0, nil),
-		tui.NewPaddedText(v.theme.FgText("accent", tui.Hyperlink(authorizationURL, authorizationURL)), 1, 0, nil),
-		tui.NewPaddedText(v.theme.FgText("dim", tui.Hyperlink(clickHint, authorizationURL)), 1, 0, nil),
+		link,
 		tui.NewSpacer(1),
 		tui.NewPaddedText(v.theme.FgText("muted", "If the browser runs on another machine, paste the URL it was redirected to:"), 1, 0, nil),
 		input,
@@ -277,6 +288,8 @@ func (v *McpManagerView) RedirectURL(ctx context.Context, title, authorizationUR
 			}
 		case v.keybindings.Matches(data, tui.KBSelectCancel):
 			finish("", false)
+		case v.keybindings.Matches(data, "app.message.copy"):
+			link.Copy()
 		default:
 			input.HandleInput(data)
 		}
@@ -394,6 +407,9 @@ func (e *Extension) serversMenu() McpMenu {
 		if scope == "" {
 			scope = s.entry.Source
 		}
+		if s.entry.Override != "" {
+			scope = "global, project override"
+		}
 		items[i] = tui.SelectItem{
 			Value: s.entry.Name, Label: s.entry.Name,
 			Description: fmt.Sprintf("%s · %s · %s", describeState(s, true), exposureOf(s.entry), scope),
@@ -414,15 +430,20 @@ func (e *Extension) serverMenu(name string) McpMenu {
 		return McpMenu{Title: name, Empty: "This server is no longer configured.", CancelLabel: "back"}
 	}
 	e.mu.Lock()
-	entry, connection, message := s.entry, s.connection, s.message
+	entry, connection, message, projectConfig := s.entry, s.connection, s.message, e.projectConfig
 	e.mu.Unlock()
 	saved := "saved to mcp.json"
 	switch {
 	case entry.Scope == "extension":
 		saved = "for this session"
+	case entry.Override != "":
+		saved = "saved to the project mcp.json"
 	case entry.Scope != "":
 		saved = "saved to the " + entry.Scope + " mcp.json"
 	}
+	// Global servers without an override can be turned on or off for the trusted project alone.
+	inProject := entry.Scope == "global" && entry.Override == "" && projectConfig != ""
+	const inProjectSaved = "saved to the project mcp.json"
 	var items []tui.SelectItem
 	var state ServerState
 	if connection != nil {
@@ -430,6 +451,9 @@ func (e *Extension) serverMenu(name string) McpMenu {
 	}
 	if !s.enabled() {
 		items = append(items, tui.SelectItem{Value: "enable", Label: "Enable", Description: saved})
+		if inProject {
+			items = append(items, tui.SelectItem{Value: "enable-project", Label: "Enable in this project", Description: inProjectSaved})
+		}
 	} else {
 		if state == StateNeedsAuth {
 			items = append(items, tui.SelectItem{Value: "signin", Label: "Sign in", Description: "opens the browser"})
@@ -446,12 +470,19 @@ func (e *Extension) serverMenu(name string) McpMenu {
 		items = append(items,
 			tui.SelectItem{Value: "exposure", Label: "Exposure", Description: string(exposureOf(entry))},
 			tui.SelectItem{Value: "disable", Label: "Disable", Description: saved})
+		if inProject {
+			items = append(items, tui.SelectItem{Value: "disable-project", Label: "Disable in this project", Description: inProjectSaved})
+		}
 	}
 	scope := entry.Scope
 	if scope == "" {
 		scope = "config"
 	}
-	details := []string{describeTransport(entry), scope + ": " + entry.Source, "State: " + describeState(s, false)}
+	details := []string{describeTransport(entry), scope + ": " + entry.Source}
+	if entry.Override != "" {
+		details = append(details, "project override: "+entry.Override)
+	}
+	details = append(details, "State: "+describeState(s, false))
 	var errorLines []string
 	if message != "" {
 		errorLines = append(errorLines, message)
@@ -505,7 +536,11 @@ func (e *Extension) showTools(ctx context.Context, ui McpUi, s *server) {
 func (e *Extension) chooseExposure(ctx context.Context, ui McpUi, s *server) string {
 	current := exposureOf(s.entry)
 	choice, ok := ui.Menu(ctx, func() McpMenu {
-		details := "Saved to " + s.entry.Source + "."
+		target := s.entry.Source
+		if s.entry.Override != "" {
+			target = s.entry.Override
+		}
+		details := "Saved to " + target + "."
 		if s.entry.Scope == "extension" {
 			details = "Applies to this session; the server is registered by " + s.entry.Source + "."
 		}
@@ -533,9 +568,7 @@ func (e *Extension) runAction(ctx context.Context, ui McpUi, ec EventContext, s 
 	var message string
 	switch action {
 	case "signin":
-		title := "Sign in to " + name
-		ui.Status(title, "Contacting the authorization server…")
-		message = e.SignIn(ctx, name, &managerSignIn{e: e, ctx: ctx, ui: ui, title: title})
+		message = e.signInWithUI(ctx, ui, name)
 	case "reconnect":
 		// A failure shows as the connection's state and error.
 		ui.Status("MCP server "+name, "Reconnecting…")
@@ -548,13 +581,14 @@ func (e *Extension) runAction(ctx context.Context, ui McpUi, ec EventContext, s 
 		e.showTools(ctx, ui, s)
 	case "exposure":
 		message = e.chooseExposure(ctx, ui, s)
-	case "enable", "disable":
+	case "enable", "disable", "enable-project", "disable-project":
+		enable := strings.HasPrefix(action, "enable")
 		status := "Disconnecting…"
-		if action == "enable" {
+		if enable {
 			status = "Connecting…"
 		}
 		ui.Status("MCP server "+name, status)
-		message = e.SetEnabled(ec, name, action == "enable")
+		message = e.SetEnabled(ec, name, enable, strings.HasSuffix(action, "-project"))
 	}
 	e.SetMessage(name, message)
 	e.EnsureDiscoveryActive(ec)
@@ -563,6 +597,14 @@ func (e *Extension) runAction(ctx context.Context, ui McpUi, ec EventContext, s 
 }
 
 // managerSignIn is the sign-in prompt of the manager: the authorization URL goes to the view, and a pasted redirect URL comes from it.
+// signInWithUI signs in with the manager view's sign-in screen, which shows the URL with a copy key.
+// upstream: packages/coding-agent/src/extensions/mcp/index.ts:signInWithUi
+func (e *Extension) signInWithUI(ctx context.Context, ui McpUi, name string) string {
+	title := "Sign in to " + name
+	ui.Status(title, "Contacting the authorization server…")
+	return e.SignIn(ctx, name, &managerSignIn{e: e, ctx: ctx, ui: ui, title: title})
+}
+
 type managerSignIn struct {
 	e     *Extension
 	ctx   context.Context

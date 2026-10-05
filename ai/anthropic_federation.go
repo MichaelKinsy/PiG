@@ -1,7 +1,7 @@
 package ai
 
 // Ports the workload identity federation of packages/ai/src/api/anthropic-messages.ts (getAnthropicFederation, the
-// federation client of createClient) together with the parts of @anthropic-ai/sdk@0.124.0 it relies on:
+// federation client of createClient) together with the parts of @anthropic-ai/sdk@0.129.0 it relies on:
 // lib/credentials/oidc-federation.mjs (the jwt-bearer token exchange), types.mjs (endpoint check, response parsing,
 // redaction), identity-token.mjs (the identity token file) and token-cache.mjs (proactive refresh).
 
@@ -31,7 +31,7 @@ const (
 	anthropicFederationBeta     = "oidc-federation-2026-04-01"
 	anthropicJWTBearerGrantType = "urn:ietf:params:oauth:grant-type:jwt-bearer"
 	anthropicTokenEndpoint      = "/v1/oauth/token"
-	anthropicSDKUserAgent       = "Anthropic/JS 0.124.0"
+	anthropicSDKUserAgent       = "Anthropic/JS 0.129.0"
 	// upstream: node_modules/@anthropic-ai/sdk/lib/credentials/oidc-federation.mjs:jwt
 	anthropicMaxIdentityTokenChars = 16 * 1024
 	// upstream: node_modules/@anthropic-ai/sdk/lib/credentials/types.mjs:MAX_TOKEN_RESPONSE_BYTES
@@ -122,7 +122,7 @@ func anthropicFederationEnvFrom(lookup func(name string) string) ProviderEnv {
 }
 
 // fetchRejectionText is String(rejection) for the rejection Node's fetch raises for err: undici rejects with TypeError "fetch failed" or "terminated", and the signal's reason is a DOMException named AbortError. A caller-supplied fetch's own error is an Error.
-// upstream: node_modules/@anthropic-ai/sdk@0.124.0/lib/credentials/oidc-federation.mjs:47-49 (`Failed to reach token endpoint ${url}: ${err}`)
+// upstream: node_modules/@anthropic-ai/sdk@0.129.0/lib/credentials/oidc-federation.mjs:47-49 (`Failed to reach token endpoint ${url}: ${err}`)
 func fetchRejectionText(err error) string {
 	if urlErr, ok := errors.AsType[*url.Error](err); ok {
 		err = urlErr.Err
@@ -162,7 +162,7 @@ type anthropicTokenRefresh struct {
 // anthropicTokenCache wraps a token provider with two-tier proactive refresh and concurrent deduplication.
 // Exchanges run in cache-owned tasks so that a caller that stops waiting does not abort the exchange other callers
 // share; Close cancels and drains them.
-// upstream: node_modules/@anthropic-ai/sdk@0.124.0/lib/credentials/token-cache.mjs:22-107 (TokenCache)
+// upstream: node_modules/@anthropic-ai/sdk@0.129.0/lib/credentials/token-cache.mjs:22-107 (TokenCache)
 type anthropicTokenCache struct {
 	provider        anthropicTokenProvider
 	onAdvisoryError func(error)
@@ -359,7 +359,7 @@ func (lease *anthropicFederationLease) release() {
 }
 
 // authorize sets the federated bearer token on a request about to be sent.
-// upstream: node_modules/@anthropic-ai/sdk@0.124.0/client.mjs:345-358 (authHeaders), 429-447 (prepareRequest)
+// upstream: node_modules/@anthropic-ai/sdk@0.129.0/client.mjs:347-360 (authHeaders), 427-447 (prepareRequest)
 func (lease *anthropicFederationLease) authorize(ctx context.Context, request *http.Request) error {
 	token, err := lease.client.tokens.GetToken(ctx)
 	if err != nil {
@@ -369,22 +369,23 @@ func (lease *anthropicFederationLease) authorize(ctx context.Context, request *h
 		return err
 	}
 	request.Header.Set("Authorization", "Bearer "+token)
-	existing := request.Header.Get("anthropic-beta")
-	for feature := range strings.SplitSeq(existing, ",") {
-		if trimJSWhitespace(feature) == anthropicOAuthAPIBeta {
-			return nil
+	// headers.get("anthropic-beta")?.split(",").map((s) => s.trim()), then the OAuth beta joined with ",".
+	var betas []string
+	if existing, ok := request.Header["Anthropic-Beta"]; ok {
+		for feature := range strings.SplitSeq(strings.Join(existing, ", "), ",") {
+			feature = trimJSWhitespace(feature)
+			if feature == anthropicOAuthAPIBeta {
+				return nil
+			}
+			betas = append(betas, feature)
 		}
 	}
-	if existing == "" {
-		request.Header.Set("anthropic-beta", anthropicOAuthAPIBeta)
-	} else {
-		request.Header.Set("anthropic-beta", existing+", "+anthropicOAuthAPIBeta)
-	}
+	request.Header.Set("anthropic-beta", strings.Join(append(betas, anthropicOAuthAPIBeta), ","))
 	return nil
 }
 
 // invalidateAfter401 drops the cached token when a request that used it was rejected.
-// upstream: node_modules/@anthropic-ai/sdk@0.124.0/client.mjs:705-719 (shouldRetry)
+// upstream: node_modules/@anthropic-ai/sdk@0.129.0/client.mjs:707-721 (shouldRetry)
 func (lease *anthropicFederationLease) invalidateAfter401(status int) {
 	if lease != nil && status == http.StatusUnauthorized {
 		lease.client.tokens.Invalidate()
@@ -393,7 +394,7 @@ func (lease *anthropicFederationLease) invalidateAfter401(status int) {
 
 // exchangeAnthropicFederationToken exchanges the identity token for an access token with the RFC 7523 jwt-bearer grant.
 // Each call reads the identity token file and performs a fresh exchange.
-// upstream: node_modules/@anthropic-ai/sdk@0.124.0/lib/credentials/oidc-federation.mjs:15-66
+// upstream: node_modules/@anthropic-ai/sdk@0.129.0/lib/credentials/oidc-federation.mjs:15-66
 func exchangeAnthropicFederationToken(ctx context.Context, client *http.Client, baseURL string, federation anthropicFederation) (anthropicAccessToken, error) {
 	baseURL = strings.TrimRight(baseURL, "/")
 	if err := requireSecureAnthropicTokenEndpoint(baseURL); err != nil {
@@ -507,7 +508,7 @@ func anthropicBodyCannotBeJSON(prefix []byte) bool {
 }
 
 // requireSecureAnthropicTokenEndpoint rejects a base URL that would send the assertion over cleartext HTTP; loopback hosts are allowed.
-// upstream: node_modules/@anthropic-ai/sdk@0.124.0/lib/credentials/types.mjs:23-41
+// upstream: node_modules/@anthropic-ai/sdk@0.129.0/lib/credentials/types.mjs:23-41
 func requireSecureAnthropicTokenEndpoint(baseURL string) error {
 	if baseURL == "" {
 		return nil
@@ -526,7 +527,7 @@ func requireSecureAnthropicTokenEndpoint(baseURL string) error {
 }
 
 // readAnthropicIdentityToken reads the JWT from its file on every exchange, so a rotated token is picked up.
-// upstream: node_modules/@anthropic-ai/sdk@0.124.0/lib/credentials/identity-token.mjs:5-25
+// upstream: node_modules/@anthropic-ai/sdk@0.129.0/lib/credentials/identity-token.mjs:5-25
 func readAnthropicIdentityToken(path string) (string, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
@@ -541,7 +542,7 @@ func readAnthropicIdentityToken(path string) (string, error) {
 }
 
 // parseAnthropicTokenResponse validates a token endpoint response.
-// upstream: node_modules/@anthropic-ai/sdk@0.124.0/lib/credentials/types.mjs:49-65 (parseTokenResponse), oidc-federation.mjs:59-66
+// upstream: node_modules/@anthropic-ai/sdk@0.129.0/lib/credentials/types.mjs:49-65 (parseTokenResponse), oidc-federation.mjs:59-66
 func parseAnthropicTokenResponse(status int, text string) (anthropicAccessToken, error) {
 	raw := json.RawMessage(text)
 	if !json.Valid(raw) {
@@ -570,7 +571,7 @@ func parseAnthropicTokenResponse(status int, text string) (anthropicAccessToken,
 
 // redactAnthropicTokenBody ports redactSensitive for a response text: JSON keeps only the RFC 6749 §5.2 error fields
 // and plain text is truncated.
-// upstream: node_modules/@anthropic-ai/sdk@0.124.0/lib/credentials/types.mjs:66-101
+// upstream: node_modules/@anthropic-ai/sdk@0.129.0/lib/credentials/types.mjs:66-101
 func redactAnthropicTokenBody(body string) string {
 	if json.Valid([]byte(body)) {
 		return redactAnthropicTokenJSON(json.RawMessage(body))

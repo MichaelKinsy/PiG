@@ -970,9 +970,9 @@ commandLoop:
 				writeRPC(rpcError(env.ID, "export_html", err.Error()))
 				continue
 			}
-			var registered []extension.RegisteredTool
+			var registered func(name string) *extension.ToolRenderers
 			if runner != nil {
-				registered = runner().Tools()
+				registered = codingagent.ExportToolRenderers(runner())
 			}
 			// upstream rpc-mode.ts:601 exportToHtml passes agent.state: the transcript's system prompt and the active tools.
 			state := codingagent.NewShareState(codingagent.AgentStateSystemPrompt(sess().Agent().MessagesSnapshot()), sess().Tools())

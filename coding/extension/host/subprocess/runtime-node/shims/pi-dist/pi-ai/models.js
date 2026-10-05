@@ -1,7 +1,7 @@
 import { lazyStream } from "./api/lazy.js";
 import { defaultProviderAuthContext as defaultAuthContext } from "./auth/context.js";
 import { InMemoryCredentialStore } from "./auth/credential-store.js";
-import { ModelsError, resolveProviderAuth } from "./auth/resolve.js";
+import { ModelsError, refreshStoredOAuthCredential, resolveProviderAuth, } from "./auth/resolve.js";
 import { InMemoryModelsStore } from "./models-store.js";
 import { operationSignal, raceWithAbortSignal } from "./utils/abort.js";
 import { assertChatModel, assertClassifierModel, assertImageModel, classifierErrorResult, getModelType, imageErrorResult, isModelType, } from "./utils/model-operations.js";
@@ -236,12 +236,9 @@ class ModelsImpl {
                 return stored;
             if (signal.aborted)
                 return undefined;
-            const post = await this.credentials.modify(provider.id, async (current) => {
-                if (current?.type !== "oauth" || Date.now() < current.expires)
-                    return undefined;
-                return oauth.refresh(current, signal);
-            }, { signal });
-            return post?.type === "oauth" ? post : undefined;
+            // A refresh that has started survives cancellation or a superseding model refresh, so a
+            // rotated refresh token is always persisted. A newer refresh then sees the fresh credential.
+            return refreshStoredOAuthCredential(this.credentials, provider.id, oauth, (current) => Date.now() >= current.expires, signal);
         }
         const apiKey = provider.auth.apiKey;
         if (!apiKey)

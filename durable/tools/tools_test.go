@@ -14,6 +14,7 @@ import (
 	"reflect"
 	"regexp"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -56,7 +57,19 @@ type fakeAPI struct {
 	env         env.ExecutionEnv
 	mu          sync.Mutex
 	output      []string
+	skipped     []env.ShellOutputSkip
+	window      *env.ShellOutputWindow
 	diagnostics []durable.ToolDiagnostic
+}
+
+// OutputWindow is the window the test offers the tool; nil as for a tool that keeps the head of its output.
+func (api *fakeAPI) OutputWindow() *env.ShellOutputWindow { return api.window }
+
+func (api *fakeAPI) OutputSkipping(chunk any, skipped env.ShellOutputSkip) {
+	api.Output(chunk)
+	api.mu.Lock()
+	defer api.mu.Unlock()
+	api.skipped = append(api.skipped, skipped)
 }
 
 func (api *fakeAPI) Env() env.ExecutionEnv { return api.env }
@@ -133,7 +146,7 @@ func diagnosticText(result durable.ToolExecutionResult) string {
 	return strings.Join(messages, "\n")
 }
 
-func readText(t *testing.T, executionEnv env.ExecutionEnv, path string) string {
+func readTextFile(t *testing.T, executionEnv env.ExecutionEnv, path string) string {
 	t.Helper()
 	return must(executionEnv.ReadTextFile(background, path))
 }
@@ -256,14 +269,14 @@ const truncatedOutputLines = durable.DEFAULT_MAX_LINES + 1
 
 type timeoutOutputEnv struct{ *envnode.NodeExecutionEnv }
 
-func (timeout *timeoutOutputEnv) Exec(ctx context.Context, _ string, options *env.ShellExecOptions) (env.ShellExecResult, error) {
+func (timeout *timeoutOutputEnv) Exec(ctx context.Context, _ any, options *env.ShellExecOptions) (env.ShellExecResult, error) {
 	output := lines(truncatedOutputLines, func(i int) string { return "line-" + itoa(i) }, "\n") + "\n"
 	spillPath := must(timeout.CreateTempFile(ctx, &env.CreateTempFileOptions{Prefix: "timeout-", Suffix: ".log"}))
 	if err := timeout.WriteFile(ctx, spillPath, output); err != nil {
 		return env.ShellExecResult{}, err
 	}
 	if options != nil && options.OnOutput != nil {
-		options.OnOutput(ctx, output)
+		options.OnOutput(ctx, output, env.ShellOutputInfo{Stream: env.ShellStdout})
 	}
 	timeoutText := "timeout:undefined"
 	if options != nil && options.Timeout != nil {
@@ -407,7 +420,7 @@ func TestWriteWritesFilesAndCreatesParentDirectories(t *testing.T) {
 	if got := textOutput(result.ToolExecutionResult); got != "Successfully wrote to nested/dir/file.txt" {
 		t.Fatalf("output = %q", got)
 	}
-	if got := readText(t, executionEnv, "nested/dir/file.txt"); got != "hello" {
+	if got := readTextFile(t, executionEnv, "nested/dir/file.txt"); got != "hello" {
 		t.Fatalf("file = %q", got)
 	}
 }
@@ -437,7 +450,7 @@ func TestWriteKeepsTheMutationQueueLockedUntilAnAbortedWriteSettles(t *testing.T
 		t.Fatal("the aborted write succeeded")
 	}
 	mustDo(t, <-secondDone)
-	if got := readText(t, executionEnv, "file.txt"); got != "second\n" {
+	if got := readTextFile(t, executionEnv, "file.txt"); got != "second\n" {
 		t.Fatalf("file = %q", got)
 	}
 }
@@ -460,7 +473,7 @@ func TestEditAppliesDisjointEditsAndReturnsBothDiffFormats(t *testing.T) {
 	if got := applyPatch(t, "alpha\nbeta\ngamma\ndelta\n", details["patch"].(string)); got != "ALPHA\nbeta\nGAMMA\ndelta\n" {
 		t.Fatalf("applying the patch gives %q", got)
 	}
-	if got := readText(t, executionEnv, "edit.txt"); got != "ALPHA\nbeta\nGAMMA\ndelta\n" {
+	if got := readTextFile(t, executionEnv, "edit.txt"); got != "ALPHA\nbeta\nGAMMA\ndelta\n" {
 		t.Fatalf("file = %q", got)
 	}
 }
@@ -497,7 +510,7 @@ func TestEditMatchesAllEditsAgainstTheOriginalAndRejectsOverlaps(t *testing.T) {
 		map[string]any{"oldText": "two\nthree\n", "newText": "TWO\nTHREE\n"},
 	}}, executionEnv, background)
 	expectFailure(t, err, "overlap")
-	if got := readText(t, executionEnv, "edit.txt"); got != "one\ntwo\nthree\n" {
+	if got := readTextFile(t, executionEnv, "edit.txt"); got != "one\ntwo\nthree\n" {
 		t.Fatalf("file = %q", got)
 	}
 }
@@ -545,7 +558,7 @@ func TestEditKeepsTheMutationQueueLockedUntilAnAbortedEditWriteSettles(t *testin
 	if !settled {
 		t.Fatal("the first edit write never settled")
 	}
-	if got := readText(t, executionEnv, "file.txt"); got != "ALPHA\nBETA\n" {
+	if got := readTextFile(t, executionEnv, "file.txt"); got != "ALPHA\nBETA\n" {
 		t.Fatalf("file = %q", got)
 	}
 }
@@ -564,7 +577,7 @@ func TestEditSerializesConcurrentEditsThroughCanonicalAndSymlinkPaths(t *testing
 		})
 	}
 	wg.Wait()
-	if got := readText(t, executionEnv, "target.txt"); got != "ALPHA\nBETA\ngamma\n" {
+	if got := readTextFile(t, executionEnv, "target.txt"); got != "ALPHA\nBETA\ngamma\n" {
 		t.Fatalf("file = %q", got)
 	}
 }
@@ -586,7 +599,7 @@ func TestEditSerializesEditsOfOneFileAcrossEnvironmentObjectsOfOneFileSystem(t *
 		})
 	}
 	wg.Wait()
-	if got := readText(t, first, "file.txt"); got != "ALPHA\nBETA\n" {
+	if got := readTextFile(t, first, "file.txt"); got != "ALPHA\nBETA\n" {
 		t.Fatalf("file = %q", got)
 	}
 }
@@ -614,7 +627,7 @@ func TestEditSerializesANewFileCreatedThroughASymlinkedDirectoryWithItsCanonical
 	close(executionEnv.finishFirstWrite)
 	mustDo(t, <-firstDone)
 	mustDo(t, <-secondDone)
-	if got := readText(t, executionEnv, "real/new.txt"); got != "second\n" {
+	if got := readTextFile(t, executionEnv, "real/new.txt"); got != "second\n" {
 		t.Fatalf("file = %q", got)
 	}
 }
@@ -691,7 +704,7 @@ func TestEditEditsRegularFilesThroughSymlinks(t *testing.T) {
 	writeText(t, executionEnv, "target.txt", "before\n")
 	testenv.Symlink(t, "target.txt", filepath.Join(executionEnv.Cwd(), "link.txt"))
 	mustRun(t, CreateEditTool(), map[string]any{"path": "link.txt", "edits": []any{map[string]any{"oldText": "before", "newText": "after"}}}, executionEnv)
-	if got := readText(t, executionEnv, "target.txt"); got != "after\n" {
+	if got := readTextFile(t, executionEnv, "target.txt"); got != "after\n" {
 		t.Fatalf("file = %q", got)
 	}
 }
@@ -700,8 +713,40 @@ func TestEditPreservesBOMAndCRLFLineEndings(t *testing.T) {
 	executionEnv := createEnv(t)
 	writeText(t, executionEnv, "edit.txt", "\uFEFFone\r\ntwo\r\n")
 	mustRun(t, CreateEditTool(), map[string]any{"path": "edit.txt", "edits": []any{map[string]any{"oldText": "two", "newText": "TWO"}}}, executionEnv)
-	if got := readText(t, executionEnv, "edit.txt"); got != "\uFEFFone\r\nTWO\r\n" {
+	if got := readTextFile(t, executionEnv, "edit.txt"); got != "\uFEFFone\r\nTWO\r\n" {
 		t.Fatalf("file = %q", got)
+	}
+}
+
+// skippingEnv reports the window it was given and delivers one chunk that follows omitted output.
+type skippingEnv struct {
+	*envnode.NodeExecutionEnv
+	skipped  env.ShellOutputSkip
+	received *env.ShellOutputWindow
+}
+
+func (skipping *skippingEnv) Exec(ctx context.Context, _ any, options *env.ShellExecOptions) (env.ShellExecResult, error) {
+	skipping.received = options.Window
+	options.OnOutput(ctx, "tail\n", env.ShellOutputInfo{Stream: env.ShellStdout, Skipped: &skipping.skipped})
+	return env.ShellExecResult{}, nil
+}
+
+func TestBashPassesTheRetainedWindowToTheEnvironmentAndForwardsWhatItSkipped(t *testing.T) {
+	// upstream: packages/durable/test/tools.test.ts:523
+	window := env.ShellOutputWindow{MaxBytes: 4, MaxLines: 1, MinIntervalMs: 100, BytesPerSecond: 1024}
+	executionEnv := &skippingEnv{
+		NodeExecutionEnv: envnode.NewNodeExecutionEnv(envnode.NodeExecutionEnvOptions{Cwd: t.TempDir()}),
+		skipped:          env.ShellOutputSkip{Bytes: 6, Newlines: 2, EndsWithNewline: true},
+	}
+	api := &fakeAPI{env: executionEnv, window: &window}
+	if _, err := CreateBashTool(nil).Execute(background, map[string]any{"command": "anything"}, api); err != nil {
+		t.Fatal(err)
+	}
+	if executionEnv.received == nil || *executionEnv.received != window {
+		t.Fatalf("received window %v, want %+v", executionEnv.received, window)
+	}
+	if !slices.Equal(api.output, []string{"tail\n"}) || !slices.Equal(api.skipped, []env.ShellOutputSkip{executionEnv.skipped}) {
+		t.Fatalf("output %q skipped %v, want one chunk with the skip", api.output, api.skipped)
 	}
 }
 
@@ -742,7 +787,7 @@ func TestBashReportsTheSpillOfACommandThatTimesOut(t *testing.T) {
 	if match == nil {
 		t.Fatalf("reported = %+v", failed.reported)
 	}
-	fullOutput := readText(t, executionEnv, match[1])
+	fullOutput := readTextFile(t, executionEnv, match[1])
 	if !strings.Contains(fullOutput, "line-1\nline-2") || !strings.Contains(fullOutput, "line-2000\nline-"+itoa(truncatedOutputLines)) {
 		t.Fatal("the spill does not hold the complete output")
 	}
@@ -764,7 +809,11 @@ func TestBashPreparesCommandCwdAndAnExplicitEnvironmentWithTheCallsApi(t *testin
 			execution.Cwd = workspace
 			execution.Env = map[string]string{"PI_BASH_PREPARE_EXPLICIT": "explicit"}
 			execution.InheritEnv = false
-			execution.Command += "\nprintf '%s:%s:%s:%s' \"$prefix\" \"${PI_BASH_PREPARE_INHERITED-}\" \"$PI_BASH_PREPARE_EXPLICIT\" \"$PWD\""
+			execution.Command += "\n: > prepared-cwd\nprintf '%s:%s:%s' \"$prefix\" \"${PI_BASH_PREPARE_INHERITED-}\" \"$PI_BASH_PREPARE_EXPLICIT\""
+			// Git Bash on Windows reports $PWD as an MSYS path, so only POSIX compares it.
+			if runtime.GOOS != "windows" {
+				execution.Command += "\nprintf ':%s' \"$PWD\""
+			}
 			return nil
 		},
 	})
@@ -776,8 +825,15 @@ func TestBashPreparesCommandCwdAndAnExplicitEnvironmentWithTheCallsApi(t *testin
 	if receivedCtx != ctx {
 		t.Fatal("prepare did not receive the call's context")
 	}
-	if got, want := strings.Join(result.output, ""), "ready::explicit:"+must(executionEnv.CanonicalPath(background, workspace)); got != want {
+	want := "ready::explicit"
+	if runtime.GOOS != "windows" {
+		want += ":" + must(executionEnv.CanonicalPath(background, workspace))
+	}
+	if got := strings.Join(result.output, ""); got != want {
 		t.Fatalf("output = %q, want %q", got, want)
+	}
+	if !must(executionEnv.Exists(background, workspace+"/prepared-cwd")) {
+		t.Fatal("the command did not run in the prepared cwd")
 	}
 }
 
@@ -799,7 +855,7 @@ func TestBashStreamsEveryByteAndSpillsCompleteOutputBeyondTheDefaultLimits(t *te
 	if match == nil {
 		t.Fatalf("reported = %+v", result.reported)
 	}
-	if got := readText(t, executionEnv, match[1]); got != expected {
+	if got := readTextFile(t, executionEnv, match[1]); got != expected {
 		t.Fatalf("spill has %d bytes, want %d", len(got), len(expected))
 	}
 }

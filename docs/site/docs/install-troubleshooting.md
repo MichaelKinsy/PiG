@@ -70,6 +70,10 @@ A real change of terminal width or height redraws the whole transcript, as Pi do
 
 The error names the extension's runtime log, for example `/tmp/pig-ext-<name>-<id>.log`. Read it first: a missing module or export usually means the extension needs an API that PiG does not provide yet. Report it with the log and the extension's source. To force PiG to rebuild compiled extensions, delete `~/.pig/cache/ext`.
 
+## Restart after an update
+
+A session keeps running the executable it started from. If an update replaces or removes `pig`, or another `pig` prunes an extension cell this session uses, the next error shows `The pig installation this session runs from was removed or replaced` (or `The pig extension files this session runs from were removed or replaced`) once. Restart with the `pig --session <id>` command it prints to continue the session. See [TUI](/docs/latest/tui) for when PiG checks.
+
 ## Report a problem
 
 Include the output of `pig verify`, your operating system and terminal, and the steps that reproduce the problem. For a difference from Pi, include the Pi version you compared against; PiG pins the release shown by `pig verify`.

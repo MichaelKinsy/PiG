@@ -2,7 +2,8 @@
  * The `/mcp` manager view: menus that rebuild while servers connect, a read-only status screen, and
  * the sign-in screen that accepts a pasted redirect URL.
  */
-import { Container, hyperlink, Input, SelectList, Spacer, Text, truncateToWidth, visibleWidth, } from "../../../../pi-tui.mjs";
+import { Container, Input, SelectList, Spacer, Text, truncateToWidth, visibleWidth, } from "../../../../pi-tui.mjs";
+import { AuthUrlComponent } from "../../modes/interactive/components/auth-url.js";
 import { DynamicBorder } from "../../modes/interactive/components/dynamic-border.js";
 import { keyHint } from "../../modes/interactive/components/keybinding-hints.js";
 import { getSelectListTheme } from "../../modes/interactive/theme/theme.js";
@@ -122,12 +123,11 @@ export class McpManagerView {
             }
             signal.addEventListener("abort", onAbort, { once: true });
             const input = new Input();
-            const clickHint = process.platform === "darwin" ? "Cmd+click to open" : "Ctrl+click to open";
+            const link = new AuthUrlComponent(this.tui, authorizationUrl);
             const body = [
                 new Spacer(1),
                 new Text(this.theme.fg("muted", "Approve access in your browser. If it did not open, visit:"), 1, 0),
-                new Text(this.theme.fg("accent", hyperlink(authorizationUrl, authorizationUrl)), 1, 0),
-                new Text(this.theme.fg("dim", hyperlink(clickHint, authorizationUrl)), 1, 0),
+                link,
                 new Spacer(1),
                 new Text(this.theme.fg("muted", "If the browser runs on another machine, paste the URL it was redirected to:"), 1, 0),
                 input,
@@ -141,6 +141,10 @@ export class McpManagerView {
                 }
                 if (this.keybindings.matches(data, "tui.select.cancel")) {
                     finish(undefined);
+                    return;
+                }
+                if (this.keybindings.matches(data, "app.message.copy")) {
+                    void link.copy();
                     return;
                 }
                 input.handleInput(data);

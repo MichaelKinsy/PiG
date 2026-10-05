@@ -389,7 +389,9 @@ func TestAltScreenLineCustomBindings(t *testing.T) {
 }
 
 // TestAltScreenModifiedNavigationReachesFocusedComponent ports upstream "routes
-// Ctrl-modified viewport navigation to the focused component".
+// Home and End to the focused component and Ctrl+Home/End to the transcript"
+// (#10314): unmodified Home/End and the Ctrl+PageUp/PageDown keys belong to the
+// editor in every UI mode, and Ctrl+Home/Ctrl+End move the transcript.
 func TestAltScreenModifiedNavigationReachesFocusedComponent(t *testing.T) {
 	useAltScreenBindings(t, nil)
 	h := newAltHarness(t, 20, 6, TuiAltScreenOptions{})
@@ -398,19 +400,64 @@ func TestAltScreenModifiedNavigationReachesFocusedComponent(t *testing.T) {
 	h.tui.SetLayoutRoot(transcriptOverDock(transcript, editor, new(1)))
 	h.tui.SetFocus(editor)
 	h.start()
-	h.send("\x1bOH")
-	if transcript.ScrollTop() != 0 || len(editor.inputs) != 0 {
-		t.Fatalf("home: top=%d editor=%q", transcript.ScrollTop(), editor.inputs)
+	bottom := transcript.ScrollTop()
+	if bottom <= 0 {
+		t.Fatalf("bottom = %d, want > 0", bottom)
 	}
-	modified := []string{"\x1b[1;5H", "\x1b[1;5F", "\x1b[5;5~", "\x1b[6;5~", "\x1b[57423;5u"}
-	h.send(append(slices.Clone(modified), "\x1b[57423;5:3u")...)
-	if transcript.ScrollTop() != 0 || !slices.Equal(editor.inputs, modified) {
-		t.Fatalf("modified keys: top=%d editor=%q", transcript.ScrollTop(), editor.inputs)
+	editorKeys := []string{"\x1bOH", "\x1b[F", "\x1b[57423u", "\x1b[5;5~", "\x1b[6;5~"}
+	h.send(editorKeys...)
+	if transcript.ScrollTop() != bottom || !slices.Equal(editor.inputs, editorKeys) {
+		t.Fatalf("editor keys: top=%d editor=%q", transcript.ScrollTop(), editor.inputs)
+	}
+	h.send("\x1b[1;5H")
+	if transcript.ScrollTop() != 0 {
+		t.Fatalf("ctrl+home: top=%d, want 0", transcript.ScrollTop())
+	}
+	h.send("\x1b[1;5F")
+	if transcript.ScrollTop() != bottom || !transcript.IsFollowingEnd() {
+		t.Fatalf("ctrl+end: top=%d following=%v, want %d following", transcript.ScrollTop(), transcript.IsFollowingEnd(), bottom)
+	}
+	h.send("\x1b[57423;5u", "\x1b[57423;5:3u")
+	if transcript.ScrollTop() != 0 {
+		t.Fatalf("kitty ctrl+home: top=%d, want 0", transcript.ScrollTop())
 	}
 	h.send("\x1b[6~")
-	if transcript.ScrollTop() != 1 || !slices.Equal(editor.inputs, modified) {
+	if transcript.ScrollTop() != 1 || !slices.Equal(editor.inputs, editorKeys) {
 		t.Fatalf("page down: top=%d editor=%q", transcript.ScrollTop(), editor.inputs)
 	}
+}
+
+// TestAltScreenKeyboardNavigationHasFourRowsOfPageOverlap ports upstream
+// "supports configurable keyboard viewport navigation with four rows of page
+// overlap" with Ctrl+Home and Ctrl+End in rxvt form for the edges.
+func TestAltScreenKeyboardNavigationHasFourRowsOfPageOverlap(t *testing.T) {
+	useAltScreenBindings(t, nil)
+	h := newAltHarness(t, 20, 8, TuiAltScreenOptions{})
+	h.tui.Add(NewText(numberedLines(12)))
+	h.start()
+	first, last := numberedViewport(1, 8), numberedViewport(5, 8)
+	for _, step := range []struct {
+		inputs []string
+		want   []string
+	}{
+		{[]string{"\x1b[57421u", "\x1b[57421;1:3u"}, first},
+		{[]string{"\x1b[57422u", "\x1b[57422;1:3u"}, last},
+		{[]string{"\x1b[7^"}, first},
+		{[]string{"\x1b[8^"}, last},
+	} {
+		h.send(step.inputs...)
+		if got := h.viewport(); !slices.Equal(got, step.want) {
+			t.Fatalf("%q: viewport = %q, want %q", step.inputs, got, step.want)
+		}
+	}
+}
+
+func numberedViewport(first, rows int) []string {
+	lines := make([]string, rows)
+	for i := range lines {
+		lines[i] = fmt.Sprintf("line %d", first+i)
+	}
+	return lines
 }
 
 // TestAltScreenPromptJumpsWithKittyAndCtrlArrows ports upstream "jumps between

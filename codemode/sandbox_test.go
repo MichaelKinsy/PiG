@@ -18,7 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/codemode"
 )
 
-// Ports packages/codemode/test/sandbox.test.ts (v1.0.0) with its original scripts and expectations. The upstream
+// Ports packages/codemode/test/sandbox.test.ts (v1.0.1) with its original scripts and expectations. The upstream
 // tests use vitest's toMatchObject; a helper here compares the same fields. Go mechanics: the abort signal is a
 // context.Context, JSON text stands for `unknown`, and a never-settling tool promise becomes a tool that waits for
 // its context, because every goroutine of an execution joins before Execute returns.
@@ -118,7 +118,7 @@ func TestEmbeddedSourcesMatchTheirRecordedHashes(t *testing.T) {
 	// upstream "embedded sources parse as JavaScript": the prelude parses (and runs) in every execution below; the
 	// hashes pin the exact upstream bytes that the engine and the prelude were verified against.
 	sum := func(b []byte) string { h := sha256.Sum256(b); return hex.EncodeToString(h[:]) }
-	if got := sum([]byte(codemode.PreludeSource)); got != "1aa3d42c6e8c2fc93a4101dd43e1dc5f51bfff5d3b86e7224b1987631399913d" {
+	if got := sum([]byte(codemode.PreludeSource)); got != "c8c292ac0bc913654384ae12ecd759d6de89862acab0ce912f2e733878749880" {
 		t.Errorf("prelude sha256 = %s", got)
 	}
 	if got := sum(codemode.QuickJSWasm()); got != "d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9" {
@@ -842,4 +842,36 @@ func TestKeepsToolsAndConsoleFrozen(t *testing.T) {
 			try { globalThis.tools = null; } catch {}
 			return ["extra" in tools, await tools.echo('still')];
 		`), `[false,"still"]`)
+}
+
+// .upstream/v1.0.1/packages/codemode/test/sandbox.test.ts:582 (#10283): the host keeps all output, so a script that
+// prints in a loop must not grow it without bound.
+func TestSandboxFailsAScriptWhoseOutputPassesTheLimitsEvenIfItCatchesTheError(t *testing.T) {
+	sandbox := newSandbox(t, 0)
+	for _, print := range []string{"text(s)", "console.log(s)", `image("data:image/png;base64," + p)`} {
+		result := run(t, sandbox, `
+				const s = "x".repeat(1 << 20);
+				const p = "iVBORw0KGgoA" + "A".repeat(1 << 20);
+				for (;;) { try { `+print+`; } catch {} }
+			`)
+		if result.OK || result.Error == nil || result.Error.Kind != codemode.ErrorScript || result.Error.Name != "RangeError" || !strings.Contains(result.Error.Message, "script output exceeded") {
+			t.Fatalf("%s: result = %+v", print, result.Error)
+		}
+		chars := 0
+		for _, item := range result.Output {
+			if item.Type == "text" {
+				chars += len(item.Text)
+			} else {
+				chars += len(item.Data)
+			}
+		}
+		if chars > codemode.MaxOutputChars || chars <= codemode.MaxOutputChars-(2<<20) {
+			t.Fatalf("%s: output chars = %d", print, chars)
+		}
+	}
+
+	empty := run(t, sandbox, `for (;;) text("");`)
+	if empty.OK || empty.Error == nil || empty.Error.Name != "RangeError" || len(empty.Output) != codemode.MaxOutputItems {
+		t.Fatalf("empty: error = %+v, %d items", empty.Error, len(empty.Output))
+	}
 }

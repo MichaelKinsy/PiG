@@ -209,6 +209,12 @@ func TestUpstreamTerminalImageEncoding(t *testing.T) {
 			t.Fatalf("crop=%q", got)
 		}
 	})
+	// .upstream/v1.0.1/packages/tui/test/terminal-image.test.ts:467
+	t.Run("reads explicit placement rows without registered metadata", func(t *testing.T) {
+		if rows, ok := GetKittyImagePlacementRows(EncodeKitty("AAAA", 2, 3, 0, false)); !ok || rows != 3 {
+			t.Fatalf("rows = %d, %v", rows, ok)
+		}
+	})
 	// .upstream/v0.87.1/packages/tui/test/terminal-image.test.ts:518
 	t.Run("creates placement-only commands for uploaded and cropped images", func(t *testing.T) {
 		RegisterKittyImageMetadata(KittyImageMetadata{ImageID: 42, Columns: 3, Rows: 3, WidthPx: 100, HeightPx: 100})
@@ -222,6 +228,10 @@ func TestUpstreamTerminalImageEncoding(t *testing.T) {
 			t.Fatalf("placement accounting=%#v", placement)
 		}
 		want := "\x1b_Ga=p,q=2,C=1,c=3,i=42,y=66,h=34,r=1\x1b\\"
+		// .upstream/v1.0.1/packages/tui/test/terminal-image.test.ts:541: the crop's explicit rows.
+		if rows, ok := GetKittyImagePlacementRows(line); !ok || rows != 1 || placement.Rows != 1 {
+			t.Fatalf("placement rows = %d, %v; placement.Rows = %d", rows, ok, placement.Rows)
+		}
 		if placement.Sequence != want || placement.ReplacementLine != "left "+want+" right" || strings.Contains(placement.ReplacementLine, "AAAA") {
 			t.Fatalf("placement=%#v", placement)
 		}

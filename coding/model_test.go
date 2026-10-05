@@ -54,7 +54,7 @@ func TestBuildModelUsesGeneratedProviderAPI(t *testing.T) {
 			if got := model.Provider.ID(); got != providerID {
 				t.Fatalf("provider ID = %q, want %q", got, providerID)
 			}
-			if model.ProviderMeta.BaseURL == "" && providerID != "azure-openai-responses" {
+			if model.ProviderMeta.BaseURL == "" && providerID != "azure" {
 				t.Fatalf("ProviderMeta.BaseURL empty for generated model %s", tc.spec)
 			}
 		})

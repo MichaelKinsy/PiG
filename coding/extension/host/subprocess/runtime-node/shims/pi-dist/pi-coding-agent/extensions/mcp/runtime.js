@@ -171,6 +171,7 @@ export class McpServerConnection {
             callbackUrl: oauth.callbackUrl,
             scope: oauth.scope,
             clientName: oauth.clientName,
+            clientRegistration: oauth.clientRegistration,
             authServerMetadataUrl: oauth.authServerMetadataUrl ? new URL(oauth.authServerMetadataUrl) : undefined,
         };
     }

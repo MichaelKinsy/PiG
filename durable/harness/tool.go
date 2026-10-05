@@ -439,6 +439,14 @@ func runTool(ctx context.Context, runtime toolRuntime, call ai.ToolCall, tool *d
 	reported := &toolReported{output: NewOutputBuffer(limits), limits: limits}
 	progress := publishProgress(ctx, runtime, reported)
 	api := &toolApi{runtime: runtime, call: call, reported: reported, progress: progress}
+	if limits.Retain == string(durable.RetainTail) {
+		api.window = &env.ShellOutputWindow{
+			MaxBytes:       limits.MaxBytes,
+			MaxLines:       limits.MaxLines,
+			MinIntervalMs:  runtime.Settings().Progress.OutputIntervalMs,
+			BytesPerSecond: progressBytesPerSecond,
+		}
+	}
 
 	var result durable.ToolExecutionResult
 	ending := toolCompleted
@@ -495,6 +503,7 @@ type toolApi struct {
 	env      env.ExecutionEnv
 	reported *toolReported
 	progress *Progress
+	window   *env.ShellOutputWindow
 	ended    atomic.Bool
 }
 
@@ -521,19 +530,43 @@ func (api *toolApi) Env() env.ExecutionEnv { return api.env }
 
 // Output appends a string or byte chunk to the retained output.
 func (api *toolApi) Output(chunk any) {
+	api.output(chunk, nil)
+}
+
+// OutputSkipping appends a chunk that follows output an environment omitted; tail retention only.
+func (api *toolApi) OutputSkipping(chunk any, skipped env.ShellOutputSkip) {
+	api.output(chunk, &skipped)
+}
+
+// OutputWindow is the tail window offered to the environment; nil for head retention.
+func (api *toolApi) OutputWindow() *env.ShellOutputWindow { return api.window }
+
+func (api *toolApi) output(chunk any, skipped *env.ShellOutputSkip) {
 	api.assertLive()
 	api.reported.mu.Lock()
 	var accepted bool
+	var err error
 	switch typed := chunk.(type) {
 	case string:
-		accepted = api.reported.output.PushString(typed)
+		if skipped == nil {
+			accepted = api.reported.output.PushString(typed)
+		} else {
+			accepted, err = api.reported.output.PushStringSkipping(typed, *skipped)
+		}
 	case []byte:
-		accepted = api.reported.output.PushBytes(typed)
+		if skipped == nil {
+			accepted = api.reported.output.PushBytes(typed)
+		} else {
+			accepted, err = api.reported.output.PushBytesSkipping(typed, *skipped)
+		}
 	default:
 		api.reported.mu.Unlock()
 		panic(fmt.Errorf("tool output chunk is %T, not a string or bytes", chunk))
 	}
 	api.reported.mu.Unlock()
+	if err != nil {
+		panic(err)
+	}
 	if accepted {
 		api.progress.Mark()
 	}
@@ -713,7 +746,7 @@ func publishProgress(ctx context.Context, runtime toolRuntime, reported *toolRep
 		if runtime.Signal().Err() == nil {
 			runtime.Report(err)
 		}
-	}, toolProgressClock)
+	}, runtime.Settings().Progress.OutputIntervalMs, toolProgressClock)
 }
 
 // finalResult is the settled result (tool.ts:325-353): the tool's result with the retained output and last details

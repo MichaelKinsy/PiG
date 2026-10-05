@@ -77,6 +77,7 @@ pub use oauth::{
 pub use protocol::{AutocompleteItem, ConstrainedSampling, Schema, empty_schema};
 pub use theme::{Color, TextAttributes, Theme, ThemeAppearance, ThemeColorFn, ThemeSlot, ThemeStyle};
 pub use tool_render::{
-    ToolRenderCallHandler, ToolRenderContext, ToolRenderResult, ToolRenderResultHandler,
-    ToolRenderResultOptions, ToolRenderShell,
+    SharedToolRenderCall, SharedToolRenderResult, ToolRenderCallHandler, ToolRenderContext,
+    ToolRenderResult, ToolRenderResultHandler, ToolRenderResultOptions, ToolRenderShell,
+    ToolRendererResolver, ToolRendererSet,
 };

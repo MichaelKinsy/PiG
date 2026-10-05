@@ -539,6 +539,12 @@ func CompareThinkingLevels(a, b ThinkingLevel) int {
 type ModelThinkingLevel = ThinkingLevel
 type ThinkingLevelMap = map[ModelThinkingLevel]*string
 
+// SamplingParams holds free-form request body sampling keys such as temperature, top_p, top_k, min_p or repetition_penalty.
+type SamplingParams = map[string]any
+
+// SamplingParamsByThinkingLevel holds sampling overrides keyed by Pi thinking level, not by provider effort value.
+type SamplingParamsByThinkingLevel = map[ModelThinkingLevel]SamplingParams
+
 // CacheRetention selects the requested prompt-cache lifetime. Empty means the option is unset so the provider can apply its documented default.
 type CacheRetention string
 
@@ -622,6 +628,8 @@ type StreamOptions struct {
 	RequestMetadata      map[string]string      `json:"requestMetadata,omitempty"`
 	// ReasoningEffort is the raw OpenAI-compatible or Mistral API effort. Unlike the provider-neutral Thinking level, it is mapped but not clamped so the provider can reject unsupported values.
 	ReasoningEffort string
+	// ReasoningSummary is the raw OpenAI Responses reasoning summary mode ("auto", "detailed" or "concise"). Without an effort it requests medium effort.
+	ReasoningSummary string `json:"reasoningSummary,omitempty"`
 	// PromptMode is the raw Mistral prompt mode, independent of provider-neutral Thinking.
 	PromptMode string `json:"promptMode,omitempty"`
 	// IsReasoning indicates whether the model supports extended reasoning.
@@ -859,7 +867,9 @@ type Model struct {
 	Input            []string
 	ThinkingLevelMap ThinkingLevelMap
 	SamplingParams   map[string]any
-	PromptCache      ModelPromptCache
+	// SamplingParamsByThinkingLevel overrides SamplingParams for the effective thinking level on OpenAI-compatible APIs.
+	SamplingParamsByThinkingLevel SamplingParamsByThinkingLevel
+	PromptCache                   ModelPromptCache
 	// InputLimits mirrors upstream Model.inputLimits.
 	InputLimits *ModelInputLimits
 }

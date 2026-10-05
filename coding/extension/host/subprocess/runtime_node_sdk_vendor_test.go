@@ -52,9 +52,10 @@ import { oklabToOkhslLightness, } from "../../../../pi-tui/oklab.js";`},
 			[2]string{`export const CONFIG_DIR_NAME = pkg.piConfig?.configDir || ".pi";`, `export { CONFIG_DIR_NAME } from "../../pig-config.mjs"; // pig divergence (D2): selected host configuration tree.`},
 			[2]string{"export const ENV_AGENT_DIR = `${APP_NAME.toUpperCase()}_CODING_AGENT_DIR`;", `export { ENV_AGENT_DIR } from "../../pig-config.mjs";`},
 			[2]string{`const srcOrDist = existsSync(join(packageDir, "src")) ? "src" : "dist";`, `const srcOrDist = ".";`},
-			// .upstream/v0.99.2/packages/coding-agent/src/config.ts:488-490,496-505 (getQuickJSWasmPath, resolveCodemodeWorkerSpecifier): the private quickjs-wasi copy is not under node_modules, and the bundled worker entry is the copied dist/extensions/codemode/worker.js.
-			[2]string{`return embeddedQuickJSWasmPath ?? createRequire(import.meta.url).resolve("quickjs-wasi/quickjs.wasm");`, `return embeddedQuickJSWasmPath ?? fileURLToPath(new URL("../../quickjs-wasi/quickjs.wasm", import.meta.url));`},
+			// .upstream/v1.0.3/packages/coding-agent/src/config.ts:490-496,507-549 (getQuickJSWasmPath, resolveCodemodeWorkerSpecifier, getCodemodeWorkerSpecifier): the private quickjs-wasi copy is not under node_modules, and the bundled worker entry is the copied dist/extensions/codemode/worker.js. Pi 1.0.3 spawns that worker from a data: URL so an update cannot remove it; the private copy lives in PiG's content-addressed runtime directory, and the vendored worker keeps its relative imports, which need a file location.
+			[2]string{`quickJSWasmPath ??= createRequire(import.meta.url).resolve("quickjs-wasi/quickjs.wasm");`, `quickJSWasmPath ??= fileURLToPath(new URL("../../quickjs-wasi/quickjs.wasm", import.meta.url));`},
 			[2]string{`return new URL("./codemode-worker.js", moduleUrl);`, `return new URL("./extensions/codemode/worker.js", moduleUrl);`},
+			[2]string{"    // Spawn workers from an in-memory copy. An update replaces or deletes the file while this\n    // process keeps running (#10439). The bundle build keeps the worker free of relative imports\n    // and import.meta, so it runs from a data: URL.\n    codemodeWorkerDataUrl ??= new URL(`data:text/javascript;base64,${readFileSync(specifier).toString(\"base64\")}`);\n    return codemodeWorkerDataUrl;", "    return specifier;"},
 			[2]string{`export function getAgentDir() {
     const envDir = process.env[ENV_AGENT_DIR];
     if (envDir) {

@@ -156,20 +156,9 @@ func (m *Models) resolveRefreshCredential(ctx context.Context, provider *ModelsP
 		if ctx.Err() != nil {
 			return nil, nil
 		}
-		post, err := m.credentials.Modify(ctx, provider.ID, func(current *Credential) (*Credential, error) {
-			if current == nil || current.Type != CredentialOAuth || float64(nowMillis()) < current.ExpiresMillis() {
-				return nil, nil
-			}
-			updated, err := oauth.Refresh(ctx, *current)
-			if err != nil {
-				return nil, err
-			}
-			return &updated, nil
-		})
-		if err != nil || post == nil || post.Type != CredentialOAuth {
-			return nil, err
-		}
-		return post, nil
+		// A refresh that has started survives cancellation or a superseding model refresh, so a rotated refresh token is always persisted. A newer refresh then sees the fresh credential.
+		// upstream: packages/ai/src/models.ts:resolveRefreshCredential
+		return refreshStoredOAuthCredential(ctx, m.credentials, provider.ID, oauth, func(current Credential) bool { return float64(nowMillis()) >= current.ExpiresMillis() })
 	}
 	apiKey := provider.Auth.APIKey
 	if apiKey == nil {

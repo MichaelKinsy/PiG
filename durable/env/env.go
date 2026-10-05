@@ -166,6 +166,118 @@ type TextLineReader interface {
 	Close(ctx context.Context) error
 }
 
+// BinaryReader makes positional reads from one opened regular file; all calls see the same file even if its path is
+// renamed. Close is idempotent and every other call fails with an invalid FileError after it.
+type BinaryReader interface {
+	// Info is the metadata of the opened file, not of whatever its path names now.
+	Info(ctx context.Context) (FileInfo, error)
+	// Read returns up to length bytes at offset, fewer only at the end of the file. A negative offset or length, or
+	// one above JavaScript's largest safe integer, is invalid.
+	Read(ctx context.Context, offset, length int64) ([]byte, error)
+	// ScanLines is one pass over the file that locates lines [StartLine, EndLine) (EndLine nil: to the end), 0-based,
+	// where line k starts after the k-th newline byte. Decoded sizes are those of the text a TextDecoder would produce
+	// for that range, so a byte-order mark at the start of the file is not counted.
+	ScanLines(ctx context.Context, options ScanLinesOptions) (LineScan, error)
+	Close(ctx context.Context) error
+}
+
+// ScanLinesOptions selects the lines BinaryReader.ScanLines measures.
+type ScanLinesOptions struct {
+	StartLine int64
+	// EndLine is nil to scan to the end of the file.
+	EndLine *int64
+}
+
+// LineScan is where the lines of a file are, as BinaryReader.ScanLines found them.
+type LineScan struct {
+	// Newlines is the number of newline bytes in the whole file; it has Newlines + 1 lines.
+	Newlines int64
+	// Start and End are the byte range of the selected lines: from the start of the first to the end of the last,
+	// without the newline that ends it. A selection past the last line is empty at the end of the file.
+	Start, End int64
+	// FirstLineEnd is where the first selected line ends: its newline, or the end of the file.
+	FirstLineEnd int64
+	// LastLineStart is where the last selected line starts.
+	LastLineStart int64
+	// SelectedBytes and FirstLineBytes are the UTF-8 byte lengths of the decoded selection and of its first line.
+	SelectedBytes, FirstLineBytes int64
+}
+
+// DirPage is one page of a DirReader.
+type DirPage struct {
+	Entries []FileInfo
+	// Done marks the end; it may come with the last entries or with an empty page.
+	Done bool
+}
+
+// DirReader pages the entries of one directory.
+type DirReader interface {
+	// Next returns up to maxEntries entries in the order the file system returns them, continuing where the previous
+	// call stopped. An entry that disappears before its metadata is read is skipped, as are entries of unsupported
+	// kinds. After a failed or aborted call, close the reader.
+	Next(ctx context.Context, maxEntries int) (DirPage, error)
+	Close(ctx context.Context) error
+}
+
+// OpenBinaryReaderOptions configures FileSystem.OpenBinaryReader.
+type OpenBinaryReaderOptions struct {
+	// NoFollow refuses a symbolic link as the final path component with an invalid FileError instead of following it;
+	// earlier components are still resolved.
+	NoFollow bool
+}
+
+// WatchExclude names the entries below a watched path that are neither watched nor reported.
+type WatchExclude struct {
+	// Hidden excludes names starting with ".".
+	Hidden bool
+	Names  []string
+}
+
+// WatchTarget is a file or directory to watch. It may be missing; creating it is a change.
+type WatchTarget struct {
+	Path string
+	// Recursive watches everything below a directory, not only its entries. Symbolic links below it are not followed.
+	Recursive bool
+	Exclude   *WatchExclude
+}
+
+// WatchChange is what changed. It is WatchChangePaths, WatchChangeOverflow, or WatchChangeError.
+type WatchChange interface{ watchChange() }
+
+// WatchChangePaths reports that something at or below each path may have changed (a directory path covers its whole
+// subtree). Calls may be spurious; a change is never missed while the watcher is healthy.
+type WatchChangePaths struct{ Paths []string }
+
+// WatchChangeOverflow reports that coverage was uncertain for a while (lost events, reconnect): rescan everything that
+// is watched.
+type WatchChangeOverflow struct{}
+
+// WatchChangeError reports that the watcher stopped, for example because the watched tree grew past the environment's
+// limit; no calls follow.
+type WatchChangeError struct{ Error *FileError }
+
+func (WatchChangePaths) watchChange()    {}
+func (WatchChangeOverflow) watchChange() {}
+func (WatchChangeError) watchChange()    {}
+
+// WatchMode is how a FileWatcher learns of changes.
+type WatchMode string
+
+const (
+	// WatchNative: changes are reported within about two seconds.
+	WatchNative WatchMode = "native"
+	// WatchPolling: the environment compares snapshots, because the file system does not report changes reliably
+	// (network and FUSE file systems); a change undone between two snapshots can be missed.
+	WatchPolling WatchMode = "polling"
+)
+
+// FileWatcher is a running watch.
+type FileWatcher interface {
+	Mode() WatchMode
+	// Close stops watching; no onChange call starts after it returns. It is idempotent.
+	Close(ctx context.Context) error
+}
+
 // ReadTextLinesOptions bounds FileSystem.ReadTextLines; nil MaxLines reads every line.
 type ReadTextLinesOptions struct {
 	MaxLines *int
@@ -202,6 +314,9 @@ type FileSystem interface {
 	OpenTextLineReader(ctx context.Context, path string) (TextLineReader, error)
 	ReadTextLines(ctx context.Context, path string, options *ReadTextLinesOptions) ([]string, error)
 	ReadBinaryFile(ctx context.Context, path string) ([]byte, error)
+	// OpenBinaryReader opens a regular file for bounded positional reads. A directory fails with is_directory, other
+	// non-regular files with invalid. options may be nil.
+	OpenBinaryReader(ctx context.Context, path string, options *OpenBinaryReaderOptions) (BinaryReader, error)
 	// WriteFile writes content, a string or []byte.
 	WriteFile(ctx context.Context, path string, content any) error
 	// AppendFile appends content, a string or []byte.
@@ -213,6 +328,11 @@ type FileSystem interface {
 	RenameFile(ctx context.Context, sourcePath, destinationPath string) error
 	FileInfo(ctx context.Context, path string) (FileInfo, error)
 	ListDir(ctx context.Context, path string) ([]FileInfo, error)
+	OpenDirReader(ctx context.Context, path string) (DirReader, error)
+	// Watch reports changes to files and directories, for hosts that load resources from the environment. When it
+	// returns a watcher, coverage is established: a host that watches before it loads cannot miss a change made during
+	// the load. See WatchChange for what is reported and FileWatcher.Mode for how reliably.
+	Watch(ctx context.Context, targets []WatchTarget, onChange func(WatchChange)) (FileWatcher, error)
 	CanonicalPath(ctx context.Context, path string) (string, error)
 	Exists(ctx context.Context, path string) (bool, error)
 	CreateDir(ctx context.Context, path string, options *CreateDirOptions) error
@@ -236,6 +356,50 @@ type ShellExecResult struct {
 	SpillPath string
 }
 
+// ShellStream names the stream an output chunk came from.
+type ShellStream string
+
+const (
+	ShellStdout ShellStream = "stdout"
+	ShellStderr ShellStream = "stderr"
+)
+
+// ShellOutputWindow is the tail of the combined output a caller keeps, and how often it samples it. An environment that
+// transfers output over a slow link uses it to omit what the caller would drop anyway and to send no faster than the
+// caller commits.
+type ShellOutputWindow struct {
+	// MaxBytes is the UTF-8 bytes of decoded text kept at the end of the output.
+	MaxBytes int
+	// MaxLines is the lines kept at the end of the output.
+	MaxLines int
+	// MinIntervalMs is the minimum pause between the caller's samples of the output.
+	MinIntervalMs float64
+	// BytesPerSecond: each sample also pauses the caller in proportion to its size at this rate.
+	BytesPerSecond float64
+}
+
+// ShellOutputSkip is output an environment omitted, measured on the decoded text OnOutput would have received: every
+// U+FFFD counts as three bytes, and no sanitizing is applied.
+type ShellOutputSkip struct {
+	// Bytes is the UTF-8 byte length of the omitted text.
+	Bytes int
+	// Newlines is the number of newlines (U+000A) in the omitted text.
+	Newlines int
+	// EndsWithNewline reports whether the omitted text ends with a newline.
+	EndsWithNewline bool
+}
+
+// ShellOutputInfo describes one output chunk.
+type ShellOutputInfo struct {
+	Stream ShellStream
+	// Skipped is output omitted immediately before this chunk, only with ShellExecOptions.Window. The chunk then holds
+	// all output after the omission up to its end, and that is more than the window by at least one byte or one line:
+	// more than Window.MaxBytes bytes or more than Window.MaxLines newlines. So the omitted text can never be in the
+	// kept tail. The omission and such a chunk may span both streams in arrival order; Stream then names the chunk's
+	// last stream. Callers that need the streams apart do not pass Window.
+	Skipped *ShellOutputSkip
+}
+
 // ShellExecOptions configures Shell.Exec.
 type ShellExecOptions struct {
 	Cwd        string
@@ -243,15 +407,23 @@ type ShellExecOptions struct {
 	InheritEnv *bool
 	// Timeout is in seconds; nil has no timeout.
 	Timeout *float64
-	// OnOutput receives every decoded chunk of combined stdout and stderr as it arrives: raw, unbounded, and
-	// unthrottled.
-	OnOutput func(ctx context.Context, text string)
+	// OnOutput receives every decoded chunk of stdout and stderr as it arrives, in arrival order, with the stream it
+	// came from: raw, unbounded, and unthrottled. Each stream is decoded separately, so a character split across
+	// chunks survives.
+	OnOutput func(ctx context.Context, text string, info ShellOutputInfo)
 	Spill    *ShellSpillOptions
+	// Window is the tail the caller keeps, so the environment may omit output outside it and report the omission as
+	// ShellOutputInfo.Skipped. Without it, every chunk is delivered.
+	Window *ShellOutputWindow
 }
 
 // Shell runs commands.
 type Shell interface {
-	Exec(ctx context.Context, command string, options *ShellExecOptions) (ShellExecResult, error)
+	// Exec runs a command. A string runs through the environment's shell. A []string runs its first element directly
+	// with the rest as its arguments, without a shell, so they reach the program unparsed; an empty one is a
+	// spawn_error. Aborting ctx or a timeout kills only this command's processes.
+	Exec(ctx context.Context, command any, options *ShellExecOptions) (ShellExecResult, error)
+	// Cleanup kills every command this environment still runs; for its owner's shutdown, never for one request.
 	Cleanup(ctx context.Context) error
 }
 

@@ -79,7 +79,7 @@ func startPiRPCShutdownFixture(t *testing.T, extraEnv ...string) (*rpcProcess, s
 		t.Fatal(err)
 	}
 	var pkg struct{ Version string }
-	if err := json.Unmarshal(metadata, &pkg); err != nil || pkg.Version != "1.0.0" {
+	if err := json.Unmarshal(metadata, &pkg); err != nil || pkg.Version != "1.0.3" {
 		t.Fatalf("Pi version = %q, %v", pkg.Version, err)
 	}
 	node, err := exec.LookPath("node")
@@ -300,6 +300,11 @@ func TestRPCInputEndAfterExtensionCommandComparedWithPi(t *testing.T) {
 		// exit decision, so the continuation may record its event before then.
 		// pig divergence (D85): the afterExit tolerance is D85's first difference; the Pi rows stay strict.
 		afterExit bool
+		// piRacy marks a Pi row whose outcome is not fixed on this OS. On Windows, libuv reads
+		// pipe stdin through IOCP and a reader thread, not the poll phase, so whether two nested
+		// setImmediate ticks beat the end of input varies (TestRPCInputEndWindowClosesBeforeNextPollComparedWithPi measures the same
+		// row as racy there). The pig rows stay strict.
+		piRacy bool
 	}{
 		{command: "micro", response: true},
 		{command: "sync", response: true},
@@ -307,7 +312,7 @@ func TestRPCInputEndAfterExtensionCommandComparedWithPi(t *testing.T) {
 		{command: "immediate", response: true},
 		{command: "microimmediate", response: true},
 		{command: "awaits5immediate", response: true},
-		{command: "immediate2", afterExit: true},
+		{command: "immediate2", afterExit: true, piRacy: runtime.GOOS == "windows"},
 		{command: "timer", afterExit: true},
 		{command: "fspromises", afterExit: true},
 		{command: "fscallback", afterExit: true},
@@ -326,6 +331,9 @@ func TestRPCInputEndAfterExtensionCommandComparedWithPi(t *testing.T) {
 	for _, impl := range starts {
 		for _, handler := range []bool{true, false} {
 			for _, tc := range cases {
+				if impl.name == "pi" && tc.piRacy {
+					continue
+				}
 				name := impl.name + "/" + tc.command
 				var env []string
 				if !handler {

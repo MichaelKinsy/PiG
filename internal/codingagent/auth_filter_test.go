@@ -121,8 +121,8 @@ func TestAuthenticatedProviders_AzureEnvVar_Includes(t *testing.T) {
 	t.Setenv("AZURE_OPENAI_API_KEY", "sk-azure")
 	dir := t.TempDir()
 	got := AuthenticatedProviders(dir)
-	if !got["azure-openai-responses"] {
-		t.Errorf("expected azure-openai-responses ∈ AuthenticatedProviders via env, got %v", got)
+	if !got["azure"] {
+		t.Errorf("expected azure ∈ AuthenticatedProviders via env, got %v", got)
 	}
 }
 

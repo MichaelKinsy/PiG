@@ -91,13 +91,12 @@ type generationRequestInfo struct {
 }
 
 const (
-	partialThrottleDelay = 100 * time.Millisecond
-	defaultPollAfter     = 5000
-	generationKind       = "pi.generation"
-	noModelReason        = "no_model"
-	modelErrorReason     = "model_error"
-	toolUnavailable      = "tool_unavailable"
-	abortedResultCode    = "aborted"
+	defaultPollAfter  = 5000
+	generationKind    = "pi.generation"
+	noModelReason     = "no_model"
+	modelErrorReason  = "model_error"
+	toolUnavailable   = "tool_unavailable"
+	abortedResultCode = "aborted"
 )
 
 // GenerationTask is the built-in generation task (generation.ts:107-273): it prepares the positional system prompt
@@ -324,6 +323,9 @@ func generationRequestHandler(ctx context.Context, task durable.RunningTask[Gene
 		streamOptions = *checkpoint.StreamOptions
 	}
 	options := streamOptionsOf(streamOptions, runtime.Signal(), checkpoint.ThinkingLevel)
+	if options.SessionID, err = ensureProviderSessionId(ctx, runtime); err != nil {
+		return err
+	}
 	message, err := streamResponse(ctx, runtime, model, messages, options, checkpoint.Attempt)
 	if err != nil {
 		return err
@@ -574,10 +576,10 @@ func ConvertPartial(tx durable.Tx, live *delta.Object, conversationId durable.Co
 }
 
 // streamResponse streams one request and returns the terminal message (generation.ts:354-405). Partials commit as
-// trailing writes at most every 100 ms with one commit in flight; stopping the throttle waits for that commit, so no
+// trailing writes at most every Settings.Progress.PartialIntervalMs (default 100 ms) with one commit in flight; stopping the throttle waits for that commit, so no
 // stale partial lands after the outcome.
 func streamResponse(ctx context.Context, runtime generationRuntime, model *ai.Model, messages []ai.Message, options ai.StreamOptions, attempt int) (ai.AssistantMessage, error) {
-	throttle := &partialThrottle{runtime: runtime, ctx: ctx, attempt: attempt}
+	throttle := &partialThrottle{runtime: runtime, ctx: ctx, attempt: attempt, interval: millisecondsDuration(runtime.Settings().Progress.PartialIntervalMs)}
 	defer throttle.stop()
 	signal := runtime.Signal()
 	stream := runtime.Models().StreamSimple(signal, model, ai.Context{Messages: append([]ai.Message{}, messages...)}, options)
@@ -630,11 +632,21 @@ func partialOf(event ai.AssistantMessageEvent) *ai.AssistantMessage {
 	return nil
 }
 
-// partialThrottle commits the newest partial at most every 100 ms with one commit in flight.
+// millisecondsDuration is the delay setTimeout waits for milliseconds: a delay below 1 ms, above maxTimerDelay, or NaN
+// is 1 ms, and a fractional delay is truncated to whole milliseconds.
+func millisecondsDuration(milliseconds float64) time.Duration {
+	if !(milliseconds >= 1 && milliseconds <= maxTimerDelay) {
+		milliseconds = 1
+	}
+	return time.Duration(math.Trunc(milliseconds)) * time.Millisecond
+}
+
+// partialThrottle commits the newest partial at most every interval with one commit in flight.
 type partialThrottle struct {
 	runtime  generationRuntime
 	ctx      context.Context
 	attempt  int
+	interval time.Duration
 	mu       sync.Mutex
 	pending  *ai.AssistantMessage
 	timer    *time.Timer
@@ -650,7 +662,7 @@ func (throttle *partialThrottle) offer(partial *ai.AssistantMessage) {
 	defer throttle.mu.Unlock()
 	throttle.pending = partial
 	if throttle.timer == nil && throttle.inFlight == nil && !throttle.stopped {
-		throttle.timer = time.AfterFunc(partialThrottleDelay, throttle.flush)
+		throttle.timer = time.AfterFunc(throttle.interval, throttle.flush)
 	}
 }
 
@@ -693,7 +705,7 @@ func (throttle *partialThrottle) flush() {
 		throttle.mu.Lock()
 		throttle.inFlight = nil
 		if throttle.pending != nil && !throttle.stopped {
-			throttle.timer = time.AfterFunc(partialThrottleDelay, throttle.flush)
+			throttle.timer = time.AfterFunc(throttle.interval, throttle.flush)
 		}
 		throttle.mu.Unlock()
 	}()

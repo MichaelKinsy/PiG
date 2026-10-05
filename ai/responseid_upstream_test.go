@@ -29,7 +29,7 @@ func TestResponseIDUpstream(t *testing.T) {
 		// .upstream/v0.87.1/packages/ai/test/responseid.test.ts:75
 		{"Anthropic Provider/should expose responseId", "anthropic", "claude-sonnet-4-5", APIAnthropicMessages, false},
 		// .upstream/v0.87.1/packages/ai/test/responseid.test.ts:85
-		{"Azure OpenAI Responses Provider/should expose responseId", "azure-openai-responses", "gpt-4o-mini", APIAzureOpenAIResponses, false},
+		{"Azure OpenAI Responses Provider/should expose responseId", "azure", "gpt-4o-mini", APIAzureOpenAIResponses, false},
 		// .upstream/v0.87.1/packages/ai/test/responseid.test.ts:93
 		{"Mistral Provider/should expose responseId", "mistral", "devstral-medium-latest", APIMistralConversations, false},
 		// .upstream/v0.87.1/packages/ai/test/responseid.test.ts:99

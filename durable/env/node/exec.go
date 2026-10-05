@@ -3,6 +3,7 @@ package node
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -29,12 +30,12 @@ func abortedExecution() *durableenv.ExecutionError {
 	return &durableenv.ExecutionError{Code: durableenv.ExecutionErrorAborted, Message: "aborted"}
 }
 
-// Exec runs command through bash in the environment's cwd (or options.Cwd).
-// Every decoded chunk of combined stdout and stderr goes to options.OnOutput as
-// it arrives. A non-zero exit is a successful result. Cancellation of ctx, the
-// timeout, a failing OnOutput, and a failed requested spill each kill the
-// process tree and fail the call.
-func (env *NodeExecutionEnv) Exec(ctx context.Context, command string, options *durableenv.ShellExecOptions) (durableenv.ShellExecResult, error) {
+// Exec runs command in the environment's cwd (or options.Cwd). A string runs through bash; a []string runs its first
+// element directly with the rest as its arguments, without a shell. Every decoded chunk of stdout and stderr goes to
+// options.OnOutput as it arrives, with the stream it came from; options.Window is not used, so every chunk is delivered.
+// A non-zero exit is a successful result. Cancellation of ctx, the timeout, a failing OnOutput, and a failed requested
+// spill each kill the process tree of this command and fail the call.
+func (env *NodeExecutionEnv) Exec(ctx context.Context, command any, options *durableenv.ShellExecOptions) (durableenv.ShellExecResult, error) {
 	if ctx.Err() != nil {
 		return durableenv.ShellExecResult{}, abortedExecution()
 	}
@@ -49,7 +50,7 @@ func (env *NodeExecutionEnv) Exec(ctx context.Context, command string, options *
 	if options.Cwd != "" {
 		cwd = resolvePath(cwd, options.Cwd)
 	}
-	config, err := getShellConfig(ctx, env.shellPath)
+	spec, err := env.spawnSpec(ctx, command)
 	if err != nil {
 		return durableenv.ShellExecResult{}, err
 	}
@@ -60,7 +61,37 @@ func (env *NodeExecutionEnv) Exec(ctx context.Context, command string, options *
 			Cause:   statErr,
 		}
 	}
-	return newShellRun(ctx, env, options).execute(command, config, cwd, timeout)
+	return newShellRun(ctx, env, options).execute(spec, cwd, timeout)
+}
+
+// spawnSpec is the process a command starts: the shell with the command as an argument or on stdin, or an argv program.
+type spawnSpec struct {
+	program string
+	args    []string
+	// stdinCommand is written to the program's stdin when hasStdin is set.
+	stdinCommand string
+	hasStdin     bool
+}
+
+// spawnSpec resolves a string command through the shell configuration and an argv command to its program.
+func (env *NodeExecutionEnv) spawnSpec(ctx context.Context, command any) (spawnSpec, error) {
+	switch typed := command.(type) {
+	case string:
+		config, err := getShellConfig(ctx, env.shellPath)
+		if err != nil {
+			return spawnSpec{}, err
+		}
+		if config.commandFromStdin {
+			return spawnSpec{program: config.shell, args: config.args, stdinCommand: typed, hasStdin: true}, nil
+		}
+		return spawnSpec{program: config.shell, args: append(append([]string(nil), config.args...), typed)}, nil
+	case []string:
+		if len(typed) == 0 {
+			return spawnSpec{}, &durableenv.ExecutionError{Code: durableenv.ExecutionErrorSpawnError, Message: "Empty argv: no program to run"}
+		}
+		return spawnSpec{program: typed[0], args: typed[1:]}, nil
+	}
+	return spawnSpec{}, &durableenv.ExecutionError{Code: durableenv.ExecutionErrorSpawnError, Message: fmt.Sprintf("Command must be a string or a []string, not %T", command)}
 }
 
 // shellRun owns one command: its process, output pumps, timers, and optional
@@ -80,7 +111,7 @@ type shellRun struct {
 	feedMu sync.Mutex
 	// One decoder per stream, so a character split across chunks of one stream
 	// survives interleaving.
-	stdoutDecoder, stderrDecoder utf8StreamDecoder
+	stdoutDecoder, stderrDecoder durableenv.StreamDecoder
 	// Output seen before the spill starts: counted against the thresholds and
 	// kept for the spill's prefix.
 	spillPrefix  [][]byte
@@ -98,8 +129,8 @@ func newShellRun(ctx context.Context, env *NodeExecutionEnv, options *durableenv
 	return &shellRun{env: env, ctx: ctx, options: options, activity: make(chan struct{}, 1)}
 }
 
-func (run *shellRun) execute(command string, config shellConfig, cwd string, timeout time.Duration) (durableenv.ShellExecResult, error) {
-	cmd, stdin, stdout, stderr, err := run.start(command, config, cwd)
+func (run *shellRun) execute(spec spawnSpec, cwd string, timeout time.Duration) (durableenv.ShellExecResult, error) {
+	cmd, stdin, stdout, stderr, err := run.start(spec, cwd)
 	if err != nil {
 		return durableenv.ShellExecResult{}, err
 	}
@@ -114,11 +145,11 @@ func (run *shellRun) execute(command string, config shellConfig, cwd string, tim
 
 	var input sync.WaitGroup
 	if stdin != nil {
-		input.Go(func() { writeCommand(stdin, command) })
+		input.Go(func() { writeCommand(stdin, spec.stdinCommand) })
 	}
 	var pumps sync.WaitGroup
-	pumps.Go(func() { run.pump(stdout, &run.stdoutDecoder) })
-	pumps.Go(func() { run.pump(stderr, &run.stderrDecoder) })
+	pumps.Go(func() { run.pump(stdout, &run.stdoutDecoder, durableenv.ShellStdout) })
+	pumps.Go(func() { run.pump(stderr, &run.stderrDecoder, durableenv.ShellStderr) })
 	_ = cmd.Wait()
 	// os/exec's Wait also waits for the goroutine that copies a reader to the
 	// child's stdin.
@@ -129,11 +160,10 @@ func (run *shellRun) execute(command string, config shellConfig, cwd string, tim
 	return run.result(cmd.ProcessState)
 }
 
-// start spawns the shell with piped stdout/stderr as the leader of its own
+// start spawns the program with piped stdout/stderr as the leader of its own
 // process group and registers it for Cleanup. A shell that reads the command
-// from stdin gets a pipe, whose write end start returns; the command is an
-// argument otherwise, and stdin is nil.
-func (run *shellRun) start(command string, config shellConfig, cwd string) (*exec.Cmd, *os.File, *os.File, *os.File, error) {
+// from stdin gets a pipe, whose write end start returns; otherwise stdin is nil.
+func (run *shellRun) start(spec spawnSpec, cwd string) (*exec.Cmd, *os.File, *os.File, *os.File, error) {
 	spawnError := func(err error) error {
 		return &durableenv.ExecutionError{Code: durableenv.ExecutionErrorSpawnError, Message: err.Error(), Cause: err}
 	}
@@ -146,11 +176,7 @@ func (run *shellRun) start(command string, config shellConfig, cwd string) (*exe
 		closeAll(stdoutRead, stdoutWrite)
 		return nil, nil, nil, nil, spawnError(err)
 	}
-	args := config.args
-	if !config.commandFromStdin {
-		args = append(append([]string(nil), args...), command)
-	}
-	cmd := exec.Command(config.shell, args...)
+	cmd := exec.Command(spec.program, spec.args...)
 	cmd.Dir = cwd
 	nodespawn.SetEnvProperties(cmd, getShellEnv(run.env.shellEnv, run.options.Env, run.options.InheritEnv))
 	cmd.Stdout = stdoutWrite
@@ -158,7 +184,7 @@ func (run *shellRun) start(command string, config shellConfig, cwd string) (*exe
 	cmd.SysProcAttr = detachedProcessAttributes()
 	stdin := nodespawn.Ignore
 	var stdinWrite *os.File
-	if config.commandFromStdin {
+	if spec.hasStdin {
 		var stdinRead *os.File
 		if stdinRead, stdinWrite, err = os.Pipe(); err != nil {
 			closeAll(stdoutRead, stdoutWrite, stderrRead, stderrWrite)
@@ -167,7 +193,7 @@ func (run *shellRun) start(command string, config shellConfig, cwd string) (*exe
 		cmd.Stdin = stdinRead
 		stdin = nodespawn.Pipe
 	}
-	// Upstream spawns with stdio [commandFromStdin ? "pipe" : "ignore",
+	// Upstream spawns with stdio [stdinCommand === undefined ? "ignore" : "pipe",
 	// "pipe", "pipe"] and windowsHide: true.
 	nodespawn.HideWindow(cmd, stdin, nodespawn.Pipe, nodespawn.Pipe)
 	// Upstream starts the shell with Node's spawn, which finds it with libuv's
@@ -181,7 +207,7 @@ func (run *shellRun) start(command string, config shellConfig, cwd string) (*exe
 		if stdinWrite != nil {
 			closeAll(stdinWrite)
 		}
-		return nil, nil, nil, nil, &durableenv.ExecutionError{Code: durableenv.ExecutionErrorSpawnError, Message: spawnErrorMessage(config.shell, startErr), Cause: startErr}
+		return nil, nil, nil, nil, &durableenv.ExecutionError{Code: durableenv.ExecutionErrorSpawnError, Message: spawnErrorMessage(spec.program, startErr), Cause: startErr}
 	}
 	run.errMu.Lock()
 	run.pid = cmd.Process.Pid
@@ -261,12 +287,12 @@ func (run *shellRun) failSpill(err error) {
 	}
 }
 
-func (run *shellRun) pump(reader *os.File, decoder *utf8StreamDecoder) {
+func (run *shellRun) pump(reader *os.File, decoder *durableenv.StreamDecoder, stream durableenv.ShellStream) {
 	buffer := make([]byte, outputChunkSize)
 	for {
 		count, err := reader.Read(buffer)
 		if count > 0 {
-			run.feed(buffer[:count], decoder)
+			run.feed(buffer[:count], decoder, stream)
 		}
 		if err != nil {
 			return
@@ -307,7 +333,7 @@ func (run *shellRun) drain(pumps *sync.WaitGroup, stdout, stderr *os.File) {
 
 // feed hands one raw chunk to the caller as decoded text and, when a spill was
 // requested, preserves the exact bytes once the output crosses a threshold.
-func (run *shellRun) feed(chunk []byte, decoder *utf8StreamDecoder) {
+func (run *shellRun) feed(chunk []byte, decoder *durableenv.StreamDecoder, stream durableenv.ShellStream) {
 	run.feeding.Add(1)
 	defer run.feeding.Add(-1)
 	select {
@@ -316,7 +342,7 @@ func (run *shellRun) feed(chunk []byte, decoder *utf8StreamDecoder) {
 	}
 	run.feedMu.Lock()
 	defer run.feedMu.Unlock()
-	run.emit(decoder.decode(chunk))
+	run.emit(decoder.Decode(chunk), stream)
 	spill := run.options.Spill
 	if spill == nil || len(chunk) == 0 {
 		return
@@ -345,7 +371,7 @@ func (run *shellRun) feed(chunk []byte, decoder *utf8StreamDecoder) {
 
 // emit passes text to OnOutput unless the text is empty or a callback already
 // failed. Callers hold feedMu.
-func (run *shellRun) emit(text string) {
+func (run *shellRun) emit(text string, stream durableenv.ShellStream) {
 	if text == "" || run.options.OnOutput == nil {
 		return
 	}
@@ -355,20 +381,20 @@ func (run *shellRun) emit(text string) {
 	if failed {
 		return
 	}
-	if err := run.callOnOutput(text); err != nil {
+	if err := run.callOnOutput(text, stream); err != nil {
 		run.failCallback(err)
 	}
 }
 
 // callOnOutput delivers text to OnOutput. A panic in the callback is what a
 // throw is upstream: it fails the command with a callback_error.
-func (run *shellRun) callOnOutput(text string) (err error) {
+func (run *shellRun) callOnOutput(text string, stream durableenv.ShellStream) (err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			err = durableenv.ToError(recovered)
 		}
 	}()
-	run.options.OnOutput(run.ctx, text)
+	run.options.OnOutput(run.ctx, text, durableenv.ShellOutputInfo{Stream: stream})
 	return nil
 }
 
@@ -431,8 +457,8 @@ func (run *shellRun) finishSpill() {
 func (run *shellRun) flushDecoders() {
 	run.feedMu.Lock()
 	defer run.feedMu.Unlock()
-	run.emit(run.stdoutDecoder.flush())
-	run.emit(run.stderrDecoder.flush())
+	run.emit(run.stdoutDecoder.End(), durableenv.ShellStdout)
+	run.emit(run.stderrDecoder.End(), durableenv.ShellStderr)
 }
 
 func (run *shellRun) result(state *os.ProcessState) (durableenv.ShellExecResult, error) {

@@ -73,6 +73,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/scripts/generate-models.ts` | `cmd/gen-models/main.go + cmd/gen-models/reasoning.go + cmd/gen-models/models_dev.go (catalog emission, raw vendor reasoning snapshots, models.dev Fireworks/Qwen stages and strict JSON publication; other source-provider stages and TypeScript publication remain unported)` | 🟡 |
 | `packages/ai/scripts/check-model-data.ts` | `cmd/check-model-data/main.go (validation command)` | 🟡 |
 | `packages/ai/scripts/model-data.ts` | `cmd/check-model-data/model_data.go + model_data_json.go (identity, shard, manifest, hash and metadata validation; Node supplies Date.parse and JSON syntax diagnostics)` | 🟡 |
+| `packages/ai/scripts/hydrate-model-catalog.ts` | `cmd/check-model-data/hydrate.go (-hydrate <models.all.json>; groupProviderModelData, staging, validation and replacement; hydration cases of model-data-validation.test.ts in hydrate_upstream_test.go)` | 🟡 |
 
 ## `packages/agent/src/`
 
@@ -96,6 +97,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/providers/all.ts` | `ai/registry.go + ai/register_builtins.go + ai/images_registry.go` | ✅ |
 | `packages/ai/src/api/anthropic-messages.ts` | `ai/direct_simple.go + ai/anthropic.go + ai/anthropic_stream.go + ai/anthropic_client.go + ai/anthropic_federation.go + ai/provider_request_options.go + ai/constrained_sampling.go (createClient auth/header branches including the ai.PiUserAgent() default User-Agent from ai/user_agent.go (D65), betas, OAuth Claude Code identity, tool-name conversion, strict JSON-schema tools across current, initial, and deferred declarations, toolChoice, metadata.user_id, complete stop-reason and incomplete-stream errors, thinking_tokens usage, usage retention on error, explicit-zero temperature compatibility, managed mid-conversation effort with historical/current effort markers, adaptive drop-block binding, beta selection, and providerThinkingLevel, and native mid-conversation tool changes with tool_addition/tool_removal blocks, deferred placeholder/later tools, beta selection, and safe fallback to the current tool list; the executor-turn body pipeline with its Node 24.19/26.7 tick-order differential in ai/anthropic_microtask_trace_test.go and ai/anthropic_stream_test.go over coding/testdata/rpc33-observation/providers/anthropic-messages; upstream 0.99.2 workload identity federation in ai/anthropic_federation.go (getAnthropicFederation, token exchange, expiry refresh, the per-config federation client cache; ai/anthropic_federation_upstream_test.go, ai/anthropic_federation_sdk_upstream_test.go, ai/anthropic_token_cache_test.go) and the strict-tool keyword fallback (ai/anthropic.go anthropicStrictUnsupportedKeyword; ai/anthropic_strict_tool_schema_upstream_test.go, ai/anthropic_strict_keywords_test.go); tests in ai/anthropic_oauth_test.go, ai/anthropic_test.go, ai/anthropic_contract_0861_test.go, ai/anthropic_effort_strict_test.go, ai/constrained_sampling_test.go, ai/transcript_tool_changes_test.go, and agent/native_tool_changes_test.go); missing: server-side fallback (allowedFallbackModels fallbacks param, server-side-fallback-2026-07-01 beta, fallback content block and cost); open upstream 0.99.2 federation gaps (audit-992-ai, fix-992-federation-auth): the provider injects the ambient ANTHROPIC_AUTH_TOKEN as an Authorization header before it checks federation, so a direct stream with that token and the federation variables does not exchange the identity token (F1), and an unreachable token endpoint reports Go's *url.Error text instead of Node's "TypeError: fetch failed" (F2)` | 🟡 |
 | `packages/ai/src/api/constrained-sampling.ts` | `ai/constrained_sampling.go + ai/schema_object_order.go (imported schema-key order;grammar + canonical JSON-schema strict constrained sampling; wired into Anthropic, OpenAI Completions, OpenAI Responses, Mistral, Bedrock, and Google request paths; unit and provider-wire tests in ai/constrained_sampling_test.go, ai/anthropic_test.go, ai/openai_test.go, ai/openai_responses_constrained_test.go, ai/mistral_test.go, ai/bedrock_test.go, and ai/google_test.go)` | ✅ |
+| `packages/ai/src/api/azure-openai-config.ts` | `ai/azure_config.go (ResolveAzureBaseURL, ResolveAzureConfig, ResolveAzureDeploymentName)` | ✅ |
 | `packages/ai/src/api/azure-openai-responses.ts` | `ai/direct_simple.go + ai/azure_openai_responses.go (logical model versus deployment identity and reasoning replay)` | ✅ |
 | `packages/ai/src/api/bedrock-converse-stream.ts` | `ai/bedrock.go + ai/direct_simple.go (simple API dispatch preserves the selected model and delegates optional/keyless authentication to Bedrock)` | ✅ |
 | `packages/ai/src/api/google-generative-ai.ts` | `ai/google.go + ai/direct_simple.go (SDK system-instruction user role and optional/strict/explicit function-calling mode; request guards in ai/provider_wire_defaults_test.go)` | ✅ |
@@ -140,7 +142,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/providers/amazon-bedrock.models.ts` | `ai/models_generated.go (0.80 catalog shard input)` | ✅ |
 | `packages/ai/src/providers/ant-ling.models.ts` | `ai/models_generated.go (0.80 catalog shard input)` | ✅ |
 | `packages/ai/src/providers/anthropic.models.ts` | `ai/models_generated.go (0.80 catalog shard input)` | ✅ |
-| `packages/ai/src/providers/azure-openai-responses.models.ts` | `ai/models_generated.go (0.80 catalog shard input)` | ✅ |
+| `packages/ai/src/providers/azure.models.ts` | `ai/models_generated.go (0.80 catalog shard input)` | ✅ |
 | `packages/ai/src/providers/cerebras.models.ts` | `ai/models_generated.go (0.80 catalog shard input)` | ✅ |
 | `packages/ai/src/providers/cloudflare-ai-gateway.models.ts` | `ai/models_generated.go (0.80 catalog shard input)` | ✅ |
 | `packages/ai/src/providers/cloudflare-workers-ai.models.ts` | `ai/models_generated.go (0.80 catalog shard input)` | ✅ |
@@ -222,8 +224,8 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/experimental/vacation/sessions.ts` | `internal/experimental/durableagent/sessions.go` | ✅ |
 | `packages/coding-agent/src/experimental/vacation/tui.ts` | `internal/experimental/durable_tui.go, internal/experimental/durable_tui_run.go (the same file as durable/tui.ts)` | ✅ |
 | `packages/coding-agent/src/experimental/vacation/vacation.ts` | `internal/experimental/vacation/vacation.go` | ✅ |
-| `packages/coding-agent/src/modes/interactive/components/pi-logo-animation.lazy.ts` | `internal/codingagent/pig_logo_animation_play.go + internal/codingagent/startup_header.go (header click; D87: the PiG mark's pig is the clickable logo; the dynamic import is designed out, Go links the module)` | 🟡 |
-| `packages/coding-agent/src/modes/interactive/components/pi-logo-animation.ts` | `internal/codingagent/pig_logo_animation.go + internal/codingagent/pig_logo_animation_play.go (D87: the object is the pig of the PiG mark and it runs where Pi's logo plays its puzzle; engine, timeline, dust, ray caster, starfield, hint, exit and input handling are Pi's)` | 🟡 |
+| `packages/coding-agent/src/modes/interactive/components/easter-egg-3d.lazy.ts` | `internal/codingagent/pig_logo_animation_play.go + internal/codingagent/startup_header.go + internal/codingagent/interactive_easter_eggs.go (header click and fullscreen /arminsayshi; D87: PiG's pig models; the dynamic import is designed out, Go links the module)` | 🟡 |
+| `packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts` | `internal/codingagent/pig_egg3d.go + internal/codingagent/pig_logo_animation.go + internal/codingagent/pig_logo_animation_play.go (D87: the Pi-logo kind with the pig of the PiG mark and its running pig; the Armin kind with the sprite's pig head)` | 🟡 |
 | `packages/coding-agent/src/modes/interactive/components/radius-login-selector.ts` | `internal/codingagent/radius_login_selector.go (Radius top-level login option shimmer; static rows proven by oauth/27-28, shimmer frames by unit tests only)` | 🟡 |
 | `packages/coding-agent/src/modes/interactive/components/status-indicator.ts` | `internal/codingagent/interactive_status.go + interactive_events.go + tui/status_indicator.go + tui/editor_status.go (working/compaction/retry border; branchSummary, summarization retry replacement, and session-clear lifecycle pending)` | 🟡 |
 | `packages/coding-agent/src/rpc-entry.ts` | `(npm package export wrapper for --mode rpc; pig exposes the CLI mode directly)` | n/a |
@@ -248,7 +250,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/providers/google-vertex.ts` | `ai/auth_providers.go + ai/google_vertex.go + ai/provider_login.go` | ✅ |
 | `packages/ai/src/providers/amazon-bedrock.ts` | `ai/auth_providers.go + ai/bedrock.go + ai/provider_login.go` | ✅ |
 | `packages/ai/src/api/cloudflare.ts` | `ai/cloudflare.go` | ✅ |
-| `packages/ai/src/providers/azure-openai-responses.ts` | `ai/azure_openai_responses.go` | ✅ |
+| `packages/ai/src/providers/azure.ts` | `ai/azure.go (Azure Chat Completions endpoint and deployment resolution over the shared OpenAI provider) + ai/azure_openai_responses.go` | ✅ |
 | `packages/ai/src/providers/mistral.ts` | `ai/mistral.go` | ✅ |
 | `packages/ai/src/api/github-copilot-headers.ts` | `ai/githubcopilot.go` | ✅ |
 | `packages/ai/src/providers/faux.ts` | `ai/faux.go + ai/faux_deferred.go (queued streaming, canonical models, model-aware factories, caller-supplied timestamps, cache and deferred submit/fetch/cancel; complete helper/model-option contracts not closed)` | 🟡 |
@@ -310,7 +312,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/cli.ts` | `cmd/pig/main.go` | ✅ |
 | `packages/coding-agent/src/main.ts` | `cmd/pig/main.go + cmd/pig/startup_session.go + cmd/pig/extensions.go (mode/metadata routing)` | ✅ |
 | `packages/coding-agent/src/index.ts` | `coding/extension/host/subprocess/runtime-node/shims/pi-coding-agent.mjs (pinned Node barrel; independent SDK objects; main-process identity remains D73)` | 🟡 |
-| `packages/coding-agent/src/config.ts` | `internal/codingagent/paths.go + internal/codingagent/selfupdate_package_command.go + internal/codingagent/selfupdate_tier.go (D2 directory opt-in; D39 native update ownership)` | ✅ |
+| `packages/coding-agent/src/config.ts` | `internal/codingagent/paths.go + internal/codingagent/selfupdate_package_command.go + internal/codingagent/selfupdate_tier.go (D2 directory opt-in; D39 native update ownership); the 1.0.3 quickJSWasmPath cache and in-memory codemode worker URL are designed out: PiG embeds its code in one native executable, as Pi's Bun binary does; detectInstallChange is ported as the additive D95 in internal/installchange/installchange.go` | ✅ |
 | `packages/coding-agent/src/migrations.ts` | `internal/codingagent/migrations.go` | ✅ |
 | `packages/coding-agent/src/package-manager-cli.ts` | `cmd/pig/package_commands.go + cmd/pig/cli_error.go + cmd/pig/package_command_trust.go + cmd/pig/package_model_catalogs.go + cmd/pig/config_command.go + coding/packagecontent/packagecontent.go` | ✅ |
 | `packages/coding-agent/src/cli/args.ts` | `cmd/pig/args.go` | ✅ |
@@ -419,6 +421,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/modes/rpc/jsonl.ts` | `coding/rpcclient/jsonl.go; cmd/pig/rpc_types.go; internal/text/quote_utf16.go` | ✅ |
 | `packages/coding-agent/src/modes/index.ts` | `(barrel)` | n/a |
 | `packages/coding-agent/src/utils/changelog.ts` | `embed.go + internal/codingagent/changelog.go` | ✅ |
+| `packages/coding-agent/src/utils/output-files.ts` | `internal/outputfiles/outputfiles.go (internal/outputfiles/outputfiles_test.go); callers internal/codingagent/tools/bash_executor.go, internal/codingagent/tools/output_accumulator.go, coding/mcpext/tools.go, coding/extension/builtin/codemode/execute.go` | ✅ |
 | `packages/coding-agent/src/utils/ansi.ts` | `internal/codingagent/export/ansi_html.go` | ✅ |
 | `packages/coding-agent/src/utils/child-process.ts` | `internal/crossspawn (spawnProcess/spawnProcessSync Windows shebang routing and cross-spawn escaping); internal/childwait (waitForChildProcess post-exit stdio grace, EXIT_STDIO_GRACE_MS, used by core/exec.ts and the bash tool)` | ✅ |
 | `packages/coding-agent/src/utils/clipboard.ts` | `internal/codingagent/clipboard.go + internal/codingagent/clipboard_copy.go + internal/codingagent/clipboard_text.go (readClipboardText command fallbacks, then the getNativeClipboard getText reader on every platform, and interactive Ctrl+V/right-click paths; internal/codingagent/clipboard_read_text_test.go)` | ✅ |
@@ -466,6 +469,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/modes/interactive/components/index.ts` | `(barrel)` | n/a |
 | `packages/coding-agent/src/modes/interactive/components/keybinding-hints.ts` | `tui/keybinding_hints.go` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/login-dialog.ts` | `tui/login_dialog.go + internal/codingagent/interactive_api_key_login.go + internal/codingagent/interactive_auth.go` | ✅ |
+| `packages/coding-agent/src/modes/interactive/components/auth-url.ts` | `tui/auth_url.go (AuthURL; used by tui/login_dialog.go and coding/mcpext/manager.go RedirectURL)` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/model-selector.ts` | `tui/model_select.go` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/oauth-selector.ts` | `tui/oauth_selector.go + internal/codingagent/interactive_login.go + internal/codingagent/slash_auth.go` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts` | `tui/scoped_models_list.go + internal/codingagent/interactive.go` | ✅ |
@@ -482,7 +486,6 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/modes/interactive/components/user-message-selector.ts` | `tui/user_message_selector.go + internal/codingagent/session_selectors.go (D66 bounds list rows at unusually narrow widths instead of emitting fatal over-wide rows)` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/visual-truncate.ts` | `tui/visual_truncate.go` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/armin.ts` | `internal/codingagent/armin.go + internal/codingagent/interactive_easter_eggs.go (D87: a pig head labeled pigsayhi; /pigsayhi is an alias)` | ✅ |
-| `packages/coding-agent/src/modes/interactive/components/daxnuts.ts` | `(easter egg: skip)` | n/a |
 | `packages/coding-agent/src/modes/interactive/components/earendil-announcement.ts` | `internal/codingagent/earendil_announcement.go + internal/codingagent/interactive_easter_eggs.go` | ✅ |
 | `packages/coding-agent/src/cli/experimental/cli.ts` | `internal/experimental/commands.go (command composition; runtime qualification pending)` | 🟡 |
 | `packages/coding-agent/src/cli/experimental/command-options.ts` | `internal/experimental/commands_types.go, internal/experimental/command_parse.go (Unix transport options; Radius/auth branches :5-37,47-64,97-102 designed out by owner 2026-09-28, D64; runtime qualification pending)` | 🟡 |

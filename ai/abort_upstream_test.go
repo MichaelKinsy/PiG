@@ -16,7 +16,7 @@ func TestAbortMatrixUpstream(t *testing.T) {
 		t.Fatal(err)
 	}
 	specs := []struct{ provider, model string }{
-		{"google", "gemini-2.5-flash"}, {"openai", "gpt-4o-mini"}, {"openai", "gpt-5-mini"}, {"azure-openai-responses", "gpt-4o-mini"},
+		{"google", "gemini-2.5-flash"}, {"openai", "gpt-4o-mini"}, {"openai", "gpt-5-mini"}, {"azure", "gpt-4o-mini"},
 		{"anthropic", "claude-sonnet-4-6"}, {"mistral", "devstral-medium-latest"}, {"together", "moonshotai/Kimi-K3"}, {"baseten", "zai-org/GLM-5.2"},
 		{"minimax", "MiniMax-M2.7"}, {"xiaomi", "mimo-v2.5-pro"}, {"xiaomi-token-plan-cn", "mimo-v2.5-pro"}, {"xiaomi-token-plan-ams", "mimo-v2.5-pro"},
 		{"xiaomi-token-plan-sgp", "mimo-v2.5-pro"}, {"qwen-token-plan", "qwen3.7-max"}, {"qwen-token-plan-individual", "qwen3.8-max"}, {"qwen-token-plan-cn", "qwen3.7-max"},

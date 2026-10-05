@@ -36,6 +36,8 @@ type NodeExecutionEnvOptions struct {
 	// ShellEnv is layered over the inherited process environment for every
 	// command.
 	ShellEnv map[string]string
+	// Watch configures FileSystem.Watch.
+	Watch NodeWatchOptions
 }
 
 // NodeExecutionEnv is the host-OS execution environment: filesystem access and
@@ -55,6 +57,7 @@ type NodeExecutionEnv struct {
 	cwd       string
 	shellPath string
 	shellEnv  map[string]string
+	watch     NodeWatchOptions
 
 	mu              sync.Mutex
 	activeChildPids map[int]struct{}
@@ -68,6 +71,7 @@ func NewNodeExecutionEnv(options NodeExecutionEnvOptions) *NodeExecutionEnv {
 		cwd:             options.Cwd,
 		shellPath:       options.ShellPath,
 		shellEnv:        options.ShellEnv,
+		watch:           options.Watch,
 		activeChildPids: map[int]struct{}{},
 	}
 	env.Self = env
@@ -274,6 +278,11 @@ func (env *NodeExecutionEnv) FlushFile(ctx context.Context, path string) error {
 	}
 	file, err := os.OpenFile(resolved, os.O_RDWR, 0)
 	if err != nil {
+		// POSIX refuses to open a directory for writing with EISDIR; Windows refuses it as access denied, where Node
+		// opens it, so a directory is reported as one.
+		if stats, statErr := os.Stat(resolved); statErr == nil && stats.IsDir() && errnoCode(err) != "EISDIR" {
+			return &durableenv.FileError{Code: durableenv.FileErrorIsDirectory, Message: "Is a directory", Path: resolved}
+		}
 		return toFileError(err, fsCall{syscall: "open", path: resolved})
 	}
 	defer closeQuietly(file)

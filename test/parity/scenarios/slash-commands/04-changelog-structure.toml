@@ -12,12 +12,12 @@
 #
 # Content differs between binaries (different CHANGELOG.md), so output_equal
 # is impossible. We assert that:
-#   - Both reach the "What's New" header (visible-screen wait after Home)
+#   - Both reach the "What's New" header (visible-screen wait after Ctrl+Home)
 #   - Neither crashes
 # The pi changelog is long enough to scroll "What's New" off a 60-row pane.
 # Pi 1.0.0 draws fullscreen by default: the alternate screen has no scrollback, and the
 # transcript follows its newest line, so the header is off screen once /changelog renders.
-# The editor marker is the barrier that /changelog was consumed; Home (tui.altScreen.top)
+# The editor marker is the barrier that /changelog was consumed; Ctrl+Home (tui.altScreen.top)
 # then scrolls the viewport to the transcript top, where both binaries show the header,
 # so the final screen can assert it with both_contain.
 
@@ -46,7 +46,7 @@ wait_visible_contains = ["PARITY_CHANGELOG_BARRIER"]
 wait_timeout_seconds = 5
 
 [[tmux.steps]]
-keys = ["Home"]
+keys = ["hex:1b 5b 31 3b 35 48"]
 wait_visible_contains = ["What's New"]
 wait_timeout_seconds = 5
 settle_seconds = 2

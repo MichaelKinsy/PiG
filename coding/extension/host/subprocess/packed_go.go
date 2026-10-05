@@ -17,6 +17,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
+	"github.com/MichaelKinsy/PiG/internal/installchange"
 )
 
 type packedProcessState struct {
@@ -390,6 +391,10 @@ func (h *Host) startGoPackedCell(ctx context.Context, cell *runtimecell.GoPacked
 		if err != nil {
 			cancel()
 			return nil, nil, newLoadError(cell.Key, "spawn", "cache_lease_failed", fmt.Errorf("lease packed cell artifact %s: %w", cell.BinaryPath, err))
+		}
+		if lease != nil {
+			// pig additive (D95): remember the cache cell this process runs, so an error can report that another pig pruned it.
+			installchange.TrackFile(cell.BinaryPath)
 		}
 	}
 	processState := &packedProcessState{key: cell.Key, parent: runtimeParent(ctx), cancel: cancel, lease: lease, generation: cell.Generation, node: nodeRuntime, originalOwner: runtimeParent(ctx), configs: recoveryConfigs}
@@ -913,6 +918,7 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 		h.uiBridge.RegisterExtConn(me.config.Name, conn)
 	}
 	ext := h.buildExtension(me, reg)
+	me.resetToolRenderers(reg.ToolRenderers)
 	if previous, _ := ctx.Value(recoveryMembersKey{}).(map[string]*managedExt); previous != nil {
 		if old := previous[me.config.Name]; old != nil && old.ext != nil {
 			old.ext.ReplaceEventHandlers(ext)

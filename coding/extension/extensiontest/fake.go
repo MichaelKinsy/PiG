@@ -74,6 +74,7 @@ type Fake struct {
 	RegisterMessageRendererCalls []RegisterMessageRendererCall
 	RegisterEntryRendererCalls   []RegisterEntryRendererCall
 	RegisterMarkdownTransformers []extension.MarkdownTransformer
+	RegisterToolRenderers        []extension.ToolRendererResolver
 	RegisterProviderCalls        []RegisterProviderCall
 	UnregisterProviderCalls      []string
 	RegisterMcpServerCalls       []RegisterMcpServerCall
@@ -335,6 +336,10 @@ func (f *Fake) RegisterMessageRenderer(customType string, renderer extension.Mes
 }
 func (f *Fake) RegisterEntryRenderer(customType string, renderer extension.EntryRenderer) {
 	f.RegisterEntryRendererCalls = append(f.RegisterEntryRendererCalls, RegisterEntryRendererCall{CustomType: customType, Renderer: renderer})
+}
+
+func (f *Fake) RegisterToolRenderer(resolver extension.ToolRendererResolver) {
+	f.RegisterToolRenderers = append(f.RegisterToolRenderers, resolver)
 }
 
 func (f *Fake) RegisterMarkdownTransformer(transformer extension.MarkdownTransformer) {

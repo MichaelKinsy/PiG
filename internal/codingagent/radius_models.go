@@ -73,8 +73,12 @@ func (r *ModelRegistry) SetModelsStore(store ai.ModelsStore) {
 }
 
 // dropUncomposableProviders removes models.json providers that set "oauth"
-// without "baseUrl" and reports them. Upstream applyModelsJson throws for such
-// a provider; the runtime records the composition error and keeps the base.
+// without "baseUrl", or define a custom model without a base URL, and reports
+// them. Upstream applyModelsJson throws for such a provider; the runtime records
+// the composition error and keeps the base. A custom model's base URL comes from
+// the model, the provider, then the built-in model findModelDefaults picks
+// (provider-composer.ts modelFromJson), so a built-in provider whose models ship
+// without one, such as azure, needs a base URL in models.json too.
 func dropUncomposableProviders(config *modelsConfig) []string {
 	var failures []string
 	for providerID, provider := range config.Providers {
@@ -83,14 +87,23 @@ func dropUncomposableProviders(config *modelsConfig) []string {
 			delete(config.Providers, providerID)
 			continue
 		}
-		if !isBuiltInProvider(providerID) && provider.BaseURL == "" {
-			for _, model := range provider.Models {
-				if model.BaseURL == "" {
-					failures = append(failures, fmt.Sprintf("Provider %q: Provider %s: \"baseUrl\" is required when defining custom models.", providerID, providerID))
-					delete(config.Providers, providerID)
-					break
-				}
+		if provider.BaseURL != "" {
+			continue
+		}
+		var builtIn []*ai.Model
+		for _, generated := range ai.ListModels(providerID) {
+			builtIn = append(builtIn, generated.ToModel())
+		}
+		for _, model := range provider.Models {
+			if model.BaseURL != "" {
+				continue
 			}
+			if defaults := findNativeModelDefaults(builtIn, model.ID, ai.API(firstModelValue(model.API, provider.API))); defaults != nil && defaults.ProviderMeta.BaseURL != "" {
+				continue
+			}
+			failures = append(failures, fmt.Sprintf("Provider %q: Provider %s: \"baseUrl\" is required when defining custom models.", providerID, providerID))
+			delete(config.Providers, providerID)
+			break
 		}
 	}
 	slices.Sort(failures)

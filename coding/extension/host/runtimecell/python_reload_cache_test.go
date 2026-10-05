@@ -57,7 +57,8 @@ def reload(reload_pass):
 
 def write(name, text, mtime_ns):
     path = os.path.join(ROOT, *name.split('/'))
-    with open(path, 'w', encoding='utf-8') as f:
+    # newline='' writes the text as given: a text-mode write would turn every \\n into \\r\\n on Windows and change the size.
+    with open(path, 'w', encoding='utf-8', newline='') as f:
         f.write(text)
     os.utime(path, ns=(mtime_ns, mtime_ns))
     return path
@@ -69,7 +70,7 @@ def edit(name, text):
 
 
 def source(name):
-    with open(os.path.join(ROOT, *name.split('/')), encoding='utf-8') as f:
+    with open(os.path.join(ROOT, *name.split('/')), encoding='utf-8', newline='') as f:
         return f.read()
 
 
@@ -177,6 +178,55 @@ def case_size_only():
     mtime = os.stat(path).st_mtime_ns
     write('inner/inner_helper.py', 'state = ["a longer edit"]\n', mtime)
     assert reload('1')['inner'] is not first['inner'], 'an edit that keeps the modification time is found by its size'
+
+
+def case_same_size_same_mtime():
+    # A rewrite of the same size inside the file system's timestamp tick (NTFS about 15.6 ms; coarse-mtime file systems) looks unedited by (mtime, size).
+    path = os.path.join(ROOT, 'inner', 'inner_helper.py')
+    stat = os.stat(path)
+    text = source('inner/inner_helper.py').replace('[]', '{}')
+    assert len(text.encode()) == stat.st_size and text != source('inner/inner_helper.py'), 'the rewrite keeps the size'
+    write('inner/inner_helper.py', text, stat.st_mtime_ns)
+    after = os.stat(path)
+    assert (after.st_mtime_ns, after.st_size) == (stat.st_mtime_ns, stat.st_size), 'the rewrite keeps the modification time and size'
+    second = reload('1')
+    assert second['inner'] is not first['inner'] and sys.modules['inner_helper'].state == {}, 'a same-size, same-mtime edit is found by its content'
+    assert second['ext'] is first['ext'] and second['twin'] is first['twin'], 'every other extension keeps its factory module'
+
+
+def case_same_size_same_mtime_unstamped():
+    # ext_lazy is imported after the factories, so no factory call stamped it: a reload pass that finds it unedited records its content, and a later same-size, same-mtime edit is found by it.
+    path = os.path.join(ROOT, 'ext_lazy.py')
+    stat = os.stat(path)
+    assert reload('1')['ext'] is first['ext'], 'an unedited reload keeps the factory module'
+    text = source('ext_lazy.py').replace('[]', '{}')
+    assert len(text.encode()) == stat.st_size, 'the rewrite keeps the size'
+    write('ext_lazy.py', text, stat.st_mtime_ns)
+    second = reload('2')
+    assert second['ext'] is not first['ext'] and second['twin'] is not first['twin'], 'an unstamped module edited within the timestamp tick reloads every extension of its root'
+    import ext_lazy as again
+    assert again.state == {}, 'the edited source is imported'
+
+
+def case_edit_before_stamp():
+    # An edit that lands after a factory call imported a module but before the call returns must still count as an edit: the stamp is the content the import saw, not the content when the call returns.
+    # CRLF source, and a sys.path entry that is not in the normalized form the runner keys modules by (Windows folds case and separators; here the entry has a '.' segment).
+    write('late_helper.py', 'state = []\r\n', os.stat(os.path.join(ROOT, 'ext_main.py')).st_mtime_ns)
+    sys.path.insert(0, os.path.join(ROOT, '.'))
+    runner['_begin']('ext')
+    runner['_WINDOW'].first, runner['_WINDOW'].used = set(), set()
+    import late_helper
+    stat = os.stat(os.path.join(ROOT, 'late_helper.py'))
+    write('late_helper.py', 'state = {}\r\n', stat.st_mtime_ns)
+    window = runner['_WINDOW']
+    imported, used = window.first, window.used
+    window.first = window.used = None
+    runner['_claim']('ext', imported, used)
+    assert 'late_helper' in imported, 'the factory call imported the module first'
+    second = reload('1')
+    assert second['ext'] is not first['ext'], 'an edit between the import and the end of the factory call reloads the extension'
+    import late_helper as again
+    assert again.state == {}, 'the edited source is imported'
 
 
 def case_deleted():

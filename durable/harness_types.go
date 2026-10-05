@@ -180,6 +180,15 @@ type ToolExecutionApi interface {
 	// Output appends running output, a string or []byte; it becomes the result content when the result omits
 	// Content.
 	Output(chunk any)
+	// OutputSkipping is Output of a chunk that follows output an environment omitted, as reported by an environment
+	// given OutputWindow (ShellOutputInfo.Skipped). The omitted output is more than the tail window by at least one
+	// byte or line, and only tail retention accepts it. Upstream's output(chunk, skipped) is Output and this method.
+	OutputSkipping(chunk any, skipped env.ShellOutputSkip)
+	// OutputWindow is the tail this call's output keeps and the pace of its progress commits, for
+	// ShellExecOptions.Window; nil when the tool keeps the head of its output, which cannot accept skips. A wrapper
+	// that replaces Output and transforms text must also replace this with nil, so skipped text cannot bypass its
+	// transform.
+	OutputWindow() *env.ShellOutputWindow
 	// Diagnostic records a model-visible remark about this call.
 	Diagnostic(diagnostic ToolDiagnostic)
 	// Details replaces running details; the last value becomes the result details when the result omits Details.
@@ -360,6 +369,16 @@ type CompactionPolicy struct {
 	BackgroundTokens int `json:"backgroundTokens"`
 }
 
+// ProgressPolicy is how often running progress is committed. Each progress commit is a storage write; a host whose
+// storage is remote can commit less often, so live answers and tool output appear in larger steps.
+type ProgressPolicy struct {
+	// PartialIntervalMs is the minimum pause between commits of the answer being generated.
+	PartialIntervalMs float64 `json:"partialIntervalMs"`
+	// OutputIntervalMs is the minimum pause between commits of running tool output; large commits also pause in
+	// proportion to their size.
+	OutputIntervalMs float64 `json:"outputIntervalMs"`
+}
+
 // CompactionReason is why a compaction runs: Compact(), a threshold in generation preparation, or a context overflow.
 type CompactionReason string
 
@@ -376,6 +395,7 @@ type Settings struct {
 	Stream        ConversationStreamOptions
 	Retry         ConversationRetryPolicy
 	Compaction    CompactionPolicy
+	Progress      ProgressPolicy
 	ToolExecution ToolExecutionMode
 	SteeringMode  QueueMode
 	FollowUpMode  QueueMode

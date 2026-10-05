@@ -27,11 +27,11 @@ export const TUI_KEYBINDINGS = {
         description: "Move cursor word right",
     },
     "tui.editor.cursorLineStart": {
-        defaultKeys: ["home", "ctrl+home", "ctrl+a"],
+        defaultKeys: ["home", "ctrl+a"],
         description: "Move to line start",
     },
     "tui.editor.cursorLineEnd": {
-        defaultKeys: ["end", "ctrl+end", "ctrl+e"],
+        defaultKeys: ["end", "ctrl+e"],
         description: "Move to line end",
     },
     "tui.editor.jumpForward": {
@@ -136,8 +136,8 @@ export const TUI_KEYBINDINGS = {
         defaultKeys: "escape",
         description: "Close transcript search",
     },
-    "tui.altScreen.top": { defaultKeys: "home", description: "Scroll viewport to top" },
-    "tui.altScreen.bottom": { defaultKeys: "end", description: "Scroll viewport to bottom" },
+    "tui.altScreen.top": { defaultKeys: "ctrl+home", description: "Scroll viewport to top" },
+    "tui.altScreen.bottom": { defaultKeys: "ctrl+end", description: "Scroll viewport to bottom" },
 };
 function normalizeKeys(keys) {
     if (keys === undefined)

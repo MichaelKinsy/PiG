@@ -13,15 +13,18 @@ import (
 
 // restoreStartupTheme restores the process-global theme state a startup
 // prompt changes.
-func restoreStartupTheme(t *testing.T) {
+func restoreStartupTheme(t testing.TB) {
 	t.Helper()
 	previousRegistry := tui.ActiveThemeRegistry()
-	previousName := tui.ActiveTheme().Name
+	previousTheme, previousCaps := tui.ActiveTheme(), tui.GetCapabilities()
 	t.Cleanup(func() {
 		tui.SetThemeRegistry(previousRegistry)
 		tui.SetTerminalColors(tui.TerminalColors{})
 		tui.SetTerminalColorScheme("")
-		tui.SetThemeByName(previousName)
+		// Rebuild the previous theme in its own color mode, which can differ from the capabilities' (see pinHeaderTerminal).
+		tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: previousTheme.ColorMode() == tui.TerminalColorModeTrueColor})
+		tui.SetThemeByName(previousTheme.Name)
+		tui.SetCapabilities(previousCaps)
 	})
 }
 

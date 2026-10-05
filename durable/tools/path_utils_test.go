@@ -82,7 +82,7 @@ func TestMutationQueueSurfacesCanonicalPathFailuresOtherThanNotFound(t *testing.
 	}
 	unsupported := &canonicalFailsEnv{newSlowReadEnv(t.TempDir()), &env.FileError{Code: env.FileErrorNotSupported, Message: "no canonical paths"}}
 	mustRun(t, CreateWriteTool(), map[string]any{"path": "file.txt", "content": "x"}, unsupported)
-	if got := readText(t, unsupported, "file.txt"); got != "x" {
+	if got := readTextFile(t, unsupported, "file.txt"); got != "x" {
 		t.Fatalf("file = %q", got)
 	}
 }

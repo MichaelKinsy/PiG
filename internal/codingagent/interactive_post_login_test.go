@@ -15,6 +15,7 @@ import (
 
 func newPostLoginTestMode(t *testing.T) *InteractiveMode {
 	t.Helper()
+	restoreStartupTheme(t)
 	// Pi runs its tests with PI_OFFLINE=1 (packages/coding-agent/vitest.config.ts:12); a test that needs the network re-enables it. Without
 	// this, the post-login refresh of a credentialed built-in provider fetches the remote model catalog from the real endpoint.
 	t.Setenv("PI_OFFLINE", "1")

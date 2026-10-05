@@ -95,7 +95,7 @@ func TestResolveModelScopeFromModelsMatchesUpstream(t *testing.T) {
 // Ports upstream model-resolver.test.ts resolveCliModel cases over the
 // runtime startup model selection reads.
 func TestResolveCliModelMatchesUpstream(t *testing.T) {
-	azure := codingagent.RuntimeModel{Provider: "azure-openai-responses", ID: "gpt-5.6-sol", Name: "GPT 5.6 Sol"}
+	azure := codingagent.RuntimeModel{Provider: "azure", ID: "gpt-5.6-sol", Name: "GPT 5.6 Sol"}
 	codex := codingagent.RuntimeModel{Provider: "openai-codex", ID: "gpt-5.6-sol", Name: "GPT 5.6 Sol"}
 	zai := codingagent.RuntimeModel{Provider: "zai", ID: "glm-5", Name: "GLM-5"}
 	gateway := codingagent.RuntimeModel{Provider: "vercel-ai-gateway", ID: "zai/glm-5", Name: "GLM-5"}

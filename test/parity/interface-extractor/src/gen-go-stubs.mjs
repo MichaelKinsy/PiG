@@ -9,7 +9,7 @@
 //     [--dependency-root <node_modules>[,...]] \
 //     [--import <npm package>=<Go import path>[,...]] \
 //     [--scope public|module] [--subpath ./testing[,...]] \
-//     [--test-mapping ../interfaces/test-mapping-v1.0.0.json] [--report -]
+//     [--test-mapping ../interfaces/test-mapping-v1.0.1.json] [--report -]
 
 import fs from "node:fs";
 import path from "node:path";

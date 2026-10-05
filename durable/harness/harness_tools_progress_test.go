@@ -57,6 +57,56 @@ func TestToolProgressAndLifetime(t *testing.T) {
 		mustClose(t, run.harness)
 	})
 
+	t.Run("commits running output no more often than progress.outputIntervalMs", func(t *testing.T) {
+		// Not an upstream case: upstream tests the interval through Progress alone (harness-output.test.ts:237) and the
+		// configured pace through the offered window (harness-tools.test.ts:328); this drives the setting to the commits.
+		// The tool's progress runs on a fake clock, so the second chunk waits exactly the configured interval.
+		clock := &fakeProgressClock{}
+		previous := toolProgressClock
+		toolProgressClock = clock
+		t.Cleanup(func() { toolProgressClock = previous })
+		slotsAt := func(progress *ProgressPolicyPatch, advances ...float64) []any {
+			setup := chatSetup(t)
+			setup.SetSettings(func(settings *HarnessSettings) { settings.Progress = progress })
+			slots := &syncValue[[]any]{}
+			addTool(t, setup.Registry, tlTool("paced", func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+				internal, ok := api.(*toolApi)
+				if !ok {
+					return durable.ToolExecutionResult{}, fmt.Errorf("tool api is %T, not *toolApi", api)
+				}
+				// The first change after an idle period commits at once; the second waits for the interval.
+				api.Output("one\n")
+				waitIdle(internal.progress)
+				api.Output("two\n")
+				var outputs []any
+				for _, ms := range advances {
+					clock.advance(internal.progress, ms)
+					live, err := api.SnapshotErased(ctx, LiveDoc, api.ConversationId())
+					if err != nil {
+						return durable.ToolExecutionResult{}, err
+					}
+					tools, _ := live["tools"].([]any)
+					if len(tools) == 0 {
+						return durable.ToolExecutionResult{}, errors.New("no running tool slot")
+					}
+					outputs = append(outputs, tools[0].(map[string]any)["output"])
+				}
+				slots.put(outputs)
+				return durable.ToolExecutionResult{}, nil
+			}))
+			run := tlRun(t, setup, []ai.FauxResponseStep{tlCallsStep(tlCall{"paced", map[string]any{}, "c1"}), tlDone()}, nil)
+			mustClose(t, run.harness)
+			got, _ := slots.get()
+			return got
+		}
+		if got, want := slotsAt(nil, 99, 1), []any{"one\n", "one\ntwo\n"}; !reflect.DeepEqual(got, want) {
+			t.Fatalf("default pace: slot outputs %q, want %q", got, want)
+		}
+		if got, want := slotsAt(&ProgressPolicyPatch{OutputIntervalMs: new(500.0)}, 499, 1), []any{"one\n", "one\ntwo\n"}; !reflect.DeepEqual(got, want) {
+			t.Fatalf("outputIntervalMs 500: slot outputs %q, want %q", got, want)
+		}
+	})
+
 	t.Run("sanitizes running output but keeps explicit result content as the tool returned it", func(t *testing.T) {
 		setup := chatSetup(t)
 		slotOutput := &syncValue[any]{}

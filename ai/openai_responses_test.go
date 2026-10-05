@@ -198,12 +198,13 @@ func TestResponsesConvertMessages_UserText(t *testing.T) {
 	}
 }
 
+// A foreign tool call replayed to a provider outside the pipe-id providers is sanitized by normalizeIdPart alone: Pi 1.0.3's convertResponsesMessages gives "call_1_fc_1" and no item id for "call_1|fc_1" (probed against the published pi-ai).
 func TestResponsesConvertMessages_AssistantToolCall(t *testing.T) {
 	provider := &openAIResponsesProvider{}
 	items, _ := provider.convertMessages([]Message{AssistantMessage{Content: []AssistantContentBlock{
 		TextContent{Text: "Let me check."}, ToolCall{ID: "call_1|fc_1", Name: "read", Arguments: JsonObject{"path": "x.go"}},
 	}}}, nil)
-	if len(items) != 2 || items[0].Type != "message" || items[1].Type != "function_call" || items[1].CallID != "call_1" || items[1].ID != "fc_1" {
+	if len(items) != 2 || items[0].Type != "message" || items[1].Type != "function_call" || items[1].CallID != "call_1_fc_1" || items[1].ID != "" {
 		t.Fatalf("items = %#v", items)
 	}
 }
@@ -360,5 +361,26 @@ func TestResponsesConvertMessages_CrossProviderThinkingSkipped(t *testing.T) {
 	}}}, nil)
 	if len(items) != 1 || items[0].Type != "message" {
 		t.Fatalf("items = %#v", items)
+	}
+}
+
+// Pi's AZURE_TOOL_CALL_PROVIDERS and OPENAI_TOOL_CALL_PROVIDERS keep the pipe-joined {call_id}|{item_id} form for their listed providers; azure is listed for the Azure API only.
+func TestNormalizeResponsesToolCallIDProviderSets(t *testing.T) {
+	for _, tc := range []struct {
+		name, provider string
+		api            API
+		want           string
+	}{
+		{"azure provider on the Azure API", "azure", APIAzureOpenAIResponses, "call_1|fc_" + shortHash32("item_1")},
+		{"azure provider on the OpenAI API", "azure", APIOpenAIResponses, "call_1_item_1"},
+		{"openai provider on the Azure API", "openai", APIAzureOpenAIResponses, "call_1|fc_" + shortHash32("item_1")},
+		{"other provider on the Azure API", "github-copilot", APIAzureOpenAIResponses, "call_1_item_1"},
+		{"other provider on the OpenAI API", "github-copilot", APIOpenAIResponses, "call_1_item_1"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := normalizeResponsesToolCallID("call_1|item_1", tc.provider, tc.api, true); got != tc.want {
+				t.Errorf("normalizeResponsesToolCallID = %q, want %q", got, tc.want)
+			}
+		})
 	}
 }

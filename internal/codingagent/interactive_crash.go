@@ -157,8 +157,13 @@ func (m *InteractiveMode) requestedExitError() error {
 }
 
 // uncaughtCrash reports a crash recovered on the UI goroutine after the
-// terminal has been restored. Mirrors upstream InteractiveMode.uncaughtCrash.
+// terminal has been restored. A dead-terminal error exits 129 without a report or crash record. Mirrors upstream
+// InteractiveMode.uncaughtCrash.
 func (m *InteractiveMode) uncaughtCrash(value any, stack []byte, stderr io.Writer) {
+	// A dead terminal is not a pig crash. Do not report or record it.
+	if failure, ok := value.(error); ok && isDeadTerminalError(failure) {
+		emergencyTerminalExit()
+	}
 	if failure, ok := value.(error); ok && extension.ErrorStack(failure) != "" {
 		stack = []byte(extension.ErrorStack(failure))
 		_, _ = fmt.Fprintf(stderr, "%s exiting due to uncaughtException:\n%s\n", AppName, stack)

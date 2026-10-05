@@ -312,7 +312,18 @@ var cancelledAssistantError = lazyregexp.New(`(?i)\b(?:abort(?:ed)?|cancel(?:l?e
 
 // maybeSuggestBugReport emits one hint per interactive lifetime, excluding retryable and cancellation errors.
 func (m *InteractiveMode) maybeSuggestBugReport(message *agent.AssistantMessage) {
-	if m.bugReportHintShown || message.StopReason != ai.StopReasonError || ai.IsRetryableAssistantError(message.LLMMessage()) || cancelledAssistantError.MatchString(message.ErrorMessage) {
+	if message.StopReason != ai.StopReasonError || ai.IsRetryableAssistantError(message.LLMMessage()) || cancelledAssistantError.MatchString(message.ErrorMessage) {
+		return
+	}
+	if m.maybeShowInstallChangeWarning() {
+		return
+	}
+	m.suggestBugReport()
+}
+
+// suggestBugReport shows the hint once per interactive lifetime.
+func (m *InteractiveMode) suggestBugReport() {
+	if m.bugReportHintShown {
 		return
 	}
 	m.bugReportHintShown = true
@@ -330,6 +341,8 @@ func (m *InteractiveMode) showError(msg string) {
 	if m.tuiInst != nil {
 		m.tuiInst.RequestRender()
 	}
+	// pig additive (D95): a failure may be a cell or runtime file another pig pruned, so check where errors are shown.
+	m.maybeShowInstallChangeWarning()
 }
 
 // confirmMessageCopied surfaces the copy confirmation. In fullscreen with

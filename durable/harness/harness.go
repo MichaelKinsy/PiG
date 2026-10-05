@@ -359,9 +359,9 @@ func (harness *harnessImpl) create(ctx context.Context, target createTarget, opt
 	return &conversationImpl{id: result.(durable.ConversationId), host: harness.host}, nil
 }
 
-// conversationCreated is the built-in creation hook, in every commit that creates or forks a conversation: empty pi.live, pi.inbox, and pi.usage, the conversation's pi.agent (see CreateAgent), then HarnessOptions.ConversationCreated.
+// conversationCreated is the built-in creation hook, in every commit that creates or forks a conversation: empty pi.live, pi.inbox, and pi.usage, a fresh pi.provider, the conversation's pi.agent (see CreateAgent), then HarnessOptions.ConversationCreated.
 func (harness *harnessImpl) conversationCreated(tx *session.Transaction, record durable.ConversationRecord) error {
-	for _, token := range []durable.AnyDocToken{LiveDoc, InboxDoc, UsageDoc} {
+	for _, token := range []durable.AnyDocToken{LiveDoc, InboxDoc, UsageDoc, ProviderDoc} {
 		if _, err := tx.Doc(token, record.Id); err != nil {
 			return err
 		}

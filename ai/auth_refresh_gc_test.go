@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// RP-007: a provider may retain only Done, not its Context wrapper. Pi auth/resolve.ts:149-153 leaves that observer pending until caller cancellation or the original 15-second timeout.
+// RP-007: a provider may retain only Done, not its Context wrapper. Pi auth/resolve.ts:refreshStoredOAuthCredential leaves that observer pending until the 15-second timeout; the caller's cancellation never reaches it.
 func TestOAuthRefreshDoneSurvivesGC(t *testing.T) {
 	for _, viaModels := range []bool{false, true} {
 		name := "helper"
@@ -50,8 +50,8 @@ func TestOAuthRefreshDoneSurvivesGC(t *testing.T) {
 			cancel()
 			select {
 			case <-done:
+				t.Fatal("retained Done followed caller cancellation")
 			default:
-				t.Fatal("retained Done did not follow caller cancellation")
 			}
 		})
 	}

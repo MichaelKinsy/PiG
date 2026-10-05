@@ -7,13 +7,11 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"runtime"
 	"slices"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
-	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // McpUsage is MCP_USAGE.
@@ -192,7 +190,7 @@ func (e *Extension) RunCommand(ctx context.Context, args string, c CommandContex
 	switch action {
 	case "login":
 		if s := e.pickServer(ctx, name, c, e.oauthPick()); s != nil {
-			e.loginCommand(ctx, s, c)
+			return e.loginCommand(ctx, s, c)
 		}
 	case "logout":
 		s := e.pickServer(ctx, name, c, e.oauthPick())
@@ -232,22 +230,34 @@ func (e *Extension) RunCommand(ctx context.Context, args string, c CommandContex
 	return nil
 }
 
-// loginCommand signs in to a server from the command line, showing the URL as a notice and asking for the redirect URL in an input.
-// upstream: packages/coding-agent/src/extensions/mcp/index.ts:765-790
-func (e *Extension) loginCommand(ctx context.Context, s *server, c CommandContext) {
+// loginCommand signs in to a server. The terminal UI uses the manager view's sign-in screen, which shows the URL with
+// a copy key; other modes show the URL as a notice and ask for the redirect URL in an input. It returns what
+// upstream's handler throws: a manager view that could not be shown.
+// upstream: packages/coding-agent/src/extensions/mcp/index.ts:loginCommand (1.0.1)
+func (e *Extension) loginCommand(ctx context.Context, s *server, c CommandContext) error {
 	name := s.entry.Name
 	if !c.HasUI {
 		c.notify(fmt.Sprintf(`Signing in to MCP server "%s" requires interactive mode.`, name), "error")
-		return
+		return nil
 	}
-	failure := e.SignIn(ctx, name, &commandSignIn{e: e, ctx: c, name: name})
+	var failure string
+	if c.Mode == extension.ModeTUI && c.ShowManager != nil {
+		if err := c.ShowManager(ctx, func(ui McpUi) error {
+			failure = e.signInWithUI(ctx, ui, name)
+			return nil
+		}); err != nil {
+			return err
+		}
+	} else {
+		failure = e.SignIn(ctx, name, &commandSignIn{e: e, ctx: c, name: name})
+	}
 	if failure != "" {
 		level := "error"
 		if failure == "Sign-in cancelled." {
 			level = "info"
 		}
 		c.notify(failure, level)
-		return
+		return nil
 	}
 	e.EnsureDiscoveryActive(c.EventContext)
 	e.mu.Lock()
@@ -258,6 +268,7 @@ func (e *Extension) loginCommand(ctx context.Context, s *server, c CommandContex
 		tools = len(connection.Tools())
 	}
 	c.notify(fmt.Sprintf(`Signed in to MCP server "%s" (%d tools).`, name, tools), "info")
+	return nil
 }
 
 type commandSignIn struct {
@@ -268,17 +279,8 @@ type commandSignIn struct {
 
 func (p *commandSignIn) ShowAuthorizationURL(u *url.URL) {
 	href := u.String()
-	lines := href
-	// Long URLs wrap, which some terminals cannot open; a short link line stays on one line.
-	if p.ctx.Mode == extension.ModeTUI {
-		open := "Ctrl+click to open"
-		if runtime.GOOS == "darwin" {
-			open = "Cmd+click to open"
-		}
-		lines = tui.Hyperlink(href, href) + "\n" + tui.Hyperlink(open, href)
-	}
-	p.ctx.notify(fmt.Sprintf("Sign in to MCP server \"%s\" in your browser:\n%s", p.name, lines), "info")
-	p.e.openURL(u.String())
+	p.ctx.notify(fmt.Sprintf("Sign in to MCP server \"%s\" in your browser:\n%s", p.name, href), "info")
+	p.e.openURL(href)
 }
 
 func (p *commandSignIn) PromptForRedirectURL(ctx context.Context) (string, error) {

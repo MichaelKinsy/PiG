@@ -1,4 +1,4 @@
-version = "1.0.0"
+version = "1.0.3"
 
 [[files]]
 path = "packages/agent/src/agent-loop.ts"
@@ -296,10 +296,10 @@ rationale = "`(not ported: xAI device-code OAuth flow)`"
 
 [[files]]
 path = "packages/ai/src/auth/resolve.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/auth.go + ai/oauth_*.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+disposition = "translated"
+contracts = ["awaited", "detached-owned", "cancellable"]
+evidence = ["test:ai/auth_storage_memory_queue_test.go#TestResolveProviderAuthCancelledMemoryRefresh", "test:ai/oauth_registry_lock_upstream_test.go#TestRegistryOAuthRefreshCancelledDuringTheRefreshPersistsTheCredentialUpstream", "test:ai/auth_refresh_signal_test.go#TestOAuthRefreshSignalIgnoresCallerDeadline", "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream"]
+rationale = "refreshStoredOAuthCredential awaits the credential store's lock-held Modify. The caller's signal cancels only the wait for the lock; once the callback starts, the provider refresh and its persistence ignore it and are bounded by the 15 s timeout alone, so a cancelled caller cannot discard a rotated refresh token. Upstream's callers race the Promise with their signal; the Go function does that itself, returning the cancellation cause while the refresh finishes in a background task counted by oauthRefreshWork, which ends at the timeout. A refresh that failed after the caller left is dropped, as the raced rejection is upstream. Other resolve.ts promises (resolveApiKey, readCredential) stay awaited calls that return their error."
 
 [[files]]
 path = "packages/ai/src/auth/types.ts"
@@ -377,6 +377,13 @@ disposition = "deferred"
 contracts = []
 evidence = []
 rationale = "PORT_MAP marks this file 🟡 partial: `ai/anthropic.go + ai/anthropic_client.go + ai/oauth_anthropic.go + internal/codingagent/model_registry.go + coding/model.go (catalog; env auth in upstream order: ANTHROPIC_AUTH_TOKEN as an Authorization bearer header, then ANTHROPIC_OAUTH_TOKEN, then ANTHROPIC_API_KEY; subscription OAuth login, resolved per request in coding/model.go, whose sk-ant-oat token requests carry the Claude Code identity; tests in ai/anthropic_oauth_test.go, internal/codingagent/anthropic_env_auth_test.go, coding/anthropic_auth_test.go, cmd/pig/model_anthropic_auth_test.go); missing: a stored auth.json credential does not outrank ambient ANTHROPIC_OAUTH_TOKEN/ANTHROPIC_API_KEY in cmd/pig/model.go and coding/model.go (upstream resolveProviderAuth consults it first), and a stored api_key credential never reaches Anthropic requests`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/providers/azure.ts"
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"]
+rationale = "azureStreams resolves the endpoint and deployment inside lazyStream, so an unconfigured endpoint is the stream's error rather than an exception out of stream(). Go's Stream is a blocking call that returns that error before any request is sent (the Responses side reports its invalid endpoint the same way); the deployment name reaches the caller's onPayload hook first, as upstream's wrapper orders it."
 
 [[files]]
 path = "packages/ai/src/providers/cloudflare-auth.ts"
@@ -1310,6 +1317,13 @@ evidence = []
 rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/slash_bug.go, internal/codingagent/interactive_bug.go (consent flow, export-only; D62)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
 
 [[files]]
+path = "packages/coding-agent/src/modes/interactive/components/auth-url.ts"
+disposition = "translated"
+contracts = ["detached-owned", "ui-handoff"]
+evidence = ["test:tui/auth_url_copy_upstream_test.go#TestAuthURLCopyLoginDialogCopiesTheAuthURLInsteadOfTypingIntoTheCodeInput", "test:coding/mcpext/manager_test.go#TestMcpManagerViewSignInScreenCopiesTheAuthorizationURL"]
+rationale = "Hosts call copy() unawaited from handleInput; it awaits copyToClipboard, then sets the hint (success or the error message) and requests a render. tui.AuthURL.Copy returns at once and runs the clipboard write on its own goroutine, which sets the hint under the component's lock and requests the repaint through the host's render request; the returned channel closes when the hint shows the outcome. Like the unawaited Promise, an exit during the write does not wait for it."
+
+[[files]]
 path = "packages/coding-agent/src/modes/interactive/components/extension-editor.ts"
 disposition = "deferred"
 contracts = []
@@ -1331,18 +1345,18 @@ evidence = []
 rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`tui/model_select.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
 
 [[files]]
-path = "packages/coding-agent/src/modes/interactive/components/pi-logo-animation.lazy.ts"
+path = "packages/coding-agent/src/modes/interactive/components/easter-egg-3d.lazy.ts"
 disposition = "translated"
 contracts = ["detached-owned", "ui-handoff"]
 evidence = ["test:internal/codingagent/pig_logo_animation_test.go#TestClickingTheHeaderPigPlaysTheAnimation", "test:internal/codingagent/pig_logo_animation_test.go#TestHeaderPigClickIgnoredWhileAnOverlayOrTheAnimationIsOpen", "scenario:test/parity/scenarios/fullscreen/11-logo-click-animation.toml"]
-rationale = "playPiLogoAnimation returns synchronously after the fullscreen and overlay checks and the screen capture; the unawaited import().then() then starts pi-logo-animation.ts and swallows only a failed import. Go links the module, so the click handler calls playPigLogoAnimation on the owner loop in the same order: fullscreen check, overlay check, screen capture, then the playing flag. Its color wait is the pi-logo-animation.ts row."
+rationale = "D87: PiG plays its pig version of the Pi-logo egg; /arminsayshi keeps the inline pig head, so playArmin3d has no counterpart. playPiLogo3d (playEasterEgg3d) returns synchronously after the fullscreen and overlay checks and the screen capture; the unawaited import().then() then starts easter-egg-3d.ts and swallows only a failed import. Go links the module, so the click handler calls playPigLogoAnimation on the owner loop in the same order: fullscreen check, overlay check, screen capture, then the playing flag. Its color wait is the easter-egg-3d.ts row."
 
 [[files]]
-path = "packages/coding-agent/src/modes/interactive/components/pi-logo-animation.ts"
+path = "packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts"
 disposition = "translated"
 contracts = ["awaited", "detached-owned", "ui-handoff", "cancellable"]
 evidence = ["test:internal/codingagent/pig_logo_animation_test.go#TestHeaderPigClickIgnoredWhileAnOverlayOrTheAnimationIsOpen", "test:internal/codingagent/pig_logo_animation_test.go#TestPigLogoAnimationColors", "test:internal/codingagent/pig_logo_animation_test.go#TestPigLogoAnimationTimer", "test:internal/codingagent/pig_logo_animation_test.go#TestClickingTheHeaderPigPlaysTheAnimation", "scenario:test/parity/scenarios/fullscreen/11-logo-click-animation.toml"]
-rationale = "playPiLogoAnimation sets playing, awaits queryTerminalColors (100 ms timeout) and then, on the event loop, falls back to the theme's colors, returns if an overlay opened meanwhile, and shows the overlay. Go waits for the query on a background task owned by the mode's lifetime (cancelled and joined at exit) and posts the rest to the owner loop; a query that fails to write shows nothing and clears playing. The setInterval frame timer maps to a worker owned by the same lifetime that posts each tick to the owner loop and stops after finish, after a second without a render, or on Dispose, which cancels and joins it; a tick queued before Dispose runs nothing."
+rationale = "D87: the Pi-logo kind as Pi 1.0.0 pi-logo-animation.ts drew it. playEasterEgg3d sets playing, awaits queryTerminalColors (100 ms timeout) and then, on the event loop, falls back to the theme's colors, returns if an overlay opened meanwhile, and shows the overlay. Go waits for the query on a background task owned by the mode's lifetime (cancelled and joined at exit) and posts the rest to the owner loop; a query that fails to write shows nothing and clears playing. The setInterval frame timer maps to a worker owned by the same lifetime that posts each tick to the owner loop and stops after finish, after a second without a render, or on Dispose, which cancels and joins it; a tick queued before Dispose runs nothing."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts"
@@ -1357,13 +1371,6 @@ disposition = "deferred"
 contracts = []
 evidence = []
 rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/session_selector.go + session_selectors.go + interactive.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
-
-[[files]]
-path = "packages/coding-agent/src/modes/interactive/components/tool-execution.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`tui/tool_execution.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/external-editor.ts"
@@ -1518,6 +1525,13 @@ disposition = "deferred"
 contracts = []
 evidence = []
 rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/images.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/utils/output-files.ts"
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:internal/outputfiles/outputfiles_test.go#TestWriteFileIsUserOnlyInTheTempDirectory", "test:internal/outputfiles/outputfiles_test.go#TestCreateStreamIsUserOnlyAndWritable"]
+rationale = "writeOutputFile is an awaited exclusive create plus write that rejects on failure; WriteFile is a blocking call that returns the error and the path. createOutputFileStream is synchronous and returns the path with an open stream; CreateStream returns the path and the open file. Neither starts background work."
 
 [[files]]
 path = "packages/coding-agent/src/utils/photon.ts"

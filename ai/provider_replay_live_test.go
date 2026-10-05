@@ -44,7 +44,7 @@ func TestOpenAIResponsesToolResultImagesLiveUpstream(t *testing.T) {
 		t.Run(tc.provider+"/should send tool result images in function_call_output/live-only", func(t *testing.T) {
 			key := liveProviderKey(t, tc.provider)
 			base := ""
-			if tc.provider == "azure-openai-responses" {
+			if tc.provider == "azure" {
 				// upstream: packages/ai/test/azure-utils.ts:18-22 accepts either a base URL or a resource name.
 				base = os.Getenv("AZURE_OPENAI_BASE_URL")
 				if base == "" && os.Getenv("AZURE_OPENAI_RESOURCE_NAME") == "" {

@@ -87,7 +87,7 @@ func TestCustomToolResultHTMLTrimsSpacing(t *testing.T) {
 			return testComponent{lines: []string{"", "\x1b[31mone\x1b[0m", "two", ""}}
 		},
 	}}}
-	renderer := newToolHTMLRenderer(tools, "/tmp", 100)
+	renderer := newToolHTMLRenderer(ToolRenderersOf(tools), "/tmp", 100)
 	got := renderer.renderResult("id", "custom", agent.AgentToolResult{})
 	want := `<div class="ansi-line"><span style="color:#800000">one</span></div><div class="ansi-line">two</div>`
 	if got.ResultHTMLExpanded != want || got.ResultHTMLCollapsed != "" {

@@ -120,8 +120,8 @@ Rebind them in `keybindings.json` the same way as `app.*` actions.
 | `tui.editor.cursorRight` | `right`, `ctrl+f` | Move cursor right |
 | `tui.editor.cursorWordLeft` | `alt+left`, `ctrl+left`, `alt+b` | Move cursor one word left |
 | `tui.editor.cursorWordRight` | `alt+right`, `ctrl+right`, `alt+f` | Move cursor one word right |
-| `tui.editor.cursorLineStart` | `home`, `ctrl+home`, `ctrl+a` | Move to line start |
-| `tui.editor.cursorLineEnd` | `end`, `ctrl+end`, `ctrl+e` | Move to line end |
+| `tui.editor.cursorLineStart` | `home`, `ctrl+a` | Move to line start |
+| `tui.editor.cursorLineEnd` | `end`, `ctrl+e` | Move to line end |
 | `tui.editor.jumpForward` | `ctrl+]` | Jump forward to a character |
 | `tui.editor.jumpBackward` | `ctrl+alt+]` | Jump backward to a character |
 | `tui.editor.pageUp` | `pageUp`, `ctrl+pageUp` | Scroll the editor up one page |
@@ -181,8 +181,8 @@ editor actions that use the same key.
 | `tui.altScreen.searchNext` | `enter`, `ctrl+g` | Select the next match while searching |
 | `tui.altScreen.searchPrevious` | `shift+enter`, `ctrl+shift+g` | Select the previous match while searching |
 | `tui.altScreen.searchClose` | `escape` | Close transcript search |
-| `tui.altScreen.top` | `home` | Scroll to the start of the transcript |
-| `tui.altScreen.bottom` | `end` | Scroll to the end of the transcript and follow new output |
+| `tui.altScreen.top` | `ctrl+home` | Scroll to the start of the transcript |
+| `tui.altScreen.bottom` | `ctrl+end` | Scroll to the end of the transcript and follow new output |
 
 ## Platform differences
 

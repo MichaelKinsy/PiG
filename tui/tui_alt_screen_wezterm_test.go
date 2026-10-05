@@ -75,4 +75,35 @@ func assertWezTermKittyFrame(t *testing.T, frame string) {
 	if strings.Contains(draws, "\x1b[2K") {
 		t.Fatalf("WezTerm Kitty frame must not erase rows while drawing:\n got %q", frame)
 	}
+	// 1.0.1 drawKittyImagesLast: image rows are drawn after every text row.
+	if strings.Index(draws, "\x1b[2;1H\x1b_G") < strings.Index(draws, "\x1b[3;1Htail") {
+		t.Fatalf("WezTerm Kitty frame should draw images after text rows:\n got %q", frame)
+	}
+}
+
+// .upstream/v1.0.1/packages/tui/test/tui-alt-screen.test.ts:1065 (#10319): a write to a row an unchanged image covers
+// erases its cells in WezTerm, so the images are placed again after the row is written, without re-uploading them.
+func TestAltScreenRedrawsWezTermKittyImagesAfterWritesToCoveredRows(t *testing.T) {
+	t.Setenv("WEZTERM_PANE", "1")
+	prev := GetCapabilities()
+	t.Cleanup(func() { SetCapabilities(prev) })
+	SetCapabilities(TerminalCapabilities{Images: ImageProtocolKitty, TrueColor: true, Hyperlinks: true})
+	const imageID = 10319
+	imageLine := EncodeKitty("AAAA", 2, 3, imageID, false)
+	RegisterKittyImageMetadata(KittyImageMetadata{ImageID: imageID, Columns: 2, Rows: 3, WidthPx: 100, HeightPx: 100})
+	var out bytes.Buffer
+	tui := newAltScreenForTest(&out, 20, 4, TuiAltScreenOptions{})
+	root := &stubComponent{lines: []string{imageLine, "", "", "after"}}
+	tui.SetLayoutRoot(root)
+	tui.Start()
+	tui.doRender()
+	out.Reset()
+
+	root.lines = []string{imageLine, "changed", "", "after"}
+	tui.doRender()
+	redraw := out.String()
+	placement := strings.Index(redraw, "\x1b_Ga=p,q=2")
+	if !strings.Contains(redraw, "\x1b_Ga=d,d=a,q=2\x1b\\") || placement < 0 || placement < strings.Index(redraw, "changed") || strings.Contains(redraw, "\x1b_Ga=T") {
+		t.Fatalf("redraw = %q", redraw)
+	}
 }

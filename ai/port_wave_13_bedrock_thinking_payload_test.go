@@ -15,27 +15,32 @@ func TestPortWave13BedrockThinkingPayload(t *testing.T) {
 		level                                                       ThinkingLevel
 		budgetAny                                                   bool
 	}{
-		// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:56
-		{name: "uses adaptive thinking for Claude Opus 4.8 when reasoning is enabled", base: "global.anthropic.claude-opus-4-6-v1", id: "global.anthropic.claude-opus-4-8-v1", displayName: "Claude Opus 4.8 (Global)", thinking: `{"type":"adaptive","display":"summarized"}`, effort: "high", beta: "absent"},
-		// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:71
-		{name: "maps xhigh reasoning to effort=xhigh for Claude Opus 4.8", base: "global.anthropic.claude-opus-4-6-v1", id: "global.anthropic.claude-opus-4-8-v1", displayName: "Claude Opus 4.8 (Global)", level: ThinkingXHigh, thinking: `{"type":"adaptive","display":"summarized"}`, effort: "xhigh", beta: "absent"},
-		// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:86
-		{name: "uses adaptive thinking for Claude Fable 5 when reasoning is enabled", base: "global.anthropic.claude-fable-5", thinking: `{"type":"adaptive","display":"summarized"}`, effort: "high", beta: "absent"},
-		// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:96
-		{name: "uses adaptive thinking for Claude Sonnet 5 when reasoning is enabled", base: "global.anthropic.claude-sonnet-5", thinking: `{"type":"adaptive","display":"summarized"}`, effort: "high", beta: "absent"},
-		// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:106
-		{name: "uses adaptive thinking for Claude Opus 5 when reasoning is enabled", base: "global.anthropic.claude-opus-5", thinking: `{"type":"adaptive","display":"summarized"}`, effort: "high", beta: "absent"},
-		// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:116
-		{name: "maps xhigh reasoning to effort=xhigh for Claude Opus 5", base: "global.anthropic.claude-opus-5", level: ThinkingXHigh, thinking: `{"type":"adaptive","display":"summarized"}`, effort: "xhigh", beta: "absent"},
-		// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:126
-		{name: "maps xhigh reasoning to effort=xhigh for Claude Fable 5", base: "global.anthropic.claude-fable-5", level: ThinkingXHigh, thinking: `{"type":"adaptive","display":"summarized"}`, effort: "xhigh"},
-		// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:135
+		// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:68
+		{name: "uses adaptive thinking for Claude Opus 4.8 when reasoning is enabled", base: "global.anthropic.claude-opus-4-6-v1", id: "global.anthropic.claude-opus-4-8-v1", displayName: "Claude Opus 4.8 (Global)", thinking: `{"type":"adaptive","display":"summarized","block_binding":{"prefix_mismatch_behavior":"drop_block"}}`, effort: "high", beta: `["thinking-binding-controls-2026-08-01"]`},
+		// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:83
+		{name: "maps xhigh reasoning to effort=xhigh for Claude Opus 4.8", base: "global.anthropic.claude-opus-4-6-v1", id: "global.anthropic.claude-opus-4-8-v1", displayName: "Claude Opus 4.8 (Global)", level: ThinkingXHigh, thinking: `{"type":"adaptive","display":"summarized","block_binding":{"prefix_mismatch_behavior":"drop_block"}}`, effort: "xhigh", beta: `["thinking-binding-controls-2026-08-01"]`},
+		// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:98
+		{name: "uses adaptive thinking for Claude Fable 5 when reasoning is enabled", base: "global.anthropic.claude-fable-5", thinking: `{"type":"adaptive","display":"summarized","block_binding":{"prefix_mismatch_behavior":"drop_block"}}`, effort: "high", beta: `["thinking-binding-controls-2026-08-01"]`},
+		// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:108
+		{name: "uses adaptive thinking for Claude Sonnet 5 when reasoning is enabled", base: "global.anthropic.claude-sonnet-5", thinking: `{"type":"adaptive","display":"summarized","block_binding":{"prefix_mismatch_behavior":"drop_block"}}`, effort: "high", beta: `["thinking-binding-controls-2026-08-01"]`},
+		// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:118
+		{name: "uses adaptive thinking for Claude Opus 5 when reasoning is enabled", base: "global.anthropic.claude-opus-5", thinking: `{"type":"adaptive","display":"summarized","block_binding":{"prefix_mismatch_behavior":"drop_block"}}`, effort: "high", beta: `["thinking-binding-controls-2026-08-01"]`},
+		// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:128
+		{name: "maps xhigh reasoning to effort=xhigh for Claude Opus 5", base: "global.anthropic.claude-opus-5", level: ThinkingXHigh, thinking: `{"type":"adaptive","display":"summarized","block_binding":{"prefix_mismatch_behavior":"drop_block"}}`, effort: "xhigh", beta: `["thinking-binding-controls-2026-08-01"]`},
+		// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:138
+		{name: "maps xhigh reasoning to effort=xhigh for Claude Fable 5", base: "global.anthropic.claude-fable-5", level: ThinkingXHigh, thinking: `{"type":"adaptive","display":"summarized","block_binding":{"prefix_mismatch_behavior":"drop_block"}}`, effort: "xhigh"},
+		// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:148 (#10324)
+		{name: "sends block_binding and the binding beta for Claude Opus 5.5", base: "global.anthropic.claude-opus-5-5", thinking: `{"type":"adaptive","display":"summarized","block_binding":{"prefix_mismatch_behavior":"drop_block"}}`, beta: `["thinking-binding-controls-2026-08-01"]`},
+		// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:158 (Bedrock rejects block_binding on 4.6 models)
+		{name: "omits block_binding for global.anthropic.claude-opus-4-6-v1", base: "global.anthropic.claude-opus-4-6-v1", thinking: `{"type":"adaptive","display":"summarized"}`, beta: "absent"},
+		{name: "omits block_binding for global.anthropic.claude-sonnet-4-6", base: "global.anthropic.claude-sonnet-4-6", thinking: `{"type":"adaptive","display":"summarized"}`, beta: "absent"},
+		// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:170
 		{name: "omits display for GovCloud model ids on non-adaptive Claude thinking", base: "us.anthropic.claude-sonnet-4-5-20250929-v1:0", id: "us-gov.anthropic.claude-sonnet-4-5-20250929-v1:0", displayName: "Claude Sonnet 4.5 (GovCloud)", thinking: `{"type":"enabled","budget_tokens":16384}`, beta: `["interleaved-thinking-2025-05-14"]`},
-		// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:149
+		// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:184
 		{name: "omits display for GovCloud regions on adaptive Claude thinking", base: "global.anthropic.claude-opus-4-6-v1", id: "global.anthropic.claude-opus-4-8-v1", displayName: "Claude Opus 4.8 (Global)", region: "us-gov-west-1", thinking: `{"type":"adaptive"}`, effort: "high", beta: "absent"},
-		// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:199
+		// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:234
 		{name: "uses adaptive thinking when model.name contains the model name but ARN does not", base: "global.anthropic.claude-opus-4-6-v1", id: profile, displayName: "Claude Opus 4.6", thinking: `{"type":"adaptive","display":"summarized"}`, effort: "high"},
-		// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:250
+		// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:285
 		{name: "falls back to fixed-budget thinking for non-adaptive Claude via model.name", base: "us.anthropic.claude-sonnet-4-5-20250929-v1:0", id: profile, displayName: "Claude Sonnet 4.5", budgetAny: true, beta: `["interleaved-thinking-2025-05-14"]`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -88,7 +93,7 @@ func TestPortWave13BedrockThinkingPayload(t *testing.T) {
 			}
 		})
 	}
-	// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:213
+	// upstream: packages/ai/test/bedrock-thinking-payload.test.ts:248
 	t.Run("injects cache points when model.name identifies a supported Claude model", func(t *testing.T) {
 		model := cloneGeneratedModel(t, "amazon-bedrock/global.anthropic.claude-opus-4-6-v1").ToModel()
 		model.ID, model.DisplayName = profile, "Claude Sonnet 4.6"

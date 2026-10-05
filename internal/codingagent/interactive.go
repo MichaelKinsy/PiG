@@ -29,7 +29,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent/llama"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
-	"github.com/MichaelKinsy/PiG/internal/nodepath"
+	"github.com/MichaelKinsy/PiG/internal/installchange"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -147,9 +147,14 @@ type compactionQueuedMessage struct {
 
 // InteractiveMode runs the full interactive TUI session.
 type InteractiveMode struct {
-	opts      InteractiveOptions
-	tuiInst   tui.Renderer
-	newRunner *inproc.Runner
+	// toolCards are the tool cards by tool name and call, which a later tool renderer resolution draws again (D89).
+	// toolCardRecords counts them; recordToolCard sweeps collected cards when it passes toolCardSweepAt.
+	toolCards       map[string]map[string]toolCardRecord
+	toolCardRecords int
+	toolCardSweepAt int
+	opts            InteractiveOptions
+	tuiInst         tui.Renderer
+	newRunner       *inproc.Runner
 	// detachModelRegistry detaches the model operations wired to the current build's bridge.
 	detachModelRegistry func()
 	// runEnded is set once Run returned and the owner loop no longer runs.
@@ -416,7 +421,10 @@ type InteractiveMode struct {
 	eventCh            <-chan agent.AgentEvent
 	evCurrentBlock     *tui.AssistantMessageBlock
 	bugReportHintShown bool
-	evTurnIndex        int
+	// installChanges holds what this process recorded at startup; nil records nothing.
+	installChanges            *installchange.Tracker
+	installChangeWarningShown bool
+	evTurnIndex               int
 
 	// branchSummaryOrder tracks rendered BranchSummaryComponents so
 	// Ctrl+O expand/collapse applies to them alongside tool components.
@@ -1170,6 +1178,7 @@ func NewInteractiveMode(opts InteractiveOptions) *InteractiveMode {
 	// Mirrors the upstream InteractiveMode constructor's
 	// setCapabilityOverrides(settingsManager.getTerminalCapabilityOverrides()).
 	tui.SetCapabilityOverrides(opts.Settings.GetTerminalCapabilityOverrides())
+	ensurePngTranscoder()
 	// Pi's constructor uses options.tuiMode ?? settingsManager.getTuiMode().
 	if opts.TuiMode == "" {
 		opts.TuiMode = (&SettingsManager{merged: opts.Settings}).GetTuiMode()
@@ -1188,6 +1197,7 @@ func NewInteractiveMode(opts InteractiveOptions) *InteractiveMode {
 		workingVisible:       true,
 		spinnerIntervalCh:    make(chan time.Duration, 1),
 		outputPad:            opts.Settings.GetOutputPad(),
+		installChanges:       installchange.Default(),
 	}
 	if opts.InitialThemeSetting != nil {
 		setting := *opts.InitialThemeSetting
@@ -1268,19 +1278,7 @@ var stdoutIsTTY = func() bool { return term.IsTerminal(int(os.Stdout.Fd())) }
 
 // printResumeHint writes the resume command after the terminal is restored on an interactive quit, only for a persisted session with an existing file and TTY stdout.
 func (m *InteractiveMode) printResumeHint() {
-	session := m.currentSession()
-	if session == nil {
-		return
-	}
-	resolvedDir, _ := nodepath.Resolve(m.opts.SessionDir)
-	defaultDir, _ := nodepath.Resolve(defaultSessionDir(session.CWD()))
-	cmd := formatResumeCommand(resumeCommandSession{
-		persisted:             session.Path() != "",
-		sessionFile:           session.Path(),
-		sessionID:             session.ID(),
-		sessionDir:            m.opts.SessionDir,
-		usesDefaultSessionDir: m.opts.SessionDir == "" || resolvedDir == defaultDir,
-	}, stdoutIsTTY())
+	cmd := m.resumeHintCommand()
 	if cmd == "" {
 		return
 	}
@@ -1336,6 +1334,8 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 	mark("pre-raw-mode")
 	restore, drain, err := tui.EnterRawModeWithDrain()
 	if err != nil {
+		// Entering raw mode on a terminal that went away (setRawMode EIO or ENOTTY) is not a crash.
+		m.exitIfDeadTerminal(err)
 		return fmt.Errorf("interactive: raw mode: %w", err)
 	}
 	defer func() {

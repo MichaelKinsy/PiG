@@ -38,8 +38,12 @@ func skipOnWindows(t *testing.T) {
 
 func TestShellExecutesCommandsInCwdWithEnvOverrides(t *testing.T) {
 	env, root := newTestEnv(t)
-	result, output, err := collectShellOutput(env, `printf '%s:%s' "$PWD" "$NODE_ENV_TEST"`, &durableenv.ShellExecOptions{Env: map[string]string{"NODE_ENV_TEST": "ok"}}, background)
+	result, output, err := collectShellOutput(env, `printf '%s' "$NODE_ENV_TEST" > cwd-marker.txt; printf '%s:%s' "$PWD" "$NODE_ENV_TEST"`, &durableenv.ShellExecOptions{Env: map[string]string{"NODE_ENV_TEST": "ok"}}, background)
 	mustDo(t, err)
+	// upstream: packages/durable/test/env-node.test.ts:587
+	if marker, readErr := os.ReadFile(filepath.Join(root, "cwd-marker.txt")); readErr != nil || string(marker) != "ok" {
+		t.Fatalf("cwd marker = %q, %v; the command did not run in the cwd with the environment", marker, readErr)
+	}
 	canonical, evalErr := filepath.EvalSymlinks(root)
 	if evalErr != nil {
 		t.Fatal(evalErr)
@@ -265,7 +269,7 @@ func TestShellRejectsInvalidTimeoutsBeforeSpawning(t *testing.T) {
 func TestShellReturnsCallbackErrorsFromExecStreamHandlers(t *testing.T) {
 	env, _ := newTestEnv(t)
 	// A panic in the callback is Go's throw.
-	_, err := env.Exec(background, "printf out", &durableenv.ShellExecOptions{OnOutput: func(context.Context, string) {
+	_, err := env.Exec(background, "printf out", &durableenv.ShellExecOptions{OnOutput: func(context.Context, string, durableenv.ShellOutputInfo) {
 		panic(errors.New("callback failed"))
 	}})
 	failure := execErr(t, err, durableenv.ExecutionErrorCallbackError)

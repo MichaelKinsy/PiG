@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 const root = new URL("../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/", import.meta.url);
-if (JSON.parse(readFileSync(new URL("package.json", root), "utf8")).version !== "1.0.0") throw new Error("Expected Pi 1.0.0");
+if (JSON.parse(readFileSync(new URL("package.json", root), "utf8")).version !== "1.0.3") throw new Error("Expected Pi 1.0.3");
 const { streamSimple: google } = await import(new URL("dist/api/google-generative-ai.js", root));
 const { streamSimple: vertex } = await import(new URL("dist/api/google-vertex.js", root));
 const { normalizeContext } = await import(new URL("dist/utils/transcript.js", root));
