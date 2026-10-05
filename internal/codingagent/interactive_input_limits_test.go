@@ -60,6 +60,7 @@ func TestInteractivePromptImagesUsePostHookModelLimits(t *testing.T) {
 	}}
 	m.newRunner = inproc.NewRunner([]extension.Extension{ext}, t.TempDir())
 	m.handleSubmitWithImages(ctx, "original", []ai.ImageContent{input})
+	runPromptDispatch(t, m)
 	select {
 	case event := <-before:
 		if event.Prompt != "transformed" || len(event.Images) != 1 {

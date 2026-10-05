@@ -130,6 +130,9 @@ func TestInteractiveSteerAndFollowUpRunInputHandlers(t *testing.T) {
 		_ = m.dispatchKey(ctx, "\r")
 		m.editor.SetText("visible follow-up")
 		_ = m.dispatchKey(ctx, "\x1b[13;3u") // Alt+Enter
+	})
+	waitForPromptDispatch(t, m)
+	onLoop(m, ctx, func() {
 		steering, followUps = m.agent.PendingMessages()
 	})
 
@@ -167,6 +170,9 @@ func TestInteractiveInputHandlerErrorStopsTheInput(t *testing.T) {
 	onLoop(m, ctx, func() {
 		m.editor.SetText("do not send this")
 		_ = m.dispatchKey(ctx, "\r")
+	})
+	waitForPromptDispatch(t, m)
+	onLoop(m, ctx, func() {
 		steering, _ = m.agent.PendingMessages()
 		chat = widthx.StripAnsi(strings.Join(m.chatContainer.Render(100), "\n"))
 	})

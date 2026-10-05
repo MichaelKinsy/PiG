@@ -133499,6 +133499,17 @@
       "shapeHash": "sha256:593a71ea95daa5238fd2ca8602ce5eb58c791919e63ab97a910010ed43705401"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.dispatchNextPreflight",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.dispatchNextPreflight",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.dispatchScheduledRender",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.dispatchScheduledRender",
@@ -133673,6 +133684,17 @@
         "type": "func(ctx context.Context, reason string) error"
       },
       "shapeHash": "sha256:58a7f36d2df9198a95e1af0bc1688a9cef2cbb241b03cbc1f5eb925b24f55804"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.endPreflightDispatch",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.endPreflightDispatch",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.endRunPrompt",
@@ -133970,6 +133992,17 @@
         "type": "func(goos string, updates []string)"
       },
       "shapeHash": "sha256:8142021d39d91c1492b10bf36bc4fbc6e8566ea4c017404ad50c934b52185fad"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.finishPreflight",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.finishPreflight",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(submission inputPreflight, result inputPreflightResult)"
+      },
+      "shapeHash": "sha256:6115fa366b7b7807aea3d18af8df77610b8c3179331655c997af6dfb532aa761"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.finishProviderAuthentication",
@@ -134454,6 +134487,28 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.inputHandlerDispatcher",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.inputHandlerDispatcher",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() func(context.Context, string, []github.com/MichaelKinsy/PiG/ai.ImageContent, github.com/MichaelKinsy/PiG/coding/extension.InputSource, string) (string, []github.com/MichaelKinsy/PiG/ai.ImageContent, bool, error)"
+      },
+      "shapeHash": "sha256:2e632eea64065f14251fec3d6ef3ccf3777ff056e09ee9f47dcdac62d5cd29fc"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.inputHandlersRegistered",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.inputHandlersRegistered",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.inputLoop",
@@ -135103,6 +135158,17 @@
         "type": "func(fn func()) bool"
       },
       "shapeHash": "sha256:aad2321bec8142b1cbf463d4882d72b913fca0163c376b6350def762308cb818"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.preflightPending",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.preflightPending",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.prepareExtensionSessionUI",
@@ -136082,6 +136148,17 @@
         "type": "func(sel *github.com/MichaelKinsy/PiG/tui.UserMessageSelector) (int, bool)"
       },
       "shapeHash": "sha256:49c2c27ad08b076c67fbdcf7c431d6b7bbfb48bbe0f6e90db1ea88d05b9b93fe"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.runHeldPrompts",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.runHeldPrompts",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.runInputHandlers",
@@ -137083,6 +137160,17 @@
         "type": "func(ctx context.Context, messages []string)"
       },
       "shapeHash": "sha256:74cef52c39566e143ea8d9c17b31cf3f734d5029141f4accb4d4e545bd0a0947"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.submitPrompt",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.submitPrompt",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(submission inputPreflight)"
+      },
+      "shapeHash": "sha256:c0b76159ea20d2069dea73f440d4c812619658744b31e241ad9dc18f1477b399"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.subscribeToAgent",
@@ -154938,6 +155026,17 @@
       "shapeHash": "sha256:2a8dbe3f9c7cbed1dee1edbfee410fbb9c1200ee4146f75718ef86013b49d7c6"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#heldPrompt",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "heldPrompt",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "heldPrompt"
+      },
+      "shapeHash": "sha256:6da51193231f5ccc507e221104473b4a36e3e787b610963c96b6b493041566da"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#hexByte",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "hexByte",
@@ -155167,6 +155266,28 @@
         "type": "inputChunk"
       },
       "shapeHash": "sha256:3048decf55d002121d6e0be56683ce24db143a8bfda9732ffeeb7a01345ccec4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#inputPreflight",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "inputPreflight",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "inputPreflight"
+      },
+      "shapeHash": "sha256:43dac9cf31a06090ddeb8c11649ba7c570ede3c6cb6c9ac9fbcfc759b345b794"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#inputPreflightResult",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "inputPreflightResult",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "inputPreflightResult"
+      },
+      "shapeHash": "sha256:80fb744a7896c14546462a74b55a6b522e1795fe0ed5e405e4651ae928c3cb05"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#inputTicket",
