@@ -14,6 +14,7 @@ what to change when a key or an image does not work.
 | Links show no hover preview in fullscreen mode | [Ghostty](#ghostty) |
 | An input method window appears in the wrong place | [IME candidate window](#ime-candidate-window) |
 | A key works outside PiG but not inside it | [Keys that do not respond](#keys-that-do-not-respond) |
+| herdr does not show PiG's state | [herdr](#herdr) |
 
 Use `/hotkeys` to list the keys PiG has bound. `Ctrl+J` always inserts a new line, so you can use it in any terminal where `Shift+Enter` does not arrive.
 
@@ -212,6 +213,27 @@ These terminals cannot report modified `Enter` keys. `Shift+Enter` and `Ctrl+Ent
 ### IntelliJ IDEA
 
 The IntelliJ terminal cannot tell `Shift+Enter` from `Enter`. Use `Ctrl+J` for a new line, or run PiG in another terminal.
+
+### herdr
+
+PiG reports its state to [herdr](https://herdr.dev) as its own agent, through herdr's [third-party agent path](https://herdr.dev/docs/add-herdr-support/). Pigpen's herdr extension reports with `pane report-agent` under the source `custom:pig` and the agent `pig`. It includes the session's path and id, so herdr can resume a PiG session, and it releases the pane when PiG quits. Install it from Pigpen, or use the `herdr` or `pig-with-batteries` Piglet.
+
+herdr's built-in Pi integration (`herdr integration install pi`) is a different thing. It also runs in PiG, and herdr acknowledges every report it sends, but herdr keeps those reports only for a pane whose foreground process is named `pi`. PiG's executable is named `pig`, so herdr discards them and lists no agent.
+
+Until Pigpen's herdr extension is published, either of these makes the Pi integration work with PiG, with the integration file unchanged:
+
+```bash
+HERDR_AGENT=pi pig
+```
+
+or run PiG under the name `pi`:
+
+```bash
+ln -s "$(command -v pig)" ~/.local/bin/pi
+pi
+```
+
+`HERDR_AGENT` is herdr's documented hint for wrappers. herdr reads it from the environment of the process you launch, on Linux and macOS, so set it on the command and not inside a running session. Do not export it for the whole shell, because herdr then treats every process in the pane as `pi`.
 
 ### IME candidate window
 
