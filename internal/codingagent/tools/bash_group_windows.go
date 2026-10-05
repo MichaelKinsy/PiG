@@ -15,9 +15,17 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
-// setProcessGroup is a no-op on Windows. Upstream spawns bash with
-// detached:false on win32; the tree is reaped by killProcessGroup via taskkill.
-func setProcessGroup(_ *exec.Cmd) {}
+// setProcessGroup starts the shell suspended, so attachProcessGroup can put it
+// in a job object before it runs and before it can start any descendant
+// (Git for Windows' bin/bash.exe starts usr/bin/bash.exe at once). Upstream
+// spawns bash with detached:false on win32; the tree is reaped by
+// killProcessGroup via taskkill and the job.
+func setProcessGroup(cmd *exec.Cmd) {
+	if cmd.SysProcAttr == nil {
+		cmd.SysProcAttr = &syscall.SysProcAttr{}
+	}
+	cmd.SysProcAttr.CreationFlags |= windows.CREATE_SUSPENDED
+}
 
 // windowsTaskkillCommand detaches the hidden cleanup process from the caller's
 // console, as upstream's spawn with stdio "ignore", detached: true, and
@@ -100,9 +108,16 @@ func openJobMembers(job windows.Handle) ([]windows.Handle, error) {
 // bashJobs maps a shell's pid to the job object that holds its descendants.
 var bashJobs sync.Map
 
-// attachProcessGroup puts the started shell in a job object so its
-// descendants join the job. A failure leaves taskkill as the only reaper.
+// attachProcessGroup puts the shell, started suspended, in a job object so
+// all its descendants join the job, then resumes it. A failure leaves taskkill
+// as the only reaper.
 func attachProcessGroup(p *os.Process) {
+	defer func() {
+		// A shell left suspended would hang the command forever; kill it so the run fails instead.
+		if !resumeProcess(p.Pid) {
+			_ = p.Kill()
+		}
+	}()
 	job, err := windows.CreateJobObject(nil, nil)
 	if err != nil {
 		return
@@ -119,11 +134,62 @@ func attachProcessGroup(p *os.Process) {
 	bashJobs.Store(p.Pid, job)
 }
 
+// resumeProcess resumes every thread of the suspended process pid (its main
+// thread, the only one a CREATE_SUSPENDED start creates). It reports whether
+// it resumed one.
+func resumeProcess(pid int) bool {
+	snapshot, err := windows.CreateToolhelp32Snapshot(windows.TH32CS_SNAPTHREAD, 0)
+	if err != nil {
+		return false
+	}
+	defer func() { _ = windows.CloseHandle(snapshot) }()
+	resumed := false
+	entry := windows.ThreadEntry32{Size: uint32(unsafe.Sizeof(windows.ThreadEntry32{}))}
+	for err = windows.Thread32First(snapshot, &entry); err == nil; err = windows.Thread32Next(snapshot, &entry) {
+		if entry.OwnerProcessID != uint32(pid) {
+			continue
+		}
+		h, openErr := windows.OpenThread(windows.THREAD_SUSPEND_RESUME, false, entry.ThreadID)
+		if openErr != nil {
+			continue
+		}
+		if _, resumeErr := windows.ResumeThread(h); resumeErr == nil {
+			resumed = true
+		}
+		_ = windows.CloseHandle(h)
+	}
+	return resumed
+}
+
 // releaseProcessGroup closes the job handle. Closing it does not kill the job.
 func releaseProcessGroup(p *os.Process) {
 	if v, ok := bashJobs.LoadAndDelete(p.Pid); ok {
 		_ = windows.CloseHandle(v.(windows.Handle))
 	}
+}
+
+// processGroupMayHoldOutput reports whether a process of the shell's job is
+// still alive, and so may still hold the output pipe. Every descendant joins
+// the job and cannot break away (the job does not allow it), so an empty job
+// means every write end is closed. Without a job it reports true.
+func processGroupMayHoldOutput(p *os.Process) bool {
+	v, ok := bashJobs.Load(p.Pid)
+	if !ok {
+		return true
+	}
+	var info jobBasicAccounting
+	if err := windows.QueryInformationJobObject(v.(windows.Handle), windows.JobObjectBasicAccountingInformation, uintptr(unsafe.Pointer(&info)), uint32(unsafe.Sizeof(info)), nil); err != nil {
+		return true
+	}
+	return info.ActiveProcesses != 0
+}
+
+// jobBasicAccounting is JOBOBJECT_BASIC_ACCOUNTING_INFORMATION.
+type jobBasicAccounting struct {
+	TotalUserTime, TotalKernelTime                     int64
+	ThisPeriodTotalUserTime, ThisPeriodTotalKernelTime int64
+	TotalPageFaultCount, TotalProcesses                uint32
+	ActiveProcesses, TotalTerminatedProcesses          uint32
 }
 
 // shellExitCode returns the process exit code. Windows processes end with an

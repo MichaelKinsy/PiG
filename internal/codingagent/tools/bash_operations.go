@@ -204,6 +204,9 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 	)
 	go func() {
 		defer close(readDone)
+		if testHookBeforeStdioRead != nil {
+			testHookBeforeStdioRead()
+		}
 		for {
 			buf := make([]byte, 32*1024)
 			n, readErr := pr.Read(buf)
@@ -230,7 +233,7 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 
 	waitErr := cmd.Wait()
 	input.Wait()
-	if !waitForStdioIdle(readDone, activity) {
+	if !waitForStdioIdle(readDone, activity, func() bool { return processGroupMayHoldOutput(cmd.Process) }) {
 		acceptMu.Lock()
 		accepting = false
 		acceptMu.Unlock()
@@ -291,13 +294,22 @@ func (e *shellSpawnError) notFound() bool { return errors.Is(e.cause, exec.ErrNo
 // exitStdioGrace mirrors upstream EXIT_STDIO_GRACE_MS (utils/child-process.ts).
 const exitStdioGrace = 100 * time.Millisecond
 
-// waitForStdioIdle mirrors the post-exit half of upstream waitForChildProcess:
+// waitForStdioIdle mirrors the post-exit half of upstream waitForChildProcess
+// (.upstream/v0.87.1/packages/coding-agent/src/utils/child-process.ts:86-122):
 // once the shell has exited, keep reading until the output pipe closes, or
 // until no data has arrived for exitStdioGrace (re-armed on every chunk). A
 // background descendant that inherited the pipe therefore neither blocks the
 // call nor truncates output it is still writing. It reports whether the pipe
 // closed.
-func waitForStdioIdle(readDone, activity <-chan struct{}) bool {
+//
+// The grace exists only for a descendant that still holds the pipe. When it
+// expires, mayHoldOutput reports whether any such process can still be alive.
+// If none can, every write end is closed, so EOF follows once the reader has
+// drained what the shell's tree already wrote, and the wait reads to EOF.
+// Otherwise a reader that fell behind (a loaded Windows runner) would drop
+// output the exited command had already written: the grace measures the
+// reader's own latency, not the writer's silence.
+func waitForStdioIdle(readDone, activity <-chan struct{}, mayHoldOutput func() bool) bool {
 	timer := time.NewTimer(exitStdioGrace)
 	defer timer.Stop()
 	for {
@@ -307,7 +319,21 @@ func waitForStdioIdle(readDone, activity <-chan struct{}) bool {
 		case <-activity:
 			timer.Reset(exitStdioGrace)
 		case <-timer.C:
-			return false
+			if testHookStdioGraceExpired != nil {
+				testHookStdioGraceExpired()
+			}
+			if mayHoldOutput() {
+				return false
+			}
+			<-readDone
+			return true
 		}
 	}
 }
+
+// Test hooks that order the reader, the shell's exit and the grace without
+// sleeps. Nil outside tests.
+var (
+	testHookBeforeStdioRead   func()
+	testHookStdioGraceExpired func()
+)

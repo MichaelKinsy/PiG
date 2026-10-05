@@ -24,6 +24,10 @@ func killProcessGroup(p *os.Process) error {
 	return syscall.Kill(-p.Pid, syscall.SIGKILL)
 }
 
+// processGroupMayHoldOutput reports true: a detached descendant can leave the
+// process group (setsid) and still hold the pipe, so upstream's grace applies.
+func processGroupMayHoldOutput(*os.Process) bool { return true }
+
 // shellExitCode mirrors upstream createLocalShellOperations: a shell killed by
 // a signal has no exit code, so it reports 128 + the signal number rather
 // than a value callers could mistake for success.
