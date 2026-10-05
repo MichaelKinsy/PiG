@@ -76,3 +76,18 @@ func TestCollectQueuedTexts_IncludesCompactionQueue(t *testing.T) {
 		})
 	}
 }
+
+// An extension's custom message queued during a run has no "Steering:" or "Follow-up:" row, as in Pi: Pi's session
+// lists only the user input it queued (agent-session.ts:2191-2210), and sendCustomMessage queues on the agent alone
+// (:2246-2266). Before this a custom message rendered as an empty row (#141).
+func TestCollectQueuedTexts_SkipsCustomMessages(t *testing.T) {
+	custom := agent.AgentMessage{Custom: map[string]any{"role": "custom", "customType": "notice", "content": "background done"}}
+	steering, followUps := collectQueuedTexts(
+		[]agent.AgentMessage{custom, mkUserMsg("s1")},
+		[]agent.AgentMessage{mkUserMsg("f1"), custom},
+		nil,
+	)
+	if !reflect.DeepEqual(steering, []string{"s1"}) || !reflect.DeepEqual(followUps, []string{"f1"}) {
+		t.Fatalf("steering = %q, followUps = %q", steering, followUps)
+	}
+}
