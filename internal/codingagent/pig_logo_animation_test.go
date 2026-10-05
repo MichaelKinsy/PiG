@@ -44,10 +44,13 @@ func newTestPigLogoAnimation(t *testing.T, clock *logoTestClock, rows int, optio
 // logoTestScreen is a fullscreen frame with the PiG header (the pig head, as the header draws it) and lines that exercise
 // the SGR parser: basic, bright, 256-color and truecolor colors in both syntaxes, dim, inverse, resets, an OSC 8 link, an
 // APC, a cursor sequence, wide graphemes, box drawing and punctuation.
+// logoTestVersion stands in for the release version on the test screen, so goldens do not change with each release.
+const logoTestVersion = "0.0.0-test+pi"
+
 func logoTestScreen() []string {
 	head := piglogin.HeadLines(piglogin.Default(), tui.TerminalColorModeTrueColor)
 	beside := []string{
-		" \x1b[2mv" + pigversion.Version + "\x1b[22m",
+		" \x1b[2mv" + logoTestVersion + "\x1b[22m",
 		" \x1b[38;5;244mescape\x1b[39m \x1b[90minterrupt\x1b[0m · \x1b[2;38;2;120;130;140mctrl+c\x1b[0m",
 		" \x1b[2mPress ctrl+o to show full startup help.\x1b[0m",
 	}
