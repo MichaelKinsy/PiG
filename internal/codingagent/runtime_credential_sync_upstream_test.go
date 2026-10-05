@@ -96,7 +96,7 @@ func requireStoredRuntimeKey(t *testing.T, store ai.CredentialStore, id, key str
 func TestCredentialRuntimePublishesBeforeLoginLogoutResolveUpstream(t *testing.T) {
 	store := ai.NewInMemoryAuthStorage(nil)
 	r := credentialTestRuntime(t, store, credentialTestProvider("dynamic"))
-	if _, err := r.LoginNativeProvider(t.Context(), "dynamic", ai.CredentialAPIKey, ai.AuthInteraction{}, nil); err != nil {
+	if _, err := r.LoginNativeProvider(t.Context(), "dynamic", ai.CredentialAPIKey, ai.AuthInteraction{}); err != nil {
 		t.Fatal(err)
 	}
 	if !r.HasConfiguredAuth("dynamic") || len(r.GetAvailable()) != 1 || r.GetAvailable()[0].ModelID != "dynamic" {
@@ -126,7 +126,7 @@ func TestCredentialRuntimeOrdersSameProviderOperationsUpstream(t *testing.T) {
 		r := credentialTestRuntime(t, store, provider)
 		login, logout := make(chan error, 1), make(chan error, 1)
 		go func() {
-			_, err := r.LoginNativeProvider(t.Context(), "ordered", ai.CredentialAPIKey, ai.AuthInteraction{}, nil)
+			_, err := r.LoginNativeProvider(t.Context(), "ordered", ai.CredentialAPIKey, ai.AuthInteraction{})
 			login <- err
 		}()
 		<-started
@@ -165,7 +165,7 @@ func TestCredentialRuntimeDifferentProvidersConcurrentUpstream(t *testing.T) {
 		done := make(chan error, 2)
 		for _, id := range []string{"one", "two"} {
 			go func() {
-				_, err := r.LoginNativeProvider(t.Context(), id, ai.CredentialAPIKey, ai.AuthInteraction{}, nil)
+				_, err := r.LoginNativeProvider(t.Context(), id, ai.CredentialAPIKey, ai.AuthInteraction{})
 				done <- err
 			}()
 		}
@@ -197,7 +197,7 @@ func TestCredentialRuntimeDoesNotWaitForUnrelatedAvailabilityUpstream(t *testing
 		stall.Store(true)
 		login := make(chan error, 1)
 		go func() {
-			_, err := r.LoginNativeProvider(t.Context(), "target", ai.CredentialAPIKey, ai.AuthInteraction{}, nil)
+			_, err := r.LoginNativeProvider(t.Context(), "target", ai.CredentialAPIKey, ai.AuthInteraction{})
 			login <- err
 		}()
 		synctest.Wait()
@@ -289,7 +289,7 @@ func TestCredentialRuntimeNoNetworkInsideCredentialChainUpstream(t *testing.T) {
 		r := credentialTestRuntime(t, ai.NewInMemoryAuthStorage(nil), p)
 		done := make(chan error, 1)
 		go func() {
-			_, err := r.LoginNativeProvider(t.Context(), p.ID, ai.CredentialAPIKey, ai.AuthInteraction{}, nil)
+			_, err := r.LoginNativeProvider(t.Context(), p.ID, ai.CredentialAPIKey, ai.AuthInteraction{})
 			done <- err
 		}()
 		synctest.Wait()
@@ -356,7 +356,7 @@ func TestCredentialRuntimeWaitsForCommittedMutationSettlementUpstream(t *testing
 		ctx, cancel := context.WithCancel(t.Context())
 		done := make(chan error, 1)
 		go func() {
-			_, err := r.LoginNativeProvider(ctx, "delayed-commit", ai.CredentialAPIKey, ai.AuthInteraction{}, nil)
+			_, err := r.LoginNativeProvider(ctx, "delayed-commit", ai.CredentialAPIKey, ai.AuthInteraction{})
 			done <- err
 		}()
 		<-store.committed
@@ -406,7 +406,7 @@ func TestCredentialRuntimePostCommitSynchronizationErrorsUpstream(t *testing.T) 
 				defer cancel()
 				done := make(chan error, 1)
 				go func() {
-					_, err := r.LoginNativeProvider(ctx, id, ai.CredentialAPIKey, ai.AuthInteraction{}, nil)
+					_, err := r.LoginNativeProvider(ctx, id, ai.CredentialAPIKey, ai.AuthInteraction{})
 					done <- err
 				}()
 				<-started

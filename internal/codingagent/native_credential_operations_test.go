@@ -20,7 +20,7 @@ func BenchmarkNativeCredentialCycle(b *testing.B) {
 	b.Cleanup(r.NativeModels().Close)
 	b.ReportAllocs()
 	for b.Loop() {
-		if _, err := r.LoginNativeProvider(b.Context(), provider.ID, ai.CredentialAPIKey, ai.AuthInteraction{}, nil); err != nil {
+		if _, err := r.LoginNativeProvider(b.Context(), provider.ID, ai.CredentialAPIKey, ai.AuthInteraction{}); err != nil {
 			b.Fatal(err)
 		}
 		if err := r.LogoutNativeProvider(b.Context(), provider.ID); err != nil {
@@ -48,7 +48,7 @@ func TestCredentialRuntimeQueuedCancellationRetainsOrder(t *testing.T) {
 		r := credentialTestRuntime(t, store, provider)
 		login := make(chan error, 1)
 		go func() {
-			_, err := r.LoginNativeProvider(t.Context(), provider.ID, ai.CredentialAPIKey, ai.AuthInteraction{}, nil)
+			_, err := r.LoginNativeProvider(t.Context(), provider.ID, ai.CredentialAPIKey, ai.AuthInteraction{})
 			login <- err
 		}()
 		<-started
@@ -56,7 +56,7 @@ func TestCredentialRuntimeQueuedCancellationRetainsOrder(t *testing.T) {
 		defer cancel(nil)
 		queued := make(chan error, 1)
 		go func() {
-			_, err := r.LoginNativeProvider(ctx, provider.ID, ai.CredentialAPIKey, ai.AuthInteraction{}, nil)
+			_, err := r.LoginNativeProvider(ctx, provider.ID, ai.CredentialAPIKey, ai.AuthInteraction{})
 			queued <- err
 		}()
 		synctest.Wait()
@@ -111,7 +111,7 @@ func TestCredentialRuntimeOrdersThroughSynchronizationFailure(t *testing.T) {
 		fail.Store(true)
 		login, logout := make(chan error, 1), make(chan error, 1)
 		go func() {
-			_, err := r.LoginNativeProvider(t.Context(), provider.ID, ai.CredentialAPIKey, ai.AuthInteraction{}, nil)
+			_, err := r.LoginNativeProvider(t.Context(), provider.ID, ai.CredentialAPIKey, ai.AuthInteraction{})
 			login <- err
 		}()
 		<-started
@@ -165,7 +165,7 @@ func TestCredentialRuntimePostCommitAvailabilityErrors(t *testing.T) {
 			defer cancel(nil)
 			done := make(chan error, 1)
 			go func() {
-				_, err := r.LoginNativeProvider(ctx, provider.ID, ai.CredentialAPIKey, ai.AuthInteraction{}, nil)
+				_, err := r.LoginNativeProvider(ctx, provider.ID, ai.CredentialAPIKey, ai.AuthInteraction{})
 				done <- err
 			}()
 			<-started

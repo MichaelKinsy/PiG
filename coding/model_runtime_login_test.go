@@ -2,11 +2,14 @@ package coding
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -52,10 +55,16 @@ func TestModelRuntimeLoginResolvesComposedProviders(t *testing.T) {
 		{name: "models.json", id: "login-custom"},
 		{name: "native", id: "login-native", setup: func(t *testing.T, runtime *ModelRuntime) {
 			provider := nativeCompatProvider(nativeCompatModel("native-model", "login-native", "https://native.invalid/v1"))
-			provider.Auth.APIKey.Login = func(ctx context.Context, interaction ai.AuthInteraction) (ai.Credential, error) {
+			// Configured only by a stored credential, like the built-in and models.json shapes here.
+			provider.Auth.APIKey = &ai.APIKeyAuth{Name: "Native key", Login: func(ctx context.Context, interaction ai.AuthInteraction) (ai.Credential, error) {
 				key, err := interaction.Prompt(ctx, ai.AuthSecretPrompt{Message: "API key"})
 				return ai.Credential{Type: ai.CredentialAPIKey, Key: key}, err
-			}
+			}, Resolve: func(_ context.Context, input ai.APIKeyAuthInput) (*ai.AuthResult, error) {
+				if input.Credential == nil || input.Credential.Key == "" {
+					return nil, nil
+				}
+				return &ai.AuthResult{Auth: ai.ModelAuth{APIKey: input.Credential.Key}, Source: "stored native key"}, nil
+			}}
 			if err := runtime.RegisterNativeProvider(provider); err != nil {
 				t.Fatal(err)
 			}
@@ -69,6 +78,9 @@ func TestModelRuntimeLoginResolvesComposedProviders(t *testing.T) {
 			}
 			if runtime.GetProvider(tc.id) == nil {
 				t.Fatalf("GetProvider(%q) = nil", tc.id)
+			}
+			if status := runtime.GetProviderAuthStatus(tc.id); status.Configured || runtime.HasConfiguredAuth(tc.id) {
+				t.Fatalf("auth status before login = %+v, configured %v", status, runtime.HasConfiguredAuth(tc.id))
 			}
 			credential, err := runtime.Login(t.Context(), tc.id, ai.CredentialAPIKey, dummyKeyInteraction("dummy-key"))
 			if err != nil {
@@ -85,28 +97,39 @@ func TestModelRuntimeLoginResolvesComposedProviders(t *testing.T) {
 			if err != nil || check == nil || check.Type != ai.CredentialAPIKey {
 				t.Fatalf("CheckAuth after login = %+v, %v", check, err)
 			}
+			// synchronizeCredentialState (model-runtime.ts:591-610) publishes availability before login resolves.
+			if status := runtime.GetProviderAuthStatus(tc.id); !status.Configured || status.Source != ai.AuthSourceStored || !runtime.HasConfiguredAuth(tc.id) {
+				t.Fatalf("auth status after login = %+v, configured %v", status, runtime.HasConfiguredAuth(tc.id))
+			}
+			if !slices.ContainsFunc(runtime.GetAvailableSnapshot(), func(model *ai.Model) bool { return model.ProviderMeta.ProviderID == tc.id }) {
+				t.Fatalf("available snapshot after login lacks %s", tc.id)
+			}
 			if err := runtime.Logout(t.Context(), tc.id); err != nil {
 				t.Fatalf("Logout(%q) = %v", tc.id, err)
 			}
 			if saved, err := credentials.Read(t.Context(), tc.id); err != nil || saved != nil {
 				t.Fatalf("credential retained after logout = %+v, %v", saved, err)
 			}
+			if status := runtime.GetProviderAuthStatus(tc.id); status.Configured || runtime.HasConfiguredAuth(tc.id) {
+				t.Fatalf("auth status after logout = %+v, configured %v", status, runtime.HasConfiguredAuth(tc.id))
+			}
 		})
 	}
 }
 
-// model-runtime.ts:763-771 login(...) rejects an unknown provider ID and a method the provider lacks before any prompt, and models.ts:761-771 reports them as ModelsError.
+// models.ts:767-774 rejects an unknown provider ID with ModelsError("provider") and a method the provider lacks with ModelsError("auth"), both before any prompt.
 func TestModelRuntimeLoginRejectsUnknownProviderAndUnsupportedMethod(t *testing.T) {
 	runtime, credentials := loginTestRuntime(t, "")
 	prompted := false
 	interaction := ai.AuthInteraction{Prompt: func(context.Context, ai.AuthPrompt) (string, error) { prompted = true; return "key", nil }}
+	var modelsErr *ai.ModelsError
 	_, err := runtime.Login(t.Context(), "no-such-provider", ai.CredentialAPIKey, interaction)
-	if err == nil || !strings.Contains(err.Error(), "Unknown provider: no-such-provider") {
-		t.Fatalf("unknown provider error = %v", err)
+	if !errors.As(err, &modelsErr) || modelsErr.Code != ai.ModelsErrorProvider || modelsErr.Message != "Unknown provider: no-such-provider" {
+		t.Fatalf("unknown provider error = %#v", err)
 	}
 	_, err = runtime.Login(t.Context(), "openai-codex", ai.CredentialAPIKey, interaction)
-	if err == nil || !strings.Contains(err.Error(), "does not support api_key login") {
-		t.Fatalf("unsupported method error = %v", err)
+	if !errors.As(err, &modelsErr) || modelsErr.Code != ai.ModelsErrorAuth || !strings.HasSuffix(modelsErr.Message, " does not support api_key login") {
+		t.Fatalf("unsupported method error = %#v", err)
 	}
 	if prompted {
 		t.Fatal("login prompted before method validation")
@@ -146,53 +169,56 @@ func TestModelRuntimeLoginForwardsLoginOptions(t *testing.T) {
 
 // model-runtime.ts:817-829 serializes same-provider credential operations through enqueueCredentialOperation. A second login on a built-in provider starts only after the first one finishes.
 func TestModelRuntimeLoginSerializesBuiltInProvider(t *testing.T) {
-	runtime, _ := loginTestRuntime(t, "")
-	var mu sync.Mutex
-	var order []string
-	started := make(chan struct{})
-	release := make(chan struct{})
-	prompt := func(name string, block bool) ai.AuthInteraction {
-		return ai.AuthInteraction{Prompt: func(ctx context.Context, _ ai.AuthPrompt) (string, error) {
-			mu.Lock()
-			order = append(order, name+":start")
-			mu.Unlock()
-			if block {
-				close(started)
-				select {
-				case <-release:
-				case <-ctx.Done():
-					return "", context.Cause(ctx)
+	synctest.Test(t, func(t *testing.T) {
+		runtime, _ := loginTestRuntime(t, "")
+		var mu sync.Mutex
+		var order []string
+		release := make(chan struct{})
+		prompt := func(name string, block bool) ai.AuthInteraction {
+			return ai.AuthInteraction{Prompt: func(ctx context.Context, _ ai.AuthPrompt) (string, error) {
+				mu.Lock()
+				order = append(order, name+":start")
+				mu.Unlock()
+				if block {
+					select {
+					case <-release:
+					case <-ctx.Done():
+						return "", context.Cause(ctx)
+					}
 				}
-			}
-			mu.Lock()
-			order = append(order, name+":end")
-			mu.Unlock()
-			return name, nil
-		}}
-	}
-	var wg sync.WaitGroup
-	errs := make([]error, 2)
-	wg.Go(func() {
-		_, errs[0] = runtime.Login(t.Context(), "anthropic", ai.CredentialAPIKey, prompt("first", true))
+				mu.Lock()
+				order = append(order, name+":end")
+				mu.Unlock()
+				return name, nil
+			}}
+		}
+		var wg sync.WaitGroup
+		errs := make([]error, 2)
+		wg.Go(func() {
+			_, errs[0] = runtime.Login(t.Context(), "anthropic", ai.CredentialAPIKey, prompt("first", true))
+		})
+		synctest.Wait()
+		wg.Go(func() {
+			_, errs[1] = runtime.Login(t.Context(), "anthropic", ai.CredentialAPIKey, prompt("second", false))
+		})
+		// Every goroutine is durably blocked here, so a second login that is not queued behind the first has already prompted.
+		synctest.Wait()
+		mu.Lock()
+		snapshot := strings.Join(order, ",")
+		mu.Unlock()
+		if snapshot != "first:start" {
+			t.Fatalf("order while the first login prompts = %s, want first:start", snapshot)
+		}
+		close(release)
+		wg.Wait()
+		if errs[0] != nil || errs[1] != nil {
+			t.Fatalf("errors = %v, %v", errs[0], errs[1])
+		}
+		want := []string{"first:start", "first:end", "second:start", "second:end"}
+		mu.Lock()
+		defer mu.Unlock()
+		if strings.Join(order, ",") != strings.Join(want, ",") {
+			t.Fatalf("order = %v, want %v", order, want)
+		}
 	})
-	select {
-	case <-started:
-	case <-time.After(5 * time.Second):
-		t.Fatal("first login never prompted")
-	}
-	wg.Go(func() {
-		_, errs[1] = runtime.Login(t.Context(), "anthropic", ai.CredentialAPIKey, prompt("second", false))
-	})
-	time.Sleep(50 * time.Millisecond) // lets a mis-serialized second login reach its prompt; the assertion below is on order, not on this delay.
-	close(release)
-	wg.Wait()
-	if errs[0] != nil || errs[1] != nil {
-		t.Fatalf("errors = %v, %v", errs[0], errs[1])
-	}
-	want := []string{"first:start", "first:end", "second:start", "second:end"}
-	mu.Lock()
-	defer mu.Unlock()
-	if strings.Join(order, ",") != strings.Join(want, ",") {
-		t.Fatalf("order = %v, want %v", order, want)
-	}
 }

@@ -54470,9 +54470,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(ctx context.Context, id string, kind github.com/MichaelKinsy/PiG/ai.AuthType, interaction github.com/MichaelKinsy/PiG/ai.AuthInteraction, fallback github.com/MichaelKinsy/PiG/ai.ModelsStreamFunction, options ...github.com/MichaelKinsy/PiG/ai.LoginOptions) (github.com/MichaelKinsy/PiG/ai.Credential, error)"
+        "type": "func(ctx context.Context, id string, kind github.com/MichaelKinsy/PiG/ai.AuthType, interaction github.com/MichaelKinsy/PiG/ai.AuthInteraction, options ...github.com/MichaelKinsy/PiG/ai.LoginOptions) (github.com/MichaelKinsy/PiG/ai.Credential, error)"
       },
-      "shapeHash": "sha256:e377abc150c88607ff2ca7a36ca3c0549f7cd30e474feaac1ecf87f1980a97de"
+      "shapeHash": "sha256:120259bbc8d6a5d90011a4c645a269e975279cc7a37157b19daa9e38454e5b49"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.LogoutNativeProvider",
@@ -138609,9 +138609,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(ctx context.Context, id string, kind github.com/MichaelKinsy/PiG/ai.AuthType, interaction github.com/MichaelKinsy/PiG/ai.AuthInteraction, fallback github.com/MichaelKinsy/PiG/ai.ModelsStreamFunction, options ...github.com/MichaelKinsy/PiG/ai.LoginOptions) (github.com/MichaelKinsy/PiG/ai.Credential, error)"
+        "type": "func(ctx context.Context, id string, kind github.com/MichaelKinsy/PiG/ai.AuthType, interaction github.com/MichaelKinsy/PiG/ai.AuthInteraction, options ...github.com/MichaelKinsy/PiG/ai.LoginOptions) (github.com/MichaelKinsy/PiG/ai.Credential, error)"
       },
-      "shapeHash": "sha256:e377abc150c88607ff2ca7a36ca3c0549f7cd30e474feaac1ecf87f1980a97de"
+      "shapeHash": "sha256:120259bbc8d6a5d90011a4c645a269e975279cc7a37157b19daa9e38454e5b49"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.LogoutNativeProvider",

@@ -62,7 +62,7 @@ func TestLoginSupersedesOlderStalledCatalogRefreshUpstream(t *testing.T) {
 		callers.Go(func() {
 			credential, err := registry.LoginNativeProvider(t.Context(), provider.ID, ai.CredentialAPIKey, ai.AuthInteraction{
 				Prompt: func(context.Context, ai.AuthPrompt) (string, error) { return "unused", nil }, Notify: func(ai.AuthEvent) {},
-			}, nil)
+			})
 			login <- loginResult{credential, err}
 		})
 		synctest.Wait()

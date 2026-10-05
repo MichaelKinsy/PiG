@@ -363,8 +363,8 @@ func (r *ModelRegistry) GetProviderAuth(ctx context.Context, id string) (*ai.Aut
 	return r.NativeModels().GetAuth(ctx, id)
 }
 
-// LoginNativeProvider serializes same-provider login and logout through persistence and local synchronization. It logs in the composed provider GetTypedProvider returns for the ID, a built-in one included, with the stream fallback that composition uses. A synchronization failure returns the committed credential with CredentialSynchronizationError.
-func (r *ModelRegistry) LoginNativeProvider(ctx context.Context, id string, kind ai.AuthType, interaction ai.AuthInteraction, fallback ai.ModelsStreamFunction, options ...ai.LoginOptions) (ai.Credential, error) {
+// LoginNativeProvider serializes same-provider login and logout through persistence and local synchronization. It logs in the composed provider GetTypedProvider returns for the ID, a built-in or models.json provider included, and passes the optional LoginOptions to the provider's login. A synchronization failure returns the committed credential with CredentialSynchronizationError.
+func (r *ModelRegistry) LoginNativeProvider(ctx context.Context, id string, kind ai.AuthType, interaction ai.AuthInteraction, options ...ai.LoginOptions) (ai.Credential, error) {
 	synced := false
 	defer r.coverCredentialOperation(ctx, id, &synced)()
 	release, err := r.beginCredentialOperation(ctx, id)
@@ -375,7 +375,8 @@ func (r *ModelRegistry) LoginNativeProvider(ctx context.Context, id string, kind
 	if ctx.Err() != nil {
 		return ai.Credential{}, context.Cause(ctx)
 	}
-	provider := r.GetTypedProvider(id, fallback)
+	// Login reads only the composed auth methods, which do not depend on the stream fallback.
+	provider := r.GetTypedProvider(id, nil)
 	if provider == nil {
 		return ai.Credential{}, ai.NewModelsError(ai.ModelsErrorProvider, "Unknown provider: "+id, nil)
 	}
