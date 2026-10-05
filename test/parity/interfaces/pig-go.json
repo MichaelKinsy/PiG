@@ -178709,6 +178709,17 @@
       "shapeHash": "sha256:4da2364efe6e445d2a60a4c7711cfbca72c0ee06c3fbddac0d970183e1e699c3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#attachProcessGroup",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "attachProcessGroup",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(*os.Process)"
+      },
+      "shapeHash": "sha256:db76dbfdf14c1febad33979d9b70bd5bc662df927ae8906f71e1de5e6e4c197d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#base64Encode",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
       "name": "base64Encode",
@@ -180071,6 +180082,17 @@
         "type": "func(resultPath string, searchPath string) string"
       },
       "shapeHash": "sha256:0f251ba7eed8b876fee6ddaa029d720d66ac4efba815867559fc38ae5ed84cd1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#releaseProcessGroup",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "releaseProcessGroup",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(*os.Process)"
+      },
+      "shapeHash": "sha256:db76dbfdf14c1febad33979d9b70bd5bc662df927ae8906f71e1de5e6e4c197d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#resolvePath",
