@@ -681,14 +681,22 @@ func extractAgentMessageText(msg agent.AgentMessage) string {
 // upstream ordering: session queue first, then compaction-queued messages, each
 // kept in its own steering/follow-up bucket. Mirrors upstream getAllQueuedMessages
 // (interactive-mode.ts:3763-3772). Pure so the merge is unit-testable.
+//
+// Pi lists only typed input: its session records the text of each user message it queues (agent-session.ts:2191-2210,
+// _queueSteer/_queueFollowUp), while an extension's custom message goes to the agent's queue alone
+// (sendCustomMessage, :2246-2266). A queued custom message therefore has no row and is not restored to the editor.
 func collectQueuedTexts(steering, followUps []agent.AgentMessage, compaction []compactionQueuedMessage) (steeringTexts, followUpTexts []string) {
 	steeringTexts = make([]string, 0, len(steering)+len(compaction))
 	for _, msg := range steering {
-		steeringTexts = append(steeringTexts, extractAgentMessageText(msg))
+		if msg.User != nil {
+			steeringTexts = append(steeringTexts, extractAgentMessageText(msg))
+		}
 	}
 	followUpTexts = make([]string, 0, len(followUps)+len(compaction))
 	for _, msg := range followUps {
-		followUpTexts = append(followUpTexts, extractAgentMessageText(msg))
+		if msg.User != nil {
+			followUpTexts = append(followUpTexts, extractAgentMessageText(msg))
+		}
 	}
 	for _, msg := range compaction {
 		if msg.mode == compactionQueueFollowUp {
