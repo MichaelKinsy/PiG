@@ -4825,8 +4825,8 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:d38754f1abadb955553f0d2ce3276f580fb07ca9b937e0d4abe3b6226d2e3b87",
       "evidence": [
-        "internal/codingagent/tools/bash_stdio_idle_test.go#TestWaitForStdioIdleRearmsOnEveryChunk",
-        "internal/codingagent/tools/bash_stdio_idle_test.go#TestWaitForStdioIdleReleasesAQuietHeldPipe",
+        "internal/childwait/wait_test.go#TestWaitIdleRearmsOnEveryChunk",
+        "internal/childwait/wait_test.go#TestWaitIdleReleasesAQuietHeldPipe",
         "internal/codingagent/tools/bash_background_test.go#TestBashTool_BackgroundChildKeepsResult",
         "docs/parity/pending-tests-triage.md"
       ],

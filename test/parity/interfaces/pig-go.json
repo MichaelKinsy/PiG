@@ -72185,17 +72185,6 @@
       "shapeHash": "sha256:4428ea9d68043a7d6de72ef6e0a73c7a97d757bb9c1ae83321f1da8738a26f0e"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#newProcAttr",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension",
-      "name": "newProcAttr",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func() *syscall.SysProcAttr"
-      },
-      "shapeHash": "sha256:82e6776aec73da82176d3cdba5af5d572673285634bd2cdb0a753a4bbdedea08"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#noCopy",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "noCopy",
@@ -72854,6 +72843,17 @@
         "type": "func(fields map[string]encoding/json.RawMessage, key string) (string, bool)"
       },
       "shapeHash": "sha256:593d60fa0db67a9dd4790e9f87023fd7ea74ddf605e3d550043f9fcd7ad49c99"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#terminate",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "terminate",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(process *os.Process) (noExitCode bool)"
+      },
+      "shapeHash": "sha256:b1d684c03de04628e5bf9f355b4946f0ae3a31d013c9ecfd851d3aa39a39ab46"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#toolCtxKey",
@@ -179369,138 +179369,6 @@
       "shapeHash": "sha256:d3ae244d05084cddddb3d6643dd03db4963ab5ec24650988fc65edbe6c0ff379"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#exitStdioGrace",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
-      "name": "exitStdioGrace",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "time.Duration"
-      },
-      "shapeHash": "sha256:83488df5bf69d53eed0fce849900072064e69ce5fc0b1a0f19720f7f5af6ce46"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#exitStdioGrace.Abs",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
-      "name": "exitStdioGrace.Abs",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() time.Duration"
-      },
-      "shapeHash": "sha256:182a2bb05a9afffa29d82fa1b9199409a6edc02648d561478a37684fc219d429"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#exitStdioGrace.Hours",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
-      "name": "exitStdioGrace.Hours",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() float64"
-      },
-      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#exitStdioGrace.Microseconds",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
-      "name": "exitStdioGrace.Microseconds",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() int64"
-      },
-      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#exitStdioGrace.Milliseconds",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
-      "name": "exitStdioGrace.Milliseconds",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() int64"
-      },
-      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#exitStdioGrace.Minutes",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
-      "name": "exitStdioGrace.Minutes",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() float64"
-      },
-      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#exitStdioGrace.Nanoseconds",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
-      "name": "exitStdioGrace.Nanoseconds",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() int64"
-      },
-      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#exitStdioGrace.Round",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
-      "name": "exitStdioGrace.Round",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(m time.Duration) time.Duration"
-      },
-      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#exitStdioGrace.Seconds",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
-      "name": "exitStdioGrace.Seconds",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() float64"
-      },
-      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#exitStdioGrace.String",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
-      "name": "exitStdioGrace.String",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() string"
-      },
-      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#exitStdioGrace.Truncate",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
-      "name": "exitStdioGrace.Truncate",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(m time.Duration) time.Duration"
-      },
-      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#exitStdioGrace.format",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
-      "name": "exitStdioGrace.format",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(buf *[32]byte) int"
-      },
-      "shapeHash": "sha256:2dfd215036b14c3898ddd16ce618fec9fa6ba141357d49869e3171fbf3801867"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#expandPath",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
       "name": "expandPath",
@@ -181281,17 +181149,6 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#waitForStdioIdle",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
-      "name": "waitForStdioIdle",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(readDone \u003c-chan struct{}, activity \u003c-chan struct{}, mayHoldOutput func() bool) bool"
-      },
-      "shapeHash": "sha256:0e7c4a6ffb8b1911dfd8584fe1773a6943dece9fa33860d746256e52710a71da"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#writeParams",

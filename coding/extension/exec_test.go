@@ -44,6 +44,10 @@ func TestExecHelperProcess(t *testing.T) {
 	case "pwd":
 		wd, _ := os.Getwd()
 		fmt.Println(wd)
+	default:
+		if run, ok := treeHelpers[args[0]]; ok {
+			run(args[1:])
+		}
 	}
 	os.Exit(0)
 }
@@ -133,6 +137,12 @@ func TestExecCommand_Timeout(t *testing.T) {
 	}
 	if !result.Killed {
 		t.Errorf("expected killed=true on timeout; result = %+v", result)
+	}
+	// Upstream resolves `code ?? 0`: a child that SIGTERM ended has no code.
+	// On Windows Node's kill terminates the child with status 1, and libuv
+	// reports the signal it sent and no code.
+	if result.Code != 0 {
+		t.Errorf("code = %d, want 0", result.Code)
 	}
 }
 
