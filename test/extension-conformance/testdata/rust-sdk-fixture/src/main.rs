@@ -260,6 +260,30 @@ fn main() {
             context.message_type, context.is_streaming, context.available_width
         ))
     });
+    fn resolved_line(prefix: &'static str, tool: &str) -> pig_sdk::ToolRendererSet {
+        let tool = tool.to_string();
+        pig_sdk::ToolRendererSet::with_call(move |_ctx, args, _render, _width| {
+            let q = args.get("q").and_then(Value::as_str).unwrap_or("");
+            Ok(vec![format!("{prefix}:{tool}:{q}")])
+        })
+    }
+    ext.tool_renderer(|tool, next| match tool {
+        "conformance_tool_renderer" => Some(resolved_line("resolved", tool)),
+        "conformance_no_renderer" => None,
+        "conformance_fill" => next().or_else(|| Some(resolved_line("filled", tool))),
+        "conformance_wrap" => {
+            let mut wrapped = next()?;
+            wrapped.render_call = resolved_line("wrapped", tool).render_call;
+            Some(wrapped)
+        }
+        _ => next(),
+    });
+    ext.command("late_tool_renderer", "Register a tool renderer resolver after loading", |ctx, _args| {
+        match ctx.register_tool_renderer(|tool, next| if tool == "conformance_late" { Some(resolved_line("late", tool)) } else { next() }) {
+            Ok(()) => CommandResult::Ok,
+            Err(error) => CommandResult::Error(error.to_string()),
+        }
+    });
     ext.entry_renderer("conformance-entry", |_ctx, entry, options, width| {
         let data = entry.get("data").and_then(Value::as_str).unwrap_or("");
         Ok(vec![format!(

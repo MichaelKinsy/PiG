@@ -1,6 +1,6 @@
 package codingagent
 
-// Ports packages/coding-agent/src/modes/interactive/components/pi-logo-animation.ts.
+// Ports packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts (the Pi-logo kind, as Pi 1.0.0 pi-logo-animation.ts drew it; D87).
 //
 // pig divergence (D87): the object of the animation is the pig of PiG's header mark (D2) in the active sprite's colors, not
 // Pi's logo, and where Pi's logo plays its sliding puzzle a side-view pig runs across the screen (pig_logo_run.go). The engine, the timeline, the
@@ -59,7 +59,7 @@ type logoPose struct {
 }
 
 // logoFrameRate is the animation's frames per second.
-// upstream: packages/coding-agent/src/modes/interactive/components/pi-logo-animation.ts:FRAME_MS
+// upstream: packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts:FRAME_MS
 const logoFrameRate = 30
 
 const (
@@ -557,10 +557,12 @@ type logoRaster struct {
 	depth      []float32
 	// faceIDs holds the hit face per dot, plus one. pig divergence (D87): Pi's Uint8Array holds its logo's faces; the
 	// running pig has more than 255.
-	faceIDs   []uint16
-	dirty     *logoBounds
-	haloDirty *logoBounds
-	faces     []logoFace
+	faceIDs []uint16
+	dirty   *logoBounds
+	// cameraDistance is the camera's distance from the model's center, in grid units (Pi's model.cameraDistance).
+	cameraDistance float64
+	haloDirty      *logoBounds
+	faces          []logoFace
 }
 
 func (r *logoRaster) render(width, height int, pose logoPose, boxes []logoBox, background logoRgb, haloStrength float64) {
@@ -609,8 +611,9 @@ func (r *logoRaster) renderLayer(width, height int, pose logoPose, boxes []logoB
 
 	m := logoRotation(pose.yaw, pose.pitch, pose.roll)
 	centerX, centerY, scale := pose.centerX, pose.centerY, pose.scale
-	// The camera sits at (0, 0, logoCameraDistance) in camera space; object space is the transpose rotation.
-	origin := [3]float64{m[6] * logoCameraDistance, m[7] * logoCameraDistance, m[8] * logoCameraDistance}
+	cameraDistance := r.cameraDistance
+	// The camera sits at (0, 0, cameraDistance) in camera space; object space is the transpose rotation.
+	origin := [3]float64{m[6] * cameraDistance, m[7] * cameraDistance, m[8] * cameraDistance}
 	light := logoIsLight(background)
 	faces := r.visibleFaces(m, origin, pose, boxes, dotWidth, dotHeight, light)
 	if len(faces) == 0 {
@@ -641,9 +644,9 @@ func (r *logoRaster) renderLayer(width, height int, pose logoPose, boxes []logoB
 		sx := (float64(face.minX) + 0.5 - centerX) / scale
 		for dotY := face.minY; dotY <= face.maxY; dotY++ {
 			sy := (float64(dotY) + 0.5 - centerY) / scale
-			directionA := m[a]*sx + m[3+a]*sy - m[6+a]*logoCameraDistance
-			directionU := m[u]*sx + m[3+u]*sy - m[6+u]*logoCameraDistance
-			directionV := m[v]*sx + m[3+v]*sy - m[6+v]*logoCameraDistance
+			directionA := m[a]*sx + m[3+a]*sy - m[6+a]*cameraDistance
+			directionU := m[u]*sx + m[3+u]*sy - m[6+u]*cameraDistance
+			directionV := m[v]*sx + m[3+v]*sy - m[6+v]*cameraDistance
 			index := dotY*dotWidth + face.minX
 			for dotX := face.minX; dotX <= face.maxX; dotX, index = dotX+1, index+1 {
 				t := (face.plane - originA) / directionA
@@ -674,7 +677,7 @@ func (r *logoRaster) renderLayer(width, height int, pose logoPose, boxes []logoB
 			}
 			face := faces[id-1]
 			// Points farther from the camera fade slightly toward the background for depth.
-			fog := clamp01(0.15 - logoCameraDistance*(1-float64(depth[index]))*0.12)
+			fog := clamp01(0.15 - cameraDistance*(1-float64(depth[index]))*0.12)
 			if light {
 				fog *= 0.5
 			}
@@ -864,7 +867,7 @@ func (r *logoRaster) visibleFaces(m [9]float64, origin [3]float64, pose logoPose
 						x := m[0]*corner[0] + m[1]*corner[1] + m[2]*corner[2]
 						y := m[3]*corner[0] + m[4]*corner[1] + m[5]*corner[2]
 						z := m[6]*corner[0] + m[7]*corner[1] + m[8]*corner[2]
-						perspective := (pose.scale * logoCameraDistance) / (logoCameraDistance - z)
+						perspective := (pose.scale * r.cameraDistance) / (r.cameraDistance - z)
 						screenX := pose.centerX + x*perspective
 						screenY := pose.centerY + y*perspective
 						minX = math.Min(minX, screenX)
@@ -931,6 +934,8 @@ type logoExit struct {
 	targetYaw float64
 	// run is the running pig when the exit started, which dissolves back into the head (nil when it was not running).
 	run *pigRunner
+	// offsets are the blocks' puzzle offsets when the exit started; they gather home during the exit.
+	offsets [][3]float64
 }
 
 type logoHint struct {
@@ -957,6 +962,8 @@ type pigLogoAnimation struct {
 	background logoRgb
 	onDone     func()
 	variant    piglogin.Variant
+	model      egg3dModel
+	shuffle    *egg3dShuffle
 	// runColors is the running pig's palette (pigRunPalette), computed on its first run.
 	runColors  map[byte]logoRgb
 	now        func() time.Time
@@ -980,8 +987,20 @@ type pigLogoAnimation struct {
 }
 
 func newPigLogoAnimation(rows func() int, options pigLogoAnimationOptions, variant piglogin.Variant, foreground, background logoRgb, now func() time.Time, onDone func()) *pigLogoAnimation {
+	return newEgg3dAnimation(rows, options, variant, pigLogoModel(variant), foreground, background, now, onDone)
+}
+
+// newPig3dAnimation is the fullscreen 3D pig of /arminsayshi and /pigsayhi (Pi's playArmin3d), which grows out of the
+// center of the screen.
+func newPig3dAnimation(rows func() int, screen []string, variant piglogin.Variant, foreground, background logoRgb, now func() time.Time, onDone func()) *pigLogoAnimation {
+	return newEgg3dAnimation(rows, pigLogoAnimationOptions{screen: screen}, variant, pig3dModel(variant), foreground, background, now, onDone)
+}
+
+func newEgg3dAnimation(rows func() int, options pigLogoAnimationOptions, variant piglogin.Variant, model egg3dModel, foreground, background logoRgb, now func() time.Time, onDone func()) *pigLogoAnimation {
 	start := now()
 	return &pigLogoAnimation{
+		model:        model,
+		logo:         logoRaster{cameraDistance: model.cameraDistance},
 		rows:         rows,
 		options:      options,
 		foreground:   foreground,
@@ -992,7 +1011,7 @@ func newPigLogoAnimation(rows func() int, options pigLogoAnimationOptions, varia
 		startTime:    start,
 		lastRender:   start,
 		running:      true,
-		blocks:       pigLogoBlocks(variant),
+		blocks:       model.blocks,
 		screenWidth:  -1,
 		screenHeight: -1,
 		ansiCache:    map[int]string{},
@@ -1073,6 +1092,7 @@ func (a *pigLogoAnimation) close() {
 		yaw:       yaw,
 		targetYaw: math.Ceil(yaw/turn) * turn,
 		run:       run,
+		offsets:   a.blockOffsets(elapsed),
 	}
 }
 
@@ -1117,6 +1137,7 @@ func (a *pigLogoAnimation) renderFrame(width int, runner *pigRunner) []string {
 	// Dissolve time runs forward on entry and backward on exit, so the screen reassembles in reverse order.
 	var dissolveTime, hintAlpha, starAlpha float64
 	var pose logoPose
+	var offsets [][3]float64
 	if a.exit != nil {
 		progress := a.exitProgress()
 		landing := clamp01(progress / 0.8)
@@ -1128,26 +1149,35 @@ func (a *pigLogoAnimation) renderFrame(width int, runner *pigRunner) []string {
 		pose.roll *= settle
 		hintAlpha = a.hintAlpha(a.exit.time) * (1 - logoSmooth(progress/0.2))
 		starAlpha = a.starAlpha(a.exit.time) * (1 - logoSmooth(progress/0.3))
+		// Blocks are home well before the model lands.
+		gather := 1 - logoSmooth(progress/0.5)
+		offsets = make([][3]float64, len(a.exit.offsets))
+		for index, o := range a.exit.offsets {
+			offsets[index] = [3]float64{o[0] * gather, o[1] * gather, o[2] * gather}
+		}
 	} else {
 		elapsed := a.elapsed()
 		dissolveTime = elapsed
 		pose = a.pose(width, height, a.flyProgress(elapsed), elapsed)
 		hintAlpha = a.hintAlpha(elapsed)
 		starAlpha = a.starAlpha(elapsed)
+		offsets = a.blockOffsets(elapsed)
 	}
 
 	a.boxes = a.boxes[:0]
 	if runner != nil {
 		a.pigBoxes = runner.appendBoxes(a.pigBoxes[:0])
 	}
-	// The head stays whole (blockOffsets); it is not drawn once the running pig has fully replaced it.
+	// The model is not drawn once the running pig has fully replaced it.
 	if runner == nil || runner.mix < 1 {
-		for _, block := range a.blocks {
-			x := block.home[0]*pigLogoPixel - pigLogoCenterX
-			y := block.home[1]*pigLogoPixel - pigLogoCenterY
+		pixel, centerX, centerY := a.model.pixel, a.model.centerX(), a.model.centerY()
+		for index, block := range a.blocks {
+			offset := offsets[index]
+			x := block.home[0]*pixel - centerX + offset[0]*pixel
+			y := block.home[1]*pixel - centerY + offset[1]*pixel
 			a.boxes = append(a.boxes, logoBox{
-				min:   [3]float64{x, y, -logoDepth / 2},
-				max:   [3]float64{x + pigLogoPixel, y + pigLogoPixel, logoDepth / 2},
+				min:   [3]float64{x, y, offset[2] - logoDepth/2},
+				max:   [3]float64{x + pixel, y + pixel, offset[2] + logoDepth/2},
 				color: block.color,
 			})
 		}
@@ -1340,14 +1370,6 @@ func (a *pigLogoAnimation) finish() {
 	a.onDone()
 }
 
-// blockOffsets is each block's displacement from its place in the header pig at time, in grid units.
-//
-// pig divergence (D87): Pi's logo slides its blocks around as a puzzle here; the pig's head stays whole and the running
-// pig (runner) takes its place for the puzzle's shuffle time.
-func (a *pigLogoAnimation) blockOffsets(float64) [][3]float64 {
-	return make([][3]float64, len(a.blocks))
-}
-
 func (a *pigLogoAnimation) flyProgress(time float64) float64 {
 	return logoSmooth((time - logoFlyStart) / logoFlyDuration)
 }
@@ -1361,19 +1383,23 @@ func (a *pigLogoAnimation) hintAlpha(time float64) float64 {
 }
 
 func (a *pigLogoAnimation) pose(width, height int, progress, time float64) logoPose {
-	// At the start the front face must cover exactly the header pig's 32x28 dots despite the perspective.
-	reach := pigLogoRadius * logoReachFactor
-	endScale := math.Max(logoStartScale, math.Min(float64(width)*2*0.35, (float64(height)*4-8)*0.48)/reach)
-	startX := float64(a.options.logoColumn*2) + pigLogoCenterX*(2/pigLogoPixel)
-	startY := float64(a.options.logoRow*4) + pigLogoCenterY*(2/pigLogoPixel)
+	// Lifting off, the front face must cover exactly the half-block cells (2x2 dots per pixel) despite the perspective.
+	model := &a.model
+	startScale := model.startScale
+	endScale := math.Max(startScale, math.Min(float64(width)*2*model.widthShare, (float64(height)*4-8)*0.48)/model.reach)
 	endX := float64(width)
 	endY := float64(height)*2 - 2
+	startX, startY := endX, endY
+	if model.origin {
+		startX = float64(a.options.logoColumn*2) + model.centerX()*(2/model.pixel)
+		startY = float64(a.options.logoRow*4) + model.centerY()*(2/model.pixel)
+	}
 	phase := logoSpinPhase(time)
 	return logoPose{
 		centerX: startX + (endX-startX)*progress,
 		centerY: startY + (endY-startY)*progress,
 		// Interpolate the zoom geometrically so it feels uniform.
-		scale: logoStartScale * math.Pow(endScale/logoStartScale, progress),
+		scale: startScale * math.Pow(endScale/startScale, progress),
 		yaw:   logoSpinAngle(time),
 		// Tilts are zero at whole turns, so the camera looks straight at the front of the pig at home.
 		pitch: 0.3 * math.Sin(phase) * progress,
@@ -1427,9 +1453,13 @@ func (a *pigLogoAnimation) prepareStars(width, height int) []*logoStar {
 
 func (a *pigLogoAnimation) prepareCells(width int, foreground logoRgb) [][]logoScreenCell {
 	cells := parseLogoScreen(a.options.screen, width, foreground, a.background)
-	centerX := float64(a.options.logoColumn) + float64(piglogin.HeadCells)/2
-	centerY := float64(a.options.logoRow) + float64(piglogin.HeadRows)/2
 	height := float64(max(1, a.rows()))
+	// The dust spreads out from where the model starts.
+	centerX, centerY := float64(width)/2, height/2
+	if a.model.origin {
+		centerX = float64(a.options.logoColumn) + float64(piglogin.HeadCells)/2
+		centerY = float64(a.options.logoRow) + float64(piglogin.HeadRows)/2
+	}
 	farthest := jsHypot(math.Max(centerX, float64(width)-centerX), math.Max(centerY, height-centerY)*2)
 	for row, line := range cells {
 		for column := range line {

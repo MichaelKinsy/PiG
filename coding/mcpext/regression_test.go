@@ -68,7 +68,7 @@ func TestUpdateAddAndRemoveMcpServerConfigKeepOtherContentAndIndentation(t *test
 		t.Fatal(err)
 	}
 	disabled := false
-	if err := mcpext.UpdateMcpServerConfig(path, "docs", mcpext.McpServerConfigPatch{Enabled: &disabled, Exposure: extension.McpExposureDirect}); err != nil {
+	if err := mcpext.UpdateMcpServerConfig(path, "docs", mcpext.McpServerConfigPatch{Enabled: &disabled, Exposure: extension.McpExposureDirect}, mcpext.UpdateMcpServerConfigOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	data, _ := os.ReadFile(path)
@@ -78,14 +78,14 @@ func TestUpdateAddAndRemoveMcpServerConfigKeepOtherContentAndIndentation(t *test
 	}
 	// The defaults remove the keys again.
 	enabled := true
-	if err := mcpext.UpdateMcpServerConfig(path, "docs", mcpext.McpServerConfigPatch{Enabled: &enabled, Exposure: extension.McpExposureCodemode}); err != nil {
+	if err := mcpext.UpdateMcpServerConfig(path, "docs", mcpext.McpServerConfigPatch{Enabled: &enabled, Exposure: extension.McpExposureCodemode}, mcpext.UpdateMcpServerConfigOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	data, _ = os.ReadFile(path)
 	if strings.Contains(string(data), "enabled") || strings.Contains(string(data), "exposure") {
 		t.Fatalf("file = %s", data)
 	}
-	if err := mcpext.UpdateMcpServerConfig(path, "nope", mcpext.McpServerConfigPatch{Enabled: &enabled}); err == nil || !strings.Contains(err.Error(), `does not define MCP server "nope"`) {
+	if err := mcpext.UpdateMcpServerConfig(path, "nope", mcpext.McpServerConfigPatch{Enabled: &enabled}, mcpext.UpdateMcpServerConfigOptions{}); err == nil || !strings.Contains(err.Error(), `does not define MCP server "nope"`) {
 		t.Fatalf("update err = %v", err)
 	}
 	removed, err := mcpext.RemoveMcpServerConfig(path, "files")

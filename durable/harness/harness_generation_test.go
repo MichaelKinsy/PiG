@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"reflect"
 	"slices"
@@ -162,6 +163,7 @@ func expectSettled(t *testing.T, settled durable.SubmissionRecord, status durabl
 
 func TestGeneration(t *testing.T) {
 	t.Run("answers an input and settles its submission", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-generation.test.ts:89
 		setup := chatSetup(t)
 		addSection(t, setup.Registry, "preamble", text("You are helpful."), SectionOptions{Tag: new(false)})
 		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("Hello there")})
@@ -200,6 +202,7 @@ func TestGeneration(t *testing.T) {
 	})
 
 	t.Run("stores partials as deltas and a complete base once nothing is in flight", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-generation.test.ts:119
 		setup := chatSetup(t, ai.FauxConfig{TokensPerSecond: 200, MinTokenSize: 1, MaxTokenSize: 1})
 		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer(strings.Repeat("w", 200))})
 		store := newControlledStorage()
@@ -224,6 +227,7 @@ func TestGeneration(t *testing.T) {
 	})
 
 	t.Run("still ends a run whose input something else already settled", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-generation.test.ts:142
 		setup := chatSetup(t)
 		busy := unanswered()
 		setup.Faux.SetResponses([]ai.FauxResponseStep{busy.step})
@@ -243,6 +247,7 @@ func TestGeneration(t *testing.T) {
 	})
 
 	t.Run("fails with no_model when no model is configured or the model is unknown", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-generation.test.ts:162
 		setup := chatSetup(t)
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		plain := must(harness.CreateConversation(testContext, ConversationCreateOptions{Ownership: ownerless}))
@@ -265,6 +270,7 @@ func TestGeneration(t *testing.T) {
 	})
 
 	t.Run("retries a retryable error after a durable backoff and then answers", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-generation.test.ts:187
 		setup := chatSetup(t)
 		addSection(t, setup.Registry, "preamble", text("p"), SectionOptions{Tag: new(false)})
 		setup.Faux.SetResponses([]ai.FauxResponseStep{error503(), fauxAnswer("recovered")})
@@ -294,6 +300,7 @@ func TestGeneration(t *testing.T) {
 	})
 
 	t.Run("fails with model_error once retries are exhausted", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-generation.test.ts:206
 		setup := chatSetup(t)
 		setup.Faux.SetResponses([]ai.FauxResponseStep{error503(), error503(), fauxAnswer("never")})
 		setup.SetSettings(func(settings *HarnessSettings) {
@@ -312,6 +319,7 @@ func TestGeneration(t *testing.T) {
 	})
 
 	t.Run("fails a retryable error without retrying when the retry policy is disabled", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-generation.test.ts:219
 		setup := chatSetup(t)
 		setup.Faux.SetResponses([]ai.FauxResponseStep{error503(), fauxAnswer("never")})
 		setup.SetSettings(func(settings *HarnessSettings) { settings.Retry = &RetryPolicyPatch{Enabled: new(false)} })
@@ -325,6 +333,7 @@ func TestGeneration(t *testing.T) {
 	})
 
 	t.Run("reports section wrapper failures while preparing", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-generation.test.ts:231
 		setup := chatSetup(t)
 		addSection(t, setup.Registry, "cwd", text("/repo"))
 		installOne(t, setup.Registry, new(durable.Extension{
@@ -344,6 +353,7 @@ func TestGeneration(t *testing.T) {
 	})
 
 	t.Run("fails a non-retryable error without retrying", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-generation.test.ts:254
 		setup := chatSetup(t)
 		setup.Faux.SetResponses([]ai.FauxResponseStep{ai.FauxStaticStep(ai.FauxResponse{StopReason: "error", ErrorMessage: "Invalid request"}), fauxAnswer("never")})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
@@ -360,6 +370,7 @@ func TestGeneration(t *testing.T) {
 	})
 
 	t.Run("polls a deferred response until it is ready", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-generation.test.ts:271
 		pollAfter := int64(1)
 		setup := chatSetup(t, ai.FauxConfig{Deferred: &ai.FauxDeferredConfig{PendingFetches: 1, PollAfterMS: &pollAfter}})
 		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("deferred answer")})
@@ -395,6 +406,7 @@ func TestGeneration(t *testing.T) {
 	})
 
 	t.Run("converts the committed partial when aborted during streaming", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-generation.test.ts:291
 		setup := chatSetup(t, ai.FauxConfig{TokensPerSecond: 20, MinTokenSize: 1, MaxTokenSize: 1})
 		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer(strings.Repeat("x", 400))})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
@@ -429,6 +441,7 @@ func TestGeneration(t *testing.T) {
 	})
 
 	t.Run("cancels a deferred response when aborted during polling", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-generation.test.ts:312
 		pollAfter := int64(60_000)
 		setup := chatSetup(t, ai.FauxConfig{Deferred: &ai.FauxDeferredConfig{PendingFetches: 100, PollAfterMS: &pollAfter}})
 		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("never")})
@@ -453,6 +466,7 @@ func TestGeneration(t *testing.T) {
 	})
 
 	t.Run("reports a failed deferred cancellation and still ends the run aborted", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-generation.test.ts:328
 		pollAfter := int64(60_000)
 		setup := chatSetup(t, ai.FauxConfig{Deferred: &ai.FauxDeferredConfig{PendingFetches: 100, PollAfterMS: &pollAfter}})
 		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("never")})
@@ -482,6 +496,7 @@ func TestGeneration(t *testing.T) {
 	})
 
 	t.Run("forwards stream options and the thinking level", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-generation.test.ts:352
 		setup := chatSetup(t)
 		var mu sync.Mutex
 		seen := []ai.StreamOptions{}
@@ -514,8 +529,9 @@ func TestGeneration(t *testing.T) {
 		mu.Lock()
 		defer mu.Unlock()
 		first, second := seen[0], seen[1]
-		if first.TimeoutMs == nil || *first.TimeoutMs != 1234 || first.Headers["x-test"] == nil || *first.Headers["x-test"] != "1" || first.Thinking != "high" {
-			t.Fatalf("first options = %+v", first)
+		sessionId := providerSessionId(t, harness, root.Id())
+		if first.TimeoutMs == nil || *first.TimeoutMs != 1234 || first.Headers["x-test"] == nil || *first.Headers["x-test"] != "1" || first.Thinking != "high" || first.SessionID != sessionId {
+			t.Fatalf("first options = %+v, want sessionId %q", first, sessionId)
 		}
 		if first.Signal == nil {
 			t.Fatal("first options carry no signal")
@@ -523,8 +539,8 @@ func TestGeneration(t *testing.T) {
 		if second.Thinking != "" {
 			t.Fatalf("second reasoning = %q, want undefined", second.Thinking)
 		}
-		if second.TimeoutMs == nil || *second.TimeoutMs != 99 {
-			t.Fatalf("second timeout = %v, want 99", second.TimeoutMs)
+		if second.TimeoutMs == nil || *second.TimeoutMs != 99 || second.SessionID != sessionId {
+			t.Fatalf("second timeout = %v, sessionId = %q, want 99 and %q", second.TimeoutMs, second.SessionID, sessionId)
 		}
 		if second.Headers != nil {
 			t.Fatalf("second headers = %v, want undefined", second.Headers)
@@ -532,7 +548,92 @@ func TestGeneration(t *testing.T) {
 		closeHarness(t, harness)
 	})
 
+	// Regression coverage for #10424 (harness-generation.test.ts:388, Pi 1.0.2).
+	t.Run("keeps provider session IDs request-local across concurrent conversations", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-generation.test.ts:389
+		setup := chatSetup(t)
+		var mu sync.Mutex
+		seen := map[string][]string{}
+		capture := ai.FauxFactoryStep(func(transcript ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+			text := ""
+			messages := transcript.Messages()
+			for _, message := range slices.Backward(messages) {
+				if message, ok := message.(ai.UserMessage); ok {
+					if content, ok := message.Content.(ai.UserText); ok {
+						text = string(content)
+					}
+					break
+				}
+			}
+			mu.Lock()
+			seen[text] = append(seen[text], options.SessionID)
+			mu.Unlock()
+			return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("answer:" + text)}}, nil
+		})
+		setup.Faux.SetResponses([]ai.FauxResponseStep{capture, capture, capture, capture})
+		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
+		child, err := harness.CreateConversation(testContext, ConversationCreateOptions{
+			Ownership: ownerless,
+			Agent:     &AgentChange{Model: SetTo(durable.ModelRef{Provider: "faux", ModelId: "faux-1"})},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		harness.Resume()
+		for _, round := range []string{"first", "second"} {
+			var group sync.WaitGroup
+			for index, conversation := range []Conversation{root, child} {
+				group.Go(func() {
+					must(submitInput(t, conversation, fmt.Sprintf("%s-%d", round, index)).Wait(testContext))
+				})
+			}
+			group.Wait()
+		}
+		rootId := providerSessionId(t, harness, root.Id())
+		childId := providerSessionId(t, harness, child.Id())
+		if rootId == childId {
+			t.Fatalf("root and child share provider session ID %q", rootId)
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		for text, want := range map[string]string{"first-0": rootId, "second-0": rootId, "first-1": childId, "second-1": childId} {
+			if !slices.Equal(seen[text], []string{want}) {
+				t.Errorf("%s sent session IDs %q, want [%q]", text, seen[text], want)
+			}
+		}
+		closeHarness(t, harness)
+	})
+
+	// Regression coverage for #10424 (harness-generation.test.ts:432, Pi 1.0.2).
+	t.Run("creates and persists provider state before a legacy conversation's request", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-generation.test.ts:432
+		setup := chatSetup(t)
+		var mu sync.Mutex
+		sent := ""
+		setup.Faux.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+			mu.Lock()
+			sent = options.SessionID
+			mu.Unlock()
+			return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("ok")}}, nil
+		})})
+		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
+		retireProviderDoc(t, root)
+		if stored := providerSessionId(t, harness, root.Id()); stored != "" {
+			t.Fatalf("pi.provider survived retirement: %q", stored)
+		}
+		harness.Resume()
+		must(submitInput(t, root, "legacy").Wait(testContext))
+		stored := expectProviderSessionId(t, harness, root.Id())
+		mu.Lock()
+		defer mu.Unlock()
+		if sent != stored {
+			t.Fatalf("sent session ID %q, stored %q", sent, stored)
+		}
+		closeHarness(t, harness)
+	})
+
 	t.Run("reads settings through getters at every decision", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-generation.test.ts:452
 		setup := chatSetup(t)
 		var mu sync.Mutex
 		timeoutMs := 111
@@ -577,6 +678,7 @@ func TestGeneration(t *testing.T) {
 	})
 
 	t.Run("resolves settings over the built-in defaults", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-generation.test.ts:487
 		maxAgentDelayMs := 60000
 		want := durable.Settings{
 			Stream:        durable.ConversationStreamOptions{},
@@ -599,6 +701,7 @@ func TestGeneration(t *testing.T) {
 	})
 
 	t.Run("renders sections that read conversation documents through input.read", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-generation.test.ts:502
 		type agentState struct {
 			Cwd  string `json:"cwd"`
 			Kind string `json:"kind"`
@@ -673,6 +776,7 @@ func TestGeneration(t *testing.T) {
 	})
 
 	t.Run("commits no partial for a response that turns deferred after an empty start event", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-generation.test.ts:554
 		setup := chatSetup(t)
 		pollAfter := int64(60_000)
 		handle := ai.DeferredHandle{Provider: "faux", ModelID: "faux-1", API: "faux", ID: "handle-1", PollAfterMS: &pollAfter}
@@ -701,6 +805,7 @@ func TestGeneration(t *testing.T) {
 	})
 
 	t.Run("faults a run task, settling its inputs and converting the committed partial", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-generation.test.ts:580
 		setup := chatSetup(t)
 		withProvider(setup, func(provider *ai.ModelsProvider) {
 			provider.StreamSimple = func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
@@ -747,6 +852,7 @@ func TestGeneration(t *testing.T) {
 	})
 
 	t.Run("orphans a blocked run task with full run cleanup", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-generation.test.ts:603
 		setup := chatSetup(t)
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		rootId := root.Id()
@@ -793,6 +899,7 @@ func TestGeneration(t *testing.T) {
 	})
 
 	t.Run("rejects a registry without the built-in tasks", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-generation.test.ts:642
 		reader := withoutGeneration{snapshot: CreateRegistry().Snapshot()}
 		_, err := OpenHarness(testContext, storage.NewMemoryStorage(), HarnessOptions{Models: chatSetup(t).Models, Registry: reader})
 		expectError(t, err, "Registry lacks built-in tasks pi.generation")

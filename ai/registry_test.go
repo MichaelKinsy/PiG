@@ -43,11 +43,11 @@ func TestRegistryHasModels(t *testing.T) {
 }
 
 // TestCatalogPin100 binds the generated catalog to the exact published Pi
-// 1.0.0 package. The expected values come from @earendil-works/pi-ai 1.0.0
+// 1.0.2 package. The expected values come from @earendil-works/pi-ai 1.0.2
 // providers/data, not from the Go generator output.
 func TestCatalogPin100(t *testing.T) {
-	if v := UpstreamVersionString(); v != "1.0.0" {
-		t.Fatalf("pin = %q want 1.0.0", v)
+	if v := UpstreamVersionString(); v != "1.0.2" {
+		t.Fatalf("pin = %q want 1.0.2", v)
 	}
 	opus, ok := LookupModelExact("anthropic/claude-opus-5-5")
 	if !ok || opus.API != APIAnthropicMessages || opus.ContextWindow != 1000000 {
@@ -70,6 +70,46 @@ func TestCatalogPin100(t *testing.T) {
 	}
 	if _, ok := LookupModelExact("anthropic/anthropic/claude-3.5-haiku"); ok {
 		t.Fatal(`retired model "anthropic/claude-3.5-haiku" is still in the 1.0.0 catalog`)
+	}
+	// 1.0.1 (#10326): Bedrock OpenAI models carry the models.dev pricing tiers, so a
+	// request above 272k input tokens bills at the long-context rate.
+	generatedSol, ok := LookupModelExact("amazon-bedrock/us.openai.gpt-6-sol")
+	if !ok {
+		t.Fatal("1.0.1 catalog is missing amazon-bedrock/us.openai.gpt-6-sol")
+	}
+	sol := generatedSol.ToModel()
+	if !reflect.DeepEqual(sol.Capabilities.CostTiers, []CostTier{{InputTokensAbove: 272000, InputCostPer1M: 4.4, OutputCostPer1M: 16.5, CacheReadCostPer1M: 0.44, CacheWriteCostPer1M: 5.5}}) {
+		t.Fatalf("1.0.1 Bedrock gpt-6-sol tiers = %+v", sol.Capabilities.CostTiers)
+	}
+	if cost := CalculateCost(sol, &Usage{Input: 300000, Output: 1000}); cost.Input != 4.4*0.3 || cost.Output != 16.5/1000 {
+		t.Fatalf("1.0.1 Bedrock gpt-6-sol long-context cost = %+v", cost)
+	}
+	// 1.0.1: Cloudflare AI Gateway Claude models use Anthropic's dashed IDs; Together renamed DeepSeek V4 Pro.
+	for id, present := range map[string]bool{
+		"cloudflare-ai-gateway/claude-opus-5-5":     true,
+		"cloudflare-ai-gateway/claude-opus-5.5":     false,
+		"together/deepseek-ai/DeepSeek-V4-Pro-0813": true,
+		"together/deepseek-ai/DeepSeek-V4-Pro":      false,
+		"nvidia/nvidia/nemotron-3-ultra-550b-a55b":  true,
+	} {
+		if _, ok := LookupModelExact(id); ok != present {
+			t.Fatalf("1.0.1 catalog has %s = %t, want %t", id, ok, present)
+		}
+	}
+	// 1.0.2: NVIDIA adds Nemotron 3 Super; OpenRouter adds the Clef and Decider classifiers
+	// and reprices Llama 3.3 70B (pi-ai 1.0.2 providers/data nvidia.json, openrouter.json).
+	super, ok := LookupModelExact("nvidia/nvidia/nemotron-3-super-120b-a12b")
+	if !ok || super.ContextWindow != 262144 || !super.Reasoning {
+		t.Fatalf("1.0.2 NVIDIA Nemotron 3 Super = %+v, %t", super, ok)
+	}
+	for _, id := range []string{"cloudflare/clef", "cloudflare/clef-flash", "perplexity/pplx-decider-v1-27b"} {
+		if GetBuiltinClassifierModel("openrouter", id) == nil {
+			t.Fatalf("1.0.2 catalog is missing OpenRouter classifier %s", id)
+		}
+	}
+	llama, ok := LookupModelExact("openrouter/meta-llama/llama-3.3-70b-instruct")
+	if !ok || llama.InputCostPerMTokens != 0.22 || llama.OutputCostPerMTokens != 0.5 || llama.CacheReadCost != 0.11 {
+		t.Fatalf("1.0.2 OpenRouter Llama 3.3 70B = %+v, %t", llama, ok)
 	}
 }
 
@@ -402,7 +442,8 @@ func TestGeneratedCatalogUpgradeSpotChecks(t *testing.T) {
 			},
 		},
 		{
-			spec:               "cloudflare-ai-gateway/claude-opus-4.5",
+			// Pi 1.0.1 uses Anthropic's dashed model IDs for Cloudflare AI Gateway Claude models.
+			spec:               "cloudflare-ai-gateway/claude-opus-4-5",
 			wantProvider:       "cloudflare-ai-gateway",
 			wantName:           "Claude Opus 4.5 (latest)",
 			wantAPI:            "anthropic-messages",

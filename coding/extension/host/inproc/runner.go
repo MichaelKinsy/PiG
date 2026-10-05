@@ -1075,6 +1075,25 @@ func (r *Runner) GetMarkdownTransformers() []extension.MarkdownTransformer {
 	return transformers
 }
 
+// ResolveToolRenderers returns the renderers of calls to toolName: extension
+// resolvers in load order, then base.
+//
+// upstream: runner.ts resolveToolRenderers
+func (r *Runner) ResolveToolRenderers(toolName string, base func() *extension.ToolRenderers) *extension.ToolRenderers {
+	var resolvers []extension.ToolRendererResolver
+	for _, ext := range r.extensions {
+		resolvers = append(resolvers, ext.ToolRenderers...)
+	}
+	var resolve func(index int) *extension.ToolRenderers
+	resolve = func(index int) *extension.ToolRenderers {
+		if index < len(resolvers) {
+			return resolvers[index](toolName, func() *extension.ToolRenderers { return resolve(index + 1) })
+		}
+		return base()
+	}
+	return resolve(0)
+}
+
 // EntryRenderer returns the renderer for the given custom entry type if any
 // extension registered one. First match across extensions wins (load order).
 //

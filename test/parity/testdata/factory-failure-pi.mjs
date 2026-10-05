@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 const packageRoot = resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-if (JSON.parse(readFileSync(resolve(packageRoot, "package.json"), "utf8")).version !== "1.0.0") throw new Error("unexpected Pi version");
+if (JSON.parse(readFileSync(resolve(packageRoot, "package.json"), "utf8")).version !== "1.0.2") throw new Error("unexpected Pi version");
 const { createExtensionRuntime, loadExtensions } = await import(pathToFileURL(resolve(packageRoot, "dist/core/extensions/loader.js")));
 const fixtureRoot = resolve("test/parity/scenarios/extensions-runtime/testdata/factory-failure");
 const failing = resolve(fixtureRoot, "failing.mjs");

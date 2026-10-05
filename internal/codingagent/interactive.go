@@ -147,9 +147,14 @@ type compactionQueuedMessage struct {
 
 // InteractiveMode runs the full interactive TUI session.
 type InteractiveMode struct {
-	opts      InteractiveOptions
-	tuiInst   tui.Renderer
-	newRunner *inproc.Runner
+	// toolCards are the tool cards by tool name and call, which a later tool renderer resolution draws again (D89).
+	// toolCardRecords counts them; recordToolCard sweeps collected cards when it passes toolCardSweepAt.
+	toolCards       map[string]map[string]toolCardRecord
+	toolCardRecords int
+	toolCardSweepAt int
+	opts            InteractiveOptions
+	tuiInst         tui.Renderer
+	newRunner       *inproc.Runner
 	// detachModelRegistry detaches the model operations wired to the current build's bridge.
 	detachModelRegistry func()
 	// runEnded is set once Run returned and the owner loop no longer runs.
@@ -1152,6 +1157,7 @@ func NewInteractiveMode(opts InteractiveOptions) *InteractiveMode {
 	// Mirrors the upstream InteractiveMode constructor's
 	// setCapabilityOverrides(settingsManager.getTerminalCapabilityOverrides()).
 	tui.SetCapabilityOverrides(opts.Settings.GetTerminalCapabilityOverrides())
+	ensurePngTranscoder()
 	// Pi's constructor uses options.tuiMode ?? settingsManager.getTuiMode().
 	if opts.TuiMode == "" {
 		opts.TuiMode = (&SettingsManager{merged: opts.Settings}).GetTuiMode()

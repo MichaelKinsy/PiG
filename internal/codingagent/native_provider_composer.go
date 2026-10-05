@@ -54,13 +54,14 @@ func chatModelsOf(models []ai.AnyModel) []*ai.Model {
 // NativeModelEntry lowers native model data to the configured backend representation without resolving credentials.
 func NativeModelEntry(model *ai.Model) ModelEntry {
 	cost := model.CostRates()
-	return ModelEntry{ProviderID: model.ProviderMeta.ProviderID, ModelID: model.ID, DisplayName: model.DisplayName, API: string(model.ProviderMeta.API), BaseURL: model.ProviderMeta.BaseURL, Reasoning: model.ProviderMeta.Reasoning || model.Capabilities.MaxThinking != "", Input: slices.Clone(model.Input), ContextWindow: model.Capabilities.ContextWindow, MaxTokens: model.Capabilities.MaxOutputTokens, InputCost: cost.Input, OutputCost: cost.Output, CacheReadCost: cost.CacheRead, CacheWriteCost: cost.CacheWrite, CostTiers: slices.Clone(cost.Tiers), ModelHeaders: maps.Clone(model.ProviderMeta.Headers), Headers: maps.Clone(model.ProviderMeta.Headers), Compat: mergeCompat((*providerCompat)(model.ProviderMeta.Compat), nil), ThinkingLevelMap: cloneThinkingLevelMap(model.ThinkingLevelMap), SamplingParams: maps.Clone(model.SamplingParams), PromptCache: maps.Clone(model.PromptCache), InputLimits: model.InputLimits.Clone()}
+	return ModelEntry{ProviderID: model.ProviderMeta.ProviderID, ModelID: model.ID, DisplayName: model.DisplayName, API: string(model.ProviderMeta.API), BaseURL: model.ProviderMeta.BaseURL, Reasoning: model.ProviderMeta.Reasoning || model.Capabilities.MaxThinking != "", Input: slices.Clone(model.Input), ContextWindow: model.Capabilities.ContextWindow, MaxTokens: model.Capabilities.MaxOutputTokens, InputCost: cost.Input, OutputCost: cost.Output, CacheReadCost: cost.CacheRead, CacheWriteCost: cost.CacheWrite, CostTiers: slices.Clone(cost.Tiers), ModelHeaders: maps.Clone(model.ProviderMeta.Headers), Headers: maps.Clone(model.ProviderMeta.Headers), Compat: mergeCompat((*providerCompat)(model.ProviderMeta.Compat), nil), ThinkingLevelMap: cloneThinkingLevelMap(model.ThinkingLevelMap), SamplingParams: maps.Clone(model.SamplingParams), SamplingParamsByThinkingLevel: cloneSamplingParamsByThinkingLevel(model.SamplingParamsByThinkingLevel), PromptCache: maps.Clone(model.PromptCache), InputLimits: model.InputLimits.Clone()}
 }
 
 func nativeModelFromEntry(entry ModelEntry) *ai.Model {
 	generated := ai.GeneratedModel{ID: entry.ModelID, Provider: entry.ProviderID, DisplayName: entry.DisplayName, API: ai.API(entry.API), BaseURL: entry.BaseURL, Headers: entry.ModelHeaders, Compat: entry.Compat, Reasoning: entry.Reasoning, Capabilities: entry.Input, ContextWindow: entry.ContextWindow, MaxOutputTokens: entry.MaxTokens, InputCostPerMTokens: entry.InputCost, OutputCostPerMTokens: entry.OutputCost, CacheReadCost: entry.CacheReadCost, CacheWriteCost: entry.CacheWriteCost, Tiers: entry.CostTiers, ThinkingLevelMap: entry.ThinkingLevelMap, SamplingParams: entry.SamplingParams, PromptCache: entry.PromptCache, InputLimits: entry.InputLimits}
 	model := generated.ToModel()
 	model.Capabilities = generated.ToCapabilities()
+	model.SamplingParamsByThinkingLevel = cloneSamplingParamsByThinkingLevel(entry.SamplingParamsByThinkingLevel)
 	return model
 }
 

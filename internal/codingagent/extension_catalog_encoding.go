@@ -67,6 +67,11 @@ func (c *extensionCatalogEncoding) state(registry *ModelRegistry, catalog []*ai.
 		if (model.ProviderMeta.ProviderID == "" && model.Provider != nil) || !catalogMapCacheable(model.SamplingParams) {
 			return c.uncached(registry, catalog)
 		}
+		for _, params := range model.SamplingParamsByThinkingLevel {
+			if !catalogMapCacheable(params) {
+				return c.uncached(registry, catalog)
+			}
+		}
 		if compat := model.ProviderMeta.Compat; compat != nil &&
 			(!catalogMapCacheable(compat.OpenRouterRouting) || !catalogMapCacheable(compat.ChatTemplateKwargs) ||
 				!catalogMapCacheable(compat.VercelGatewayRouting) || !catalogMapCacheable(compat.ChatTemplateArgs)) {

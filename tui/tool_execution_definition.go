@@ -50,7 +50,7 @@ const fallbackResultPreviewLines = 10
 
 // SetDefinition makes the card draw a registered tool definition as upstream
 // does, instead of the built-in or generic presentation. args are the call's
-// current arguments.
+// current arguments. A nil definition returns the card to that presentation.
 func (c *ToolExecutionComponent) SetDefinition(definition *ToolDefinitionRenderers, args json.RawMessage) {
 	c.definition = definition
 	if len(args) > 0 && json.Valid(args) {

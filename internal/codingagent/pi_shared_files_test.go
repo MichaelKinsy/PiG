@@ -31,7 +31,7 @@ import {pathToFileURL} from 'node:url';
 import {join} from 'node:path';
 import {readFileSync} from 'node:fs';
 const root = process.argv[1];
-assert.equal(JSON.parse(readFileSync(join(root,'package.json'))).version, '1.0.0');
+assert.equal(JSON.parse(readFileSync(join(root,'package.json'))).version, '1.0.2');
 const load = name => import(pathToFileURL(join(root,'dist',name+'.js')).href);
 const {AuthStorage, ReadOnlyAuthStorage} = await load('core/auth-storage');
 const {SettingsManager} = await load('core/settings-manager');

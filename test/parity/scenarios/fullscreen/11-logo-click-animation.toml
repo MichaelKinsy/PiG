@@ -1,6 +1,6 @@
 # Behavior family: fullscreen
 # Surface: clicking the header logo plays the fullscreen logo animation (interactive-mode.ts:256-262 BuiltInHeader.handleMouse,
-#          :1058 onLogoClick; pi-logo-animation.lazy.ts; pi-logo-animation.ts).
+#          :1058 onLogoClick; easter-egg-3d.lazy.ts; easter-egg-3d.ts; 1.0.0: pi-logo-animation*).
 #
 # Upstream evidence (pi 1.0.0, probed in tmux at 100x30 with tuiMode fullscreen): a click on the logo (column 3, row 2)
 # dissolves the screen into braille dust, the logo flies to the center and spins, "escape to return" fades in centered on
@@ -16,8 +16,8 @@
 name = "11-logo-click-animation"
 description = "A click on the header logo plays the fullscreen dissolve, starfield and return hint in the same cells as pi."
 covers = [
-  "packages/coding-agent/src/modes/interactive/components/pi-logo-animation.ts",
-  "packages/coding-agent/src/modes/interactive/components/pi-logo-animation.lazy.ts",
+  "packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts",
+  "packages/coding-agent/src/modes/interactive/components/easter-egg-3d.lazy.ts",
 ]
 tags = ["hermetic", "tui", "fullscreen"]
 driver = "interactive-tmux"

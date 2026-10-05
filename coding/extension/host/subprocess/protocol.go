@@ -136,6 +136,10 @@ type RegisterPayload struct {
 	// MarkdownTransformer reports that the extension registered a Markdown
 	// transformer. The host runs it with RequestMarkdownTransform.
 	MarkdownTransformer bool `json:"markdown_transformer,omitempty"`
+	// ToolRenderers is the number of tool renderer resolvers the extension
+	// registered while loading (pi.registerToolRenderer). The host asks them
+	// with RequestResolveToolRenderers; NotifyToolRenderers reports later ones.
+	ToolRenderers int `json:"tool_renderers,omitempty"`
 	// McpServers are the MCP servers the extension registered while loading. The host queues them like upstream's load-time registerMcpServer.
 	McpServers []McpServerDecl `json:"mcp_servers,omitempty"`
 	// VirtualModels are the virtual models the extension registered while loading. Routing calls back with RequestVirtualModelRoute.
@@ -941,6 +945,47 @@ const RequestRenderTool = "render_tool"
 // the items as a JSON array, or null for none.
 const RequestCommandArgumentCompletions = "command_argument_completions"
 
+// RequestResolveToolRenderers (host→ext) runs the extension's tool renderer
+// resolvers, in registration order, for one tool. Args is a
+// ResolveToolRenderersPayload; the result is a ResolvedToolRenderers.
+const RequestResolveToolRenderers = "resolve_tool_renderers"
+
+// NotifyToolRenderers (ext→host) reports the extension's resolver count after
+// a registration that followed loading. Args is a ToolRenderersPayload.
+const NotifyToolRenderers = "tool_renderers"
+
+// ToolRenderersPayload is the NotifyToolRenderers argument.
+type ToolRenderersPayload struct {
+	Count int `json:"count"`
+}
+
+// ToolRenderersDecl describes renderers by what they draw: upstream
+// ToolRenderers' renderShell and whether renderCall and renderResult exist.
+type ToolRenderersDecl struct {
+	RenderShell   string `json:"render_shell,omitempty"`
+	RendersCall   bool   `json:"renders_call,omitempty"`
+	RendersResult bool   `json:"renders_result,omitempty"`
+}
+
+// ResolveToolRenderersPayload is the RequestResolveToolRenderers argument.
+// Next describes what next() returns: the renderers the remaining resolvers,
+// then the registered tool, use, or null for none. The host evaluates it
+// before asking; the extension's next() returns a marker for it.
+type ResolveToolRenderersPayload struct {
+	Tool string             `json:"tool"`
+	Next *ToolRenderersDecl `json:"next"`
+}
+
+// ResolvedToolRenderers is the RequestResolveToolRenderers result. Use is
+// "next" when the resolvers returned next()'s renderers, "none" when they
+// returned none, and "own" for renderers of the extension, which the host
+// draws with RequestRenderTool naming Renderers.
+type ResolvedToolRenderers struct {
+	Use string `json:"use"`
+	ToolRenderersDecl
+	Renderers string `json:"renderers,omitempty"`
+}
+
 // NotifyToolRenderInvalidate (ext→host) is a renderer's context.invalidate():
 // the host runs the card's renderers again and repaints. Args is a
 // ToolRenderCardPayload.
@@ -962,14 +1007,17 @@ type ToolRenderCardPayload struct {
 // again; without it the extension renders the card's last component at Width,
 // as a resize does upstream, and runs the renderer only when it has none.
 type RenderToolPayload struct {
-	Card     string                             `json:"card"`
-	Phase    string                             `json:"phase"` // "call" | "result"
-	Rerender bool                               `json:"rerender"`
-	Args     json.RawMessage                    `json:"args"`
-	Result   *RenderToolResult                  `json:"result,omitempty"`
-	Options  *extension.ToolRenderResultOptions `json:"options,omitempty"`
-	Context  RenderToolContext                  `json:"context"`
-	Width    int                                `json:"width"`
+	Card  string `json:"card"`
+	Phase string `json:"phase"` // "call" | "result"
+	// Renderers names resolved renderers (ResolvedToolRenderers.Renderers) to
+	// draw instead of the registered tool's.
+	Renderers string                             `json:"renderers,omitempty"`
+	Rerender  bool                               `json:"rerender"`
+	Args      json.RawMessage                    `json:"args"`
+	Result    *RenderToolResult                  `json:"result,omitempty"`
+	Options   *extension.ToolRenderResultOptions `json:"options,omitempty"`
+	Context   RenderToolContext                  `json:"context"`
+	Width     int                                `json:"width"`
 }
 
 // RenderToolResult is the result renderResult receives: upstream's

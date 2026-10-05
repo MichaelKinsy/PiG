@@ -52,7 +52,7 @@ func TestLoadMcpConfigReportsReadFailuresWithNodeFSMessages(t *testing.T) {
 		t.Fatalf("errors = %q, want %q", loaded.Errors, want)
 	}
 	disabled := false
-	err := mcpext.UpdateMcpServerConfig(path, "a", mcpext.McpServerConfigPatch{Enabled: &disabled})
+	err := mcpext.UpdateMcpServerConfig(path, "a", mcpext.McpServerConfigPatch{Enabled: &disabled}, mcpext.UpdateMcpServerConfigOptions{})
 	if want := "EACCES: permission denied, open '" + path + "'"; err == nil || err.Error() != want {
 		t.Fatalf("err = %v, want %q", err, want)
 	}

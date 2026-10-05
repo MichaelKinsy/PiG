@@ -33,7 +33,7 @@ RUN apk update \
 
 FROM toolchain-base AS pi-oracle
 # PI_VERSION must equal coding.UpstreamVersion; make compliance checks it.
-ARG PI_VERSION=1.0.0
+ARG PI_VERSION=1.0.2
 COPY automation/images/ci-parity/package.json automation/images/ci-parity/package-lock.json /opt/pig/pi/
 RUN npm ci --prefix /opt/pig/pi --omit=dev --ignore-scripts --no-audit --no-fund \
   && mkdir -p /opt/pig/pi/bin \

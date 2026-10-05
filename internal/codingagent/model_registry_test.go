@@ -2,8 +2,10 @@ package codingagent
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"testing"
 
@@ -616,5 +618,38 @@ func TestModelRegistryEnvDiscoveryUsesCurrentProviderTable(t *testing.T) {
 		if !r.HasAnyKey(provider) {
 			t.Errorf("%s did not discover its configured environment key", provider)
 		}
+	}
+}
+
+// Pi 1.0.2 extensionModelFromDefinition (provider-composer.ts:270-294) spreads the registered chat definition, so an extension model's samplingParamsByThinkingLevel (ProviderChatModelConfig, provider-composer.ts:72) reaches the composed model. The config is decoded from the registerProvider wire JSON, as the subprocess host decodes it.
+func TestModelRegistryExtensionModelCarriesSamplingParamsByThinkingLevel(t *testing.T) {
+	var config extension.ProviderConfig
+	wire := `{"api":"openai-completions","baseUrl":"https://ext.test/v1","models":[{"id":"ext-model","name":"Ext","reasoning":true,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":128000,"maxTokens":4096,"samplingParams":{"top_p":0.5},"samplingParamsByThinkingLevel":{"off":{"temperature":0.1},"high":{"temperature":0.9,"top_k":7}}}]}`
+	if err := json.Unmarshal([]byte(wire), &config); err != nil {
+		t.Fatal(err)
+	}
+	r := NewModelRegistry(t.TempDir())
+	if err := r.RegisterProvider("ext-sampling", config); err != nil {
+		t.Fatal(err)
+	}
+	entry, ok := r.Resolve("ext-sampling", "ext-model")
+	if !ok {
+		t.Fatal("ext-sampling/ext-model was not resolved")
+	}
+	want := ai.SamplingParamsByThinkingLevel{ai.ThinkingOff: {"temperature": 0.1}, ai.ThinkingHigh: {"temperature": 0.9, "top_k": float64(7)}}
+	if !reflect.DeepEqual(entry.SamplingParamsByThinkingLevel, want) || !reflect.DeepEqual(entry.SamplingParams, map[string]any{"top_p": 0.5}) {
+		t.Fatalf("sampling = %v / %v, want %v / top_p 0.5", entry.SamplingParams, entry.SamplingParamsByThinkingLevel, want)
+	}
+}
+
+// A resolved Model handed to a built-in API by an extension's streamSimple keeps its per-level sampling parameters (Pi 1.0.2 Model.samplingParamsByThinkingLevel, read by resolveSamplingParams).
+func TestSubprocessAPIModelCarriesSamplingParamsByThinkingLevel(t *testing.T) {
+	model, err := subprocessAPIModel(map[string]any{"id": "m", "name": "M", "provider": "p", "api": "openai-completions", "reasoning": true, "input": []any{"text"},
+		"samplingParamsByThinkingLevel": map[string]any{"low": map[string]any{"temperature": 0.6}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := (ai.SamplingParamsByThinkingLevel{ai.ThinkingLow: {"temperature": 0.6}}); !reflect.DeepEqual(model.SamplingParamsByThinkingLevel, want) {
+		t.Fatalf("samplingParamsByThinkingLevel = %v, want %v", model.SamplingParamsByThinkingLevel, want)
 	}
 }

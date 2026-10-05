@@ -3,6 +3,7 @@ package extension
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"regexp"
 	"slices"
 	"strings"
@@ -73,6 +74,12 @@ type McpOAuthConfig struct {
 	// ClientName is the `client_name` sent with dynamic client registration,
 	// for servers that only accept known clients. Default: the app name.
 	ClientName string `json:"clientName,omitempty"`
+	// ClientRegistration is how pi identifies itself without ClientID. `dcr`
+	// (default): dynamic client registration. `cimd`: pi's Client ID Metadata
+	// Document on pi.dev, for authorization servers that allow pi by that URL.
+	// The server must support it for public clients, and the callback must use
+	// the default path `/callback`.
+	ClientRegistration string `json:"clientRegistration,omitempty"`
 	// AuthServerMetadataURL is an authorization server metadata document
 	// (RFC 8414 or OpenID Connect discovery) to use instead of discovery
 	// through the server, for servers that advertise a wrong authorization
@@ -390,6 +397,25 @@ func validateOAuth(fields map[string]json.RawMessage, name string) string {
 			return "oauth.clientName must be a non-empty string"
 		}
 	}
+	// upstream: mcp-servers.ts validateOAuth (clientRegistration, 1.0.1 #10302).
+	if v, ok := oauth["clientRegistration"]; ok && string(v) != `"dcr"` {
+		if string(v) != `"cimd"` {
+			return `oauth.clientRegistration must be "dcr" or "cimd"`
+		}
+		_, hasClientID := oauth["clientId"]
+		_, hasClientName := oauth["clientName"]
+		if hasClientID || hasClientName {
+			return `oauth.clientRegistration "cimd" cannot be combined with oauth.clientId or oauth.clientName`
+		}
+		if raw, ok := oauth["callbackUrl"]; ok {
+			var s string
+			if isString(raw) && json.Unmarshal(raw, &s) == nil {
+				if u, err := nodeurl.ParseHTTPURL(s); err == nil && (u.Hostname == "[::1]" || callbackPathname(s) != "/callback") {
+					return `oauth.clientRegistration "cimd" requires oauth.callbackUrl on localhost or 127.0.0.1 with path /callback`
+				}
+			}
+		}
+	}
 	if v, ok := oauth["authServerMetadataUrl"]; ok {
 		var s string
 		valid := isString(v) && json.Unmarshal(v, &s) == nil
@@ -400,6 +426,21 @@ func validateOAuth(fields map[string]json.RawMessage, name string) string {
 		}
 	}
 	return ""
+}
+
+// callbackPathname is `new URL(raw).pathname` for a validated loopback
+// callback URL: dot segments removed and an empty path reported as "/".
+func callbackPathname(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return ""
+	}
+	// Resolving the path against itself removes "." and ".." segments as the WHATWG parser does.
+	path := u.ResolveReference(&url.URL{Path: u.Path, RawPath: u.RawPath}).EscapedPath()
+	if path == "" {
+		return "/"
+	}
+	return path
 }
 
 func objectMap(raw json.RawMessage) (map[string]json.RawMessage, bool) {

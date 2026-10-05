@@ -1383,9 +1383,9 @@ func exportHandler(sc *SlashContext) error {
 	if strings.HasSuffix(outputPath, ".jsonl") {
 		filePath, err = ExportSessionToJsonl(s, outputPath, nil)
 	} else {
-		var tools []extension.RegisteredTool
-		if sc.RegisteredTools != nil {
-			tools = sc.RegisteredTools()
+		var tools func(name string) *extension.ToolRenderers
+		if sc.ToolRenderers != nil {
+			tools = sc.ToolRenderers()
 		}
 		var state ShareState
 		if sc.ShareState != nil {

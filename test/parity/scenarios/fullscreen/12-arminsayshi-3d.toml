@@ -1,0 +1,51 @@
+# Behavior family: fullscreen
+# Surface: /arminsayshi in fullscreen mode plays the 3D easter egg (interactive-mode.ts handleArminSaysHi,
+#          easter-egg-3d.lazy.ts playArmin3d, easter-egg-3d.ts arminModel) instead of the inline image.
+#
+# Upstream evidence (Pi 1.0.2, tmux 100x30, tuiMode fullscreen): the screen dissolves into dust from the center, the
+# model grows out of the center and spins, "escape to return" fades in centered on the second-to-last row after 1.4 s,
+# and the starfield fades in from 2.5 s; no inline Armin is drawn into the transcript. The starfield is a hash of the cell
+# index, so its glyphs sit on the same cells in pig and pi.
+#
+# pig divergence (D87): the 3D object is the sprite's pig head instead of Armin's portrait, so the rows it covers differ.
+# The crop is the hint row and the last row, below the object, after the stars are fully in: plain-text equal
+# (output_equal). Star colors flicker with time, so the escaped capture is not compared.
+# Neither binary draws the inline image (both_not_contain on its labels).
+# runs = 3: the animation is timer-driven.
+
+name = "12-arminsayshi-3d"
+description = "/arminsayshi in fullscreen plays the 3D egg's dissolve, starfield and return hint in the same cells as pi, not the inline image."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts",
+  "packages/coding-agent/src/modes/interactive/components/easter-egg-3d.lazy.ts",
+]
+tags = ["hermetic", "tui", "fullscreen"]
+driver = "interactive-tmux"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 30
+ready_pattern_pig = "can explain its own features"
+ready_pattern_pi = "can explain its own features"
+ready_timeout_seconds = 30
+capture_start = "escape to return"
+
+[[tmux.steps]]
+keys = ["/arminsayshi", "Enter"]
+wait_visible_contains = ["escape to return"]
+wait_timeout_seconds = 10
+# The stars are fully in 4.5 s after the command; the hint appeared at 1.4 s.
+settle_seconds = 4
+
+[assert]
+both_reach_ready = true
+both_contain = ["escape to return"]
+both_not_contain = ["panic:", "goroutine ", "ARMIN SAYS HI", "pigsayhi"]
+output_equal = true
+runs = 3

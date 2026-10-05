@@ -21,10 +21,9 @@ import (
 // MCP server protected by OAuth, with its own authorization server (discovery,
 // DCR, PKCE, refresh).
 type oauthMcpServer struct {
-	URL    string
-	server *httptest.Server
-	// iss is sent as the `iss` parameter of authorization responses (RFC 9207).
-	iss string
+	URL     string
+	server  *httptest.Server
+	options oauthMcpServerOptions
 
 	mu            sync.Mutex
 	log           []string
@@ -35,6 +34,28 @@ type oauthMcpServer struct {
 	origin        string
 	// registrations are the client metadata of dynamic client registrations (`registrations` of mcp-oauth-server.ts).
 	registrations []map[string]any
+	// authorizations are the query parameters of authorization requests.
+	authorizations []url.Values
+	// tokenRequests are the parameters of token requests.
+	tokenRequests []url.Values
+}
+
+func (s *oauthMcpServer) recordedAuthorizations() []url.Values {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.authorizations)
+}
+
+func (s *oauthMcpServer) recordedTokenRequests() []url.Values {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.tokenRequests)
+}
+
+func (s *oauthMcpServer) registrationCount() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.registrations)
 }
 
 // registrationClientNames are the `client_name` values of the dynamic client registrations so far.
@@ -146,11 +167,18 @@ func (s *oauthMcpServer) handle(w http.ResponseWriter, r *http.Request) {
 	case "/.well-known/oauth-protected-resource/mcp":
 		writeJSONStatus(w, 200, map[string]any{"resource": origin + "/mcp", "authorization_servers": []string{origin}}, nil)
 	case "/.well-known/oauth-authorization-server":
-		writeJSONStatus(w, 200, map[string]any{
+		metadata := map[string]any{
 			"issuer": origin, "authorization_endpoint": origin + "/authorize", "token_endpoint": origin + "/token",
 			"registration_endpoint": origin + "/register", "response_types_supported": []string{"code"},
 			"code_challenge_methods_supported": []string{"S256"}, "token_endpoint_auth_methods_supported": []string{"none"},
-		}, nil)
+		}
+		if s.options.Cimd {
+			metadata["client_id_metadata_document_supported"] = true
+		}
+		if s.options.IssParameter {
+			metadata["authorization_response_iss_parameter_supported"] = true
+		}
+		writeJSONStatus(w, 200, metadata, nil)
 	case "/register":
 		var metadata map[string]any
 		_ = json.Unmarshal([]byte(readRequestBody(r)), &metadata)
@@ -162,21 +190,32 @@ func (s *oauthMcpServer) handle(w http.ResponseWriter, r *http.Request) {
 		writeJSONStatus(w, 201, metadata, nil)
 	case "/authorize":
 		s.mu.Lock()
+		s.authorizations = append(s.authorizations, r.URL.Query())
 		code := fmt.Sprintf("code-%d", len(s.challenges)+1)
 		s.challenges[code] = r.URL.Query().Get("code_challenge")
 		s.mu.Unlock()
 		redirect, _ := url.Parse(r.URL.Query().Get("redirect_uri"))
+		if s.options.RedirectPath != "" {
+			redirect.Path = s.options.RedirectPath
+		}
 		query := redirect.Query()
 		query.Set("code", code)
 		query.Set("state", r.URL.Query().Get("state"))
-		if s.iss != "" {
-			query.Set("iss", s.iss)
+		iss := s.options.Iss
+		if iss == "" && s.options.IssParameter {
+			iss = origin
+		}
+		if iss != "" {
+			query.Set("iss", iss)
 		}
 		redirect.RawQuery = query.Encode()
 		w.Header().Set("Location", redirect.String())
 		w.WriteHeader(302)
 	case "/token":
 		params, _ := url.ParseQuery(readRequestBody(r))
+		s.mu.Lock()
+		s.tokenRequests = append(s.tokenRequests, params)
+		s.mu.Unlock()
 		if params.Get("grant_type") == "authorization_code" {
 			s.mu.Lock()
 			challenge := s.challenges[params.Get("code")]
@@ -213,13 +252,19 @@ func (s *oauthMcpServer) handle(w http.ResponseWriter, r *http.Request) {
 type oauthMcpServerOptions struct {
 	// Iss is sent as the `iss` parameter of authorization responses (RFC 9207).
 	Iss string
+	// IssParameter advertises that parameter and sends the server's issuer.
+	IssParameter bool
+	// Cimd advertises Client ID Metadata Documents.
+	Cimd bool
+	// RedirectPath replaces the path of the redirect URI, like a mixed-up authorization server.
+	RedirectPath string
 }
 
 func startOAuthMcpServer(t *testing.T, options ...oauthMcpServerOptions) *oauthMcpServer {
 	t.Helper()
 	s := &oauthMcpServer{validTokens: map[string]bool{}, refreshTokens: map[string]bool{}, challenges: map[string]string{}}
 	for _, o := range options {
-		s.iss = o.Iss
+		s.options = o
 	}
 	s.server = httptest.NewServer(http.HandlerFunc(s.handle))
 	s.origin = s.server.URL

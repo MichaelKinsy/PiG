@@ -2,7 +2,7 @@ package ai
 
 // Ports .upstream/v0.99.2/packages/ai/test/anthropic-federation.test.ts and
 // anthropic-federation-sdk.test.ts. Upstream hands the Anthropic SDK a `config` and lets the SDK exchange the
-// identity token (node_modules/@anthropic-ai/sdk@0.124.0 lib/credentials/*). PiG has no SDK, so the tests observe
+// identity token (node_modules/@anthropic-ai/sdk@0.129.0 lib/credentials/*). PiG has no SDK, so the tests observe
 // the wire: the jwt-bearer exchange the SDK performs (oidc-federation.mjs:19-66) and the requests that follow.
 
 import (
@@ -232,7 +232,7 @@ func TestAnthropicWorkloadIdentityFederation(t *testing.T) {
 		for name, want := range map[string]string{
 			"Content-Type":   "application/json",
 			"Anthropic-Beta": "oauth-2025-04-20,oidc-federation-2026-04-01",
-			"User-Agent":     "Anthropic/JS 0.124.0",
+			"User-Agent":     "Anthropic/JS 0.129.0",
 		} {
 			if got := exchange[0].header.Get(name); got != want {
 				t.Errorf("exchange %s = %q, want %q", name, got, want)
@@ -274,6 +274,7 @@ func TestAnthropicWorkloadIdentityFederation(t *testing.T) {
 			t.Fatalf("a federation workspace is an exchange field, not a request header: %+v", messages)
 		}
 	})
+	// @anthropic-ai/sdk 0.129.0 client.mjs prepareRequest joins the trimmed betas with "," (0.124.0 appended ", ").
 
 	t.Run("appends the OAuth beta to the request's other betas", func(t *testing.T) {
 		env := federationEnvFor(t)
@@ -286,7 +287,7 @@ func TestAnthropicWorkloadIdentityFederation(t *testing.T) {
 		if len(messages) != 1 {
 			t.Fatalf("message requests = %d", len(messages))
 		}
-		if got := messages[0].header.Get("Anthropic-Beta"); got != "fine-grained-tool-streaming-2025-05-14, oauth-2025-04-20" {
+		if got := messages[0].header.Get("Anthropic-Beta"); got != "fine-grained-tool-streaming-2025-05-14,oauth-2025-04-20" {
 			t.Errorf("Anthropic-Beta = %q", got)
 		}
 	})

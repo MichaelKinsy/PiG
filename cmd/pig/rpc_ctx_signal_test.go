@@ -56,7 +56,7 @@ func startCtxSignalPi(t *testing.T, extraEnv ...string) (*rpcProcess, string) {
 		t.Fatal(err)
 	}
 	var pkg struct{ Version string }
-	if err := json.Unmarshal(metadata, &pkg); err != nil || pkg.Version != "1.0.0" {
+	if err := json.Unmarshal(metadata, &pkg); err != nil || pkg.Version != "1.0.2" {
 		t.Fatalf("Pi version = %q, %v", pkg.Version, err)
 	}
 	home := t.TempDir()

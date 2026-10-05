@@ -11,6 +11,7 @@ export class MemoryOAuthStateStore {
 export class McpOAuthProvider {
     redirectUrl;
     clientMetadata;
+    clientMetadataDocument;
     serverUrl;
     configuredClient;
     store;
@@ -26,6 +27,7 @@ export class McpOAuthProvider {
             response_types: options.clientMetadata.response_types ?? ["code"],
             token_endpoint_auth_method: options.clientMetadata.token_endpoint_auth_method ?? (options.clientSecret ? "client_secret_post" : "none"),
         };
+        this.clientMetadataDocument = options.clientMetadataDocument;
         this.configuredClient = options.clientId
             ? { client_id: options.clientId, ...(options.clientSecret ? { client_secret: options.clientSecret } : {}) }
             : undefined;

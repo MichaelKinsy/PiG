@@ -4,7 +4,7 @@ import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 const root=resolve(process.env.PI_PACKAGE_ROOT??"extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-assert.equal(JSON.parse(readFileSync(`${root}/package.json`, "utf8")).version, "1.0.0");
+assert.equal(JSON.parse(readFileSync(`${root}/package.json`, "utf8")).version, "1.0.2");
 const {InteractiveMode}=await import(pathToFileURL(`${root}/dist/modes/interactive/interactive-mode.js`).href);
 const originalOn=process.on.bind(process), originalRemove=process.removeListener.bind(process), originalKill=process.kill.bind(process);
 const wrappers=new Map();

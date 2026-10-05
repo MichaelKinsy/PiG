@@ -35,7 +35,7 @@
     },
     {
       "path": "pi-dist/pi-tui/components/image.js",
-      "sha256": "dd6791e17fbeb0a48c2b73d521d31356edf11795e44e0fae05b5f8c322c470e1"
+      "sha256": "918d93b63767fd67543dc23c20709da6a621cd627b52f43e2f87d3b73ab0a9f2"
     },
     {
       "path": "pi-dist/pi-tui/components/input.js",
@@ -91,7 +91,7 @@
     },
     {
       "path": "pi-dist/pi-tui/index.js",
-      "sha256": "c88dd30bcb7a8683e0d0b22a1894f00626b0613a7fe3406fc87b2426e1b6cd74"
+      "sha256": "e78fe4e1afa281b4da633fbf71afd84e010ed434e18ee1e7dd9a7186b2127b1c"
     },
     {
       "path": "pi-dist/pi-tui/kill-ring.js",
@@ -131,7 +131,7 @@
     },
     {
       "path": "pi-dist/pi-tui/tui-alt-screen.js",
-      "sha256": "2d9995c4f1a2ee5eff472d545846ad1fe65024401cd458fa78ce0c75d4635143"
+      "sha256": "d097a5dba3af1f65539ab1dddcd0cedf31b1092f60e3d2879a4297b6c2ceb870"
     },
     {
       "path": "pi-dist/pi-tui/tui-main-screen.js",

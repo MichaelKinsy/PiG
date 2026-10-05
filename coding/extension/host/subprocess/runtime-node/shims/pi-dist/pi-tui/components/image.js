@@ -1,5 +1,27 @@
-import { allocateImageId, getCapabilities, getCellDimensions, getImageDimensions, imageFallback, renderImage, } from "../terminal-image.js";
+import { allocateImageId, getCapabilities, getCellDimensions, getImageDimensions, getPngDimensions, imageFallback, renderImage, } from "../terminal-image.js";
 import { truncateToWidth } from "../utils.js";
+let imageTranscoder;
+// Backstop for callers that recreate Image instances. Keyed by source data, least recently used first.
+const pngCache = new Map();
+/**
+ * Register the converter used for non-PNG images on Kitty-protocol terminals, which only accept PNG.
+ * Without one, such images render as text fallbacks.
+ */
+export function setImageTranscoder(transcoder) {
+    imageTranscoder = transcoder;
+    pngCache.clear();
+}
+function toPng(base64Data, mimeType) {
+    if (!imageTranscoder)
+        return null;
+    const cached = pngCache.get(base64Data);
+    const png = cached === undefined ? imageTranscoder(base64Data, mimeType) : cached;
+    pngCache.delete(base64Data);
+    pngCache.set(base64Data, png);
+    if (pngCache.size > 32)
+        pngCache.delete(pngCache.keys().next().value);
+    return png;
+}
 export class Image {
     base64Data;
     mimeType;
@@ -7,6 +29,8 @@ export class Image {
     theme;
     options;
     imageId;
+    /** Converted PNG data for Kitty. Failures are not stored so a later transcoder can retry. */
+    pngData;
     cachedLines;
     cachedWidth;
     constructor(base64Data, mimeType, theme, options = {}, dimensions) {
@@ -34,12 +58,21 @@ export class Image {
         const defaultMaxHeight = Math.max(1, Math.ceil((maxWidth * cellDimensions.widthPx) / cellDimensions.heightPx));
         const maxHeight = this.options.maxHeightCells ?? defaultMaxHeight;
         const caps = getCapabilities();
+        let data = this.base64Data;
+        let dimensions = this.dimensions;
+        if (caps.images === "kitty" && this.mimeType !== "image/png") {
+            this.pngData ??= toPng(this.base64Data, this.mimeType) ?? undefined;
+            data = this.pngData ?? null;
+            // Conversion may apply EXIF rotation, so prefer the PNG's own dimensions.
+            if (data)
+                dimensions = getPngDimensions(data) ?? dimensions;
+        }
         let lines;
-        if (caps.images) {
+        if (caps.images && data) {
             if (caps.images === "kitty" && this.imageId === undefined) {
                 this.imageId = allocateImageId();
             }
-            const result = renderImage(this.base64Data, this.dimensions, {
+            const result = renderImage(data, dimensions, {
                 maxWidthCells: maxWidth,
                 maxHeightCells: maxHeight,
                 imageId: this.imageId,

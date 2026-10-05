@@ -73,6 +73,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/scripts/generate-models.ts` | `cmd/gen-models/main.go + cmd/gen-models/reasoning.go + cmd/gen-models/models_dev.go (catalog emission, raw vendor reasoning snapshots, models.dev Fireworks/Qwen stages and strict JSON publication; other source-provider stages and TypeScript publication remain unported)` | 🟡 |
 | `packages/ai/scripts/check-model-data.ts` | `cmd/check-model-data/main.go (validation command)` | 🟡 |
 | `packages/ai/scripts/model-data.ts` | `cmd/check-model-data/model_data.go + model_data_json.go (identity, shard, manifest, hash and metadata validation; Node supplies Date.parse and JSON syntax diagnostics)` | 🟡 |
+| `packages/ai/scripts/hydrate-model-catalog.ts` | `cmd/check-model-data/hydrate.go (-hydrate <models.all.json>; groupProviderModelData, staging, validation and replacement; hydration cases of model-data-validation.test.ts in hydrate_upstream_test.go)` | 🟡 |
 
 ## `packages/agent/src/`
 
@@ -222,8 +223,8 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/experimental/vacation/sessions.ts` | `internal/experimental/durableagent/sessions.go` | ✅ |
 | `packages/coding-agent/src/experimental/vacation/tui.ts` | `internal/experimental/durable_tui.go, internal/experimental/durable_tui_run.go (the same file as durable/tui.ts)` | ✅ |
 | `packages/coding-agent/src/experimental/vacation/vacation.ts` | `internal/experimental/vacation/vacation.go` | ✅ |
-| `packages/coding-agent/src/modes/interactive/components/pi-logo-animation.lazy.ts` | `internal/codingagent/pig_logo_animation_play.go + internal/codingagent/startup_header.go (header click; D87: the PiG mark's pig is the clickable logo; the dynamic import is designed out, Go links the module)` | 🟡 |
-| `packages/coding-agent/src/modes/interactive/components/pi-logo-animation.ts` | `internal/codingagent/pig_logo_animation.go + internal/codingagent/pig_logo_animation_play.go (D87: the object is the pig of the PiG mark and it runs where Pi's logo plays its puzzle; engine, timeline, dust, ray caster, starfield, hint, exit and input handling are Pi's)` | 🟡 |
+| `packages/coding-agent/src/modes/interactive/components/easter-egg-3d.lazy.ts` | `internal/codingagent/pig_logo_animation_play.go + internal/codingagent/startup_header.go + internal/codingagent/interactive_easter_eggs.go (header click and fullscreen /arminsayshi; D87: PiG's pig models; the dynamic import is designed out, Go links the module)` | 🟡 |
+| `packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts` | `internal/codingagent/pig_egg3d.go + internal/codingagent/pig_logo_animation.go + internal/codingagent/pig_logo_animation_play.go (D87: the Pi-logo kind with the pig of the PiG mark and its running pig; the Armin kind with the sprite's pig head)` | 🟡 |
 | `packages/coding-agent/src/modes/interactive/components/radius-login-selector.ts` | `internal/codingagent/radius_login_selector.go (Radius top-level login option shimmer; static rows proven by oauth/27-28, shimmer frames by unit tests only)` | 🟡 |
 | `packages/coding-agent/src/modes/interactive/components/status-indicator.ts` | `internal/codingagent/interactive_status.go + interactive_events.go + tui/status_indicator.go + tui/editor_status.go (working/compaction/retry border; branchSummary, summarization retry replacement, and session-clear lifecycle pending)` | 🟡 |
 | `packages/coding-agent/src/rpc-entry.ts` | `(npm package export wrapper for --mode rpc; pig exposes the CLI mode directly)` | n/a |
@@ -466,6 +467,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/modes/interactive/components/index.ts` | `(barrel)` | n/a |
 | `packages/coding-agent/src/modes/interactive/components/keybinding-hints.ts` | `tui/keybinding_hints.go` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/login-dialog.ts` | `tui/login_dialog.go + internal/codingagent/interactive_api_key_login.go + internal/codingagent/interactive_auth.go` | ✅ |
+| `packages/coding-agent/src/modes/interactive/components/auth-url.ts` | `tui/auth_url.go (AuthURL; used by tui/login_dialog.go and coding/mcpext/manager.go RedirectURL)` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/model-selector.ts` | `tui/model_select.go` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/oauth-selector.ts` | `tui/oauth_selector.go + internal/codingagent/interactive_login.go + internal/codingagent/slash_auth.go` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts` | `tui/scoped_models_list.go + internal/codingagent/interactive.go` | ✅ |
@@ -482,7 +484,6 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/modes/interactive/components/user-message-selector.ts` | `tui/user_message_selector.go + internal/codingagent/session_selectors.go (D66 bounds list rows at unusually narrow widths instead of emitting fatal over-wide rows)` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/visual-truncate.ts` | `tui/visual_truncate.go` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/armin.ts` | `internal/codingagent/armin.go + internal/codingagent/interactive_easter_eggs.go (D87: a pig head labeled pigsayhi; /pigsayhi is an alias)` | ✅ |
-| `packages/coding-agent/src/modes/interactive/components/daxnuts.ts` | `(easter egg: skip)` | n/a |
 | `packages/coding-agent/src/modes/interactive/components/earendil-announcement.ts` | `internal/codingagent/earendil_announcement.go + internal/codingagent/interactive_easter_eggs.go` | ✅ |
 | `packages/coding-agent/src/cli/experimental/cli.ts` | `internal/experimental/commands.go (command composition; runtime qualification pending)` | 🟡 |
 | `packages/coding-agent/src/cli/experimental/command-options.ts` | `internal/experimental/commands_types.go, internal/experimental/command_parse.go (Unix transport options; Radius/auth branches :5-37,47-64,97-102 designed out by owner 2026-09-28, D64; runtime qualification pending)` | 🟡 |

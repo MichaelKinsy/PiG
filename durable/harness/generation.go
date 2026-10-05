@@ -324,6 +324,9 @@ func generationRequestHandler(ctx context.Context, task durable.RunningTask[Gene
 		streamOptions = *checkpoint.StreamOptions
 	}
 	options := streamOptionsOf(streamOptions, runtime.Signal(), checkpoint.ThinkingLevel)
+	if options.SessionID, err = ensureProviderSessionId(ctx, runtime); err != nil {
+		return err
+	}
 	message, err := streamResponse(ctx, runtime, model, messages, options, checkpoint.Attempt)
 	if err != nil {
 		return err

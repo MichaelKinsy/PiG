@@ -1,7 +1,7 @@
-// Pi 1.0.0 / AWS SDK client-bedrock-runtime 3.1127.0: exact partial-message observation and microtask order for the bedrock-converse-stream provider.
+// Pi 1.0.2 / AWS SDK client-bedrock-runtime 3.1127.0: exact partial-message observation and microtask order for the bedrock-converse-stream provider.
 //
 // Usage: node probe.mjs <pi.json> [inputs.json]
-//   env PI_PACKAGE_ROOT  installed @earendil-works/pi-coding-agent 1.0.0 (its dependency tree provides pi-ai, pi-agent-core and the AWS SDK)
+//   env PI_PACKAGE_ROOT  installed @earendil-works/pi-coding-agent 1.0.2 (its dependency tree provides pi-ai, pi-agent-core and the AWS SDK)
 //   env PROBE_TICKS=0    disable the tick counter; the run must then produce the same records once tick fields are removed (this proves the counter does not perturb order)
 //   env PROBE_SKIP_RPC=1 skip the real `pi --mode rpc` observations
 //
@@ -28,9 +28,9 @@ import { createInterface } from 'node:readline';
 
 const root = process.env.PI_PACKAGE_ROOT;
 const base = root + '/node_modules/@earendil-works/';
-const versions = {piVersion: '1.0.0', awsSdkClientBedrockRuntime: '3.1127.0', smithyCore: '3.33.3', smithyNodeHttpHandler: '4.12.1'};
-for (const [path, version] of [[root + '/package.json', '1.0.0'], [base + 'pi-ai/package.json', '1.0.0'], [base + 'pi-agent-core/package.json', '1.0.0'],
-  [root + '/node_modules/@aws-sdk/client-bedrock-runtime/package.json', '3.1127.0'], [root + '/node_modules/@smithy/core/package.json', '3.33.3'], [root + '/node_modules/@smithy/node-http-handler/package.json', '4.12.1']]) {
+const versions = {piVersion: '1.0.2', awsSdkClientBedrockRuntime: '3.1127.0', smithyCore: '3.35.1', smithyNodeHttpHandler: '4.12.1'};
+for (const [path, version] of [[root + '/package.json', '1.0.2'], [base + 'pi-ai/package.json', '1.0.2'], [base + 'pi-agent-core/package.json', '1.0.2'],
+  [root + '/node_modules/@aws-sdk/client-bedrock-runtime/package.json', '3.1127.0'], [root + '/node_modules/@smithy/core/package.json', '3.35.1'], [root + '/node_modules/@smithy/node-http-handler/package.json', '4.12.1']]) {
   assert.equal(JSON.parse(await readFile(path, 'utf8')).version, version, path);
 }
 const ticksEnabled = process.env.PROBE_TICKS !== '0';
@@ -364,5 +364,5 @@ if (process.argv[3]) {
 // One case per line keeps diffs reviewable.
 const lines = outputs.map(o => '  ' + JSON.stringify(o));
 const rpcLines = rpc.map(o => '  ' + JSON.stringify(o));
-await writeFile(process.argv[2], `{"piVersion":"1.0.0","awsSdkClientBedrockRuntime":"3.1127.0","smithyCore":"3.33.3","smithyNodeHttpHandler":"4.12.1","cases":[\n${lines.join(',\n')}\n],"rpc":[\n${rpcLines.join(',\n')}\n]}\n`);
+await writeFile(process.argv[2], `{"piVersion":"1.0.2","awsSdkClientBedrockRuntime":"3.1127.0","smithyCore":"3.35.1","smithyNodeHttpHandler":"4.12.1","cases":[\n${lines.join(',\n')}\n],"rpc":[\n${rpcLines.join(',\n')}\n]}\n`);
 process.exit(0);

@@ -1,0 +1,51 @@
+from = "1.0.1"
+to = "1.0.2"
+
+[[files]]
+path = "packages/ai/src/api/azure-openai-responses.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/sampling_options_upstream_test.go#TestSamplingParamsByThinkingLevelDirectStreamUpstream"]
+rationale = "Sampling params resolve for the request's effective thinking level (reasoningEffort, else medium when only a reasoning summary is set, else off) and apply after the named fields (#9776)."
+
+[[files]]
+path = "packages/ai/src/api/openai-completions.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/sampling_options_upstream_test.go#TestSamplingParamsByThinkingLevelDirectStreamUpstream", "scenario:test/parity/scenarios/providers-faux-streaming/31-sampling-by-thinking-level.toml"]
+rationale = "buildParams resolves sampling params from model defaults, the level's samplingParamsByThinkingLevel entry and the request, in that order, for the reasoning effort or off (#9776)."
+
+[[files]]
+path = "packages/ai/src/api/openai-responses.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/sampling_options_upstream_test.go#TestSamplingParamsByThinkingLevelDirectStreamUpstream", "scenario:test/parity/scenarios/providers-faux-streaming/31-sampling-by-thinking-level.toml"]
+rationale = "As azure-openai-responses.ts: the effective level is reasoningEffort, medium for a summary-only request, else off; a summary-only request sends reasoning effort medium with encrypted content included (#9776)."
+
+[[files]]
+path = "packages/ai/src/api/simple-options.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/sampling_options_upstream_test.go#TestSamplingParamsByThinkingLevelStreamSimpleUpstream", "test:ai/sampling_options_upstream_test.go#TestSamplingParamsByThinkingLevelDirectStreamUpstream"]
+rationale = "resolveSamplingParams (ai.ResolveSamplingParams) clamps the level to the model and merges model, level and request params; buildBaseOptions passes them for reasoning ?? off (#9776)."
+
+[[files]]
+path = "packages/ai/src/types.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/sampling_options_upstream_test.go#TestSamplingParamsByThinkingLevelStreamSimpleUpstream"]
+rationale = "SamplingParams and SamplingParamsByThinkingLevel types and Model.samplingParamsByThinkingLevel (ai.SamplingParams, ai.SamplingParamsByThinkingLevel, Model.SamplingParamsByThinkingLevel)."
+
+[[files]]
+path = "packages/coding-agent/src/core/model-config.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/model_registry_overrides_upstream_test.go#TestModelRegistryModelOverridesUpstream", "scenario:test/parity/scenarios/providers-faux-streaming/31-sampling-by-thinking-level.toml"]
+rationale = "models.json custom models and modelOverrides accept samplingParamsByThinkingLevel (internal/codingagent/model_registry.go ModelEntry, definition and override fields)."
+
+[[files]]
+path = "packages/coding-agent/src/core/provider-composer.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/model_registry_overrides_upstream_test.go#TestModelRegistryModelOverridesUpstream"]
+rationale = "A model override merges samplingParamsByThinkingLevel level by level into the model's map, and custom definitions carry it (mergeSamplingParamsByThinkingLevel in model_registry.go and native_provider_composer.go)."

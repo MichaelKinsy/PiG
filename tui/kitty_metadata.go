@@ -83,14 +83,10 @@ func removeKittyOrder(imageID int) {
 	}
 }
 
-// getRegisteredKittyImageMetadata parses the imageId out of a rendered line and
-// returns its registered metadata, or false if none. Mirrors upstream.
-func getRegisteredKittyImageMetadata(line string) (registeredKittyImageMetadata, bool) {
-	controls := kittyGraphicPattern.FindStringSubmatch(line)
-	if controls == nil {
-		return registeredKittyImageMetadata{}, false
-	}
-	id := kittyImageIDPattern.FindStringSubmatch(controls[1])
+// getRegisteredKittyImageMetadataFromControls returns the registered metadata of the image a control string names.
+// Mirrors upstream getRegisteredKittyImageMetadataFromControls.
+func getRegisteredKittyImageMetadataFromControls(controls string) (registeredKittyImageMetadata, bool) {
+	id := kittyImageIDPattern.FindStringSubmatch(controls)
 	if id == nil {
 		return registeredKittyImageMetadata{}, false
 	}
@@ -102,6 +98,59 @@ func getRegisteredKittyImageMetadata(line string) (registeredKittyImageMetadata,
 	defer kittyMetadataMu.Unlock()
 	m, ok := kittyImageMetadata[imageID]
 	return m, ok
+}
+
+// getRegisteredKittyImageMetadata parses the imageId out of a rendered line and
+// returns its registered metadata, or false if none. Mirrors upstream.
+func getRegisteredKittyImageMetadata(line string) (registeredKittyImageMetadata, bool) {
+	controls := kittyGraphicPattern.FindStringSubmatch(line)
+	if controls == nil {
+		return registeredKittyImageMetadata{}, false
+	}
+	return getRegisteredKittyImageMetadataFromControls(controls[1])
+}
+
+// kittyImageRowsPattern extracts r=<digits> from a Kitty control string.
+var kittyImageRowsPattern = lazyregexp.New(`(?:^|,)r=(\d+)(?:,|$)`)
+
+// getExplicitKittyImageRows returns a positive `r=` row count of a control string. Mirrors upstream
+// getExplicitKittyImageRows.
+func getExplicitKittyImageRows(controls string) (int, bool) {
+	value := kittyImageRowsPattern.FindStringSubmatch(controls)
+	if value == nil {
+		return 0, false
+	}
+	rows, err := strconv.Atoi(value[1])
+	if err != nil || rows <= 0 {
+		return 0, false
+	}
+	return rows, true
+}
+
+// kittyImageRowsFromControls is the explicit `r=` rows of controls, else fallbackRows. Mirrors upstream
+// getKittyImageRowsFromControls.
+func kittyImageRowsFromControls(controls string, fallbackRows int) int {
+	if rows, ok := getExplicitKittyImageRows(controls); ok {
+		return rows
+	}
+	return fallbackRows
+}
+
+// GetKittyImagePlacementRows reads the number of rows an image placement covers without scanning its payload: the
+// explicit `r=` control, else the registered image's rows. Mirrors upstream getKittyImagePlacementRows.
+func GetKittyImagePlacementRows(line string) (int, bool) {
+	controls := kittyGraphicPattern.FindStringSubmatch(line)
+	if controls == nil {
+		return 0, false
+	}
+	if rows, ok := getExplicitKittyImageRows(controls[1]); ok {
+		return rows, true
+	}
+	metadata, ok := getRegisteredKittyImageMetadataFromControls(controls[1])
+	if !ok {
+		return 0, false
+	}
+	return metadata.Rows, true
 }
 
 // GetKittyImageMetadata returns the public metadata for the Kitty image on a
@@ -182,8 +231,10 @@ type KittyImagePlacement struct {
 	TransmissionGeneration int
 	TransmissionBytes      int
 	EstimatedDecodedBytes  int
-	Sequence               string
-	ReplacementLine        string
+	// Rows is the placement's explicit `r=` rows, else the image's registered rows.
+	Rows            int
+	Sequence        string
+	ReplacementLine string
 }
 
 // GetKittyImagePlacement builds a placement-only command for an image line
@@ -193,12 +244,15 @@ type KittyImagePlacement struct {
 // getKittyImagePlacement.
 func GetKittyImagePlacement(line string) (KittyImagePlacement, bool) {
 	loc := kittyGraphicPattern.FindStringSubmatchIndex(line)
-	metadata, mok := getRegisteredKittyImageMetadata(line)
-	if loc == nil || !mok {
+	if loc == nil {
 		return KittyImagePlacement{}, false
 	}
 	matchIndex := loc[0]
 	controlsStr := line[loc[2]:loc[3]]
+	metadata, mok := getRegisteredKittyImageMetadataFromControls(controlsStr)
+	if !mok {
+		return KittyImagePlacement{}, false
+	}
 
 	commandStart := matchIndex
 	commandControls := controlsStr
@@ -241,6 +295,7 @@ func GetKittyImagePlacement(line string) (KittyImagePlacement, bool) {
 		TransmissionGeneration: metadata.transmissionGeneration,
 		TransmissionBytes:      transmissionEnd - matchIndex,
 		EstimatedDecodedBytes:  metadata.WidthPx * metadata.HeightPx * 4,
+		Rows:                   kittyImageRowsFromControls(controlsStr, metadata.Rows),
 		Sequence:               sequence,
 		ReplacementLine:        line[:matchIndex] + sequence + line[transmissionEnd:],
 	}, true

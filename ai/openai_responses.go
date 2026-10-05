@@ -44,6 +44,8 @@ type OpenAIResponsesConfig struct {
 	// ExtraHeaders are added to every request.
 	ExtraHeaders   map[string]string
 	SamplingParams map[string]any
+	// SamplingParamsByThinkingLevel overrides SamplingParams for the effective thinking level.
+	SamplingParamsByThinkingLevel SamplingParamsByThinkingLevel
 	// ThinkingLevelMap supplies an explicit map when selected ModelMetadata is absent.
 	ThinkingLevelMap ThinkingLevelMap
 	// APIKeyHeader is the header name used for the API key.
@@ -434,6 +436,30 @@ func (p *openAIResponsesProvider) resolveResponsesModel() (*GeneratedModel, bool
 		return generated, true
 	}
 	return nil, false
+}
+
+// samplingModel is the model view resolveSamplingParams reads: reasoning support and the thinking map clamp the level, and the configured defaults and per-level overrides are merged.
+func (p *openAIResponsesProvider) samplingModel(opts StreamOptions) *Model {
+	resolved := p.resolvedModel()
+	return &Model{
+		ProviderMeta:                  ProviderMetadata{Reasoning: p.cfg.IsReasoning || opts.IsReasoning},
+		ThinkingLevelMap:              resolved.ThinkingLevelMap,
+		SamplingParams:                p.cfg.SamplingParams,
+		SamplingParamsByThinkingLevel: p.cfg.SamplingParamsByThinkingLevel,
+	}
+}
+
+// responsesSamplingLevel is the thinking level whose sampling overrides apply: the request effort, else the simple reasoning level, else medium for a summary-only request, else off (openai-responses.ts buildParams).
+func responsesSamplingLevel(opts StreamOptions) ThinkingLevel {
+	switch {
+	case opts.ReasoningEffort != "":
+		return ThinkingLevel(opts.ReasoningEffort)
+	case opts.Thinking != "" && opts.Thinking != ThinkingOff:
+		return opts.Thinking
+	case opts.ReasoningSummary != "":
+		return ThinkingMedium
+	}
+	return ThinkingOff
 }
 
 // resolvedModel uses selected metadata when supplied, otherwise the catalog or an unknown-model reasoning default.
@@ -918,17 +944,25 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 		} else if clamped != ThinkingOff && clamped != "" {
 			clamped = ClampThinkingLevel(model, clamped)
 		}
-		if clamped != ThinkingOff && clamped != "" {
+		switch {
+		case clamped != ThinkingOff && clamped != "":
 			effort := string(clamped)
 			if mapped, ok := model.ThinkingLevelMap[ModelThinkingLevel(clamped)]; ok && mapped != nil {
 				effort = *mapped
 			}
 			req.Reasoning = &respReasoning{
 				Effort:  effort,
-				Summary: "auto",
+				Summary: cmp.Or(opts.ReasoningSummary, "auto"),
 			}
 			req.Include = []string{"reasoning.encrypted_content"}
-		} else if p.cfg.ProviderID != "github-copilot" {
+		case opts.ReasoningSummary != "":
+			// A summary-only request asks for medium effort, unmapped (openai-responses.ts buildParams reasoningEffort).
+			req.Reasoning = &respReasoning{
+				Effort:  string(ThinkingMedium),
+				Summary: opts.ReasoningSummary,
+			}
+			req.Include = []string{"reasoning.encrypted_content"}
+		case p.cfg.ProviderID != "github-copilot":
 			if mapped, ok := model.ThinkingLevelMap[ModelThinkingLevel(ThinkingOff)]; !ok || mapped != nil {
 				effort := "none"
 				if mapped != nil {
@@ -961,7 +995,9 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	}
 
 	payload := any(req)
-	if len(p.cfg.SamplingParams) > 0 || len(opts.SamplingParams) > 0 {
+	// Last so model and request sampling parameters override named request fields (openai-responses.ts buildParams).
+	samplingParams := ResolveSamplingParams(p.samplingModel(opts), responsesSamplingLevel(opts), opts.SamplingParams)
+	if samplingParams != nil {
 		encoded, err := json.Marshal(req)
 		if err != nil {
 			return nil, fmt.Errorf("openai-responses: marshal sampling base: %w", err)
@@ -970,8 +1006,7 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 		if err := json.Unmarshal(encoded, &merged); err != nil {
 			return nil, fmt.Errorf("openai-responses: decode sampling base: %w", err)
 		}
-		maps.Copy(merged, p.cfg.SamplingParams)
-		maps.Copy(merged, opts.SamplingParams)
+		maps.Copy(merged, samplingParams)
 		payload = merged
 	}
 	if opts.OnPayload != nil {

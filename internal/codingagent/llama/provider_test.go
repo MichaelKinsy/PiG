@@ -99,11 +99,12 @@ func TestRefreshModelsDiscoversChatTemplateThinkingSupportForLoadedModels(t *tes
 		t.Fatalf("props requests = %d, want 1", propsRequests.Load())
 	}
 	models := controller.Provider.GetModels()
-	if len(models) != 1 || !models[0].Reasoning || models[0].Compat.ThinkingFormat != "qwen-chat-template" {
+	if len(models) != 1 || !models[0].Reasoning || models[0].Compat.ThinkingFormat != "qwen-chat-template" || models[0].Compat.ThinkingTokenBudgetField != "thinking_budget_tokens" {
 		t.Fatalf("models = %+v", models)
 	}
+	// pig divergence (D90): Pi expects {"off":"off","minimal":null,"low":null,"medium":"medium","high":null,"xhigh":null}.
 	levels, _ := json.Marshal(models[0].ThinkingLevelMap)
-	if string(levels) != `{"off":"off","minimal":null,"low":null,"medium":"medium","high":null,"xhigh":null}` {
+	if string(levels) != `{"off":"off","minimal":"minimal","low":"low","medium":"medium","high":"high","xhigh":null}` {
 		t.Fatalf("thinkingLevelMap = %s", levels)
 	}
 }

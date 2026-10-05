@@ -40,7 +40,7 @@ func subprocessAPIModel(info map[string]any) (*ai.Model, error) {
 	return &ai.Model{
 		ID: definition.ID, DisplayName: definition.Name,
 		Input: definition.Input, InputLimits: definition.InputLimits,
-		ThinkingLevelMap: definition.ThinkingLevelMap, SamplingParams: definition.SamplingParams, PromptCache: definition.PromptCache,
+		ThinkingLevelMap: definition.ThinkingLevelMap, SamplingParams: definition.SamplingParams, SamplingParamsByThinkingLevel: definition.SamplingParamsByThinkingLevel, PromptCache: definition.PromptCache,
 		ProviderMeta: ai.ProviderMetadata{ProviderID: provider, API: definition.API, BaseURL: definition.BaseURL, Headers: definition.Headers, Compat: compat, Reasoning: definition.Reasoning},
 		Capabilities: ai.ModelCapabilities{
 			MaxThinking: thinking, SupportsImages: slices.Contains(definition.Input, "image"), SupportsToolUse: true,

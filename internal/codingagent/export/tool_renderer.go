@@ -26,7 +26,8 @@ type renderedToolHTML struct {
 }
 
 type toolHTMLRenderer struct {
-	defs             map[string]extension.ToolDefinition
+	// getToolRenderers returns the renderers of calls to a tool, as resolved by extensions and the registered tool.
+	getToolRenderers func(name string) *extension.ToolRenderers
 	cwd              string
 	width            int
 	renderedCall     map[string]any
@@ -39,16 +40,27 @@ type toolHTMLRenderer struct {
 	unresponsive map[string]bool
 }
 
-func newToolHTMLRenderer(tools []extension.RegisteredTool, cwd string, width int) *toolHTMLRenderer {
+// ToolRenderersOf returns the renderers of the registered tools by name, or nil for another tool.
+func ToolRenderersOf(tools []extension.RegisteredTool) func(name string) *extension.ToolRenderers {
 	defs := make(map[string]extension.ToolDefinition, len(tools))
 	for _, tool := range tools {
 		defs[tool.Definition.Name] = tool.Definition
 	}
+	return func(name string) *extension.ToolRenderers {
+		def, ok := defs[name]
+		if !ok {
+			return nil
+		}
+		return &extension.ToolRenderers{RenderShell: def.RenderShell, RenderCall: def.RenderCall, RenderResult: def.RenderResult}
+	}
+}
+
+func newToolHTMLRenderer(getToolRenderers func(name string) *extension.ToolRenderers, cwd string, width int) *toolHTMLRenderer {
 	if width <= 0 {
 		width = 100
 	}
 	return &toolHTMLRenderer{
-		defs:             defs,
+		getToolRenderers: getToolRenderers,
 		cwd:              cwd,
 		width:            width,
 		renderedCall:     map[string]any{},
@@ -141,8 +153,8 @@ func (r *toolHTMLRenderer) componentLines(toolName string, component any) (lines
 }
 
 func (r *toolHTMLRenderer) renderCall(toolCallID, toolName string, argsJSON json.RawMessage) (html string) {
-	def, ok := r.defs[toolName]
-	if !ok || def.RenderCall == nil {
+	def := r.getToolRenderers(toolName)
+	if def == nil || def.RenderCall == nil {
 		return ""
 	}
 	defer func() {
@@ -162,8 +174,8 @@ func (r *toolHTMLRenderer) renderCall(toolCallID, toolName string, argsJSON json
 }
 
 func (r *toolHTMLRenderer) renderResult(toolCallID, toolName string, result agent.AgentToolResult) (out renderedToolHTML) {
-	def, ok := r.defs[toolName]
-	if !ok || def.RenderResult == nil {
+	def := r.getToolRenderers(toolName)
+	if def == nil || def.RenderResult == nil {
 		return renderedToolHTML{}
 	}
 	defer func() {
@@ -239,11 +251,13 @@ func toolResultContent(v any) []ai.ToolResultMessageContent {
 	return content
 }
 
-func RenderCustomTools(data *SessionData, tools []extension.RegisteredTool, cwd string, width int) {
-	if data == nil || len(data.Entries) == 0 || len(tools) == 0 {
+// RenderCustomTools draws the session's tool calls and results with getToolRenderers, as upstream's tool HTML renderer
+// draws them with the renderers ToolHtmlRendererDeps.getToolRenderers returns.
+func RenderCustomTools(data *SessionData, getToolRenderers func(name string) *extension.ToolRenderers, cwd string, width int) {
+	if data == nil || len(data.Entries) == 0 || getToolRenderers == nil {
 		return
 	}
-	renderer := newToolHTMLRenderer(tools, cwd, width)
+	renderer := newToolHTMLRenderer(getToolRenderers, cwd, width)
 	rendered := map[string]renderedToolHTML{}
 
 	for _, raw := range data.Entries {

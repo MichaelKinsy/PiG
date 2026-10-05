@@ -223,13 +223,13 @@ func ExportFromFile(inputPath, outputPath string) (string, error) {
 	return ExportFromFileWithTools(inputPath, outputPath, nil, "", nil)
 }
 
-// ExportFromFileWithTools is ExportFromFile with the session's registered
-// tools drawing their calls and results through their renderers, as
-// upstream AgentSession.exportToHtml passes a tool renderer. A non-nil state
+// ExportFromFileWithTools is ExportFromFile with tool calls and results drawn
+// through the renderers getToolRenderers returns, as upstream
+// AgentSession.exportToHtml passes a tool renderer. A non-nil state
 // is the live agent state upstream passes to exportSessionToHtml, which embeds
 // its systemPrompt and tools; nil is upstream exportFromFile (CLI --export),
 // whose session data carries neither.
-func ExportFromFileWithTools(inputPath, outputPath string, tools []extension.RegisteredTool, cwd string, state *AgentState) (string, error) {
+func ExportFromFileWithTools(inputPath, outputPath string, getToolRenderers func(name string) *extension.ToolRenderers, cwd string, state *AgentState) (string, error) {
 	data, err := os.ReadFile(inputPath)
 	if err != nil {
 		return "", fmt.Errorf("read session: %w", err)
@@ -243,7 +243,7 @@ func ExportFromFileWithTools(inputPath, outputPath string, tools []extension.Reg
 		// upstream state.tools.map(...) is an array even when no tool is active.
 		sd.Tools = append([]ToolSchema{}, state.Tools...)
 	}
-	RenderCustomTools(&sd, tools, cwd, 100)
+	RenderCustomTools(&sd, getToolRenderers, cwd, 100)
 	htmlStr := ToHTML(sd)
 	if outputPath == "" {
 		base := strings.TrimSuffix(filepath.Base(inputPath), ".jsonl")

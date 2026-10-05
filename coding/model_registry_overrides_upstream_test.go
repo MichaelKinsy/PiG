@@ -39,11 +39,32 @@ func TestModelRegistryModelOverridesUpstream(t *testing.T) {
 			}
 		})
 	}
-	// .upstream/v0.87.1/packages/coding-agent/test/model-registry.test.ts:757
-	t.Run("custom model and model override carry sampling params", func(t *testing.T) {
-		s := registryFromJSON(t, `{"openrouter":{"baseUrl":"https://my-proxy.example.com/v1","api":"openai-completions","models":[{"id":"custom/sampling-model","samplingParams":{"temperature":1,"top_p":0.95,"top_k":0}}],"modelOverrides":{"anthropic/claude-sonnet-4":{"samplingParams":{"top_p":0.9}}}}}`)
-		if !reflect.DeepEqual(mustRegistryModel(t, s, "openrouter", "custom/sampling-model").SamplingParams, map[string]any{"temperature": float64(1), "top_p": 0.95, "top_k": float64(0)}) || !reflect.DeepEqual(mustRegistryModel(t, s, "openrouter", sonnet).SamplingParams, map[string]any{"top_p": 0.9}) || mustRegistryModel(t, s, "openrouter", opus).SamplingParams != nil {
-			t.Fatal("sampling metadata changed")
+	// .upstream/v1.0.2/packages/coding-agent/test/model-registry.test.ts:757 (Pi 1.0.2 #9776 adds samplingParamsByThinkingLevel)
+	t.Run("custom models and model overrides carry sampling params", func(t *testing.T) {
+		s := registryFromJSON(t, `{"openrouter":{"baseUrl":"https://my-proxy.example.com/v1","api":"openai-completions","models":[{"id":"custom/sampling-model","samplingParams":{"temperature":1,"top_p":0.95,"top_k":0},"samplingParamsByThinkingLevel":{"low":{"temperature":0.6,"top_p":0.95},"high":{"temperature":0.8}}}],"modelOverrides":{"custom/sampling-model":{"samplingParamsByThinkingLevel":{"low":{"temperature":0.5,"top_k":20},"max":{"temperature":1}}},"anthropic/claude-sonnet-4":{"samplingParams":{"top_p":0.9},"samplingParamsByThinkingLevel":{"high":{"temperature":0.8}}}}}}`)
+		assertRegistryNoError(t, s)
+		custom := mustRegistryModel(t, s, "openrouter", "custom/sampling-model")
+		if !reflect.DeepEqual(custom.SamplingParams, map[string]any{"temperature": float64(1), "top_p": 0.95, "top_k": float64(0)}) {
+			t.Errorf("custom samplingParams = %v", custom.SamplingParams)
+		}
+		if want := (ai.SamplingParamsByThinkingLevel{
+			ai.ThinkingLow:  {"temperature": 0.5, "top_p": 0.95, "top_k": float64(20)},
+			ai.ThinkingHigh: {"temperature": 0.8},
+			ai.ThinkingMax:  {"temperature": float64(1)},
+		}); !reflect.DeepEqual(custom.SamplingParamsByThinkingLevel, want) {
+			t.Errorf("custom samplingParamsByThinkingLevel = %v, want %v", custom.SamplingParamsByThinkingLevel, want)
+		}
+		sonnetModel := mustRegistryModel(t, s, "openrouter", sonnet)
+		if !reflect.DeepEqual(sonnetModel.SamplingParams, map[string]any{"top_p": 0.9}) {
+			t.Errorf("sonnet samplingParams = %v", sonnetModel.SamplingParams)
+		}
+		if want := (ai.SamplingParamsByThinkingLevel{ai.ThinkingHigh: {"temperature": 0.8}}); !reflect.DeepEqual(sonnetModel.SamplingParamsByThinkingLevel, want) {
+			t.Errorf("sonnet samplingParamsByThinkingLevel = %v, want %v", sonnetModel.SamplingParamsByThinkingLevel, want)
+		}
+		// Models without sampling config keep it unset.
+		opusModel := mustRegistryModel(t, s, "openrouter", opus)
+		if opusModel.SamplingParams != nil || opusModel.SamplingParamsByThinkingLevel != nil {
+			t.Errorf("opus sampling = %v / %v, want unset", opusModel.SamplingParams, opusModel.SamplingParamsByThinkingLevel)
 		}
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/model-registry.test.ts:790

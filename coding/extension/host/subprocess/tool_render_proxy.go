@@ -104,8 +104,10 @@ func (r *toolRenderSessions) invalidate(conn *Conn, card string) {
 // frame the extension rendered and starts at most one owned background
 // request loop when the renderer inputs or the width change.
 type toolRenderProxy struct {
-	session    *toolRenderSession
-	tool       string
+	session *toolRenderSession
+	tool    string
+	// renderers names resolved renderers of the extension, or "" for the registered tool's.
+	renderers  string
 	phase      string
 	inactivity time.Duration
 	repaint    func()
@@ -151,8 +153,9 @@ func (h *Host) toolRenderProxyFor(me *managedExt, toolName, phase string, contex
 	me = me.current()
 	conn := me.connection()
 	proxy, _ := context.LastComponent.(*toolRenderProxy)
-	if proxy == nil || proxy.phase != phase || proxy.tool != toolName || proxy.session.conn != conn || (context.Card != "" && proxy.session.card != context.Card) {
+	if proxy == nil || proxy.phase != phase || proxy.tool != toolName || proxy.renderers != payload.Renderers || proxy.session.conn != conn || (context.Card != "" && proxy.session.card != context.Card) {
 		proxy = &toolRenderProxy{
+			renderers:  payload.Renderers,
 			session:    me.toolRenders.session(conn, context.Card),
 			tool:       toolName,
 			phase:      phase,

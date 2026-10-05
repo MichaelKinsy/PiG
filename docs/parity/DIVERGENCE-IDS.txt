@@ -11,4 +11,6 @@ D85: RPC stdin-end residuals (suspended command continuation, cross-process shut
 D86: RPC settle-tail stdin hold for a handler of a runtime that cannot report its wait; fix-992-stdin-eof; approved by owner Michael Kinsy 2026-10-01.
 D87: PiG's versions of Pi's easter eggs (logo-click animation with the PiG mark's running pig, /arminsayshi pig head and /pigsayhi); pig-eggs; approved by owner Michael Kinsy 2026-10-01.
 D88: PiG's own first-time setup (theme, sprite, analytics) on an interactive start without settings.json; first-run-sprite; approved by owner Michael Kinsy 2026-10-02.
-Next free ID: D89.
+D89: tool renderer resolvers of subprocess extensions answer once per tool off the UI loop; port-101; approved by owner Michael Kinsy 2026-10-03.
+D90: llama.cpp reasoning models offer every budgeted thinking level and send thinking_budget_tokens (issue #129); port-102; approved by owner task decision 2026-10-04.
+Next free ID: D91.

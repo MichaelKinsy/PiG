@@ -14,7 +14,7 @@ if (process.argv[2] === "pig") {
 } else {
   assert.equal(process.argv[2], "pi");
   const root = process.env.PI_PACKAGE_ROOT ?? resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-  assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, "1.0.0", "pinned Pi package");
+  assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, "1.0.2", "pinned Pi package");
   const { SessionSelectorComponent } = await import(pathToFileURL(join(root, "dist/modes/interactive/components/session-selector.js")));
   const { initTheme, stopThemeWatcher } = await import(pathToFileURL(join(root, "dist/modes/interactive/theme/theme.js")));
   const { KeybindingsManager } = await import(pathToFileURL(join(root, "dist/core/keybindings.js")));

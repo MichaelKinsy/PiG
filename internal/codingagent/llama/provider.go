@@ -57,6 +57,7 @@ type ModelCompat struct {
 	SupportsStrictMode       bool   `json:"supportsStrictMode"`
 	MaxTokensField           string `json:"maxTokensField"`
 	ThinkingFormat           string `json:"thinkingFormat,omitempty"`
+	ThinkingTokenBudgetField string `json:"thinkingTokenBudgetField,omitempty"`
 }
 
 // Model mirrors the pi-ai Model<"openai-completions"> the provider publishes
@@ -343,9 +344,11 @@ func toPiModel(model LlamaModelInfo, serverURL string, props *LlamaServerProps, 
 		Compat:        ModelCompat{SupportsUsageInStreaming: true, MaxTokensField: "max_tokens"},
 	}
 	if reasoning {
-		off, medium := "off", "medium"
-		result.ThinkingLevelMap = &ThinkingLevelMap{Off: &off, Medium: &medium}
+		// pig divergence (D90): Pi maps only off and medium and sends no budget. Every budgeted level is offered and sends its thinking_budget_tokens; xhigh would send high's budget, so it stays unsupported.
+		off, minimal, low, medium, high := "off", "minimal", "low", "medium", "high"
+		result.ThinkingLevelMap = &ThinkingLevelMap{Off: &off, Minimal: &minimal, Low: &low, Medium: &medium, High: &high}
 		result.Compat.ThinkingFormat = "qwen-chat-template"
+		result.Compat.ThinkingTokenBudgetField = "thinking_budget_tokens"
 	}
 	return result
 }

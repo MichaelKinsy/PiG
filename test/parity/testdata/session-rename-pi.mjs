@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import ts from "../interface-extractor/node_modules/typescript/lib/typescript.js";
 const root = process.env.PI_PACKAGE_ROOT ?? resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, "1.0.0");
+assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, "1.0.2");
 const packageURL = pathToFileURL(join(root, "package.json")).href;
 const moduleURL = code => "data:text/javascript;base64," + Buffer.from(code).toString("base64");
 const state = { cases: [], before: [], each: [] };

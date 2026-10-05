@@ -19,7 +19,7 @@ type ConversationView struct {
 	Conversation durable.ConversationRecord `json:"conversation"`
 	// Entries are the raw active entries, as ContextView.Entries: the head marker, then the non-head entries from its head.
 	Entries []durable.EntryRecord `json:"entries"`
-	// Docs holds pi.agent, pi.live, pi.inbox, and pi.usage, keyed by kind; absent documents are absent.
+	// Docs holds the built-in conversation documents keyed by kind; absent documents are absent.
 	Docs map[string]durable.JsonObject `json:"docs"`
 }
 
@@ -33,7 +33,7 @@ type ViewObserver struct {
 
 // mountedDocs are the documents a view mounts, in mount order.
 func mountedDocs() []durable.AnyDocToken {
-	return []durable.AnyDocToken{AgentDoc, LiveDoc, InboxDoc, UsageDoc}
+	return []durable.AnyDocToken{AgentDoc, LiveDoc, InboxDoc, ProviderDoc, UsageDoc}
 }
 
 func mountedKind(kind string) bool {

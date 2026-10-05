@@ -3,7 +3,7 @@ import {readFileSync,realpathSync} from 'node:fs';
 import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 const root=process.env.PI_PACKAGE_ROOT??realpathSync('extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent');
-assert.equal(JSON.parse(readFileSync(join(root,'package.json'),'utf8')).version,'1.0.0');
+assert.equal(JSON.parse(readFileSync(join(root,'package.json'),'utf8')).version,'1.0.2');
 const dist=join(root,'node_modules/@earendil-works/pi-tui/dist');
 const {Markdown}=await import(pathToFileURL(join(dist,'components/markdown.js')).href);
 const {setCapabilities}=await import(pathToFileURL(join(dist,'terminal-image.js')).href);

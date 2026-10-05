@@ -42,7 +42,7 @@
     },
     {
       "source": "test/parity/testdata/list-limit-number-pi.mjs",
-      "sha256": "b67ba57557c849e5e93c1392d602d1f13e923d81d26af65fc0bd69f7dc83e9d8",
+      "sha256": "fa7e644424cb75c900379b463a9ceecf821b845d6235d9ffb075b8179a4da888",
       "reason": "This numeric-renderer probe selects the complete warning-bracket text from Pi's actual renderResult output under an explicit unstyled fixture theme. It claims number/notice text only, not terminal layout or ANSI styling; full themed body rows are checked by the Go caller regression."
     },
     {
@@ -72,7 +72,7 @@
     },
     {
       "source": "test/parity/testdata/session-collision-pi.mjs",
-      "sha256": "8fcc6965417ebd905263106ee25e01f5604e2c5b9a65b72d774eb38377108eda",
+      "sha256": "3a999ca1cc10e9e2a24a8149c6da1205b4b723a962fab247077a0664f991de6e",
       "reason": "This entry-allocation probe controls seed/duplicate/fresh entropy in the real Pi SessionManager and compares IDs, parent links, retained indexed content and generator calls. It makes no timestamp or whole-record claim; those contracts are covered by the Session wire probe."
     },
     {
@@ -1873,6 +1873,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/71-model-select-live-context.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "MODEL SELECT PROBE",
+            "capture_end": "level=medium"
+          },
+          "reason": "Owned visible surface: model_select and thinking_level_select handlers observe the selected model and thinking level",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/footer/01-footer-default.toml",
       "transforms": [
         {
@@ -2327,6 +2345,23 @@
             "capture_start": "escape to return"
           },
           "reason": "Owned visible surface: A click on the header logo plays the fullscreen dissolve, starfield and return hint in the same cells as pi.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/fullscreen/12-arminsayshi-3d.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "escape to return"
+          },
+          "reason": "Owned visible surface: /arminsayshi in fullscreen plays the 3D egg's dissolve, starfield and return hint in the same cells as pi, not the inline image.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {

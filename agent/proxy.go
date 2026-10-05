@@ -151,8 +151,10 @@ type proxyModel struct {
 	ContextWindow    int                  `json:"contextWindow"`
 	MaxTokens        int                  `json:"maxTokens"`
 	SamplingParams   map[string]any       `json:"samplingParams,omitempty"`
-	Headers          map[string]string    `json:"headers,omitempty"`
-	Compat           *ai.ModelCompat      `json:"compat,omitempty"`
+	// SamplingParamsByThinkingLevel is Model.samplingParamsByThinkingLevel; the proxy request carries the whole model.
+	SamplingParamsByThinkingLevel ai.SamplingParamsByThinkingLevel `json:"samplingParamsByThinkingLevel,omitempty"`
+	Headers                       map[string]string                `json:"headers,omitempty"`
+	Compat                        *ai.ModelCompat                  `json:"compat,omitempty"`
 }
 
 type proxyRequestPayload struct {
@@ -223,7 +225,7 @@ func buildProxyRequest(model *ai.Model, transcript ai.TranscriptContext, options
 			ThinkingLevelMap: model.ThinkingLevelMap, Input: model.Input, InputLimits: model.InputLimits,
 			Cost: model.CostRates(), PromptCache: model.PromptCache,
 			ContextWindow: model.Capabilities.ContextWindow, MaxTokens: model.Capabilities.MaxOutputTokens,
-			SamplingParams: model.SamplingParams, Headers: model.ProviderMeta.Headers, Compat: model.ProviderMeta.Compat,
+			SamplingParams: model.SamplingParams, SamplingParamsByThinkingLevel: model.SamplingParamsByThinkingLevel, Headers: model.ProviderMeta.Headers, Compat: model.ProviderMeta.Compat,
 		},
 		Context: proxyRequestContext{Messages: messages},
 		Options: proxySerializableStreamOptions{

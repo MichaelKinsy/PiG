@@ -3723,8 +3723,27 @@ var HStack = class extends Stack {
 };
 
 // pi-dist/pi-tui/components/image.js
-import { allocateImageId, getCapabilities, getCellDimensions, getImageDimensions, imageFallback, renderImage } from "../terminal-image.js";
+import { allocateImageId, getCapabilities, getCellDimensions, getImageDimensions, getPngDimensions, imageFallback, renderImage } from "../terminal-image.js";
 import { truncateToWidth as truncateToWidth2 } from "../utils.js";
+var imageTranscoder;
+var pngCache = /* @__PURE__ */ new Map();
+function setImageTranscoder(transcoder) {
+  imageTranscoder = transcoder;
+  pngCache.clear();
+}
+__name(setImageTranscoder, "setImageTranscoder");
+function toPng(base64Data, mimeType) {
+  if (!imageTranscoder)
+    return null;
+  const cached = pngCache.get(base64Data);
+  const png = cached === void 0 ? imageTranscoder(base64Data, mimeType) : cached;
+  pngCache.delete(base64Data);
+  pngCache.set(base64Data, png);
+  if (pngCache.size > 32)
+    pngCache.delete(pngCache.keys().next().value);
+  return png;
+}
+__name(toPng, "toPng");
 var Image = class {
   static {
     __name(this, "Image");
@@ -3735,6 +3754,8 @@ var Image = class {
   theme;
   options;
   imageId;
+  /** Converted PNG data for Kitty. Failures are not stored so a later transcoder can retry. */
+  pngData;
   cachedLines;
   cachedWidth;
   constructor(base64Data, mimeType, theme, options = {}, dimensions) {
@@ -3762,12 +3783,20 @@ var Image = class {
     const defaultMaxHeight = Math.max(1, Math.ceil(maxWidth * cellDimensions.widthPx / cellDimensions.heightPx));
     const maxHeight = this.options.maxHeightCells ?? defaultMaxHeight;
     const caps = getCapabilities();
+    let data = this.base64Data;
+    let dimensions = this.dimensions;
+    if (caps.images === "kitty" && this.mimeType !== "image/png") {
+      this.pngData ??= toPng(this.base64Data, this.mimeType) ?? void 0;
+      data = this.pngData ?? null;
+      if (data)
+        dimensions = getPngDimensions(data) ?? dimensions;
+    }
     let lines;
-    if (caps.images) {
+    if (caps.images && data) {
       if (caps.images === "kitty" && this.imageId === void 0) {
         this.imageId = allocateImageId();
       }
-      const result = renderImage(this.base64Data, this.dimensions, {
+      const result = renderImage(data, dimensions, {
         maxWidthCells: maxWidth,
         maxHeightCells: maxHeight,
         imageId: this.imageId,
@@ -7514,7 +7543,7 @@ function parseTerminalColorSchemeReport(data) {
 __name(parseTerminalColorSchemeReport, "parseTerminalColorSchemeReport");
 
 // pi-dist/pi-tui/index.js
-import { allocateImageId as allocateImageId2, calculateImageRows, deleteAllKittyImages as deleteAllKittyImages2, deleteKittyImage as deleteKittyImage3, detectCapabilities, encodeITerm2, encodeKitty, getCapabilities as getCapabilities4, getCellDimensions as getCellDimensions2, getGifDimensions, getImageDimensions as getImageDimensions2, getJpegDimensions, getPngDimensions, getTerminalColorMode, getWebpDimensions, hyperlink as hyperlink2, imageFallback as imageFallback2, renderImage as renderImage2, resetCapabilitiesCache, setCapabilities as setCapabilities2, setCapabilityOverrides, setCellDimensions } from "../terminal-image.js";
+import { allocateImageId as allocateImageId2, calculateImageRows, deleteAllKittyImages as deleteAllKittyImages2, deleteKittyImage as deleteKittyImage3, detectCapabilities, encodeITerm2, encodeKitty, getCapabilities as getCapabilities4, getCellDimensions as getCellDimensions2, getGifDimensions, getImageDimensions as getImageDimensions2, getJpegDimensions, getPngDimensions as getPngDimensions2, getTerminalColorMode, getWebpDimensions, hyperlink as hyperlink2, imageFallback as imageFallback2, renderImage as renderImage2, resetCapabilitiesCache, setCapabilities as setCapabilities2, setCapabilityOverrides, setCellDimensions } from "../terminal-image.js";
 import { Container as Container4, CURSOR_MARKER as CURSOR_MARKER5, compositeTuiLine as compositeTuiLine4, isFocusable, isViewportTUI } from "../tui.js";
 
 // pi-dist/pi-tui/alt-screen-search.js
@@ -8180,7 +8209,7 @@ function getScrollViewsAt(frame, x, y) {
 __name(getScrollViewsAt, "getScrollViewsAt");
 
 // pi-dist/pi-tui/tui-alt-screen.js
-import { deleteAllKittyImages, deleteAllKittyPlacements, deleteKittyImage, getCapabilities as getCapabilities3, getKittyImagePlacement, isImageLine as isImageLine3, setCapabilities } from "../terminal-image.js";
+import { deleteAllKittyImages, deleteAllKittyPlacements, deleteKittyImage, getCapabilities as getCapabilities3, getKittyImagePlacement, getKittyImagePlacementRows, isImageLine as isImageLine3, setCapabilities } from "../terminal-image.js";
 import { Container as Container3, CURSOR_MARKER as CURSOR_MARKER4, compositeTuiLine as compositeTuiLine3, dispatchMouseEvent as dispatchMouseEvent3, retargetMouseEvent, TuiBase, VIEWPORT_TUI } from "../tui.js";
 import { extractAnsiCode as extractAnsiCode2, getGraphemeCellRange as getGraphemeCellRange2, getOsc8LinkAtColumn, getWordSegmenter as getWordSegmenter3, sliceByColumn as sliceByColumn4, stripTerminalSequences as stripTerminalSequences2, truncateToWidth as truncateToWidth8, visibleWidth as visibleWidth13 } from "../utils.js";
 
@@ -9608,7 +9637,20 @@ var TuiAltScreen = class extends TuiBase {
       return sliceByColumn4(line, 0, width, true);
     });
     const fullRedraw = this.previousScreen.length === 0 || this.previousScreenWidth !== width || this.previousScreenHeight !== height;
-    const imagesNeedRedraw = screen.some((line, row) => line !== this.previousScreen[row] && (isImageLine3(line) || isImageLine3(this.previousScreen[row] ?? "")));
+    const changedRows = screen.map((line, row) => line !== this.previousScreen[row]);
+    const imageAnchorsNeedRedraw = screen.some((line, row) => changedRows[row] && (isImageLine3(line) || isImageLine3(this.previousScreen[row] ?? "")));
+    const isWezTerm = Boolean(process.env.WEZTERM_PANE) || process.env.TERM_PROGRAM?.toLowerCase() === "wezterm";
+    const imageCellsNeedRedraw = !imageAnchorsNeedRedraw && isWezTerm && this.imageProtocol === "kitty" && changedRows.some(Boolean) && screen.some((line, row) => {
+      const placementRows = getKittyImagePlacementRows(line);
+      if (placementRows === void 0)
+        return false;
+      for (let coveredRow = row; coveredRow < row + placementRows; coveredRow++) {
+        if (changedRows[coveredRow])
+          return true;
+      }
+      return false;
+    });
+    const imagesNeedRedraw = imageAnchorsNeedRedraw || imageCellsNeedRedraw;
     const redrawImages = fullRedraw || imagesNeedRedraw;
     const hadUploadedKittyImages = this.uploadedKittyImages.size > 0;
     const preparedKittyScreen = redrawImages && this.imageProtocol === "kitty" ? this.prepareKittyScreen(screen) : { lines: screen, evictedImageDeletion: "" };
@@ -9624,18 +9666,33 @@ var TuiAltScreen = class extends TuiBase {
         buffer += deleteAllKittyPlacements();
     }
     buffer += preparedKittyScreen.evictedImageDeletion;
-    const clearRowsBeforeKittyImages = redrawImages && this.imageProtocol === "kitty" && screen.some(isImageLine3) && (Boolean(process.env.WEZTERM_PANE) || process.env.TERM_PROGRAM?.toLowerCase() === "wezterm");
-    if (clearRowsBeforeKittyImages) {
+    const drawKittyImagesLast = redrawImages && this.imageProtocol === "kitty" && screen.some(isImageLine3) && isWezTerm;
+    if (drawKittyImagesLast) {
       for (let row = 0; row < height; row++) {
         if (!fullRedraw && !imagesNeedRedraw && screen[row] === this.previousScreen[row])
           continue;
         buffer += `\x1B[${row + 1};1H\x1B[2K`;
       }
-    }
-    for (let row = 0; row < height; row++) {
-      if (!fullRedraw && !imagesNeedRedraw && screen[row] === this.previousScreen[row])
-        continue;
-      buffer += `\x1B[${row + 1};1H${clearRowsBeforeKittyImages ? "" : "\x1B[2K"}${preparedKittyScreen.lines[row] ?? ""}`;
+      for (let row = 0; row < height; row++) {
+        if (!fullRedraw && !imagesNeedRedraw && screen[row] === this.previousScreen[row])
+          continue;
+        if (isImageLine3(preparedKittyScreen.lines[row] ?? ""))
+          continue;
+        buffer += `\x1B[${row + 1};1H${preparedKittyScreen.lines[row] ?? ""}`;
+      }
+      for (let row = 0; row < height; row++) {
+        if (!fullRedraw && !imagesNeedRedraw && screen[row] === this.previousScreen[row])
+          continue;
+        if (!isImageLine3(preparedKittyScreen.lines[row] ?? ""))
+          continue;
+        buffer += `\x1B[${row + 1};1H${preparedKittyScreen.lines[row] ?? ""}`;
+      }
+    } else {
+      for (let row = 0; row < height; row++) {
+        if (!fullRedraw && !imagesNeedRedraw && screen[row] === this.previousScreen[row])
+          continue;
+        buffer += `\x1B[${row + 1};1H\x1B[2K${preparedKittyScreen.lines[row] ?? ""}`;
+      }
     }
     if (cursorPos) {
       buffer += `\x1B[${cursorPos.row + 1};${Math.min(width, cursorPos.col) + 1}H`;
@@ -10258,7 +10315,7 @@ export {
   getKeybindings8 as getKeybindings,
   getNativeClipboard,
   getOsc8LinkAtColumn2 as getOsc8LinkAtColumn,
-  getPngDimensions,
+  getPngDimensions2 as getPngDimensions,
   getTerminalColorMode,
   getWebpDimensions,
   hyperlink2 as hyperlink,
@@ -10285,6 +10342,7 @@ export {
   setCapabilities2 as setCapabilities,
   setCapabilityOverrides,
   setCellDimensions,
+  setImageTranscoder,
   setKeybindings,
   setKittyProtocolActive2 as setKittyProtocolActive,
   sliceByColumn5 as sliceByColumn,

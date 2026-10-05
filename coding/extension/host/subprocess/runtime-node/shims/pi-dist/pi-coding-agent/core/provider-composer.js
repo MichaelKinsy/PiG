@@ -40,6 +40,17 @@ function mergeInputLimits(base, override) {
             : base?.images,
     };
 }
+function mergeSamplingParamsByThinkingLevel(base, override) {
+    if (!override)
+        return base;
+    const merged = { ...base };
+    for (const level of ["off", "minimal", "low", "medium", "high", "xhigh", "max"]) {
+        const params = override[level];
+        if (params)
+            merged[level] = { ...base?.[level], ...params };
+    }
+    return merged;
+}
 function applyModelOverride(model, override) {
     return {
         ...model,
@@ -65,6 +76,7 @@ function applyModelOverride(model, override) {
         samplingParams: override.samplingParams
             ? { ...model.samplingParams, ...override.samplingParams }
             : model.samplingParams,
+        samplingParamsByThinkingLevel: mergeSamplingParamsByThinkingLevel(model.samplingParamsByThinkingLevel, override.samplingParamsByThinkingLevel),
         compat: mergeCompat(model.compat, override.compat),
     };
 }
@@ -97,6 +109,7 @@ function modelFromJson(providerId, definition, providerConfig, defaults) {
         contextWindow: definition.contextWindow ?? 128000,
         maxTokens: definition.maxTokens ?? 16384,
         samplingParams: definition.samplingParams,
+        samplingParamsByThinkingLevel: definition.samplingParamsByThinkingLevel,
         headers: undefined,
         compat: mergeCompat(providerConfig.compat, definition.compat),
     };

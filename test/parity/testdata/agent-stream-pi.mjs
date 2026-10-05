@@ -4,7 +4,7 @@ import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const root = resolve('extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent');
-assert.equal(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version, '1.0.0');
+assert.equal(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version, '1.0.2');
 const parent = pathToFileURL(join(root, 'package.json')).href;
 const { Agent, setDefaultStreamFn } = await import(import.meta.resolve('@earendil-works/pi-agent-core', parent));
 const { EventStream } = await import(import.meta.resolve('@earendil-works/pi-ai', parent));

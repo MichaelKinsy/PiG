@@ -2,7 +2,7 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {join} from 'node:path';
 const root=fileURLToPath(new URL('../../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent',import.meta.url));
-if(JSON.parse(readFileSync(join(root,'package.json'),'utf8')).version!=='1.0.0')throw new Error('Expected Pi 1.0.0');
+if(JSON.parse(readFileSync(join(root,'package.json'),'utf8')).version!=='1.0.2')throw new Error('Expected Pi 1.0.2');
 const {Editor}=await import(pathToFileURL(join(root,'node_modules/@earendil-works/pi-tui/dist/components/editor.js')));
 const {CombinedAutocompleteProvider}=await import(pathToFileURL(join(root,'node_modules/@earendil-works/pi-tui/dist/autocomplete.js')));
 // Pi 0.99.1's own editor theme (theme.ts:1135-1149, dark.json): selectedText is the dark theme's violet accent, not the

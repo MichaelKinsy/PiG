@@ -8,7 +8,7 @@ Most hosted providers accept an API key, and some also accept a browser or devic
 
 Raw Provider-object access from extensions has documented 0.3.x gaps (D78, owner decision 2026-09-28). Registered-native methods cross the SDK bridge, but Go, Rust and Python cannot yet retrieve every builtin/composed raw Provider object. Foreign registered-configuration data is a snapshot, not a live alias of the author's object; callable handles do not synchronize arbitrary property writes. Same-process Node roots, children, functions and receivers must retain Pi's behavior. This limit does not change normal model selection or approve incorrect authentication, refresh, cancellation or registration cleanup.
 
-PiG ships the same built-in chat providers and classifier models as Pi 1.0.0. `typesafe` has only classifier models, and `cloudflare-workers-ai`, `opencode`, `openrouter` and `vercel-ai-gateway` list them beside their chat models. The provider key is the first part of a `provider/model` spec. The wire column lists the APIs that the provider's built-in chat models use.
+PiG ships the same built-in chat providers and classifier models as Pi 1.0.2. `typesafe` has only classifier models, and `cloudflare-workers-ai`, `opencode`, `openrouter` and `vercel-ai-gateway` list them beside their chat models. The provider key is the first part of a `provider/model` spec. The wire column lists the APIs that the provider's built-in chat models use.
 
 | Provider key | Name | Wire | Credential |
 |---|---|---|---|
@@ -97,7 +97,7 @@ PiG stores credentials in `~/.pig/agent/auth.json`. Agent startup creates a miss
 
 `auth.json` can contain API keys and OAuth tokens. Keep it private and do not commit it.
 
-Interactive login prompts marked as secret use PiG's `maskSecretInput` setting (default `true`). **Mask secret input** in `/settings` shows dots, a character count and the last four characters while typing, then retains only the masked preview after submission. Inputs shorter than five characters show no suffix. Set `maskSecretInput` to `false` to restore Pi 1.0.0's plain-text behavior. This configurable feature is recorded as divergence D80. Ordinary text and manual-code prompts remain visible. Credentials still belong in `auth.json` or the provider's credential store; the setting protects dialog and authentication-diagnostic output, not credential storage.
+Interactive login prompts marked as secret use PiG's `maskSecretInput` setting (default `true`). **Mask secret input** in `/settings` shows dots, a character count and the last four characters while typing, then retains only the masked preview after submission. Inputs shorter than five characters show no suffix. Set `maskSecretInput` to `false` to restore Pi 1.0.2's plain-text behavior. This configurable feature is recorded as divergence D80. Ordinary text and manual-code prompts remain visible. Credentials still belong in `auth.json` or the provider's credential store; the setting protects dialog and authentication-diagnostic output, not credential storage.
 
 ### Interactive login and logout
 

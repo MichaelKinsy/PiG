@@ -117,6 +117,23 @@ func (m *InteractiveMode) activeToolNames() []string {
 	return names
 }
 
+// sessionModel is the Session's model, read live as Pi's extension context reads agent.state.model (runner.ts createContext `get model()`, agent-session.ts _bindExtensionCore). The Session applies a change before it emits model_select and thinking_level_select; the mode's own copy follows only after the Session returns.
+func (m *InteractiveMode) sessionModel() *ai.Model {
+	if m.opts.SessionHandle != nil {
+		if session := m.opts.SessionHandle.Agent(); session != nil {
+			if model := session.Model(); model != nil {
+				return model
+			}
+		}
+	}
+	if m.agent != nil {
+		if model := m.agent.Model(); model != nil {
+			return model
+		}
+	}
+	return m.opts.Model
+}
+
 // extensionContextUsage reads the same Session projection as the stock footer. A zero window means no usage; a nil estimate with a usable window means unknown usage after compaction.
 func (m *InteractiveMode) extensionContextUsage() *extension.ContextUsage {
 	if m.opts.ContextUsage == nil {
@@ -198,10 +215,11 @@ func (m *InteractiveMode) wireInprocContextActions() {
 			return nil
 		},
 		GetModel: func() extension.Model {
-			if m.opts.Model == nil {
+			model := m.sessionModel()
+			if model == nil {
 				return nil
 			}
-			return modelToExtModel(m.opts.Model)
+			return modelToExtModel(model)
 		},
 		IsIdle:           m.extensionIsIdle,
 		GetSignal:        m.extensionSignal,
@@ -414,9 +432,9 @@ func (m *InteractiveMode) sessionToolActions() (extension.ToolActions, bool) {
 func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 	b := m.opts.SubprocessUIBridge
 	detachModelRegistry := WireModelOperations(b, ModelOperationBindings{
-		CurrentModel: func() *ai.Model { return m.opts.Model }, ModelLookup: m.opts.ModelLookup, ModelCatalog: m.opts.ModelCatalog, Classify: m.opts.ModelClassify, GenerateImages: m.opts.ModelGenerateImages,
+		CurrentModel: m.sessionModel, ModelLookup: m.opts.ModelLookup, ModelCatalog: m.opts.ModelCatalog, Classify: m.opts.ModelClassify, GenerateImages: m.opts.ModelGenerateImages,
 		Registry: m.opts.ModelRegistry, ModelBuilder: m.opts.ModelBuilder, SessionHandle: m.opts.SessionHandle,
-		Thinking: ai.ThinkingLevel(m.thinkingLevel), Transport: ai.Transport(m.opts.Settings.Transport),
+		Transport: ai.Transport(m.opts.Settings.Transport),
 	})
 
 	b.SetHostAction("getFlag", func(extName, name string) any {
@@ -1480,7 +1498,6 @@ type ModelOperationBindings struct {
 	Classify func(context.Context, *ai.ClassifierModel, ai.ClassifierContext, ...ai.ModelsClassifierOptions) ai.ClassifierResult
 	// GenerateImages is the Session runtime's generateImages; an extension's ctx.modelRegistry.generateImages reaches it. Nil answers an error result.
 	GenerateImages func(context.Context, *ai.ImageModel, ai.ImagesContext, ...ai.ModelsImagesOptions) ai.AssistantImages
-	Thinking       ai.ThinkingLevel
 	Transport      ai.Transport
 }
 
@@ -1691,7 +1708,7 @@ func streamModelForSubprocess(ctx context.Context, model map[string]any, request
 			return nil, err
 		}
 	}
-	options, err := subprocessStreamOptions(request, ai.StreamOptions{Thinking: bindings.Thinking, IsReasoning: llmModel.Capabilities.MaxThinking != "", Transport: bindings.Transport})
+	options, err := subprocessStreamOptions(request, ai.StreamOptions{IsReasoning: llmModel.Capabilities.MaxThinking != "", Transport: bindings.Transport})
 	if err != nil {
 		return nil, err
 	}
@@ -1718,7 +1735,7 @@ func streamModelForSubprocess(ctx context.Context, model map[string]any, request
 func (m *InteractiveMode) streamForSubprocess(ctx context.Context, model map[string]any, request map[string]any) (*ai.AssistantMessageEventStream, error) {
 	return streamModelForSubprocess(ctx, model, request, ModelOperationBindings{
 		ModelBuilder: m.opts.ModelBuilder, SessionHandle: m.opts.SessionHandle,
-		Thinking: ai.ThinkingLevel(m.thinkingLevel), Transport: ai.Transport(m.opts.Settings.Transport),
+		Transport: ai.Transport(m.opts.Settings.Transport),
 	})
 }
 

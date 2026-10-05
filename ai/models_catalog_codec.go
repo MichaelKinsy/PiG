@@ -22,8 +22,10 @@ type modelsCatalogRecord struct {
 	ContextWindow    int               `json:"contextWindow"`
 	MaxTokens        int               `json:"maxTokens"`
 	SamplingParams   map[string]any    `json:"samplingParams,omitempty"`
-	Headers          map[string]string `json:"headers,omitempty"`
-	Compat           *ModelCompat      `json:"compat,omitempty"`
+	// SamplingParamsByThinkingLevel is Model.samplingParamsByThinkingLevel.
+	SamplingParamsByThinkingLevel SamplingParamsByThinkingLevel `json:"samplingParamsByThinkingLevel,omitempty"`
+	Headers                       map[string]string             `json:"headers,omitempty"`
+	Compat                        *ModelCompat                  `json:"compat,omitempty"`
 }
 
 // imageModelRecord is the data-only ImageModel stored by provider publication.
@@ -63,7 +65,7 @@ func encodeModelsCatalog(models []AnyModel) ([]json.RawMessage, error) {
 		switch typed := model.(type) {
 		case *Model:
 			caps := typed.Capabilities
-			record = modelsCatalogRecord{Type: typed.Type, ID: typed.ID, Name: typed.DisplayName, API: typed.ProviderMeta.API, Provider: typed.ProviderMeta.ProviderID, BaseURL: typed.ProviderMeta.BaseURL, Reasoning: typed.ProviderMeta.Reasoning, ThinkingLevelMap: typed.ThinkingLevelMap, Input: typed.Input, InputLimits: typed.InputLimits, Cost: ModelCost{Input: caps.InputCostPer1M, Output: caps.OutputCostPer1M, CacheRead: caps.CacheReadCostPer1M, CacheWrite: caps.CacheWriteCostPer1M, Tiers: caps.CostTiers}, PromptCache: typed.PromptCache, ContextWindow: caps.ContextWindow, MaxTokens: caps.MaxOutputTokens, SamplingParams: typed.SamplingParams, Headers: typed.ProviderMeta.Headers, Compat: typed.ProviderMeta.Compat}
+			record = modelsCatalogRecord{Type: typed.Type, ID: typed.ID, Name: typed.DisplayName, API: typed.ProviderMeta.API, Provider: typed.ProviderMeta.ProviderID, BaseURL: typed.ProviderMeta.BaseURL, Reasoning: typed.ProviderMeta.Reasoning, ThinkingLevelMap: typed.ThinkingLevelMap, Input: typed.Input, InputLimits: typed.InputLimits, Cost: ModelCost{Input: caps.InputCostPer1M, Output: caps.OutputCostPer1M, CacheRead: caps.CacheReadCostPer1M, CacheWrite: caps.CacheWriteCostPer1M, Tiers: caps.CostTiers}, PromptCache: typed.PromptCache, ContextWindow: caps.ContextWindow, MaxTokens: caps.MaxOutputTokens, SamplingParams: typed.SamplingParams, SamplingParamsByThinkingLevel: typed.SamplingParamsByThinkingLevel, Headers: typed.ProviderMeta.Headers, Compat: typed.ProviderMeta.Compat}
 		case *ImageModel:
 			record = imageModelRecord{Type: ModelTypeImage, ID: typed.ID, Name: typed.Name, API: typed.API, Provider: typed.Provider, BaseURL: typed.BaseURL, Input: typed.Input, InputLimits: typed.InputLimits, Cost: typed.Cost, Headers: typed.Headers, Output: typed.Output}
 		case *ClassifierModel:
@@ -127,7 +129,7 @@ func decodeModelsCatalog(raw []json.RawMessage, providerID string) ([]AnyModel, 
 }
 
 func chatModelFromRecord(record modelsCatalogRecord) *Model {
-	return &Model{Type: record.Type, ID: record.ID, DisplayName: record.Name, ProviderMeta: ProviderMetadata{ProviderID: record.Provider, API: record.API, BaseURL: record.BaseURL, Headers: record.Headers, Compat: record.Compat, Reasoning: record.Reasoning}, Capabilities: ModelCapabilities{MaxThinking: thinkingMaxLevel(record.Reasoning, record.ThinkingLevelMap), ContextWindow: record.ContextWindow, MaxOutputTokens: record.MaxTokens, InputCostPer1M: record.Cost.Input, OutputCostPer1M: record.Cost.Output, CacheReadCostPer1M: record.Cost.CacheRead, CacheWriteCostPer1M: record.Cost.CacheWrite, CostTiers: record.Cost.Tiers}, ThinkingLevelMap: record.ThinkingLevelMap, Input: record.Input, InputLimits: record.InputLimits, PromptCache: record.PromptCache, SamplingParams: record.SamplingParams}
+	return &Model{Type: record.Type, ID: record.ID, DisplayName: record.Name, ProviderMeta: ProviderMetadata{ProviderID: record.Provider, API: record.API, BaseURL: record.BaseURL, Headers: record.Headers, Compat: record.Compat, Reasoning: record.Reasoning}, Capabilities: ModelCapabilities{MaxThinking: thinkingMaxLevel(record.Reasoning, record.ThinkingLevelMap), ContextWindow: record.ContextWindow, MaxOutputTokens: record.MaxTokens, InputCostPer1M: record.Cost.Input, OutputCostPer1M: record.Cost.Output, CacheReadCostPer1M: record.Cost.CacheRead, CacheWriteCostPer1M: record.Cost.CacheWrite, CostTiers: record.Cost.Tiers}, ThinkingLevelMap: record.ThinkingLevelMap, Input: record.Input, InputLimits: record.InputLimits, PromptCache: record.PromptCache, SamplingParams: record.SamplingParams, SamplingParamsByThinkingLevel: record.SamplingParamsByThinkingLevel}
 }
 
 // withKnownModelTypes drops stored models whose type this version does not know.

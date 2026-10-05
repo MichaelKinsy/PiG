@@ -1,6 +1,7 @@
 import { Container, getKeybindings, Input, Spacer, Text } from "../../../../../pi-tui.mjs";
 import { openBrowser } from "../../../utils/open-browser.js";
 import { theme } from "../theme/theme.js";
+import { AuthUrlComponent } from "./auth-url.js";
 import { DynamicBorder } from "./dynamic-border.js";
 import { keyHint } from "./keybinding-hints.js";
 /**
@@ -10,6 +11,8 @@ export class LoginDialogComponent extends Container {
     contentContainer;
     input;
     tui;
+    /** The shown sign-in URL, which `app.message.copy` copies. */
+    authUrl;
     abortController = new AbortController();
     inputResolver;
     inputRejecter;
@@ -74,11 +77,8 @@ export class LoginDialogComponent extends Container {
     showAuth(url, instructions) {
         this.contentContainer.clear();
         this.contentContainer.addChild(new Spacer(1));
-        const linkedUrl = `\x1b]8;;${url}\x07${url}\x1b]8;;\x07`;
-        this.contentContainer.addChild(new Text(theme.fg("accent", linkedUrl), 1, 0));
-        const clickHint = process.platform === "darwin" ? "Cmd+click to open" : "Ctrl+click to open";
-        const hyperlink = `\x1b]8;;${url}\x07${clickHint}\x1b]8;;\x07`;
-        this.contentContainer.addChild(new Text(theme.fg("dim", hyperlink), 1, 0));
+        this.authUrl = new AuthUrlComponent(this.tui, url);
+        this.contentContainer.addChild(this.authUrl);
         if (instructions) {
             this.contentContainer.addChild(new Spacer(1));
             this.contentContainer.addChild(new Text(theme.fg("warning", instructions), 1, 0));
@@ -90,6 +90,7 @@ export class LoginDialogComponent extends Container {
      * Called by onDeviceCode callback - show URL and user code.
      */
     showDeviceCode(info) {
+        this.authUrl = undefined;
         this.contentContainer.clear();
         this.contentContainer.addChild(new Spacer(1));
         const linkedUrl = `\x1b]8;;${info.verificationUri}\x07${info.verificationUri}\x1b]8;;\x07`;
@@ -137,6 +138,7 @@ export class LoginDialogComponent extends Container {
     }
     /** Show informational text before another login step. */
     showDetails(lines) {
+        this.authUrl = undefined;
         this.contentContainer.clear();
         this.contentContainer.addChild(new Spacer(1));
         for (const line of lines) {
@@ -179,6 +181,10 @@ export class LoginDialogComponent extends Container {
         const kb = getKeybindings();
         if (kb.matches(data, "tui.select.cancel")) {
             this.cancel();
+            return;
+        }
+        if (this.authUrl && kb.matches(data, "app.message.copy")) {
+            void this.authUrl.copy();
             return;
         }
         // Pass to input

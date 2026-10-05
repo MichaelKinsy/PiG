@@ -182,6 +182,30 @@ def new_extension() -> pig_sdk.Extension:
         lambda markdown, context: "md:%s:%s:streaming=%s:width=%d"
         % (markdown, context.get("messageType", ""), str(bool(context.get("isStreaming"))).lower(), int(context.get("availableWidth") or 0))
     )
+    def resolved_line(prefix: str, tool: str):
+        return lambda _ctx, args, _render, _width: ["%s:%s:%s" % (prefix, tool, args.get("q"))]
+
+    def tool_renderer(tool: str, next_renderers):
+        if tool == "conformance_tool_renderer":
+            return pig_sdk.ToolRenderers(render_call=resolved_line("resolved", tool))
+        if tool == "conformance_no_renderer":
+            return None
+        if tool == "conformance_fill":
+            return next_renderers() or pig_sdk.ToolRenderers(render_call=resolved_line("filled", tool))
+        if tool == "conformance_wrap":
+            return dataclasses.replace(next_renderers(), render_call=resolved_line("wrapped", tool))
+        return next_renderers()
+
+    ext.tool_renderer(tool_renderer)
+
+    def late_tool_renderer(_ctx: pig_sdk.Context, _args: str) -> None:
+        ext.tool_renderer(
+            lambda tool, next_renderers: pig_sdk.ToolRenderers(render_call=resolved_line("late", tool))
+            if tool == "conformance_late"
+            else next_renderers()
+        )
+
+    ext.command("late_tool_renderer", "Register a tool renderer resolver after loading", late_tool_renderer)
     ext.entry_renderer(
         "conformance-entry",
         lambda _ctx, entry, options, width: [

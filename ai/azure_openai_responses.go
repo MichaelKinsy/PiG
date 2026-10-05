@@ -22,6 +22,8 @@ type AzureOpenAIResponsesConfig struct {
 	BaseURL        string
 	ExtraHeaders   map[string]string
 	SamplingParams map[string]any
+	// SamplingParamsByThinkingLevel overrides SamplingParams for the effective thinking level.
+	SamplingParamsByThinkingLevel SamplingParamsByThinkingLevel
 	// ThinkingLevelMap overrides catalog effort values when non-nil.
 	ThinkingLevelMap    ThinkingLevelMap
 	AzureAPIVersion     string
@@ -40,21 +42,22 @@ func NewAzureOpenAIResponsesProvider(cfg AzureOpenAIResponsesConfig) Provider {
 	}
 	deployment := resolveAzureDeploymentName(cfg.Model, cfg.AzureDeploymentName, cfg.Env)
 	baseCfg := OpenAIResponsesConfig{
-		api:                    APIAzureOpenAIResponses,
-		StrictModeDefault:      true, // upstream azure-openai-responses.ts: supportsStrictMode ?? true
-		SkipServiceTierPricing: true,
-		APIKey:                 cfg.APIKey,
-		APIKeyHeader:           "api-key",
-		APIKeyPrefix:           "",
-		Model:                  cfg.Model,
-		requestModel:           deployment,
-		ProviderID:             providerID,
-		ExtraHeaders:           cfg.ExtraHeaders,
-		SamplingParams:         cfg.SamplingParams,
-		ModelMetadata:          cfg.ModelMetadata,
-		ThinkingLevelMap:       cfg.ThinkingLevelMap,
-		Compat:                 cfg.Compat,
-		BaseURLIsEndpoint:      true,
+		api:                           APIAzureOpenAIResponses,
+		StrictModeDefault:             true, // upstream azure-openai-responses.ts: supportsStrictMode ?? true
+		SkipServiceTierPricing:        true,
+		APIKey:                        cfg.APIKey,
+		APIKeyHeader:                  "api-key",
+		APIKeyPrefix:                  "",
+		Model:                         cfg.Model,
+		requestModel:                  deployment,
+		ProviderID:                    providerID,
+		ExtraHeaders:                  cfg.ExtraHeaders,
+		SamplingParams:                cfg.SamplingParams,
+		SamplingParamsByThinkingLevel: cfg.SamplingParamsByThinkingLevel,
+		ModelMetadata:                 cfg.ModelMetadata,
+		ThinkingLevelMap:              cfg.ThinkingLevelMap,
+		Compat:                        cfg.Compat,
+		BaseURLIsEndpoint:             true,
 		GetAPIKey: func(context.Context) (string, error) {
 			apiKey := firstNonEmptyString(cfg.APIKey, os.Getenv("AZURE_OPENAI_API_KEY"))
 			if apiKey == "" {

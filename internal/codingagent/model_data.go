@@ -90,26 +90,27 @@ func modelDefinitionEntry(providerID string, prov providerConfig, md modelDefini
 	}
 
 	return ModelEntry{
-		ProviderID:       providerID,
-		ModelID:          md.ID,
-		BaseURL:          baseURL,
-		DisplayName:      name,
-		API:              api,
-		Compat:           compat,
-		Reasoning:        reasoning,
-		ThinkingLevelMap: cloneThinkingLevelMap(md.ThinkingLevelMap),
-		SamplingParams:   maps.Clone(md.SamplingParams),
-		Input:            input,
-		InputLimits:      md.InputLimits.Clone(),
-		ContextWindow:    ctxWindow,
-		MaxTokens:        maxTokens,
-		InputCost:        inputCost,
-		OutputCost:       outputCost,
-		CacheReadCost:    cacheReadCost,
-		CacheWriteCost:   cacheWriteCost,
-		CostTiers:        costTiers,
-		PromptCache:      maps.Clone(md.PromptCache),
-		Insecure:         prov.Insecure,
+		ProviderID:                    providerID,
+		ModelID:                       md.ID,
+		BaseURL:                       baseURL,
+		DisplayName:                   name,
+		API:                           api,
+		Compat:                        compat,
+		Reasoning:                     reasoning,
+		ThinkingLevelMap:              cloneThinkingLevelMap(md.ThinkingLevelMap),
+		SamplingParams:                maps.Clone(md.SamplingParams),
+		SamplingParamsByThinkingLevel: cloneSamplingParamsByThinkingLevel(md.SamplingParamsByThinkingLevel),
+		Input:                         input,
+		InputLimits:                   md.InputLimits.Clone(),
+		ContextWindow:                 ctxWindow,
+		MaxTokens:                     maxTokens,
+		InputCost:                     inputCost,
+		OutputCost:                    outputCost,
+		CacheReadCost:                 cacheReadCost,
+		CacheWriteCost:                cacheWriteCost,
+		CostTiers:                     costTiers,
+		PromptCache:                   maps.Clone(md.PromptCache),
+		Insecure:                      prov.Insecure,
 	}
 }
 
@@ -129,6 +130,7 @@ func applyModelOverride(e *ModelEntry, ovr modelOverrideJSON) {
 		}
 		maps.Copy(e.SamplingParams, ovr.SamplingParams)
 	}
+	e.SamplingParamsByThinkingLevel = mergeSamplingParamsByThinkingLevel(e.SamplingParamsByThinkingLevel, ovr.SamplingParamsByThinkingLevel)
 	e.InputLimits = mergeModelInputLimits(e.InputLimits, ovr.InputLimits)
 	if ovr.Input != nil {
 		e.Input = slices.Clone(*ovr.Input)

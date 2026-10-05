@@ -288,7 +288,7 @@ func TestRenderCustomTools_PrerendersExtensionToolHTML(t *testing.T) {
 		},
 	}}
 
-	RenderCustomTools(sd, tools, "/tmp", 80)
+	RenderCustomTools(sd, ToolRenderersOf(tools), "/tmp", 80)
 	if sd.RenderedTools == nil {
 		t.Fatal("RenderedTools = nil, want pre-rendered tool HTML")
 	}
@@ -403,14 +403,14 @@ func TestRenderCustomTools_RendersExtensionProcessComponents(t *testing.T) {
 		},
 	}}}
 	sd := &SessionData{Entries: entries("call-1")}
-	RenderCustomTools(sd, tools, "/tmp", 80)
+	RenderCustomTools(sd, ToolRenderersOf(tools), "/tmp", 80)
 	if html, _ := sd.RenderedTools["call-1"]["callHtml"].(string); !strings.Contains(html, "REMOTE CALL") {
 		t.Fatalf("callHtml = %q, want the extension's frame", html)
 	}
 
 	calls, answered = 0, false
 	sd = &SessionData{Entries: entries("call-1", "call-2")}
-	RenderCustomTools(sd, tools, "/tmp", 80)
+	RenderCustomTools(sd, ToolRenderersOf(tools), "/tmp", 80)
 	if sd.RenderedTools != nil || calls != 1 {
 		t.Fatalf("unanswered renders: rendered %v after %d requests, want none after 1", sd.RenderedTools, calls)
 	}

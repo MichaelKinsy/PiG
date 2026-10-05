@@ -93,7 +93,7 @@ func TestTogetherModels(t *testing.T) {
 		if gpt.Compat == nil || gpt.Compat.SupportsReasoningEffort == nil || !*gpt.Compat.SupportsReasoningEffort || gpt.Compat.ThinkingFormat != "openai" {
 			t.Fatalf("compat = %+v", gpt.Compat)
 		}
-		deepseek := mustGeneratedModel(t, "together", "deepseek-ai/DeepSeek-V4-Pro")
+		deepseek := mustGeneratedModel(t, "together", "deepseek-ai/DeepSeek-V4-Pro-0813")
 		assertCatalogJSON(t, deepseek.ThinkingLevelMap, `{"minimal":null,"low":null,"medium":null,"high":"high","xhigh":null}`)
 		if deepseek.Compat == nil || deepseek.Compat.SupportsReasoningEffort == nil || !*deepseek.Compat.SupportsReasoningEffort || deepseek.Compat.ThinkingFormat != "together" {
 			t.Fatalf("compat = %+v", deepseek.Compat)

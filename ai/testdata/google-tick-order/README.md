@@ -1,6 +1,6 @@
 # Google tick-order oracle (D82)
 
-`probe.mjs` runs Pi 0.99.1's real Google Generative AI provider over the real `@google/genai` 2.21.0 SDK and records, for ten body-delivery cases, the exact microtask round (`tick`) inside each macrotask (`seg`) at which the SDK, the provider and a plain consumer observe each step. `pi.json` is the retained oracle. It was produced on Node 24.19.0 (`.node-version`). Node 26.7.0 produces identical stamps, and three executions on each Node version were byte-identical apart from the `node` field.
+`probe.mjs` runs Pi 1.0.2's real Google Generative AI provider over the real `@google/genai` 2.21.0 SDK and records, for ten body-delivery cases, the exact microtask round (`tick`) inside each macrotask (`seg`) at which the SDK, the provider and a plain consumer observe each step. `pi.json` is the retained oracle. It was produced on Node 24.19.0 (`.node-version`). Node 26.7.0 produces identical stamps, and three executions on each Node version were byte-identical apart from the `node` field.
 
 Only `globalThis.fetch` is replaced. It resolves from a timer callback, like a network callback, and returns a `Response` over a Web `ReadableStream`. Each case states when each byte chunk is enqueued (`deliveries[].at`): `0` means the bytes are already queued when the response resolves, so the first `reader.read()` finds them buffered. `N > 0` means the bytes arrive in the N-th later macrotask, so the read is pending. This makes the body-read readiness an explicit input, never a scheduling accident.
 

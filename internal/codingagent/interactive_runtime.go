@@ -179,6 +179,7 @@ func (m *InteractiveMode) applyReplacement(session InteractiveSessionHandle, r I
 	if r.SettingsManager != nil {
 		tui.SetCapabilityOverrides(r.SettingsManager.GetTerminalCapabilityOverrides())
 	}
+	ensurePngTranscoder()
 	m.loadPromptTemplates()
 	if provider := m.opts.ResourceSourceInfoProvider; provider != nil {
 		m.resourceSourceInfo = provider()
@@ -217,6 +218,11 @@ func (m *InteractiveMode) attachSubprocess() {
 		m.detachModelRegistry = m.wireSubprocessHostCallbacks()
 	}
 	if host := m.opts.SubprocessHost; host != nil {
+		if resolved, ok := host.(interface{ SetToolRenderersResolvedFunc(func(string)) }); ok {
+			resolved.SetToolRenderersResolvedFunc(func(toolName string) {
+				m.runOnMain(m.runCtx, func() { m.reapplyToolPresentation(toolName) })
+			})
+		}
 		uiCtx := NewTUIUIContext(m.tuiInst)
 		uiCtx.interactiveMode = m
 		host.SetWidthFunc(func() int { return m.tuiInst.Width() })
