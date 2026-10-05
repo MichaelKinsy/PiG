@@ -110410,6 +110410,138 @@
       "shapeHash": "sha256:994416f39888c33ce485b66148e3a3a2f3d65db3841cf51fef67eec1cdc34d1b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#smokeArtifactTimeout",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "smokeArtifactTimeout",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "time.Duration"
+      },
+      "shapeHash": "sha256:83488df5bf69d53eed0fce849900072064e69ce5fc0b1a0f19720f7f5af6ce46"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#smokeArtifactTimeout.Abs",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "smokeArtifactTimeout.Abs",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() time.Duration"
+      },
+      "shapeHash": "sha256:182a2bb05a9afffa29d82fa1b9199409a6edc02648d561478a37684fc219d429"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#smokeArtifactTimeout.Hours",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "smokeArtifactTimeout.Hours",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#smokeArtifactTimeout.Microseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "smokeArtifactTimeout.Microseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#smokeArtifactTimeout.Milliseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "smokeArtifactTimeout.Milliseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#smokeArtifactTimeout.Minutes",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "smokeArtifactTimeout.Minutes",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#smokeArtifactTimeout.Nanoseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "smokeArtifactTimeout.Nanoseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#smokeArtifactTimeout.Round",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "smokeArtifactTimeout.Round",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(m time.Duration) time.Duration"
+      },
+      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#smokeArtifactTimeout.Seconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "smokeArtifactTimeout.Seconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#smokeArtifactTimeout.String",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "smokeArtifactTimeout.String",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#smokeArtifactTimeout.Truncate",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "smokeArtifactTimeout.Truncate",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(m time.Duration) time.Duration"
+      },
+      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#smokeArtifactTimeout.format",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "smokeArtifactTimeout.format",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(buf *[32]byte) int"
+      },
+      "shapeHash": "sha256:2dfd215036b14c3898ddd16ce618fec9fa6ba141357d49869e3171fbf3801867"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#sortedAssets",
       "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
       "name": "sortedAssets",
