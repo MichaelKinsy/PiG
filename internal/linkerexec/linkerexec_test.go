@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -184,6 +185,9 @@ func TestPrepareResolvesARelativePathAgainstTheCommandDirectory(t *testing.T) {
 }
 
 func TestPrepareSearchesTheCommandsOwnPATH(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the lookup reads an Android PATH, colon-separated with Unix execute bits, which a Windows directory cannot provide")
+	}
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "runner"), []byte("x"), 0o755); err != nil {
 		t.Fatal(err)
@@ -254,6 +258,29 @@ func TestProgramOfLinkedProcess(t *testing.T) {
 		got, err := programOfLinkedProcess(env(tc.env), tc.args)
 		if (err != nil) != tc.fail || got != tc.want {
 			t.Errorf("%s: = %q, %v; want %q, fail=%v", name, got, err, tc.want, tc.fail)
+		}
+	}
+}
+
+// Only Android starts a program through its linker: a program named linker elsewhere is itself.
+func TestExecutableFollowsTheLinkerOnlyOnAndroid(t *testing.T) {
+	env := func(k string) string {
+		if k == "TERMUX_EXEC__PROC_SELF_EXE" {
+			return prefix + "/bin/pig"
+		}
+		return ""
+	}
+	for name, tc := range map[string]struct {
+		goos, exe, want string
+	}{
+		"android linker64": {"android", "/system/bin/linker64", prefix + "/bin/pig"},
+		"android program":  {"android", prefix + "/bin/pig", prefix + "/bin/pig"},
+		"linux linker":     {"linux", "/opt/tools/linker", "/opt/tools/linker"},
+		"darwin linker64":  {"darwin", "/usr/local/bin/linker64", "/usr/local/bin/linker64"},
+	} {
+		got, err := executable(tc.goos, func() (string, error) { return tc.exe, nil }, env, []string{"pig"})
+		if err != nil || got != tc.want {
+			t.Errorf("%s: = %q, %v; want %q", name, got, err, tc.want)
 		}
 	}
 }
