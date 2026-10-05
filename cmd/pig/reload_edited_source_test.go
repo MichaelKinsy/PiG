@@ -106,7 +106,9 @@ func TestReloadRunsTheCurrentSourceOfACommandLineExtension(t *testing.T) {
 				t.Fatal(err)
 			}
 			logPath := filepath.Join(t.TempDir(), "reload.log")
-			env := []string{"HOME=" + home, "PIG_HOME=" + filepath.Join(home, ".pig"), "PIG_CODING_AGENT_DIR=" + agentDir, "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "PIG_OFFLINE=1", "RELOAD_PROBE_LOG=" + logPath}
+			// HOME is fresh, so keep the real cargo and rustup homes: their toolchain and crate registry, as other Rust
+			// extension tests do. Without them cargo looks under the empty HOME.
+			env := []string{rustHome("CARGO_HOME", ".cargo"), rustHome("RUSTUP_HOME", ".rustup"), "HOME=" + home, "PIG_HOME=" + filepath.Join(home, ".pig"), "PIG_CODING_AGENT_DIR=" + agentDir, "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "PIG_OFFLINE=1", "RELOAD_PROBE_LOG=" + logPath}
 			process := startRPCProcessAt(t, cwd, env, "--no-extensions", "--model", "test-faux/faux-1", "--session-dir", sessionDir, "-e", filepath.Join(dir, probe.entry))
 			// The load and the reload each build the probe, so both waits allow its build.
 			process.budget = probeWait(t, probe.build)
@@ -155,4 +157,17 @@ func awaitReloadLog(t *testing.T, logPath, line string, wait time.Duration) {
 		}
 		time.Sleep(25 * time.Millisecond)
 	}
+}
+
+// rustHome is key=<value> for a cargo or rustup home: the environment's, or the default under the real home, for a test that
+// passes a fresh HOME.
+func rustHome(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return key + "=" + value
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return key + "="
+	}
+	return key + "=" + filepath.Join(home, fallback)
 }

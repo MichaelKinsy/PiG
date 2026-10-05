@@ -71,13 +71,3 @@ func TestSDKStringWidgetKeepsPiBehaviorInEveryMode(t *testing.T) {
 }
 
 // rustHome keeps the real Cargo or rustup home for a Rust extension build under a fresh HOME.
-func rustHome(key, fallback string) string {
-	if value := os.Getenv(key); value != "" {
-		return key + "=" + value
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return key + "="
-	}
-	return key + "=" + filepath.Join(home, fallback)
-}
