@@ -696,3 +696,28 @@ func TestHeaderLogoAreaIsTheDrawnPig(t *testing.T) {
 		}
 	}
 }
+
+// macOS Terminal.app reports TERM=xterm-256color and TERM_PROGRAM=Apple_Terminal: no truecolor and misaligned half blocks. The
+// header then draws the text mark in the 256-color fallback, its letters colored from the sprite's ramp as Pi colors "Pi".
+func TestBuiltInHeaderColorsTheTextMarkInAppleTerminal256(t *testing.T) {
+	m := newHeaderMode(t)
+	pinHeaderTerminal(t, tui.TerminalColorMode256)
+	t.Setenv("TERM", "xterm-256color")
+	t.Setenv("TERM_PROGRAM", "Apple_Terminal")
+	previous := supportsHalfBlockMark
+	supportsHalfBlockMark = func() bool { return !tui.IsAppleTerminalSession() }
+	t.Cleanup(func() { supportsHalfBlockMark = previous })
+	raw, lines := headerLines(m, 100)
+	if !strings.Contains(raw[0], textMark(t, piglogin.Default(), tui.TerminalColorMode256)) {
+		t.Fatalf("Apple Terminal header = %q, want the 256-color text mark", raw[0])
+	}
+	if strings.Contains(raw[0], "38;2;") || hasHalfBlocks(raw) {
+		t.Errorf("Apple Terminal header has a truecolor sequence or half blocks: %q", raw[0])
+	}
+	if strings.Count(raw[0], "38;5;") < 4 {
+		t.Errorf("Apple Terminal text mark does not color P, i, G and the period: %q", raw[0])
+	}
+	if got := strings.TrimRight(lines[0], " "); got != " PiG. v"+pigversion.Version {
+		t.Errorf("first line = %q", got)
+	}
+}
