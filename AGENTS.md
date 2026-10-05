@@ -293,7 +293,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `fullscreen` | 11 | 11 | 0 | 0 | 0 | 9 | not run |
 | `interactive-rendering` | 46 | 45 | 1 | 0 | 0 | 34 | not run |
 | `json` | 10 | 10 | 0 | 0 | 0 | 7 | not run |
-| `model-resolver-selector` | 23 | 23 | 0 | 0 | 0 | 14 | not run |
+| `model-resolver-selector` | 24 | 24 | 0 | 0 | 0 | 15 | not run |
 | `model-runtime-store-catalog` | 25 | 25 | 0 | 0 | 0 | 24 | not run |
 | `oauth` | 29 | 29 | 0 | 0 | 0 | 18 | not run |
 | `print` | 7 | 7 | 0 | 0 | 0 | 6 | not run |

@@ -84,7 +84,11 @@ func TestWindowsEscapingDescendantFixtureWritesMarker(t *testing.T) {
 		_ = exec.Command("taskkill", "/T", "/F", "/PID", strconv.Itoa(cmd.Process.Pid)).Run()
 		_ = cmd.Wait()
 	}()
-	deadline := time.Now().Add(6 * time.Second)
+	// The descendant needs ~3s of its own ping delay plus cmd.exe startup and
+	// Defender's scan of the new script; on a loaded shared runner that has
+	// exceeded 6s. The loop returns as soon as the marker exists, so a generous
+	// bound costs nothing when the fixture works and still fails when it is broken.
+	deadline := time.Now().Add(30 * time.Second)
 	for time.Now().Before(deadline) {
 		if _, err := os.Stat(marker); err == nil {
 			return

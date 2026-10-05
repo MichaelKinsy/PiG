@@ -1270,6 +1270,7 @@ func runStableCLI() {
 	// Pi main.ts:943-944 forwards parsed.tuiMode and parsed.useTheme, including an empty theme name.
 	iopts.TuiMode = flags.TuiMode
 	iopts.InitialThemeSetting = flags.UseTheme
+	iopts.TerminateExtensionProcesses = sessionFactory.TerminateProcesses
 	interactive := codingagent.NewInteractiveMode(iopts)
 	// SIGTERM must reach extensions before the root context is cancelled.
 	setTerminationShutdownHook(interactive.ShutdownFromSignal)

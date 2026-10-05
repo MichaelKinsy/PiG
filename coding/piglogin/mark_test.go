@@ -2,6 +2,7 @@ package piglogin_test
 
 import (
 	"image/color"
+	"math"
 	"strings"
 	"testing"
 
@@ -21,6 +22,27 @@ func rgb(t *testing.T, c color.RGBA) tui.Color {
 	return value
 }
 
+// letter is the expected color of letter n: ramp rows 7 to 9, or the period color where those are too pale for a light background.
+func letter(logo piglogin.Logo, n int) color.RGBA {
+	c := logo.Ramp[7+n]
+	l := lum(c)
+	if 1.05/(l+0.05) >= 3 && (l+0.05)/0.05 >= 3 {
+		return c
+	}
+	return logo.Period
+}
+
+func lum(c color.RGBA) float64 {
+	lin := func(v uint8) float64 {
+		x := float64(v) / 255
+		if x <= 0.03928 {
+			return x / 12.92
+		}
+		return math.Pow((x+0.055)/1.055, 2.4)
+	}
+	return 0.2126*lin(c.R) + 0.7152*lin(c.G) + 0.0722*lin(c.B)
+}
+
 // The text mark stands in for the art where it cannot be drawn. It is as wide as Pi's logo (pi-logo.ts, 4 cells), "PiG" is
 // bold in the terminal's own foreground so a pale sprite stays legible on a light background, and only the period is colored.
 func TestTextMarkIsALegibleOneLinePiG(t *testing.T) {
@@ -30,7 +52,9 @@ func TestTextMarkIsALegibleOneLinePiG(t *testing.T) {
 	for _, variant := range piglogin.Variants {
 		for _, mode := range []tui.TerminalColorMode{tui.TerminalColorModeTrueColor, tui.TerminalColorMode256} {
 			mark := piglogin.TextMark(variant, mode)
-			want := "\x1b[1mPiG" + tui.ForegroundAnsi(rgb(t, piglogin.LogoFor(variant).Period), mode) + "." + reset
+			logo := piglogin.LogoFor(variant)
+			fg := func(c color.RGBA) string { return tui.ForegroundAnsi(rgb(t, c), mode) }
+			want := "\x1b[1m" + fg(letter(logo, 0)) + "P" + fg(letter(logo, 1)) + "i" + fg(letter(logo, 2)) + "G" + fg(logo.Period) + "." + reset
 			if mark != want {
 				t.Errorf("%s/%s: text mark = %q, want %q", variant.ID, mode, mark, want)
 			}
@@ -52,6 +76,19 @@ func TestDefaultTextMarkPeriodIsTheWordmarkAccent(t *testing.T) {
 	}
 	if strings.Contains(mark, "38;2;72;163;129") {
 		t.Errorf("default text mark = %q colors the letters with the pale-on-light-unsafe body color", mark)
+	}
+}
+
+// Every letter and the period reads on both a white and a black background, whatever the sprite's ramp.
+func TestTextMarkLettersAreLegibleOnLightAndDark(t *testing.T) {
+	for _, variant := range piglogin.Variants {
+		logo := piglogin.LogoFor(variant)
+		for n := range 3 {
+			l := lum(letter(logo, n))
+			if 1.05/(l+0.05) < 3 || (l+0.05)/0.05 < 3 {
+				t.Errorf("%s letter %d is not legible on both backgrounds", variant.ID, n)
+			}
+		}
 	}
 }
 

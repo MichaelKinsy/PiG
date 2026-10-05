@@ -26,10 +26,8 @@ def _release_current(owner, provider_id):
     extension = owner()
     if extension is None or extension._shutdown.is_set():
         return
-    try:
-        extension._notify("ui.autocomplete.release", {"id": provider_id})
-    except (OSError, RuntimeError):
-        pass  # Connection close releases all captured providers.
+    # A finalizer may run on a thread that holds the write lock; queue the release instead of sending it.
+    extension._send_from_finalizer({"type": "notify", "notify": {"method": "ui.autocomplete.release", "args": {"id": provider_id}}})
 
 
 class _CurrentProvider:

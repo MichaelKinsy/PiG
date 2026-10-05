@@ -5,11 +5,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 
 	"golang.org/x/mod/modfile"
 
@@ -557,10 +558,19 @@ func sha256Sum(data []byte) []byte {
 	return sum[:]
 }
 
+// smokeArtifactTimeout bounds the artifact's `--version` run. A freshly linked, unsigned binary's first start can wait on
+// the operating system's on-access malware scan (Windows Defender scans a new executable before it runs), which on a busy
+// machine takes well over ten seconds; a hung artifact still fails.
+var smokeArtifactTimeout = 60 * time.Second // pig additive (D18): Piglet binary builds are PiG's own; Pi has no artifact check.
+
 func smokeArtifact(path string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), smokeArtifactTimeout)
 	defer cancel()
-	output, err := exec.CommandContext(ctx, path, "--version").CombinedOutput()
+	output, err := linkerexec.CommandContext(ctx, path, "--version").CombinedOutput()
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		// A killed process reports only its exit status (1 on Windows), so name the deadline instead.
+		return fmt.Errorf("basic artifact verification timed out after %s running %s --version", smokeArtifactTimeout, path)
+	}
 	if err != nil {
 		return fmt.Errorf("basic artifact verification failed: %w: %s", err, strings.TrimSpace(string(output)))
 	}
@@ -638,7 +648,7 @@ func toolchainVersions(cells []subprocess.CellSpec) (map[string]string, error) {
 	}
 	versions := make(map[string]string, len(commands))
 	for name, command := range commands {
-		output, err := exec.Command(command[0], command[1:]...).CombinedOutput()
+		output, err := linkerexec.Command(command[0], command[1:]...).CombinedOutput()
 		if err != nil {
 			return nil, fmt.Errorf("resolve %s toolchain identity: %w: %s", name, err, strings.TrimSpace(string(output)))
 		}

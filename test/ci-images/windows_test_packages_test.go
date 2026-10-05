@@ -4,6 +4,7 @@
 package ciimages
 
 import (
+	"fmt"
 	"io/fs"
 	"maps"
 	"os"
@@ -86,7 +87,12 @@ func runWindowsTestPackages(t *testing.T, env ...string) (string, error) {
 	t.Helper()
 	cmd := testenv.ScriptCommand(t, filepath.Join(repoRoot(t), "automation", "ci", "windows-test-packages.sh"))
 	cmd.Env = append(os.Environ(), env...)
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
 	output, err := cmd.Output()
+	if err != nil {
+		err = fmt.Errorf("%w\nstderr:\n%s", err, stderr.String())
+	}
 	return string(output), err
 }
 
@@ -250,9 +256,11 @@ func TestWindowsNativeShardsPartitionTheSelectedPackages(t *testing.T) {
 	seen := map[string]int{}
 	for shard := 1; shard <= 3; shard++ {
 		cmd := testenv.ScriptCommand(t, filepath.Join(root, "automation", "ci", "windows-native-shard.sh"), strconv.Itoa(shard))
+		var stderr strings.Builder
+		cmd.Stderr = &stderr
 		out, err := cmd.Output()
 		if err != nil {
-			t.Fatalf("windows-native-shard.sh %d: %v", shard, err)
+			t.Fatalf("windows-native-shard.sh %d: %v\nstderr:\n%s", shard, err, stderr.String())
 		}
 		for pkg := range strings.FieldsSeq(string(out)) {
 			seen[pkg]++

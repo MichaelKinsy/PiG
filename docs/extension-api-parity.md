@@ -70,6 +70,14 @@ Interactive UI calls automatically report `blocked:user`; other awaited host
 calls report `blocked:host_call` and then `progress`.
 The blocking-reason vocabulary is `user`, `host_call`, and `external_io`.
 
+A callback that the Host declares for one request stays owned by that request. A
+Provider that owns its transport invokes its `onPayload`, `prompt`, `env`,
+`fileExists`, and `publish` callbacks from its own chain, which is often while the
+extension handles another Host request. Each SDK binds those callbacks to the
+request that declared them, and the Host answers them there.
+`TestNodeNativeProviderCallbackFromAnotherRequest` gates that binding in the Node
+runtime.
+
 The host sends heartbeat only while the connection owns outstanding work or
 live provider state. A frame the host has queued or is writing is outstanding
 work, and every byte the extension reads renews the pong deadline, so a slow
@@ -121,7 +129,7 @@ Foreign configuration readers receive snapshot data, not transparent author-held
 | `project_trust` | typed event/result and first-decisive dispatch; multiple registrations carry `handler_id` identity so errors/undecided results continue and yes/no stops in extension/load order; Go/Rust/Python typed helpers plus Node upstream bridge share cancellation/error semantics in isolated, packed, and D31 fused modes | `TestEmitProjectTrust*`, `TestConformance_TransportsMatch`, `TestNodeProjectTrustMultipleHandlers`, packed Go/Rust/Python assertions, and fused cancellation/dispatch tests; production pre-trust emitter remains P1 | partial: host/protocol/all-SDK conformance complete; production trust resolution pending |
 | `session_shutdown` during reload | shutdown event to old cells before teardown | reload lifecycle scenario | partial: interactive `/reload` emits `session_shutdown` with reason `reload` to the old runner before teardown; no test asserts it |
 | `session_start { reason: "reload" }` | start event to new cells after reload | `extensions-runtime/15-footer-status-reload-composition` (the replacement cells' `session_start` handler installs the next generation's status and footer) | partial: new cells receive `session_start` after `/reload`; the `reload` reason value is not asserted |
-| `/reload` | runtime-cell reload in first-seen extension order that re-invokes each factory in the retained runtime process, with per-extension failure isolation | module state follows Pi's loader (an `.mjs` module keeps its state; a `.ts` module and a compiled or Python factory's package state follow the same retained-process rule); configured order survives startup and 20 reloads; failing extension is reported while others load (`TestHostReloadKeepsMjsModuleStateAndReevaluatesTsModules`, `TestNodeReloadReinvokesFactoriesInTheRetainedProcessWithPiLoaderRules`, `TestHostLoadAndReloadPreserveConfiguredGuardOrder`, `TestReloadIsolatesExtensionLoadFailures`, `TestPackedCellFailureIsolatesFailingMember`) | ported |
+| `/reload` | runtime-cell reload in first-seen extension order that re-invokes each factory in the retained runtime process, with per-extension failure isolation | module state follows Pi's loader (an unedited `.mjs` module keeps its state, and an edited one is evaluated again (D93); a `.ts` module and a compiled or Python factory's package state follow the same retained-process rule; the Python runner re-imports every extension that uses a module changed since its import, as jiti re-evaluates an edited `.ts` module, and keeps the module state of every extension that uses no changed module); configured order survives startup and 20 reloads; failing extension is reported while others load (`TestHostReloadKeepsMjsModuleStateAndReevaluatesTsModules`, `TestReloadRunsTheCurrentSourceOfACommandLineExtension`, `TestReloadKeepsTheModuleStateOfAnUneditedPythonExtensionBesideAnEditedOne`, `TestPythonRunnerReimportsOnlyAnEditedExtensionsOwnSource`, `TestHostReloadEvaluatesOnlyAnEditedESModuleExtensionAgain`, `TestHostReloadKeepsAnUneditedSharedModuleOfPackedESModuleExtensions`, `TestNodeReloadEvaluatesAnEditedTypeModuleJsEntryAgain`, `TestSessionReplacementKeepsAnEditedESModuleUntilAReload`, `TestHostReloadKeepsOneSharedEvaluationAcrossAFailedImporter`, `TestHostReloadForgetsAnImportTheEditRemoved`, `TestHostReloadGivesTypeScriptAndESModuleImportersOneNewEvaluation`, `TestHostReloadKeepsAnESModuleWhoseCommonJSDependencyChanged`, `TestNodeReloadReinvokesFactoriesInTheRetainedProcessWithPiLoaderRules`, `TestHostLoadAndReloadPreserveConfiguredGuardOrder`, `TestReloadIsolatesExtensionLoadFailures`, `TestPackedCellFailureIsolatesFailingMember`) | ported |
 
 ## Session lifecycle events
 

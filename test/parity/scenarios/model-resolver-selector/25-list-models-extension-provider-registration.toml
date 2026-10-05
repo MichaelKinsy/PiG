@@ -1,0 +1,45 @@
+# Behavior family: model-resolver-selector
+# Surface: an extension registerProvider() over a models.json provider must not remove
+# that provider from the auth-filtered catalog that --list-models prints.
+#
+# Upstream rule: model-runtime.ts:registerProvider merges the registration's defined
+# fields over the models.json provider configuration, then marks the provider
+# configured from that composed value (model-runtime.ts:753-766 and
+# provider-composer.ts:597-610 configuredRequestAuthStatus, whose apiKey is
+# extension?.apiKey ?? config?.apiKey at provider-composer.ts:208-210). A
+# registration that defines an api and a streamSimple callback but no apiKey
+# therefore leaves the models.json apiKey, and the provider's models, in effect.
+#
+# The same local models.json fixture as 01-list-models-table supplies the provider.
+# The loaded extension registers that provider id with no apiKey and no models.
+# Table equality plus the two model rows proves the registration did not shadow the
+# configured key; "Warning:" absence proves no resolver diagnostic appeared.
+
+name = "25-list-models-extension-provider-registration"
+description = "An extension provider registration without apiKey keeps the models.json provider listed by --list-models."
+covers = [
+  "packages/coding-agent/src/core/model-runtime.ts",
+  "packages/coding-agent/src/core/provider-composer.ts",
+  "packages/coding-agent/src/cli/list-models.ts",
+]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[cli]
+args = ["--list-models"]
+timeout_seconds = 20
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../model-resolver-selector/testdata/pig-agent-local"]
+pi = ["PI_CODING_AGENT_DIR=../model-resolver-selector/testdata/pi-agent-local"]
+pig_args = ["--offline"]
+pi_args = ["--offline"]
+pig_extensions = ["../testdata/extension-provider-registration-over-models-json.mjs"]
+pi_extensions = ["../testdata/extension-provider-registration-over-models-json.mjs"]
+
+[assert]
+output_equal = true
+both_contain = ["fixture  ", "model-one", "model-two"]
+both_not_contain = ["panic:", "goroutine ", "Warning:"]
+runtime_ratio_max = 2.0
+runs = 3

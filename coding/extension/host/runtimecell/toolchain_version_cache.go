@@ -15,6 +15,8 @@ import (
 	"strings"
 
 	"github.com/gofrs/flock"
+
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 )
 
 type toolchainVersionRecord struct {
@@ -49,7 +51,7 @@ func commandVersion(cacheRoot, name string, args ...string) string {
 		if output, ok := readToolchainVersion(cachePath, fingerprint); ok {
 			return output
 		}
-		cmd := exec.Command(resolved, args...)
+		cmd := linkerexec.Command(resolved, args...)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			return "error:" + err.Error()

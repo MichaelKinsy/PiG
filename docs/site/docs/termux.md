@@ -163,6 +163,18 @@ Run `termux-setup-storage`, approve the Android permission request, and retry th
 
 You installed the `linux-arm64` binary, a static executable that `/system/bin/linker64` cannot map. Reinstall with the installer or `npm install -g @pi-in-go/pig`, which choose `android-arm64` in Termux.
 
+### `pig install` fails with `fork/exec ... permission denied`
+
+PiG 0.4.0 started `npm` and `git` for `pig install` and `pig remove` directly, which Android rejects for a file below Termux's data directory. PiG 0.4.1 starts them through `/system/bin/linker64` like every other program. Upgrade; if you installed a package that failed, run `pig remove` for it, or delete its entry from the `packages` list in `~/.pig/agent/settings.json`. PiG 0.4.1 records a package only after it installs, as Pi does.
+
+### `pig setup go` reports no archive for android/arm64
+
+Go publishes no archive for Android. Run `pkg install golang`; PiG uses the `go` on `PATH`, and `pig setup status` lists it.
+
+### Validating a Rust extension stops after two minutes
+
+Set `PIG_CELL_BUILD_TIMEOUT` to a longer duration, such as `30m`. It bounds both extension builds and `pig install <dir> --validate-only`.
+
 ## Upstream Pi
 
 See [upstream Pi's Termux documentation](https://pi.dev/docs/latest/termux) when you want to run the TypeScript reference implementation.
