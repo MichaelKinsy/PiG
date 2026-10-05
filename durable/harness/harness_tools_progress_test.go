@@ -366,9 +366,9 @@ func TestToolProgressAndLifetime(t *testing.T) {
 			api.Output("first\n")
 			// The output commit is in flight, so these details wait for the next throttle window.
 			go func() { pendingDetails <- api.Details(testContext, map[string]any{"step": float64(1)}) }()
-			// Upstream records the details before details() returns its Promise; wait for that record so the call has not
-			// settled before the goroutine's details() runs.
-			if err := awaitDetailsRecorded(testContext, api, 1); err != nil {
+			// Upstream records the details and queues their waiter before details() returns its Promise; wait for the
+			// queued waiter so the call has not settled before the goroutine's details() is pending.
+			if err := awaitDetailsWaiting(testContext, api); err != nil {
 				return durable.ToolExecutionResult{}, err
 			}
 			return durable.ToolExecutionResult{}, nil
@@ -428,6 +428,27 @@ func TestToolProgressAndLifetime(t *testing.T) {
 // awaitDetailsRecorded waits until the call has recorded count details values. Upstream's api.details records its value
 // before it returns the Promise (tool.ts:202-209); the Go Details records and then blocks until the commit, so a caller
 // that leaves the wait pending runs it on a goroutine and observes the record here before going on.
+// awaitDetailsWaiting returns once a details() call has queued its progress waiter.
+func awaitDetailsWaiting(ctx context.Context, api durable.ToolExecutionApi) error {
+	internal, ok := api.(*toolApi)
+	if !ok {
+		return fmt.Errorf("tool api is %T, not *toolApi", api)
+	}
+	for {
+		internal.progress.mu.Lock()
+		waiting := len(internal.progress.waiters)
+		internal.progress.mu.Unlock()
+		if waiting > 0 {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return context.Cause(ctx)
+		case <-time.After(time.Millisecond):
+		}
+	}
+}
+
 func awaitDetailsRecorded(ctx context.Context, api durable.ToolExecutionApi, count int) error {
 	internal, ok := api.(*toolApi)
 	if !ok {
