@@ -410,6 +410,10 @@ type containerPigletMount struct {
 }
 
 func localizeContainerPiglet(p *piglet.Piglet) ([]byte, []containerPigletMount, error) {
+	// pig additive (D91): only the native builder fuses a frontend member.
+	if p.Build != nil && p.Build.Frontend != "" {
+		return nil, nil, fmt.Errorf("build.frontend requires the native builder; the container builder cannot fuse a frontend member")
+	}
 	localized := piglet.Clone(p)
 	localized.Build = nil
 	localized.Packages = nil

@@ -152,10 +152,14 @@ type ToolExecutionComponent struct {
 	mouseWidth                int
 	mouseHeight               int
 	mouseDirty                atomic.Bool
-
 	// compactHeader is the collapsed read card's upstream compact label
 	// (FormatCompactReadHeader), or "" for the full header.
 	compactHeader string
+	// argumentsRaw is the call's argument JSON. arguments decodes it for a
+	// frontend session on first use after it changes.
+	argumentsRaw     json.RawMessage
+	arguments        map[string]any
+	argumentsDecoded bool
 }
 
 // ImageBlock describes one image from a tool result for rendering.
@@ -1126,13 +1130,29 @@ func (c *ToolExecutionComponent) headerBody() string {
 }
 
 // SetHeaderArgs records the call arguments the collapsed read card's
-// compact label is drawn from.
+// compact label and a frontend session's tool node are drawn from.
 func (c *ToolExecutionComponent) SetHeaderArgs(args json.RawMessage) {
 	c.compactHeader = ""
 	if c.Name == "read" {
 		c.compactHeader = FormatCompactReadHeader(args, c.Cwd)
 	}
+	c.argumentsRaw = append(c.argumentsRaw[:0], args...)
+	c.argumentsDecoded = false
 	c.Invalidate()
+}
+
+// decodedArguments returns the argument object, or nil when the arguments
+// are not a complete JSON object yet.
+func (c *ToolExecutionComponent) decodedArguments() map[string]any {
+	if !c.argumentsDecoded {
+		c.arguments = nil
+		var arguments map[string]any
+		if json.Unmarshal(c.argumentsRaw, &arguments) == nil {
+			c.arguments = arguments
+		}
+		c.argumentsDecoded = true
+	}
+	return c.arguments
 }
 
 // HeaderForTool returns the fully styled call header for any tool: the

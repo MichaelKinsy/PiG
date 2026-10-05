@@ -54,6 +54,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/pigletbuild/binarypiglet"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/export"
+	"github.com/MichaelKinsy/PiG/internal/frontendpack"
 	"github.com/MichaelKinsy/PiG/internal/nativeplatform"
 	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 	"github.com/MichaelKinsy/PiG/internal/pigdocs"
@@ -1187,6 +1188,8 @@ func runStableCLI() {
 		InitialImages:       initialImages,
 		InitialMessages:     extraMessages,
 		AppVersion:          UpstreamVersion,
+		// pig additive (D91): a Piglet Binary's fused frontend member.
+		Frontend: frontendpack.Selected(),
 		PackageUpdateChecker: func() []string {
 			updates := CheckForAvailableUpdates(cwd, services.SettingsManager())
 			names := make([]string, 0, len(updates))

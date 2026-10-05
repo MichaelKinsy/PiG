@@ -433,6 +433,15 @@
         },
         "outputName": {
           "type": "string"
+        },
+        "extensionRealization": {
+          "enum": [
+            "fused"
+          ]
+        },
+        "frontend": {
+          "type": "string",
+          "minLength": 1
         }
       }
     },

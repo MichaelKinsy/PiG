@@ -13,4 +13,5 @@ D87: PiG's versions of Pi's easter eggs (logo-click animation with the PiG mark'
 D88: PiG's own first-time setup (theme, sprite, analytics) on an interactive start without settings.json; first-run-sprite; approved by owner Michael Kinsy 2026-10-02.
 D89: tool renderer resolvers of subprocess extensions answer once per tool off the UI loop; port-101; approved by owner Michael Kinsy 2026-10-03.
 D90: llama.cpp reasoning models offer every budgeted thinking level and send thinking_budget_tokens (issue #129); port-102; approved by owner task decision 2026-10-04.
-Next free ID: D91.
+D91: Piglet frontend members draw the interactive mode (renderer seam, additive); tern-d91-frontend-seam; approved by owner Michael Kinsy 2026-10-04.
+Next free ID: D92.

@@ -81,7 +81,7 @@ func TestOverlayFuseImportsFactoryPackageWithoutWritingGoMod(t *testing.T) {
 	if err := overlayFuse(overlay, root, []fusedEntry{{
 		Name: "review", Pkg: "ext_review", Factory: "Extension", Root: extRoot,
 		ModulePath: "example.com/extensions", Package: "example.com/extensions/review",
-	}}); err != nil {
+	}}, nil); err != nil {
 		t.Fatal(err)
 	}
 	stagedMod, err := os.ReadFile(overlay.replace[filepath.Join(root, "go.mod")])
@@ -164,7 +164,7 @@ func Extension() *sdk.Extension { return sdk.New(shared.Name()) }
 	if err := overlayFuse(overlay, root, []fusedEntry{{
 		Name: "review", Pkg: "ext_review", Factory: "Extension", Root: extRoot,
 		ModulePath: "example.com/extensions", Package: "example.com/extensions/review",
-	}}); err != nil {
+	}}, nil); err != nil {
 		t.Fatal(err)
 	}
 	overlayPath, err := overlay.write()
@@ -176,6 +176,78 @@ func Extension() *sdk.Extension { return sdk.New(shared.Name()) }
 	cmd.Env = append(os.Environ(), "GOWORK=off")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("fused multi-package extension did not compile: %v\n%s", err, output)
+	}
+}
+
+// A frontend member alone is enough to build: the overlay registers it in
+// frontendpack, pins its module, and leaves the fused-extension registry as
+// it is.
+func TestOverlayFuseRegistersFrontendMember(t *testing.T) {
+	root := t.TempDir()
+	sdkRoot, err := filepath.Abs(filepath.Join("..", "..", "extensions", "sdk"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	goMod := "module example.com/pig\n\ngo 1.26\n\nrequire github.com/MichaelKinsy/PiG/extensions/sdk v0.0.0\nreplace github.com/MichaelKinsy/PiG/extensions/sdk => " + filepath.ToSlash(sdkRoot) + "\n"
+	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte(goMod), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	frontendDir := filepath.Join(root, "internal", "frontendpack")
+	if err := os.MkdirAll(frontendDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	base := `package frontendpack
+import "github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
+var selected func() frontend.Frontend
+func register(factory func() frontend.Frontend) { selected = factory }
+`
+	if err := os.WriteFile(filepath.Join(frontendDir, "base.go"), []byte(base), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(frontendDir, "registry_generated.go"), []byte("package frontendpack\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	memberRoot := t.TempDir()
+	memberGoMod := "module example.com/tern\n\ngo 1.26\n\nrequire github.com/MichaelKinsy/PiG/extensions/sdk v0.0.0\n"
+	if err := os.WriteFile(filepath.Join(memberRoot, "go.mod"), []byte(memberGoMod), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	memberSource := `package tern
+import "github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
+type member struct{}
+func (member) Open(frontend.Env) (frontend.Session, error) { return nil, nil }
+func Frontend() frontend.Frontend { return member{} }
+`
+	if err := os.WriteFile(filepath.Join(memberRoot, "tern.go"), []byte(memberSource), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	overlay, err := newBuildOverlay(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	member := &fusedEntry{Name: "frontend", Pkg: "frontendmember", Factory: "Frontend", Root: memberRoot, ModulePath: "example.com/tern", Package: "example.com/tern"}
+	if err := overlayFuse(overlay, root, nil, member); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := overlay.replace[filepath.Join(root, "coding", "extension", "host", "fusepack", "registry_generated.go")]; ok {
+		t.Fatal("a frontend-only build replaced the fused-extension registry")
+	}
+	overlayPath, err := overlay.write()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("go", "build", "-overlay", overlayPath, "./internal/frontendpack")
+	cmd.Dir = root
+	cmd.Env = append(os.Environ(), "GOWORK=off")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("frontend member registry did not compile: %v\n%s", err, output)
+	}
+	registry, err := os.ReadFile(overlay.replace[filepath.Join(frontendDir, "registry_generated.go")])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(registry), "register(frontendmember.Frontend)") {
+		t.Fatalf("registry = %s", registry)
 	}
 }
 
