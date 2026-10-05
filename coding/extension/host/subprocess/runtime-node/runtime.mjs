@@ -2892,12 +2892,14 @@ export class Runtime {
     if (native) return native;
     const state = this.registryState.providers?.[id];
     const models = [...this.models.values()].filter((model) => model.provider === id);
-    if (!state && models.length === 0) return undefined;
-    if (!state?.composed) {
+    const config = this.registeredProviderConfig(id) ?? this.registryState.registered?.find(entry => entry.name === id)?.config ?? state?.extensionConfig;
+    // A registration held here is a provider even when the snapshot and the model list have none yet.
+    if (!state && models.length === 0 && config === undefined) return undefined;
+    // The snapshot predates a registration this process made since, and Pi recomposes inside registerProvider (model-runtime.ts:919-940), so a registration held here makes the provider composed whatever the snapshot says.
+    if (!state?.composed && config === undefined) {
       const builtin = piBuiltinProvider(id);
       if (builtin) return builtin;
     }
-    const config = this.registeredProviderConfig(id) ?? this.registryState.registered?.find(entry => entry.name === id)?.config ?? state?.extensionConfig;
     // A cell member's re-registration replaces the shared root; Pi recomposes on registration, so a composition is reused only for the root it was built from.
     const cached = this.registryProviders.get(id);
     if (cached && cached.config === config) return cached.provider;
@@ -3227,8 +3229,17 @@ export class Runtime {
     }
   }
 
+  // Pi's unregisterProvider recomposes the provider from its built-in and models.json layers before it returns (model-runtime.ts:942-948), so the snapshot's extension layer goes with the registration.
   dropRegistration(name) {
-    this.registryState = { ...this.registryState, registered: (this.registryState.registered ?? []).filter((entry) => entry.name !== name) };
+    const providers = this.registryState.providers ?? {};
+    const state = providers[name];
+    let next = providers;
+    if (state?.extensionConfig !== undefined) {
+      const { extensionConfig: _dropped, ...rest } = state;
+      next = { ...providers, [name]: { ...rest, composed: rest.modelsConfig !== undefined } };
+    }
+    this.registryProviders.delete(name);
+    this.registryState = { ...this.registryState, providers: next, registered: (this.registryState.registered ?? []).filter((entry) => entry.name !== name) };
   }
 
   // The Host forwards its caller's abort to a request that already settled while the extension still holds refreshSignal, until releaseRetainedSignal reports that it does not.
