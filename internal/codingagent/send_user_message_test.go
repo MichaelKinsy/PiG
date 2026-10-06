@@ -286,7 +286,8 @@ func assertRequestUserContent(t *testing.T, request capturedStreamRequest, wantT
 func TestSubprocessShutdownHostActionRequestsExitViaOwnerLoop(t *testing.T) {
 	spy := &stopSpyRenderer{TuiAltScreen: tui.NewTuiAltScreenWithOutput(io.Discard, 80, 24, tui.TuiAltScreenOptions{})}
 	model := &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir(), Model: model})
+	agentDir := t.TempDir()
+	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir(), AgentDir: agentDir, Model: model})
 	m.tuiInst = spy
 	bridge := &captureUIBridge{}
 	m.opts.SubprocessUIBridge = bridge
@@ -303,6 +304,10 @@ func TestSubprocessShutdownHostActionRequestsExitViaOwnerLoop(t *testing.T) {
 
 	if !m.requestExit.Load() {
 		t.Error("subprocess shutdown host action did not request exit")
+	}
+	// An extension ending the session is not a user quit, so exit.log says so (issue #165).
+	if text := exitLogText(agentDir); !strings.Contains(text, "extension requested shutdown") {
+		t.Errorf("exit.log = %q", text)
 	}
 	if spy.stops != 0 {
 		t.Errorf("subprocess shutdown host action tore down the renderer off-loop (Stop=%d): teardown must be deferred to the owner loop", spy.stops)

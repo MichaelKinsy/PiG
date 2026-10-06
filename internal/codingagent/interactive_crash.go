@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"runtime/debug"
 	"slices"
 	"time"
@@ -162,7 +163,7 @@ func (m *InteractiveMode) requestedExitError() error {
 func (m *InteractiveMode) uncaughtCrash(value any, stack []byte, stderr io.Writer) {
 	// A dead terminal is not a pig crash. Do not report or record it.
 	if failure, ok := value.(error); ok && isDeadTerminalError(failure) {
-		emergencyTerminalExit()
+		m.emergencyTerminalExit("terminal gone: " + failure.Error())
 	}
 	if failure, ok := value.(error); ok && extension.ErrorStack(failure) != "" {
 		stack = []byte(extension.ErrorStack(failure))
@@ -176,6 +177,22 @@ func (m *InteractiveMode) uncaughtCrash(value any, stack []byte, stderr io.Write
 	if m.recordCrash("uncaught_exception", value, string(stack)) {
 		_, _ = fmt.Fprintf(stderr, "\n%s\n", crashReportInstructions(m.crashSessionFile()))
 	}
+}
+
+// uncaughtOffLoop ends the process for a panic in a goroutine the owner loop does not run, as upstream's uncaughtException
+// handler does for an unawaited rejection: it stops the extension processes, restores the terminal, reports and records
+// the crash, and exits 1. It runs on the panicking goroutine because the owner loop may be the thing that is stuck.
+// pig additive (D102): Go would otherwise end the process with a stderr dump and no crash record.
+func (m *InteractiveMode) uncaughtOffLoop(value any, stack []byte) {
+	if failure, ok := value.(error); !ok || !isDeadTerminalError(failure) {
+		if m.opts.TerminateExtensionProcesses != nil {
+			m.opts.TerminateExtensionProcesses()
+		}
+		tui.RestoreTerminalFromSignal()
+	}
+	m.uncaughtCrash(value, stack, os.Stderr)
+	EndSessionMarker()
+	os.Exit(1)
 }
 
 // uncaughtError carries an upstream Error that no caller awaits to Run's uncaughtException handler.
@@ -214,4 +231,12 @@ func (m *InteractiveMode) forwardRenderCrash(value any) {
 	if !m.postUITask(raise) {
 		go func() { _ = m.postToMain(m.runCtx, raise) }()
 	}
+}
+
+// interactiveExitReason words the reason Run ended with an error, naming a closed input outright.
+func interactiveExitReason(err error) string {
+	if errors.Is(err, io.EOF) {
+		return "terminal input closed (" + err.Error() + ") while the session ran (exit 1)"
+	}
+	return "interactive mode ended with an error: " + err.Error() + " (exit 1)"
 }

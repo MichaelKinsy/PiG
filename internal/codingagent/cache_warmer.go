@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/big"
 	"os"
+	"runtime/debug"
 	"slices"
 	"strings"
 	"sync"
@@ -448,6 +449,9 @@ func (w *CacheWarmer) scheduleLocked(run *cacheWarmingRun) {
 	w.tasks.Add(1)
 	run.timer = time.AfterFunc(time.Duration(max(0, run.nextWarmAt-now))*time.Millisecond, func() {
 		defer w.tasks.Done()
+		// pig additive (D102): a panic outside the request upstream catches reaches the interactive uncaught handler, as
+		// upstream's floating refresh promise reaches uncaughtException.
+		defer RecoverUncaught()
 		w.refresh(run)
 	})
 }
@@ -458,7 +462,7 @@ func (w *CacheWarmer) refresh(run *cacheWarmingRun) {
 		return
 	}
 	action := decision.Action
-	if decided, err := w.decide(run.ctx, CacheWarmingDecisionEvent{
+	if decided, err := w.decideCaught(run.ctx, CacheWarmingDecisionEvent{
 		Type:                    "cache_warming_decision",
 		WarmCost:                decision.WarmCost,
 		MissCost:                decision.MissCost,
@@ -513,10 +517,32 @@ func (w *CacheWarmer) applyDecision(run *cacheWarmingRun, decision CacheWarmingD
 	return extensionOverride, true
 }
 
+// decideCaught asks the extensions for the action. A panic counts as the extension failure upstream catches, so Pi's own
+// decision stands.
+func (w *CacheWarmer) decideCaught(ctx context.Context, event CacheWarmingDecisionEvent) (action CacheWarmingAction, err error) {
+	defer func() {
+		// upstream: packages/coding-agent/src/core/cache-warmer.ts:refresh catches every decide failure ("Extension failures fall back to pi's own decision").
+		if value := recover(); value != nil {
+			debugLog("cache warming decision panicked: %v\n%s", value, debug.Stack())
+			err = fmt.Errorf("cache warming decision panicked: %v", value)
+		}
+	}()
+	return w.decide(ctx, event)
+}
+
 // sendRefresh replays the request with a one-token output cap and no provider
 // retries, and records its usage. It reports whether the run should be
-// rescheduled. Warming is best-effort: a failed request only skips the usage.
-func (w *CacheWarmer) sendRefresh(run *cacheWarmingRun, extensionOverride bool) bool {
+// rescheduled. Warming is best-effort: a failed request only skips the usage,
+// and so does a panic anywhere upstream's try block covers (the request, its
+// result, the run check, the usage write and the onWarmed callback).
+func (w *CacheWarmer) sendRefresh(run *cacheWarmingRun, extensionOverride bool) (reschedule bool) {
+	defer func() {
+		// upstream: packages/coding-agent/src/core/cache-warmer.ts:refresh catches everything the refresh request throws ("Cache warming is best-effort and must not affect the active agent run").
+		if value := recover(); value != nil {
+			debugLog("cache warming refresh panicked: %v\n%s", value, debug.Stack())
+			reschedule = true
+		}
+	}()
 	options := run.Options
 	options.MaxTokens = 1
 	stream, err := w.stream(ai.WithProviderMaxRetries(run.ctx, 0), run.Model, run.Context, options)
@@ -524,10 +550,7 @@ func (w *CacheWarmer) sendRefresh(run *cacheWarmingRun, extensionOverride bool) 
 		return true
 	}
 	message := stream.Result()
-	w.mu.Lock()
-	valid := w.validateRunLocked(run)
-	w.mu.Unlock()
-	if !valid {
+	if !w.validateRun(run) {
 		return false
 	}
 	if message == nil || message.StopReason == ai.StopReasonError || message.StopReason == ai.StopReasonAborted {
@@ -569,6 +592,12 @@ func (w *CacheWarmer) refreshDeadlineMissedLocked(run *cacheWarmingRun) bool {
 	}
 	w.stopLocked("cache refresh deadline missed", nil, false)
 	return true
+}
+
+func (w *CacheWarmer) validateRun(run *cacheWarmingRun) bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.validateRunLocked(run)
 }
 
 func (w *CacheWarmer) validateRunLocked(run *cacheWarmingRun) bool {

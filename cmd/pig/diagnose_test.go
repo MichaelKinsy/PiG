@@ -3,10 +3,12 @@ package main
 import (
 	"bytes"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
 // `pig --diagnose` produces a human-readable
@@ -123,5 +125,29 @@ func TestStaleSDKWarningNamesARealCommand(t *testing.T) {
 	}
 	if !bytes.Contains(source, []byte("pig diagnose")) {
 		t.Error("the stale-SDK warning should point at 'pig diagnose'")
+	}
+}
+
+// Issue #165: a bug report must say where the crash log, exit log and debug log are, and show the newest unexpected exits.
+func TestDiagnoseShowsLogPathsAndRecentUnexpectedExits(t *testing.T) {
+	agentDir := t.TempDir()
+	previous := agentDirForModelOverride
+	agentDirForModelOverride = agentDir
+	t.Cleanup(func() { agentDirForModelOverride = previous })
+	codingagent.RecordExit(agentDir, "received SIGHUP")
+
+	var buf bytes.Buffer
+	runDiagnose(&buf, "/test/binary")
+	out := buf.String()
+	for _, want := range []string{
+		"crash log:         " + codingagent.CrashLogPath(agentDir) + "\n",
+		"exit log:          " + codingagent.ExitLogPath(agentDir) + "\n",
+		"debug log:         " + filepath.Join(os.TempDir(), "pig-debug.log") + " (written when PIG_DEBUG is set)\n",
+		"\nrecent unexpected exits (newest last)\n",
+		"received SIGHUP\n",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q in:\n%s", want, out)
+		}
 	}
 }
