@@ -147,13 +147,14 @@ var fakeTests = func() []string {
 	return append(names, "ExampleFixture", "FuzzFixture")
 }()
 
-// groupedTestFixture copies test-grouped.sh and the scripts it runs into a fresh root whose fake go lists five packages, lists fakeTests for go test -list, and appends the packages each go test receives to $TEST_LOG and each -run pattern, after its package, to $RUN_LOG. LIST_FAIL fails the listing, LIST_EXTRA adds a name to it, and FAIL_TEST fails each go test whose -run pattern names that test. When LEAK_TMP is set, the fake go test leaves a file in the TMPDIR it runs under, as a leaking test package would.
+// groupedTestFixture copies test-grouped.sh and the scripts it runs into a fresh root whose fake go lists five packages, lists fakeTests for go test -list, and appends the packages each go test receives to $TEST_LOG and each -run pattern, after its package, to $RUN_LOG. LIST_FAIL fails the listing, LIST_EXTRA adds a name to it, and FAIL_TEST fails each go test whose -run pattern names that test. When LEAK_TMP is set, the fake go test leaves a file in the TMPDIR it runs under, as a leaking test package would. When WIPE_AGENT_AUTH is set it rewrites auth.json in the agent directory its environment names, as the 2026-10-06 lane wipe did, and RECORD_AGENT_ENV names a file that receives the agent environment each go test sees.
 func groupedTestFixture(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
 	copyCIFixture(t, root, "automation/ci/test-grouped.sh")
 	copyCIFixture(t, root, "automation/ci/test-shard-pattern.sh")
 	copyCIFixture(t, root, "automation/ci/assert-clean-tmp.sh")
+	copyCIFixture(t, root, "automation/ci/agent-dir-guard.sh")
 	// test-grouped.sh enters the in-repo Porter extension module to warm its dependency-module build cache.
 	writeCIFixture(t, root, "piglets/porter/extensions/pig-porter/.keep", "")
 	writeCIFixture(t, root, "automation/ci/test-fixtures.sh", "#!/bin/sh\nprintf 'export CI_TEST_FIXTURES=ready\\n'\n")
@@ -190,6 +191,8 @@ case "$1" in
     if [[ -n "$run" ]]; then printf '%s %s\n' "${packages[*]}" "$run" >> "$RUN_LOG"; fi
     if [[ -n "${FAIL_TEST:-}" && "$run" == *"$FAIL_TEST"* ]]; then exit 1; fi
     if [[ -n "${LEAK_TMP:-}" ]]; then : > "$TMPDIR/pig-leak"; fi
+    if [[ -n "${WIPE_AGENT_AUTH:-}" ]]; then printf '{}' > "$PIG_CODING_AGENT_DIR/auth.json"; fi
+    if [[ -n "${RECORD_AGENT_ENV:-}" ]]; then printf '%s\n' "$PIG_CODING_AGENT_DIR" "$PI_CODING_AGENT_DIR" "$PIG_HOME" "$PI_HOME" "${PIG_CODING_AGENT_SESSION_DIR-unset}" >> "$RECORD_AGENT_ENV"; fi
     ;;
   *) exit 99 ;;
 esac
@@ -383,6 +386,77 @@ func TestGroupedTestsFailOnTemporaryLeakAndRemoveScratch(t *testing.T) {
 		t.Fatalf("leaking run: err=%v, want the leak reported\n%s", err, output)
 	}
 	requireScratchRemoved()
+}
+
+// Each group runs go test with PIG_CODING_AGENT_DIR, PI_CODING_AGENT_DIR, PIG_HOME and PI_HOME pointing at seeded throwaway directories, whatever the caller exported, and fails when a test run changes them. A lane exports the real agent directory for its own pig, and a test that wrote it emptied the lane's credentials.
+func TestGroupedTestsIsolateAndGuardTheAgentDirectories(t *testing.T) {
+	root := groupedTestFixture(t)
+	t.Setenv("TEST_LOG", filepath.Join(root, "packages"))
+	outer := t.TempDir()
+	t.Setenv("TMPDIR", outer)
+	realAgent := t.TempDir()
+	t.Setenv("PIG_CODING_AGENT_DIR", realAgent)
+	t.Setenv("PIG_CODING_AGENT_SESSION_DIR", realAgent)
+	record := filepath.Join(root, "agent-env")
+	t.Setenv("RECORD_AGENT_ENV", record)
+	run := func() (string, error) {
+		cmd := exec.CommandContext(t.Context(), testenv.Bash(t), filepath.Join(root, "automation/ci/test-grouped.sh"), "fast")
+		output, err := cmd.CombinedOutput()
+		return string(output), err
+	}
+	if output, err := run(); err != nil {
+		t.Fatalf("clean run failed: %v\n%s", err, output)
+	}
+	seen, err := os.ReadFile(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for line := range strings.SplitSeq(strings.TrimSpace(string(seen)), "\n") {
+		if line == "unset" {
+			continue
+		}
+		if strings.HasPrefix(line, realAgent) || !strings.HasPrefix(line, outer) {
+			t.Fatalf("go test saw %q, want a directory under the group's private root, not the caller's %q", line, realAgent)
+		}
+	}
+	if !strings.Contains(string(seen), "unset") {
+		t.Fatalf("PIG_CODING_AGENT_SESSION_DIR reached go test: %q", seen)
+	}
+	if left, err := os.ReadDir(outer); err != nil || len(left) != 0 {
+		t.Fatalf("agent guard directories left in TMPDIR: %v, %v", left, err)
+	}
+	t.Setenv("WIPE_AGENT_AUTH", "1")
+	output, err := run()
+	if err == nil || !strings.Contains(output, "[agent-dir-guard]") || !strings.Contains(output, "agent/auth.json") {
+		t.Fatalf("wiping run: err=%v, want the agent-dir guard to report auth.json\n%s", err, output)
+	}
+	if left, err := os.ReadDir(outer); err != nil || len(left) != 0 {
+		t.Fatalf("agent guard directories left in TMPDIR after a failure: %v, %v", left, err)
+	}
+	if info, err := os.Stat(realAgent); err != nil || !info.IsDir() {
+		t.Fatalf("caller's agent directory: %v", err)
+	}
+}
+
+// A group whose agent directories cannot be seeded must fail without running go test: the caller's real agent directory is still exported, and the guard could not detect a write to it.
+func TestGroupedTestsDoNotRunWhenTheAgentDirectoriesCannotBeSeeded(t *testing.T) {
+	root := groupedTestFixture(t)
+	writeCIFixture(t, root, "automation/ci/agent-dir-guard.sh", "#!/bin/sh\nif [ \"$1\" = seed ]; then exit 3; fi\nexit 0\n")
+	if err := os.Chmod(filepath.Join(root, "automation/ci/agent-dir-guard.sh"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	testLog := filepath.Join(root, "packages")
+	t.Setenv("TEST_LOG", testLog)
+	t.Setenv("TMPDIR", t.TempDir())
+	t.Setenv("PIG_CODING_AGENT_DIR", t.TempDir())
+	cmd := exec.CommandContext(t.Context(), testenv.Bash(t), filepath.Join(root, "automation/ci/test-grouped.sh"), "fast")
+	output, err := cmd.CombinedOutput()
+	if err == nil || !strings.Contains(string(output), "could not seed isolated agent directories") {
+		t.Fatalf("seed failure: err=%v, want the group to fail and say why\n%s", err, output)
+	}
+	if ran, readErr := os.ReadFile(testLog); readErr == nil && len(ran) > 0 {
+		t.Fatalf("go test ran with the caller's agent directory exported: %q", ran)
+	}
 }
 
 func TestHostedJobsInstallPinnedNpmBeforeOracle(t *testing.T) {
