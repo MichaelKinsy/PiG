@@ -922,6 +922,7 @@ func runStableCLI() {
 	startupExtensions := &startupExtensionSet{}
 	stopStartupExtensions = startupExtensions.close
 	defer startupExtensions.close()
+	defer stopAutomaticExtensionCacheGC()
 	_ = pigdocs.EnsureSynced(codingagent.ConfigRoot())
 	buildInput := cliBuildInput{CWD: cwd, Startup: true, StartupExtensions: startupExtensions}
 	build, err := builder.buildResources(ctx, buildInput)
@@ -1046,6 +1047,7 @@ func runStableCLI() {
 			resumePath = startupSession.forkPath
 		}
 		codingagent.ReportDiagnostics(startupDiagnostics)
+		startAutomaticExtensionCacheGC(ctx)
 		exitProcess(runRPCMode(ctx, flags, activePiglet, rpcModeResources{
 			Builder: builder, Build: build, SessionManager: startupSession.manager, ResumePath: resumePath,
 		}))
@@ -1079,6 +1081,7 @@ func runStableCLI() {
 			Manager: startupSession.manager, ResumePath: printResumePath, SessionName: sessionName,
 			SessionDir: sessionDir, NoSession: flags.NoSession, SessionID: flags.SessionID, CWDOverride: flags.sessionCwdOverride,
 		})
+		startAutomaticExtensionCacheGC(ctx)
 		if err := runPrintMode(ctx, host, printModeOptions{Mode: mode, Messages: extraMessages, InitialMessage: initialMessage, InitialImages: initialImages}); err != nil {
 			// A run stopped by a termination signal reports 128+signum and
 			// stays quiet, matching upstream's print-mode signal handlers.
@@ -1280,6 +1283,7 @@ func runStableCLI() {
 	defer setTerminationShutdownHook(nil)
 
 	trace.Mark("pre-interactive")
+	startAutomaticExtensionCacheGC(ctx)
 	if err := interactive.Run(ctx); err != nil {
 		if errors.Is(err, codingagent.ErrInteractiveCrashed) {
 			exitProcess(1)
