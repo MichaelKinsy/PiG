@@ -418,9 +418,7 @@ func TestIsUnderDirComparesFileIdentity(t *testing.T) {
 	}
 	other := t.TempDir()
 	alias := filepath.Join(t.TempDir(), "alias")
-	if err := os.Symlink(outer, alias); err != nil {
-		t.Skipf("symlinks unavailable: %v", err)
-	}
+	testenv.RequireDirectoryLink(t, outer, alias)
 	for name, tc := range map[string]struct {
 		path string
 		dir  string
@@ -451,9 +449,7 @@ func TestGroupedTestsIsolateAndGuardTheAgentDirectories(t *testing.T) {
 	t.Run("temporary directory reached through an alias", func(t *testing.T) {
 		outer := t.TempDir()
 		alias := filepath.Join(t.TempDir(), "alias")
-		if err := os.Symlink(outer, alias); err != nil {
-			t.Skipf("symlinks unavailable: %v", err)
-		}
+		testenv.RequireDirectoryLink(t, outer, alias)
 		testGroupedAgentDirectoryIsolation(t, outer, alias)
 	})
 }
