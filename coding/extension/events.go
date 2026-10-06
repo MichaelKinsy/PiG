@@ -733,6 +733,8 @@ type ToolCallEventBase struct {
 	// ParentToolCallID is set when another tool (for example a codemode script)
 	// issued this call. upstream: parentToolCallId?: string
 	ParentToolCallID string `json:"parentToolCallId,omitempty"`
+	// WireInput points at the call's input as JSON in the member order the model wrote it, edited as JavaScript edits an object: a retained member keeps its place and a new member follows. A Go map has no order, so [CustomToolCallEvent.Input] carries the values and this carries the order. The Session seeds it from the call's arguments, and a subprocess extension's reply replaces the bytes it points at, so every copy of the event shares the edit. Nil when Input is the only source.
+	WireInput *json.RawMessage `json:"-"`
 }
 
 // BashToolCallEvent: upstream types.ts BashToolCallEvent.

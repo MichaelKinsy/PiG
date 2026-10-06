@@ -168,3 +168,55 @@ func TestAgentLoopDeliversToolArgumentsInModelOrder(t *testing.T) {
 		t.Errorf("%d persisted tool calls, want 1", persisted)
 	}
 }
+
+// A before hook that edits the call replaces the arguments the tool and the after hook receive, byte for byte and in the order the hook wrote them (agent-loop.ts prepareToolCall passes the one validated object to beforeToolCall, execute and afterToolCall). The assistant message in the transcript, and so the session file, keeps the arguments the model wrote.
+func TestAgentLoopDeliversEditedToolArgumentsInTheHooksOrder(t *testing.T) {
+	var call ai.ToolCall
+	call.ID, call.Name = "c1", "probe"
+	call.SetStreamingArguments(orderedToolArguments)
+	start := agentTestAssistant(nil, ai.StopReasonPending)
+	partial := agentTestAssistant([]ai.AssistantContentBlock{call}, ai.StopReasonPending)
+	events := []ai.AssistantMessageEvent{
+		ai.StartEvent{Partial: start},
+		ai.ToolCallStartEvent{ContentIndex: 0, Partial: partial},
+		ai.ToolCallEndEvent{ContentIndex: 0, ToolCall: call, Partial: partial},
+		ai.DoneEvent{Reason: ai.StopReasonToolUse, Message: agentTestAssistant([]ai.AssistantContentBlock{call}, ai.StopReasonToolUse)},
+	}
+	tool := &argumentRecordingTool{}
+	agent := NewAgent(AgentOptions{Model: fakeTestModel(providerFromSeqs(events, textSeq("done"))), Tools: []AgentTool{tool}, MaxTurns: 5})
+	const edited = `{"zeta":5,"nested":{"yy":1},"alpha":"edited","added":true}`
+	agent.AddBeforeToolCallHook(func(_ context.Context, _, _ string, _ json.RawMessage) ToolCallHookResult {
+		return ToolCallHookResult{Args: json.RawMessage(edited)}
+	})
+	var afterArgs string
+	agent.AddAfterToolCallHook(func(_ context.Context, _, _ string, args json.RawMessage, _ AgentToolResult) AfterToolCallResult {
+		afterArgs = string(args)
+		return AfterToolCallResult{}
+	})
+	messages, err := agent.Send(t.Context(), "go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tool.got) != 1 || tool.got[0] != edited {
+		t.Errorf("tool received %q, want [%s]", tool.got, edited)
+	}
+	if afterArgs != edited {
+		t.Errorf("after hook saw %s, want %s", afterArgs, edited)
+	}
+	persisted := 0
+	for _, message := range messages {
+		encoded, err := json.Marshal(message)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := persistedToolCallArguments(t, encoded); got != "" {
+			persisted++
+			if got != orderedToolArguments {
+				t.Errorf("persisted arguments %s, want %s", got, orderedToolArguments)
+			}
+		}
+	}
+	if persisted != 1 {
+		t.Errorf("%d persisted tool calls, want 1", persisted)
+	}
+}

@@ -1,0 +1,45 @@
+# Behavior family: extensions-runtime
+# Scenario: a tool_call handler only moves a member of event.input, and the tool and tool_result see the new member order.
+#
+# The faux provider calls key_order_probe with {"zeta":1,"drop":true,"alpha":2}. parity-tool-call-reorder.mjs deletes
+# zeta and assigns the same value again, so the values do not change and zeta moves to the end. Pi runs the tool with
+# the object the handler edited (agent-loop.ts prepareToolCall), so the tool and tool_result's event.input are
+# {"drop":true,"alpha":2,"zeta":1}. A host or SDK that detects an edit by comparing values without their order runs
+# the tool with the model's {"zeta":1,"drop":true,"alpha":2}. The faux provider answers the last tool result, so one
+# line carries every observation.
+#
+# Upstream evidence (2026-10-06, Pi 1.0.3):
+#   PI_CODING_AGENT_DIR=testdata/pi-agent pi --no-extensions \
+#     -e ../../testdata/test-faux-provider.ts -e testdata/ext/parity-tool-call-reorder.mjs \
+#     --model test-faux/faux-1 --print "Run: tool key order"
+#   output: in={"zeta":1,"drop":true,"alpha":2} ran={"drop":true,"alpha":2,"zeta":1} keys=drop,alpha,zeta out={"drop":true,"alpha":2,"zeta":1}
+#   exit: 0
+
+name = "72-tool-call-input-reorder"
+description = "Extension tool_call handler moves an event.input member and the tool and tool_result see the new member order"
+covers = [
+  "packages/coding-agent/src/core/extensions/runner.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/parity-tool-call-reorder.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/parity-tool-call-reorder.mjs",
+]
+
+[print]
+prompt = "Run: tool key order"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ['ran={"drop":true,"alpha":2,"zeta":1}']
+output_equal = true
+runs = 3

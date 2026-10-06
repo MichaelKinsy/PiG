@@ -577,6 +577,18 @@ export default function (pi) {
       event.input = { ...event.input, command: "git status --short" };
       return;
     }
+    // Moving a member to the end is an edit in Pi, and two added members follow in the order the handler added them.
+    if (event.toolName === "rewrite_order_probe") {
+      if (event.input.command === "reorder") {
+        const timeout = event.input.timeout;
+        delete event.input.timeout;
+        event.input.timeout = timeout;
+      } else {
+        event.input.zeta = 1;
+        event.input.alpha = 2;
+      }
+      return;
+    }
     if (event.toolName === "rewrite_probe" || event.toolName === "rewrite_block_probe") {
       if (event.input.command === "git status" || event.toolName === "rewrite_block_probe") {
         event.input.command = "git status --short";

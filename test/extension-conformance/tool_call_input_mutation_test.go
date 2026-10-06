@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -32,30 +33,48 @@ func TestToolCallInputMutationAcrossSDKs(t *testing.T) {
 					h.host.Shutdown("test done")
 				}
 			})
-			emit := func(tool, command string) (map[string]any, *extension.ToolCallEventResult) {
+			// The model wrote timeout, drop, command. JSON.stringify of Pi's edited object keeps a retained member in its place and appends a new one, so the tool, the next handler and tool_result see the order below, where a sorted map would give added, command, nested, timeout.
+			emit := func(tool, command string) (map[string]any, string, *extension.ToolCallEventResult) {
 				input := newInput(command)
-				result, err := h.runner.EmitToolCall(ctx, extension.CustomToolCallEvent{
-					ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: tool + "-" + command},
+				wire := json.RawMessage(`{"timeout":5,"drop":"dropped","command":` + mustJSON(t, command) + `}`)
+				event := extension.CustomToolCallEvent{
+					ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: tool + "-" + command, WireInput: &wire},
 					ToolName:          tool,
 					Input:             input,
-				})
+				}
+				result, err := h.runner.EmitToolCall(ctx, event)
 				if err != nil {
 					t.Fatalf("%s tool_call: %v", tool, err)
 				}
-				return input, result
+				after, err := event.InputJSON()
+				if err != nil {
+					t.Fatalf("%s input: %v", tool, err)
+				}
+				// An extension process replies with the object it left, and the host stores its bytes in the event so the next handler and the tool see that order. Only a map edit made in the host's own process leaves them stale.
+				if strings.HasPrefix(test.name, "subprocess-") && string(wire) != string(after) {
+					t.Errorf("%s stored input = %s, want %s", tool, wire, after)
+				}
+				return input, string(after), result
 			}
+			const rewrittenWire = `{"timeout":5,"command":"git status --short","added":true,"nested":{"depth":2}}`
 
-			input, result := emit("rewrite_probe", "git status")
+			input, wire, result := emit("rewrite_probe", "git status")
 			if !reflect.DeepEqual(input, rewritten) {
 				t.Errorf("input after the handler rewrote it = %s, want %s", mustJSON(t, input), mustJSON(t, rewritten))
+			}
+			if wire != rewrittenWire {
+				t.Errorf("input members after the handler rewrote it = %s, want %s", wire, rewrittenWire)
 			}
 			if result != nil && result.Block {
 				t.Errorf("a rewriting handler blocked the call: %+v", result)
 			}
 
-			input, result = emit("rewrite_probe", "git log")
+			input, wire, result = emit("rewrite_probe", "git log")
 			if want := newInput("git log"); !reflect.DeepEqual(input, want) {
 				t.Errorf("input after a handler that left it alone = %s, want %s", mustJSON(t, input), mustJSON(t, want))
+			}
+			if want := `{"timeout":5,"drop":"dropped","command":"git log"}`; wire != want {
+				t.Errorf("input members after a handler that left it alone = %s, want %s", wire, want)
 			}
 			if result != nil && result.Block {
 				t.Errorf("a handler that left the input blocked the call: %+v", result)
@@ -63,18 +82,39 @@ func TestToolCallInputMutationAcrossSDKs(t *testing.T) {
 
 			// Pi runs the tool with the object the event carried when the handlers started (agent-loop.ts prepareToolCall passes the same args to beforeToolCall and execute), so assigning a new object to event.input changes nothing the tool receives. Rust's handler owns the event as a value with no shared object, so assigning to data["input"] is how it edits the input in place, and its fixture has no reassignment probe.
 			if test.name != "subprocess-rust" {
-				input, result = emit("rewrite_reassign_probe", "git status")
+				input, wire, result = emit("rewrite_reassign_probe", "git status")
 				if want := newInput("git status"); !reflect.DeepEqual(input, want) {
 					t.Errorf("input after a handler assigned a new object = %s, want %s", mustJSON(t, input), mustJSON(t, want))
+				}
+				if want := `{"timeout":5,"drop":"dropped","command":"git status"}`; wire != want {
+					t.Errorf("input members after a handler assigned a new object = %s, want %s", wire, want)
 				}
 				if result != nil && result.Block {
 					t.Errorf("a reassigning handler blocked the call: %+v", result)
 				}
 			}
 
-			input, result = emit("rewrite_block_probe", "anything")
+			// JavaScript keeps an object's insertion order, and so do a Python dict and a serde_json map with preserve_order: moving a member to the end is an edit, and added members follow in the order the handler added them. A Go map has no insertion order, so the Go rows cannot express either edit.
+			if !strings.HasSuffix(test.name, "-go") {
+				input, wire, _ = emit("rewrite_order_probe", "reorder")
+				if want := newInput("reorder"); !reflect.DeepEqual(input, want) {
+					t.Errorf("input after a handler moved a member = %s, want %s", mustJSON(t, input), mustJSON(t, want))
+				}
+				if want := `{"drop":"dropped","command":"reorder","timeout":5}`; wire != want {
+					t.Errorf("input members after a handler moved a member = %s, want %s", wire, want)
+				}
+				_, wire, _ = emit("rewrite_order_probe", "append")
+				if want := `{"timeout":5,"drop":"dropped","command":"append","zeta":1,"alpha":2}`; wire != want {
+					t.Errorf("input members after a handler added zeta then alpha = %s, want %s", wire, want)
+				}
+			}
+
+			input, wire, result = emit("rewrite_block_probe", "anything")
 			if !reflect.DeepEqual(input, rewritten) {
 				t.Errorf("input after a handler that rewrote it and blocked = %s, want %s", mustJSON(t, input), mustJSON(t, rewritten))
+			}
+			if wire != rewrittenWire {
+				t.Errorf("input members after a handler that rewrote it and blocked = %s, want %s", wire, rewrittenWire)
 			}
 			if result == nil || !result.Block || result.Reason != "blocked after rewrite" {
 				t.Errorf("block result = %+v, want blocked after rewrite", result)

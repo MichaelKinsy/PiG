@@ -2041,7 +2041,8 @@ impl Extension {
                 if let Some(before) = tool_call_input_before {
                     let after = data.get("input").cloned();
                     let mut reply = serde_json::json!({ "_pigToolCallResult": value });
-                    if after != before {
+                    // serde_json compares maps without their member order, and moving a member is an edit in Pi (the tool runs with the object in its new order), so compare the JSON text.
+                    if serde_json::to_string(&after).ok() != serde_json::to_string(&before).ok() {
                         reply["_pigToolCallInput"] = after.unwrap_or(Value::Null);
                     }
                     value = Some(reply);

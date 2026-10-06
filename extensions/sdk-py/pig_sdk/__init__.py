@@ -3563,10 +3563,10 @@ class Extension:
                         error = {"message": str(exc)}
                     self._respond(req_id, {"_pigBoundaryEntries": entries, "_pigBoundaryResult": result}, error)
                     return
-                # Pi's handler edits event.input in place and the runner reads it back (runner.ts emitToolCall). The host cannot share the dict, so the reply carries the input the handler left when it differs from the one it received, even if the handler failed. The tool runs with the object the event carried (agent-loop.ts prepareToolCall), so assigning a new dict to data["input"] changes nothing the tool receives.
+                # Pi's handler edits event.input in place and the runner reads it back (runner.ts emitToolCall). The host cannot share the dict, so the reply carries the input the handler left when it differs from the one it received, member order included, even if the handler failed. The tool runs with the object the event carried (agent-loop.ts prepareToolCall), so assigning a new dict to data["input"] changes nothing the tool receives.
                 if req.get("event") == "tool_call":
                     tool_input = data.get("input")
-                    before = json.dumps(tool_input, sort_keys=True)
+                    before = json.dumps(tool_input)
                     result = None
                     error = None
                     try:
@@ -3574,7 +3574,7 @@ class Extension:
                     except Exception as exc:  # noqa: BLE001 - Preserve input edits before reporting the handler error.
                         error = {"message": str(exc)}
                     reply: dict[str, Any] = {"_pigToolCallResult": result}
-                    if json.dumps(tool_input, sort_keys=True) != before:
+                    if json.dumps(tool_input) != before:
                         reply["_pigToolCallInput"] = tool_input
                     self._respond(req_id, reply, error)
                     return
