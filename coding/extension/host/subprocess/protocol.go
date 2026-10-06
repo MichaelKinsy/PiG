@@ -626,10 +626,22 @@ type BeforeAgentStartResponsePayload struct {
 	Result        json.RawMessage    `json:"_pigPromptResult"`
 }
 
-// ToolCallResponsePayload is the result of a tool_call handler. Input is the event's input when the handler left it different from the one it received; an omitted Input means the handler made no edit. Result is the handler's ordinary block result.
+// ToolCallResponsePayload is the result of a tool_call handler. Input is the event's input when the handler left it different from the one it received; an omitted Input means the handler made no edit. Result is the handler's ordinary block result. Any other member is an error: a reply in another shape would otherwise decode as no result and lose a block.
 type ToolCallResponsePayload struct {
 	Input  json.RawMessage `json:"_pigToolCallInput"`
 	Result json.RawMessage `json:"_pigToolCallResult"`
+}
+
+func (p *ToolCallResponsePayload) UnmarshalJSON(data []byte) error {
+	type toolCallResponsePayload ToolCallResponsePayload
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	var decoded toolCallResponsePayload
+	if err := decoder.Decode(&decoded); err != nil {
+		return err
+	}
+	*p = ToolCallResponsePayload(decoded)
+	return nil
 }
 
 // ResponsePayload is the extension's reply to a request. For tool_call, Result carries a [ToolCallResponsePayload]. For agent_before_settle and turn_end,

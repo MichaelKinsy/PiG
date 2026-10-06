@@ -38,7 +38,7 @@ const CallGetMcpServers = "getMcpServers"
 // CallCheckMcpServer (ext→host) validates a registration without making it: the config as an `mcpServers` entry and the ownership of the name, which upstream's registerMcpServer does when it is called and throws to the factory (loader.ts:456-468). Args is a McpServerDecl; the error is the throw's message. A Node factory may call it before its register frame, which commits what the factory registered.
 const CallCheckMcpServer = "mcpServers.check"
 
-// CallLoadingExec (ext→host) runs a child for a Node factory's pi.exec before its register frame. Upstream's loader gives the factory an exec that spawns the child directly, in the loader's working directory, with no session bound (loader.ts:411-414), so the host runs core/exec.ts's execCommand in its own working directory. Args and result are those of "exec". After the register frame the factory calls "exec", which runs in the bound session.
+// CallLoadingExec (ext→host) runs a child for a Node factory's pi.exec before its register frame, and for a call a factory's callback made after the factory returned and before the runtime had its registered connection, which the runtime sends right after the register frame. Upstream's loader gives the factory an exec that spawns the child directly, in the loader's working directory, with no session bound (loader.ts:411-414), so the host runs core/exec.ts's execCommand in its own working directory. Args and result are those of "exec". Once the runtime has its registered connection, pi.exec calls "exec", which runs in the bound session.
 const CallLoadingExec = "exec.loading"
 
 // ── Virtual models ───────────────────────────────────────────────────────────

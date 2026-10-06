@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-// A tool_call reply carries the input the handler left (`_pigToolCallInput`) beside its block result (`_pigToolCallResult`). The host writes the input into the event's own Input map, which the agent loop reads after the handlers ran, and answers the block result alone (runner.ts emitToolCall). The edit holds when the handler failed, a reply with no input leaves the event as it was, and an input that is not an object is not an input a tool accepts.
+// A tool_call reply carries the input the handler left (`_pigToolCallInput`) beside its block result (`_pigToolCallResult`). The host writes the input into the event's own Input map, which the agent loop reads after the handlers ran, and answers the block result alone (runner.ts emitToolCall). The edit holds when the handler failed, a reply with no input leaves the event as it was, and an input that is not an object is not an input a tool accepts. The reply has exactly these two members: any other shape is an error, which blocks the call, so a block result cannot be lost.
 func TestToolCallReplyEditsTheEventInputInPlace(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -24,6 +24,10 @@ func TestToolCallReplyEditsTheEventInputInPlace(t *testing.T) {
 		{name: "edit then failure", reply: `{"result":{"_pigToolCallInput":{"command":"y"},"_pigToolCallResult":null},"error":{"message":"handler failed"}}`, wantInput: map[string]any{"command": "y"}, wantErr: "handler failed"},
 		{name: "input is not an object", reply: `{"result":{"_pigToolCallInput":null,"_pigToolCallResult":null}}`, wantInput: map[string]any{"command": "git status", "drop": "dropped"}},
 		{name: "array input", reply: `{"result":{"_pigToolCallInput":["a"],"_pigToolCallResult":null}}`, wantInput: map[string]any{"command": "git status", "drop": "dropped"}},
+		// A Node handler that returns undefined and leaves the input sends neither member.
+		{name: "empty reply", reply: `{"result":{}}`, wantInput: map[string]any{"command": "git status", "drop": "dropped"}},
+		// A reply in another shape, such as the bare block result of an extension built against an older SDK, fails the call instead of losing its block.
+		{name: "reply without the envelope", reply: `{"result":{"block":true,"reason":"legacy"}}`, wantInput: map[string]any{"command": "git status", "drop": "dropped"}, wantErr: `decode tool_call response: json: unknown field "block": "observe" ships a prebuilt binary; if you updated pig, rebuild it against the current pig SDK`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

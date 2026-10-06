@@ -3879,6 +3879,9 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 			if event == "tool_call" && len(args) > 0 && len(resp.Response.Result) > 0 && strings.TrimSpace(string(resp.Response.Result)) != "null" {
 				var reply ToolCallResponsePayload
 				if err := json.Unmarshal(resp.Response.Result, &reply); err != nil {
+					if hint := standaloneRebuildHint(me.config); hint != "" {
+						return nil, fmt.Errorf("decode tool_call response: %w: %s", err, hint)
+					}
 					return nil, fmt.Errorf("decode tool_call response: %w", err)
 				}
 				if len(reply.Input) > 0 {

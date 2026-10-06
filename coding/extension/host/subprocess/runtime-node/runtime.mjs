@@ -1635,7 +1635,7 @@ export class Runtime {
       getSessionName: action(() => this.state.session?.sessionName || undefined),
       setSessionName: action((name) => this.fireAndForget("setSessionName", { name })),
       setLabel: action((entryId, label) => this.fireAndForget("setLabel", { entryId, label })),
-      exec: (command, args = [], options = undefined) => this.conn ? this.call("exec", { command, args, options }) : this.loadingExec({ command, args, options }),
+      exec: (command, args = [], options = undefined) => this.exec({ command, args, options }),
       getFlag: (name) => {
         if (!this.flags.has(name)) return undefined;
         return (Object.hasOwn(this.state.flags, name) ? this.state.flags[name] : undefined) ?? this.flagValues.get(name);
@@ -1791,6 +1791,14 @@ export class Runtime {
     if (this.conn) return this.callSync(method, args);
     this.ensureConnectionSync();
     return this.earlyConn.callSync(method, args, "");
+  }
+
+  // loader.ts:411-414: pi.exec spawns the child whenever it is called. A callback the factory scheduled can call it after the factory returned and before the registered connection exists, while connect() opens it. That call waits for the register frame and runs as the loader's exec; opening a second connection would leave the call or the registration on a socket the Host does not read.
+  exec(request) {
+    if (this.conn) return this.call("exec", request);
+    if (this.loadState === "loading") return this.loadingExec(request);
+    if (this.connecting) return this.connecting.then(() => this.call("exec.loading", request));
+    return this.call("exec", request);
   }
 
   // loader.ts:411-414 gives a loading factory an exec that spawns the child itself, with no session bound. The Host runs it in the loader's working directory over the connection the factory opened. The Host's reply is applied when it arrives: nothing reads this connection's queue before the register frame, and the factory awaits the call.
@@ -2186,7 +2194,8 @@ export class Runtime {
 
   async serve() {
     try {
-      await this.connect();
+      this.connecting = this.connect();
+      await this.connecting;
       while (true) {
         const env = await this.conn.next();
         if (!env) return;
