@@ -52,9 +52,10 @@ func (m *InteractiveMode) addPersistedDefaultToNonEmptyScope(model *ai.Model) er
 	}
 	m.scopedModelIDs = append(m.scopedModelIDs, spec)
 	if m.opts.SessionHandle != nil {
-		scoped := slices.Clone(m.opts.SessionHandle.ScopedModels())
-		scoped = append(scoped, extension.ScopedModel{Model: model})
-		m.opts.SessionHandle.SetScopedModels(scoped)
+		scoped := m.opts.SessionHandle.ScopedModels()
+		if !slices.ContainsFunc(scoped, func(entry extension.ScopedModel) bool { return ai.ModelsAreEqual(entry.Model, model) }) {
+			m.opts.SessionHandle.SetScopedModels(append(slices.Clone(scoped), extension.ScopedModel{Model: model}))
+		}
 	}
 	if sm := m.opts.SettingsManager; sm != nil {
 		enabled := sm.GetEnabledModels()
