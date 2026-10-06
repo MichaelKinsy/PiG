@@ -12,8 +12,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
@@ -186,8 +188,8 @@ func runAzureRPCOnce(t *testing.T, bin string, bodies map[string]string, shape, 
 	if err != nil {
 		t.Fatal(err)
 	}
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
+	stderr := &lockedBuffer{}
+	cmd.Stderr = stderr
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
@@ -242,7 +244,25 @@ func runAzureRPCOnce(t *testing.T, bin string, bodies map[string]string, shape, 
 		}
 		return canonicalRPCRecords(t, r.records[:min(keep, len(r.records))])
 	case <-time.After(testbudget.Wait(t)):
-		t.Errorf("timeout; stderr: %s", stderr.String())
+		// A stalled child names its own stall: SIGQUIT makes the Go runtime dump every goroutine to stderr. Without a dump a
+		// timeout here cannot tell a request that never left PiG from one the loopback server never answered.
+		dump := dumpStalledChild(cmd, stderr)
+		t.Errorf("timeout after %d Responses request(s); stderr: %s", requests.Load(), dump)
 		return nil
 	}
+}
+
+// dumpStalledChild asks a hung child for its goroutine dump and returns its stderr once it has exited. Where the platform
+// has no SIGQUIT it returns what the child had written.
+func dumpStalledChild(cmd *exec.Cmd, stderr *lockedBuffer) string {
+	if runtime.GOOS == "windows" || cmd.Process.Signal(syscall.SIGQUIT) != nil {
+		return stderr.String()
+	}
+	// The deferred Kill/Wait in the caller owns the exit; the dump is complete when the runtime has written it, so poll the
+	// buffer's growth rather than racing Wait.
+	for previous := -1; previous != len(stderr.String()); {
+		previous = len(stderr.String())
+		time.Sleep(200 * time.Millisecond)
+	}
+	return stderr.String()
 }
