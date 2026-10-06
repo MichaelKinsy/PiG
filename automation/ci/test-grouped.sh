@@ -76,7 +76,8 @@ echo "[test-grouped] subprocess-bounded ($SUBPROCESS_PARALLEL): ${#HEAVY_PKGS[@]
 echo "[test-grouped] serial-exclusive ($SERIAL_PARALLEL): ${#SERIAL_PKGS[@]} packages"
 
 SCRATCH=
-trap '[[ -z "$SCRATCH" ]] || rm -rf "$SCRATCH"' EXIT
+AGENT_GUARD=
+trap '[[ -z "$SCRATCH" ]] || rm -rf "$SCRATCH"; [[ -z "$AGENT_GUARD" ]] || rm -rf "$AGENT_GUARD" "$AGENT_GUARD.manifest"' EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
@@ -91,12 +92,28 @@ run_group() {
   # Run under a private temporary directory so a test that leaks scratch files or directories fails this group instead of filling the shared one, and remove it on every exit path.
   local status=0
   SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/pig-tests.XXXXXX")
+  # Run under seeded agent directories. A lane or a developer exports PIG_CODING_AGENT_DIR for the pig that is running the tests, and a test that does not replace it writes that real directory. The guard fails the group when any seeded file changes or appears, whether or not the tests passed.
+  AGENT_GUARD=$(mktemp -d "${TMPDIR:-/tmp}/pig-agent-guard.XXXXXX")
+  # A failed seed leaves the caller's agent directories exported, so the group fails without running go test.
+  local exports
+  if exports=$("$ROOT/automation/ci/agent-dir-guard.sh" seed "$AGENT_GUARD"); then
+    eval "$exports"
+  else
+    status=$?
+    echo "[test-grouped] could not seed isolated agent directories for $label" >&2
+    rm -rf "$SCRATCH" "$AGENT_GUARD" "$AGENT_GUARD.manifest"
+    SCRATCH=
+    AGENT_GUARD=
+    return "$status"
+  fi
   TMPDIR="$SCRATCH" go test -p "$parallel" "${COUNT_FLAG[@]}" "${RUN_FLAG[@]}" "${pkgs[@]}" || status=$?
+  "$ROOT/automation/ci/agent-dir-guard.sh" check "$AGENT_GUARD" || status=$?
   if [[ $status -eq 0 ]]; then
     "$ROOT/automation/ci/assert-clean-tmp.sh" "$SCRATCH" || status=$?
   fi
-  rm -rf "$SCRATCH"
+  rm -rf "$SCRATCH" "$AGENT_GUARD" "$AGENT_GUARD.manifest"
   SCRATCH=
+  AGENT_GUARD=
   return "$status"
 }
 

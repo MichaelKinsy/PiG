@@ -445,6 +445,7 @@ Isolation rules for parallel parity:
 - Agent/home dirs are ephemeral copies. Never write into checked-in fixture roots.
 - Use `{{TEMP}}` for writable paths; do not hardcode `/tmp` paths.
 - tmux session names must be unique and cleanup may kill only `parity-*` sessions.
+- `PIG_CODING_AGENT_DIR` and `PI_CODING_AGENT_DIR` win over `PIG_HOME`, and every child process inherits them, including a tmux session started from your shell. A manual probe or test that runs pig must set or clear all of `PIG_CODING_AGENT_DIR`, `PI_CODING_AGENT_DIR`, `PIG_HOME`, `PI_HOME` and `HOME`, or `/logout` and login rewrite the real credentials (the 2026-10-06 lane `auth.json` wipe). A package whose `TestMain` calls `testenv.ScopeTempDir` or `testenv.RunScoped` replaces the agent-directory variables. Other packages inherit them, so a plain `go test` run from an agent shell sets `PIG_CODING_AGENT_DIR`, `PI_CODING_AGENT_DIR`, `PIG_HOME` and `PI_HOME` to scratch directories first. `make test` runs each group under seeded directories and fails a group that adds, removes or changes any file or directory in them (`automation/ci/agent-dir-guard.sh`).
 - `pre_clear_paths` is deprecated; prefer fresh temp dirs.
 - Use the default scheduler groups unless a justified `group = "..."` or `serial` tag is required.
 - Deferred scenarios stay visible in coverage; do not use skip/defer to hide known drift.
