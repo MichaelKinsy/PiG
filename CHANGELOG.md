@@ -9,6 +9,81 @@ All notable public changes to PiG will be recorded in this file.
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-05
+
+### Added
+
+- Azure Foundry Chat Completions: `azure/deepseek-v4-pro` is built in, and other Foundry models can be added under the `azure` provider with `"api": "openai-completions"` and a `"baseUrl"`. `AZURE_OPENAI_DEPLOYMENT_NAME_MAP` applies to both Azure APIs.
+- The durable execution environment follows Pi 1.0.3. File systems open bounded binary readers (`OpenBinaryReader`, with `NoFollow` to refuse a final-component symlink and a one-pass `ScanLines`) and paged directory readers (`OpenDirReader`), and report changes to files and directories with `Watch`. `NodeExecutionEnv` watches natively and falls back to snapshot polling on Windows and on network and FUSE file systems.
+- `Exec` takes a string or a `[]string` argv, which runs a program without a shell, and every output chunk names its stream. An environment may omit shell output outside the tail a tool keeps (`ShellExecOptions.Window`) and report the omission; the bash tool passes the window along.
+- `settings.progress` sets how often generation partials and running tool output are committed (defaults stay 100 ms).
+- `durabletest.RegisterEnvConformance` checks a custom `ExecutionEnv`, as `RegisterStorageConformance` checks storage.
+- A running session warns once, in place of the `/bug` hint, when an update or another `pig` replaced or removed the `pig` executable, or another `pig` pruned an extension cell or runtime file the session uses: `The pig installation this session runs from was removed or replaced. Features that load code on demand can fail until restart.`, with the `pig --session <id>` command that continues the session. PiG checks only when an error is shown (an assistant error, a failed tool call, an error or extension error notice). This is PiG's version of Pi 1.0.3's install-change warning.
+- `samplingParamsByThinkingLevel` for custom models and `modelOverrides` in `models.json`: sampling parameters for each thinking level, merged between the model's `samplingParams` and the request's. OpenAI Completions, OpenAI Responses and Azure OpenAI Responses requests apply the entry for the request's effective thinking level. See `docs/models.md`.
+- Durable conversations persist a provider session ID (`pi.provider` document) and send it with every generation and compaction request, for prompt caching and session affinity. Conversations created before this release get one before their next request.
+- Project overrides for MCP servers: a `.pi/mcp.json` entry without `command`, `url` or `type` changes only `enabled`, `exposure` and `toolExposure` of the user-level server with the same name. `/mcp` offers "Enable in this project" and "Disable in this project", and `pig mcp list` shows the override. See `docs/mcp.md`.
+- MCP OAuth `clientRegistration: "cimd"` signs in with Pi's Client ID Metadata Document on pi.dev instead of dynamic client registration, with a server-specific callback path when the authorization server does not send the `iss` parameter.
+- `pi.registerToolRenderer()` in every SDK (Node `pi.registerToolRenderer`, Go `ToolRenderer`, Python and Rust `tool_renderer`) and for in-process Go extensions: resolvers choose how calls to any tool are drawn, in extension load order, in the transcript and in HTML exports. A resumed session draws calls to MCP tools whose server has not connected yet with the MCP renderers. An extension process answers once per tool, off the interactive loop, and `next()` cannot be wrapped (D89).
+- Ctrl+X (`app.message.copy`) copies the sign-in URL on the `/login` dialog and the MCP sign-in screen.
+- On Kitty-protocol terminals, non-PNG images are converted to PNG; a tool image that cannot be converted shows its text description instead of nothing.
+- `check-model-data -hydrate <models.all.json>` hydrates a package's provider data from a published model catalog.
+- Extension-registered models (`pi.registerProvider`) also carry `samplingParamsByThinkingLevel`, as in Pi 1.0.2, so their per-level sampling parameters reach OpenAI-compatible requests.
+- `coding.ModelRuntime.Login` logs in built-in and `models.json` providers as well as extension-registered ones, and takes optional `ai.LoginOptions` (for example the installation ID), as Pi's `ModelRuntime.login` does. An extension OAuth provider with its own credential store saves there (D40) (#147).
+- `docs/terminal-setup.md` documents PiG's own herdr agent support (`custom:pig`, through Pigpen's herdr Piglet) and why herdr's built-in Pi integration only attaches to a process named `pi` (#136).
+
+### Changed
+
+- PiG follows Pi 1.0.3. `pig --version` prints `<PiG release>+1.0.3`.
+- **Breaking:** the Azure provider is `azure`, not `azure-openai-responses`, because it now serves Chat Completions as well as the Responses API. The `azure-openai-responses` API ID and the `AZURE_OPENAI_*` variables are unchanged. PiG does not migrate old entries, as Pi does not. Rename the provider key in `auth.json` (or run `/login` again), in `models.json`, and in `settings.json` (`defaultProvider`, `enabledModels` patterns and `modelThinkingLevels` keys). A session that used the old provider falls back to another model when resumed, and its prompt cache is not reused. See `docs/providers.md`.
+- The model catalog follows Pi 1.0.3: the `azure` provider, Azure Foundry DeepSeek V4 Pro, Bedrock Claude Sonnet 5.5 regions, and price updates.
+- Codemode `image()` also saves each image to a temp file and names the path in the result, so later turns can copy or move generated images.
+- Output files (the full text of truncated tool output, binary MCP resources and codemode images) are readable only by the user.
+- `Home` and `End` always move the editor cursor. In fullscreen, the transcript top and bottom moved to `Ctrl+Home` and `Ctrl+End`, which no longer move the editor cursor.
+- The durable `read` tool reads only the file header, one line scan and the lines it shows, instead of loading the whole file. Its results are unchanged.
+- The model catalog follows Pi 1.0.2: NVIDIA Nemotron 3 Super, OpenRouter's Cloudflare Clef and Perplexity decider classifiers, and Llama 3.3 70B prices.
+- llama.cpp models whose chat template supports thinking offer the off, minimal, low, medium and high thinking levels, and each level sends its own `thinking_budget_tokens`. Pi offers only off and medium (D90). See `docs/llama-cpp.md`.
+- In fullscreen mode, `/arminsayshi` and `/pigsayhi` play Pi's 3D easter egg with the sprite's pig head in place of Armin: the screen dissolves, the pig grows out of the center, spins and slides its blocks around as a puzzle. Outside fullscreen mode they draw the inline pig head as before (D87).
+- Anthropic requests that define tools after the first turn send them inline as tool definition blocks with the `inline-tools-2026-09-15` beta, as Pi 1.0.1 does.
+- Bedrock adaptive thinking on Claude Opus 4.7, Opus 4.8, Opus 5, Sonnet 5 and Fable 5 drops thinking blocks whose prefix no longer matches (`block_binding`), outside GovCloud.
+- The model catalog follows Pi 1.0.1: Bedrock prices above 272k input tokens, Cloudflare AI Gateway model IDs with dashes, the Together DeepSeek V4 Pro rename, Cloudflare's Clef classifiers, and NVIDIA's default model `nvidia/nemotron-3-ultra-550b-a55b`.
+- Anthropic workload identity federation joins the request's betas and the OAuth beta with `,` and identifies as `Anthropic/JS 0.129.0`, as the SDK Pi 1.0.1 pins does.
+- Sign-in URLs end their terminal hyperlinks with ST instead of BEL.
+- The PiG text mark's letters are colored like Pi's wordmark.
+
+### Fixed
+
+- A subscription login such as Sign in with ChatGPT no longer fails with `refresh_token_invalidated` after a request is cancelled during an OAuth token refresh. The caller's cancellation now stops only the wait for the credential lock; a refresh that has started finishes and saves the rotated token, bounded by its 15 second timeout. An extension's OAuth refresh signal is no longer cancelled with the request.
+- A foreign tool call replayed to an OpenAI Responses provider outside OpenAI, Codex and OpenCode keeps only the characters the API accepts in its ID, as Pi does.
+- Interactive sessions no longer report a crash, or ask you to run `/bug`, when the terminal goes away while the session reads from it or enters raw mode, for example after closing the window or resuming a suspended `pig` in a closed terminal.
+- `FlushFile` on a directory fails with `is_directory` on Windows, as on POSIX.
+- Tail-retained tool output no longer depends on when progress commits happened: a snapshot compacted the stored output to the kept window, which could move where a later window's first line started.
+- In interactive mode, an extension's `model_select` and `thinking_level_select` handlers see the newly selected model in `ctx.model` and in the subprocess SDKs' model state, so a custom footer no longer shows the previous model (#128).
+- In interactive mode, an extension's model stream request without `reasoning` no longer thinks at the thinking level the session had when extensions loaded; it streams without thinking, as in Pi and in PiG's other modes.
+- "Selected model is at capacity" provider errors are retried.
+- Cloudflare's System One classifiers that answer directly no longer fail to parse.
+- Sign in with ChatGPT fails with a clear message when port 1455 is taken by another login or the Codex CLI.
+- `--models` ignores empty entries, such as a trailing comma.
+- In WezTerm fullscreen mode, a change to a row under an image no longer erases the image.
+- Codemode stops a script whose output passes 16 MiB or 100,000 `text()`, `image()` and `console` calls, so a script printing in a loop cannot exhaust memory.
+- `AZURE_OPENAI_DEPLOYMENT_NAME_MAP` is read as Pi reads it: a later entry for the same model wins, text after a second `=` in an entry is ignored, a leading byte order mark is trimmed, and a model mapped to an empty name uses the model ID.
+- A custom model in `models.json` under the `azure` provider (or any built-in provider whose models have no base URL) without a `baseUrl` now reports `"baseUrl" is required when defining custom models.` and keeps the built-in models, as Pi does, instead of being dropped without a message.
+- A Durable `Submission.Wait` that started while the harness was closing could block forever; it now fails with `Harness is closed`.
+- `pi.exec` in extensions no longer waits for a background process that keeps the command's output open. It returns once the command has exited and its output has been idle for 100 ms, as in Pi.
+- `pi.exec` timeout and cancellation now send SIGTERM to the command alone (Pi's behavior), so a SIGTERM handler runs. A command that a signal ended, or on Windows that the kill ended, reports exit code 0, as in Pi.
+- An extension that registers a provider override for a built-in provider (`pi.registerProvider("anthropic", { streamSimple })`) and then reads `ctx.modelRegistry.getProvider()` now sees the registration at once, as in Pi. After it unregisters the provider, the same reads see the built-in or models.json provider at once. `pi-background-tasks` 2.6.9 no longer stops startup with `pi_anthropic_attribution_install_failed`.
+- Extension `input` handlers no longer run on the loop that owns the terminal. A handler that opened a dialog and waited for the answer deadlocked the UI: Enter did nothing, no frame changed, and no key responded again. When an extension registers an `input` handler, the handlers now run off that loop, one dispatch at a time, and the rest of the prompt path is applied on the owner loop when they return. With no `input` handler loaded the prompt path stays synchronous, and delivery is decided again after the handlers return, so a run that started while they ran receives the text instead of a second concurrent turn.
+- `pig status` no longer reports duplicate resource errors for package resources that settings filters disable; only enabled resources can collide.
+- Start every program PiG runs on Android through `/system/bin/linker64`: `pig install` and `pig remove` for `npm:` and `git:` packages, MCP stdio servers, tools, editors, and the Go, Piglet and git helpers failed with `fork/exec ...: permission denied` on Termux from Google Play.
+- Make `pig setup go` on Android say that Go publishes no archive for `android/arm64` and to run `pkg install golang`, and make `pig setup status` give the same next step.
+- Let `PIG_CELL_BUILD_TIMEOUT` bound `pig install <dir> --validate-only`, which stopped a slow extension build after a fixed two minutes.
+- Sign in with ChatGPT works again: `pig login` and `/login` pass the installation ID (`deviceId`) to the OAuth flow, as Pi does (#146).
+- Escape or Ctrl+C in a login dialog cancels the login before ending its pending prompt, so the login reports that it was aborted instead of failing (Pi's `login-dialog.ts`).
+- The pending-messages rows list only queued user input, as in Pi: an extension's custom messages no longer show as blank `Steering:` or `Follow-up:` rows (#141).
+- On Windows the bash tool keeps every line of a command's output: once the command exits and its job has no live processes, PiG reads to the end of the output instead of stopping after the 100 ms grace.
+- A subprocess custom editor that sets `embedWorkingStatus` shows the working, compaction, retry and branch-summary status inside the editor, as Pi does (D94) (#135).
+- Extension processes are stopped before the dead-terminal emergency exit, so they no longer outlive a closed terminal.
+- `/reload` notices an edit to a Python extension file that keeps its size and lands inside one file-system timestamp tick: the reload check also compares a hash of the source.
+
 ## [0.4.0] - 2026-10-03
 
 ### Added
