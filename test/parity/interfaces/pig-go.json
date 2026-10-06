@@ -80589,6 +80589,17 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#CallLoadingExec",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "CallLoadingExec",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#CallOAuthOnAuth",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "CallOAuthOnAuth",
@@ -83051,6 +83062,17 @@
         "type": "func(me *managedExt, conn *Conn)"
       },
       "shapeHash": "sha256:211e1c0d109ab362e202319a635fbae7a620fad5cff7a99a4f109c41e9432437"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.handleLoadingExec",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.handleLoadingExec",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, call *CallPayload) (*CallResultPayload, error)"
+      },
+      "shapeHash": "sha256:40396bd5e2cc8a698438f05853b74899f26e3b1a0bc541f264bfe0edabdb0a33"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.handleMcpServerCall",
@@ -86606,6 +86628,28 @@
       "shapeHash": "sha256:32bd5aa2c78791ec04a1300c1bbd537ee9d972495d052794c9e7e4cbe2c73ed0"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ToolCallResponsePayload",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ToolCallResponsePayload",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ToolCallResponsePayload"
+      },
+      "shapeHash": "sha256:161ad92ee3a66868dfd359d2a2e351db85b7630923919f4621b7c4b55bb3ffd5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ToolCallResponsePayload.UnmarshalJSON",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ToolCallResponsePayload.UnmarshalJSON",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(data []byte) error"
+      },
+      "shapeHash": "sha256:2e7a46ef7c2011cd2aa41a3ad171f9b6f5461f06a15b57547cff43508937a222"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ToolDecl",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "ToolDecl",
@@ -88562,6 +88606,17 @@
         "type": "func(ctx context.Context, state RequestStatePayload)"
       },
       "shapeHash": "sha256:c83a773fef559b8f040e7df62656d704e15d21a99457ff69d0b92ff840eb4a98"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#applyToolCallInput",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "applyToolCallInput",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(event any, input encoding/json.RawMessage) error"
+      },
+      "shapeHash": "sha256:4bc898cd4d06e133bebf73785a870ac1683efe6a436c02b7d688912403e94043"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#archiveMagic",
@@ -125216,6 +125271,17 @@
       "shapeHash": "sha256:fc95c98c9ee021a5341ae01e37e396d9702212e8e6a9cacff04fce37ad01b3a0"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#newToolCallInput",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "newToolCallInput",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(input any) *toolCallInput"
+      },
+      "shapeHash": "sha256:16bd4e04a7488a02e4a027cd437c3932ffbaf322e4882e85d247d5c4e9ece8c9"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#notifyEventsRelease",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "notifyEventsRelease",
@@ -126512,6 +126578,28 @@
         "type": "map[string]string"
       },
       "shapeHash": "sha256:745c198d1e8b89727fedc49d3ee1a081d44e828b69940e1f62928394d51a0f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#toolCallInput",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "toolCallInput",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "toolCallInput"
+      },
+      "shapeHash": "sha256:e747366639b1a4002330a916271a7e332137cc5989ac80723f8a11d768461e03"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#toolCallInput.edit",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "toolCallInput.edit",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (any, bool)"
+      },
+      "shapeHash": "sha256:b0494f57e0cb502ab76a7fd1c821a788bc52023e0f49470511707de6de49e3b8"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#toolDef",

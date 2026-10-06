@@ -1070,7 +1070,21 @@ fn main() {
     });
 
     ext.on_event("tool_call", false, |ctx, data| {
-        let name = data["toolName"].as_str().unwrap_or_default();
+        let name = data["toolName"].as_str().unwrap_or_default().to_string();
+        let name = name.as_str();
+        // Pi's handler mutates event.input in place and the runner reads it back (runner.ts emitToolCall), so the rewrite is the handler's own edit to the event.
+        if name == "rewrite_probe" || name == "rewrite_block_probe" {
+            if data["input"]["command"] == "git status" || name == "rewrite_block_probe" {
+                data["input"]["command"] = json!("git status --short");
+                data["input"].as_object_mut().unwrap().remove("drop");
+                data["input"]["added"] = json!(true);
+                data["input"]["nested"] = json!({"depth": 2});
+            }
+            if name == "rewrite_block_probe" {
+                return Some(json!({"block": true, "reason": "blocked after rewrite"}));
+            }
+            return None;
+        }
         if name != "powershell" && name != "bash" {
             return None;
         }

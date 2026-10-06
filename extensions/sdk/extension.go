@@ -1035,6 +1035,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 	// the TS runtime rejects one call, it does not tear down the runtime).
 	var boundaryData map[string]any
 	var promptOptions map[string]any
+	var toolCall *toolCallInput
 	defer func() {
 		if r := recover(); r != nil {
 			name := req.Tool
@@ -1045,6 +1046,13 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			var result any
 			if boundaryData != nil {
 				result = map[string]any{"_pigBoundaryEntries": boundaryData["entries"], "_pigBoundaryResult": nil}
+			}
+			if toolCall != nil {
+				reply := map[string]any{"_pigToolCallResult": nil}
+				if edited, ok := toolCall.edit(); ok {
+					reply["_pigToolCallInput"] = edited
+				}
+				result = reply
 			}
 			if promptOptions != nil {
 				result = map[string]any{"_pigPromptSections": promptOptions["sections"], "_pigPromptSelectedTools": promptOptions["selectedTools"], "_pigPromptOptions": promptOptions, "_pigPromptResult": nil}
@@ -1160,6 +1168,9 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		if req.Event == "agent_before_settle" || req.Event == "turn_end" {
 			boundaryData = data
 		}
+		if req.Event == "tool_call" {
+			toolCall = newToolCallInput(data["input"])
+		}
 		if req.Event == "before_agent_start" {
 			var err error
 			promptOptions, err = preparePromptOptions(req.Args, data)
@@ -1178,6 +1189,14 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		}
 		if req.Event == "before_agent_start" {
 			result = map[string]any{"_pigPromptSections": promptOptions["sections"], "_pigPromptSelectedTools": promptOptions["selectedTools"], "_pigPromptOptions": promptOptions, "_pigPromptResult": result}
+		}
+		// Pi's handler edits event.input in place and the runner reads it back (runner.ts emitToolCall). The host cannot share the map, so the reply carries the input the handler left when it differs from the one it received, with the handler result and error.
+		if req.Event == "tool_call" {
+			reply := map[string]any{"_pigToolCallResult": result}
+			if edited, ok := toolCall.edit(); ok {
+				reply["_pigToolCallInput"] = edited
+			}
+			result = reply
 		}
 		// pig additive (D19): return boundary mutations separately from the handler result and error.
 		if req.Event == "agent_before_settle" || req.Event == "turn_end" {
@@ -1873,4 +1892,24 @@ func (e *Extension) stopWidthDeliveries() {
 	e.widthStopped = true
 	e.widthDeliveries = nil
 	e.widthMu.Unlock()
+}
+
+// toolCallInput is the input a tool_call handler received. The tool runs with that object (agent-loop.ts prepareToolCall passes the same args to beforeToolCall and execute), so an edit counts only when the handler changed its members; assigning another value to event["input"] changes nothing the tool receives.
+type toolCallInput struct {
+	input  any
+	before []byte
+}
+
+func newToolCallInput(input any) *toolCallInput {
+	before, _ := json.Marshal(input)
+	return &toolCallInput{input: input, before: before}
+}
+
+// edit returns the input when the handler left its members different from the ones it received.
+func (t *toolCallInput) edit() (any, bool) {
+	after, err := json.Marshal(t.input)
+	if err != nil || bytes.Equal(after, t.before) {
+		return nil, false
+	}
+	return t.input, true
 }
