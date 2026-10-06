@@ -260,3 +260,40 @@ func TestIsBusyErrorLooksThroughWrappedJoins(t *testing.T) {
 		}
 	}
 }
+
+// A collection cancelled while it handles its last entry reports the cancellation, not success: a busy failure that
+// arrives after the cancellation is not a reason to treat the run as finished, and an entry cut short while it was
+// classified leaves the collection incomplete. The automatic collector writes its marker only on success.
+func TestCacheLifecycleCancelledDuringTheLastEntryReportsTheCancellation(t *testing.T) {
+	now := time.Unix(2_000_000_000, 0)
+	busy := &os.PathError{Op: "unlink", Path: ".nfs0000000000000001", Err: syscall.EBUSY}
+	for name, tc := range map[string]struct {
+		lastUsed time.Time
+		options  func(cancel context.CancelFunc) CacheLifecycleOptions
+	}{
+		"busy rename": {now.Add(-31 * 24 * time.Hour), func(cancel context.CancelFunc) CacheLifecycleOptions {
+			return CacheLifecycleOptions{Rename: func(string, string) error { cancel(); return busy }}
+		}},
+		"busy tombstone removal": {now.Add(-31 * 24 * time.Hour), func(cancel context.CancelFunc) CacheLifecycleOptions {
+			return CacheLifecycleOptions{RemoveAll: func(string) error { cancel(); return busy }}
+		}},
+		"classification with nothing to remove": {now, func(cancel context.CancelFunc) CacheLifecycleOptions {
+			return CacheLifecycleOptions{Now: func() time.Time { cancel(); return now }}
+		}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			writeLifecycleEntry(t, root, "ext", "last", tc.lastUsed)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			opts := tc.options(cancel)
+			opts.Context, opts.CacheRoot = ctx, root
+			if opts.Now == nil {
+				opts.Now = func() time.Time { return now }
+			}
+			if _, err := PruneCaches(opts); !errors.Is(err, context.Canceled) {
+				t.Fatalf("err = %v, want context.Canceled", err)
+			}
+		})
+	}
+}

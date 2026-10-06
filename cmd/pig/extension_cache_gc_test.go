@@ -96,7 +96,15 @@ func TestStartAutomaticExtensionCacheGCReturnsBeforeCollectionFinishes(t *testin
 		t.Fatalf("marker written before the collection finished: %v", err)
 	}
 	releaseCollection()
-	stopAutomaticExtensionCacheGC()
+	// Wait for the collection to finish on its own: stopping it first would cancel it, and a cancelled collection writes no marker.
+	extensionCacheGC.mu.Lock()
+	done := extensionCacheGC.done
+	extensionCacheGC.mu.Unlock()
+	select {
+	case <-done:
+	case <-time.After(testbudget.Wait(t)):
+		t.Fatal("the released collection did not finish")
+	}
 	if _, err := os.Stat(filepath.Join(cacheRoot, ".last-auto-gc")); err != nil {
 		t.Fatalf("finished collection wrote no marker: %v", err)
 	}
@@ -238,6 +246,26 @@ func TestAutomaticExtensionCacheGCCancelledWritesNoMarker(t *testing.T) {
 	cacheRoot := isolateAutomaticCacheGC(t)
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
+	if err := runAutomaticExtensionCacheGC(ctx, nil); !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v, want context.Canceled", err)
+	}
+	if _, err := os.Stat(filepath.Join(cacheRoot, ".last-auto-gc")); !os.IsNotExist(err) {
+		t.Fatalf("marker written by a cancelled collection: %v", err)
+	}
+}
+
+// A collection cancelled while it removes its last entry writes no marker, even when the file system then reports
+// that entry busy: a busy entry is skipped, but the run did not finish.
+func TestAutomaticExtensionCacheGCCancelledAtTheLastEntryWritesNoMarker(t *testing.T) {
+	cacheRoot := isolateAutomaticCacheGC(t)
+	_, later := publishExpiredCacheEntry(t, cacheRoot)
+	automaticCacheGCNow = later
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	automaticCacheGCRename = func(source, _ string) error {
+		cancel()
+		return &os.LinkError{Op: "rename", Old: source, New: source + ".tombstone", Err: syscall.EBUSY}
+	}
 	if err := runAutomaticExtensionCacheGC(ctx, nil); !errors.Is(err, context.Canceled) {
 		t.Fatalf("err = %v, want context.Canceled", err)
 	}

@@ -338,6 +338,11 @@ func inspectOrPruneCache(options CacheLifecycleOptions, prune bool) (CacheReport
 	if options.MaxSize != nil && !options.DryRun {
 		report.LimitSatisfied = report.TotalBytes-report.RemovedBytes <= *options.MaxSize
 	}
+	// A cancellation during the last entry, whose failure may then have counted as busy or whose classification was cut
+	// short, means the collection did not finish.
+	if err := ctx.Err(); err != nil {
+		return report, err
+	}
 	return report, nil
 }
 
