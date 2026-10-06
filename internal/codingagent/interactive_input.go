@@ -22,9 +22,8 @@ import (
 
 // exitIfDeadTerminal bypasses terminal restoration on a disconnected terminal. A PTY master close can surface as EOF from the input reader; querying the terminal then reports the dead-device error without writing restore sequences.
 // Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (emergencyTerminalExit).
-//
-// Pi's extensions run inside the exiting process and die with it; pig's run as child processes in their own process groups, so they are killed here or they would outlive the exit and keep writing into the session's directories.
 func (m *InteractiveMode) exitIfDeadTerminal(err error) {
+	cause := err
 	if errors.Is(err, io.EOF) {
 		// ENOTTY here only says stdout is not a terminal, as under a pipe or a test, not that the terminal went away.
 		if _, _, err = term.GetSize(int(os.Stdout.Fd())); errors.Is(err, syscall.ENOTTY) {
@@ -32,16 +31,22 @@ func (m *InteractiveMode) exitIfDeadTerminal(err error) {
 		}
 	}
 	if isDeadTerminalError(err) {
-		if m.opts.TerminateExtensionProcesses != nil {
-			m.opts.TerminateExtensionProcesses()
-		}
-		emergencyTerminalExit()
+		m.emergencyTerminalExit("terminal gone: " + cause.Error() + " (" + err.Error() + ")")
 	}
 }
 
 // emergencyTerminalExit exits without terminal restoration: the terminal is gone, and restore writes would fail again.
+// Pi's extensions run inside the exiting process and die with it; pig's run as child processes in their own process
+// groups, so it kills them first, as upstream kills its tracked detached children, or they would outlive the exit and
+// keep writing into the session's directories.
 // Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (emergencyTerminalExit).
-func emergencyTerminalExit() {
+func (m *InteractiveMode) emergencyTerminalExit(reason string) {
+	// pig additive (D102): Pi exits here with no trace.
+	RecordExit(m.opts.AgentDir, reason+" (exit 129)")
+	if m.opts.TerminateExtensionProcesses != nil {
+		m.opts.TerminateExtensionProcesses()
+	}
+	EndSessionMarker()
 	os.Exit(129)
 }
 
@@ -366,6 +371,12 @@ func (m *InteractiveMode) pumpTerminalInput(ctx context.Context, source io.Reade
 		case err := <-rawErrCh:
 			m.exitIfDeadTerminal(err)
 			batch(input.FlushPending)
+			// Ports packages/tui/src/terminal.ts: process.stdin gets a "data" listener and no "end" listener, so a terminal
+			// whose input ends while it lives leaves the session running without input.
+			if _, terminal := source.(*os.File); terminal && errors.Is(err, io.EOF) {
+				debugLog("terminal input ended (EOF); the session keeps running without input")
+				return
+			}
 			select {
 			case errCh <- err:
 			case <-ctx.Done():

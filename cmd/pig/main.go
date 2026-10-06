@@ -710,6 +710,8 @@ func runStableCLI() {
 		if sysSig, ok := sig.(syscall.Signal); ok {
 			receivedTerminationSignal.Store(int32(sysSig))
 		}
+		// pig additive (D102): Pi exits on SIGTERM and SIGHUP without a trace.
+		codingagent.RecordExit(codingagent.AgentDir(), "received "+codingagent.SignalName(sig))
 		// Give extensions their cleanup event before cancelling: the root
 		// context owns the extension subprocesses, so cancelling it kills the
 		// very processes that would receive session_shutdown. Upstream's
@@ -760,6 +762,14 @@ func runStableCLI() {
 	cwd := initialCWD
 	agentDir := codingagent.AgentDir()
 	agentDirForModelOverride = agentDir
+
+	// pig additive (D102): an interactive session leaves a marker that only a clean end removes, so an exit nothing else
+	// recorded is reported at the next start.
+	if processAppMode(flags) == appModeInteractive {
+		codingagent.ReconcileSessionMarkers(agentDir, time.Now())
+		codingagent.BeginSessionMarker(agentDir, Version, initialCWD)
+		defer codingagent.EndSessionMarker()
+	}
 
 	// pig divergence (D88): first-time setup runs on an interactive start when settings.json does not exist yet; observed
 	// before anything this run writes creates it.

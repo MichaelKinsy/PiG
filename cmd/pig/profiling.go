@@ -24,5 +24,7 @@ func exitProcess(code int) {
 	stopStartupExtensions()
 	codingagent.RestoreStdout()
 	stopProfiles()
+	// pig additive (D102): every exit through here is requested or prints its reason, so the session marker goes.
+	codingagent.EndSessionMarker()
 	os.Exit(code)
 }

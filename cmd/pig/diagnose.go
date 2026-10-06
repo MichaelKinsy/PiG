@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
@@ -62,6 +63,16 @@ func runDiagnose(w io.Writer, binaryPath string) {
 	_, _ = fmt.Fprintf(w, "auth.json:         %s\n", agentDirForModel()+"/auth.json")
 	if cwd, err := os.Getwd(); err == nil {
 		_, _ = fmt.Fprintf(w, "cwd:               %s\n", cwd)
+	}
+	// pig additive (D102): where a vanished session leaves its trace.
+	_, _ = fmt.Fprintf(w, "crash log:         %s\n", codingagent.CrashLogPath(agentDirForModel()))
+	_, _ = fmt.Fprintf(w, "exit log:          %s\n", codingagent.ExitLogPath(agentDirForModel()))
+	_, _ = fmt.Fprintf(w, "debug log:         %s (written when PIG_DEBUG is set)\n", filepath.Join(os.TempDir(), "pig-debug.log"))
+	if tail := codingagent.ReadExitLogTail(agentDirForModel(), 5); len(tail) > 0 {
+		_, _ = fmt.Fprintf(w, "\nrecent unexpected exits (newest last)\n%s\n", hr)
+		for _, line := range tail {
+			_, _ = fmt.Fprintf(w, "  %s\n", line)
+		}
 	}
 
 	// ─── Auth ─────────────────────────────────────────────
