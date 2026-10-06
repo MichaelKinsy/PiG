@@ -1,6 +1,6 @@
 //go:build windows
 
-package runtimecell
+package fsretry
 
 import (
 	"errors"
@@ -9,10 +9,11 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// renameRetryable reports whether err is a transient lock worth retrying: a
-// directory rename fails with an access or sharing error while any process,
-// often anti-virus or an indexer, holds a file inside it open.
-func renameRetryable(err error) bool {
+// TransientRename reports whether a rename failed because another process,
+// often anti-virus or an indexer, holds the file, or a file inside the
+// directory, open without delete sharing. NTFS then refuses the rename with an
+// access or sharing error until the handle closes.
+func TransientRename(err error) bool {
 	for _, transient := range []error{
 		windows.ERROR_ACCESS_DENIED, windows.ERROR_SHARING_VIOLATION, windows.ERROR_LOCK_VIOLATION,
 		syscall.EPERM, syscall.EACCES, syscall.EBUSY,

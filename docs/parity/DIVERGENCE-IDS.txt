@@ -16,4 +16,6 @@ D90: llama.cpp reasoning models offer every budgeted thinking level and send thi
 D93: /reload evaluates an edited ES module extension again (re-evaluates only the stale module graph, once per reload pass); termux-041; approved by owner Michael Kinsy 2026-10-04.
 D94: working status embedded in a subprocess editor's border is driven by host snapshots (host-side animation, opt-in read at install); pr137; approved by owner Michael Kinsy 2026-10-05.
 D95: install-change restart warning for a running native executable and its extension cells (additive); port-103-restart; approved by owner Michael Kinsy 2026-10-05.
-Next free ID: D96.
+D96-D98: reserved by the 0.4.2 integration (D96, D97 pi-env; D98 eval credentials).
+D99: the Windows npm self-update quarantine retries a rename that another process's handle blocks (anti-virus, indexer), within 10 s; rev-test-flakes-041 (PR #161 CI); approved by lead task decision 2026-10-05.
+Next free ID: D100.

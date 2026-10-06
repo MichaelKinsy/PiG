@@ -112,7 +112,7 @@ func applyPackageManagerUpdate(prov *codingagent.SelfUpdateProvenance, npmComman
 		return fmt.Errorf("no update command for package manager %s", prov.PackageOwner)
 	}
 	if prov.PackageOwner == "npm" {
-		if err := codingagent.PrepareWindowsNpmSelfUpdate(prov.ExePath); err != nil {
+		if err := codingagent.PrepareWindowsNpmSelfUpdate(ctx, prov.ExePath); err != nil {
 			return err
 		}
 	}

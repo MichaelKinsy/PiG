@@ -431,6 +431,71 @@ func TestPortWave10ModelRuntimeCreation(t *testing.T) {
 		}
 	})
 
+	t.Run("Close joins the remote catalog reads of a cancelled initial refresh", func(t *testing.T) {
+		newPackageCommandPathsFixture(t)
+		synctest.Test(t, func(t *testing.T) {
+			// Pi's create returns once the caller aborts while the raced reads finish on their own (models.ts:586,605). The Go runtime owns that remaining work, so Close must not return while a remote catalog read it started is still running: work that outlives Close can recreate auth.json in a directory its owner is removing.
+			unwind := make(chan struct{})
+			var unwound sync.Once
+			defer unwound.Do(func() { close(unwind) })
+			var remoteReads, startedAfterClose atomic.Int32
+			var closeReturned atomic.Bool
+			store := initialCatalogStore{InMemoryModelsStore: ai.NewInMemoryModelsStore(), read: func(ctx context.Context, provider string) (*ai.ModelsStoreEntry, error) {
+				if closeReturned.Load() {
+					if provider != codingagent.RadiusProviderID {
+						startedAfterClose.Add(1)
+					}
+					return nil, nil
+				}
+				<-ctx.Done()
+				if provider != codingagent.RadiusProviderID {
+					remoteReads.Add(1)
+					defer remoteReads.Add(-1)
+					// A store read that is slow to unwind after cancellation.
+					<-unwind
+				}
+				return nil, context.Cause(ctx)
+			}}
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			type created struct {
+				modelRuntime *coding.ModelRuntime
+				err          error
+			}
+			result := make(chan created, 1)
+			go func() {
+				modelRuntime, err := coding.CreateModelRuntime(ctx, coding.CreateModelRuntimeOptions{ModelsStore: store})
+				result <- created{modelRuntime, err}
+			}()
+			// Every provider read is now waiting for the caller's signal.
+			synctest.Wait()
+			cancel()
+			outcome := <-result
+			require.NoError(t, outcome.err)
+			synctest.Wait()
+			require.Positive(t, remoteReads.Load(), "no remote catalog read was running after the cancellation")
+			closed := make(chan struct{})
+			go func() {
+				outcome.modelRuntime.Close()
+				close(closed)
+			}()
+			synctest.Wait()
+			select {
+			case <-closed:
+				t.Errorf("Close returned while %d remote catalog reads were still running", remoteReads.Load())
+			default:
+			}
+			unwound.Do(func() { close(unwind) })
+			<-closed
+			closeReturned.Store(true)
+			assert.Zero(t, remoteReads.Load())
+			// A closed runtime starts no remote catalog work.
+			outcome.modelRuntime.Refresh(t.Context(), ai.ModelsRefreshOptions{AllowNetwork: new(false)})
+			synctest.Wait()
+			assert.Zero(t, startedAfterClose.Load())
+		})
+	})
+
 	for _, tc := range []struct {
 		name                        string
 		allowNetwork, offline, skip bool

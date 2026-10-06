@@ -1,6 +1,7 @@
 package codingagent
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/MichaelKinsy/PiG/internal/fsretry"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 )
 
@@ -125,12 +127,17 @@ func CleanupWindowsSelfUpdateQuarantine(packageDir string) {
 // QuarantineWindowsNativeDependencies moves each image this process loaded
 // from packageDir into the quarantine and copies it back. Windows lets a
 // loaded image be renamed but not overwritten or deleted, so the copy leaves
-// npm free to replace packageDir while this process runs.
-func QuarantineWindowsNativeDependencies(packageDir string) error {
-	return quarantineNativeDependencies(packageDir, loadedSharedObjects())
+// npm free to replace packageDir while this process runs. A rename that
+// another process's handle blocks is retried until the handle closes, within
+// fsretry.RenameBudget, or until ctx ends.
+func QuarantineWindowsNativeDependencies(ctx context.Context, packageDir string) error {
+	return quarantineNativeDependencies(ctx, packageDir, loadedSharedObjects())
 }
 
-func quarantineNativeDependencies(packageDir string, sharedObjects []string) error {
+// quarantineRenameWait performs each retry delay of a quarantine rename; nil waits on a timer.
+var quarantineRenameWait func(context.Context, time.Duration) error
+
+func quarantineNativeDependencies(ctx context.Context, packageDir string, sharedObjects []string) error {
 	resolvedPackageDir, err := normalizeWindowsPath(packageDir)
 	if err != nil {
 		return err
@@ -156,7 +163,8 @@ func quarantineNativeDependencies(packageDir string, sharedObjects []string) err
 		if err := os.MkdirAll(filepath.Dir(quarantinePath), 0o755); err != nil {
 			return err
 		}
-		if err := os.Rename(loadedFile, quarantinePath); err != nil {
+		// pig divergence (D99): Pi's renameSync (windows-self-update.ts:81) fails while anti-virus or an indexer holds the image open without delete sharing, as it does for a short time after the image is written or started; the rename waits that hold out.
+		if err := fsretry.Rename(ctx, loadedFile, quarantinePath, quarantineRenameWait); err != nil {
 			return err
 		}
 		if err := copyQuarantinedImage(quarantinePath, loadedFile); err != nil {
@@ -191,11 +199,11 @@ func copyQuarantinedImage(src, dst string) error {
 // for npm to replace: it clears an earlier quarantine and quarantines the
 // images this process loaded from it, which for pig is the running
 // executable. It does nothing outside Windows.
-func PrepareWindowsNpmSelfUpdate(exePath string) error {
+func PrepareWindowsNpmSelfUpdate(ctx context.Context, exePath string) error {
 	if runtime.GOOS != "windows" {
 		return nil
 	}
 	packageDir := filepath.Dir(exePath)
 	CleanupWindowsSelfUpdateQuarantine(packageDir)
-	return QuarantineWindowsNativeDependencies(packageDir)
+	return QuarantineWindowsNativeDependencies(ctx, packageDir)
 }

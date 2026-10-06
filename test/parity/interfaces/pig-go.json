@@ -79704,9 +79704,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(error) bool"
+        "type": "func(err error) bool"
       },
-      "shapeHash": "sha256:aa17bde309509dc31d850a18cc477d868805bd8190e99f6ba6b8aefc91aaa3ca"
+      "shapeHash": "sha256:4a5055322e6f75d7ee10cc59b4814e22cbd33d6a19d2b99d3e00212a527e3abf"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#renderGoMod",
@@ -141843,9 +141843,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(exePath string) error"
+        "type": "func(ctx context.Context, exePath string) error"
       },
-      "shapeHash": "sha256:c9b5752eedc1a5933fcd46733af7bffb32e6eac306f9fa428a5fef1858be1b2b"
+      "shapeHash": "sha256:78f6e997c7ff16df6d998897e983c8b3a58b17b9c6433d7ee2dfbeeaa21243ec"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ProcessCLIFileArguments",
@@ -142096,9 +142096,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(packageDir string) error"
+        "type": "func(ctx context.Context, packageDir string) error"
       },
-      "shapeHash": "sha256:452240598636c422696e0e43fbfea87b3b36ae51cb7d64f9ad66a0e25c583e8b"
+      "shapeHash": "sha256:d435ecef506fe3ffcffedd256d3cb282af121298cfdfc58522459cc10e40adca"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#QuietStartup",
@@ -165482,9 +165482,20 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(packageDir string, sharedObjects []string) error"
+        "type": "func(ctx context.Context, packageDir string, sharedObjects []string) error"
       },
-      "shapeHash": "sha256:a4f0364dd5747dc0539210d0a3bd15548ad59a3b41d2f172e55ab81156083243"
+      "shapeHash": "sha256:54b1864b6b6896d9210884d5b28c2f9370ebc9a013a921c421105d928cfbdd5b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#quarantineRenameWait",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "quarantineRenameWait",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func(context.Context, time.Duration) error"
+      },
+      "shapeHash": "sha256:78aa0ab1b2f880c6d4a64355764f2df8c6ac894b9e52ba5374893143a7fae7d2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#quitHandler",
