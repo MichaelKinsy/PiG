@@ -6,11 +6,21 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
 func (m *InteractiveMode) initScopedModels() {
 	m.scopedModelIDs = nil
+	if m.opts.SessionHandle != nil {
+		for _, scoped := range m.opts.SessionHandle.ScopedModels() {
+			if scoped.Model != nil {
+				m.scopedModelIDs = append(m.scopedModelIDs, modelSpec(scoped.Model))
+			}
+		}
+		return
+	}
 	if len(m.opts.Settings.EnabledModels) == 0 {
 		return
 	}
@@ -84,6 +94,22 @@ func (s *scopedModelsSelection) scopeIDs(enabled []string) []string {
 
 func (s *scopedModelsSelection) apply(m *InteractiveMode, enabled []string) {
 	m.scopedModelIDs = s.scopeIDs(enabled)
+	if m.opts.SessionHandle != nil {
+		scoped := []extension.ScopedModel{}
+		if len(m.scopedModelIDs) > 0 && m.opts.ModelRegistry != nil {
+			available := m.opts.ModelRegistry.GetAvailableModelData()
+			modelsByID := make(map[string]*ai.Model, len(available))
+			for _, model := range available {
+				modelsByID[modelSpec(model)] = model
+			}
+			for _, id := range m.scopedModelIDs {
+				if model := modelsByID[id]; model != nil {
+					scoped = append(scoped, extension.ScopedModel{Model: model})
+				}
+			}
+		}
+		m.opts.SessionHandle.SetScopedModels(scoped)
+	}
 	providers := make(map[string]struct{})
 	for _, model := range s.available {
 		if len(m.scopedModelIDs) == 0 || slices.Contains(m.scopedModelIDs, modelRef(model)) {

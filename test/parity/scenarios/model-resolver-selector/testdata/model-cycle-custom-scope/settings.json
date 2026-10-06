@@ -1,0 +1,9 @@
+{
+  "defaultProvider": "openai",
+  "defaultModel": "gpt-4-turbo",
+  "enabledModels": [
+    "custom/custom-model",
+    "openai/gpt-4",
+    "openai/gpt-4-turbo"
+  ]
+}

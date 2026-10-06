@@ -135688,17 +135688,6 @@
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.dynamicProviderModels",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "InteractiveMode.dynamicProviderModels",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func() []ModelEntry"
-      },
-      "shapeHash": "sha256:af4ce68bb2f325e5bd9f040db7428a564fae22b6ca8614d3700333772b98b834"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.effectiveCopyClipboard",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.effectiveCopyClipboard",
@@ -140416,6 +140405,17 @@
         "type": "ModelChangeEntry"
       },
       "shapeHash": "sha256:02ffe8233b60573d473e45058c71464f32c2a2f292c91b79d78b099887803841"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelCycleResult",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ModelCycleResult",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ModelCycleResult"
+      },
+      "shapeHash": "sha256:e3160fc71641dc842bf651b4e254aa641fcf20981fa15469800eb643fa2bc453"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelEntry",
@@ -156907,17 +156907,6 @@
       "shapeHash": "sha256:95b19ec9de3d22533b9793043a977c16d24f65321b4e140461f0aaa54601926c"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#generatedModelSpec",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "generatedModelSpec",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(mm github.com/MichaelKinsy/PiG/ai.GeneratedModel) string"
-      },
-      "shapeHash": "sha256:555e47b49076d38b3506bd183284b71827cd854108300d86e7cd8db4100e42c2"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#getCompactExtensionLabel",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "getCompactExtensionLabel",
@@ -169313,17 +169302,6 @@
         "type": "func(a []string, b []string) bool"
       },
       "shapeHash": "sha256:67180bcb3226514aa3ee74a6380dec7d0b8455c0e74b001bfd0f0c41d64f641f"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#scopedModelSession",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "scopedModelSession",
-      "kind": "type",
-      "exported": false,
-      "shape": {
-        "type": "scopedModelSession"
-      },
-      "shapeHash": "sha256:1d0457cb94f1ae3bfed5cc91f90e925f1844ba24e44cf5b5cf581f8a32d6e7cd"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#scopedModelsHandler",

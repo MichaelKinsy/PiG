@@ -1469,14 +1469,30 @@ type recordingCompactHandle struct {
 	cacheWarming         *CacheWarmingStatus
 	cacheWarmingModes    []CacheWarmingMode
 	agentSettledCount    int
-	// cycled and switched record the models CycleToModel and SetModel received; compacted records each ExtensionCompact call.
-	cycled, switched []*ai.Model
-	compacted        []*extension.CompactOptions
+	cycleResults         []*ModelCycleResult
+	cycleDirections      []string
+	cycleOptions         [][]ModelMutationOptions
+	cycled, switched     []*ai.Model
+	scopedModels         []extension.ScopedModel
+	compacted            []*extension.CompactOptions
 }
 
-func (h *recordingCompactHandle) CycleToModel(model *ai.Model, _ ...ModelMutationOptions) error {
-	h.cycled = append(h.cycled, model)
-	return nil
+func (h *recordingCompactHandle) CycleModel(direction string, options ...ModelMutationOptions) (*ModelCycleResult, error) {
+	h.cycleDirections = append(h.cycleDirections, direction)
+	h.cycleOptions = append(h.cycleOptions, options)
+	index := len(h.cycled)
+	if index >= len(h.cycleResults) || h.cycleResults[index] == nil {
+		return nil, nil
+	}
+	result := h.cycleResults[index]
+	h.cycled = append(h.cycled, result.Model)
+	return result, nil
+}
+func (h *recordingCompactHandle) ScopedModels() []extension.ScopedModel {
+	return h.scopedModels
+}
+func (h *recordingCompactHandle) SetScopedModels(models []extension.ScopedModel) {
+	h.scopedModels = models
 }
 func (h *recordingCompactHandle) ExtensionCompact(options *extension.CompactOptions) {
 	h.compacted = append(h.compacted, options)

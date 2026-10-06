@@ -13,6 +13,13 @@ type ModelMutationOptions struct {
 	Persist bool
 }
 
+// ModelCycleResult reports a model-cycle selection and its clamped thinking level.
+type ModelCycleResult struct {
+	Model         *ai.Model
+	ThinkingLevel ai.ThinkingLevel
+	IsScoped      bool
+}
+
 // InteractiveSessionHandle is the contract InteractiveMode uses to
 // access a pre-constructed coding session. *coding.Session in the
 // public SDK package satisfies this: its Agent() and Inner() methods
@@ -48,8 +55,12 @@ type InteractiveSessionHandle interface {
 	SetModel(*ai.Model, ...ModelMutationOptions) error
 	// SetModelOnMain dispatches the synchronous state mutation to the owner loop, then waits for extension notifications on the caller. The dispatcher may reject a superseded mutation.
 	SetModelOnMain(*ai.Model, ModelMutationOptions, func(func() error) error) error
-	// CycleToModel applies a model-cycle selection as SetModel applies a direct one, and reports the selection to extensions with source "cycle".
-	CycleToModel(*ai.Model, ...ModelMutationOptions) error
+	// CycleModel selects the next model from the current scope or available models.
+	CycleModel(string, ...ModelMutationOptions) (*ModelCycleResult, error)
+	// ScopedModels returns the cycling scope. An empty list means all available models.
+	ScopedModels() []extension.ScopedModel
+	// SetScopedModels replaces the cycling scope.
+	SetScopedModels([]extension.ScopedModel)
 	// ExtensionCompact is the compact action Pi binds for extensions: it starts a manual compaction without waiting, reports the result to options.OnComplete and a failure to options.OnError, and drops the outcome without callbacks.
 	ExtensionCompact(*extension.CompactOptions)
 	// ExtensionSetModel answers an extension's pi.setModel: false without configured credentials, otherwise it switches as SetModel does and answers true.

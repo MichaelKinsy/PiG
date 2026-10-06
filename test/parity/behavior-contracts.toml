@@ -68,6 +68,48 @@ end = "\t/** Update rendered assistant messages without rebuilding live tool com
 sha256 = "c616d5de55de545f831efc875a3271f7323b003ebe8e806d2d6347f41cfd1839"
 keybindings = ["app.clear"]
 
+# This contract covers only the two model-cycle actions in setupKeyHandlers.
+[[contract]]
+id = "coding-agent/interactive/model-cycle-actions"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setupKeyHandlers"
+family = "interactive-input"
+kind = "scope-order-cycle"
+claim = "app.model.cycleForward and app.model.cycleBackward delegate to the Session, which cycles available scoped models in configured order and applies each scoped thinking level"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/interactive_input.go",
+  "internal/codingagent/interactive_models.go#cycleModel",
+  "coding/session_model_cycle.go#CycleModel",
+]
+evidence = [
+  "internal/codingagent/model_cycle_parity_test.go#TestInteractiveCycleUsesSessionSelections",
+  "test/parity/scenarios/model-resolver-selector/26-interactive-cycle-custom-scope.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+start = "\tprivate setupKeyHandlers(): void {"
+end = "\tprivate async handleRightClickPaste(): Promise<void> {"
+sha256 = "aea028e2c2e324bcbbc5759cc14518c2c399ec8baae7e923112aade3ec855009"
+keybindings = [
+  "app.clear",
+  "app.editor.external",
+  "app.message.copy",
+  "app.message.dequeue",
+  "app.message.followUp",
+  "app.model.cycleBackward",
+  "app.model.cycleForward",
+  "app.model.select",
+  "app.session.fork",
+  "app.session.new",
+  "app.session.resume",
+  "app.session.tree",
+  "app.suspend",
+  "app.thinking.cycle",
+  "app.thinking.toggle",
+  "app.tools.expand",
+]
+
 [[contract]]
 id = "coding-agent/model-selector/arrow-wrap"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/model-selector.ts#ModelSelectorComponent.handleInput"
