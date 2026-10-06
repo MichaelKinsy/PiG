@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -114,12 +115,18 @@ func runExtensionsCommand(args []string) int {
 		fmt.Printf("Extension cache: %d entries, %d bytes\n", len(report.Entries), report.TotalBytes)
 		if command == "prune" {
 			fmt.Printf("Removed: %d entries, %d bytes\n", report.Removed, report.RemovedBytes)
+			if report.Skipped > 0 {
+				fmt.Printf("Skipped (in use): %d entries\n", report.Skipped)
+			}
 			if maxSize != nil && !report.LimitSatisfied {
 				fmt.Printf("Limit satisfied: false (protected bytes: %d)\n", report.ProtectedBytes)
 			}
 		}
 		for _, reportErr := range report.Errors {
 			fmt.Fprintln(os.Stderr, "pig extensions cache:", reportErr)
+		}
+		if failure := readAutomaticCacheGCFailure(); failure != "" {
+			fmt.Fprintln(os.Stderr, "pig extensions cache: the last automatic prune failed:", failure)
 		}
 	}
 	if err != nil {
@@ -172,7 +179,10 @@ func currentSDKFingerprints() map[string]struct{} {
 // pig additive (D20): the packed-runtime cache has no upstream equivalent.
 var automaticCacheLimit int64 = 5 << 30
 
-func runAutomaticExtensionCacheGC(configs []subprocess.ExtConfig) error {
+// runAutomaticExtensionCacheGC collects the shared extension cache once a day. A collection that skipped
+// entries that were in use still records its marker; a failed or cancelled one does not, and runs again at
+// the next start. It runs in the background (startAutomaticExtensionCacheGC), never before pig accepts input.
+func runAutomaticExtensionCacheGC(ctx context.Context, configs []subprocess.ExtConfig) error {
 	cacheRoot := filepath.Join(codingagent.ConfigRoot(), "cache")
 	if err := os.MkdirAll(cacheRoot, 0o755); err != nil {
 		return err
@@ -181,12 +191,12 @@ func runAutomaticExtensionCacheGC(configs []subprocess.ExtConfig) error {
 	autoGCDue := func() bool {
 		info, err := os.Stat(marker)
 		// pig additive (D20): bound automatic cleanup of packed-runtime caches to once daily.
-		return err != nil || time.Since(info.ModTime()) >= 24*time.Hour
+		return err != nil || automaticCacheGCNow().Sub(info.ModTime()) >= 24*time.Hour
 	}
 	if !autoGCDue() {
 		return nil
 	}
-	// Startup never waits for the lock: a holder is already collecting.
+	// The collection never waits for the lock: a holder is already collecting.
 	lock := flock.New(filepath.Join(cacheRoot, ".auto-gc.lock"))
 	locked, err := lock.TryLock()
 	if err != nil || !locked {
@@ -201,8 +211,9 @@ func runAutomaticExtensionCacheGC(configs []subprocess.ExtConfig) error {
 		return fmt.Errorf("resolve current extension cache roots: %v", resolutionErrors)
 	}
 	limit := automaticCacheLimit
-	report, err := runtimecell.PruneCaches(runtimecell.CacheLifecycleOptions{
-		CacheRoot: cacheRoot, Current: current, LiveFingerprints: currentSDKFingerprints(), MaxSize: &limit,
+	report, err := automaticCacheGCPrune(runtimecell.CacheLifecycleOptions{
+		Context: ctx, CacheRoot: cacheRoot, Current: current, LiveFingerprints: currentSDKFingerprints(), MaxSize: &limit,
+		Now: automaticCacheGCNow, Rename: automaticCacheGCRename, RemoveAll: automaticCacheGCRemoveAll,
 	})
 	if err != nil {
 		return err

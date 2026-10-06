@@ -19,6 +19,7 @@ var stopModelServices = func() {}
 // exitProcess releases startup extension ownership and writes profiles before
 // exiting. os.Exit skips deferred calls, so main uses this on every exit path.
 func exitProcess(code int) {
+	stopAutomaticExtensionCacheGC()
 	stopModelServices()
 	stopStartupExtensions()
 	codingagent.RestoreStdout()

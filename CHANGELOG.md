@@ -9,6 +9,10 @@ All notable public changes to PiG will be recorded in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Starting `pig` no longer waits for the daily cleanup of the extension cache. The cleanup now runs in the background after the session is running, stops when `pig` exits, and skips entries that are in use or that the file system reports busy (such as NFS `.nfs*` files) instead of failing and repeating at every start. `pig extensions cache prune` reports the skipped entries, and `pig extensions cache stats` shows the last background failure.
+
 ## [0.4.1] - 2026-10-05
 
 ### Added
