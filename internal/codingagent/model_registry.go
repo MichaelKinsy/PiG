@@ -856,11 +856,15 @@ func providerConfigFromRegistration(configMap extension.ProviderConfig) (provide
 	return provider, true
 }
 
-// ProviderStreamSimple returns the custom stream callback owned by this registry's current provider registration. It never installs a global API handler.
-func (r *ModelRegistry) ProviderStreamSimple(name string) extension.ProviderStreamSimple {
+// ProviderStreamSimple returns the custom stream callback owned by this registry's current provider registration when api is the api that registration declares. A model of that provider whose api differs reaches its API implementation instead (provider-composer.ts:590 `extension?.streamSimple && model.api === extension.api`). It never installs a global API handler.
+func (r *ModelRegistry) ProviderStreamSimple(name string, api ai.API) extension.ProviderStreamSimple {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return r.dynamic[name].StreamSimple
+	registered := r.dynamic[name]
+	if ai.API(registered.API) != api {
+		return nil
+	}
+	return registered.StreamSimple
 }
 
 // commitRegisteredProvider applies one change under the registry lock. committed, when non-nil, runs after the lock is released and before listeners are notified.

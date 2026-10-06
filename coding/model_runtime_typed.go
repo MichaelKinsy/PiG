@@ -184,7 +184,7 @@ func (runtime *ModelRuntime) failedStream(model *ai.Model, err error) *ai.Assist
 func (runtime *ModelRuntime) builtinStream(id string) ai.ModelsStreamFunction {
 	return func(ctx context.Context, model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 		entry := icodingagent.NativeModelEntry(model)
-		provider, err := buildProviderForEntry(id, model.ID, model.ProviderMeta.API, entry, runtime.services, options.APIKey, true)
+		provider, err := buildProviderForEntry(id, model.ID, model.ProviderMeta.API, entry, runtime.services, options.APIKey, true, false)
 		if err != nil {
 			return nil, err
 		}

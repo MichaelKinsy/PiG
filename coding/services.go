@@ -519,7 +519,7 @@ func (runtime *ModelRuntime) prepareRequest(ctx context.Context, model *ai.Model
 				copy.ProviderMeta.BaseURL = auth.Auth.BaseURL
 				requestModel = &copy
 			}
-			provider, err = buildProviderForEntry(providerID, model.ID, requestModel.ProviderMeta.API, entry, runtime.services, auth.Auth.APIKey, auth.Auth.APIKey == "")
+			provider, err = buildProviderForEntry(providerID, model.ID, requestModel.ProviderMeta.API, entry, runtime.services, auth.Auth.APIKey, auth.Auth.APIKey == "", false)
 			if err != nil {
 				return nil, nil, ai.StreamOptions{}, err
 			}
