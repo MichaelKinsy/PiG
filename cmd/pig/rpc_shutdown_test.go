@@ -132,17 +132,7 @@ func startJSONLProcessAt(t *testing.T, cwd string, env []string, command string,
 		t.Fatal(err)
 	}
 	p.scanOutput(stdout)
-	t.Cleanup(func() {
-		close(p.stopOutput)
-		_ = stdout.Close()
-		<-p.outputDone
-		if p.exited {
-			return
-		}
-		_ = stdin.Close()
-		_ = cmd.Process.Kill()
-		_ = cmd.Wait()
-	})
+	t.Cleanup(p.cleanup(stdout))
 	return p
 }
 
