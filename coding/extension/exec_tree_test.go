@@ -67,8 +67,9 @@ var treeHelpers = map[string]func(args []string){
 	},
 	// bg-late PIDFILE ADDR: start a descendant that writes after this process
 	// exits, as in earendil-works/pi#5303, and print HEAD and exit only once the
-	// descendant has connected back, so that it is already running its ticks
-	// when the exit happens, however long the system takes to start it.
+	// descendant reports that it has written its first tick, so that it is
+	// already ticking when the exit happens, however long the system takes to
+	// start it.
 	"bg-late": func(args []string) {
 		listener, err := net.Listen("tcp", "127.0.0.1:0")
 		if err != nil {
@@ -80,13 +81,18 @@ var treeHelpers = map[string]func(args []string){
 		if err != nil {
 			panic(err)
 		}
+		_ = leader.SetReadDeadline(time.Now().Add(holderLifetime))
+		if _, err := io.ReadFull(leader, make([]byte, 1)); err != nil {
+			panic(err)
+		}
 		_, _ = os.Stdout.WriteString("HEAD\n")
 		// The descendant reads the end of leader as this process's exit: the
 		// process ends with it and the operating system closes leader.
 		defer runtime.KeepAlive(leader)
 	},
-	// late-writer ADDR LEADER: connect to the leader and write a PRE tick every
-	// 20 ms, so the output never idles for the grace however late the
+	// late-writer ADDR LEADER: connect to the leader, write the first PRE
+	// tick, report it to the leader with one byte, and then write a PRE tick
+	// every 20 ms, so the output never idles for the grace however late the
 	// scheduler delivers the leader's exit. Once the leader's connection ends,
 	// which is its exit, write EOF and then 15 POST ticks, one chunk shorter
 	// than the grace apart and longer than the grace in total, then hold the
@@ -94,14 +100,21 @@ var treeHelpers = map[string]func(args []string){
 	"late-writer": func(args []string) {
 		conn := dial(args[0])
 		leader := dial(args[1])
+		_, _ = os.Stdout.WriteString("PRE\n")
+		if _, err := leader.Write([]byte{'\n'}); err != nil {
+			panic(err)
+		}
 		var exited atomic.Bool
 		go func() {
 			_, _ = io.Copy(io.Discard, leader)
 			exited.Store(true)
 		}()
-		for !exited.Load() {
-			_, _ = os.Stdout.WriteString("PRE\n")
+		for {
 			time.Sleep(20 * time.Millisecond)
+			if exited.Load() {
+				break
+			}
+			_, _ = os.Stdout.WriteString("PRE\n")
 		}
 		_, _ = os.Stdout.WriteString("EOF\n")
 		for i := 1; i <= lateWriterTicks; i++ {
@@ -343,16 +356,16 @@ func TestExecCommandKeepsOutputWrittenAfterTheLeaderExits(t *testing.T) {
 	if result.Stderr != "" || result.Code != 0 || result.Killed {
 		t.Fatalf("result = %+v", result)
 	}
-	// The descendant ticks before and across the leader's exit, so the order of
-	// HEAD among the PRE ticks is the scheduler's. EOF is written only after the
-	// leader exited: it and every POST tick after it, which span more than the
-	// grace, must have arrived.
+	// The leader prints HEAD only after the descendant's first PRE tick, and the
+	// descendant keeps ticking across the leader's exit. EOF is written only
+	// after the leader exited: it and every POST tick after it, which span more
+	// than the grace, must have arrived.
 	head, tail, found := strings.Cut(result.Stdout, "EOF\n")
 	if !found {
 		t.Fatalf("output written after the leader exited was lost: %q", result.Stdout)
 	}
-	if strings.ReplaceAll(strings.ReplaceAll(head, "PRE\n", ""), "HEAD\n", "") != "" || strings.Count(head, "HEAD\n") != 1 {
-		t.Fatalf("output before the leader exited = %q, want HEAD among PRE ticks", head)
+	if rest, ok := strings.CutPrefix(head, "PRE\nHEAD\n"); !ok || strings.ReplaceAll(rest, "PRE\n", "") != "" {
+		t.Fatalf("output before the leader exited = %q, want PRE, HEAD, then PRE ticks", head)
 	}
 	var want strings.Builder
 	for i := 1; i <= lateWriterTicks; i++ {
