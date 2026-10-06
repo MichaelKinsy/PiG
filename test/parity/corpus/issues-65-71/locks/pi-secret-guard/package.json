@@ -1,1 +1,1 @@
-{"private": true, "dependencies": {"pi-secret-guard": "1.2.15"}}
+{"private": true, "dependencies": {"pi-secret-guard": "1.2.15"}, "overrides": {"basic-ftp": "6.2.2"}}

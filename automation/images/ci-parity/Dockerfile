@@ -53,7 +53,9 @@ COPY automation/images/npm-runtime/package.json automation/images/npm-runtime/pa
 RUN npm ci --prefix /opt/pig/npm --omit=dev --ignore-scripts --no-audit --no-fund \
   && rm -rf \
     /opt/pig/npm/node_modules/npm/node_modules/brace-expansion \
+    /opt/pig/npm/node_modules/npm/node_modules/http-cache-semantics \
     /opt/pig/npm/node_modules/npm/node_modules/ip-address \
+    /opt/pig/npm/node_modules/npm/node_modules/postcss-selector-parser \
     /opt/pig/npm/node_modules/npm/node_modules/tar \
     /opt/pig/npm/node_modules/npm/node_modules/undici \
   && test "$(node /opt/pig/npm/node_modules/npm/bin/npm-cli.js --version)" = "12.1.0"
