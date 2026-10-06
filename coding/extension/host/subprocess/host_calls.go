@@ -39,7 +39,7 @@ func startsAsync(method string) bool {
 		// The public call remains synchronous in its SDK. A reverse factory/provider callback can reenter the host, so release its call lane at callback initiation.
 		return true
 	case "ui.select", "ui.confirm", "ui.input", "ui.editor", CallUICustom,
-		"setModel", "registerProvider", "exec", "complete", "modelStream", CallProviderObject, "getModelAuth", "getProviderAuth", "getAvailableOfType", "classify", "generateImages", "refreshModelRegistry", "compact",
+		"setModel", "registerProvider", "exec", CallLoadingExec, "complete", "modelStream", CallProviderObject, "getModelAuth", "getProviderAuth", "getAvailableOfType", "classify", "generateImages", "refreshModelRegistry", "compact",
 		"waitForIdle", "newSession", "fork", "navigateTree", "switchSession", "reload", CallExecuteTool,
 		CallOAuthOnPrompt, CallOAuthOnSelect, CallOAuthOnManualCodeInput:
 		return true
@@ -335,6 +335,8 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		result, err = h.handleMcpServersRead()
 	case call.Method == CallCheckMcpServer:
 		result, err = h.handleMcpServerCheck(me, call)
+	case call.Method == CallLoadingExec:
+		result, err = h.handleLoadingExec(callCtx, call)
 	case call.Method == CallRegisterMcpServer || call.Method == CallUnregisterMcpServer:
 		result, err = h.handleMcpServerCall(callCtx, me, call)
 	case call.Method == CallRegisterVirtualModel || call.Method == CallUnregisterVirtualModel:

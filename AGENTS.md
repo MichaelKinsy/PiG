@@ -288,7 +288,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `compaction` | 14 | 14 | 0 | 0 | 0 | 10 | not run |
 | `export-html` | 6 | 6 | 0 | 0 | 0 | 1 | not run |
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
-| `extensions-runtime` | 97 | 96 | 0 | 1 | 0 | 58 | not run |
+| `extensions-runtime` | 100 | 99 | 0 | 1 | 0 | 58 | not run |
 | `footer` | 11 | 11 | 0 | 0 | 0 | 9 | not run |
 | `fullscreen` | 12 | 12 | 0 | 0 | 0 | 9 | not run |
 | `interactive-rendering` | 46 | 45 | 1 | 0 | 0 | 34 | not run |

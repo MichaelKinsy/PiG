@@ -239,6 +239,27 @@ func (h *Host) handleMcpServersRead() (*CallResultPayload, error) {
 	return &CallResultPayload{Result: result}, err
 }
 
+// handleLoadingExec serves CallLoadingExec: upstream's execCommand in the working directory the loader was given, which a factory's pi.exec uses before any session binds (loader.ts:411-414).
+func (h *Host) handleLoadingExec(ctx context.Context, call *CallPayload) (*CallResultPayload, error) {
+	var request struct {
+		Command string                 `json:"command"`
+		Args    []string               `json:"args"`
+		Options *extension.ExecOptions `json:"options,omitempty"`
+	}
+	if err := json.Unmarshal(call.Args, &request); err != nil {
+		return nil, fmt.Errorf("parse exec args: %w", err)
+	}
+	result, err := extension.ExecCommand(ctx, h.cwd, request.Command, request.Args, request.Options)
+	if err != nil {
+		return nil, err
+	}
+	data, err := json.Marshal(result)
+	if err != nil {
+		return nil, err
+	}
+	return &CallResultPayload{Result: data}, nil
+}
+
 // handleMcpServerCheck serves CallCheckMcpServer: the validation and ownership checks of registerMcpServer, which throw to the factory when the call is made (loader.ts:456-468). The registration itself waits for the register frame.
 func (h *Host) handleMcpServerCheck(me *managedExt, call *CallPayload) (*CallResultPayload, error) {
 	var decl McpServerDecl

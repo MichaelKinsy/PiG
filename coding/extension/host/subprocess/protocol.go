@@ -626,7 +626,13 @@ type BeforeAgentStartResponsePayload struct {
 	Result        json.RawMessage    `json:"_pigPromptResult"`
 }
 
-// ResponsePayload is the extension's reply to a request. For agent_before_settle and turn_end,
+// ToolCallResponsePayload is the result of a tool_call handler. Input is the event's input when the handler left it different from the one it received; an omitted Input means the handler made no edit. Result is the handler's ordinary block result.
+type ToolCallResponsePayload struct {
+	Input  json.RawMessage `json:"_pigToolCallInput"`
+	Result json.RawMessage `json:"_pigToolCallResult"`
+}
+
+// ResponsePayload is the extension's reply to a request. For tool_call, Result carries a [ToolCallResponsePayload]. For agent_before_settle and turn_end,
 // Result carries {_pigBoundaryEntries, _pigBoundaryResult}: the mutated input
 // draft list and the explicit handler result. Mutations also accompany Error;
 // the host applies them before surfacing the error and ignores the explicit result.

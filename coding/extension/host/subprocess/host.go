@@ -3875,6 +3875,19 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 				}
 				resp.Response.Result = mutation.Result
 			}
+			// upstream: runner.ts emitToolCall hands every handler the one event object and the agent loop runs the tool with its input, so a handler's in-place edit of event.input reaches the call and the next handler. An extension process cannot share the object: its reply carries the input it left when that differs from the one it received, even when the handler fails.
+			if event == "tool_call" && len(args) > 0 && len(resp.Response.Result) > 0 && strings.TrimSpace(string(resp.Response.Result)) != "null" {
+				var reply ToolCallResponsePayload
+				if err := json.Unmarshal(resp.Response.Result, &reply); err != nil {
+					return nil, fmt.Errorf("decode tool_call response: %w", err)
+				}
+				if len(reply.Input) > 0 {
+					if err := applyToolCallInput(args[0], reply.Input); err != nil {
+						return nil, fmt.Errorf("decode tool_call input: %w", err)
+					}
+				}
+				resp.Response.Result = reply.Result
+			}
 			// pig additive (D19): both actionable boundaries return mutated proposals even when their handler fails.
 			if (event == "agent_before_settle" || event == "turn_end") && len(args) > 0 && len(resp.Response.Result) > 0 && strings.TrimSpace(string(resp.Response.Result)) != "null" {
 				var boundary struct {

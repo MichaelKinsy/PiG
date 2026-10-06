@@ -1112,6 +1112,26 @@ func Extension() *sdk.Extension {
 	// Typed tool events use one shared fixture for subprocess and fused Go.
 	ext.OnEvent("tool_call", func(ctx sdk.Context, event map[string]any) (any, error) {
 		name, _ := event["toolName"].(string)
+		// Pi's handler mutates event.input in place and the runner reads it back (runner.ts emitToolCall), so the rewrite is the handler's own edit to the event.
+		// Assigning a new map to the event's input leaves the object the tool runs with (agent-loop.ts prepareToolCall).
+		if name == "rewrite_reassign_probe" {
+			input, _ := event["input"].(map[string]any)
+			event["input"] = map[string]any{"command": "git status --short", "timeout": input["timeout"]}
+			return nil, nil
+		}
+		if name == "rewrite_probe" || name == "rewrite_block_probe" {
+			input, _ := event["input"].(map[string]any)
+			if input["command"] == "git status" || name == "rewrite_block_probe" {
+				input["command"] = "git status --short"
+				delete(input, "drop")
+				input["added"] = true
+				input["nested"] = map[string]any{"depth": 2.0}
+			}
+			if name == "rewrite_block_probe" {
+				return map[string]any{"block": true, "reason": "blocked after rewrite"}, nil
+			}
+			return nil, nil
+		}
 		if name != "powershell" && name != "bash" {
 			return nil, nil
 		}

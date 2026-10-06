@@ -1,0 +1,46 @@
+# Behavior family: extensions-runtime
+# Scenario: a Node extension's factory runs pi.exec while it loads.
+#
+# parity-load-exec.mjs awaits a child process at the top of its default export, before any session
+# binds, as Pi's loader allows (loader.ts:411-414: the factory's exec spawns the child itself). Its
+# tool_result handler reports the outcome through the bash result: "[parity-modified]" when the child
+# printed what it should, an error text otherwise. PiG 0.4.1 rejected the call with "extension
+# connection closed or replaced" (issue #165), so the model saw an error text and answered
+# "not-modified".
+#
+# Upstream evidence (2026-10-06, Pi 1.0.3):
+#   PI_CODING_AGENT_DIR=testdata/pi-agent pi --no-extensions \
+#     -e ../../testdata/test-faux-provider.ts -e testdata/ext/parity-load-exec.mjs \
+#     --model test-faux/faux-1 --print "Run: bash modified"
+#   output: "modified:parity-modified"
+#   exit: 0
+
+name = "72-extension-load-time-exec"
+description = "Extension factory awaits pi.exec while loading, before any session binds"
+covers = [
+  "packages/coding-agent/src/core/extensions/loader.ts",
+  "packages/coding-agent/src/core/exec.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/parity-load-exec.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/parity-load-exec.mjs",
+]
+
+[print]
+prompt = "Run: bash modified"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ["modified:parity-modified"]
+output_equal = true
+runs = 3
