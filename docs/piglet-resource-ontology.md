@@ -288,21 +288,25 @@ pig piglet publish <name> --to github --repo <owner/repo> --sign-key <key>
 
 A contributed catalog ref requires an installed product resolver. Stock PiG has no `marketplace:` or `catalog:` Piglet source resolver.
 
+### Source publication
+
+```text
+pig piglet publish <name|path> --to npm
+```
+
+`publish --to npm` distributes reusable Piglet source through npm; it never distributes Agent state. Source registration accepts npm or Git. Signed per-target Binaries publish to and pull from GitHub Releases. The workflow does not use pi.dev or a pi-in-go.dev upload API.
+
 ### Planned (not in this release): registered-release management
 
 | Verb | Planned meaning |
 |---|---|
 | `pull <name>` | acquire a registered release and artifact closure by installed Piglet name |
-| `publish` | distribute reusable Piglet source through npm; never Agent state |
-| `update` | update a registered remote source or pulled Binary with rollback |
 
 ```text
 pig piglet pull <name>
-pig piglet publish <name> --to npm
-pig piglet update [<name>]
 ```
 
-Source registration accepts npm or Git. Signed per-target Binaries publish to and pull from GitHub Releases. npm source publication, named pulls, and Piglet-specific updates remain planned. The workflow does not use pi.dev or a pi-in-go.dev upload API.
+Named pulls remain planned. `pig piglet update <name>` updates an installed signed GitHub Binary release within its signed namespace.
 
 Remote runtime management belongs to the consuming platform. Stock PiG has no
 product deployment command.

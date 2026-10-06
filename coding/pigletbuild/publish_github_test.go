@@ -627,7 +627,7 @@ func TestPublishGitHubUsageErrorsRunNothing(t *testing.T) {
 	}{
 		{"no Piglet", []string{"--to", "github"}, "Piglet name or path is required"},
 		{"no destination", []string{source}, "--to is required"},
-		{"npm destination", []string{source, "--to", "npm"}, `unsupported Piglet publish destination "npm"; use --to github`},
+		{"unknown destination", []string{source, "--to", "pypi"}, `unsupported Piglet publish destination "pypi"; use --to github or --to npm`},
 		{"no repository", []string{source, "--to=github", "--sign-key", keyPath}, "--to github requires --repo <owner/repo>"},
 		{"bad repository", []string{source, "--to", "github", "--repo", "https://github.com/acme/porter", "--sign-key", keyPath}, "must be <owner>/<repo>"},
 		{"no signing key", []string{source, "--to", "github", "--repo", "acme/porter"}, "--to github requires --sign-key"},

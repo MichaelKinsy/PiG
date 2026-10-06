@@ -48,12 +48,14 @@ Product distributions may contribute additional top-level or nested command path
 | `pig list` | List installed Packages with Pi-compatible output. |
 | `pig package list [--json]` | Inspect configured Package state without starting runtimes. |
 | `pig package validate <dir> [--json]` | Validate ordinary Package source and Resource membership without installing. |
+| `pig package publish [<dir>] --to npm [--yes] [--tag <dist-tag>] [--access public\|restricted] [--otp <code>]` | Optional sugar over `npm publish` for a Package: validate it, check the catalog fields and that `name@version` is free, show npm's dry run, and publish only with `--yes`. PiG never handles an npm token. |
 | `pig status [--json]` | Side-effect-free Package/Resource/Piglet health and canonical path overview; invalid state exits non-zero. |
 | `pig login --list [--json]` | List generic built-in and contributed authentication targets without reading credentials. |
 | `pig piglet list\|show\|validate\|schema\|add\|remove\|build\|keygen\|verify\|trust` | Current Piglet YAML, registration, inspection, build, and Binary-signing surface. Owned verbs use full words. |
 | `pig piglet build <name> --format script --out <path\|->` | Write an explicit source-bound entry script: a POSIX shell script, or a cmd.exe batch file on Windows (D69). Creates no PiG state or records. |
 | `pig piglet build <name> --format binary --out <path> [--sign-key <private-key>]` | Build a Piglet Binary and managed v1 resolution/Binary records. The optional Ed25519 signature is checked before command dispatch. |
 | `pig piglet keygen <private-key>` | Create an Ed25519 private key and `<private-key>.pub` without replacing existing files. |
+| `pig piglet publish <name\|path> --to npm [--yes] [--tag <dist-tag>] [--access public\|restricted] [--otp <code>] [--npm-name <name>] [--package-map <alias>=<ref>] [--binaries github:<owner/repo>\|--no-binaries]` | Publish Piglet source to npm so `pig piglet add npm:<name>` installs it. Local Packages become `npm:` references. Dry run until `--yes`; refuses an existing `name@version`; PiG never handles an npm token. See `pig docs show publishing`. |
 | `pig piglet verify <binary>` | Verify a Piglet Binary signature offline without running it. An unsigned Binary reports unsigned and exits non-zero. |
 | `pig piglet trust [list\|add\|revoke\|require]` | Manage trusted and revoked signer keys and the required-signature policy. |
 | `pig piglet build <name> --format image ...` | Reserved Piglet Image shape; currently fails clearly because the Image producer is not implemented. |

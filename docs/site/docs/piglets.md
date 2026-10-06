@@ -297,19 +297,27 @@ pig piglet publish research --to github --repo acme/research --sign-key ./resear
 
 Publish is a dry run until you add `--yes`. For `pig-with-batteries` in `MichaelKinsy/pigpen`, pass `--tag-prefix pig-with-batteries/` and pull a published version with `github:MichaelKinsy/pigpen/pig-with-batteries@<version>`. The prefix must match the Piglet name. `pig piglet update pig-with-batteries` updates an installed GitHub Binary within its signed namespace, not the repository-wide latest release. See [Publish to GitHub Releases](/docs/latest/piglet-binaries#publish-to-github-releases).
 
-## Planned (not in this release): source publication and Image artifacts
+## Publish source to npm
 
-Piglet source will publish through npm with the `pig-piglet` keyword or through a Git ref. Signed per-target Piglet Binaries already publish to GitHub Releases with `pig piglet publish --to github` and install from a direct signed-index URL or `github:` ref with [`pig piglet pull`](/docs/latest/piglet-binaries#pull-a-published-binary). The pi-in-go.dev catalog will index npm daily and label community listings as unreviewed; it will not accept uploads.
+Publish a Piglet's source to npm with the `pig-piglet` keyword so that anyone can add it with `pig piglet add npm:<name>`:
 
 ```bash
-pig piglet publish <name> --to npm
+pig piglet publish ./agents/reviewer.yaml --to npm
+pig piglet publish ./agents/reviewer.yaml --to npm --yes --access public
+```
+
+Publish is a dry run until you add `--yes`. PiG validates the Piglet, writes the npm package (`piglet.yaml`, `package.json`, README, LICENSE, and the system prompt file), replaces each local Package by `npm:<name>@^<version>`, refuses a `name@version` that npm already has, and runs the `npm` on your `PATH`. npm authenticates you; PiG never handles an npm token. When this machine published the version's signed Binaries with `--to github`, or `--binaries github:<owner/repo>` names the release, `package.json` records it in `pig.binaries` so a catalog can show `pig piglet pull` beside `pig piglet add`. See [Publish a Package or Piglet](/docs/latest/publishing) for the options, signed Binaries, how pi-in-go.dev finds the package, and trusted publishing in CI. The catalog lists npm packages without review and does not accept uploads.
+
+## Planned (not in this release): named pulls and Image artifacts
+
+```bash
 pig piglet pull <name>
 pig piglet build <name> --format image --out <reference>
 pig piglet build <name> --format binary|image --locked
 pig piglet build <name> --format binary|image --record <path>
 ```
 
-The source publication and catalog-name pull commands above and reserved artifact flags are not available in this release. `publish --to npm` will default to a dry run unless `--yes` is present, as `publish --to github` does. The planned `/piglets` catalog and `/piglets/<name>` detail page will show npm source, targets, signing, and provenance without using pi.dev data.
+Pull by installed Piglet name and the reserved artifact flags above are not available in this release.
 
 ## PiG Standard
 

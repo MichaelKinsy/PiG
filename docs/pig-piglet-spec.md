@@ -313,15 +313,26 @@ pig piglet pull <release-index-url|github:owner/repo@version>
 
 `publish --to github` uploads signed per-target Piglet Binaries, `SHA256SUMS`, and a signed release index as one GitHub Release. `pull` verifies a signed release index and installs one target's Binary.
 
-### Planned (not in this release): source publication and named releases
+### Published Piglet source on npm
+
+```text
+pig piglet publish <name|path> --to npm [--yes] [--tag <dist-tag>] [--access public|restricted] [--otp <code>]
+        [--npm-name <name>] [--package-map <alias>=npm:<name>@<range>]... [--binaries github:<owner/repo>|--no-binaries]
+```
+
+`publish --to npm` writes one npm package from an authored Piglet and runs `npm publish`. It is a dry run unless `--yes` is present, and it refuses an existing `name@version` (`npm view`). npm authenticates the author, including a one-time password, a passkey, and trusted publishing from CI (`--provenance` is added when `ACTIONS_ID_TOKEN_REQUEST_URL` is set). PiG never reads or stores an npm token.
+
+Publication validates the Piglet as `piglet validate` does and refuses what `piglet add` refuses: `extends`, `agentEnv.devContainer`, file-based secrets, and local Resource origins. The generated package contains `piglet.yaml`, `package.json`, `README.md`, `LICENSE`, and the `systemPrompt.file` file. Its `piglet.yaml` is the authored YAML with every `local:` Package replaced by `npm:<name>@^<version>`, taken from that Package's `package.json` (or `--package-map <alias>=<ref>`), with `?registry=<url>` when that `package.json` sets an HTTPS `publishConfig.registry`. A local Package with no public name and version, or with a registry an `npm:` source cannot name, fails the publication. An `npm:` Package without its own registry that no published version satisfies is a warning in the dry run and fails `--yes`; a registry-qualified Package is not prechecked.
+
+The generated `package.json` takes `name` from `--npm-name`, a `package.json` beside the Piglet, or the Piglet name, and `version` from `release.version`. It adds the keyword `pig-piglet`, so catalogs find the package by npm keyword search, and the block `"pig": {"piglet": "piglet.yaml", "binaries": {"ref": "github:<owner>/<repo>[/<name>]@<version>", "signer": "<key id>"}}`. `pig.piglet` is the path `piglet add` reads. `pig.binaries` is present when the version has a signed GitHub Binary release: `--binaries github:<owner/repo>` reads the signed release index, and otherwise a release this machine published with `publish --to github --yes` is recorded in `receipts/piglet-publications/`. `license`, `author`, `repository`, `homepage`, `bugs`, `funding`, and `publishConfig` come from a `package.json` beside the Piglet; scripts and dependencies do not. `pig piglet add npm:<name>` accepts exactly what publication produces.
+
+### Planned (not in this release): pull by name
 
 ```text
 pig piglet pull <name>
-pig piglet publish <name> --to npm
-pig piglet update [<name>]
 ```
 
-These commands will distribute source through npm or Git and pull or update a release by installed Piglet name. Stock PiG has no npm source publication, pull by name, or Piglet-specific update command in this release.
+This command will pull a release by installed Piglet name. Stock PiG has no pull by name in this release. `pig piglet update <name>` updates an installed signed GitHub Binary release within its signed namespace.
 
 Remote agent creation and update belong to the consuming platform.
 
@@ -331,4 +342,4 @@ Editable source lives in `~/.pig/piglets/`. Managed Binary outputs and records l
 
 ## Current implementation boundary
 
-The lean closed source schema, typed Package/origin vocabulary, derivation object, direct source invocation, Piglet Binary producer, remote npm/Git registration, GitHub Binary publication, and signed-index pull are implemented. npm source publication, pull by installed Piglet name, Piglet-specific update, locked records, and Piglet Image production are planned and not available in this release.
+The lean closed source schema, typed Package/origin vocabulary, derivation object, direct source invocation, Piglet Binary producer, remote npm/Git registration, GitHub Binary publication, npm source publication, and signed-index pull are implemented. `pig piglet update <name>` updates a pulled GitHub Binary release. Pull by installed Piglet name, locked records, and Piglet Image production are planned and not available in this release.

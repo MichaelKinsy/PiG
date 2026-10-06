@@ -26,7 +26,7 @@ Return to the [maintainer docs router](README.md). Read
 | Runs by itself | no | yes through Host Piglet or Piglet Binary; Image is planned |
 | Direct `pig install` | records Package in settings; Pi discovery/filtering exposes enabled members | not applicable |
 | Piglet dependency | materialized without settings mutation | only explicitly selected Package members activate |
-| Marketplace kind | `package` | independent Piglet source; npm catalog listing is planned |
+| Marketplace kind | `package` | independent Piglet source. Available: source to npm with `pig piglet publish --to npm` (catalogs list it by the `pig-piglet` keyword) and signed Binaries to GitHub Releases with `--to github`. Planned: pull by installed Piglet name. |
 
 ## One-way relationship
 

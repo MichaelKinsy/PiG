@@ -103,6 +103,8 @@ func printHelp(w io.Writer) {
   pig piglet pull <release-ref>      Install one signed Piglet Binary release
   pig piglet publish <name|path> --to github --repo <owner/repo> --sign-key <key> [--yes]
                                       Dry-run or publish signed Binaries to GitHub Releases
+  pig piglet publish <name|path> --to npm [--yes] [--tag <dist-tag>] [--access public|restricted] [--otp <code>]
+                                      Dry-run or publish Piglet source to npm (pig piglet add npm:<name>)
   pig piglet remove <name> [facet] Remove --source, --binary, or --all
   pig piglet prune [--keep <n>] [--max-size <size>] [--dry-run]
                                       Remove old built Piglet Binaries, keeping the newest n

@@ -20,6 +20,7 @@ Read the one row that matches the task, then follow only its direct links.
 | install Pig and run a first session | [Install](install.md) | [Providers](providers.md) |
 | understand the small mental model | [Concepts](concepts.md) | [Packages](packages.md) or [Piglets](piglets.md) |
 | install or share capabilities | [Packages](packages.md) | [Extensions](extensions.md) or [Skills](skills.md) |
+| publish a Package or Piglet to npm | [Publishing](publishing.md) | [Packages](packages.md) or [Piglets](piglets.md) |
 | shape, launch, build, or hand off an agent | [Piglets](piglets.md) | [Runtime cells](runtime-cells.md) for internals |
 | write an extension | [Extensions](extensions.md) | [Extension API](extension-api.md) |
 | configure models and credentials | [Providers](providers.md) | [Models](models.md) |

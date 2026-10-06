@@ -246,17 +246,24 @@ This form copies declared relative local Packages, extensions, skills, and promp
 
 The origin records the selected source, commit, original and registered Piglet digests, and copied file digests. Inventory verifies the closure. Source removal removes only that Piglet's recorded files. Other remote source forms still reject local Resource origins.
 
-### Planned (not in this release): source publication and Image artifacts
+### Publish source to npm
 
 ```text
-pig piglet publish <name> --to npm
+pig piglet publish <name|path> --to npm [--yes] [--tag <dist-tag>] [--access public|restricted] [--otp <code>]
+```
+
+This publishes a Piglet's source to npm with the `pig-piglet` keyword so that `pig piglet add npm:<name>` installs it. It is a dry run until `--yes` is present. PiG validates the Piglet, writes the npm package (`piglet.yaml`, `package.json`, README, LICENSE, and the system prompt file), replaces each local Package by `npm:<name>@^<version>`, refuses a `name@version` that npm already has, and runs `npm publish`. npm authenticates you; PiG never handles an npm token. A signed Binary release that this machine published with `--to github`, or that `--binaries github:<owner/repo>` names, is recorded in `package.json` under `pig.binaries`. See [Publishing](publishing.md).
+
+### Planned (not in this release): named pulls and Image artifacts
+
+```text
 pig piglet pull <name>
 pig piglet build <name> --format image --out <reference>
 pig piglet build <name> --format binary|image --locked
 pig piglet build <name> --format binary|image --record <path>
 ```
 
-Source publication will use npm or Git, and `publish --to npm` will dry-run unless `--yes` is present. Signed per-target Piglet Binaries already publish to GitHub Releases with `publish --to github` and can be pulled by direct signed-index URL or `github:` ref. Pull by installed Piglet name is not implemented. The other commands above and the reserved Image, `--locked`, and `--record` build paths are not available in this release.
+Pull by installed Piglet name and the reserved Image, `--locked`, and `--record` build paths are not available in this release.
 
 ### In-session
 
