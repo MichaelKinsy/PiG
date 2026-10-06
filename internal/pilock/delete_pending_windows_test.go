@@ -122,6 +122,37 @@ func TestAcquireSurfacesLockBeingRemovedAtMkdir(t *testing.T) {
 	}
 }
 
+// The MCP OAuth refresh lock and the other locks that pass proper-lockfile a retries option retry every failed attempt (TestAcquireWithOptionsRetriesEveryAttemptErrorUpstream), so a mkdir that a real delete-pending lock directory refuses waits for the removal to finish and then takes the lock.
+func TestAcquireWithOptionsWaitsOutLockBeingRemovedAtMkdir(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "mcp-auth-refresh")
+	if err := os.Mkdir(path+".lock", 0o777); err != nil {
+		t.Fatal(err)
+	}
+	finishRemoval := markBeingRemoved(t, path+".lock")
+	calls := stubMkdir(t, func(call int, real func() error) error {
+		if call == 1 {
+			err := real()
+			if !errors.Is(err, windows.ERROR_ACCESS_DENIED) {
+				t.Errorf("mkdir of a delete-pending directory = %v, want ERROR_ACCESS_DENIED", err)
+			}
+			// The other process's removal completes before the retry.
+			finishRemoval()
+			return err
+		}
+		return real()
+	})
+	lock, err := AcquireWithOptions(t.Context(), path, AcquireOptions{Stale: time.Minute, Update: 30 * time.Second, Retry: time.Millisecond, Wait: 10 * time.Second, OnCompromised: func(error) {}})
+	if err != nil {
+		t.Fatalf("AcquireWithOptions = %v, want the lock once the removal finished", err)
+	}
+	if got := calls.Load(); got != 2 {
+		t.Fatalf("mkdir calls = %d, want 2", got)
+	}
+	if err := lock.Release(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // makeHeldLockPath creates a held lock path: a fresh directory, a directory older than every stale threshold, or a directory link to a fresh directory.
 func makeHeldLockPath(t *testing.T, lockPath, kind string) {
 	t.Helper()
