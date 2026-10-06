@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
@@ -37,6 +38,10 @@ import (
 // exit sees a dead descendant and fails.
 const holderLifetime = 15 * time.Second
 
+// lateWriterTicks is the number of ticks the late writer emits after the leader
+// exits: 15 x 20 ms is three times the idle grace.
+const lateWriterTicks = 15
+
 // treeHelpers are the child modes of TestExecHelperProcess that this file
 // adds. Each takes the arguments after the mode.
 var treeHelpers = map[string]func(args []string){
@@ -44,44 +49,63 @@ var treeHelpers = map[string]func(args []string){
 	"holder": func(args []string) { echoUntilClosed(dial(args[0])) },
 	// bg-echo PIDFILE ADDR: `sleep 12 & echo ok`.
 	"bg-echo": func(args []string) {
-		startHolder(args[0], args[1], nil)
+		startHolder(args[0], args[1])
 		_, _ = os.Stdout.WriteString("ok\n")
 	},
 	// bg-wait PIDFILE ADDR: `sleep 12 & wait`.
 	"bg-wait": func(args []string) {
-		_ = startHolder(args[0], args[1], nil).Wait()
+		_ = startHolder(args[0], args[1]).Wait()
 	},
 	// bg-trap PIDFILE ADDR: `trap 'echo cleanup; exit 0' TERM; sleep 12 & wait`.
 	"bg-trap": func(args []string) {
 		terminated := make(chan os.Signal, 1)
 		signal.Notify(terminated, syscall.SIGTERM)
-		holder := startHolder(args[0], args[1], nil)
+		holder := startHolder(args[0], args[1])
 		go func() { _ = holder.Wait() }()
 		<-terminated
 		_, _ = os.Stdout.WriteString("cleanup\n")
 	},
-	// bg-late PIDFILE ADDR: print HEAD and exit while a descendant writes after
-	// the exit, as in earendil-works/pi#5303.
+	// bg-late PIDFILE ADDR: start a descendant that writes after this process
+	// exits, as in earendil-works/pi#5303, and print HEAD and exit only once the
+	// descendant has connected back, so that it is already running its ticks
+	// when the exit happens, however long the system takes to start it.
 	"bg-late": func(args []string) {
-		r, w, err := os.Pipe()
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
 		if err != nil {
 			panic(err)
 		}
-		startHolderMode(args[0], "late-writer", args[1], r)
-		_ = r.Close()
+		_ = listener.(*net.TCPListener).SetDeadline(time.Now().Add(holderLifetime))
+		startHolderMode(args[0], "late-writer", args[1], listener.Addr().String())
+		leader, err := listener.Accept()
+		if err != nil {
+			panic(err)
+		}
 		_, _ = os.Stdout.WriteString("HEAD\n")
-		// The descendant reads the end of w as the leader's exit: the process
-		// ends with it and the operating system closes w.
-		defer runtime.KeepAlive(w)
+		// The descendant reads the end of leader as this process's exit: the
+		// process ends with it and the operating system closes leader.
+		defer runtime.KeepAlive(leader)
 	},
-	// late-writer ADDR: after stdin ends, which is the leader's exit, write
-	// output for longer than the idle grace, one chunk shorter than the grace
-	// apart, then hold the pipes.
+	// late-writer ADDR LEADER: connect to the leader and write a PRE tick every
+	// 20 ms, so the output never idles for the grace however late the
+	// scheduler delivers the leader's exit. Once the leader's connection ends,
+	// which is its exit, write EOF and then 15 POST ticks, one chunk shorter
+	// than the grace apart and longer than the grace in total, then hold the
+	// pipes.
 	"late-writer": func(args []string) {
 		conn := dial(args[0])
-		_, _ = io.Copy(io.Discard, os.Stdin)
-		for i := 1; i <= 15; i++ {
-			_, _ = os.Stdout.WriteString("TICK" + strconv.Itoa(i) + "\n")
+		leader := dial(args[1])
+		var exited atomic.Bool
+		go func() {
+			_, _ = io.Copy(io.Discard, leader)
+			exited.Store(true)
+		}()
+		for !exited.Load() {
+			_, _ = os.Stdout.WriteString("PRE\n")
+			time.Sleep(20 * time.Millisecond)
+		}
+		_, _ = os.Stdout.WriteString("EOF\n")
+		for i := 1; i <= lateWriterTicks; i++ {
+			_, _ = os.Stdout.WriteString("POST" + strconv.Itoa(i) + "\n")
 			time.Sleep(20 * time.Millisecond)
 		}
 		echoUntilClosed(conn)
@@ -117,16 +141,13 @@ func echoUntilClosed(conn net.Conn) {
 
 // startHolder starts a descendant with the leader's output pipes and records
 // its process ID in pidfile.
-func startHolder(pidfile, addr string, stdin *os.File) *exec.Cmd {
-	return startHolderMode(pidfile, "holder", addr, stdin)
+func startHolder(pidfile, addr string) *exec.Cmd {
+	return startHolderMode(pidfile, "holder", addr)
 }
 
-func startHolderMode(pidfile, mode, addr string, stdin *os.File) *exec.Cmd {
-	cmd := exec.Command(os.Args[0], "-test.run=^TestExecHelperProcess$", "--", mode, addr)
+func startHolderMode(pidfile, mode string, args ...string) *exec.Cmd {
+	cmd := exec.Command(os.Args[0], append([]string{"-test.run=^TestExecHelperProcess$", "--", mode}, args...)...)
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
-	if stdin != nil {
-		cmd.Stdin = stdin
-	}
 	if err := cmd.Start(); err != nil {
 		panic(err)
 	}
@@ -319,13 +340,26 @@ func TestExecCommandKeepsOutputWrittenAfterTheLeaderExits(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var want strings.Builder
-	want.WriteString("HEAD\n")
-	for i := 1; i <= 15; i++ {
-		want.WriteString("TICK" + strconv.Itoa(i) + "\n")
+	if result.Stderr != "" || result.Code != 0 || result.Killed {
+		t.Fatalf("result = %+v", result)
 	}
-	if result.Stdout != want.String() || result.Stderr != "" || result.Code != 0 || result.Killed {
-		t.Fatalf("result = %+v, want stdout %q", result, want.String())
+	// The descendant ticks before and across the leader's exit, so the order of
+	// HEAD among the PRE ticks is the scheduler's. EOF is written only after the
+	// leader exited: it and every POST tick after it, which span more than the
+	// grace, must have arrived.
+	head, tail, found := strings.Cut(result.Stdout, "EOF\n")
+	if !found {
+		t.Fatalf("output written after the leader exited was lost: %q", result.Stdout)
+	}
+	if strings.ReplaceAll(strings.ReplaceAll(head, "PRE\n", ""), "HEAD\n", "") != "" || strings.Count(head, "HEAD\n") != 1 {
+		t.Fatalf("output before the leader exited = %q, want HEAD among PRE ticks", head)
+	}
+	var want strings.Builder
+	for i := 1; i <= lateWriterTicks; i++ {
+		want.WriteString("POST" + strconv.Itoa(i) + "\n")
+	}
+	if tail != want.String() {
+		t.Fatalf("output after the leader exited = %q, want %q", tail, want.String())
 	}
 	assertAlive(t, f.accept(t))
 }

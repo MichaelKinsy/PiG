@@ -374,30 +374,61 @@ func TestPortWave10ModelRuntimeCreation(t *testing.T) {
 		assert.Zero(t, reads.Load())
 	})
 
-	t.Run("initial cache restoration receives caller cancellation and is joined", func(t *testing.T) {
+	t.Run("initial cache restoration passes caller cancellation to every provider read", func(t *testing.T) {
 		newPackageCommandPathsFixture(t)
-		entered, released := make(chan struct{}), make(chan struct{})
-		store := initialCatalogStore{InMemoryModelsStore: ai.NewInMemoryModelsStore(), read: func(ctx context.Context, _ string) (*ai.ModelsStoreEntry, error) {
-			close(entered)
-			<-ctx.Done()
-			defer close(released)
+		// Pi restores the cache of every refreshable provider concurrently (models.ts:562-576, read at :540): radius through its own provider and every other built-in through withRemoteCatalog (model-runtime.ts:228-231). PiG reads radius in radius_models.go and the others through the remote catalog collection, so the test cancels only once both paths are reading. Pi's refresh races the reads against the signal (models.ts:586,605), so the constructor need not join them.
+		callerCause := errors.New("caller cancelled the initial refresh")
+		announced := make(chan string)
+		var released sync.WaitGroup
+		var causesMu sync.Mutex
+		var causes []error
+		store := initialCatalogStore{InMemoryModelsStore: ai.NewInMemoryModelsStore(), read: func(ctx context.Context, provider string) (*ai.ModelsStoreEntry, error) {
+			select {
+			case announced <- provider:
+				// The test counted this read before it cancelled and closes the runtime only after the read returned, so only the caller's cancellation can release it.
+				defer released.Done()
+				<-ctx.Done()
+				causesMu.Lock()
+				causes = append(causes, context.Cause(ctx))
+				causesMu.Unlock()
+			case <-ctx.Done():
+			}
 			return nil, context.Cause(ctx)
 		}}
-		ctx, cancel := context.WithCancel(t.Context())
-		defer cancel()
-		result := make(chan error, 1)
-		go func() {
-			_, err := coding.CreateModelRuntime(ctx, coding.CreateModelRuntimeOptions{ModelsStore: store})
-			result <- err
-		}()
-		select {
-		case <-entered:
-		case err := <-result:
-			t.Fatalf("constructor returned before reading the initial catalog: %v", err)
+		ctx, cancel := context.WithCancelCause(t.Context())
+		defer cancel(nil)
+		type created struct {
+			modelRuntime *coding.ModelRuntime
+			err          error
 		}
-		cancel()
-		require.NoError(t, <-result)
-		<-released
+		result := make(chan created, 1)
+		go func() {
+			modelRuntime, err := coding.CreateModelRuntime(ctx, coding.CreateModelRuntimeOptions{ModelsStore: store})
+			result <- created{modelRuntime, err}
+		}()
+		var radius, remote bool
+		for !radius || !remote {
+			select {
+			case provider := <-announced:
+				released.Add(1)
+				if provider == codingagent.RadiusProviderID {
+					radius = true
+				} else {
+					remote = true
+				}
+			case outcome := <-result:
+				t.Fatalf("constructor returned before the radius and remote catalog reads started: radius=%v remote=%v err=%v", radius, remote, outcome.err)
+			}
+		}
+		cancel(callerCause)
+		outcome := <-result
+		require.NoError(t, outcome.err)
+		t.Cleanup(outcome.modelRuntime.Close)
+		released.Wait()
+		require.NotEmpty(t, causes)
+		for _, cause := range causes {
+			assert.ErrorIs(t, cause, callerCause)
+		}
 	})
 
 	for _, tc := range []struct {
