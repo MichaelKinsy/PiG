@@ -1169,7 +1169,11 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			boundaryData = data
 		}
 		if req.Event == "tool_call" {
-			toolCall = newToolCallInput(data["input"])
+			var source struct {
+				Input json.RawMessage `json:"input"`
+			}
+			_ = json.Unmarshal(req.Args, &source)
+			toolCall = newToolCallInput(data["input"], source.Input)
 		}
 		if req.Event == "before_agent_start" {
 			var err error
@@ -1894,22 +1898,27 @@ func (e *Extension) stopWidthDeliveries() {
 	e.widthMu.Unlock()
 }
 
-// toolCallInput is the input a tool_call handler received. The tool runs with that object (agent-loop.ts prepareToolCall passes the same args to beforeToolCall and execute), so an edit counts only when the handler changed its members; assigning another value to event["input"] changes nothing the tool receives.
+// toolCallInput is the input a tool_call handler received. The tool runs with that object (agent-loop.ts prepareToolCall passes the same args to beforeToolCall and execute), so an edit counts only when the handler changed its members; assigning another value to event["input"] changes nothing the tool receives. source is the input as the host wrote it, which gives the member order an edit keeps.
 type toolCallInput struct {
 	input  any
+	source json.RawMessage
 	before []byte
 }
 
-func newToolCallInput(input any) *toolCallInput {
+func newToolCallInput(input any, source json.RawMessage) *toolCallInput {
 	before, _ := json.Marshal(input)
-	return &toolCallInput{input: input, before: before}
+	return &toolCallInput{input: input, source: source, before: before}
 }
 
-// edit returns the input when the handler left its members different from the ones it received.
+// edit returns the input as JSON when the handler left its members different from the ones it received. A retained member keeps the place it had, as an assignment to a JavaScript object leaves it.
 func (t *toolCallInput) edit() (any, bool) {
 	after, err := json.Marshal(t.input)
 	if err != nil || bytes.Equal(after, t.before) {
 		return nil, false
 	}
-	return t.input, true
+	ordered, err := marshalInSourceOrder(t.input, t.source)
+	if err != nil {
+		return t.input, true
+	}
+	return json.RawMessage(ordered), true
 }

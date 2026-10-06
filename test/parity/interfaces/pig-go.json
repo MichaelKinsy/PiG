@@ -66685,6 +66685,28 @@
       "shapeHash": "sha256:cdeecbe91a2353725d7cace5c6967b509033b992422e7161d9dc703723669194"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#CustomToolCallEvent.InputJSON",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "CustomToolCallEvent.InputJSON",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() ([]byte, error)"
+      },
+      "shapeHash": "sha256:57179946cef7df4d918e29b424f6d9096a9653a12925304bcb5da9ee7ff359ee"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#CustomToolCallEvent.MarshalJSON",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "CustomToolCallEvent.MarshalJSON",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() ([]byte, error)"
+      },
+      "shapeHash": "sha256:57179946cef7df4d918e29b424f6d9096a9653a12925304bcb5da9ee7ff359ee"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#CustomToolCallEvent.isToolCallEvent",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "CustomToolCallEvent.isToolCallEvent",
@@ -73382,6 +73404,17 @@
         "type": "virtualModelRegistrationQueue"
       },
       "shapeHash": "sha256:8c82d981143917ad827ba067e816d35be31683c224e67281c168a36a63a04b46"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#writeOrderedFields",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "writeOrderedFields",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(fields []orderedField) ([]byte, error)"
+      },
+      "shapeHash": "sha256:53d534d0fe26f062d31967f47879a2c2e373bbc372a6c31df14d5ed3c5042ce0"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin#All",
@@ -124941,6 +124974,17 @@
       "shapeHash": "sha256:1814b9d2d94542a8b7807f00b69635f4edbb1b73557d9eb73cfa35ef95b587c3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#marshalInSourceOrder",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "marshalInSourceOrder",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(value any, source github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) ([]byte, error)"
+      },
+      "shapeHash": "sha256:9057efdf3d501f19a00f0e92891b8e68ec70f72ebe16a27c6ae1b3ad988929c6"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#mcpServerDecl",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "mcpServerDecl",
@@ -125277,9 +125321,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(input any) *toolCallInput"
+        "type": "func(input any, source github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) *toolCallInput"
       },
-      "shapeHash": "sha256:16bd4e04a7488a02e4a027cd437c3932ffbaf322e4882e85d247d5c4e9ece8c9"
+      "shapeHash": "sha256:9fb4d7fe02e06df507d3de5f0f44622d4552f228a4cb8bc3caa6de896bbd2160"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#notifyEventsRelease",
@@ -125412,6 +125456,17 @@
         "type": "oauthStoreResult"
       },
       "shapeHash": "sha256:ce009421e520e70f81068d717b3227a535147aad51f22b3b9f2b35503fe2265d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#objectKeyOrder",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "objectKeyOrder",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(object []byte) []string"
+      },
+      "shapeHash": "sha256:19e62084f6171e1372742552e817027f1d2f636232c28285d792552ecdb1a4ba"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#oklabToLinearSrgb",

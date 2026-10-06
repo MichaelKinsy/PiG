@@ -122,6 +122,8 @@ var testFauxRetryState sync.Map
 type testFauxToolCall struct {
 	Name string
 	Args map[string]any
+	// ArgsJSON is the call's arguments as the model wrote them, for a call whose member order matters; Args is used when it is empty.
+	ArgsJSON string
 }
 
 func (p *TestFauxProvider) ID() string   { return "test-faux" }
@@ -231,7 +233,10 @@ func (p *TestFauxProvider) Stream(ctx context.Context, transcript TranscriptCont
 		case "tool":
 			firstID := p.reserveToolCallIDs(options.SessionID, messages, len(toolCalls))
 			for index, call := range toolCalls {
-				arguments, _ := json.Marshal(call.Args)
+				arguments := []byte(call.ArgsJSON)
+				if call.ArgsJSON == "" {
+					arguments, _ = json.Marshal(call.Args)
+				}
 				builder.toolCallDelta(streamToolCallDelta{
 					index: index, id: fmt.Sprintf("call_test_faux_%d", firstID+uint64(index)), name: call.Name, argumentsDelta: string(arguments),
 				})
@@ -500,6 +505,14 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 		}}
 	}
 
+	// Extension tool_call input member order parity: the arguments are not in sorted order.
+	if strings.Contains(lastText, "Run: tool key order") {
+		return "tool", "", []testFauxToolCall{{
+			Name:     "key_order_probe",
+			ArgsJSON: `{"zeta":1,"drop":true,"alpha":2}`,
+		}}
+	}
+
 	// Slow parallel tools keep both live cards visible long enough for the
 	// no-input rendering probe to observe independent streamed output.
 	if strings.Contains(lastText, "Run: tui live parallel tools") {
@@ -700,7 +713,7 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 		if strings.Contains(currentUserText, "Run: bash control-chars") {
 			return "text", "sanitized", nil
 		}
-		if strings.Contains(currentUserText, "Run: bash with invalid args") {
+		if strings.Contains(currentUserText, "Run: bash with invalid args") || strings.Contains(currentUserText, "Run: tool key order") {
 			return "text", lastText, nil
 		}
 	}

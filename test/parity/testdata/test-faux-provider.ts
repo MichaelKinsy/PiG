@@ -317,6 +317,10 @@ function classify(messages: any[]) {
   if (lastText.includes("Run: bash modified")) {
     return { kind: "tool", toolCalls: [{ toolName: "bash", toolArgs: { command: "echo parity-base" } }] };
   }
+  // Extension tool_call input member order parity: the arguments are not in sorted order.
+  if (lastText.includes("Run: tool key order")) {
+    return { kind: "tool", toolCalls: [{ toolName: "key_order_probe", toolArgs: { zeta: 1, drop: true, alpha: 2 } }] };
+  }
   // Slow parallel tools keep both live cards visible long enough for the
   // no-input rendering probe to observe independent streamed output.
   if (lastText.includes("Run: tui live parallel tools")) {
@@ -443,7 +447,7 @@ function classify(messages: any[]) {
     if (currentUserText.includes("Run: parallel reads")) return { kind: "text", text: "parallel-done" };
     if (currentUserText.includes("Run: compact reads")) return { kind: "text", text: "compact-reads-done" };
     if (currentUserText.includes("Run: bash control-chars")) return { kind: "text", text: "sanitized" };
-    if (currentUserText.includes("Run: bash with invalid args")) return { kind: "text", text: lastText };
+    if (currentUserText.includes("Run: bash with invalid args") || currentUserText.includes("Run: tool key order")) return { kind: "text", text: lastText };
   }
   if (lastText.includes("markdown parity fixture")) {
     return {

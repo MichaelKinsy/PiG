@@ -1,0 +1,47 @@
+# Behavior family: extensions-runtime
+# Scenario: a tool_call handler edits event.input in place and the input keeps Pi's member order everywhere.
+#
+# The faux provider calls key_order_probe with {"zeta":1,"drop":true,"alpha":2}, members the model wrote out of
+# sorted order. parity-tool-call-key-order.mjs sets zeta, adds mid and deletes drop. JavaScript keeps a retained
+# member in its place and appends a new one, so the handler receives {"zeta":1,"drop":true,"alpha":2}, the tool
+# runs with {"zeta":9,"alpha":2,"mid":3} and tool_result's event.input is that same object. The tool_call event's own keys
+# are type, toolName, toolCallId (agent-session.ts _beforeToolCall). The tool_result event's keys are not printed: Pi's
+# also lists `usage` (undefined), which no JSON wire carries. The faux provider answers
+# the last tool result, so one line carries every observation. A host that carries the input as a Go map sorts
+# the members: {"alpha":2,"mid":3,"zeta":9} (issue #165, review finding 4).
+#
+# Upstream evidence (2026-10-07, Pi 1.0.3):
+#   PI_CODING_AGENT_DIR=testdata/pi-agent pi --no-extensions \
+#     -e ../../testdata/test-faux-provider.ts -e testdata/ext/parity-tool-call-key-order.mjs \
+#     --model test-faux/faux-1 --print "Run: tool key order"
+#   output: call=type,toolName,toolCallId,input in={"zeta":1,"drop":true,"alpha":2} ran={"zeta":9,"alpha":2,"mid":3} keys=zeta,alpha,mid out={"zeta":9,"alpha":2,"mid":3}
+#   exit: 0
+
+name = "72-tool-call-input-key-order"
+description = "Extension tool_call handler edits event.input and the handler, the tool and tool_result see Pi's member order"
+covers = [
+  "packages/coding-agent/src/core/extensions/runner.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/parity-tool-call-key-order.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/parity-tool-call-key-order.mjs",
+]
+
+[print]
+prompt = "Run: tool key order"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ['ran={"zeta":9,"alpha":2,"mid":3}']
+output_equal = true
+runs = 3
