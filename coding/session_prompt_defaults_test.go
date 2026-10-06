@@ -25,3 +25,13 @@ func TestDeactivatingAllToolsDoesNotRestoreDefaultPromptTools(t *testing.T) {
 		t.Fatalf("empty tool selection: tools=%d prompt=%s", toolCount, prompt)
 	}
 }
+
+// Extension scoping reads a session narrowed to no tools as a non-nil empty list: a nil one means no selection exists,
+// so a Piglet scope would widen what a deny-all extension chose.
+func TestActiveToolNamesAfterDeactivatingAllToolsIsNonNilEmpty(t *testing.T) {
+	h := newRecoveryHarness(t, harnessOptions{tools: []agent.AgentTool{&fakeTool{name: "echo"}}}, fauxReply("done", ai.StopReasonStop, 0))
+	h.session.SetActiveToolsByName([]string{})
+	if names := h.session.ActiveToolNames(); names == nil || len(names) != 0 {
+		t.Fatalf("ActiveToolNames() = %#v, want a non-nil empty list", names)
+	}
+}

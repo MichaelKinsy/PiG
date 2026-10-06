@@ -368,6 +368,10 @@ def test_getters_distinguish_absent_empty_and_failure() -> None:
     assert _probe_getter(lambda c: c.get_editor_text(), {"text": ""}) == ""
     assert _probe_getter(lambda c: c.get_flag("f"), {"value": False}) is False
     assert _probe_getter(lambda c: c.is_idle(), {"idle": False}) is False
+    # SetActiveTools([]) narrows the session to no tools: an empty list is a value, a null one a protocol error.
+    assert _probe_getter(lambda c: c.get_active_tools(), {"tools": []}) == []
+    assert _probe_getter(lambda c: c.get_active_tools(), {"tools": ["read"]}) == ["read"]
+    assert isinstance(_probe_getter(lambda c: c.get_active_tools(), {"tools": None}), pig_sdk.HostCallError)
     failure = {"code": "host_failed", "message": "boom"}
     for name in ("get_session_name", "get_editor_text", "get_active_tools", "get_context_usage", "is_idle", "is_project_trusted", "get_leaf_id"):
         raised = _probe_getter(lambda c, name=name: getattr(c, name)(), None, failure)

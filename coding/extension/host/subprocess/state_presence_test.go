@@ -129,3 +129,40 @@ func TestNodeSnapshotClearsPreviousSessionState(t *testing.T) {
 		})
 	}
 }
+
+// A Node extension that calls pi.setActiveTools([]) reads back [] at once, and the host action receives an empty list, so
+// a deny-all selection survives the wire. A session that narrowed to no tools replicates as [], not as an absent list.
+func TestNodeActiveToolsNarrowedToNoneSurvivesTheWire(t *testing.T) {
+	nodeCellRequireNode(t)
+	shortSockDir(t)
+	for _, isolation := range []string{"strict", "shared-ok"} {
+		t.Run(isolation, func(t *testing.T) {
+			h := newTestHost(t)
+			t.Cleanup(func() { h.Shutdown("test complete") })
+			b := NewUIBridge(nil)
+			h.SetUIBridge(b)
+			set := make(chan []string, 1)
+			b.SetActions(&HostCallbacks{
+				GetActiveTools: func() []string { return []string{} },
+				SetActiveTools: func(names []string) { set <- names },
+			})
+			entry := filepath.Join(t.TempDir(), "deny.mjs")
+			write(t, entry, `export default function(pi) { pi.registerCommand("deny", {handler: () => {
+    const before = JSON.stringify(pi.getActiveTools());
+    pi.setActiveTools([]);
+    const after = JSON.stringify(pi.getActiveTools());
+    if (before !== "[]" || after !== "[]") throw new Error(before + " " + after);
+   }}); }`)
+			loaded, errs := h.LoadAll(t.Context(), []ExtConfig{{Name: "deny", Source: entry, Enabled: true, Isolation: isolation}})
+			if len(errs) != 0 || len(loaded) != 1 {
+				t.Fatalf("load: %v %v", loaded, errs)
+			}
+			if err := loaded[0].Commands["deny"].Handler(t.Context(), ""); err != nil {
+				t.Fatal(err)
+			}
+			if names := <-set; names == nil || len(names) != 0 {
+				t.Fatalf("host SetActiveTools got %#v, want an empty non-nil list", names)
+			}
+		})
+	}
+}

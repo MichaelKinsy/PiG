@@ -1628,14 +1628,11 @@ func buildExtensionWithOwner(initial *Piglet, owner func(extension.ToolInfo) str
 		converted := convertTools(allTools)
 		pigletScoped := ScopeTools(activePiglet, converted)
 
-		// Intersect with the current active set so earlier extensions'
-		// SetActiveTools calls (e.g. role-based narrowing) are respected.
-		// If no prior scoping occurred, currentActive == allTools and the
-		// intersection equals pigletScoped.
+		// The Piglet scope only narrows the session's current selection (the startup default, --tools, or an earlier extension's SetActiveTools, including a selection of no tools) and never activates a tool that selection left inactive. A nil list means no tool-scoping action is wired, so the Piglet scope applies alone.
 		currentActive := ctx.GetActiveTools()
-		var active []string
-		if len(currentActive) > 0 && len(currentActive) < len(allTools) {
-			// Another extension already narrowed: intersect.
+		active := []string{}
+		if currentActive != nil && len(currentActive) < len(allTools) {
+			// Intersect with the current selection, which may be empty.
 			allowed := make(map[string]struct{}, len(currentActive))
 			for _, name := range currentActive {
 				allowed[name] = struct{}{}
@@ -1646,7 +1643,7 @@ func buildExtensionWithOwner(initial *Piglet, owner func(extension.ToolInfo) str
 				}
 			}
 		} else {
-			active = pigletScoped
+			active = append(active, pigletScoped...)
 		}
 
 		removed := len(allTools) - len(active)
