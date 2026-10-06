@@ -172,9 +172,16 @@ func (r *ModelRegistry) AwaitModelTasks(ctx context.Context, tasks ...func(conte
 	}
 }
 
-// CloseModelTasks stops admission, cancels the owner, and waits for admitted jobs and failed Promise siblings to drain. It also cancels the native Models collection's active refreshes, including a queued registration refresh's provider callbacks, without waiting for caller-owned Models operations such as in-flight streams or logins. Call it outside model callbacks.
+// CloseModelTasks stops admission, cancels the owner, and waits for admitted jobs and failed Promise siblings to drain. It then cancels the remote catalog collection's refreshes and waits for its operations, which are only this registry's catalog refreshes, so no store or credential read they started outlives Close. It also cancels the native Models collection's active refreshes, including a queued registration refresh's provider callbacks, without waiting for caller-owned Models operations such as in-flight streams or logins. Call it outside model callbacks.
 func (r *ModelRegistry) CloseModelTasks() {
 	r.modelTasks.close()
+	// Admission is closed, so no remote refresh can add an operation while Close waits for them.
+	r.remoteMu.Lock()
+	remote := r.remoteCollection
+	r.remoteMu.Unlock()
+	if remote != nil {
+		remote.Close()
+	}
 	r.nativeMu.Lock()
 	models := r.nativeModels
 	r.nativeMu.Unlock()

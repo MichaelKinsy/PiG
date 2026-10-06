@@ -3,48 +3,12 @@
 package runtimecell
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"sync"
-	"syscall"
 	"testing"
 	"time"
-
-	"golang.org/x/sys/windows"
 )
-
-func TestRenameRetryableClassifiesWindowsErrors(t *testing.T) {
-	link := func(err error) error { return &os.LinkError{Op: "rename", Old: "a", New: "b", Err: err} }
-	for name, err := range map[string]error{
-		"access denied":     link(windows.ERROR_ACCESS_DENIED),
-		"sharing violation": link(windows.ERROR_SHARING_VIOLATION),
-		"lock violation":    link(windows.ERROR_LOCK_VIOLATION),
-		"EPERM":             link(syscall.EPERM),
-		"EACCES":            link(syscall.EACCES),
-		"EBUSY":             link(syscall.EBUSY),
-		"bare errno":        windows.ERROR_ACCESS_DENIED,
-		"wrapped":           errors.Join(errors.New("context"), link(windows.ERROR_SHARING_VIOLATION)),
-	} {
-		if !renameRetryable(err) {
-			t.Errorf("%s: renameRetryable = false, want a retry", name)
-		}
-	}
-	for name, err := range map[string]error{
-		"nil":             nil,
-		"file not found":  link(windows.ERROR_FILE_NOT_FOUND),
-		"path not found":  link(windows.ERROR_PATH_NOT_FOUND),
-		"exists":          link(windows.ERROR_ALREADY_EXISTS),
-		"disk full":       link(windows.ERROR_DISK_FULL),
-		"not same device": link(windows.ERROR_NOT_SAME_DEVICE),
-		"ENOENT":          link(syscall.ENOENT),
-		"plain":           errors.New("access is denied"),
-	} {
-		if renameRetryable(err) {
-			t.Errorf("%s: renameRetryable = true, want the error reported unchanged", name)
-		}
-	}
-}
 
 // holdOpen opens path the way Go (and so a PiG process) does, which does not
 // share delete access, and releases it when the test ends or release runs.

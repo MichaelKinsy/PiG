@@ -30,7 +30,7 @@ Every active divergence must have:
 
 - D54 — Fenced-code wrapping. Retired after re-probing Pi: `Markdown.render` already wraps every non-image rendered row, including code rows (`markdown.ts` at 0.99.1 still passes each non-image line through `wrapTextWithAnsi`; the only change since 0.87.1 is a token cache). PiG now uses that same final content-width pass and its continuation breakpoints. The ID remains reserved. Evidence: `tui/markdown_upstream_test.go`, `tui/markdown_codeblock_wrap_test.go`, and `test/parity/scenarios/tui-components/16-markdown-user-components.toml`.
 
-## Active divergences (38)
+## Active divergences (39)
 
 D78, D82 and D83 record owner-approved known gaps for 0.3.x (decision 2026-09-28). Approval records a difference; it does not prove parity, waive an unrelated defect, or turn a failing comparison into a pass. Same-process object behavior must remain Pi-exact. See `docs/findings/0.3.0-known-gaps.md` for the integration boundary and retained failures.
 
@@ -1330,5 +1330,23 @@ Evidence: the Node editor test in `coding/extension/host/subprocess/runtime_node
 Parity allowance: observable rows match Pi; only timer ownership and opt-in re-check timing differ.
 
 Remove when: the editor protocol can return a live opt-in and snapshots are replaced by an editor-side timer.
+
+SCRUTINIZED:approved
+
+## D99 The Windows npm self-update quarantine waits out a held image
+
+What: Before an npm self-update on Windows, Pi and PiG move each loaded image out of the package directory and copy it back (windows-self-update.ts:75-83). Pi moves it with one `renameSync`, which fails while another process holds the image open without delete sharing. PiG retries that rename while it fails with an access, sharing or lock error, with delays that double from 25 ms to 500 ms and add up to 10 seconds, and it stops early when the update's context ends. Any other error, and the error that remains after 10 seconds, fails the update as in Pi.
+
+Why: Anti-virus scanners and search indexers open a newly written or newly started executable without delete sharing for a short time. In PiG the quarantined image is `pig.exe` itself, which the user just started, so an update could fail in that window. npm's graceful-fs retries its own Windows renames in the same way.
+
+Owner decision: 2026-10-05, lead task decision for PR #161 (rev-test-flakes-041).
+
+Call-site markers: `internal/codingagent/windows_self_update.go` (`quarantineNativeDependencies`). The retry is `internal/fsretry.Rename`.
+
+Evidence: `TestQuarantineWaitsOutAHandleHeldOnTheRunningImage` (internal/codingagent) and the `internal/fsretry` Windows tests hold the image open as a scanner does. `TestWindowsNpmSelfUpdateReplacesTheRunningInstallation` (cmd/pig) runs the update end to end.
+
+Parity allowance: when no other process holds the image, PiG does exactly what Pi does. It differs only while another process holds the image.
+
+Remove when: Pi retries the quarantine rename, or Windows stops refusing to rename a file that another process holds open.
 
 SCRUTINIZED:approved

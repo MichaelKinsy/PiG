@@ -51,7 +51,7 @@ Use a prebuilt Piglet Binary when you do not want a target-side Go or Rust build
 
 ## Updating
 
-`pig update` updates an npm or pnpm installation through its package manager, as Pi does. Before an npm update, PiG moves the running `pig.exe` into `node_modules\.pig-native-quarantine` and copies it back, because Windows cannot delete a running program. The next start removes the quarantine. PiG refuses to self-update a yarn or bun installation on Windows, as Pi does.
+`pig update` updates an npm or pnpm installation through its package manager, as Pi does. Before an npm update, PiG moves the running `pig.exe` into `node_modules\.pig-native-quarantine` and copies it back, because Windows cannot delete a running program. The next start removes the quarantine. If anti-virus or a search indexer has `pig.exe` open, the move waits for it, for up to 10 seconds. Pi does not wait (D99). PiG refuses to self-update a yarn or bun installation on Windows, as Pi does.
 
 PiG does not replace a standalone `pig.exe` in place (D39). Download the new release and replace the file.
 
