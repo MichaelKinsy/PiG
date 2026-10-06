@@ -192,7 +192,9 @@ case "$1" in
     if [[ -n "${FAIL_TEST:-}" && "$run" == *"$FAIL_TEST"* ]]; then exit 1; fi
     if [[ -n "${LEAK_TMP:-}" ]]; then : > "$TMPDIR/pig-leak"; fi
     if [[ -n "${WIPE_AGENT_AUTH:-}" ]]; then printf '{}' > "$PIG_CODING_AGENT_DIR/auth.json"; fi
-    if [[ -n "${RECORD_AGENT_ENV:-}" ]]; then printf '%s\n' "$PIG_CODING_AGENT_DIR" "$PI_CODING_AGENT_DIR" "$PIG_HOME" "$PI_HOME" "${PIG_CODING_AGENT_SESSION_DIR-unset}" >> "$RECORD_AGENT_ENV"; fi
+    # Under Git Bash this script sees POSIX paths (/tmp/... for the Windows temporary directory) where the Go test, and a real go.exe, see Windows paths. Record each directory in the host's own form: pwd -W prints it there, and is rejected on every other bash.
+    native() { (cd "$1" 2>/dev/null && { pwd -W 2>/dev/null || pwd; }) || printf '%s\n' "$1"; }
+    if [[ -n "${RECORD_AGENT_ENV:-}" ]]; then printf '%s\n' "$(native "$PIG_CODING_AGENT_DIR")" "$(native "$PI_CODING_AGENT_DIR")" "$(native "$PIG_HOME")" "$(native "$PI_HOME")" "${PIG_CODING_AGENT_SESSION_DIR-unset}" >> "$RECORD_AGENT_ENV"; fi
     ;;
   *) exit 99 ;;
 esac
@@ -388,12 +390,80 @@ func TestGroupedTestsFailOnTemporaryLeakAndRemoveScratch(t *testing.T) {
 	requireScratchRemoved()
 }
 
+// isUnderDir reports whether path is dir or lies beneath it. It compares file identity, not spelling: Git Bash names the Windows temporary directory /tmp/... while Go names it C:\\..., and a path may use forward slashes or 8.3 short names, so no string prefix test holds on every host.
+func isUnderDir(t testing.TB, path, dir string) bool {
+	t.Helper()
+	want, err := os.Stat(dir)
+	if err != nil {
+		t.Fatalf("stat %q: %v", dir, err)
+	}
+	for p := filepath.Clean(path); ; {
+		if info, err := os.Stat(p); err == nil && os.SameFile(info, want) {
+			return true
+		}
+		parent := filepath.Dir(p)
+		if parent == p {
+			return false
+		}
+		p = parent
+	}
+}
+
+// A directory is under another by identity, whatever path spells it: through a symlink, with a trailing slash or dot elements, as a Windows host spells the same directory differently from Git Bash.
+func TestIsUnderDirComparesFileIdentity(t *testing.T) {
+	outer := t.TempDir()
+	inner := filepath.Join(outer, "a", "b")
+	if err := os.MkdirAll(inner, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	other := t.TempDir()
+	alias := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(outer, alias); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	for name, tc := range map[string]struct {
+		path string
+		dir  string
+		want bool
+	}{
+		"same directory":         {outer, outer, true},
+		"nested":                 {inner, outer, true},
+		"alias of the root":      {filepath.Join(alias, "a", "b"), outer, true},
+		"dot elements":           {inner + string(filepath.Separator) + ".", outer, true},
+		"forward slashes":        {filepath.ToSlash(inner), outer, true},
+		"sibling directory":      {other, outer, false},
+		"missing path":           {filepath.Join(other, "missing"), outer, false},
+		"prefix sibling by name": {outer + "-sibling", outer, false},
+	} {
+		if got := isUnderDir(t, tc.path, tc.dir); got != tc.want {
+			t.Errorf("%s: isUnderDir(%q, %q) = %v, want %v", name, tc.path, tc.dir, got, tc.want)
+		}
+	}
+}
+
 // Each group runs go test with PIG_CODING_AGENT_DIR, PI_CODING_AGENT_DIR, PIG_HOME and PI_HOME pointing at seeded throwaway directories, whatever the caller exported, and fails when a test run changes them. A lane exports the real agent directory for its own pig, and a test that wrote it emptied the lane's credentials.
 func TestGroupedTestsIsolateAndGuardTheAgentDirectories(t *testing.T) {
+	t.Run("temporary directory as the host spells it", func(t *testing.T) {
+		outer := t.TempDir()
+		testGroupedAgentDirectoryIsolation(t, outer, outer)
+	})
+	// Git Bash on Windows spells the temporary directory /tmp/... to the scripts and C:\... to Go. A symlink reproduces that mismatch on every host: the scripts and the fake go see the alias, the test sees the real directory.
+	t.Run("temporary directory reached through an alias", func(t *testing.T) {
+		outer := t.TempDir()
+		alias := filepath.Join(t.TempDir(), "alias")
+		if err := os.Symlink(outer, alias); err != nil {
+			t.Skipf("symlinks unavailable: %v", err)
+		}
+		testGroupedAgentDirectoryIsolation(t, outer, alias)
+	})
+}
+
+// testGroupedAgentDirectoryIsolation runs test-grouped.sh with TMPDIR set to tmpdir, a spelling of the directory outer.
+func testGroupedAgentDirectoryIsolation(t *testing.T, outer, tmpdir string) {
+	t.Helper()
 	root := groupedTestFixture(t)
 	t.Setenv("TEST_LOG", filepath.Join(root, "packages"))
-	outer := t.TempDir()
-	t.Setenv("TMPDIR", outer)
+	t.Setenv("TMPDIR", tmpdir)
 	realAgent := t.TempDir()
 	t.Setenv("PIG_CODING_AGENT_DIR", realAgent)
 	t.Setenv("PIG_CODING_AGENT_SESSION_DIR", realAgent)
@@ -415,7 +485,7 @@ func TestGroupedTestsIsolateAndGuardTheAgentDirectories(t *testing.T) {
 		if line == "unset" {
 			continue
 		}
-		if strings.HasPrefix(line, realAgent) || !strings.HasPrefix(line, outer) {
+		if isUnderDir(t, line, realAgent) || !isUnderDir(t, line, outer) {
 			t.Fatalf("go test saw %q, want a directory under the group's private root, not the caller's %q", line, realAgent)
 		}
 	}
