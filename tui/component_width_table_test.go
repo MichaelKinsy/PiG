@@ -28,6 +28,18 @@ func widthTableComponents() []widthTableComponent {
 			c.SetDescription(widthTableLong)
 			return c
 		}},
+		{"ExtensionSelectorPreview", func() Component {
+			c := NewExtensionSelector("Choose the sprite the startup header shows", []string{widthTableLong, "Cancel"})
+			c.SetPreview(func(int) []string {
+				// A seven-line preview, the height of the pig head Pig's sprite picker draws beside the rows.
+				lines := make([]string, 7)
+				for i := range lines {
+					lines[i] = "▀▄▀▄▀▄▀▄▀▄▀▄▀▄▀▄"
+				}
+				return lines
+			})
+			return c
+		}},
 		{"ExtensionInput", func() Component {
 			return NewExtensionInputComponent("Enter the name of the new session branch", "placeholder text")
 		}},

@@ -5,7 +5,20 @@ package tui
 import (
 	"strconv"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
+
+// previewGapCells separates the option rows from their preview column.
+const previewGapCells = 2
+
+// previewRightCells is the margin between the preview column and the dialog's right border, so the preview does not
+// touch it the way the rows' left padding keeps them off the left border.
+const previewRightCells = 2
+
+// previewFloorCells is the narrowest dialog body that keeps a preview column. Below it the rows would squeeze into a
+// column of words, so the selector draws alone, as upstream's does.
+const previewFloorCells = 40
 
 // ExtensionSelectorComponent is the editor-slot overlay component
 // extensions and built-in flows use to ask the user to pick from a
@@ -29,6 +42,10 @@ type ExtensionSelectorComponent struct {
 	descriptionText string
 	hintText        string
 	rowTexts        []string
+
+	// preview draws the right column beside the option rows for the highlighted option, or is nil for upstream's
+	// selector, which has no preview column.
+	preview func(selectedIndex int) []string
 }
 
 // NewExtensionSelector creates a generic selector overlay. The first
@@ -68,6 +85,15 @@ func (e *ExtensionSelectorComponent) updateList() {
 			e.rowTexts[i] = "  " + t.FgText("text", opt)
 		}
 	}
+}
+
+// SetPreview supplies the dialog's right column: the lines drawn beside the option rows for the highlighted option,
+// which the selector asks for on every render so the column follows the cursor. Nil, the default, draws upstream's
+// selector with no preview column. Pig's sprite picker uses it to show the pig of the sprite under the cursor.
+// pig divergence (D2): the preview column is Pig's sprite picker's; upstream's selector renders without one.
+func (e *ExtensionSelectorComponent) SetPreview(preview func(selectedIndex int) []string) {
+	e.preview = preview
+	e.Invalidate()
 }
 
 // SetDescription sets optional explanatory text shown between the title and
@@ -131,7 +157,11 @@ func (e *ExtensionSelectorComponent) SelectedValue() string {
 //	navigate/select/cancel hint + Spacer + DynamicBorder.
 //
 // Every Text wraps within one cell of padding on each side and pads to width,
-// so no row is wider than the render width.
+// so no row is wider than the render width. With a preview (SetPreview) the
+// option rows wrap within the cells left of the preview column instead, as a
+// line beside a preview keeps to its own column, the title, hint and borders
+// keep the full width, and the column ends previewRightCells short of the
+// right border.
 func (e *ExtensionSelectorComponent) Render(width int) []string {
 	border := NewDynamicBorder("")
 	text := func(content string) []string { return NewPaddedText(content, 1, 0, nil).Render(width) }
@@ -143,8 +173,16 @@ func (e *ExtensionSelectorComponent) Render(width int) []string {
 	lines = append(lines, styledDescriptionLines(e.descriptionText, width)...)
 	lines = append(lines, "")
 
+	preview, rowsWidth := e.previewLines(width), width
+	if preview != nil {
+		rowsWidth -= previewCells(preview) + previewGapCells + previewRightCells
+	}
+	rowsStart := len(lines)
 	for _, row := range e.rowTexts {
-		lines = append(lines, text(row)...)
+		lines = append(lines, NewPaddedText(row, 1, 0, nil).Render(rowsWidth)...)
+	}
+	if preview != nil {
+		lines = append(lines[:rowsStart], placePreview(lines[rowsStart:], preview, previewCells(preview))...)
 	}
 
 	lines = append(lines, "")
@@ -152,6 +190,47 @@ func (e *ExtensionSelectorComponent) Render(width int) []string {
 	lines = append(lines, "")
 	lines = append(lines, border.Render(width)...)
 	return lines
+}
+
+// previewLines is the preview for the highlighted option, or nil when the selector has none or the dialog is too
+// narrow to carry one beside a readable option list.
+func (e *ExtensionSelectorComponent) previewLines(width int) []string {
+	if e.preview == nil || len(e.rowTexts) == 0 {
+		return nil
+	}
+	lines := e.preview(e.cursor)
+	if len(lines) == 0 || width-previewCells(lines)-previewGapCells-previewRightCells < previewFloorCells {
+		return nil
+	}
+	return lines
+}
+
+// previewCells is the widest preview line in terminal cells.
+func previewCells(lines []string) int {
+	cells := 0
+	for _, line := range lines {
+		cells = max(cells, widthx.VisibleWidth(line))
+	}
+	return cells
+}
+
+// placePreview draws the preview beside the option rows, centered in them: row line i keeps its cells on the left and
+// takes the preview line that faces it, or blanks, on the right, then the margin to the right border, so every line
+// stays at the render width.
+func placePreview(rows, preview []string, cells int) []string {
+	gap := strings.Repeat(" ", previewGapCells)
+	column := cells + previewRightCells
+	blank := strings.Repeat(" ", column)
+	top := max(0, (len(rows)-len(preview))/2)
+	composed := make([]string, len(rows))
+	for i, row := range rows {
+		right := blank
+		if j := i - top; j >= 0 && j < len(preview) {
+			right = preview[j] + strings.Repeat(" ", column-widthx.VisibleWidth(preview[j]))
+		}
+		composed[i] = row + gap + right
+	}
+	return composed
 }
 
 // HandleInput resolves expansion, navigation, confirmation and cancellation in that order. Empty options do not complete the selector.

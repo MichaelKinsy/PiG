@@ -9,6 +9,10 @@ All notable public changes to PiG will be recorded in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- The `/sprite` picker draws the pig of the highlighted sprite on the right of its option rows, so the choice shows its face before you make it. `Create your own...` draws no pig and keeps the full-width list. The list stays the one it was, and a UI context without a custom-component host (RPC) still gets that plain list (D2).
+
 ## [0.4.1] - 2026-10-05
 
 ### Added

@@ -112181,6 +112181,17 @@
       "shapeHash": "sha256:9f921b0d645d262778fe26bdf2928fddc34adea94eefae075778b323fc6302de"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglogin#chooseSprite",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglogin",
+      "name": "chooseSprite",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, ui github.com/MichaelKinsy/PiG/coding/extension.UIContext, variants []Variant, options []string) (string, error)"
+      },
+      "shapeHash": "sha256:a7acd6772204a4de8e6f83dadf3478037ebae091b4219ab04cd357729b69b5ba"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglogin#classicLogoRamp",
       "package": "github.com/MichaelKinsy/PiG/coding/piglogin",
       "name": "classicLogoRamp",
@@ -112784,6 +112795,83 @@
         "type": "func() string"
       },
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglogin#spriteOptions",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglogin",
+      "name": "spriteOptions",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(variants []Variant) []string"
+      },
+      "shapeHash": "sha256:432e50b10316275153e43f7c7988df3050a6babed86d777455e7f6f76209f9a2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglogin#spritePicker",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglogin",
+      "name": "spritePicker",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "spritePicker"
+      },
+      "shapeHash": "sha256:06c285245ccddaa86fb22b31a8613e055d96ab85aee57881bf7b93be6b3cb9e2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglogin#spritePicker.HandleInput",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglogin",
+      "name": "spritePicker.HandleInput",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(data string)"
+      },
+      "shapeHash": "sha256:859eb12f14eea4f7eadbd01c84167f7e4cd87e13f2fe3399aa3cdbaf8d80e44d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglogin#spritePicker.Invalidate",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglogin",
+      "name": "spritePicker.Invalidate",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglogin#spritePicker.Render",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglogin",
+      "name": "spritePicker.Render",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(width int) []string"
+      },
+      "shapeHash": "sha256:81761e7090d7bb4159cdc88ad1df72001d86a8280dab046ca793a8e9191bed39"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglogin#spritePickerFactory",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglogin",
+      "name": "spritePickerFactory",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(variants []Variant, options []string) github.com/MichaelKinsy/PiG/coding/extension.CustomFactory"
+      },
+      "shapeHash": "sha256:33b2d6b784ef7a1355236b7789f3b671a42c8a3019dedfe6ad8d8dda014f059f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglogin#spritePickerTitle",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglogin",
+      "name": "spritePickerTitle",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglogin#state",
@@ -165883,6 +165971,28 @@
       "shapeHash": "sha256:6eb749c82111f2fa7dd40923a95904a183f97d4f399f3c2adb95b364608e1dfc"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#radiusLoginMenu.SetPreview",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "radiusLoginMenu.SetPreview",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(preview func(selectedIndex int) []string)"
+      },
+      "shapeHash": "sha256:b692fe8f932f8c995f59d7b80a7997dabd62566519036e018161e7487aa1185e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#radiusLoginMenu.previewLines",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "radiusLoginMenu.previewLines",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(width int) []string"
+      },
+      "shapeHash": "sha256:81761e7090d7bb4159cdc88ad1df72001d86a8280dab046ca793a8e9191bed39"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#radiusLoginMenu.updateList",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "radiusLoginMenu.updateList",
@@ -186759,6 +186869,28 @@
         "type": "func(description string)"
       },
       "shapeHash": "sha256:6eb749c82111f2fa7dd40923a95904a183f97d4f399f3c2adb95b364608e1dfc"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ExtensionSelectorComponent.SetPreview",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ExtensionSelectorComponent.SetPreview",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(preview func(selectedIndex int) []string)"
+      },
+      "shapeHash": "sha256:b692fe8f932f8c995f59d7b80a7997dabd62566519036e018161e7487aa1185e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ExtensionSelectorComponent.previewLines",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ExtensionSelectorComponent.previewLines",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(width int) []string"
+      },
+      "shapeHash": "sha256:81761e7090d7bb4159cdc88ad1df72001d86a8280dab046ca793a8e9191bed39"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ExtensionSelectorComponent.updateList",
@@ -210455,6 +210587,17 @@
       "shapeHash": "sha256:207ce74f02e77526c8289eecfae4b3d4c23dfd6f19c6f0d62a67b13cc07ecb07"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#placePreview",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "placePreview",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(rows []string, preview []string, cells int) []string"
+      },
+      "shapeHash": "sha256:c39b915f3e3c18b95e8b919ba8213b3db8faf3d01dc78106f2f555a29910afeb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#plural",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "plural",
@@ -210530,6 +210673,39 @@
         "type": "func(fd uintptr, ms int) (int, error)"
       },
       "shapeHash": "sha256:b11f246182b2bf0bb4993e9aef615fbbe03ded231a0e9940b13e652cfa8df88b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#previewCells",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "previewCells",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(lines []string) int"
+      },
+      "shapeHash": "sha256:37ab05a4c3888fac5edce0852b2e23db35ee9716e638b1eca338fa8d14493592"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#previewFloorCells",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "previewFloorCells",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#previewGapCells",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "previewGapCells",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#previewLines",

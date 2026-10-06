@@ -9,12 +9,16 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
+// createUI answers the dialogs the sprite commands ask for. Its custom call reports no component, so the picker falls
+// back to the plain select below, as the RPC and no-op UI contexts do.
 type createUI struct {
 	extension.UIContext
 	options  []string
 	selected string
 	notified []string
 }
+
+func (u *createUI) Custom(context.Context, any, any) (any, error) { return nil, nil }
 
 func (u *createUI) Select(_ context.Context, _ string, options []string, _ extension.ExtensionUIDialogOptions) (string, error) {
 	u.options = options

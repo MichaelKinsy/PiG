@@ -79,17 +79,10 @@ func selectSpriteInteractively(ctx context.Context) error {
 		return nil
 	}
 	variants := All()
-	options := make([]string, len(variants), len(variants)+1)
-	for i, variant := range variants {
-		options[i] = variant.Name + ": " + variant.Tagline
-	}
-	options = append(options, CreateOption)
-	selected, err := ui.Select(ctx, "Choose a PiG sprite", options, nil)
-	// A dismissed picker is context.Canceled (the UIContext form of Pi's undefined select result); it changes nothing and
-	// reports nothing, like the subprocess bridge's ok=false.
-	if errors.Is(err, context.Canceled) {
-		return nil
-	}
+	options := spriteOptions(variants)
+	selected, err := chooseSprite(ctx, ui, variants, options)
+	// A dismissed picker reports nothing and changes nothing: the custom call answers "" and the plain selector
+	// answers context.Canceled, the UIContext form of Pi's undefined select result.
 	if err != nil || selected == "" {
 		return err
 	}
