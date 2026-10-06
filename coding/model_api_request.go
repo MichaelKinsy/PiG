@@ -20,7 +20,7 @@ func (runtime *ModelRuntime) prepareAPIRequest(ctx context.Context, model *ai.Mo
 		ContextWindow: model.Capabilities.ContextWindow, MaxTokens: model.Capabilities.MaxOutputTokens,
 		SamplingParams: model.SamplingParams, SamplingParamsByThinkingLevel: model.SamplingParamsByThinkingLevel, Env: maps.Clone(options.Env),
 	}
-	provider, err := buildProviderForEntry(entry.ProviderID, entry.ModelID, model.ProviderMeta.API, entry, runtime.services, options.APIKey, true)
+	provider, err := buildProviderForEntry(entry.ProviderID, entry.ModelID, model.ProviderMeta.API, entry, runtime.services, options.APIKey, true, true)
 	if err != nil {
 		return nil, nil, ai.StreamOptions{}, err
 	}

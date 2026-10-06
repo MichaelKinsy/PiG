@@ -1,0 +1,4 @@
+### Fixed
+
+- An extension provider whose `streamSimple` hands its request to pi-ai's compat `streamSimple` (or `stream`) for a stock API, as `pi-commandcode-provider` does, no longer re-enters its own `streamSimple` without bound. The request now reaches the stock API's endpoint, as under Pi, instead of growing the Go and Node processes until the extension stopped answering heartbeats and the packed cell was killed (#164, reported by @xinaps-dev).
+- A provider registered with its own `streamSimple` runs that callback only for its models whose `api` is the provider's registered `api`, as under Pi. A model of that provider that names another API, such as `openai-completions`, now reaches that API's implementation instead of the callback. This applies to extension registrations and to `ModelRuntime.RegisterProvider`.

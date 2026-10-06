@@ -54954,9 +54954,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(name string) github.com/MichaelKinsy/PiG/coding/extension.ProviderStreamSimple"
+        "type": "func(name string, api github.com/MichaelKinsy/PiG/ai.API) github.com/MichaelKinsy/PiG/coding/extension.ProviderStreamSimple"
       },
-      "shapeHash": "sha256:8ac97cc1b36660aef7cb9b3065928b19c0e3652f709eec6b7d95999669abc902"
+      "shapeHash": "sha256:d94dc886d25b06158ade01d0d5c8cc1341e6bf0e6a55637d2c66da30983a0ba2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.RadiusAPIKey",
@@ -62522,9 +62522,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(providerID string, modelID string, apiKind github.com/MichaelKinsy/PiG/ai.API, entry github.com/MichaelKinsy/PiG/internal/codingagent.ModelEntry, svcs *Services, explicitKey string, resolvedAuth bool) (github.com/MichaelKinsy/PiG/ai.Provider, error)"
+        "type": "func(providerID string, modelID string, apiKind github.com/MichaelKinsy/PiG/ai.API, entry github.com/MichaelKinsy/PiG/internal/codingagent.ModelEntry, svcs *Services, explicitKey string, resolvedAuth bool, apiLeaf bool) (github.com/MichaelKinsy/PiG/ai.Provider, error)"
       },
-      "shapeHash": "sha256:224eff81d5fb2d59f42d76c0a1c3446156b24efdaa16a8b3cee221af790864a3"
+      "shapeHash": "sha256:2d6ec04604ce8e591b985153a1124886545400ea07baa587265176eebfcfe472"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#cacheWarmingStreamFn",
@@ -140303,9 +140303,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(name string) github.com/MichaelKinsy/PiG/coding/extension.ProviderStreamSimple"
+        "type": "func(name string, api github.com/MichaelKinsy/PiG/ai.API) github.com/MichaelKinsy/PiG/coding/extension.ProviderStreamSimple"
       },
-      "shapeHash": "sha256:8ac97cc1b36660aef7cb9b3065928b19c0e3652f709eec6b7d95999669abc902"
+      "shapeHash": "sha256:d94dc886d25b06158ade01d0d5c8cc1341e6bf0e6a55637d2c66da30983a0ba2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.RadiusAPIKey",
@@ -152714,6 +152714,17 @@
         "type": "func(providerID string, oauth *github.com/MichaelKinsy/PiG/ai.OAuthAuth, config providerConfig) *github.com/MichaelKinsy/PiG/ai.OAuthAuth"
       },
       "shapeHash": "sha256:ab29458345040bcfc78e8097758ee1ea47362aadcc8f3993ef033dcf9b483f39"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#composedExtensionStream",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "composedExtensionStream",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(custom github.com/MichaelKinsy/PiG/ai.ModelsStreamFunction, api github.com/MichaelKinsy/PiG/ai.API, base github.com/MichaelKinsy/PiG/ai.ModelsStreamFunction) github.com/MichaelKinsy/PiG/ai.ModelsStreamFunction"
+      },
+      "shapeHash": "sha256:79ac447c5090f12e5a994692ad078d9c24b3bfd61f14b4f6a4ae6ca253c2acd1"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#compositionError",

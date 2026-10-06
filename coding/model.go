@@ -100,7 +100,7 @@ func buildModelFromEntry(providerID, modelID string, entry icodingagent.ModelEnt
 	entry.ProviderID = providerID
 	entry.ModelID = modelID
 	apiKind := ai.API(entry.API)
-	provider, err := buildProviderForEntry(providerID, modelID, apiKind, entry, svcs, apiKey, false)
+	provider, err := buildProviderForEntry(providerID, modelID, apiKind, entry, svcs, apiKey, false, false)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +183,8 @@ func lookupGeneratedModel(providerID, modelID string) (*ai.GeneratedModel, bool)
 // buildProviderForEntry builds the provider for entry. A non-empty explicitKey
 // is upstream's options.apiKey: it owns the request ahead of runtime, stored,
 // configured, and environment credentials. The Anthropic leaf retains the selected model's reasoning metadata and limits instead of resolving it again from the built-in catalog.
-func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry icodingagent.ModelEntry, svcs *Services, explicitKey string, resolvedAuth bool) (ai.Provider, error) {
+// apiLeaf selects the pi-ai API implementation for apiKind itself. Pi's compat stream() and streamSimple() dispatch on model.api through the api registry and never consult the provider an extension registered under the model's provider id (packages/ai/src/compat.ts:278-293, stream at 252), so an API leaf must not re-enter that provider's streamSimple callback.
+func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry icodingagent.ModelEntry, svcs *Services, explicitKey string, resolvedAuth, apiLeaf bool) (ai.Provider, error) {
 	apiKey := entry.APIKey
 	if explicitKey != "" {
 		apiKey = explicitKey
@@ -236,7 +237,7 @@ func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry ico
 	if explicitKey != "" || resolvedAuth {
 		resolveAPIKey = func(context.Context) (string, error) { return explicitKey, nil }
 	}
-	if callback := svcs.Registry().ProviderStreamSimple(providerID); callback != nil {
+	if callback := svcs.Registry().ProviderStreamSimple(providerID, apiKind); callback != nil && !apiLeaf {
 		provider := &registeredStreamProvider{id: providerID, streamSimple: callback, apiKey: resolveAPIKey}
 		provider.model = modelFromEntry(entry, provider)
 		return provider, nil
