@@ -357,15 +357,19 @@ func TestExecCommandKeepsOutputWrittenAfterTheLeaderExits(t *testing.T) {
 		t.Fatalf("result = %+v", result)
 	}
 	// The leader prints HEAD only after the descendant's first PRE tick, and the
-	// descendant keeps ticking across the leader's exit. EOF is written only
+	// descendant keeps ticking, with no order against the leader: a tick can land
+	// between the first PRE and HEAD (a slow Windows runner delays the leader's
+	// read) as well as after HEAD. Both write to the one pipe, so each reads in
+	// the order it was written. EOF is written only
 	// after the leader exited: it and every POST tick after it, which span more
 	// than the grace, must have arrived.
 	head, tail, found := strings.Cut(result.Stdout, "EOF\n")
 	if !found {
 		t.Fatalf("output written after the leader exited was lost: %q", result.Stdout)
 	}
-	if rest, ok := strings.CutPrefix(head, "PRE\nHEAD\n"); !ok || strings.ReplaceAll(rest, "PRE\n", "") != "" {
-		t.Fatalf("output before the leader exited = %q, want PRE, HEAD, then PRE ticks", head)
+	before, after, found := strings.Cut(head, "HEAD\n")
+	if !found || before == "" || strings.ReplaceAll(before, "PRE\n", "") != "" || strings.ReplaceAll(after, "PRE\n", "") != "" {
+		t.Fatalf("output before the leader exited = %q, want PRE ticks around exactly one HEAD, starting with PRE", head)
 	}
 	var want strings.Builder
 	for i := 1; i <= lateWriterTicks; i++ {

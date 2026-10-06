@@ -11,6 +11,7 @@ All notable public changes to PiG will be recorded in this file.
 
 ### Fixed
 
+- On Windows, refreshing an MCP server's OAuth token no longer fails with `EPERM` when another `pig` process is still deleting the refresh lock. Lock acquisition that waits for a lock now retries every error, as Pi's lock does, and reports the most frequent error when it gives up.
 - Starting `pig` no longer waits for the daily cleanup of the extension cache. The cleanup now runs in the background after the session is running, stops when `pig` exits, and skips entries that are in use or that the file system reports busy (such as NFS `.nfs*` files) instead of failing and repeating at every start. `pig extensions cache prune` reports the skipped entries, and `pig extensions cache stats` shows the last background failure.
 
 ## [0.4.1] - 2026-10-05
