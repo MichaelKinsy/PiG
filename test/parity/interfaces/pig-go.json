@@ -92997,6 +92997,17 @@
       "shapeHash": "sha256:eca61219e75e359abd1b966b6969683d71b6592be1d7f267f1bbae75ef27fc37"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#nonNilNames",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "nonNilNames",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(names []string) []string"
+      },
+      "shapeHash": "sha256:236ad7e43be7764db9d6b59394c0b9545c4088c9bddc4e6e6f169dec07b42c6d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#normalizeUnresolvedNodeConfig",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "normalizeUnresolvedNodeConfig",

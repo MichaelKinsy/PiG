@@ -32,6 +32,10 @@ func TestContextGettersDistinguishAbsentEmptyAndFailure(t *testing.T) {
 		{name: "session name failure", reply: failed, call: func(c Context) (any, error) { return c.GetSessionName() }},
 		{name: "editor text failure", reply: failed, call: func(c Context) (any, error) { return c.GetEditorText() }},
 		{name: "flag failure keeps its default out", reply: failed, call: func(c Context) (any, error) { return c.GetFlag("f") }},
+		// An extension that called SetActiveTools([]) narrowed the session to no tools: that is a value, not absent state, and
+		// it must stay a non-nil empty list (it encodes as [], where an absent list encodes as null).
+		{name: "active tools narrowed to none is a value", reply: `{"tools":[]}`, call: func(c Context) (any, error) { return c.GetActiveTools() }, want: `[]`},
+		{name: "active tools null is a protocol error", reply: `{"tools":null}`, call: func(c Context) (any, error) { return c.GetActiveTools() }},
 		{name: "tools failure", reply: failed, call: func(c Context) (any, error) { return c.GetActiveTools() }},
 		{name: "context usage failure", reply: failed, call: func(c Context) (any, error) { return c.GetContextUsage() }},
 		{name: "idle failure is not idle", reply: failed, call: func(c Context) (any, error) { return c.IsIdle() }},
@@ -61,7 +65,7 @@ func TestContextGettersDistinguishAbsentEmptyAndFailure(t *testing.T) {
 				if gotErr == nil || !strings.Contains(gotErr.Error(), "boom") {
 					t.Fatalf("error = %v, want the host failure", gotErr)
 				}
-			case tc.name == "reply without its field":
+			case tc.name == "reply without its field" || tc.name == "active tools null is a protocol error":
 				if gotErr == nil {
 					t.Fatalf("value %v without an error, want a protocol error", got)
 				}

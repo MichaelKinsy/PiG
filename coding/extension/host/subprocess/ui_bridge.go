@@ -525,7 +525,7 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 		return state
 	}
 	if actions.GetActiveTools != nil {
-		state.ActiveTools = actions.GetActiveTools()
+		state.ActiveTools = nonNilNames(actions.GetActiveTools())
 	}
 	if actions.GetAllTools != nil {
 		state.AllTools = actions.GetAllTools()
@@ -3102,12 +3102,21 @@ func (b *UIBridge) handleSetLabel(actions *HostCallbacks, args json.RawMessage) 
 	return &CallResultPayload{}, nil
 }
 
+// nonNilNames keeps "narrowed to no tools" distinct from an absent value on the wire: a nil slice marshals to null, which
+// every SDK rejects as a missing field, while an empty one marshals to [].
+func nonNilNames(names []string) []string {
+	if names == nil {
+		return []string{}
+	}
+	return names
+}
+
 func (b *UIBridge) handleGetActiveTools(actions *HostCallbacks) (*CallResultPayload, error) {
 	if actions == nil || actions.GetActiveTools == nil {
 		result, _ := json.Marshal(map[string]any{"tools": []string{}})
 		return &CallResultPayload{Result: result}, nil
 	}
-	tools := actions.GetActiveTools()
+	tools := nonNilNames(actions.GetActiveTools())
 	result, _ := json.Marshal(map[string]any{"tools": tools})
 	return &CallResultPayload{Result: result}, nil
 }
