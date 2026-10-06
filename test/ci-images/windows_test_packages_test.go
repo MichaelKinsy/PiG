@@ -277,3 +277,52 @@ func TestWindowsNativeShardsPartitionTheSelectedPackages(t *testing.T) {
 		}
 	}
 }
+
+// windows-native-shard.sh checks each printed package against the selected list. Under pipefail, feeding that list to
+// `grep -q` through a pipe fails when grep exits on its match before the shell has written the rest: the writer gets
+// SIGPIPE, the pipeline fails, and the script reports a selected package as unselected. Bash's printf writes one line per
+// write, so a busy runner can lose that race on a short list; a list longer than the pipe buffer loses it every time.
+// The shard script runs here against a stand-in package list of that length.
+func TestWindowsNativeShardChecksALongPackageListWithoutSIGPIPE(t *testing.T) {
+	root := t.TempDir()
+	ci := filepath.Join(root, "automation", "ci")
+	if err := os.MkdirAll(ci, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	script, err := os.ReadFile(filepath.Join(repoRoot(t), "automation", "ci", "windows-native-shard.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(ci, "windows-native-shard.sh"), script, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	var list strings.Builder
+	for _, pkg := range []string{"ai", "coding", "internal/experimental", "tui"} {
+		list.WriteString(modulePath + "/" + pkg + "\n")
+	}
+	var padding []string
+	long := strings.Repeat("segment/", 30)
+	for i := range 300 {
+		pkg := fmt.Sprintf("%s/generated/%spackage%03d", modulePath, long, i)
+		padding = append(padding, pkg)
+		list.WriteString(pkg + "\n")
+	}
+	if list.Len() <= 1<<16 {
+		t.Fatalf("the stand-in list is %d bytes; it must exceed a 64 KiB pipe buffer", list.Len())
+	}
+	stub := "#!/usr/bin/env bash\ncat <<'LIST'\n" + list.String() + "LIST\n"
+	if err := os.WriteFile(filepath.Join(ci, "windows-test-packages.sh"), []byte(stub), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := testenv.ScriptCommand(t, filepath.Join(ci, "windows-native-shard.sh"), "3")
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("windows-native-shard.sh 3: %v\nstderr:\n%s", err, stderr.String())
+	}
+	if got := strings.Fields(string(out)); !slices.Equal(got, padding) {
+		t.Fatalf("shard 3 printed %d packages, want the %d unnamed ones", len(got), len(padding))
+	}
+}

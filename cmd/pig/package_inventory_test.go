@@ -10,13 +10,13 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
-func TestPackageManagementSurfaceIsListAndValidateOnly(t *testing.T) {
+func TestPackageManagementSurfaceIsListValidateAndPublishOnly(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "must-not-exist")
 	for _, command := range []string{"create", "add", "remove", "edit"} {
 		stdout, stderr, code := captureStdoutStderr(t, func() int {
 			return runPackageCommand([]string{"package", command, root})
 		})
-		if code != 2 || stdout != "" || !strings.Contains(stderr, "unknown command") || !strings.Contains(stderr, "use list or validate") {
+		if code != 2 || stdout != "" || !strings.Contains(stderr, "unknown command") || !strings.Contains(stderr, "use list, validate, or publish") {
 			t.Fatalf("command=%s code=%d stdout=%q stderr=%q", command, code, stdout, stderr)
 		}
 	}
@@ -25,11 +25,11 @@ func TestPackageManagementSurfaceIsListAndValidateOnly(t *testing.T) {
 	}
 }
 
-func TestPackageManagementHelpListsOnlyListAndValidate(t *testing.T) {
+func TestPackageManagementHelpListsOnlyListValidateAndPublish(t *testing.T) {
 	stdout, stderr, code := captureStdoutStderr(t, func() int {
 		return runPackageCommand([]string{"package", "--help"})
 	})
-	if code != 0 || stderr != "" || !strings.Contains(stdout, "package list") || !strings.Contains(stdout, "package validate") {
+	if code != 0 || stderr != "" || !strings.Contains(stdout, "package list") || !strings.Contains(stdout, "package validate") || !strings.Contains(stdout, "package publish") {
 		t.Fatalf("code=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
 	for _, removed := range []string{"package create", "package add", "package remove", "package edit"} {

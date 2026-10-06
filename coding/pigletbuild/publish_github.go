@@ -36,6 +36,9 @@ for each target, SHA256SUMS, and a signed piglet-release.json index. Without
 assets without building or uploading anything. PiG runs the GitHub CLI (gh)
 for GitHub access and never handles a GitHub token.
 
+Use --to npm to publish the Piglet's source to npm instead; see
+pig piglet publish --to npm --help.
+
 Options:
   --to github                   Publish to GitHub Releases
   --repo <owner/repo>           Repository that receives the release
@@ -84,6 +87,9 @@ type publishRequest struct {
 // pig additive (D18): Stock Pig publishes signed Piglet Binary releases to
 // GitHub through the user's GitHub CLI and never contacts a PiG or Pi service.
 func runPublish(ctx context.Context, args []string, stdout, stderr io.Writer, builders func() ([]BuilderBackend, error)) int {
+	if publishDestination(args) == "npm" {
+		return runPublishNPM(ctx, args, stdout, stderr, npmPublishDeps{})
+	}
 	request, help, err := parsePublishArgs(args)
 	if err == nil && !help {
 		err = request.validate()
@@ -153,7 +159,7 @@ func (r publishRequest) validate() error {
 	case r.destination == "":
 		return fmt.Errorf("--to is required")
 	case r.destination != "github":
-		return fmt.Errorf("unsupported Piglet publish destination %q; use --to github", r.destination)
+		return fmt.Errorf("unsupported Piglet publish destination %q; use --to github or --to npm", r.destination)
 	case r.yes && r.dryRun:
 		return fmt.Errorf("--yes and --dry-run cannot be combined")
 	case r.repo == "":
@@ -662,6 +668,10 @@ func uploadGitHubRelease(ctx context.Context, release publishRelease, assets []p
 	}
 	_, _ = stderr.Write(ghStderr.Bytes())
 	_, _ = fmt.Fprintf(stdout, "Published %s %s to https://github.com/%s/releases/tag/%s\n", release.piglet.Name, release.version, release.repo, url.PathEscape(release.tag()))
+	// pig additive (D18): a later `--to npm` publication names these signed Binaries in its package.json.
+	if err := recordGitHubPublication(release); err != nil {
+		_, _ = fmt.Fprintf(stderr, "warning: the release exists, but PiG could not record it for npm publication: %v\n", err)
+	}
 	return nil
 }
 
