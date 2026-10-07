@@ -71,6 +71,39 @@ func TestScopedModelStartupUsesSessionScope(t *testing.T) {
 	}
 }
 
+// Pi keys scoped models by `${provider}/${id}` without collapsing an ID that already starts with the provider (interactive-mode.ts:5355,5363).
+func TestScopedModelStartupKeepsProviderPrefixedIDs(t *testing.T) {
+	auto := &ai.Model{ID: "fixture/auto", ProviderMeta: ai.ProviderMetadata{ProviderID: "fixture"}}
+	handle := &recordingCompactHandle{scopedModels: []extension.ScopedModel{{Model: auto}}}
+	m := NewInteractiveMode(InteractiveOptions{SessionHandle: handle})
+	m.initScopedModels()
+	if want := []string{"fixture/fixture/auto"}; !reflect.DeepEqual(m.scopedModelIDs, want) {
+		t.Fatalf("interactive scope = %v, want %v", m.scopedModelIDs, want)
+	}
+}
+
+func TestScopedSelectionKeepsProviderPrefixedIDsInSessionScope(t *testing.T) {
+	clearAllAuthEnv(t)
+	t.Setenv("PI_OFFLINE", "1")
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "models.json"), []byte(`{"providers":{"fixture":{"baseUrl":"http://127.0.0.1:9","api":"openai-completions","apiKey":"fake-key","models":[{"id":"fixture/auto"},{"id":"two"},{"id":"three"}]}}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	models := []tui.ModelItem{{FullID: "fixture/fixture/auto", Provider: "fixture"}, {FullID: "fixture/two", Provider: "fixture"}, {FullID: "fixture/three", Provider: "fixture"}}
+	selection, _ := newScopedModelsSelection(models, nil, nil)
+	handle := &recordingCompactHandle{}
+	m := &InteractiveMode{opts: InteractiveOptions{ModelRegistry: NewModelRegistry(dir), SessionHandle: handle}}
+	m.statusLine = NewStatusLine(nil, "test", nil)
+	selection.apply(m, []string{"fixture/fixture/auto", "fixture/two"})
+	if got := len(handle.ScopedModels()); got != 2 {
+		t.Fatalf("Session scope has %d models, want 2: the provider-prefixed model was dropped", got)
+	}
+	m.initScopedModels()
+	if want := []string{"fixture/fixture/auto", "fixture/two"}; !reflect.DeepEqual(m.scopedModelIDs, want) {
+		t.Fatalf("interactive scope = %v, want %v", m.scopedModelIDs, want)
+	}
+}
+
 func TestScopedSelectionSynchronizesSessionScope(t *testing.T) {
 	clearAllAuthEnv(t)
 	t.Setenv("PI_OFFLINE", "1")

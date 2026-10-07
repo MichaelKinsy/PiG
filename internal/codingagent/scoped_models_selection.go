@@ -16,7 +16,7 @@ func (m *InteractiveMode) initScopedModels() {
 	if m.opts.SessionHandle != nil {
 		for _, scoped := range m.opts.SessionHandle.ScopedModels() {
 			if scoped.Model != nil {
-				m.scopedModelIDs = append(m.scopedModelIDs, modelSpec(scoped.Model))
+				m.scopedModelIDs = append(m.scopedModelIDs, scopedModelKey(scoped.Model))
 			}
 		}
 		return
@@ -100,7 +100,7 @@ func (s *scopedModelsSelection) apply(m *InteractiveMode, enabled []string) {
 			available := m.opts.ModelRegistry.GetAvailableModelData()
 			modelsByID := make(map[string]*ai.Model, len(available))
 			for _, model := range available {
-				modelsByID[modelSpec(model)] = model
+				modelsByID[scopedModelKey(model)] = model
 			}
 			for _, id := range m.scopedModelIDs {
 				if model := modelsByID[id]; model != nil {
@@ -130,4 +130,13 @@ func (s *scopedModelsSelection) persistedIDs(enabled []string) []string {
 		return nil
 	}
 	return slices.Clone(enabled)
+}
+
+// scopedModelKey is Pi's `${model.provider}/${model.id}` scope key; unlike modelSpec it never collapses an ID that already starts with the provider.
+func scopedModelKey(model *ai.Model) string {
+	providerID := model.ProviderMeta.ProviderID
+	if providerID == "" && model.Provider != nil {
+		providerID = model.Provider.ID()
+	}
+	return providerID + "/" + model.ID
 }
