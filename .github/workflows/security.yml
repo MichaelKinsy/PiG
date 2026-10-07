@@ -71,10 +71,7 @@ jobs:
         run: |
           python -m pip install --disable-pip-version-check --require-hashes \
             -r automation/ci/security-tools.txt
-          # We install nothing from packages.microsoft.com; drop the runner image's source so its outages cannot fail this step.
-          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list /etc/apt/sources.list.d/microsoft-prod.sources
-          sudo apt-get update
-          sudo apt-get install --yes shellcheck
+          automation/ci/install-apt-packages.sh shellcheck
       - name: Check compliance evidence (REUSE, govulncheck, pins, workflow hardening)
         run: make compliance
       - name: Run Go static analysis
