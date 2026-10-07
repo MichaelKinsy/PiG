@@ -3744,6 +3744,10 @@ mod sdk_surface_call_tests {
         assert_eq!(roundtrip(|c| c.get_flag("f"), ok(Some(json!({"value": false})))).1.unwrap(), Some(json!(false)));
         assert_eq!(roundtrip(|c| c.get_flag("f"), ok(Some(json!({})))).1.unwrap(), None);
         assert_eq!(roundtrip(|c| c.is_idle(), ok(Some(json!({"idle": false})))).1.unwrap(), false);
+        // SetActiveTools([]) narrows the session to no tools: an empty list is a value, a null one a protocol error.
+        assert_eq!(roundtrip(|c| c.get_active_tools(), ok(Some(json!({"tools": []})))).1.unwrap(), Vec::<String>::new());
+        assert_eq!(roundtrip(|c| c.get_active_tools(), ok(Some(json!({"tools": ["read"]})))).1.unwrap(), vec!["read".to_string()]);
+        assert!(roundtrip(|c| c.get_active_tools(), ok(Some(json!({"tools": null})))).1.is_err());
 
         assert!(roundtrip(|c| c.get_session_name(), failed()).1.unwrap_err().to_string().contains("boom"));
         assert!(roundtrip(|c| c.get_editor_text(), failed()).1.is_err());

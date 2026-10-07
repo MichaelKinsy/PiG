@@ -71,10 +71,7 @@ jobs:
         run: |
           python -m pip install --disable-pip-version-check --require-hashes \
             -r automation/ci/security-tools.txt
-          # We install nothing from packages.microsoft.com; drop the runner image's source so its outages cannot fail this step.
-          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list /etc/apt/sources.list.d/microsoft-prod.sources
-          sudo apt-get update
-          sudo apt-get install --yes shellcheck
+          automation/ci/install-apt-packages.sh shellcheck
       - name: Check compliance evidence (REUSE, govulncheck, pins, workflow hardening)
         run: make compliance
       - name: Run Go static analysis
@@ -187,11 +184,12 @@ jobs:
           fail-on-severity: high
           license-check: true
           # GHSA-vxpw-j846-p89q and GHSA-rfgv-xxqx-mfg5 (undici) appear only in the lockfile of Pi's example
-          # extension "gondolin", and GHSA-w7jw-789q-3m8p and GHSA-395f-4hp3-45gv
+          # extension "gondolin" (with GHSA-86w9-cpqp-85rv for node-forge, which has no
+          # patched release), and GHSA-w7jw-789q-3m8p and GHSA-395f-4hp3-45gv
           # (shell-quote) only in the lockfile of Pi's example extension "sandbox".
           # Both are vendored verbatim under runtime-node/shims/pi-dist; PiG neither
           # installs nor bundles those examples' dependencies.
-          allow-ghsas: GHSA-vxpw-j846-p89q, GHSA-rfgv-xxqx-mfg5, GHSA-w7jw-789q-3m8p, GHSA-395f-4hp3-45gv
+          allow-ghsas: GHSA-vxpw-j846-p89q, GHSA-rfgv-xxqx-mfg5, GHSA-86w9-cpqp-85rv, GHSA-w7jw-789q-3m8p, GHSA-395f-4hp3-45gv
 
   codeql:
     name: CodeQL (${{ matrix.language }})

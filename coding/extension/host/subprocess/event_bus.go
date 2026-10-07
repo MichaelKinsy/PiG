@@ -31,10 +31,10 @@ const (
 	eventBusRoutedEnv = "PIG_EVENT_BUS=routed"
 )
 
-// loadingBusCall reports whether a call may arrive while its factory is still loading, before the register handshake: the shared event bus, and the registry reads and checks of a Node factory's `pi` object, which Pi answers synchronously when the factory calls them.
+// loadingBusCall reports whether a call may arrive while its factory is still loading, before the register handshake: the shared event bus, and the registry reads and checks of a Node factory's `pi` object, which Pi answers synchronously when the factory calls them, and its exec, which Pi spawns directly.
 func loadingBusCall(method string) bool {
 	switch method {
-	case callXrefHello, callXrefOp, callEventsOn, callEventsOff, callEventsEmit, callEventsSettle, CallGetMcpServers, CallCheckMcpServer:
+	case callXrefHello, callXrefOp, callEventsOn, callEventsOff, callEventsEmit, callEventsSettle, CallGetMcpServers, CallCheckMcpServer, CallLoadingExec:
 		return true
 	}
 	return false

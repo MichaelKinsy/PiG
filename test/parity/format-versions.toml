@@ -116,6 +116,15 @@ classification = "release-content"
 rationale = "Aliases coding.Version (in turn internal/coding/pigversion/pigversion.go's Version), the combined Pig+upstream release string shown to users."
 
 [[fields]]
+id = "cmd/pig/package_publish.go#publishableManifest.Version:json:version"
+path = "cmd/pig/package_publish.go"
+owner = "publishableManifest"
+field = "Version"
+wire_name = "version"
+classification = "external"
+rationale = "Reads the version of a Package's own npm package.json before it is published. npm owns that manifest and its version grammar; PiG selects no schema reader from it."
+
+[[fields]]
 id = "coding/extension/host/subprocess/builder_node.go#const.minimumNodeRuntimeVersion:go:-"
 path = "coding/extension/host/subprocess/builder_node.go"
 owner = "<package>"
@@ -186,6 +195,24 @@ field = "Version"
 wire_name = "version"
 classification = "release-content"
 rationale = "Identifies released content, a dependency constraint, or a runtime/toolchain requirement rather than selecting a Pig schema reader."
+
+[[fields]]
+id = "coding/piglet/npmsource.go#NPMSource.Version:go:-"
+path = "coding/piglet/npmsource.go"
+owner = "NPMSource"
+field = "Version"
+wire_name = "-"
+classification = "release-content"
+rationale = "Holds the release.version of the Piglet being published to npm. It identifies released content and selects no Pig schema reader."
+
+[[fields]]
+id = "coding/piglet/npmsource.go#npmManifest.Version:json:version"
+path = "coding/piglet/npmsource.go"
+owner = "npmManifest"
+field = "Version"
+wire_name = "version"
+classification = "external"
+rationale = "Writes the version of the generated npm package.json from the Piglet's release.version. npm owns that manifest and its version grammar; PiG selects no schema reader from it."
 
 [[fields]]
 id = "coding/piglet/release/index.go#Index.Version:json:version"
@@ -663,6 +690,15 @@ field = "mainVersionLoose"
 wire_name = "-"
 classification = "external"
 rationale = "Regular-expression fragment of the npm node-semver version grammar, which the external semver package owns; it is not a Pig-owned format."
+
+[[fields]]
+id = "internal/npmpublish/npmpublish.go#Package.Version:go:-"
+path = "internal/npmpublish/npmpublish.go"
+owner = "Package"
+field = "Version"
+wire_name = "-"
+classification = "release-content"
+rationale = "Names the version of the package that npm is asked to publish. It identifies released content and selects no Pig schema reader."
 
 [[fields]]
 id = "internal/toolchain/toolchain.go#goFile.Version:json:version"

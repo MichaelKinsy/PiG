@@ -509,8 +509,10 @@ func (r *ModelRegistry) composeNativeProvider(base *ai.ModelsProvider, extension
 		}
 	}
 	if extension != nil && extension.StreamSimple != nil {
-		provider.StreamSimple = extension.StreamSimple
-		provider.Stream = extension.StreamSimple
+		// upstream: provider-composer.ts:composeModelProvider runs the extension's streamSimple only for a model whose api is the extension's api; another model reaches the base provider or its API implementation.
+		custom, api := extension.StreamSimple, extension.API
+		provider.Stream = composedExtensionStream(custom, api, base.Stream)
+		provider.StreamSimple = composedExtensionStream(custom, api, base.StreamSimple)
 	}
 	if baseImages := base.GenerateImages; baseImages != nil || (extension != nil && len(extension.Images) > 0) {
 		provider.GenerateImages = func(ctx context.Context, model *ai.ImageModel, request ai.ImagesContext, options ai.ImagesOptions) (ai.AssistantImages, error) {
@@ -541,4 +543,22 @@ func (r *ModelRegistry) composeNativeProvider(base *ai.ModelsProvider, extension
 		}
 	}
 	return provider, nil
+}
+
+// composedExtensionStream is the stream function of a provider an extension composed with its own streamSimple: a model of the extension's api runs that callback, and any other model runs the base stream function.
+// upstream: provider-composer.ts:composeModelProvider (streamWith)
+func composedExtensionStream(custom ai.ModelsStreamFunction, api ai.API, base ai.ModelsStreamFunction) ai.ModelsStreamFunction {
+	return func(ctx context.Context, model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+		if model != nil && model.ProviderMeta.API == api {
+			return custom(ctx, model, transcript, options)
+		}
+		if base == nil {
+			var modelAPI ai.API
+			if model != nil {
+				modelAPI = model.ProviderMeta.API
+			}
+			return nil, fmt.Errorf("No API provider registered for api: %s", modelAPI)
+		}
+		return base(ctx, model, transcript, options)
+	}
 }

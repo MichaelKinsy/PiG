@@ -103,12 +103,13 @@ type AcquireOptions struct {
 	OnCompromised func(error)
 }
 
-// AcquireWithOptions acquires a proper-lockfile directory with caller-selected fixed retry and heartbeat intervals.
+// AcquireWithOptions acquires a proper-lockfile directory with caller-selected fixed retry and heartbeat intervals. It is proper-lockfile 4.1.2's lock with a retries option (lib/lockfile.js:231-240): the retry module retries every failed attempt, whatever its error, so EPERM from a mkdir that Windows refuses while another process's release is still pending deletion waits like ELOCKED. When Wait ends it returns the retry module's mainError, the most frequent error message with ties going to the later error.
 func AcquireWithOptions(ctx context.Context, path string, options AcquireOptions) (*Lock, error) {
 	if options.Stale <= 0 || options.Update <= 0 || options.Retry <= 0 || options.Wait < 0 {
 		return nil, errors.New("invalid directory lock intervals")
 	}
 	deadline := time.Now().Add(options.Wait)
+	var failures attemptErrors
 	for {
 		if err := context.Cause(ctx); err != nil {
 			return nil, err
@@ -117,9 +118,10 @@ func AcquireWithOptions(ctx context.Context, path string, options AcquireOptions
 		if err == nil {
 			return lockUnlessAborted(ctx, lock)
 		}
+		failures.add(err)
 		remaining := time.Until(deadline)
-		if !errors.Is(err, ErrLocked) || remaining <= 0 {
-			return nil, err
+		if remaining <= 0 {
+			return nil, failures.main
 		}
 		timer := time.NewTimer(min(options.Retry, remaining))
 		select {
@@ -128,6 +130,24 @@ func AcquireWithOptions(ctx context.Context, path string, options AcquireOptions
 			return nil, context.Cause(ctx)
 		case <-timer.C:
 		}
+	}
+}
+
+// attemptErrors is the retry module 0.13.1's error record (lib/retry_operation.js retry and mainError), kept as counts per message: main is the error whose message is most frequent, and a message that reaches the current maximum count again replaces it.
+type attemptErrors struct {
+	counts   map[string]int
+	main     error
+	mainSeen int
+}
+
+func (e *attemptErrors) add(err error) {
+	if e.counts == nil {
+		e.counts = map[string]int{}
+	}
+	message := err.Error()
+	e.counts[message]++
+	if count := e.counts[message]; count >= e.mainSeen {
+		e.main, e.mainSeen = err, count
 	}
 }
 
@@ -181,7 +201,7 @@ func acquireWithProbe(ctx context.Context, path string, stale, update time.Durat
 // osMkdir creates the lock directory; tests replace it to inject platform errors.
 var osMkdir = os.Mkdir
 
-// mkdir mirrors proper-lockfile 4.1.2 lib/lockfile.js acquireLock (lines 22-48): only EEXIST means the directory is held. isEEXIST matches Node's EEXIST exactly; fs.ErrExist is wider because it also matches ENOTEMPTY and Windows ERROR_DIR_NOT_EMPTY. Every other mkdir error, including the ERROR_ACCESS_DENIED Windows returns while a just-removed lock directory is pending deletion, is returned unretried. libuv's uv_translate_sys_error (src/win/error.c) surfaces ERROR_ACCESS_DENIED as EPERM, ERROR_SHARING_VIOLATION as EBUSY and ERROR_DIR_NOT_EMPTY as ENOTEMPTY, none of which are ELOCKED, so Pi's auth-storage.ts acquireLockSyncWithRetry (`code !== "ELOCKED"`) and acquireLockAsync throw them. Do not widen this to retry them. Each failure Pi would throw carries Node's fs message for its call (mkdir, stat, rmdir).
+// mkdir mirrors proper-lockfile 4.1.2 lib/lockfile.js acquireLock (lines 22-48): only EEXIST means the directory is held. isEEXIST matches Node's EEXIST exactly; fs.ErrExist is wider because it also matches ENOTEMPTY and Windows ERROR_DIR_NOT_EMPTY. Every other mkdir error, including the ERROR_ACCESS_DENIED Windows returns while a just-removed lock directory is pending deletion, is returned unretried. libuv's uv_translate_sys_error (src/win/error.c) surfaces ERROR_ACCESS_DENIED as EPERM, ERROR_SHARING_VIOLATION as EBUSY and ERROR_DIR_NOT_EMPTY as ENOTEMPTY, none of which are ELOCKED, so Pi's auth-storage.ts acquireLockSyncWithRetry (`code !== "ELOCKED"`) and acquireLockAsync throw them. Do not widen this classification. AcquireWithOptions retries every attempt error at its own level, as proper-lockfile's lock with a retries option does. Each failure Pi would throw carries Node's fs message for its call (mkdir, stat, rmdir).
 func mkdir(path string, stale time.Duration) error {
 	err := osMkdir(path, 0o777)
 	if err == nil || !isEEXIST(err) {

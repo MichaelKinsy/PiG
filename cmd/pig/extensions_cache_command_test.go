@@ -147,7 +147,7 @@ func TestAutomaticExtensionCacheGCNeverWaitsForAnotherCollector(t *testing.T) {
 	marker := filepath.Join(cacheRoot, ".last-auto-gc")
 	collect := func() error {
 		done := make(chan error, 1)
-		go func() { done <- runAutomaticExtensionCacheGC(nil) }()
+		go func() { done <- runAutomaticExtensionCacheGC(t.Context(), nil) }()
 		select {
 		case err := <-done:
 			return err
@@ -204,7 +204,7 @@ func TestAutomaticExtensionCacheGCEnforcesTheSizeLimitOldestFirst(t *testing.T) 
 	automaticCacheLimit = 3*entrySize + entrySize/2
 	t.Cleanup(func() { automaticCacheLimit = previous })
 
-	if err := runAutomaticExtensionCacheGC(nil); err != nil {
+	if err := runAutomaticExtensionCacheGC(t.Context(), nil); err != nil {
 		t.Fatal(err)
 	}
 	for i, dir := range entries {

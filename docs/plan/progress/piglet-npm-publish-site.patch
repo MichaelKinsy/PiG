@@ -1,0 +1,296 @@
+diff --git a/app/catalog-types.ts b/app/catalog-types.ts
+index f440717..b304699 100644
+--- a/app/catalog-types.ts
++++ b/app/catalog-types.ts
+@@ -21,9 +21,11 @@ export function filterCatalog(entries: PackageEntry[], query: string, language:
+ 
+ /** The three things the catalog lists; each is one npm keyword (scripts/build-npm-catalog.mjs). */
+ export type Source = 'pi' | 'pig' | 'piglet';
++/** The signed Binary release a Piglet records in package.json (`pig.binaries`); present only on Piglet entries. */
++export type PigletBinaries = { ref: string; signer: string };
+ export type NpmEntry = {
+   name: string; description: string; author: string; version: string; date: string;
+-  downloads: number; types: string[]; repository?: string;
++  downloads: number; types: string[]; repository?: string; binaries?: PigletBinaries;
+ };
+ export type SourceMeta = { syncedAt: string; origin: 'live' | 'snapshot'; count: number; first: NpmEntry[] };
+ export type NpmMeta = { sources: Record<Source, SourceMeta> };
+@@ -39,6 +41,9 @@ export const SORT_OPTIONS: { label: string; value: SortKey }[] = [
+ export const installCommand = (source: Source, name: string) =>
+   source === 'piglet' ? `pig piglet add npm:${name}` : `pig install npm:${name}`;
+ 
++/** The command that installs the signed Binary a Piglet's package.json names. `ref` passed scripts/build-npm-catalog.mjs's grammar. */
++export const pullCommand = (binaries: PigletBinaries) => `pig piglet pull ${binaries.ref}`;
++
+ export function queryEntries(entries: NpmEntry[], query: string, type: string, sort: SortKey) {
+   const words = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
+   return entries
+diff --git a/app/package-catalog.tsx b/app/package-catalog.tsx
+index 6df852c..454464d 100644
+--- a/app/package-catalog.tsx
++++ b/app/package-catalog.tsx
+@@ -6,7 +6,7 @@ import { Button, Pagination, Select, TextInput } from 'grommet';
+ import { Cube, Search } from 'grommet-icons';
+ import { PageIntro } from './content';
+ import { CopyButton } from './pig-site';
+-import { PAGE_SIZE, SORT_OPTIONS, entryURL, installCommand, queryEntries, sourceLabels } from './catalog-types';
++import { PAGE_SIZE, SORT_OPTIONS, entryURL, installCommand, pullCommand, queryEntries, sourceLabels } from './catalog-types';
+ import { siteAsset } from './site-path';
+ import type { Catalog, NpmEntry, NpmMeta, PackageEntry, SortKey, Source } from './catalog-types';
+ 
+@@ -32,6 +32,8 @@ function CatalogCard({ entry, source, verified }: { entry: NpmEntry; source: Sou
+     <p>{entry.description}</p>
+     <div className="package-meta"><span>{entry.author || 'Unknown publisher'}</span><span>{compact.format(entry.downloads)}/mo</span><span>{day(entry.date)}</span><span>v{verified?.version ?? entry.version}</span></div>
+     <div className="package-command"><code>{command}</code><CopyButton value={command} label={'Copy install command for ' + entry.name}/></div>
++    {source === 'piglet' && entry.binaries && <div className="package-command" title={'Signed by ' + entry.binaries.signer + '. The publisher recorded this release in package.json; PiG verifies the signatures when you pull.'}>
++      <code>{pullCommand(entry.binaries)}</code><CopyButton value={pullCommand(entry.binaries)} label={'Copy pull command for the signed Binary of ' + entry.name}/></div>}
+     <div className="package-links">
+       {verified && <Link href={entryURL(verified)}>Details →</Link>}
+       <a href={'https://www.npmjs.com/package/' + entry.name} target="_blank" rel="noreferrer">npm ↗</a>
+@@ -111,10 +113,10 @@ export function PackageCatalogPage({ catalog, meta }: { catalog: Catalog; meta:
+         <ol style={{ listStyle: "decimal", paddingLeft: 24, margin: "12px 0" }}>
+           <li>Create <code>piglet.yaml</code> at the package root, or point to it with a <code>pig.piglet</code> path in <code>package.json</code>. The path must stay inside the package.</li>
+           <li>In <code>package.json</code>, set <code>name</code>, <code>version</code>, <code>description</code>, a public <code>repository</code> URL and <code>{`"keywords": ["pig-piglet"]`}</code>, so the card has what it shows.</li>
+-          <li>Run <code>npm publish</code>. People install it with the command on its card.</li>
++          <li>Run <code>npm publish</code>, or let PiG write the package and run it for you: <code>pig piglet publish &lt;name&gt; --to npm --yes</code>. People install it with the command on its card.</li>
+         </ol>
+         <Command value="pig piglet add npm:<name>" label="Copy the Piglet add command"/>
+-        <p>To ship signed per-target Piglet Binaries instead, publish them to GitHub Releases with <code>pig piglet publish --to github</code>. People then pull the release:</p>
++        <p>To ship signed per-target Piglet Binaries as well, publish them to GitHub Releases with <code>pig piglet publish --to github</code> before publishing to npm. PiG records the signed release in <code>package.json</code> and the card then shows the pull command beside the add command. People pull the release:</p>
+         <Command value="pig piglet pull github:<owner>/<repo>@<version>" label="Copy the Piglet pull command"/>
+         <p><Link className="text-link" href="/docs/latest/piglets">Piglets →</Link> <Link className="text-link" href="/docs/latest/piglet-binaries">Piglet Binaries →</Link></p>
+       </div>}
+diff --git a/docs/catalog-sync.md b/docs/catalog-sync.md
+index 43b1164..b44a69a 100644
+--- a/docs/catalog-sync.md
++++ b/docs/catalog-sync.md
+@@ -17,8 +17,8 @@ carries several takes the most specific: `pig-piglet`, then `pig-package`, then
+ `pi-package`. Each command is one `pig` accepts today (`pig install --help`,
+ `pig piglet add --help`). Community listings are unreviewed, and
+ `data/catalog-denylist.json` removes a package by name. The Piglets view also
+-shows `pig piglet pull github:<owner>/<repo>@<version>` for a publisher's signed
+-release. pi-in-go.dev hosts no Piglet downloads. The Pigpen scaffold has no
++shows `pig piglet pull <ref>` beside the add command when the Piglet's published
++`package.json` records a signed Binary release (see below). pi-in-go.dev hosts no Piglet downloads. The Pigpen scaffold has no
+ release, so nothing is offered from it.
+ 
+ Fields and behavior match pi.dev: popularity is npm's monthly downloads,
+@@ -52,11 +52,20 @@ not a security audit or compatibility guarantee".
+ 2. Parse each result: name (npm's name grammar only, since it enters an install
+    command), version, date, publisher, monthly downloads, types, https
+    repository. Results that lack these are skipped.
+-3. A source that fails on any page, or that shrinks below half of its saved
++3. For the Piglets source, read the `package.json` of each listed version from the
++   registry (`https://registry.npmjs.org/<name>/<version>`, one request per 250 ms)
++   and keep `pig.binaries` as `binaries` on the entry. `pig piglet publish --to npm`
++   writes it: `{"ref": "github:<owner>/<repo>[/<piglet>]@<version>", "signer":
++   "ed25519:<32 hex digits>"}`. The ref is printed inside a shell command, so only
++   PiG's release reference grammar is accepted; anything else is dropped. An
++   unreadable `package.json` keeps the saved release when the version is unchanged
++   and warns. The page never claims more than the publisher recorded: the signatures
++   are verified by `pig piglet pull`, not by this build.
++4. A source that fails on any page, or that shrinks below half of its saved
+    snapshot, keeps the committed `data/npm-catalog.snapshot.json` for that
+    source and warns. The page then says "Saved catalog from <date>". A failure
+    with no snapshot fails the build. Nothing is published partial or empty.
+-4. Write ignored `public/catalog/<source>.json` (the full list, about 450 KB
++5. Write ignored `public/catalog/<source>.json` (the full list, about 450 KB
+    gzipped for Pi packages, loaded by the page only when a source is opened) and
+    `data/npm-catalog.meta.json` (counts, sync date, first 24 entries, which the
+    page renders without a request). Browsers never call npm.
+diff --git a/scripts/build-npm-catalog.mjs b/scripts/build-npm-catalog.mjs
+index 1c769df..262da0e 100644
+--- a/scripts/build-npm-catalog.mjs
++++ b/scripts/build-npm-catalog.mjs
+@@ -10,6 +10,12 @@
+ // paging stops at the first page with no new package. Popularity is npm's
+ // monthly downloads and recency is the package date. Nothing reads pi.dev.
+ //
++// A Piglet published with `pig piglet publish --to npm` may record its signed Binary release in package.json
++// (`pig.binaries`: { ref, signer }). npm search results do not carry that field, so the build reads the published
++// package.json of each listed Piglet from the registry and keeps `binaries` on the entry when both values are well
++// formed. The cards then show `pig piglet pull <ref>` next to `pig piglet add npm:<name>`. A Piglet whose package.json
++// cannot be read keeps the saved value when its version is unchanged; it never fails the build.
++//
+ // A source that cannot be fetched completely (any page fails after retries,
+ // or the result shrinks below half of the saved snapshot) keeps the saved
+ // snapshot in data/npm-catalog.snapshot.json, never an empty or partial list.
+@@ -71,6 +77,47 @@ const repositoryURL = (value) => {
+   return url.startsWith("https://") ? url : undefined;
+ };
+ 
++// `ref` is printed inside a shell command, so only PiG's own GitHub release reference grammar passes:
++// github:<owner>/<repo>[/<piglet>]@<semver>. The signer is the key id PiG prints, ed25519: plus 32 hex digits.
++// One owner, repository or Piglet name: the characters PiG accepts (validGitHubPart in coding/piglet/release/pull.go), never `.` or `..`.
++const GITHUB_PART = /^(?!\.\.?$)[A-Za-z0-9._-]+$/;
++const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
++const RELEASE_REF = /^github:([^/@:\s]+)\/([^/@:\s]+)(?:\/([^/@:\s]+))?@([^@\s]+)$/;
++const SIGNER = /^ed25519:[0-9a-f]{32}$/;
++
++/** `pig.binaries` of a published package.json -> { ref, signer }, or undefined unless both are well formed. */
++export function pigletBinaries(manifest) {
++  const binaries = manifest?.pig?.binaries;
++  if (typeof binaries?.ref !== "string" || typeof binaries?.signer !== "string" || !SIGNER.test(binaries.signer)) return undefined;
++  const match = RELEASE_REF.exec(binaries.ref);
++  if (!match || !SEMVER.test(match[4]) || ![match[1], match[2], match[3] ?? "x"].every((part) => GITHUB_PART.test(part))) return undefined;
++  return { ref: binaries.ref, signer: binaries.signer };
++}
++
++/** Where the registry serves the package.json of one published version. */
++export const manifestURL = (name, version) => `https://registry.npmjs.org/${name.replace("/", "%2F")}/${encodeURIComponent(version)}`;
++
++/**
++ * Adds `binaries` to each Piglet entry whose published package.json records a signed Binary release.
++ * `fetchManifestImpl(name, version)` resolves to the parsed package.json or rejects; a rejection keeps the saved value.
++ */
++export async function addPigletBinaries(entries, { fetchManifestImpl, saved = [], throttleMs = 0, sleep = realSleep, warnings = [] }) {
++  const previous = new Map(saved.map((entry) => [`${entry.name}@${entry.version}`, entry.binaries]));
++  const out = [];
++  for (const [index, entry] of entries.entries()) {
++    if (index > 0 && throttleMs) await sleep(throttleMs);
++    let binaries;
++    try {
++      binaries = pigletBinaries(await fetchManifestImpl(entry.name, entry.version));
++    } catch (error) {
++      binaries = previous.get(`${entry.name}@${entry.version}`);
++      warnings.push(`piglet ${entry.name}@${entry.version}: package.json not read (${error.message})${binaries ? "; keeping the saved Binary release" : ""}`);
++    }
++    out.push(binaries ? { ...entry, binaries } : entry);
++  }
++  return out;
++}
++
+ /** One npm search result -> { source, entry }, or undefined when it lacks what a card needs. */
+ export function parseResult(result) {
+   const pkg = result?.package;
+@@ -162,7 +209,7 @@ export function entriesFor(source, results, denied = [], minMonthly = 0) {
+  * Chooses each source's list: a complete live fetch, else the saved snapshot.
+  * Returns { sources: { <source>: { syncedAt, origin, entries } }, warnings }.
+  */
+-export async function buildCatalog({ fetchKeywordImpl = (keyword) => fetchKeyword(keyword, { partitions: keyword === SOURCES.pi ? PARTITIONS : [] }), snapshot, denied = [], now = new Date(), offline = false }) {
++export async function buildCatalog({ fetchKeywordImpl = (keyword) => fetchKeyword(keyword, { partitions: keyword === SOURCES.pi ? PARTITIONS : [] }), fetchManifestImpl, snapshot, denied = [], now = new Date(), offline = false }) {
+   const sources = {};
+   const warnings = [];
+   for (const [source, keyword] of Object.entries(SOURCES)) {
+@@ -184,6 +231,7 @@ export async function buildCatalog({ fetchKeywordImpl = (keyword) => fetchKeywor
+       keepSaved(`npm returned ${entries.length} packages against ${saved.entries.length} saved`);
+       continue;
+     }
++    if (source === "piglet" && fetchManifestImpl) entries = await addPigletBinaries(entries, { fetchManifestImpl, saved: saved?.entries ?? [], throttleMs: 250, warnings });
+     sources[source] = { syncedAt: now.toISOString(), origin: "live", entries };
+   }
+   return { sources, warnings };
+@@ -225,7 +273,8 @@ async function main() {
+   const snapshotFile = path("data/npm-catalog.snapshot.json");
+   const snapshot = existsSync(snapshotFile) ? readSnapshot(readFileSync(snapshotFile, "utf8")) : undefined;
+   const { denied } = JSON.parse(readFileSync(path("data/catalog-denylist.json"), "utf8"));
+-  const { sources, warnings } = await buildCatalog({ snapshot, denied, offline: process.env.NPM_CATALOG_OFFLINE === "1" });
++  const fetchManifestImpl = (name, version) => fetchPage(manifestURL(name, version));
++  const { sources, warnings } = await buildCatalog({ snapshot, denied, fetchManifestImpl, offline: process.env.NPM_CATALOG_OFFLINE === "1" });
+   for (const warning of warnings) console.warn(`npm-catalog: ${warning}`);
+   for (const [source, data] of Object.entries(sources)) {
+     writeAtomic(path(`public/catalog/${source}.json`), JSON.stringify({ source, syncedAt: data.syncedAt, origin: data.origin, entries: data.entries }));
+diff --git a/test/npm-catalog.test.mjs b/test/npm-catalog.test.mjs
+index 4e49b03..15d4c25 100644
+--- a/test/npm-catalog.test.mjs
++++ b/test/npm-catalog.test.mjs
+@@ -5,10 +5,10 @@ import { readFileSync } from "node:fs";
+ import test from "node:test";
+ 
+ import {
+-  MAX_PAGES, MIN_KEPT_RATIO, PAGE_SIZE, buildCatalog, buildMeta, classify, entriesFor, fetchKeyword, fetchPage,
+-  parseResult, readSnapshot, snapshotOf, typesFromKeywords,
++  MAX_PAGES, MIN_KEPT_RATIO, PAGE_SIZE, addPigletBinaries, buildCatalog, buildMeta, classify, entriesFor, fetchKeyword, fetchPage,
++  manifestURL, parseResult, pigletBinaries, readSnapshot, snapshotOf, typesFromKeywords,
+ } from "../scripts/build-npm-catalog.mjs";
+-import { installCommand, queryEntries } from "../app/catalog-types.ts";
++import { installCommand, pullCommand, queryEntries } from "../app/catalog-types.ts";
+ 
+ const result = (name, keywords, monthly = 10, date = "2026-09-01T00:00:00.000Z", extra = {}) => ({
+   package: { name, version: "1.0.0", description: "d " + name, keywords, date, publisher: { username: "someone" }, links: { repository: "git+https://github.com/a/b.git" }, ...extra },
+@@ -207,3 +207,85 @@ test("the pi source drops packages under the monthly download floor, other sourc
+   assert.deepEqual(entriesFor("pi", rs, [], 128).map((e) => e.name), ["big"]);
+   assert.deepEqual(entriesFor("pi", rs).map((e) => e.name), ["big", "tiny"]);
+ });
++
++const SIGNER = "ed25519:" + "0123456789abcdef".repeat(2);
++const published = (ref, signer = SIGNER) => ({ name: "x", pig: { piglet: "piglet.yaml", binaries: { ref, signer } } });
++
++test("pig.binaries is read only when the release reference and signer match PiG's own grammar", () => {
++  assert.deepEqual(pigletBinaries(published("github:acme/porter/porter@1.2.3")), { ref: "github:acme/porter/porter@1.2.3", signer: SIGNER });
++  assert.deepEqual(pigletBinaries(published("github:acme/porter@2.0.0-rc.1")), { ref: "github:acme/porter@2.0.0-rc.1", signer: SIGNER });
++  // PiG accepts a repository such as .github or _agents; the pull command must not drop it.
++  assert.deepEqual(pigletBinaries(published("github:zeta-labs/.github/hauler@0.4.0")), { ref: "github:zeta-labs/.github/hauler@0.4.0", signer: SIGNER });
++  assert.deepEqual(pigletBinaries(published("github:zeta-labs/_agents@3.0.0+build.7")), { ref: "github:zeta-labs/_agents@3.0.0+build.7", signer: SIGNER });
++  const bad = [
++    "github:acme/porter@1.2.3; rm -rf ~", "github:acme/porter@$(id)", "github:acme/porter@1.2", "github:acme@1.2.3", "github:a/b/c/d@1.2.3",
++    "gitlab:acme/porter@1.2.3", "https://github.com/acme/porter@1.2.3", "github:acme/por ter@1.2.3", "github:acme/../x@1.2.3", "github:acme/./x@1.2.3", "github:../porter@1.2.3", "github:acme/porter", "pig piglet pull x",
++  ];
++  for (const ref of bad) assert.equal(pigletBinaries(published(ref)), undefined, ref);
++  for (const signer of ["", "ed25519:abc", "sha256:" + "a".repeat(32), SIGNER + "0", "ed25519:" + "G".repeat(32)]) {
++    assert.equal(pigletBinaries(published("github:acme/porter@1.2.3", signer)), undefined, signer);
++  }
++  for (const manifest of [undefined, null, {}, { pig: {} }, { pig: { binaries: "github:a/b@1.0.0" } }, { pig: { binaries: { ref: 1, signer: SIGNER } } }]) {
++    assert.equal(pigletBinaries(manifest), undefined);
++  }
++});
++
++test("a pull command is the release reference after `pig piglet pull`, and the manifest URL escapes a scoped name", () => {
++  assert.equal(pullCommand({ ref: "github:acme/porter/porter@1.2.3", signer: SIGNER }), "pig piglet pull github:acme/porter/porter@1.2.3");
++  assert.equal(manifestURL("@acme/porter", "1.2.3"), "https://registry.npmjs.org/@acme%2Fporter/1.2.3");
++  assert.equal(manifestURL("porter", "1.2.3-rc.1"), "https://registry.npmjs.org/porter/1.2.3-rc.1");
++});
++
++const pigletEntry = (name, version = "1.0.0") => ({ ...parseResult(result(name, ["pig-piglet"], 1)).entry, version });
++
++test("Piglet entries gain the Binary release their package.json records, and the others stay as they were", async () => {
++  const entries = [pigletEntry("with"), pigletEntry("without"), pigletEntry("evil")];
++  const manifests = {
++    with: published("github:acme/with@1.0.0"), without: { name: "without", pig: { piglet: "piglet.yaml" } }, evil: published("github:a/b@1.0.0 && curl x"),
++  };
++  const asked = [];
++  const out = await addPigletBinaries(entries, { fetchManifestImpl: async (name, version) => { asked.push(`${name}@${version}`); return manifests[name]; } });
++  assert.deepEqual(asked, ["with@1.0.0", "without@1.0.0", "evil@1.0.0"]);
++  assert.deepEqual(out[0].binaries, { ref: "github:acme/with@1.0.0", signer: SIGNER });
++  assert.equal("binaries" in out[1], false);
++  assert.equal("binaries" in out[2], false, "a malformed release reference is dropped, never shown");
++  assert.deepEqual(out.map((e) => e.name), ["with", "without", "evil"]);
++});
++
++test("an unreadable package.json keeps the saved release only for the same version, warns, and never throws", async () => {
++  const saved = [{ ...pigletEntry("same"), binaries: { ref: "github:acme/same@1.0.0", signer: SIGNER } }, { ...pigletEntry("moved"), binaries: { ref: "github:acme/moved@1.0.0", signer: SIGNER } }];
++  const warnings = []; const sleeps = [];
++  const out = await addPigletBinaries([pigletEntry("same"), pigletEntry("moved", "2.0.0"), pigletEntry("new")], {
++    fetchManifestImpl: async () => { throw new Error("HTTP 503"); }, saved, warnings, throttleMs: 9, sleep: async (ms) => sleeps.push(ms),
++  });
++  assert.deepEqual(out[0].binaries, saved[0].binaries);
++  assert.equal("binaries" in out[1], false, "a new version does not inherit the old release");
++  assert.equal("binaries" in out[2], false);
++  assert.equal(warnings.length, 3);
++  assert.match(warnings[0], /piglet same@1\.0\.0: package\.json not read \(HTTP 503\); keeping the saved Binary release/);
++  assert.deepEqual(sleeps, [9, 9]);
++});
++
++test("the build reads package.json only for live Piglet entries, and the snapshot keeps the release", async () => {
++  const manifestCalls = [];
++  const fetchManifestImpl = async (name, version) => { manifestCalls.push(`${name}@${version}`); return published("github:acme/p@1.0.0"); };
++  const { sources } = await buildCatalog({
++    snapshot: snapshotOfEntries(3), fetchManifestImpl, now: new Date("2026-09-29T12:00:00Z"),
++    fetchKeywordImpl: liveFetch({ "pi-package": many(0, 3), "pig-package": [result("pkg", ["pig-package"], 1)], "pig-piglet": [result("p", ["pig-piglet"], 1)] }),
++  });
++  assert.deepEqual(manifestCalls, ["p@1.0.0"]);
++  assert.deepEqual(sources.piglet.entries[0].binaries, { ref: "github:acme/p@1.0.0", signer: SIGNER });
++  assert.equal("binaries" in sources.pig.entries[0], false);
++
++  const text = JSON.stringify(snapshotOf(sources)) + "\n";
++  const reread = readSnapshot(text);
++  assert.deepEqual(reread.sources.piglet.entries[0].binaries, { ref: "github:acme/p@1.0.0", signer: SIGNER });
++  assert.equal(JSON.stringify(snapshotOf(reread.sources)) + "\n", text, "the snapshot with releases still round-trips byte for byte");
++
++  const offline = await buildCatalog({ snapshot: reread, offline: true, fetchManifestImpl: async () => assert.fail("no request offline"), fetchKeywordImpl: async () => assert.fail("no search offline") });
++  assert.deepEqual(offline.sources.piglet.entries[0].binaries, { ref: "github:acme/p@1.0.0", signer: SIGNER });
++
++  // Without an injected reader (the unit tests above) nothing is requested.
++  const plain = await buildCatalog({ snapshot: snapshotOfEntries(3), fetchKeywordImpl: liveFetch({ "pig-piglet": [result("p", ["pig-piglet"], 1)] }) });
++  assert.equal("binaries" in plain.sources.piglet.entries[0], false);
++});

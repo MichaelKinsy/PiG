@@ -30,7 +30,7 @@ Every active divergence must have:
 
 - D54 — Fenced-code wrapping. Retired after re-probing Pi: `Markdown.render` already wraps every non-image rendered row, including code rows (`markdown.ts` at 0.99.1 still passes each non-image line through `wrapTextWithAnsi`; the only change since 0.87.1 is a token cache). PiG now uses that same final content-width pass and its continuation breakpoints. The ID remains reserved. Evidence: `tui/markdown_upstream_test.go`, `tui/markdown_codeblock_wrap_test.go`, and `test/parity/scenarios/tui-components/16-markdown-user-components.toml`.
 
-## Active divergences (38)
+## Active divergences (39)
 
 D78, D82 and D83 record owner-approved known gaps for 0.3.x (decision 2026-09-28). Approval records a difference; it does not prove parity, waive an unrelated defect, or turn a failing comparison into a pass. Same-process object behavior must remain Pi-exact. See `docs/findings/0.3.0-known-gaps.md` for the integration boundary and retained failures.
 
@@ -975,7 +975,7 @@ What: inside an extension process, pi-ai's compat layer, API registry, lazy API 
 
 Why: the upstream implementations import the vendor SDKs (`@anthropic-ai/sdk`, `openai`, `@google/genai`, `@aws-sdk/client-bedrock-runtime`), which PiG does not ship to extensions, and PiG already carries parity-tested Go ports of these providers, which its own agent uses. Running every builtin API through one bridge keeps credential resolution and request behavior uniform. Owner-directed launch P0 fix (Reddit report on 2026-09-26: pi-hermes-memory calls `completeSimple` from `@earendil-works/pi-ai/compat`).
 
-Observable effect: an extension's `stream`/`complete`/`streamSimple`/`completeSimple` sends the same request (credential, model, messages) and receives the same event and result shapes as under Pi, from PiG's provider; a request aborted in flight carries the Go provider's abort message rather than the vendor SDK's. Provider-specific `stream()` options beyond the common ones (for example Anthropic `thinkingEnabled`) are not forwarded, results lack `responseId` and `rawStopReason`, and `generateImages` for OpenRouter returns an error result where Pi generates images. A direct pi-ai call also carries the provider attribution headers that PiG's Go provider adds to every model it builds (`coding.BuildModel`, `providerAttributionProvider` in `coding/model.go`): OpenRouter's `HTTP-Referer`, `X-OpenRouter-Title` and `X-OpenRouter-Categories`, and NVIDIA NIM's `X-BILLING-INVOKE-ORIGIN`, with PiG's values (D26) and subject to the install-telemetry setting. Pi's pi-ai sends only its own `User-Agent` (`packages/ai/src/api/openai-completions.ts:760`) on a direct call; Pi adds attribution headers only in the coding agent's request path (`packages/coding-agent/src/core/provider-attribution.ts`, `sdk.ts:326`).
+Observable effect: an extension's `stream`/`complete`/`streamSimple`/`completeSimple` sends the same request (credential, model, messages) and receives the same event and result shapes as under Pi, from PiG's provider; a request aborted in flight carries the Go provider's abort message rather than the vendor SDK's. A model whose provider an extension registered with its own `streamSimple` still reaches the API implementation its `api` names, as under Pi, and never re-enters that `streamSimple`. Provider-specific `stream()` options beyond the common ones (for example Anthropic `thinkingEnabled`) are not forwarded, results lack `responseId` and `rawStopReason`, and `generateImages` for OpenRouter returns an error result where Pi generates images. A direct pi-ai call also carries the provider attribution headers that PiG's Go provider adds to every model it builds (`coding.BuildModel`, `providerAttributionProvider` in `coding/model.go`): OpenRouter's `HTTP-Referer`, `X-OpenRouter-Title` and `X-OpenRouter-Categories`, and NVIDIA NIM's `X-BILLING-INVOKE-ORIGIN`, with PiG's values (D26) and subject to the install-telemetry setting. Pi's pi-ai sends only its own `User-Agent` (`packages/ai/src/api/openai-completions.ts:760`) on a direct call; Pi adds attribution headers only in the coding agent's request path (`packages/coding-agent/src/core/provider-attribution.ts`, `sdk.ts:326`).
 
 Call-site markers:
 - `coding/extension/host/subprocess/runtime-node/shims/pi-ai-bridge.mjs`: the bridge the vendored `api/<api>.js` stubs load.
@@ -1159,7 +1159,7 @@ Call-site markers: `coding/extension/host/subprocess/runtime-node/runtime.mjs`: 
 
 Evidence: `TestRPCInputEndAfterExtensionCommandComparedWithPi` (stdout and the extension's event records against Pi for each command shape, with and without the default shutdown handler, plus a sibling extension), `TestRPCInputEndWindowClosesBeforeNextPollComparedWithPi` (stdout against Pi over repeated runs of the window-edge shapes), `TestRPCInputEndCommandSettlesDuringSlowShutdownHandler` and `TestRPCInputEndJoinsEachExtensionCommand` in `cmd/pig/rpc_shutdown_test.go`, `TestCommandFlightsSuspendPerCommand` in `coding/extension/host/subprocess/command_flight_test.go`, and `TestConformance_SuspendedCommandFlush` in `test/extension-conformance/command_flush_test.go`. The stdin-end contract is in `docs/extension-api-parity.md`.
 
-Parity allowance: the Pi rows of the comparison tests are strict. The PiG rows drop the command's own event record for the shapes Pi does not answer (`afterExit`), which is difference 1. No test covers difference 2.
+Parity allowance: the Pi rows of the comparison tests are strict, except the rows where Pi's own answer varies, where only PiG's side is asserted: the threadpool rows of `TestRPCInputEndWindowClosesBeforeNextPollComparedWithPi`, and a nested `setImmediate` on Windows in both comparison tests. The PiG rows drop the command's own event record for the shapes Pi does not answer (`afterExit`), which is difference 1. No test covers difference 2.
 
 Remove when: the host stops or freezes a runtime process before a suspended continuation can run and the stdin-end window is aggregated across runtime processes, or PiG runs extensions on one shared event loop as Pi does.
 
@@ -1330,5 +1330,23 @@ Evidence: the Node editor test in `coding/extension/host/subprocess/runtime_node
 Parity allowance: observable rows match Pi; only timer ownership and opt-in re-check timing differ.
 
 Remove when: the editor protocol can return a live opt-in and snapshots are replaced by an editor-side timer.
+
+SCRUTINIZED:approved
+
+## D99 The Windows npm self-update quarantine waits out a held image
+
+What: Before an npm self-update on Windows, Pi and PiG move each loaded image out of the package directory and copy it back (windows-self-update.ts:75-83). Pi moves it with one `renameSync`, which fails while another process holds the image open without delete sharing. PiG retries that rename while it fails with an access, sharing or lock error, with delays that double from 25 ms to 500 ms and add up to 10 seconds, and it stops early when the update's context ends. Any other error, and the error that remains after 10 seconds, fails the update as in Pi.
+
+Why: Anti-virus scanners and search indexers open a newly written or newly started executable without delete sharing for a short time. In PiG the quarantined image is `pig.exe` itself, which the user just started, so an update could fail in that window. npm's graceful-fs retries its own Windows renames in the same way.
+
+Owner decision: 2026-10-05, lead task decision for PR #161 (rev-test-flakes-041).
+
+Call-site markers: `internal/codingagent/windows_self_update.go` (`quarantineNativeDependencies`). The retry is `internal/fsretry.Rename`.
+
+Evidence: `TestQuarantineWaitsOutAHandleHeldOnTheRunningImage` (internal/codingagent) and the `internal/fsretry` Windows tests hold the image open as a scanner does. `TestWindowsNpmSelfUpdateReplacesTheRunningInstallation` (cmd/pig) runs the update end to end.
+
+Parity allowance: when no other process holds the image, PiG does exactly what Pi does. It differs only while another process holds the image.
+
+Remove when: Pi retries the quarantine rename, or Windows stops refusing to rename a file that another process holds open.
 
 SCRUTINIZED:approved

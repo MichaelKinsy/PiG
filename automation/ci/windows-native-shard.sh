@@ -28,8 +28,9 @@ case $1 in
   2) printf '%s\n' "${shard2[@]}" ;;
   3) printf '%s\n' "$all" | grep -v -x -F -e "${shard1[0]}" -e "${shard1[1]}" -e "${shard2[0]}" -e "${shard2[1]}" || true ;;
 esac | while IFS= read -r pkg; do
-  # Every named package must still be in the list, so a rename fails loudly.
-  if ! printf '%s\n' "$all" | grep -qx -F -- "$pkg"; then
+  # Every named package must still be in the list, so a rename fails loudly. The list comes from a here-string, not a
+  # pipe: under pipefail, `grep -q` exiting on its match would leave a piping printf to die of SIGPIPE.
+  if ! grep -qx -F -- "$pkg" <<<"$all"; then
     echo "windows-native-shard: $pkg is not a Windows test package" >&2
     exit 1
   fi

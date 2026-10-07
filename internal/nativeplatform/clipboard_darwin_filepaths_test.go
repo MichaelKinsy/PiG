@@ -46,13 +46,11 @@ func TestDarwinPasteboardFilePaths(t *testing.T) {
 	for i, path := range want {
 		bytes := append([]byte(path), 0)
 		text := s.send(s.typeNamed("NSString"), "alloc", 0, 0, 0)
-		text = s.send(text, "initWithBytes:length:encoding:", uintptr(unsafe.Pointer(&bytes[0])), uintptr(len(bytes)-1), 4) //nolint:gosec // G103: NSString copies this owned UTF-8 buffer synchronously; it stays live until KeepAlive.
-		runtime.KeepAlive(bytes)
+		text = s.sendPointer(text, "initWithBytes:length:encoding:", unsafe.Pointer(&bytes[0]), uintptr(len(bytes)-1), 4) //nolint:gosec // G103: NSString copies this owned UTF-8 buffer synchronously; sendPointer keeps it alive and in place for the call.
 		s.send(text, "autorelease", 0, 0, 0)
 		urls[i] = s.send(s.typeNamed("NSURL"), "fileURLWithPath:", text, 0, 0)
 	}
-	array := s.send(s.typeNamed("NSArray"), "arrayWithObjects:count:", uintptr(unsafe.Pointer(&urls[0])), uintptr(len(urls)), 0) //nolint:gosec // G103: the URL objects are copied synchronously; the Go slice stays alive through KeepAlive.
-	runtime.KeepAlive(urls)
+	array := s.sendPointer(s.typeNamed("NSArray"), "arrayWithObjects:count:", unsafe.Pointer(&urls[0]), uintptr(len(urls)), 0) //nolint:gosec // G103: NSArray copies the URL objects synchronously; sendPointer keeps the Go slice alive and in place for the call.
 	s.send(board, "clearContents", 0, 0, 0)
 	if s.send(board, "writeObjects:", array, 0, 0)&0xff == 0 {
 		t.Fatal("could not write file URLs to the pasteboard")

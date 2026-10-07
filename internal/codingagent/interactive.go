@@ -249,7 +249,7 @@ type InteractiveMode struct {
 	resumeStatus     string
 	backgroundCtx    context.Context
 	backgroundCancel context.CancelFunc
-	backgroundTasks  sync.WaitGroup
+	backgroundTasks  backgroundGroup
 	arminComponents  []*arminComponent
 	markdownQueue    tui.MarkdownTransformQueue
 	markdownBlocks   []tui.Disposable
@@ -1289,14 +1289,22 @@ func (m *InteractiveMode) printResumeHint() {
 func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 	// After Run returns nothing services owner tasks, so a runtime closed later resets the UI in place.
 	defer m.runEnded.Store(true)
-	// Registered first so it runs last, after the deferred TUI teardown has
-	// restored the terminal. Mirrors upstream's uncaughtException handler.
+	// pig additive (D102): Pi leaves no trace when input ends or fails. Registered before the crash handler below so it
+	// sees the error that handler returns; a crash has its own record.
+	defer func() {
+		if err != nil && !errors.Is(err, ErrInteractiveCrashed) {
+			RecordExit(m.opts.AgentDir, interactiveExitReason(err))
+		}
+	}()
+	// Registered before the deferred TUI teardown so it runs last, after the terminal has been restored. Mirrors
+	// upstream's uncaughtException handler.
 	defer func() {
 		if value := recover(); value != nil {
 			m.uncaughtCrash(value, debug.Stack(), os.Stderr)
 			err = ErrInteractiveCrashed
 		}
 	}()
+	defer SetUncaughtGoroutineHandler(m.uncaughtOffLoop)()
 	m.runCtx = ctx
 	m.backgroundCtx, m.backgroundCancel = context.WithCancel(ctx)
 	defer func() {

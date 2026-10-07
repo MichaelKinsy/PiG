@@ -100,3 +100,59 @@ func TestKeepGoBuildCachesSurvivesAHomeChange(t *testing.T) {
 		t.Fatalf("go env after a HOME change = %q, want the caches %q", got, want)
 	}
 }
+
+// A lane exports PIG_CODING_AGENT_DIR for its own pig process and every child inherits it. ScopeTempDir must replace it, and every sibling that selects the agent directory, with directories under the scoped root.
+func TestScopeTempDirIsolatesAgentDirectoryEnvironment(t *testing.T) {
+	real := t.TempDir()
+	keys := []string{"PIG_CODING_AGENT_DIR", "PI_CODING_AGENT_DIR", "PIG_HOME", "PI_HOME", "PIG_CODING_AGENT_SESSION_DIR", "PI_CODING_AGENT_SESSION_DIR", "TMPDIR", "TMP", "TEMP"}
+	for _, key := range keys {
+		t.Setenv(key, real)
+	}
+	root := t.TempDir()
+	if err := ScopeTempDir(root); err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range keys[:4] {
+		got := os.Getenv(key)
+		if got == real || filepath.Dir(got) != root {
+			t.Errorf("%s = %q, want a directory directly under %q", key, got, root)
+		}
+		if info, err := os.Stat(got); err != nil || !info.IsDir() {
+			t.Errorf("%s directory %q: %v", key, got, err)
+		}
+	}
+	for _, key := range keys[4:6] {
+		if value, ok := os.LookupEnv(key); ok {
+			t.Errorf("%s = %q, want unset", key, value)
+		}
+	}
+}
+
+func TestRequireIsolatedAgentEnvAcceptsOnlyTheScopedDirectories(t *testing.T) {
+	scoped := t.TempDir()
+	t.Setenv("TMPDIR", scoped)
+	t.Setenv("TMP", scoped)
+	t.Setenv("TEMP", scoped)
+	for _, key := range append([]string{"PIG_CODING_AGENT_DIR", "PI_CODING_AGENT_DIR", "PIG_HOME", "PI_HOME"}, agentSessionEnv...) {
+		t.Setenv(key, t.TempDir())
+	}
+	if err := IsolateAgentEnv(scoped); err != nil {
+		t.Fatal(err)
+	}
+	RequireIsolatedAgentEnv(t) // passes after isolation
+
+	probe := &errorRecorder{TB: t}
+	t.Setenv("PIG_CODING_AGENT_DIR", t.TempDir())
+	RequireIsolatedAgentEnv(probe)
+	if !probe.failed {
+		t.Fatal("an agent directory outside the scoped root passed")
+	}
+}
+
+type errorRecorder struct {
+	testing.TB
+	failed bool
+}
+
+func (r *errorRecorder) Helper()               {}
+func (r *errorRecorder) Errorf(string, ...any) { r.failed = true }

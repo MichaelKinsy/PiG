@@ -236,9 +236,7 @@ func (m *InteractiveMode) wireInprocContextActions() {
 				m.abortFn()
 			}
 		},
-		Shutdown: func() {
-			m.requestShutdown()
-		},
+		Shutdown:        m.requestExtensionShutdown,
 		GetContextUsage: m.extensionContextUsage,
 		GetSystemPrompt: func() string {
 			return m.currentSystemPrompt()
@@ -530,9 +528,7 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 		steering, followUps := m.agent.PendingMessages()
 		return len(steering)+len(followUps) > 0
 	})
-	b.SetHostAction("shutdown", func() {
-		m.requestShutdown()
-	})
+	b.SetHostAction("shutdown", m.requestExtensionShutdown)
 	b.SetHostAction("waitForIdle", func(ctx context.Context) error {
 		extension.CallInitiated(ctx)
 		return m.waitForIdle(m.runCtx)

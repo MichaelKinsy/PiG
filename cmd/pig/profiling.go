@@ -19,9 +19,12 @@ var stopModelServices = func() {}
 // exitProcess releases startup extension ownership and writes profiles before
 // exiting. os.Exit skips deferred calls, so main uses this on every exit path.
 func exitProcess(code int) {
+	stopAutomaticExtensionCacheGC()
 	stopModelServices()
 	stopStartupExtensions()
 	codingagent.RestoreStdout()
 	stopProfiles()
+	// pig additive (D102): every exit through here is requested or prints its reason, so the session marker goes.
+	codingagent.EndSessionMarker()
 	os.Exit(code)
 }

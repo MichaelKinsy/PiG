@@ -104,21 +104,22 @@ pig piglet publish <name> --to github --repo <owner/repo> --sign-key <key> [--ye
 
 Publication defaults to a dry run unless `--yes` is present. PiG invokes `gh` so it never handles registry tokens, and it does not contact pi.dev or upload third-party bytes to pi-in-go.dev.
 
-### Planned (not in this release): source publication
+### Source publication to npm
 
-Piglet source will publish to npm with the `pig-piglet` keyword or use a Git ref.
+Piglet source publishes to npm with the `pig-piglet` keyword, and a Package publishes with `pig-package`. Catalogs discover both by npm keyword search.
 
 ```text
-pig piglet publish <name> --to npm
+pig piglet publish <name|path> --to npm
+pig package publish [<dir>] --to npm
 ```
 
-Source publication will also default to a dry run and invoke `npm`, so PiG never handles the npm token.
+Source publication defaults to a dry run and invokes `npm`, so PiG never handles the npm token. `pig piglet add npm:<name>` registers exactly what `publish --to npm` produces. The generated package replaces each local Package by `npm:<name>@^<version>` and records `pig.piglet` (the Piglet path) and, when a signed Binary release exists, `pig.binaries` (`ref` and `signer`). A Git ref remains a source form that a user shares directly.
 
 A live remote agent is created or updated through the consuming platform. Piglet publication does not create or mutate remote-agent state.
 
 ## Product implementation boundary
 
-A product extension can contribute catalog authentication and a Piglet source resolver. Product API URLs, policy resources, and deployment state remain outside Stock PiG. The stock publisher uses the GitHub transport directly, and the planned npm transport will too, rather than a product-contributed nested command.
+A product extension can contribute catalog authentication and a Piglet source resolver. Product API URLs, policy resources, and deployment state remain outside Stock PiG. The stock publisher uses the GitHub and npm transports directly rather than a product-contributed nested command.
 
 ## Implementation invariants
 

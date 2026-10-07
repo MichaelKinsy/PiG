@@ -102,5 +102,15 @@ func (r *ModelRegistry) refreshRemoteCatalogs(ctx context.Context, options ai.Mo
 		}
 	}
 	options.Providers = ids
-	return collection.Refresh(ctx, options)
+	// The refresh is model work of this registry: CloseModelTasks cancels it, rejects one that would start after it, and then joins the operations the collection is still running for it.
+	result := ai.ModelsRefreshResult{Aborted: true, Errors: map[string]error{}}
+	done := make(chan struct{})
+	if !r.StartModelTask(ctx, func(ctx context.Context) {
+		defer close(done)
+		result = collection.Refresh(ctx, options)
+	}) {
+		return result
+	}
+	<-done
+	return result
 }

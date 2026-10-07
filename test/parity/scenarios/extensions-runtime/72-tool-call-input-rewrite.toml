@@ -1,0 +1,45 @@
+# Behavior family: extensions-runtime
+# Scenario: a Node extension edits tool_call event.input in place and the call runs with the edit.
+#
+# parity-tool-call-rewriter.mjs rewrites the faux provider's bash command `echo parity-base` to
+# `echo '[parity-modified]'` (a command rewriter, as the rtk extension is), and its tool_result handler
+# folds the input it sees into the result. Pi hands every handler the one event object and runs the tool
+# with its input (runner.ts emitToolCall; agent-loop.ts prepareToolCall), so the model sees the rewritten
+# output. The faux provider answers "modified:parity-modified" only when "[parity-modified]" reached the
+# history, so a host that drops the edit answers "not-modified" (PiG 0.4.1, issue #165).
+#
+# Upstream evidence (2026-10-06, Pi 1.0.3):
+#   PI_CODING_AGENT_DIR=testdata/pi-agent pi --no-extensions \
+#     -e ../../testdata/test-faux-provider.ts -e testdata/ext/parity-tool-call-rewriter.mjs \
+#     --model test-faux/faux-1 --print "Run: bash modified"
+#   output: "modified:parity-modified"
+#   exit: 0
+
+name = "72-tool-call-input-rewrite"
+description = "Extension tool_call handler rewrites event.input in place and the bash call runs the rewrite"
+covers = [
+  "packages/coding-agent/src/core/extensions/runner.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/parity-tool-call-rewriter.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/parity-tool-call-rewriter.mjs",
+]
+
+[print]
+prompt = "Run: bash modified"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ["modified:parity-modified"]
+output_equal = true
+runs = 3

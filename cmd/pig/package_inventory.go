@@ -4,6 +4,7 @@ package main
 // and validation without changing upstream Package installation or settings.
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -48,8 +49,10 @@ func runPackageManagementCommand(args []string) int {
 		return runPackageList(args[1:])
 	case "validate":
 		return runPackageValidate(args[1:])
+	case "publish":
+		return runPackagePublish(context.Background(), args[1:], os.Stdout, os.Stderr)
 	default:
-		fmt.Fprintf(os.Stderr, "pig package: unknown command %q; use list or validate\n", args[0])
+		fmt.Fprintf(os.Stderr, "pig package: unknown command %q; use list, validate, or publish\n", args[0])
 		return 2
 	}
 }
@@ -58,6 +61,7 @@ func printPackageManagementHelp() {
 	fmt.Print(`Usage:
   pig package list [--json] [--no-input]
   pig package validate <dir> [--json] [--no-input]
+  pig package publish [<dir>] --to npm [--yes] [--tag <dist-tag>] [--access public|restricted] [--otp <code>]
 
 Package source is authored as ordinary package.json. Install, remove, update,
 and configure Packages through Pig's upstream-compatible top-level commands.

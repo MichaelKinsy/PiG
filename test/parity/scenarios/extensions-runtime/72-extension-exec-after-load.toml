@@ -1,0 +1,45 @@
+# Behavior family: extensions-runtime
+# Scenario: a callback a Node factory scheduled calls pi.exec after the factory returned, before the extension registered.
+#
+# parity-exec-after-load.mjs schedules pi.exec with setImmediate and returns without a host call, so the
+# call runs while PiG's runtime opens the connection it registers on. Pi's exec spawns the child whenever it
+# is called (loader.ts:411-414), so the call resolves and the tool_result handler reports "[parity-modified]".
+# A runtime that opens a second connection for the call leaves the registration unread: the isolated load
+# never completes and the run times out (PR #168 review).
+#
+# Upstream evidence (2026-10-06, Pi 1.0.3):
+#   PI_CODING_AGENT_DIR=testdata/pi-agent pi --no-extensions \
+#     -e ../../testdata/test-faux-provider.ts -e testdata/ext/parity-exec-after-load.mjs \
+#     --model test-faux/faux-1 --print "Run: bash modified"
+#   output: "modified:parity-modified"
+#   exit: 0
+
+name = "72-extension-exec-after-load"
+description = "A callback the extension factory scheduled awaits pi.exec after the factory returned and before registration"
+covers = [
+  "packages/coding-agent/src/core/extensions/loader.ts",
+  "packages/coding-agent/src/core/exec.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/parity-exec-after-load.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/parity-exec-after-load.mjs",
+]
+
+[print]
+prompt = "Run: bash modified"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ["modified:parity-modified"]
+output_equal = true
+runs = 3

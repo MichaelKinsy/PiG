@@ -1985,6 +1985,8 @@ impl Extension {
                         }
                     }
                 }
+                // Pi's handler edits event.input in place and the runner reads it back (runner.ts emitToolCall). The host cannot share the value, so the reply carries the input the handler left when it differs from the one it received.
+                let tool_call_input_before = (req.event.as_deref() == Some("tool_call")).then(|| data.get("input").cloned());
                 let result = if let Some(handler) = self.event_fns.get(&handler_id) {
                     let ctx = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
                     match catch_unwind(AssertUnwindSafe(|| handler(&ctx, &mut data))) {
@@ -2035,6 +2037,15 @@ impl Extension {
                         "_pigPromptOptions": data.get("systemPromptOptions"),
                         "_pigPromptResult": value,
                     }));
+                }
+                if let Some(before) = tool_call_input_before {
+                    let after = data.get("input").cloned();
+                    let mut reply = serde_json::json!({ "_pigToolCallResult": value });
+                    // serde_json compares maps without their member order, and moving a member is an edit in Pi (the tool runs with the object in its new order), so compare the JSON text.
+                    if serde_json::to_string(&after).ok() != serde_json::to_string(&before).ok() {
+                        reply["_pigToolCallInput"] = after.unwrap_or(Value::Null);
+                    }
+                    value = Some(reply);
                 }
                 // pig additive (D19): preserve boundary mutations alongside handler errors.
                 if matches!(req.event.as_deref(), Some("agent_before_settle" | "turn_end")) {

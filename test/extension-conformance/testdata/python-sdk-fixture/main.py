@@ -755,6 +755,30 @@ def new_extension() -> pig_sdk.Extension:
 
     def tool_call(ctx: pig_sdk.Context, data: dict[str, Any]) -> dict[str, Any] | None:
         name = data.get("toolName")
+        # Pi's handler mutates event.input in place and the runner reads it back (runner.ts emitToolCall), so the rewrite is the handler's own edit to the event.
+        # Assigning a new dict to the event's input leaves the object the tool runs with (agent-loop.ts prepareToolCall).
+        if name == "rewrite_reassign_probe":
+            data["input"] = {**data["input"], "command": "git status --short"}
+            return None
+        # Moving a member to the end is an edit in Pi, and two added members follow in the order the handler added them.
+        if name == "rewrite_order_probe":
+            order = data["input"]
+            if order.get("command") == "reorder":
+                order["timeout"] = order.pop("timeout")
+            else:
+                order["zeta"] = 1
+                order["alpha"] = 2
+            return None
+        if name in ("rewrite_probe", "rewrite_block_probe"):
+            rewrite = data["input"]
+            if rewrite.get("command") == "git status" or name == "rewrite_block_probe":
+                rewrite["command"] = "git status --short"
+                rewrite.pop("drop", None)
+                rewrite["added"] = True
+                rewrite["nested"] = {"depth": 2}
+            if name == "rewrite_block_probe":
+                return {"block": True, "reason": "blocked after rewrite"}
+            return None
         if name not in ("powershell", "bash"):
             return None
         tool_input = data.get("input") or {}

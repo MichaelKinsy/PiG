@@ -44,6 +44,7 @@ Pig preserves upstream pi-coding-agent's observable behavior unless an entry bel
 | D90 | llama.cpp thinking levels | A llama.cpp model whose chat template supports thinking offers the off, minimal, low, medium and high thinking levels, and each level sends its own `thinking_budget_tokens`. Pi offers only off and medium and sends no budget. |
 | D93 | /reload evaluates an edited ES module extension again | Pi keeps an edited `.mjs` extension, or a `.js` one under `"type": "module"`, until it restarts, because Node caches ES modules by URL. PiG's `/reload` evaluates the edited ES modules and the local modules that import them again, decided once per reload pass, so an unedited shared module keeps one instance. An edit that breaks the module fails that extension on `/reload`, and a re-evaluated module's `import.meta.url` carries a `pig-reload` query. |
 | D94 | Subprocess editor working status | An editor that embeds working status gets host-driven animation snapshots instead of running Pi's own timer, and its opt-in is read once at install rather than each time a status is shown. Colors and rows match Pi. |
+| D99 | Windows npm self-update waits out a held image | Before an npm update on Windows, Pi moves the running image with one rename, which fails while anti-virus or an indexer has it open. PiG retries that rename for up to 10 seconds and then fails with the same error. |
 
 ## Known gaps for 0.3.x
 

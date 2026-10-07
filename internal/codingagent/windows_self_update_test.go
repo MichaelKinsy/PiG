@@ -31,7 +31,7 @@ func TestQuarantineNativeDependenciesMovesLoadedImagesAndCopiesThemBack(t *testi
 		loaded = append(loaded, strings.ToUpper(image))
 	}
 
-	if err := quarantineNativeDependencies(packageDir, loaded); err != nil {
+	if err := quarantineNativeDependencies(t.Context(), packageDir, loaded); err != nil {
 		t.Fatal(err)
 	}
 	quarantineRoot := filepath.Join(root, quarantineDirName)
@@ -61,7 +61,7 @@ func TestQuarantineNativeDependenciesOutsideNodeModulesIsANoOp(t *testing.T) {
 	if err := os.WriteFile(image, []byte("running pig"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := quarantineNativeDependencies(packageDir, []string{image}); err != nil {
+	if err := quarantineNativeDependencies(t.Context(), packageDir, []string{image}); err != nil {
 		t.Fatal(err)
 	}
 	entries, err := os.ReadDir(packageDir)

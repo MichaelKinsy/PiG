@@ -61,6 +61,13 @@ func (s *darwinClipboardSymbols) send(object uintptr, selector string, a, b, c u
 	value, _, _ := syscall_syscall6(s.message, object, s.named(s.selector, selector), a, b, c, 0)
 	return value
 }
+
+// sendPointer is send for a first argument that points into Go memory, which send must never receive as a uintptr: the goroutine stack can move while send resolves the selector, and a uintptr would still hold the old address. Here the argument stays a pointer, which the runtime updates when the stack moves, until the system call expression converts it, which keeps the memory alive and in place until the call returns.
+func (s *darwinClipboardSymbols) sendPointer(object uintptr, selector string, a unsafe.Pointer, b, c uintptr) uintptr {
+	name := s.named(s.selector, selector)
+	value, _, _ := syscall_syscall6(s.message, object, name, uintptr(a), b, c, 0)
+	return value
+}
 func (s *darwinClipboardSymbols) typeNamed(name string) uintptr { return s.named(s.class, name) }
 
 func openDarwinClipboard(ctx context.Context) (*darwinClipboardSymbols, uintptr, func(), error) {
@@ -99,21 +106,27 @@ func readDarwinClipboardText(ctx context.Context) (*string, bool, error) {
 		return nil, true, err
 	}
 	defer cleanup()
+	text, err := s.pasteboardText(board)
+	return text, true, err
+}
+
+// pasteboardText runs inside the caller's autorelease pool, which owns every object it creates.
+func (s *darwinClipboardSymbols) pasteboardText(board uintptr) (*string, error) {
 	text := s.send(board, "stringForType:", s.text, 0, 0)
 	if text == 0 {
-		return nil, true, nil
+		return nil, nil
 	}
 	address := s.send(text, "UTF8String", 0, 0, 0)
 	if address == 0 {
-		return nil, true, errors.New("Could not encode clipboard text")
+		return nil, errors.New("Could not encode clipboard text")
 	}
 	length := s.send(text, "lengthOfBytesUsingEncoding:", 4, 0, 0)
 	data, err := copyDarwinBytes(address, length)
 	if err != nil {
-		return nil, true, err
+		return nil, err
 	}
 	value := string(data)
-	return &value, true, nil
+	return &value, nil
 }
 
 func readDarwinClipboardImage(ctx context.Context) ([]byte, bool, error) {
@@ -122,11 +135,16 @@ func readDarwinClipboardImage(ctx context.Context) ([]byte, bool, error) {
 		return nil, true, err
 	}
 	defer cleanup()
+	data, err := s.pasteboardImage(board)
+	return data, true, err
+}
+
+// pasteboardImage runs inside the caller's autorelease pool, which owns every object it creates. A pasteboard without a PNG or TIFF type is a nil result.
+func (s *darwinClipboardSymbols) pasteboardImage(board uintptr) ([]byte, error) {
 	types := [2]uintptr{s.png, s.tiff}
-	array := s.send(s.typeNamed("NSArray"), "arrayWithObjects:count:", uintptr(unsafe.Pointer(&types[0])), 2, 0) //nolint:gosec // G103: the two AppKit-owned type objects are copied synchronously; the Go array stays alive through KeepAlive.
-	runtime.KeepAlive(types)
+	array := s.sendPointer(s.typeNamed("NSArray"), "arrayWithObjects:count:", unsafe.Pointer(&types[0]), 2, 0) //nolint:gosec // G103: NSArray copies the two AppKit-owned type objects synchronously; sendPointer keeps the Go array alive and in place for the call.
 	if s.send(board, "availableTypeFromArray:", array, 0, 0) == 0 {
-		return nil, true, nil
+		return nil, nil
 	}
 	png := s.send(board, "dataForType:", s.png, 0, 0)
 	if png == 0 {
@@ -145,10 +163,9 @@ func readDarwinClipboardImage(ctx context.Context) ([]byte, bool, error) {
 		}
 	}
 	if png == 0 {
-		return nil, true, errors.New("Clipboard does not contain an image")
+		return nil, errors.New("Clipboard does not contain an image")
 	}
-	data, err := copyDarwinBytes(s.send(png, "bytes", 0, 0, 0), s.send(png, "length", 0, 0, 0))
-	return data, true, err
+	return copyDarwinBytes(s.send(png, "bytes", 0, 0, 0), s.send(png, "length", 0, 0, 0))
 }
 
 // readDarwinFilePaths reads the file URLs on the general pasteboard as POSIX paths. Mirrors darwin-platform.m's CLIPBOARD_FILES branch: `readObjectsForClasses:options:` with NSPasteboardURLReadingFileURLsOnlyKey, then each URL's fileSystemRepresentation. No file URLs is a nil result with available=true.
@@ -168,8 +185,7 @@ func readDarwinFilePaths(ctx context.Context) ([]string, bool, error) {
 // pasteboardFilePaths runs inside the caller's autorelease pool, which owns every object it creates.
 func (s *darwinClipboardSymbols) pasteboardFilePaths(board uintptr) ([]string, error) {
 	urlClass := [1]uintptr{s.typeNamed("NSURL")}
-	classes := s.send(s.typeNamed("NSArray"), "arrayWithObjects:count:", uintptr(unsafe.Pointer(&urlClass[0])), 1, 0) //nolint:gosec // G103: the one AppKit-owned class object is copied synchronously; the Go array stays alive through KeepAlive.
-	runtime.KeepAlive(urlClass)
+	classes := s.sendPointer(s.typeNamed("NSArray"), "arrayWithObjects:count:", unsafe.Pointer(&urlClass[0]), 1, 0) //nolint:gosec // G103: NSArray copies the one AppKit-owned class object synchronously; sendPointer keeps the Go array alive and in place for the call.
 	yes := s.send(s.typeNamed("NSNumber"), "numberWithBool:", 1, 0, 0)
 	options := s.send(s.typeNamed("NSDictionary"), "dictionaryWithObject:forKey:", yes, s.fileURLsOnlyKey, 0)
 	urls := s.send(board, "readObjectsForClasses:options:", classes, options, 0)
@@ -215,12 +231,16 @@ func writeDarwinClipboardText(ctx context.Context, text string) error {
 		return err
 	}
 	defer cleanup()
+	return s.setPasteboardText(board, text)
+}
+
+// setPasteboardText runs inside the caller's autorelease pool, which owns every object it creates.
+func (s *darwinClipboardSymbols) setPasteboardText(board uintptr, text string) error {
 	data := jsstring.ToUTF8(text)
 	length := len(data)
 	data = append(data, 0)
 	value := s.send(s.typeNamed("NSString"), "alloc", 0, 0, 0)
-	value = s.send(value, "initWithBytes:length:encoding:", uintptr(unsafe.Pointer(&data[0])), uintptr(length), 4) //nolint:gosec // G103: NSString copies this owned UTF-8 buffer synchronously; it remains live until KeepAlive.
-	runtime.KeepAlive(data)
+	value = s.sendPointer(value, "initWithBytes:length:encoding:", unsafe.Pointer(&data[0]), uintptr(length), 4) //nolint:gosec // G103: NSString copies this owned UTF-8 buffer synchronously; sendPointer keeps it alive and in place for the call.
 	if value == 0 {
 		return errors.New("Clipboard text is not valid UTF-8")
 	}

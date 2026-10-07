@@ -24,6 +24,7 @@
 //	  packages.md          packages: shareable resource bundles installed with pig install
 //	  piglets.md          Piglet schema, carriers, component closure, and environments
 //	  providers.md         provider list, auth, env
+//	  publishing.md        publishing a Package or Piglet to npm
 //	  runtime-cells.md     packed-cell runtime mechanics
 //	  skills.md            SKILL.md skills: format, loading, discovery
 package pigdocs

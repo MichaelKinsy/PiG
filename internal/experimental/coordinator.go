@@ -57,9 +57,11 @@ type coordinator struct {
 	publicConnections  map[*publicConnection]struct{}
 	currentServer      *serverPeer
 	shuttingDown       bool
-	emptyTimer         *time.Timer
-	done               chan struct{}
-	err                error
+	// stopping closes when shutdown begins, so a retrying accept loop stops waiting.
+	stopping   chan struct{}
+	emptyTimer *time.Timer
+	done       chan struct{}
+	err        error
 }
 
 var coordinatorRunning atomic.Bool
@@ -109,7 +111,7 @@ func startCoordinator(publicPath, controlPath string) (*coordinator, error) {
 		publicPath: publicPath, controlPath: controlPath,
 		publicServer: publicServer, controlServer: controlServer,
 		peers: make(map[string]*routedPeer), controlConnections: make(map[*routedSocket]struct{}),
-		publicConnections: make(map[*publicConnection]struct{}), done: make(chan struct{}),
+		publicConnections: make(map[*publicConnection]struct{}), done: make(chan struct{}), stopping: make(chan struct{}),
 	}
 	c.mu.Lock()
 	c.scheduleEmptyShutdown(emptyStartupGrace)
@@ -119,24 +121,83 @@ func startCoordinator(publicPath, controlPath string) (*coordinator, error) {
 	return c, nil
 }
 
-func (c *coordinator) acceptControl() {
+// acceptBackoff paces the retries of a listener that fails to accept (for example a Windows AcceptEx socket allocation
+// failure) while still open: every later client would queue unanswered if the loop ended at the first failure. The same
+// failure repeating maxRepeats times in a row is not transient, so the loop gives up and reports it.
+type acceptBackoff struct {
+	min, max   time.Duration
+	maxRepeats int
+}
+
+var coordinatorAcceptBackoff = acceptBackoff{min: 5 * time.Millisecond, max: time.Second, maxRepeats: 10}
+
+// acceptConnections passes each accepted connection to handle until the listener is closed, stop is closed, or handle
+// reports that accepting is over. An accept failure on an open listener is written to stderr and retried after a
+// doubling delay that stop interrupts. It returns the failure that repeated backoff.maxRepeats times in a row, else nil.
+func acceptConnections(listener net.Listener, name string, stop <-chan struct{}, backoff acceptBackoff, handle func(net.Conn) (more bool)) error {
+	delay := backoff.min
+	var last string
+	repeats := 0
 	for {
-		conn, err := c.controlServer.Accept()
+		conn, err := listener.Accept()
 		if err != nil {
-			return
+			if errors.Is(err, net.ErrClosed) {
+				return nil
+			}
+			select {
+			case <-stop:
+				return nil
+			default:
+			}
+			_, _ = fmt.Fprintf(os.Stderr, "coordinator %s accept failed: %v\n", name, err)
+			if err.Error() == last {
+				repeats++
+			} else {
+				last, repeats = err.Error(), 1
+			}
+			if repeats >= backoff.maxRepeats {
+				return fmt.Errorf("coordinator %s accept failed %d times in a row: %w", name, repeats, err)
+			}
+			timer := time.NewTimer(delay)
+			select {
+			case <-stop:
+				timer.Stop()
+				return nil
+			case <-timer.C:
+			}
+			delay = min(delay*2, backoff.max)
+			continue
 		}
+		delay, last, repeats = backoff.min, "", 0
+		if !handle(conn) {
+			return nil
+		}
+	}
+}
+
+// acceptLoop runs acceptConnections for one listener. A listener that cannot accept leaves clients queued forever, so
+// its persistent failure retires the coordinator, which removes its sockets and lets the next client start a new one.
+func (c *coordinator) acceptLoop(listener net.Listener, name string, handle func(net.Conn) bool) {
+	if err := acceptConnections(listener, name, c.stopping, coordinatorAcceptBackoff, handle); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "%v; coordinator shutting down\n", err)
+		c.shutdown()
+	}
+}
+
+func (c *coordinator) acceptControl() {
+	c.acceptLoop(c.controlServer, "control", func(conn net.Conn) bool {
 		socket := newRoutedSocket(conn)
 		c.mu.Lock()
+		defer c.mu.Unlock()
 		if c.shuttingDown {
-			c.mu.Unlock()
 			socket.close()
-			return
+			return false
 		}
 		c.controlConnections[socket] = struct{}{}
 		c.wg.Go(socket.writeLoop)
 		c.wg.Go(func() { c.readControl(socket) })
-		c.mu.Unlock()
-	}
+		return true
+	})
 }
 
 func (c *coordinator) readControl(socket *routedSocket) {
@@ -293,16 +354,12 @@ func (c *coordinator) handleRoutedMessage(from string, message controlMessage) e
 }
 
 func (c *coordinator) acceptPublic() {
-	for {
-		client, err := c.publicServer.Accept()
-		if err != nil {
-			return
-		}
+	c.acceptLoop(c.publicServer, "public", func(client net.Conn) bool {
 		c.mu.Lock()
+		defer c.mu.Unlock()
 		if c.shuttingDown || c.currentServer == nil {
-			c.mu.Unlock()
 			_ = client.Close()
-			continue
+			return true
 		}
 		c.cancelEmptyShutdown()
 		ctx, cancel := context.WithCancel(context.Background())
@@ -310,8 +367,8 @@ func (c *coordinator) acceptPublic() {
 		c.publicConnections[connection] = struct{}{}
 		endpoint := c.currentServer.endpoint
 		c.wg.Go(func() { c.forwardPublic(ctx, connection, endpoint) })
-		c.mu.Unlock()
-	}
+		return true
+	})
 }
 
 func (c *coordinator) forwardPublic(ctx context.Context, connection *publicConnection, endpoint string) {
@@ -407,6 +464,7 @@ func (c *coordinator) beginShutdown() {
 		return
 	}
 	c.shuttingDown = true
+	close(c.stopping)
 	c.cancelEmptyShutdown()
 	c.closePublicConnections()
 	for socket := range c.controlConnections {

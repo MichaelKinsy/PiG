@@ -165,7 +165,7 @@ does not duplicate it into separate caches.
 
 Publish the Package to npm or to a Git host. Other users install it from that source with `pig install npm:<name>` or `pig install git:<url>`. See [Install](#install).
 
-Next up: a Package catalog on pi-in-go.dev that lists npm packages carrying the `pig-package` keyword. The catalog does not exist yet. Until it does, share the install source directly.
+To list a Package on npm, add the keyword `pig-package` and a description to `package.json` and run `npm publish`. `pig package publish [<dir>] --to npm` is optional sugar that validates the Package, checks the fields the catalog reads and that `name@version` is free, shows npm's dry run, and publishes only with `--yes`. The pi-in-go.dev catalog finds packages by npm keyword when its site builds each day. See [Publish a Package or Piglet](/docs/latest/publishing).
 
 ## Manage installed Packages
 
@@ -247,7 +247,7 @@ To give a Piglet to someone else, distribute its source or a Piglet Binary that 
 
 Publish signed Binaries as one GitHub Release with `pig piglet publish <name> --to github --repo <owner/repo> --sign-key <key>`. Publication is a dry run until `--yes` is present. The recipient installs a signed Binary with `pig piglet pull <release-index-url|github:owner/repo@version>`. See [Piglet Binaries](/docs/latest/piglet-binaries#publish-to-github-releases).
 
-Source publication with `--to npm`, pull by installed Piglet name, and Piglet-specific updates remain planned. See [Piglets](/docs/latest/piglets#planned-not-in-this-release-source-publication-named-updates-and-image-artifacts).
+Publish a Piglet's source to npm with `pig piglet publish <name> --to npm`; `pig piglet add npm:<name>` installs it. See [Publish a Package or Piglet](/docs/latest/publishing). Pull by installed Piglet name remains planned. See [Piglets](/docs/latest/piglets#planned-not-in-this-release-named-pulls-and-image-artifacts).
 
 ## Packages and piglets
 
@@ -258,7 +258,7 @@ Source publication with `--to npm`, pull by installed Piglet name, and Piglet-sp
 | never owns a Piglet | may reference zero or more Packages plus direct origins |
 | preserves source provenance | records agent defaults and exact component realization/materialization |
 
-Piglets remain independent from Packages. A Piglet release publishes signed Binary facets to GitHub Releases with `pig piglet publish --to github`. `pig piglet build --format image` is reserved and does not produce an Image.
+Piglets remain independent from Packages. A Piglet release publishes signed Binary facets to GitHub Releases with `pig piglet publish --to github` and its source to npm with `--to npm`. `pig piglet build --format image` is reserved and does not produce an Image.
 
 ## Authoring safety
 

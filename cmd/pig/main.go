@@ -710,6 +710,8 @@ func runStableCLI() {
 		if sysSig, ok := sig.(syscall.Signal); ok {
 			receivedTerminationSignal.Store(int32(sysSig))
 		}
+		// pig additive (D102): Pi exits on SIGTERM and SIGHUP without a trace.
+		codingagent.RecordExit(codingagent.AgentDir(), "received "+codingagent.SignalName(sig))
 		// Give extensions their cleanup event before cancelling: the root
 		// context owns the extension subprocesses, so cancelling it kills the
 		// very processes that would receive session_shutdown. Upstream's
@@ -760,6 +762,14 @@ func runStableCLI() {
 	cwd := initialCWD
 	agentDir := codingagent.AgentDir()
 	agentDirForModelOverride = agentDir
+
+	// pig additive (D102): an interactive session leaves a marker that only a clean end removes, so an exit nothing else
+	// recorded is reported at the next start.
+	if processAppMode(flags) == appModeInteractive {
+		codingagent.ReconcileSessionMarkers(agentDir, time.Now())
+		codingagent.BeginSessionMarker(agentDir, Version, initialCWD)
+		defer codingagent.EndSessionMarker()
+	}
 
 	// pig divergence (D88): first-time setup runs on an interactive start when settings.json does not exist yet; observed
 	// before anything this run writes creates it.
@@ -922,6 +932,7 @@ func runStableCLI() {
 	startupExtensions := &startupExtensionSet{}
 	stopStartupExtensions = startupExtensions.close
 	defer startupExtensions.close()
+	defer stopAutomaticExtensionCacheGC()
 	_ = pigdocs.EnsureSynced(codingagent.ConfigRoot())
 	buildInput := cliBuildInput{CWD: cwd, Startup: true, StartupExtensions: startupExtensions}
 	build, err := builder.buildResources(ctx, buildInput)
@@ -1046,6 +1057,7 @@ func runStableCLI() {
 			resumePath = startupSession.forkPath
 		}
 		codingagent.ReportDiagnostics(startupDiagnostics)
+		startAutomaticExtensionCacheGC(ctx)
 		exitProcess(runRPCMode(ctx, flags, activePiglet, rpcModeResources{
 			Builder: builder, Build: build, SessionManager: startupSession.manager, ResumePath: resumePath,
 		}))
@@ -1079,6 +1091,7 @@ func runStableCLI() {
 			Manager: startupSession.manager, ResumePath: printResumePath, SessionName: sessionName,
 			SessionDir: sessionDir, NoSession: flags.NoSession, SessionID: flags.SessionID, CWDOverride: flags.sessionCwdOverride,
 		})
+		startAutomaticExtensionCacheGC(ctx)
 		if err := runPrintMode(ctx, host, printModeOptions{Mode: mode, Messages: extraMessages, InitialMessage: initialMessage, InitialImages: initialImages}); err != nil {
 			// A run stopped by a termination signal reports 128+signum and
 			// stays quiet, matching upstream's print-mode signal handlers.
@@ -1280,6 +1293,7 @@ func runStableCLI() {
 	defer setTerminationShutdownHook(nil)
 
 	trace.Mark("pre-interactive")
+	startAutomaticExtensionCacheGC(ctx)
 	if err := interactive.Run(ctx); err != nil {
 		if errors.Is(err, codingagent.ErrInteractiveCrashed) {
 			exitProcess(1)

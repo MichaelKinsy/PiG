@@ -1917,6 +1917,21 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 					var name string
 					var input map[string]any
 					switch event := args[0].(type) {
+					case extension.CustomToolCallEvent:
+						// The in-process handler edits event.Input in place, as Pi's handler edits event.input. It receives the event by value, so it has no way to give the tool another object: rewrite_reassign_probe leaves the input as it was.
+						if event.ToolName != "rewrite_probe" && event.ToolName != "rewrite_block_probe" {
+							return nil, nil
+						}
+						if event.Input["command"] == "git status" || event.ToolName == "rewrite_block_probe" {
+							event.Input["command"] = "git status --short"
+							delete(event.Input, "drop")
+							event.Input["added"] = true
+							event.Input["nested"] = map[string]any{"depth": 2.0}
+						}
+						if event.ToolName == "rewrite_block_probe" {
+							return &extension.ToolCallEventResult{Block: true, Reason: "blocked after rewrite"}, nil
+						}
+						return nil, nil
 					case extension.PowerShellToolCallEvent:
 						name, input = event.ToolName, asMap(event.Input)
 					case extension.BashToolCallEvent:

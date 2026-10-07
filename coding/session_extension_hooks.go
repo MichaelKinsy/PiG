@@ -14,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 )
 
 // installExtensionHooks installs the Session's extension hooks on its agent,
@@ -50,18 +51,31 @@ func (s *Session) toolCallHook(ctx context.Context, toolCallID, parentToolCallID
 	if len(args) > 0 {
 		_ = json.Unmarshal(args, &input) // invalid JSON yields a nil input, as validation already ran
 	}
-	before, _ := json.Marshal(input)
-	result, err := runner.EmitToolCall(ctx, extension.CustomToolCallEvent{
-		ToolCallEventBase: extension.ToolCallEventBase{Type: icodingagent.EventToolCall, ToolCallID: toolCallID, ParentToolCallID: parentToolCallID},
+	// The event carries the members in the order the model wrote them (JSON.stringify of Pi's input), and a subprocess handler's edit replaces these bytes. The agent loop runs the tool with whatever order they hold afterwards.
+	var wireInput *json.RawMessage
+	if canonical, err := jsonstringify.Canonicalize(args); err == nil && input != nil {
+		wire := json.RawMessage(canonical)
+		wireInput = &wire
+	}
+	before := ""
+	if wireInput != nil {
+		before = string(*wireInput)
+	}
+	beforeValues, _ := json.Marshal(input)
+	event := extension.CustomToolCallEvent{
+		ToolCallEventBase: extension.ToolCallEventBase{Type: icodingagent.EventToolCall, ToolCallID: toolCallID, ParentToolCallID: parentToolCallID, WireInput: wireInput},
 		ToolName:          toolName,
 		Input:             input,
-	})
+	}
+	result, err := runner.EmitToolCall(ctx, event)
 	if err != nil {
 		return agent.ToolCallHookResult{Block: true, Reason: err.Error()}
 	}
 	var hook agent.ToolCallHookResult
-	if after, err := json.Marshal(input); err == nil && !bytes.Equal(before, after) {
-		hook.Args = after
+	if afterValues, err := json.Marshal(input); err == nil && (!bytes.Equal(beforeValues, afterValues) || (wireInput != nil && string(*wireInput) != before)) {
+		if after, err := event.InputJSON(); err == nil {
+			hook.Args = after
+		}
 	}
 	if result != nil {
 		hook.Block = result.Block

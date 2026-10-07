@@ -61,6 +61,11 @@ func marshalToolResultEvent(base ToolResultEventBase, toolName string, details a
 			return nil, err
 		}
 	}
+	return writeOrderedFields(fields)
+}
+
+// writeOrderedFields writes an object whose members keep the order of fields.
+func writeOrderedFields(fields []orderedField) ([]byte, error) {
 	out := []byte{'{'}
 	for i, field := range fields {
 		if i > 0 {

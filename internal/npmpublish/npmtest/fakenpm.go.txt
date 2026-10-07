@@ -1,0 +1,238 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"io/fs"
+	"net/url"
+	"os"
+	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+var state = os.Getenv("PIG_FAKE_NPM_STATE")
+
+func fail(code, message string) {
+	fmt.Fprintf(os.Stderr, "npm error code %s\nnpm error %s\n", code, message)
+	os.Exit(1)
+}
+
+func exists(path string) bool { _, err := os.Stat(path); return err == nil }
+
+func registry(name string) string { return filepath.Join(state, "registry", url.PathEscape(name)) }
+
+func main() {
+	args := os.Args[1:]
+	cwd, _ := os.Getwd()
+	line, _ := json.Marshal(map[string]any{"args": args, "cwd": cwd})
+	calls, err := os.OpenFile(filepath.Join(state, "calls.jsonl"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	if err == nil {
+		_, _ = calls.Write(append(line, '\n'))
+		_ = calls.Close()
+	}
+	if exists(filepath.Join(state, "offline")) {
+		fail("ENOTFOUND", "network request to the registry failed")
+	}
+	if len(args) == 0 {
+		fail("EUSAGE", "no command")
+	}
+	switch args[0] {
+	case "view":
+		view(args[1:])
+	case "publish":
+		publish(args[1:], cwd)
+	case "install":
+		install(args[1:])
+	default:
+		fail("EUSAGE", "unsupported command "+args[0])
+	}
+}
+
+func split(spec string) (string, string) {
+	if i := strings.LastIndex(spec, "@"); i > 0 {
+		return spec[:i], spec[i+1:]
+	}
+	return spec, ""
+}
+
+func view(args []string) {
+	name, constraint := split(args[0])
+	entries, err := os.ReadDir(registry(name))
+	if err != nil {
+		fail("E404", "404 Not Found - GET https://registry.example/"+name)
+	}
+	for _, entry := range entries {
+		if satisfies(entry.Name(), constraint) {
+			fmt.Println(entry.Name())
+		}
+	}
+}
+
+func publish(args []string, cwd string) {
+	dir, dry := cwd, false
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--dry-run":
+			dry = true
+		case "--tag", "--access", "--otp":
+			i++
+		default:
+			if !strings.HasPrefix(args[i], "-") {
+				dir = args[i]
+			}
+		}
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "package.json"))
+	if err != nil {
+		fail("ENOENT", "no package.json in "+dir)
+	}
+	var manifest struct {
+		Name    string   `json:"name"`
+		Version string   `json:"version"`
+		Files   []string `json:"files"`
+	}
+	if json.Unmarshal(data, &manifest) != nil || manifest.Name == "" || manifest.Version == "" {
+		fail("EPUBLISHCONFLICT", "package.json needs a name and a version")
+	}
+	var files []string
+	_ = filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil || entry.IsDir() {
+			return nil
+		}
+		relative, _ := filepath.Rel(dir, path)
+		relative = filepath.ToSlash(relative)
+		if relative == "package.json" || len(manifest.Files) == 0 || listed(manifest.Files, relative) {
+			files = append(files, relative)
+		}
+		return nil
+	})
+	sort.Strings(files)
+	if dry {
+		fmt.Fprintln(os.Stderr, "npm notice Tarball Contents")
+		for _, file := range files {
+			fmt.Fprintln(os.Stderr, "npm notice "+file)
+		}
+		return
+	}
+	if exists(filepath.Join(state, "fail-publish")) {
+		fail("E403", "403 Forbidden - you do not have permission to publish")
+	}
+	target := filepath.Join(registry(manifest.Name), manifest.Version)
+	if exists(target) {
+		fail("E403", "You cannot publish over the previously published versions: "+manifest.Version)
+	}
+	for _, file := range files {
+		content, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(file)))
+		if err != nil {
+			fail("EREAD", err.Error())
+		}
+		out := filepath.Join(target, "package", filepath.FromSlash(file))
+		if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
+			fail("EMKDIR", err.Error())
+		}
+		if err := os.WriteFile(out, content, 0o644); err != nil {
+			fail("EWRITE", err.Error())
+		}
+	}
+	fmt.Fprintf(os.Stderr, "npm notice Publishing to the fake registry\n")
+	fmt.Printf("+ %s@%s\n", manifest.Name, manifest.Version)
+}
+
+func listed(entries []string, relative string) bool {
+	for _, entry := range entries {
+		entry = strings.TrimSuffix(strings.TrimPrefix(entry, "./"), "/")
+		if relative == entry || strings.HasPrefix(relative, entry+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+func numbers(version string) [3]int {
+	var out [3]int
+	core, _, _ := strings.Cut(version, "-")
+	for i, part := range strings.SplitN(core, ".", 3) {
+		out[i], _ = strconv.Atoi(part)
+	}
+	return out
+}
+
+func satisfies(version, constraint string) bool {
+	switch {
+	case constraint == "" || constraint == "latest" || constraint == "*":
+		return true
+	case strings.HasPrefix(constraint, "^"):
+		base, have := numbers(constraint[1:]), numbers(version)
+		if have[0] != base[0] {
+			return false
+		}
+		return have[1] > base[1] || (have[1] == base[1] && have[2] >= base[2])
+	}
+	return version == constraint
+}
+
+func install(args []string) {
+	spec, root := "", ""
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--prefix", "--registry":
+			i++
+			if args[i-1] == "--prefix" {
+				root = args[i]
+			}
+		default:
+			if !strings.HasPrefix(args[i], "-") && spec == "" {
+				spec = args[i]
+			}
+		}
+	}
+	name, constraint := split(spec)
+	entries, err := os.ReadDir(registry(name))
+	if err != nil {
+		fail("E404", "404 Not Found - GET https://registry.example/"+name)
+	}
+	best := ""
+	for _, entry := range entries {
+		version := entry.Name()
+		if satisfies(version, constraint) && (best == "" || numbers(version) == numbers(best) || less(numbers(best), numbers(version))) {
+			best = version
+		}
+	}
+	if best == "" {
+		fail("ETARGET", "No matching version found for "+spec)
+	}
+	source := filepath.Join(registry(name), best, "package")
+	target := filepath.Join(root, "node_modules", filepath.FromSlash(name))
+	_ = os.RemoveAll(target)
+	_ = filepath.WalkDir(source, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil || entry.IsDir() {
+			return nil
+		}
+		relative, _ := filepath.Rel(source, path)
+		content, _ := os.ReadFile(path)
+		out := filepath.Join(target, relative)
+		_ = os.MkdirAll(filepath.Dir(out), 0o755)
+		_ = os.WriteFile(out, content, 0o644)
+		return nil
+	})
+	lockPath := filepath.Join(root, "package-lock.json")
+	lock := map[string]any{"lockfileVersion": 3, "packages": map[string]any{}}
+	if data, err := os.ReadFile(lockPath); err == nil {
+		_ = json.Unmarshal(data, &lock)
+	}
+	packages, _ := lock["packages"].(map[string]any)
+	packages["node_modules/"+name] = map[string]any{"version": best, "integrity": "sha512-fake-" + url.PathEscape(name) + "-" + best}
+	data, _ := json.Marshal(lock)
+	_ = os.WriteFile(lockPath, data, 0o644)
+}
+
+func less(a, b [3]int) bool {
+	for i := range a {
+		if a[i] != b[i] {
+			return a[i] < b[i]
+		}
+	}
+	return false
+}

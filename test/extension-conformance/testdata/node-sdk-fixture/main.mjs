@@ -571,6 +571,34 @@ export default function (pi) {
   });
 
   pi.on("tool_call", async (event, ctx) => {
+    // Pi's handler mutates event.input in place and the runner reads it back (runner.ts emitToolCall).
+    // Assigning a new object to event.input leaves the object the tool runs with (agent-loop.ts prepareToolCall).
+    if (event.toolName === "rewrite_reassign_probe") {
+      event.input = { ...event.input, command: "git status --short" };
+      return;
+    }
+    // Moving a member to the end is an edit in Pi, and two added members follow in the order the handler added them.
+    if (event.toolName === "rewrite_order_probe") {
+      if (event.input.command === "reorder") {
+        const timeout = event.input.timeout;
+        delete event.input.timeout;
+        event.input.timeout = timeout;
+      } else {
+        event.input.zeta = 1;
+        event.input.alpha = 2;
+      }
+      return;
+    }
+    if (event.toolName === "rewrite_probe" || event.toolName === "rewrite_block_probe") {
+      if (event.input.command === "git status" || event.toolName === "rewrite_block_probe") {
+        event.input.command = "git status --short";
+        delete event.input.drop;
+        event.input.added = true;
+        event.input.nested = { depth: 2 };
+      }
+      if (event.toolName === "rewrite_block_probe") return { block: true, reason: "blocked after rewrite" };
+      return;
+    }
     if (event.toolName !== "powershell" && event.toolName !== "bash") return;
     ctx.ui.notify(`tool-call=${event.toolName}:${event.input?.command}:${event.input?.timeout}`, "info");
     if (event.input?.command === "blocked-command") return { block: true, reason: `blocked ${event.toolName}` };

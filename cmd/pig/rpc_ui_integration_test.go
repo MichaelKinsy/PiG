@@ -84,18 +84,27 @@ func startRPCProcessAt(t *testing.T, cwd string, env []string, args ...string) *
 		t.Fatal(err)
 	}
 	p.scanOutput(stdout)
-	t.Cleanup(func() {
+	t.Cleanup(p.cleanup(stdout))
+	return p
+}
+
+// cleanup stops the output scanner and the child. A running child is killed before the stdout pipe is closed. On Windows a
+// pipe read is a blocking ReadFile, and Close cancels it with CancelIoEx. A cancel that lands before the scanner has issued
+// its next ReadFile finds nothing to cancel, so that read then blocks until the child writes or exits, and Close waits for
+// the reader. With the child dead the pipe reaches EOF, so the scanner always returns.
+func (p *rpcProcess) cleanup(stdout io.Closer) func() {
+	return func() {
 		close(p.stopOutput)
+		if !p.exited {
+			_ = p.stdin.Close()
+			_ = p.cmd.Process.Kill()
+		}
 		_ = stdout.Close()
 		<-p.outputDone
-		if p.exited {
-			return
+		if !p.exited {
+			_ = p.cmd.Wait()
 		}
-		_ = stdin.Close()
-		_ = cmd.Process.Kill()
-		_ = cmd.Wait()
-	})
-	return p
+	}
 }
 
 func (p *rpcProcess) scanOutput(stdout io.Reader) {

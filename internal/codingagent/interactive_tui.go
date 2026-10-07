@@ -413,6 +413,8 @@ func (m *InteractiveMode) handleInterruptSignal() {
 	if m.suspended.Load() {
 		return
 	}
+	// pig additive (D102): Pi dies on SIGINT with no trace.
+	RecordExit(m.opts.AgentDir, "received SIGINT (exit 130)")
 	// pig divergence (D51): restore terminal state before exit 130.
 	done := make(chan struct{})
 	go func() {
@@ -424,9 +426,18 @@ func (m *InteractiveMode) handleInterruptSignal() {
 	case <-time.After(time.Second):
 	}
 	tui.RestoreTerminalFromSignal()
+	EndSessionMarker()
 	os.Exit(130)
 }
 
 // `/model` empty-args) and applies the chosen model.
 // Equivalent to /model with no args; reuses the SlashContext callbacks
 // so behavior stays consistent between keybinding and slash entry.
+
+// requestExtensionShutdown ends the session at an extension's request. The user did not ask for it, so it leaves a line
+// in exit.log; an extension's timer can end an idle session this way.
+// pig additive (D102): Pi leaves no trace.
+func (m *InteractiveMode) requestExtensionShutdown() {
+	RecordExit(m.opts.AgentDir, "extension requested shutdown (ctx.shutdown())")
+	m.requestShutdown()
+}

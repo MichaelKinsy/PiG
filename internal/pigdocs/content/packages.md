@@ -161,11 +161,11 @@ does not duplicate it into separate caches.
 
 ## Listing a PiG package
 
-### Planned (not in this release): automatic npm catalog listing
+### Publish to npm
 
-The pi-in-go.dev Package catalog will index npm packages carrying the `pig-package` keyword. It will label community listings as unreviewed and apply a checked-in denylist. The upstream Pi Package section will be rebuilt from npm packages carrying `pi-package`; the indexer will not fetch pi.dev data.
+Add the keyword `pig-package` and a description to `package.json`, then run `npm publish`. The pi-in-go.dev catalog finds packages by npm keyword when its site builds each day, labels community listings as unreviewed, and accepts no uploads.
 
-The catalog indexer and listing page are not available in this release. Package installation from a known npm or Git source already works through `pig install`.
+`pig package publish [<dir>] --to npm` is optional sugar over `npm publish`. It validates the Package, checks the fields the catalog reads and that `name@version` is free on npm, shows npm's dry run, and publishes only with `--yes`. PiG never edits `package.json` and never handles an npm token. See [Publishing](publishing.md).
 
 ## Manage installed Packages
 
@@ -237,11 +237,9 @@ first use:
 The cache makes later matching loads fast, but the cache path is not a package
 version or reproducibility identity.
 
-## Planned (not in this release): published Piglet releases
+## Published Piglet releases
 
-The Piglet distribution workflow will publish source through npm or Git and signed per-target Piglet Binaries through GitHub Releases. It will not use a pi-in-go.dev upload API. The publish, pull, and Piglet-specific update commands are not available in this release.
-
-To hand off a Piglet today, distribute its source or a locally built Piglet Binary through infrastructure you manage. See [Piglets](piglets.md#planned-not-in-this-release-remote-distribution-and-image-artifacts) for the planned command surface.
+A Piglet's source publishes to npm with `pig piglet publish <name> --to npm`, and its signed per-target Binaries publish to GitHub Releases with `--to github`. Neither uses a pi-in-go.dev upload API. See [Publishing](publishing.md). Pull by installed Piglet name is not available in this release; see [Piglets](piglets.md#planned-not-in-this-release-named-pulls-and-image-artifacts).
 
 ## Packages and piglets
 
@@ -252,7 +250,7 @@ To hand off a Piglet today, distribute its source or a locally built Piglet Bina
 | never owns a Piglet | may reference zero or more Packages plus direct origins |
 | preserves source provenance | records agent defaults and exact component realization/materialization |
 
-Piglets remain independent from Packages. A Piglet release publishes signed Binary facets to GitHub Releases with `pig piglet publish --to github`; Piglet Image publication remains reserved until an Image producer exists.
+Piglets remain independent from Packages. A Piglet release publishes signed Binary facets to GitHub Releases with `pig piglet publish --to github` and its source to npm with `--to npm`; Piglet Image publication remains reserved until an Image producer exists.
 
 ## Authoring safety
 

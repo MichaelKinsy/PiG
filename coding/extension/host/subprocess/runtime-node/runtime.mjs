@@ -844,7 +844,7 @@ export class Connection {
     }
     if (env.type === "call_result") {
       const pending = this.pending.get(env.id);
-      if (pending?.synchronous) {
+      if (pending?.synchronous || pending?.appliedOnReceipt) {
         this.resolveCall(env);
         return;
       }
@@ -904,6 +904,21 @@ export class Connection {
       refreshQuitDrain();
       try {
         this.send({ type: "call", id, call: { method, args, ...(parentRequestId ? { parent_request_id: parentRequestId } : {}) } });
+      } catch (error) {
+        this.pending.delete(id);
+        reject(error);
+      }
+    });
+  }
+
+  // An asynchronous call whose reply is applied when the frame arrives, for a connection nothing reads yet: a loading factory's.
+  callAppliedOnReceipt(method, args = {}) {
+    if (this.closed) return Promise.reject(new Error("extension connection closed"));
+    const id = uuid();
+    return new Promise((resolve, reject) => {
+      this.pending.set(id, { resolve, reject, parentRequestId: "", method, appliedOnReceipt: true });
+      try {
+        this.send({ type: "call", id, call: { method, args } });
       } catch (error) {
         this.pending.delete(id);
         reject(error);
@@ -1620,7 +1635,7 @@ export class Runtime {
       getSessionName: action(() => this.state.session?.sessionName || undefined),
       setSessionName: action((name) => this.fireAndForget("setSessionName", { name })),
       setLabel: action((entryId, label) => this.fireAndForget("setLabel", { entryId, label })),
-      exec: (command, args = [], options = undefined) => this.call("exec", { command, args, options }),
+      exec: (command, args = [], options = undefined) => this.exec({ command, args, options }),
       getFlag: (name) => {
         if (!this.flags.has(name)) return undefined;
         return (Object.hasOwn(this.state.flags, name) ? this.state.flags[name] : undefined) ?? this.flagValues.get(name);
@@ -1776,6 +1791,20 @@ export class Runtime {
     if (this.conn) return this.callSync(method, args);
     this.ensureConnectionSync();
     return this.earlyConn.callSync(method, args, "");
+  }
+
+  // loader.ts:411-414: pi.exec spawns the child whenever it is called. A callback the factory scheduled can call it after the factory returned and before the registered connection exists, while connect() opens it. That call waits for the register frame and runs as the loader's exec; opening a second connection would leave the call or the registration on a socket the Host does not read.
+  exec(request) {
+    if (this.conn) return this.call("exec", request);
+    if (this.loadState === "loading") return this.loadingExec(request);
+    if (this.connecting) return this.connecting.then(() => this.call("exec.loading", request));
+    return this.call("exec", request);
+  }
+
+  // loader.ts:411-414 gives a loading factory an exec that spawns the child itself, with no session bound. The Host runs it in the loader's working directory over the connection the factory opened. The Host's reply is applied when it arrives: nothing reads this connection's queue before the register frame, and the factory awaits the call.
+  loadingExec(args) {
+    this.ensureConnectionSync();
+    return this.earlyConn.callAppliedOnReceipt("exec.loading", args);
   }
 
   // loader.ts:456-468. The Host validates the config with Pi's own rules and refuses a name another extension owns, and Pi does both when the call is made: the throw reaches the factory, which may catch it. A registration the factory makes is queued once it passed, and reaches the Host in the register frame, as Pi commits it when the factory returns; later ones apply at once.
@@ -2165,7 +2194,8 @@ export class Runtime {
 
   async serve() {
     try {
-      await this.connect();
+      this.connecting = this.connect();
+      await this.connecting;
       while (true) {
         const env = await this.conn.next();
         if (!env) return;
@@ -3528,6 +3558,21 @@ export class Runtime {
               error = err instanceof Error ? err : new Error(String(err));
             }
             await this.respond(id, { _pigBoundaryEntries: entries, _pigBoundaryResult: result }, error);
+            return;
+          }
+          // Pi hands every tool_call handler the one event object, and a handler edits event.input in place (runner.ts emitToolCall). The host cannot share the object, so the reply carries the input the handler left, when it differs from the one it received, even if the handler failed. The tool runs with the object the event carried (agent-loop.ts prepareToolCall passes the same args to beforeToolCall and execute), so a handler that assigns a new object to event.input changes nothing the tool receives.
+          if (request.event === "tool_call") {
+            const input = event.input;
+            const before = JSON.stringify(input);
+            let result;
+            let error;
+            try {
+              result = await selected.handler(event, ctx);
+            } catch (err) {
+              error = err instanceof Error ? err : new Error(String(err));
+            }
+            const edited = JSON.stringify(input) !== before;
+            await this.respond(id, { ...(edited ? { _pigToolCallInput: input } : {}), _pigToolCallResult: result }, error);
             return;
           }
           if (request.event === "before_agent_start") {

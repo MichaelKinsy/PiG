@@ -343,7 +343,7 @@ func (s *TaskScheduler) Join() {
 
 // Abort commits the abort mark, or settles a task that no registered definition can take as orphaned when nothing it
 // owns is live, then joins the run invocation seen on the line; the commit listener signalled it. The abort invocation
-// starts once the task's ordinary owned work is gone. A completing task is only marked (scheduler.ts:260-283).
+// starts once the task's ordinary owned work is gone. A completing task is only marked (scheduler.ts:269-296).
 func (s *TaskScheduler) Abort(ctx context.Context, id durable.TaskId) (string, error) {
 	type marked struct {
 		result string
@@ -393,8 +393,12 @@ func (s *TaskScheduler) Abort(ctx context.Context, id durable.TaskId) (string, e
 	if err != nil {
 		return "", err
 	}
-	// The commit listener signalled the run; join it.
+	// The commit listener signalled the run; join it. Like awaitWithContext, a caller already cancelled is rejected
+	// even when the run has ended.
 	if result.run != nil {
+		if ctx.Err() != nil {
+			return "", context.Cause(ctx)
+		}
 		select {
 		case <-result.run.done:
 		case <-ctx.Done():
@@ -1743,6 +1747,11 @@ func (runtime *taskRuntime) Agent(ctx context.Context) (durable.Agent, error) {
 		return durable.Agent{}, err
 	}
 	resolution := runtime.resolveAgent()
+	// awaitWithContext (chord context) rejects a caller already cancelled, even when the resolution has settled; a
+	// select with both cases ready would choose at random.
+	if ctx.Err() != nil {
+		return durable.Agent{}, context.Cause(ctx)
+	}
 	select {
 	case <-resolution.done:
 		return resolution.agent, resolution.err

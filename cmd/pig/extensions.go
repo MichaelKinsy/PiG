@@ -254,9 +254,7 @@ func loadFinalSubprocessExtensions(ctx context.Context, cwd string, mode extensi
 		preloaded.host, preloaded.bridge = host, bridge
 		preloaded.configs = append([]subprocess.ExtConfig(nil), configs...)
 	}
-	if err := runAutomaticExtensionCacheGC(configs); err != nil {
-		fmt.Fprintf(os.Stderr, "warning: automatic extension cache prune: %v\n", err)
-	}
+	scheduleAutomaticExtensionCacheGC(configs)
 
 	return loaded, host, bridge, loadErrs
 }

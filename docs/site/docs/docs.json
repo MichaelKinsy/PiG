@@ -26,6 +26,7 @@
     "packages.md": "adapted-pi",
     "piglet-binaries.md": "pig-authored",
     "piglets.md": "pig-authored",
+    "publishing.md": "pig-authored",
     "prompt-templates.md": "adapted-pi",
     "providers.md": "adapted-pi",
     "quickstart.md": "pig-authored",
@@ -149,6 +150,10 @@
             {
               "title": "Use PiG Packages",
               "path": "packages.md"
+            },
+            {
+              "title": "Publish a Package or Piglet",
+              "path": "publishing.md"
             },
             {
               "title": "Create Virtual Models",

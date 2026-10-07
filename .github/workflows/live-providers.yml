@@ -54,10 +54,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # We install nothing from packages.microsoft.com; drop the runner image's source so its outages cannot fail this step.
-          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list /etc/apt/sources.list.d/microsoft-prod.sources
-          sudo apt-get update
-          sudo apt-get install --yes tmux fd-find ripgrep
+          automation/ci/install-apt-packages.sh tmux fd-find ripgrep
           rustup toolchain install 1.97.1 --profile minimal
           rustup default 1.97.1
           npm ci --prefix automation/ci/npm-toolchain --ignore-scripts --no-audit --no-fund

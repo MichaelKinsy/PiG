@@ -223,3 +223,52 @@ func objectKeys(t *testing.T, object json.RawMessage) []string {
 	}
 	return keys
 }
+
+// A session narrowed to no tools by SetActiveTools([]) is a value on the wire, not absent state: both the getActiveTools
+// reply and the replicated snapshot carry [], never null, which every SDK rejects as a missing field.
+func TestActiveToolsNarrowedToNoneIsAnEmptyListOnTheWire(t *testing.T) {
+	for name, getter := range map[string]func() []string{
+		"empty": func() []string { return []string{} },
+		"nil":   func() []string { return nil },
+	} {
+		t.Run(name, func(t *testing.T) {
+			b := NewUIBridge(func() {})
+			b.SetActions(&HostCallbacks{GetActiveTools: getter})
+			result, err := b.handleCall(t.Context(), "ext", nil, &CallPayload{Method: "getActiveTools"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := string(result.Result); got != `{"tools":[]}` {
+				t.Errorf("getActiveTools reply = %s, want {\"tools\":[]}", got)
+			}
+			raw, err := json.Marshal(b.Snapshot(nil, 0, false))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var decoded struct {
+				ActiveTools []string `json:"activeTools"`
+			}
+			if err := json.Unmarshal(raw, &decoded); err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Contains(raw, []byte(`"activeTools":[]`)) || decoded.ActiveTools == nil {
+				t.Errorf("snapshot = %s, want activeTools []", raw)
+			}
+		})
+	}
+}
+
+// SetActiveTools([]) is a deny-all selection: the host must hand its action an empty list, which the Session
+// applies as "no tools", never a value that reads as "unchanged".
+func TestSetActiveToolsEmptyListReachesTheHostAsEmpty(t *testing.T) {
+	var got []string
+	called := false
+	b := NewUIBridge(func() {})
+	b.SetActions(&HostCallbacks{SetActiveTools: func(names []string) { called, got = true, names }})
+	if _, err := b.handleCall(t.Context(), "ext", nil, &CallPayload{Method: "setActiveTools", Args: json.RawMessage(`{"tools":[]}`)}); err != nil {
+		t.Fatal(err)
+	}
+	if !called || got == nil || len(got) != 0 {
+		t.Errorf("SetActiveTools called=%v with %#v, want a call with an empty non-nil list", called, got)
+	}
+}

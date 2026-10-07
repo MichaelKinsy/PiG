@@ -11,7 +11,13 @@ All notable public changes to PiG will be recorded in this file.
 
 ### Changed
 
-- The `/sprite` picker draws the pig of the highlighted sprite on the right of its option rows, so the choice shows its face before you make it. `Create your own...` draws no pig and keeps the full-width list. The list stays the one it was, and a UI context without a custom-component host (RPC) still gets that plain list (D2).
+- The `/sprite` picker draws the pig of the highlighted sprite right after its option rows (a few cells past the longest row, top-aligned with the first option, and dropped on narrow terminals), so the choice shows its face before you make it. `Create your own...` draws no pig and keeps the full-width list. The list stays the one it was, and a UI context without a custom-component host (RPC) still gets that plain list (D2).
+
+### Fixed
+
+- With an active Piglet, an extension that denies every tool with `SetActiveTools([])` is no longer widened back to the Piglet's full tool scope. The Piglet scope only narrows what an earlier extension selected. `getActiveTools` replies and the replicated state carry `[]` for a session narrowed to no tools, never `null`.
+- On Windows, refreshing an MCP server's OAuth token no longer fails with `EPERM` when another `pig` process is still deleting the refresh lock. Lock acquisition that waits for a lock now retries every error, as Pi's lock does, and reports the most frequent error when it gives up.
+- Starting `pig` no longer waits for the daily cleanup of the extension cache. The cleanup now runs in the background after the session is running, stops when `pig` exits, and skips entries that are in use or that the file system reports busy (such as NFS `.nfs*` files) instead of failing and repeating at every start. `pig extensions cache prune` reports the skipped entries, and `pig extensions cache stats` shows the last background failure.
 
 ## [0.4.1] - 2026-10-05
 

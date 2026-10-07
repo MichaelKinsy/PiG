@@ -57,6 +57,8 @@ reached Pig at all. See [terminal setup](terminal-setup.md).
 
 Use `PI_TUI_DEBUG_REDRAW=1` when the view jumps while output arrives. The log records each full repaint's cause in `pi-tui-debug.log` in the configured TUI log directory, normally the agent directory. Standalone TUI instances without a configured log directory do not write redraw logs. Pi reads the same variable. Pig ignores the names `PIG_DEBUG_REDRAW` and `PI_DEBUG_REDRAW`.
 
+When a session ends without you asking it to, look in the agent directory (`~/.pig/agent`, or `$PIG_HOME/agent`, or the directory `PIG_CODING_AGENT_DIR` names). `exit.log` has one line for each signal (`SIGHUP`, `SIGTERM`, `SIGINT`) and each closed terminal, with the time, the pid and the parent pid. If only the input closes while the terminal stays open, Pig keeps running, as Pi does. `crashes.json` has the panics and fatal errors, and the next start announces the newest one. A session that the operating system killed leaves no line of its own, so the next start adds one to `exit.log`. `pig diagnose` prints these paths and the newest `exit.log` lines. The `PIG_DEBUG` log is `pig-debug.log` in the temporary directory (`$TMPDIR` on macOS, a per-user folder).
+
 `PIG_DEBUG_TOOLS` and `PI_TUI_DEBUG_REDRAW` need the exact value `1`. The other
 diagnostic variables accept any non-empty value.
 
