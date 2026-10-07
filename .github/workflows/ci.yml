@@ -133,11 +133,8 @@ jobs:
         timeout-minutes: 10
         run: |
           set -euo pipefail
-          # We install nothing from packages.microsoft.com; drop the runner image's source so its outages cannot fail this step.
-          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list /etc/apt/sources.list.d/microsoft-prod.sources
-          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update
           # The native clipboard fixtures compile C11 code and exercise a real X11 selection server.
-          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install --yes tmux fd-find ripgrep build-essential xvfb xclip pkg-config libxcb1-dev
+          automation/ci/install-apt-packages.sh tmux fd-find ripgrep build-essential xvfb xclip pkg-config libxcb1-dev
       - name: Install parity toolchains
         shell: bash
         run: |
@@ -208,11 +205,8 @@ jobs:
         timeout-minutes: 10
         run: |
           set -euo pipefail
-          # We install nothing from packages.microsoft.com; drop the runner image's source so its outages cannot fail this step.
-          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list /etc/apt/sources.list.d/microsoft-prod.sources
-          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update
           # ci-node-runtime runs the native clipboard upstream tests on each Node version.
-          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install --yes tmux fd-find ripgrep build-essential xvfb xclip pkg-config libxcb1-dev
+          automation/ci/install-apt-packages.sh tmux fd-find ripgrep build-essential xvfb xclip pkg-config libxcb1-dev
       - name: Prepare the Pi oracle
         run: |
           set -euo pipefail

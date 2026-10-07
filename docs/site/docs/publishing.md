@@ -99,7 +99,7 @@ Publishing is safe to repeat. PiG asks npm whether `name@version` exists (`npm v
 | `--binaries github:<owner/repo>` | Record the signed Binary release (Piglets only). |
 | `--no-binaries` | Record no signed Binary release (Piglets only). |
 
-PiG runs the `npm` on your `PATH`, or the command in the global `npmCommand` setting.
+PiG runs the `npm` on your `PATH`, or the command in the global `npmCommand` setting. PiG never runs an `npm` from the directory it publishes: it looks for npm only in the absolute directories on your `PATH`, never in the current directory or a relative entry such as `.`, and resolves an `npmCommand` with a relative path against the directory you run `pig` in. On Windows, the first element of `npmCommand` must be an `.exe`, `.com`, `.cmd` or `.bat` file; to run an npm script such as `npm-cli.js`, name its interpreter first, as in `["node", "C:\\path\\to\\npm-cli.js"]`.
 
 ## Signed Binaries next to the source
 

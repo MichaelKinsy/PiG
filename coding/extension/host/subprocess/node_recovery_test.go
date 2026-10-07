@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 // Each fixture owns its sources, trace, Host, and recovery processes. Equal member names in concurrent fixtures still use the Host's private socket directory.
@@ -116,7 +117,9 @@ func waitRecovered(t *testing.T, h *Host, names []string, oldPID int) {
 		}
 		return ok, state
 	}
-	deadline := time.Now().Add(15 * time.Second)
+	// Recovery restarts Node processes, so a wait that a loaded machine stretches past a fixed bound is still recovering; the test budget bounds a real hang below the package deadline.
+	wait := testbudget.Wait(t)
+	deadline := time.Now().Add(wait)
 	for sleep := 10 * time.Millisecond; ; sleep = min(sleep*2, 200*time.Millisecond) {
 		ok, state := recovered()
 		if ok {
@@ -130,8 +133,8 @@ func waitRecovered(t *testing.T, h *Host, names []string, oldPID int) {
 				notices = append(notices, log.notices...)
 				log.mu.Unlock()
 			}
-			t.Fatalf("Node members did not recover within 15s:\n  %s\ncrash notices:\n  %s\nhost goroutines:\n%s",
-				strings.Join(state, "\n  "), strings.Join(notices, "\n  "), hostGoroutines())
+			t.Fatalf("Node members did not recover within %s:\n  %s\ncrash notices:\n  %s\nhost goroutines:\n%s",
+				wait, strings.Join(state, "\n  "), strings.Join(notices, "\n  "), hostGoroutines())
 		}
 		time.Sleep(sleep)
 	}

@@ -56,6 +56,21 @@ func tkAppendBlocker(harness Harness, conversationId durable.ConversationId) <-c
 	return done
 }
 
+// tkCloseSealed starts Close and returns once its close listener has sealed the scheduler. Upstream's close() seals
+// synchronously, so a test's next statement (a held commit's release, a handler's proceed) runs after the seal; the Go
+// Close runs on its own goroutine, and a fixed flush does not order it under load.
+func tkCloseSealed(t *testing.T, harness Harness) <-chan error {
+	t.Helper()
+	closing := make(chan error, 1)
+	go func() { closing <- harness.Close(testContext) }()
+	select {
+	case <-harness.(*harnessImpl).tasks.sealed:
+	case <-testContext.Done():
+		t.Fatal(context.Cause(testContext))
+	}
+	return closing
+}
+
 func tkWaitErr(t *testing.T, done <-chan error) error {
 	t.Helper()
 	select {
@@ -628,9 +643,7 @@ func TestTaskScheduling(t *testing.T) {
 			_, err := opened.harness.WaitForTask(testContext, id)
 			closedWhileQueued <- err
 		}()
-		closing := make(chan error, 1)
-		go func() { closing <- opened.harness.Close(testContext) }()
-		flush()
+		closing := tkCloseSealed(t, opened.harness)
 		heldAgain.release()
 		if err := tkWaitErr(t, blockerAgain); err != nil {
 			t.Fatal(err)
@@ -843,10 +856,11 @@ func TestTaskAbort(t *testing.T) {
 	})
 
 	t.Run("does not signal a running abort handler when aborted again, and a cancelled caller leaves the mark durable", func(t *testing.T) {
-		reached, proceed, runRelease := deferred(), deferred(), deferred()
+		started, reached, proceed, runRelease := deferred(), deferred(), deferred(), deferred()
 		abortSignalled := &syncValue[bool]{}
 		var aborts atomic.Int32
 		run := tkOneStep("test.abort-again", func(ctx context.Context, _ stepRecord, _ stepRuntime) error {
+			started.resolve()
 			// Ignores the signal, so the first caller is still joining when it gives up.
 			return runRelease.wait(testContext)
 		}, func(ctx context.Context, runtime stepRuntime) error {
@@ -863,7 +877,11 @@ func TestTaskAbort(t *testing.T) {
 		opened := tkOpenRoot(t, []durable.AnyTask{run})
 		id := tkStart(t, opened.root, run)
 		opened.harness.Resume()
-		flush()
+		// AbortTask joins only a run invocation already on the line (scheduler.ts abort), so the caller can be seen
+		// joining only once the run phase has started; a fixed flush does not guarantee it under load.
+		if err := started.wait(testContext); err != nil {
+			t.Fatal(err)
+		}
 		// This caller gives up while joining; the mark and the abort invocation are unaffected.
 		caller, cancel := context.WithCancelCause(testContext)
 		cancelled := make(chan error, 1)
@@ -937,13 +955,18 @@ func TestTaskAbort(t *testing.T) {
 		if err := held.entered.wait(testContext); err != nil {
 			t.Fatal(err)
 		}
-		// The reservation commit is in storage; the abort mark commit queues behind it.
+		// The reservation commit is in storage; the abort mark commit queues behind it before the release, as upstream's
+		// abortTask() enters the line synchronously.
 		aborting := make(chan tkAbortResult, 1)
-		go func() {
-			result, err := opened.harness.AbortTask(testContext, id)
-			aborting <- tkAbortResult{result: result, err: err}
-		}()
-		flush()
+		queueOnLineIn(t, "TaskScheduler).Abort", func() <-chan struct{} {
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				result, err := opened.harness.AbortTask(testContext, id)
+				aborting <- tkAbortResult{result: result, err: err}
+			}()
+			return done
+		})
 		held.release()
 		if result := <-aborting; result.err != nil || result.result != "marked" {
 			t.Fatalf("AbortTask %+v", result)
@@ -1041,9 +1064,7 @@ func TestTaskClose(t *testing.T) {
 			t.Fatal(err)
 		}
 		commits := store.commitCount()
-		closing := make(chan error, 1)
-		go func() { closing <- opened.harness.Close(testContext) }()
-		flush()
+		closing := tkCloseSealed(t, opened.harness)
 		proceed.resolve()
 		if err := tkWaitErr(t, closing); err != nil {
 			t.Fatal(err)
@@ -1130,9 +1151,7 @@ func TestTaskClose(t *testing.T) {
 			t.Fatal(err)
 		}
 		flush()
-		closing := make(chan error, 1)
-		go func() { closing <- opened.harness.Close(testContext) }()
-		flush()
+		closing := tkCloseSealed(t, opened.harness)
 		held.release()
 		if err := tkWaitErr(t, closing); err != nil {
 			t.Fatal(err)
@@ -1159,9 +1178,7 @@ func TestTaskClose(t *testing.T) {
 		if err := held.entered.wait(testContext); err != nil {
 			t.Fatal(err)
 		}
-		closing := make(chan error, 1)
-		go func() { closing <- opened.harness.Close(testContext) }()
-		flush()
+		closing := tkCloseSealed(t, opened.harness)
 		held.release()
 		if err := tkWaitErr(t, closing); err != nil {
 			t.Fatal(err)
@@ -1180,7 +1197,8 @@ func TestTaskClose(t *testing.T) {
 		queued := make(chan error, 1)
 		heldGate := &syncValue[gate]{}
 		var harnessRef atomic.Pointer[Harness]
-		proceed := deferred()
+		proceed, commitStarted := deferred(), deferred()
+		commitDone := make(chan struct{})
 		queuedTask := tkOneStep("test.close-queued-commit", func(_ context.Context, _ stepRecord, runtime stepRuntime) error {
 			held := store.holdCommits()
 			heldGate.put(held)
@@ -1188,16 +1206,13 @@ func TestTaskClose(t *testing.T) {
 			if err := held.entered.wait(testContext); err != nil {
 				return err
 			}
-			// The commit must be queued on the line behind the held one before close seals it.
-			jobs := (*harnessRef.Load()).(*harnessImpl).LineJobs()
 			go func() {
+				defer close(commitDone)
 				queued <- runtime.Commit(testContext, func(durable.Tx, stepRecord) (*durable.NextTaskState[stepState, durable.JsonValue], error) {
 					return completed[stepState, durable.JsonValue](nil), nil
 				})
 			}()
-			for (*harnessRef.Load()).(*harnessImpl).LineJobs() <= jobs {
-				flush()
-			}
+			commitStarted.resolve()
 			// Ignores the close signal, so the invocation is still alive when the queued commit reaches the line.
 			return proceed.wait(testContext)
 		})
@@ -1207,13 +1222,15 @@ func TestTaskClose(t *testing.T) {
 		opened.harness.Resume()
 		eventually(t, heldGate.isSet)
 		held, _ := heldGate.get()
-		if err := held.entered.wait(testContext); err != nil {
-			t.Fatal(err)
-		}
-		flush()
-		closing := make(chan error, 1)
-		go func() { closing <- opened.harness.Close(testContext) }()
-		flush()
+		// The commit must be queued on the line behind the held one before close seals it, as upstream's
+		// runtime.commit() enters the line synchronously.
+		queueOnLineIn(t, "taskRuntime).Commit", func() <-chan struct{} {
+			if err := commitStarted.wait(testContext); err != nil {
+				t.Fatal(err)
+			}
+			return commitDone
+		})
+		closing := tkCloseSealed(t, opened.harness)
 		held.release()
 		tkContainsError(t, tkWaitErr(t, queued), "Harness is closed")
 		proceed.resolve()
@@ -1301,9 +1318,7 @@ func TestTaskClose(t *testing.T) {
 		if err := held.entered.wait(testContext); err != nil {
 			t.Fatal(err)
 		}
-		closing := make(chan error, 1)
-		go func() { closing <- opened.harness.Close(testContext) }()
-		flush()
+		closing := tkCloseSealed(t, opened.harness)
 		held.release()
 		if err := tkWaitErr(t, closing); err != nil {
 			t.Fatal(err)
