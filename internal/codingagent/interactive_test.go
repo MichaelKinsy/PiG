@@ -1522,9 +1522,20 @@ func (h *recordingCompactHandle) OnAgentSettled() { h.agentSettledCount++ }
 func (h *recordingCompactHandle) Agent() *agent.Agent             { return h.agent }
 func (h *recordingCompactHandle) Inner() *Session                 { return h.inner }
 func (h *recordingCompactHandle) Events() <-chan agent.AgentEvent { return nil }
-func (h *recordingCompactHandle) SetModel(model *ai.Model, _ ...ModelMutationOptions) error {
+func (h *recordingCompactHandle) SetModel(model *ai.Model, options ...ModelMutationOptions) error {
 	h.switched = append(h.switched, model)
+	h.appendPersistedDefaultToScope(model, options)
 	return nil
+}
+
+// appendPersistedDefaultToScope models Session.SetModel adding a persisted default to a nonempty scope (agent-session.ts:_addPersistedDefaultToNonEmptyScope).
+func (h *recordingCompactHandle) appendPersistedDefaultToScope(model *ai.Model, options []ModelMutationOptions) {
+	if len(options) == 0 || !options[0].Persist || len(h.scopedModels) == 0 {
+		return
+	}
+	if !slices.ContainsFunc(h.scopedModels, func(entry extension.ScopedModel) bool { return ai.ModelsAreEqual(entry.Model, model) }) {
+		h.scopedModels = append(h.scopedModels, extension.ScopedModel{Model: model})
+	}
 }
 func (h *recordingCompactHandle) ExtensionSetModel(_ context.Context, model *ai.Model) (bool, error) {
 	return true, h.SetModel(model)

@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -51,12 +50,6 @@ func (m *InteractiveMode) addPersistedDefaultToNonEmptyScope(model *ai.Model) er
 		return nil
 	}
 	m.scopedModelIDs = append(m.scopedModelIDs, spec)
-	if m.opts.SessionHandle != nil {
-		scoped := m.opts.SessionHandle.ScopedModels()
-		if !slices.ContainsFunc(scoped, func(entry extension.ScopedModel) bool { return ai.ModelsAreEqual(entry.Model, model) }) {
-			m.opts.SessionHandle.SetScopedModels(append(slices.Clone(scoped), extension.ScopedModel{Model: model}))
-		}
-	}
 	if sm := m.opts.SettingsManager; sm != nil {
 		enabled := sm.GetEnabledModels()
 		if len(enabled) > 0 && !slices.ContainsFunc(enabled, func(pattern string) bool { return strings.EqualFold(pattern, spec) }) {

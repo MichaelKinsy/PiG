@@ -97,25 +97,6 @@ func TestCycleModelDoesNotPersistDefault(t *testing.T) {
 	}
 }
 
-// A persisted SetModel already appended the default to the Session scope (agent-session.ts:_addPersistedDefaultToNonEmptyScope); the interactive sync must not append it again.
-func TestPersistedDefaultScopeSyncDoesNotDuplicateSessionEntry(t *testing.T) {
-	one := &ai.Model{ID: "model-one", ProviderMeta: ai.ProviderMetadata{ProviderID: "capture"}}
-	two := &ai.Model{ID: "model-two", ProviderMeta: ai.ProviderMetadata{ProviderID: "capture"}}
-	handle := &recordingCompactHandle{scopedModels: []extension.ScopedModel{{Model: one}, {Model: two}}}
-	m := &InteractiveMode{opts: InteractiveOptions{SessionHandle: handle}}
-	m.scopedModelIDs = []string{"capture/model-one"}
-
-	if err := m.addPersistedDefaultToNonEmptyScope(two); err != nil {
-		t.Fatal(err)
-	}
-	if len(handle.scopedModels) != 2 {
-		t.Fatalf("Session scope = %+v, want capture/model-one and capture/model-two once each", handle.scopedModels)
-	}
-	if want := []string{"capture/model-one", "capture/model-two"}; !slices.Equal(m.scopedModelIDs, want) {
-		t.Fatalf("interactive scope = %v, want %v", m.scopedModelIDs, want)
-	}
-}
-
 // Pi appends a saved default to the session scope and maps that scope directly on reopening; only the all-models list is sorted.
 func TestModelPickerReopensInScopeOrderAfterSavingDefault(t *testing.T) {
 	m := modelPickerTestMode(t)

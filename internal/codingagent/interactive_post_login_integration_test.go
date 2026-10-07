@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -120,8 +121,16 @@ func (h *postLoginModelHandle) SetModel(model *ai.Model, options ...ModelMutatio
 	}
 	h.agent.SetModel(model)
 	h.agent.SetThinkingLevel(ai.ThinkingHigh)
+	h.appendPersistedDefaultToScope(model, options)
 	if h.persisted {
-		return h.settings.SetDefaultModelAndProvider(model.ProviderMeta.ProviderID, model.ID)
+		if err := h.settings.SetDefaultModelAndProvider(model.ProviderMeta.ProviderID, model.ID); err != nil {
+			return err
+		}
+		// Session.SetModel also extends a nonempty enabledModels setting.
+		if enabled := h.settings.GetEnabledModels(); len(enabled) > 0 {
+			spec := model.ProviderMeta.ProviderID + "/" + model.ID
+			return h.settings.UpdateGlobal(func(s *Settings) { s.EnabledModels = append(enabled, spec) })
+		}
 	}
 	return nil
 }
@@ -136,6 +145,7 @@ func TestPostLoginOAuthUsesSessionPersistenceAndThinking(t *testing.T) {
 				t.Fatal(err)
 			}
 			m.scopedModelIDs = []string{"other/model"}
+			handle.scopedModels = []extension.ScopedModel{{Model: &ai.Model{ID: "model", ProviderMeta: ai.ProviderMetadata{ProviderID: "other"}}}}
 			auth, err := ai.NewAuthStorage(filepath.Join(m.opts.AgentDir, "auth.json"))
 			if err != nil {
 				t.Fatal(err)
