@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"runtime"
 	"sync"
 	"syscall"
 	"unsafe"
@@ -56,14 +57,19 @@ func startProcessTreeWithWindowsOps(cmd *exec.Cmd, ops windowsProcessTreeOps) (*
 	if err != nil {
 		return nil, err
 	}
-	var info windows.JOBOBJECT_EXTENDED_LIMIT_INFORMATION
+	// The goroutine stack can move while the x/sys wrapper runs, before the system call, and the wrapper takes the buffer as a uintptr, so the buffer is pinned, which places it on the heap.
+	info := new(windows.JOBOBJECT_EXTENDED_LIMIT_INFORMATION)
 	info.BasicLimitInformation.LimitFlags = windows.JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
-	if _, err = windows.SetInformationJobObject(
+	var pinner runtime.Pinner
+	pinner.Pin(info)
+	_, err = windows.SetInformationJobObject(
 		job,
 		windows.JobObjectExtendedLimitInformation,
-		uintptr(unsafe.Pointer(&info)), //nolint:gosec // G103: SetInformationJobObject reads the JOBOBJECT_EXTENDED_LIMIT_INFORMATION it is given, and x/sys takes that buffer as uintptr.
-		uint32(unsafe.Sizeof(info)),
-	); err != nil {
+		uintptr(unsafe.Pointer(info)), //nolint:gosec // G103: SetInformationJobObject reads the pinned JOBOBJECT_EXTENDED_LIMIT_INFORMATION, and x/sys takes it as uintptr.
+		uint32(unsafe.Sizeof(*info)),
+	)
+	pinner.Unpin()
+	if err != nil {
 		_ = windows.CloseHandle(job)
 		return nil, err
 	}
