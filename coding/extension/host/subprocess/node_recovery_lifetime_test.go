@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 func TestNodeShutdownCancelsInitialAdmission(t *testing.T) {
@@ -51,7 +53,8 @@ export default async function() { writeFileSync(` + strconv.Quote(marker) + `,"s
 	if err := killTestProcess(pid); err != nil {
 		t.Fatal(err)
 	}
-	pollUntil(t, 15*time.Second, "recovery factory did not start", func() bool { _, err := os.Stat(marker); return err == nil })
+	// Recovery waits the supervisor backoff and restages the cell first, so the wait for the factory is a test-budget hang bound, as in waitRecovered.
+	pollUntil(t, testbudget.Wait(t), "recovery factory did not start", func() bool { _, err := os.Stat(marker); return err == nil })
 	done := make(chan struct{})
 	go func() { h.Shutdown("cancel recovery"); close(done) }()
 	select {
