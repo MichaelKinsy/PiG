@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/internal/fsretry"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
@@ -157,7 +158,8 @@ func copyTestExecutable(t *testing.T, targetPath string) {
 		t.Fatal(err)
 	}
 	_ = os.Remove(targetPath)
-	if err := os.Rename(temporary, targetPath); err != nil {
+	// Windows denies replacing an executable for a short time after the process that ran it exits, so the replacement retries that transient denial.
+	if err := fsretry.Rename(t.Context(), temporary, targetPath, nil); err != nil {
 		t.Fatal(err)
 	}
 }
