@@ -182,6 +182,16 @@ Then run the clipboard verification commands above outside PiG. If they fail the
 
 PiG 0.4.1 and earlier write Piglet scripts, Piglet Binaries, and added Piglets with hard links, and Android does not allow hard links in Termux's data directory. The build fails at its last step with `commit ...: link ...: permission denied`. Update PiG to a release that includes the fix.
 
+### `pig update` reports `preserve current executable for rollback: link ... permission denied`
+
+PiG 0.4.1 and earlier keep a rollback copy of the running `pig` with a hard link before they replace it, and Android does not allow hard links in Termux's data directory. The update stops before it changes anything. Such a release cannot update itself in Termux, so update a script installation by running the installer again:
+
+```bash
+curl -fsSL https://pi-in-go.dev/install.sh | sh
+```
+
+Later releases copy the running `pig` where the hard link is refused, and `pig update` works.
+
 ### Shared storage reports permission denied
 
 Run `termux-setup-storage`, approve the Android permission request, and retry the path under `~/storage/` or `/storage/emulated/0`.

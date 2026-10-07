@@ -383,7 +383,8 @@ Locked by: `internal/codingagent/selfupdate_test.go`
 `TestUpdateTransportCASidecarAllowsPrivateHTTPS`,
 `TestUpdateTransportCASidecarPreservesClientRoots`,
 `TestUpdateTransportCASidecarRejectsUnsafeMaterial`),
-`internal/fspublish/duplicate_linux_test.go` (`TestDuplicate*`: the rollback backup is a copy with the executable's mode where links are refused),
+`internal/fspublish/duplicate_test.go` and `internal/fspublish/duplicate_linux_test.go` (`TestDuplicate*`: the rollback backup is a copy with the executable's mode where links are refused),
+`internal/codingagent/selfupdate_linkrefused_linux_test.go` (`TestSelfReplaceAtWithCommitRestoresPreviousExecutableWhereLinksAreRefused`: the kernel refuses links through a seccomp filter and the rollback restores the previous executable with its mode under umask 077),
 `internal/codingagent/selfupdate_tier_test.go`
 (`TestResolveSelfUpdateTier_*`, `TestPackageManagerUpdateCommand_MirrorsUpstreamShape`,
 `TestRemediationMessagesAreNonLoopingAndMentionExe`,

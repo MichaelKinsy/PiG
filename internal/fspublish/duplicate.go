@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-// Duplicate makes the file at src also available at dst, which must not exist. It links src to dst. Where hard links are refused, as in Termux, it copies src to a new file at dst, sets src's permission bits on it whatever the umask, and syncs it. A failed copy removes the file it created.
+// Duplicate makes the file at src also available at dst, which must not exist. It links src to dst. On Linux and Android, where the link is refused (EPERM or EACCES, as in Termux), it copies src to a new file at dst, sets src's permission bits on it whatever the umask, and syncs it. A failed copy removes the file it created.
 func Duplicate(src, dst string) error {
 	err := link(src, dst)
 	if err == nil || !linkRefused(err) {
