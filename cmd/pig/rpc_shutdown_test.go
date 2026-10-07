@@ -273,7 +273,7 @@ func TestRPCInputEndMidPromptSequenceComparedWithPi(t *testing.T) {
 // command, and then shutdown() exits within microtasks and one tick
 // (rpc-mode.ts:728-744, output-guard.ts:105-108). A command answers only if it
 // settles inside that window: microtasks, ticks and the check phase of the
-// line's own iteration (measured with Pi 0.87.1: sync, micro, nextTick and
+// line's own iteration (measured with Pi 0.87.1 on Linux: sync, micro, nextTick and
 // immediate answer 10 of 10; a nested setImmediate, fs I/O, a child process, a
 // timer and a dialog never do; a single fs.stat is not stable in Pi). A command that settles while a
 // session_shutdown handler that awaits I/O keeps Pi alive does answer. Each row
@@ -290,10 +290,7 @@ func TestRPCInputEndAfterExtensionCommandComparedWithPi(t *testing.T) {
 		// exit decision, so the continuation may record its event before then.
 		// pig divergence (D85): the afterExit tolerance is D85's first difference; the Pi rows stay strict.
 		afterExit bool
-		// piRacy marks a Pi row whose outcome is not fixed on this OS. On Windows, libuv reads
-		// pipe stdin through IOCP and a reader thread, not the poll phase, so whether two nested
-		// setImmediate ticks beat the end of input varies (TestRPCInputEndWindowClosesBeforeNextPollComparedWithPi measures the same
-		// row as racy there). The pig rows stay strict.
+		// piRacy marks a Pi row whose outcome is not fixed on this OS. On Windows, libuv reads a non-overlapped stdin pipe on a reader thread that posts its completions to the IOCP, so when the end of input lands is not tied to an event-loop phase, and whether two nested setImmediate ticks beat it varies by host: Pi answered every run of both immediate2 rows on one Windows host and 1 of 5 on a loaded Windows runner (TestRPCInputEndWindowClosesBeforeNextPollComparedWithPi). The pig rows stay strict.
 		piRacy bool
 	}{
 		{command: "micro", response: true},
@@ -657,10 +654,8 @@ func TestRPCInputEndWindowClosesBeforeNextPollComparedWithPi(t *testing.T) {
 	// piRacy marks a row whose Pi answer is not fixed, so only pig's side is
 	// asserted for it. The threadpool rows: Pi answered 0 of 20 runs of each in
 	// one measurement, but under load in this harness it answered fs.readdir
-	// once in 5. immediate2 on Windows: libuv reads pipe stdin through IOCP and a
-	// reader thread there, not the poll phase, so whether two nested
-	// setImmediate ticks beat the end of input is not fixed; Pi answered 1 of 5
-	// runs on a loaded Windows runner.
+	// once in 5.
+	// immediate2 on Windows: libuv reads a non-overlapped stdin pipe on a reader thread that posts its completions to the IOCP, so when the end of input lands is not tied to an event-loop phase, and whether two nested setImmediate ticks beat it is not fixed; Pi answered 1 of 5 runs on a loaded Windows runner and every run of TestRPCInputEndAfterExtensionCommandComparedWithPi's immediate2 rows on another Windows host.
 	kinds := []struct {
 		kind    string
 		answers bool

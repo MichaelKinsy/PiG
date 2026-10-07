@@ -1159,7 +1159,7 @@ Call-site markers: `coding/extension/host/subprocess/runtime-node/runtime.mjs`: 
 
 Evidence: `TestRPCInputEndAfterExtensionCommandComparedWithPi` (stdout and the extension's event records against Pi for each command shape, with and without the default shutdown handler, plus a sibling extension), `TestRPCInputEndWindowClosesBeforeNextPollComparedWithPi` (stdout against Pi over repeated runs of the window-edge shapes), `TestRPCInputEndCommandSettlesDuringSlowShutdownHandler` and `TestRPCInputEndJoinsEachExtensionCommand` in `cmd/pig/rpc_shutdown_test.go`, `TestCommandFlightsSuspendPerCommand` in `coding/extension/host/subprocess/command_flight_test.go`, and `TestConformance_SuspendedCommandFlush` in `test/extension-conformance/command_flush_test.go`. The stdin-end contract is in `docs/extension-api-parity.md`.
 
-Parity allowance: the Pi rows of the comparison tests are strict. The PiG rows drop the command's own event record for the shapes Pi does not answer (`afterExit`), which is difference 1. No test covers difference 2.
+Parity allowance: the Pi rows of the comparison tests are strict, except the rows where Pi's own answer varies, where only PiG's side is asserted: the threadpool rows of `TestRPCInputEndWindowClosesBeforeNextPollComparedWithPi`, and a nested `setImmediate` on Windows in both comparison tests. The PiG rows drop the command's own event record for the shapes Pi does not answer (`afterExit`), which is difference 1. No test covers difference 2.
 
 Remove when: the host stops or freezes a runtime process before a suspended continuation can run and the stdin-end window is aggregated across runtime processes, or PiG runs extensions on one shared event loop as Pi does.
 
