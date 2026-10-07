@@ -383,6 +383,7 @@ Locked by: `internal/codingagent/selfupdate_test.go`
 `TestUpdateTransportCASidecarAllowsPrivateHTTPS`,
 `TestUpdateTransportCASidecarPreservesClientRoots`,
 `TestUpdateTransportCASidecarRejectsUnsafeMaterial`),
+`internal/fspublish/duplicate_linux_test.go` (`TestDuplicate*`: the rollback backup is a copy with the executable's mode where links are refused),
 `internal/codingagent/selfupdate_tier_test.go`
 (`TestResolveSelfUpdateTier_*`, `TestPackageManagerUpdateCommand_MirrorsUpstreamShape`,
 `TestRemediationMessagesAreNonLoopingAndMentionExe`,

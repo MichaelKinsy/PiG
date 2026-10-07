@@ -663,7 +663,7 @@ func selfReplaceAt(ctx context.Context, client *http.Client, bin UpdateBinary, e
 	if err := os.Remove(backupPath); err != nil {
 		return fmt.Errorf("stage executable rollback: %w", err)
 	}
-	// The rollback copy is a hard link, or a copy where Android refuses hard links in Termux's prefix.
+	// pig divergence (D39): the rollback backup is a hard link, or a synced copy where the file system refuses links (EPERM or EACCES, as Android does in Termux's prefix).
 	if err := fspublish.Duplicate(exePath, backupPath); err != nil {
 		return fmt.Errorf("preserve current executable for rollback: %w", err)
 	}

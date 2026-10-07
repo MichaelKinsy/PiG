@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-// Duplicate makes the file at src also available at dst, which must not exist. It links src to dst. Where hard links are refused, as in Termux, it copies src to a new file at dst with src's permissions and syncs it. A failed copy leaves no file at dst.
+// Duplicate makes the file at src also available at dst, which must not exist. It links src to dst. Where hard links are refused, as in Termux, it copies src to a new file at dst, sets src's permission bits on it whatever the umask, and syncs it. A failed copy removes the file it created.
 func Duplicate(src, dst string) error {
 	err := link(src, dst)
 	if err == nil || !linkRefused(err) {
@@ -29,7 +29,11 @@ func copyNew(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	_, err = io.Copy(out, in)
+	// The create mode is masked by the umask (often 077 for Android apps); fchmod is not.
+	err = out.Chmod(info.Mode().Perm())
+	if err == nil {
+		_, err = io.Copy(out, in)
+	}
 	if err == nil {
 		err = out.Sync()
 	}
