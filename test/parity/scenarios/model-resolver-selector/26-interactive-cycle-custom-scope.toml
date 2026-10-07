@@ -9,6 +9,11 @@
 #   Switched to Custom Model / custom-model
 # No provider request was made. Each wait checks the intermediate order; the final
 # escaped comparison checks the status, prompt, and full footer.
+# Re-probed on 2026-10-07 at 100×35 with quietStartup=true. Without it, D2's
+# two-row-taller PiG compact header moves the chat status down two rows while
+# the fullscreen footer stays bottom-aligned, so this crop compares different
+# amounts of blank viewport space. Quiet startup isolates model cycling from
+# the approved branding difference; both exact comparisons remain unchanged.
 
 name = "26-interactive-cycle-custom-scope"
 description = "Ctrl+P cycles a mixed custom and built-in model scope in configured order."
