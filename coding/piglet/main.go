@@ -38,6 +38,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/installresolver"
 	sourceref "github.com/MichaelKinsy/PiG/coding/source"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/fspublish"
 )
 
 // ── Pre-session CLI ──────────────────────────────────────────────────────────
@@ -1240,7 +1241,7 @@ func commitPigletAddFiles(files map[string][]byte, modes map[string]os.FileMode)
 	}
 	created := make([]string, 0, len(stages))
 	for _, target := range slices.Sorted(maps.Keys(stages)) {
-		if err := os.Link(stages[target], target); err != nil {
+		if err := fspublish.Publish(stages[target], target); err != nil {
 			for _, path := range created {
 				_ = os.Remove(path)
 			}
