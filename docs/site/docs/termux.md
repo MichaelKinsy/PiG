@@ -115,6 +115,22 @@ PiG detects that it is running in Termux, but it cannot infer how you want it to
 
 Run `/reload` after changing the file during an active session.
 
+## Build Piglets
+
+`pig piglet build` uses Termux's own toolchains. `pig setup go` cannot download Go for Android, so install Go with `pkg`. Install Rust when a Piglet has Rust extensions:
+
+```bash
+pkg install golang clang rust
+pig setup
+```
+
+- `--format script` writes a launcher script.
+- `--format binary` builds a native Android Piglet Binary. A release PiG fetches its own source on the first build, so that build needs network access and takes a few minutes. Later builds reuse the cache.
+- A Piglet Binary embeds Go and Rust extensions. A Piglet with no extensions, or with only Python or only Node extensions, builds only as a script.
+- The container builder needs Podman or Docker and builds only Linux targets, so it does not run in Termux.
+
+Keep about 2 GB free for the first Binary build. Go's module and build caches and PiG's build cache use about 1.3 GB.
+
 ## Build from source
 
 Termux's Go toolchain builds PiG for Android with cgo:
