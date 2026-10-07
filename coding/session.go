@@ -983,11 +983,6 @@ func (s *Session) SetModelOnMain(m *ai.Model, options ModelMutationOptions, disp
 	return nil
 }
 
-// CycleToModel applies a model-cycle selection, saving global model defaults only with Persist.
-func (s *Session) CycleToModel(m *ai.Model, options ...ModelMutationOptions) error {
-	return s.setModel(m, extension.ModelSelectSourceCycle, options...)
-}
-
 func (s *Session) setModel(m *ai.Model, source extension.ModelSelectSource, options ...ModelMutationOptions) error {
 	return s.setModelWithThinking(m, source, nil, options...)
 }
