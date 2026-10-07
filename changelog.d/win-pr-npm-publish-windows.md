@@ -1,0 +1,4 @@
+### Fixed
+
+- `pig package publish --to npm` and `pig piglet publish --to npm` no longer run an `npm` that the published directory contains. PiG finds npm in the absolute directories on `PATH`, so publishing from inside a Package that ships its own `npm` works and uses your npm (or resolves a relative `npmCommand` against the directory you run `pig` in) and starts that file. Before, Windows' `cmd.exe` could pick a Package's own `npm.cmd` ahead of the author's npm, and a relative `npmCommand` was resolved inside the Package directory.
+- On Windows, publishing to npm now works when npm is an `npm.cmd` at a path with spaces, such as `C:\Program Files\nodejs`. Arguments now reach the shim the way Pi's package commands pass them. An `npmCommand` that names a script now fails with a hint to name its interpreter first.
