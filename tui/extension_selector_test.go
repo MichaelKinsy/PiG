@@ -144,9 +144,9 @@ func lineIndexOf(t *testing.T, lines []string, text string) int {
 	return -1
 }
 
-// A preview draws on the right of the option rows: the rows keep the cells left of it, the preview line facing each row
+// A preview draws right after the option rows: the rows keep the cells left of it, the preview line facing each row
 // takes the rightmost cells, and the highlighted option chooses which preview the column shows.
-func TestExtensionSelectorPreviewDrawsOnTheRightOfTheOptionRows(t *testing.T) {
+func TestExtensionSelectorPreviewDrawsAfterTheOptionRows(t *testing.T) {
 	selector := NewExtensionSelector("Pick one", []string{"first option", "second option", "third option"})
 	selector.SetPreview(testPreview)
 	const width, cells = 60, 8
@@ -160,7 +160,7 @@ func TestExtensionSelectorPreviewDrawsOnTheRightOfTheOptionRows(t *testing.T) {
 	if second != first+1 || third != second+1 {
 		t.Fatalf("option rows at %d, %d, %d: the rows must stay one line each at width %d", first, second, third, width)
 	}
-	// Two preview lines centered in three rows start at the first row.
+	// The preview is top-aligned with the first row.
 	if got := lines[first]; !strings.Contains(got, "pigA top") {
 		t.Fatalf("first row = %q, want the preview's first line beside it", got)
 	}
@@ -174,9 +174,14 @@ func TestExtensionSelectorPreviewDrawsOnTheRightOfTheOptionRows(t *testing.T) {
 	if !ok {
 		t.Fatalf("first row = %q", lines[first])
 	}
-	if got := widthx.VisibleWidth(prefix); got != width-cells-previewRightCells {
-		t.Fatalf("preview starts at column %d, want %d (the rows keep %d cells)", got, width-cells-previewRightCells, width-cells-previewRightCells-previewGapCells)
+	// The longest row is "  second option": the left padding cell, the two-cell cursor column and 13 letters.
+	if want := 1 + 2 + len("second option") + 1 + previewGapCells; widthx.VisibleWidth(prefix) != want {
+		t.Fatalf("preview starts at column %d, want %d (the longest row plus %d cells)", widthx.VisibleWidth(prefix), want, previewGapCells)
 	}
+	if got := widthx.VisibleWidth(lines[first]); got != width {
+		t.Fatalf("preview row is %d cells wide, want %d", got, width)
+	}
+	_ = cells
 
 	// The column follows the highlighted option.
 	selector.HandleInput("j")
@@ -242,8 +247,10 @@ func TestExtensionSelectorEmptyPreviewKeepsFullWidthRows(t *testing.T) {
 			continue
 		}
 		previewed = true
-		if got := widthx.VisibleWidth(before); got != width-8-previewRightCells {
-			t.Fatalf("line %d draws the preview at column %d, want %d", i, got, width-8-previewRightCells)
+		// The long row would push the preview past the dialog, so the list wraps at the room left of it.
+		want := width - 8 - previewRightCells
+		if got := widthx.VisibleWidth(before); got != want {
+			t.Fatalf("line %d draws the preview at column %d, want %d", i, got, want)
 		}
 		break
 	}

@@ -32,7 +32,7 @@ The dispatcher is exhaustive - every command here is a parity-mirrored upstream 
 | `/hotkeys` | List keyboard shortcuts. |
 | `/quit` | Exit PiG. |
 | `/trust` | Set the trust decision for the current project. |
-| `/sprite [list\|set <id>\|preview [id]\|create]` | Choose the pig the startup header shows: the picker draws the highlighted sprite's pig on the right of its rows, and `Create your own...` draws none. Preview a sprite's full art, or design your own with the model (`create`; the picker's last item, "Create your own...", shows how). Registered by the built-in `pig-login` extension, so it is absent with `--no-extensions` or `-builtin:pig-login`. [pig] |
+| `/sprite [list\|set <id>\|preview [id]\|create]` | Choose the pig the startup header shows: the picker draws the highlighted sprite's pig right after its rows, and `Create your own...` draws none. Preview a sprite's full art, or design your own with the model (`create`; the picker's last item, "Create your own...", shows how). Registered by the built-in `pig-login` extension, so it is absent with `--no-extensions` or `-builtin:pig-login`. [pig] |
 | `/llama` | Manage a local llama.cpp server. Registered by the built-in `llama.cpp` extension, so it is absent with `--no-extensions` or `-builtin:llama.cpp`. |
 
 There is no `/exit` or `/clear` command. Pi has neither, and PiG matches Pi. To

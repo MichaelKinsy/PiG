@@ -21,7 +21,7 @@ func spriteOptions(variants []Variant) []string {
 }
 
 // chooseSprite shows the sprite picker and returns the chosen row, or "" when the user dismissed it. The rows carry the
-// pig of the sprite they highlight, drawn beside them on the right.
+// pig of the sprite they highlight, drawn right after the longest of them.
 // pig divergence (D2): the picker draws a pig beside its rows; Pi has no /sprite and no sprite to draw.
 //
 // A UI context that cannot mount a custom component answers the custom call with no result (the RPC and no-op

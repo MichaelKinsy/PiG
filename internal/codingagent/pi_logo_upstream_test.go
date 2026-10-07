@@ -565,7 +565,7 @@ func TestBuiltInHeaderUsesTheTextMarkInAppleTerminal(t *testing.T) {
 
 // Escape in the /sprite picker dismisses it through the interactive host's custom component, which the built-in
 // pig-login command must treat as no choice rather than report as an extension error. The picker is the host's focused
-// component and draws the pig of the highlighted sprite on the right of its rows.
+// component and draws the pig of the highlighted sprite right after its rows.
 func TestSpritePickerEscapeIsNoErrorThroughTheInteractiveHost(t *testing.T) {
 	isolatePigHome(t)
 	m, _ := newExtensionDialogProbe(t)
@@ -594,8 +594,8 @@ func TestSpritePickerEscapeIsNoErrorThroughTheInteractiveHost(t *testing.T) {
 		t.Fatalf("the focused picker draws no pig beside its rows: %q", widthx.StripAnsi(strings.Join(lines, "\n")))
 	}
 	before, _, ok := strings.Cut(lines[row], head[0])
-	if !ok || widthx.VisibleWidth(before) != width-piglogin.HeadCells-spritePreviewRightCells {
-		t.Fatalf("the pig does not start where the rows end: %q", widthx.StripAnsi(lines[row]))
+	if !ok || widthx.VisibleWidth(before) != longestSpriteRowCells()+spritePreviewGapCells {
+		t.Fatalf("the pig does not start a few cells past the longest row: %q", widthx.StripAnsi(lines[row]))
 	}
 
 	if err := m.dispatchKey(context.Background(), "\x1b"); err != nil {
@@ -612,9 +612,8 @@ func TestSpritePickerEscapeIsNoErrorThroughTheInteractiveHost(t *testing.T) {
 	}
 }
 
-// spritePreviewRightCells mirrors the margin tui keeps between the picker's preview column and its right border: the
-// pig ends that many cells short of it instead of touching the border.
-const spritePreviewRightCells = 2
+// spritePreviewGapCells mirrors the cells tui keeps between the longest option row and the preview column.
+const spritePreviewGapCells = 4
 
 // waitSpritePickerMounts drains the UI loop until the host focuses the sprite picker, and fails with the call's result
 // when the picker ends before it mounts.
@@ -795,4 +794,14 @@ func TestBuiltInHeaderColorsTheTextMarkInAppleTerminal256(t *testing.T) {
 	if got := strings.TrimRight(lines[0], " "); got != " PiG. v"+pigversion.Version {
 		t.Errorf("first line = %q", got)
 	}
+}
+
+// longestSpriteRowCells is the width of the picker's longest row: a padding cell, the two-cell cursor column, the option
+// "Name: Tagline" and a padding cell.
+func longestSpriteRowCells() int {
+	cells := 1 + 2 + widthx.VisibleWidth(piglogin.CreateOption) + 1
+	for _, v := range piglogin.All() {
+		cells = max(cells, 1+2+widthx.VisibleWidth(v.Name+": "+v.Tagline)+1)
+	}
+	return cells
 }

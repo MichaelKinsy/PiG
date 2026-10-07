@@ -167533,6 +167533,17 @@
       "shapeHash": "sha256:81761e7090d7bb4159cdc88ad1df72001d86a8280dab046ca793a8e9191bed39"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#radiusLoginMenu.rowsBesidePreview",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "radiusLoginMenu.rowsBesidePreview",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(width int, preview []string) []string"
+      },
+      "shapeHash": "sha256:a79da27ae4f12060d7313a2c35f140aebeff6939f9119e3927ffe842bb6b51a7"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#radiusLoginMenu.updateList",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "radiusLoginMenu.updateList",
@@ -188574,6 +188585,17 @@
         "type": "func(width int) []string"
       },
       "shapeHash": "sha256:81761e7090d7bb4159cdc88ad1df72001d86a8280dab046ca793a8e9191bed39"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ExtensionSelectorComponent.rowsBesidePreview",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ExtensionSelectorComponent.rowsBesidePreview",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(width int, preview []string) []string"
+      },
+      "shapeHash": "sha256:a79da27ae4f12060d7313a2c35f140aebeff6939f9119e3927ffe842bb6b51a7"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ExtensionSelectorComponent.updateList",
@@ -212270,17 +212292,6 @@
       "shapeHash": "sha256:207ce74f02e77526c8289eecfae4b3d4c23dfd6f19c6f0d62a67b13cc07ecb07"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#placePreview",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "placePreview",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(rows []string, preview []string, cells int) []string"
-      },
-      "shapeHash": "sha256:c39b915f3e3c18b95e8b919ba8213b3db8faf3d01dc78106f2f555a29910afeb"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#plural",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "plural",
@@ -212394,6 +212405,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#previewLines",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "previewLines",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#previewRightCells",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "previewRightCells",
       "kind": "constant",
       "exported": false,
       "shape": {

@@ -9,11 +9,10 @@ import (
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
-// previewGapCells separates the option rows from their preview column.
-const previewGapCells = 2
+// previewGapCells separates the longest option row from the preview column that follows it.
+const previewGapCells = 4
 
-// previewRightCells is the margin between the preview column and the dialog's right border, so the preview does not
-// touch it the way the rows' left padding keeps them off the left border.
+// previewRightCells is the margin kept between the preview column and the dialog's right border.
 const previewRightCells = 2
 
 // previewFloorCells is the narrowest dialog body that keeps a preview column. Below it the rows would squeeze into a
@@ -158,10 +157,9 @@ func (e *ExtensionSelectorComponent) SelectedValue() string {
 //
 // Every Text wraps within one cell of padding on each side and pads to width,
 // so no row is wider than the render width. With a preview (SetPreview) the
-// option rows wrap within the cells left of the preview column instead, as a
-// line beside a preview keeps to its own column, the title, hint and borders
-// keep the full width, and the column ends previewRightCells short of the
-// right border.
+// option rows take the width of the longest row (wrapping only to keep the preview
+// inside the dialog), the preview follows previewGapCells later, top-aligned with
+// the first row, and the title, hint and borders keep the full width.
 func (e *ExtensionSelectorComponent) Render(width int) []string {
 	border := NewDynamicBorder("")
 	text := func(content string) []string { return NewPaddedText(content, 1, 0, nil).Render(width) }
@@ -173,16 +171,13 @@ func (e *ExtensionSelectorComponent) Render(width int) []string {
 	lines = append(lines, styledDescriptionLines(e.descriptionText, width)...)
 	lines = append(lines, "")
 
-	preview, rowsWidth := e.previewLines(width), width
-	if preview != nil {
-		rowsWidth -= previewCells(preview) + previewGapCells + previewRightCells
-	}
-	rowsStart := len(lines)
-	for _, row := range e.rowTexts {
-		lines = append(lines, NewPaddedText(row, 1, 0, nil).Render(rowsWidth)...)
-	}
-	if preview != nil {
-		lines = append(lines[:rowsStart], placePreview(lines[rowsStart:], preview, previewCells(preview))...)
+	preview := e.previewLines(width)
+	if preview == nil {
+		for _, row := range e.rowTexts {
+			lines = append(lines, text(row)...)
+		}
+	} else {
+		lines = append(lines, e.rowsBesidePreview(width, preview)...)
 	}
 
 	lines = append(lines, "")
@@ -214,23 +209,38 @@ func previewCells(lines []string) int {
 	return cells
 }
 
-// placePreview draws the preview beside the option rows, centered in them: row line i keeps its cells on the left and
-// takes the preview line that faces it, or blanks, on the right, then the margin to the right border, so every line
-// stays at the render width.
-func placePreview(rows, preview []string, cells int) []string {
-	gap := strings.Repeat(" ", previewGapCells)
-	column := cells + previewRightCells
-	blank := strings.Repeat(" ", column)
-	top := max(0, (len(rows)-len(preview))/2)
-	composed := make([]string, len(rows))
-	for i, row := range rows {
-		right := blank
-		if j := i - top; j >= 0 && j < len(preview) {
-			right = preview[j] + strings.Repeat(" ", column-widthx.VisibleWidth(preview[j]))
-		}
-		composed[i] = row + gap + right
+// rowsBesidePreview renders the option rows with the preview right after the list: the rows take the width of the
+// longest row (wrapping only when that would push the preview past the dialog), the preview starts previewGapCells
+// past it, top-aligned with the first row, and every line stays at the render width.
+func (e *ExtensionSelectorComponent) rowsBesidePreview(width int, preview []string) []string {
+	cells := previewCells(preview)
+	listMax := width - cells - previewGapCells - previewRightCells
+	listWidth := 0
+	for _, row := range e.rowTexts {
+		listWidth = max(listWidth, 2+widthx.VisibleWidth(row))
 	}
-	return composed
+	listWidth = min(listWidth, listMax)
+	var rows []string
+	for _, row := range e.rowTexts {
+		rows = append(rows, NewPaddedText(row, 1, 0, nil).Render(listWidth)...)
+	}
+	gap := strings.Repeat(" ", previewGapCells)
+	composed := make([]string, max(len(rows), len(preview)))
+	for i := range composed {
+		line := strings.Repeat(" ", listWidth)
+		if i < len(rows) {
+			line = rows[i]
+		}
+		if i < len(preview) {
+			line += gap + preview[i]
+		}
+		if pad := width - widthx.VisibleWidth(line); pad > 0 {
+			line += strings.Repeat(" ", pad)
+		}
+		composed[i] = line
+	}
+	rows = composed
+	return rows
 }
 
 // HandleInput resolves expansion, navigation, confirmation and cancellation in that order. Empty options do not complete the selector.

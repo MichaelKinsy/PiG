@@ -11,9 +11,18 @@ import (
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
-// pickerPreviewRightCells mirrors the margin tui keeps between the preview column and the dialog's right border: the
-// pig ends that many cells short of it instead of touching the border.
-const pickerPreviewRightCells = 2
+// pickerPreviewGapCells mirrors the cells tui keeps between the longest option row and the preview column.
+const pickerPreviewGapCells = 4
+
+// longestRowCells is the width of the picker's longest row: a padding cell, the two-cell cursor column, the option and
+// a padding cell.
+func longestRowCells(options []string) int {
+	cells := 0
+	for _, option := range options {
+		cells = max(cells, 1+2+widthx.VisibleWidth(option)+1)
+	}
+	return cells
+}
 
 // spriteTestVariants is the built-in catalogue a fresh test process offers.
 func spriteTestVariants(t *testing.T) []Variant {
@@ -53,8 +62,8 @@ func lineCarrying(t *testing.T, lines []string, text string) int {
 	return -1
 }
 
-// The picker draws the pig of the highlighted sprite on the right of the option rows: the row keeps its label on the
-// left and the head's cells start where the row ends, at the render width. The title carries no pig.
+// The picker draws the pig of the highlighted sprite right after the option rows: the row keeps its label on the
+// left and the head starts a few cells past the longest row, top-aligned with the first option. The title carries no pig.
 func TestSpritePickerDrawsThePigOnTheRightOfTheRows(t *testing.T) {
 	variants := spriteTestVariants(t)
 	options := spriteOptions(variants)
@@ -78,8 +87,8 @@ func TestSpritePickerDrawsThePigOnTheRightOfTheRows(t *testing.T) {
 	if !ok {
 		t.Fatalf("row line = %q", lines[row])
 	}
-	if got := widthx.VisibleWidth(before); got != width-HeadCells-pickerPreviewRightCells {
-		t.Fatalf("the head starts at column %d, want %d (the rows end there and the margin keeps it off the border)", got, width-HeadCells-pickerPreviewRightCells)
+	if got := widthx.VisibleWidth(before); got != longestRowCells(options)+pickerPreviewGapCells {
+		t.Fatalf("the head starts at column %d, want %d (a few cells past the longest row)", got, longestRowCells(options)+pickerPreviewGapCells)
 	}
 	title := lineCarrying(t, lines, spritePickerTitle)
 	if strings.Contains(lines[title], head[0]) {
