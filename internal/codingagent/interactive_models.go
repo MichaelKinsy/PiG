@@ -153,6 +153,8 @@ func (m *InteractiveMode) cycleModel(forward bool) {
 		thinking = " (thinking: " + string(result.ThinkingLevel) + ")"
 	}
 	m.statusLine.Flash("Switched to "+displayName+thinking, 3*time.Second)
+	// Pi warns after a successful cycle too (interactive-mode.ts:4510).
+	m.maybeWarnAboutAnthropicSubscriptionAuthAsync()
 }
 
 func modelSpec(model *ai.Model) string {
