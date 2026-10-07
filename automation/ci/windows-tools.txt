@@ -1,0 +1,11 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+#
+# Native tools the Windows CI jobs need on PATH, pinned to release archives.
+# Columns: tool, executable, SHA-256 of the archive, URL.
+# install-windows-tools.ps1 verifies every archive against this file, and the
+# ci.yml cache key hashes it, so a version or checksum change refetches.
+# ripgrep's digest is the one the release publishes in its .sha256 file. fd
+# publishes none, so its digest is that of the v10.5.0 asset when pinned.
+fd fd.exe a227701b8551c35a9931d9f6da75503cf86d88e182d71fb849a70864c5d57cd7 https://github.com/sharkdp/fd/releases/download/v10.5.0/fd-v10.5.0-x86_64-pc-windows-msvc.zip
+rg rg.exe 71b2fef860abe467217a538ff31de02f5258807c0129f771846f87bd029aafc5 https://github.com/BurntSushi/ripgrep/releases/download/15.2.0/ripgrep-15.2.0-x86_64-pc-windows-msvc.zip
