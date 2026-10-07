@@ -16,13 +16,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"golang.org/x/mod/semver"
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/crossspawn"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
-	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 )
 
@@ -33,6 +34,8 @@ var (
 	distTag  = lazyregexp.New(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
 	notInReg = lazyregexp.New(`E404|404 Not Found|is not in this registry`)
 	otpCode  = lazyregexp.New(`^[0-9A-Za-z]{4,16}$`)
+	// windowsProgram is a file Windows starts without an interpreter: an executable, or a batch file that cmd.exe runs.
+	windowsProgram = lazyregexp.New(`(?i)\.(exe|com|cmd|bat)$`)
 )
 
 var errNPMNotFound = errors.New("npm is not on PATH; install Node.js (npm publishes the package) or set the npmCommand setting")
@@ -140,22 +143,56 @@ func Command() ([]string, error) {
 // TrustedPublishing reports whether the environment can publish with provenance and no stored credential.
 func TrustedPublishing() bool { return os.Getenv(TrustedPublishingEnv) != "" }
 
+// npmCmd returns the command that runs the npm argv command with args in dir. findNPM finds npm in this process and never in dir: on Windows cmd.exe runs npm.cmd and, unless NoDefaultCurrentDirectoryInExePath is set, looks for a bare name in its working directory before PATH, so a Package's own npm.cmd would run in place of the author's npm. npmCmd starts that absolute path as Pi's package commands start npm (cross-spawn), so an npm.cmd at a path with spaces receives its arguments as cross-spawn escapes them. On Windows npm must be a program Windows starts itself, because cross-spawn looks for a script's interpreter in dir.
+func npmCmd(ctx context.Context, command, args []string, dir string) (*exec.Cmd, error) {
+	path, err := findNPM(command[0])
+	if err != nil {
+		return nil, err
+	}
+	if runtime.GOOS == "windows" && !windowsProgram.MatchString(path) {
+		return nil, fmt.Errorf("npmCommand %s is not a program Windows starts (.exe, .com, .cmd or .bat); name its interpreter first, as in [\"node\", %q]", path, path)
+	}
+	return crossspawn.Command(ctx, dir, path, append(append([]string{}, command[1:]...), args...)...), nil
+}
+
+// findNPM returns the absolute path of the npm program name. A name with a path is a file relative to PiG's working directory. A bare name is looked up only in the absolute directories of PATH: Go's LookPath on Windows searches the working directory first and fails with ErrDot when it holds a match, and a relative PATH entry also names the working directory. Authors often publish from the Package's own directory, which may ship its own npm.
+func findNPM(name string) (string, error) {
+	if filepath.Base(name) != name {
+		path, err := exec.LookPath(name)
+		if errors.Is(err, exec.ErrNotFound) {
+			return "", errNPMNotFound
+		}
+		if err != nil {
+			return "", fmt.Errorf("find npm: %w", err)
+		}
+		return filepath.Abs(path)
+	}
+	for _, dir := range filepath.SplitList(os.Getenv("PATH")) {
+		if !filepath.IsAbs(dir) {
+			continue
+		}
+		if path, err := exec.LookPath(filepath.Join(dir, name)); err == nil {
+			return path, nil
+		}
+	}
+	return "", errNPMNotFound
+}
+
 // Exists reports whether name@version is already on registry, or on the registry npm is configured for when registry is empty. It fails on anything but a clear answer, so a network error never reads as "not published".
 func Exists(ctx context.Context, command []string, name, version, workDir, registry string) (bool, error) {
-	args := append(append([]string{}, command[1:]...), "view", name+"@"+version, "version")
+	args := []string{"view", name + "@" + version, "version"}
 	if registry != "" {
 		args = append(args, "--registry", registry)
 	}
-	cmd := linkerexec.CommandContext(ctx, command[0], args...)
-	cmd.Dir = workDir
+	cmd, err := npmCmd(ctx, command, args, workDir)
+	if err != nil {
+		return false, err
+	}
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	err := cmd.Run()
+	err = cmd.Run()
 	if err == nil {
 		return strings.TrimSpace(stdout.String()) == version, nil
-	}
-	if errors.Is(err, exec.ErrNotFound) {
-		return false, errNPMNotFound
 	}
 	if notInReg.MatchString(stdout.String() + stderr.String()) {
 		return false, nil
@@ -165,17 +202,15 @@ func Exists(ctx context.Context, command []string, name, version, workDir, regis
 
 // Satisfiable reports whether any published version of name satisfies the version range spec, which may be an exact version. It fails on anything but a clear answer.
 func Satisfiable(ctx context.Context, command []string, name, spec, workDir string) (bool, error) {
-	args := append(append([]string{}, command[1:]...), "view", name+"@"+spec, "version")
-	cmd := linkerexec.CommandContext(ctx, command[0], args...)
-	cmd.Dir = workDir
+	cmd, err := npmCmd(ctx, command, []string{"view", name + "@" + spec, "version"}, workDir)
+	if err != nil {
+		return false, err
+	}
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	err := cmd.Run()
+	err = cmd.Run()
 	if err == nil {
 		return strings.TrimSpace(stdout.String()) != "", nil
-	}
-	if errors.Is(err, exec.ErrNotFound) {
-		return false, errNPMNotFound
 	}
 	if notInReg.MatchString(stdout.String() + stderr.String()) {
 		return false, nil
@@ -308,13 +343,12 @@ func (r Request) Run(ctx context.Context) error {
 }
 
 func (r Request) runNPM(ctx context.Context, command, args []string) error {
-	cmd := linkerexec.CommandContext(ctx, command[0], append(append([]string{}, command[1:]...), args...)...)
-	cmd.Dir = r.workDir()
+	cmd, err := npmCmd(ctx, command, args, r.workDir())
+	if err != nil {
+		return err
+	}
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = r.Stdin, r.Stdout, r.Stderr
 	if err := cmd.Run(); err != nil {
-		if errors.Is(err, exec.ErrNotFound) {
-			return errNPMNotFound
-		}
 		return fmt.Errorf("npm publish of %s@%s failed: %w; npm's output is above", r.Name, r.Version, err)
 	}
 	return nil

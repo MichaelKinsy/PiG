@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -16,7 +17,11 @@ import (
 
 func writePackage(t *testing.T, version string) string {
 	t.Helper()
-	dir := t.TempDir()
+	return writePackageAt(t, t.TempDir(), version)
+}
+
+func writePackageAt(t *testing.T, dir, version string) string {
+	t.Helper()
 	for name, body := range map[string]string{
 		"package.json": `{"name":"@acme/tool","version":"` + version + `","files":["lib"]}`,
 		"lib/index.js": "module.exports = {}\n",
@@ -68,6 +73,16 @@ func TestPublishIsADryRunUnlessYes(t *testing.T) {
 	}
 	if strings.Contains(out.String(), "secret.txt") {
 		t.Fatalf("the tarball listing includes a file outside `files`:\n%s", out.String())
+	}
+}
+
+func TestPublishReportsAMissingNPM(t *testing.T) {
+	npmtest.Install(t)
+	var out bytes.Buffer
+	r := request(writePackage(t, "1.0.0"), npmpublish.Flags{}, &out)
+	r.Command = []string{"pig-test-no-such-npm"}
+	if err := r.Run(context.Background()); err == nil || !strings.Contains(err.Error(), "npm is not on PATH") {
+		t.Fatalf("publish with a missing npm = %v, want the npm-not-found error\n%s", err, out.String())
 	}
 }
 
@@ -315,5 +330,42 @@ func TestSatisfiableAnswersForRangesAndNeverGuessesOnErrors(t *testing.T) {
 	fake.GoOffline()
 	if _, err := npmpublish.Satisfiable(ctx, command, "@acme/tool", "^1.0.0", ""); err == nil || !strings.Contains(err.Error(), "npm view @acme/tool@^1.0.0 failed") {
 		t.Errorf("an unreachable registry: %v", err)
+	}
+}
+
+// Authors often publish from the Package's own directory, and a Package may ship its own npm there. Go's LookPath on Windows searches the working directory before PATH and then fails with ErrDot, and on every platform a relative PATH entry such as "." names the working directory. npm must come from the absolute PATH entries, so publishing neither fails nor runs the Package's npm.
+func TestPublishFindsNPMOnPathWhenPiGRunsInThePackageDirectory(t *testing.T) {
+	fake := npmtest.Install(t)
+	t.Setenv("PATH", "."+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("NoDefaultCurrentDirectoryInExePath", "")
+	if err := os.Unsetenv("NoDefaultCurrentDirectoryInExePath"); err != nil {
+		t.Fatal(err)
+	}
+	dir := writePackage(t, "1.0.0")
+	marker := filepath.Join(t.TempDir(), "planted-npm-ran")
+	planted, program := "npm", "#!/bin/sh\n: > '"+marker+"'\n"
+	if runtime.GOOS == "windows" {
+		planted, program = "npm.cmd", "@echo planted> \""+marker+"\"\r\n"
+	}
+	if err := os.WriteFile(filepath.Join(dir, planted), []byte(program), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(dir)
+	var out bytes.Buffer
+	r := request(dir, npmpublish.Flags{}, &out)
+	r.InPlace = true
+	if err := r.Run(context.Background()); err != nil {
+		t.Fatalf("dry run in the package directory: %v\n%s", err, out.String())
+	}
+	if _, err := os.Stat(marker); err == nil {
+		t.Fatalf("publishing ran the npm in the package directory:\n%s", out.String())
+	}
+	want := [][]string{{"view", "@acme/tool@1.0.0", "version"}, {"publish", "--dry-run"}}
+	var got [][]string
+	for _, call := range fake.Calls() {
+		got = append(got, call.Args)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("npm calls = %q, want %q\n%s", got, want, out.String())
 	}
 }
