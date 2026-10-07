@@ -184990,6 +184990,17 @@
       "shapeHash": "sha256:0f461c222817bbbbf06d8bb7229c1420d1da91a5ffc79e05e4c16c0666c317a2"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#BashExecutionBlock.SetCompleteFullOutput",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "BashExecutionBlock.SetCompleteFullOutput",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(exitCode *int, cancelled bool, truncated bool, fullOutputPath string)"
+      },
+      "shapeHash": "sha256:7ed973b7c7b222a40f6fac67894faa57db38f1bef0a49c3fd8f0a9f82d897c57"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#BashExecutionBlock.SetCompleteWithOutput",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "BashExecutionBlock.SetCompleteWithOutput",
@@ -185023,15 +185034,15 @@
       "shapeHash": "sha256:7ed973b7c7b222a40f6fac67894faa57db38f1bef0a49c3fd8f0a9f82d897c57"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#BashExecutionBlock.statusLines",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#BashExecutionBlock.statusParts",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "BashExecutionBlock.statusLines",
+      "name": "BashExecutionBlock.statusParts",
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(hidden int) []string"
+        "type": "func(theme *Theme, hidden int, contextTruncated bool) []string"
       },
-      "shapeHash": "sha256:0250ecc1f1571227d8be4c428d1767f8df4599687aa8773211afcb6d87c4513a"
+      "shapeHash": "sha256:44a157422ee62075189125c7d7515b57e3ed9a339ca70548e54fb64fa852e8fa"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#BgClose",
@@ -192635,6 +192646,17 @@
       "shapeHash": "sha256:548d39acb2c52174655063ecf8d517c470786d2f215dff74524d2a8a7a96f761"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#NewDynamicBorderFunc",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "NewDynamicBorderFunc",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(color func(string) string) *DynamicBorder"
+      },
+      "shapeHash": "sha256:752442b572bd7c59f70bbfda1d027478b596a3860e8ee992fb02dadfd2f354a9"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#NewDynamicBorderToken",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "NewDynamicBorderToken",
@@ -195889,6 +195911,17 @@
         "type": "func(resolver func(action string) string)"
       },
       "shapeHash": "sha256:436c18958085d43c15d2fc5720456e320726a7740f729b7f7b40bd0413f82ce0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#SetBashContextTruncation",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "SetBashContextTruncation",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(truncate func(output string) (content string, truncated bool))"
+      },
+      "shapeHash": "sha256:381705690be4c294921dd85c3c917ad9a6ebcf9a8124b7ab05e540aca19d7643"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#SetCapabilities",
@@ -205032,6 +205065,28 @@
       "shapeHash": "sha256:4a83f7917e9b3523ec7711f655c9042d41b36c5685e2fdab9d3a36db8a416e91"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#bashColorKey",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "bashColorKey",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(excludeFromContext bool) string"
+      },
+      "shapeHash": "sha256:d1ac98e7db7d2913ac4561c2393c2c596d7ec3afde3ba6667c1054cd2d7bf023"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#bashContextTruncation",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "bashContextTruncation",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func(output string) (content string, truncated bool)"
+      },
+      "shapeHash": "sha256:ac512f8562b5006cba1a54fce45a790819dfc8e0e1d94e2e6f360a05dd9ede8f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#bashDimColor",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "bashDimColor",
@@ -205090,6 +205145,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#bashStatusComplete",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "bashStatusComplete",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "bashStatus"
+      },
+      "shapeHash": "sha256:ce7864435e025f7f62c3542ad0705b7a84fe3b6a14e2e4d862899aeda817ea10"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#bashStatusError",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "bashStatusError",
       "kind": "constant",
       "exported": false,
       "shape": {
@@ -205756,6 +205822,17 @@
         "type": "func(size int, entry StackLayoutEntry) int"
       },
       "shapeHash": "sha256:f786a3f16bc9664a0ff4e9d3da2f93be05838054c7d4c130a058a2d64f744fe3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#cleanBashOutput",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "cleanBashOutput",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(chunk string) string"
+      },
+      "shapeHash": "sha256:c84dc91d44bc599153177c61a184a0d02978e39d9ed06a56a70b7fabbf971f62"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#cliHighlightTheme",
@@ -210519,6 +210596,17 @@
         "type": "func(name string) *Theme"
       },
       "shapeHash": "sha256:d3c0c04a28e47275570e52b2787f07362da1168b3d63a4c15c1f4fec991d536b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#mutedLines",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "mutedLines",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(theme *Theme, lines []string) string"
+      },
+      "shapeHash": "sha256:f824f8ef9d4d02a1edc239ca47f7bdabee798a01d770ee393b7c055e3e760801"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#nativeShiftEnterSequence",
@@ -216195,6 +216283,17 @@
         "type": "map[string][]string"
       },
       "shapeHash": "sha256:59250247d5879801cd7cb82956b102c24c9fd5a9b161dc5651a572b81d92e6d1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiKeyText",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "tuiKeyText",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(action TUIKeybinding) string"
+      },
+      "shapeHash": "sha256:514d7995d54f135867e29ddc73544a324c60c1e9a24d66d12f12cd386b078518"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiKeybindingDefs",

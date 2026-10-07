@@ -18,6 +18,14 @@ import (
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
+// The `!` block truncates the output it shows as upstream BashExecutionComponent.updateDisplay does.
+func init() {
+	tui.SetBashContextTruncation(func(output string) (string, bool) {
+		result := tools.TruncateTail(output, tools.DefaultMaxBytesUpstream, tools.DefaultMaxLinesUpstream)
+		return result.Content, result.Truncated
+	})
+}
+
 func (m *InteractiveMode) handleSubmit(ctx context.Context, prompt string) {
 	m.handleSubmitWithImages(ctx, prompt, nil)
 }

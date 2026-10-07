@@ -24,6 +24,9 @@ type Loader struct {
 	SpinnerColor      string // ANSI fg escape for spinner (optional)
 	MessageColor      string // ANSI fg escape for message (optional)
 	IndicatorVerbatim bool   // extension frames include their own formatting
+	// SpinnerColorFn and MessageColorFn mirror upstream's spinnerColorFn and
+	// messageColorFn; when set they replace SpinnerColor and MessageColor.
+	SpinnerColorFn, MessageColorFn func(string) string
 }
 
 func NewLoader(message string) *Loader {
@@ -57,6 +60,9 @@ func (l *Loader) Render(width int) []string {
 }
 
 func (l *Loader) styledMessage() string {
+	if l.MessageColorFn != nil {
+		return l.MessageColorFn(l.Message)
+	}
 	if l.MessageColor != "" {
 		return l.MessageColor + l.Message + "\x1b[0m"
 	}
@@ -96,7 +102,13 @@ func (l *Loader) renderedIndicator() string {
 		return ""
 	}
 	frame := l.Frames[l.Frame%len(l.Frames)]
-	if l.SpinnerColor != "" && !l.IndicatorVerbatim {
+	if l.IndicatorVerbatim {
+		return frame
+	}
+	if l.SpinnerColorFn != nil {
+		return l.SpinnerColorFn(frame)
+	}
+	if l.SpinnerColor != "" {
 		return l.SpinnerColor + frame + "\x1b[0m"
 	}
 	return frame

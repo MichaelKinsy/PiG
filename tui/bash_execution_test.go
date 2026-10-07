@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -44,7 +43,6 @@ func TestBashExecutionBlock_PreservesTrailingNewlineRow(t *testing.T) {
 	b := NewBashExecutionBlock("echo hi", false)
 	b.AppendOutput("hi\n")
 	zero := 0
-	b.startedAt = time.Now().Add(-10 * time.Millisecond)
 	b.SetComplete(&zero, false, false)
 	rows := b.Render(80)
 	// Expected box body (between borders): blank, " hi", blank.
@@ -70,13 +68,13 @@ func TestBashExecutionBlock_PreservesTrailingNewlineRow(t *testing.T) {
 	if !strings.Contains(inside[0], "$ echo hi") {
 		t.Errorf("row 0 should be header `$ echo hi`, got %q", inside[0])
 	}
-	if inside[1] != "" {
+	if strings.TrimSpace(inside[1]) != "" {
 		t.Errorf("row 1 should be blank (upstream `\\n` prefix), got %q", inside[1])
 	}
 	if !strings.Contains(inside[2], "hi") {
 		t.Errorf("row 2 should contain `hi`, got %q", inside[2])
 	}
-	if inside[3] != "" {
+	if strings.TrimSpace(widthx.StripAnsi(inside[3])) != "" {
 		t.Errorf("row 3 should be blank (trailing newline preserved), got %q", inside[3])
 	}
 }
@@ -86,7 +84,6 @@ func TestBashExecutionBlock_CompleteSuccessHidesStatus(t *testing.T) {
 	// rendered ONLY for non-zero exit codes (the "error" branch).
 	// On success, no status row appears. This test locks parity.
 	b := NewBashExecutionBlock("true", false)
-	b.startedAt = time.Now().Add(-200 * time.Millisecond)
 	zero := 0
 	b.SetComplete(&zero, false, false)
 	rows := b.Render(80)
@@ -98,7 +95,6 @@ func TestBashExecutionBlock_CompleteSuccessHidesStatus(t *testing.T) {
 
 func TestBashExecutionBlock_NonZeroIsRed(t *testing.T) {
 	b := NewBashExecutionBlock("exit 7", false)
-	b.startedAt = time.Now().Add(-100 * time.Millisecond)
 	seven := 7
 	b.SetComplete(&seven, false, false)
 	rows := b.Render(80)
@@ -106,8 +102,8 @@ func TestBashExecutionBlock_NonZeroIsRed(t *testing.T) {
 	if !strings.Contains(joined, "(exit 7)") {
 		t.Errorf("expected `(exit 7)`, got:\n%s", joined)
 	}
-	if !strings.Contains(joined, "\033[31m") {
-		t.Errorf("expected red ANSI for non-zero exit, got:\n%s", joined)
+	if !strings.Contains(joined, ActiveTheme().FgText("error", "(exit 7)")) {
+		t.Errorf("expected the theme's error color for non-zero exit, got:\n%s", joined)
 	}
 	// Upstream renders `(exit N)` only: no duration suffix.
 	if strings.Contains(joined, "·") {
@@ -117,7 +113,6 @@ func TestBashExecutionBlock_NonZeroIsRed(t *testing.T) {
 
 func TestBashExecutionBlock_Cancelled(t *testing.T) {
 	b := NewBashExecutionBlock("sleep 5", false)
-	b.startedAt = time.Now().Add(-100 * time.Millisecond)
 	b.SetComplete(nil, true, false)
 	rows := b.Render(80)
 	joined := strings.Join(rows, "\n")
@@ -132,7 +127,6 @@ func TestBashExecutionBlock_Cancelled(t *testing.T) {
 
 func TestBashExecutionBlock_TruncatedRibbon(t *testing.T) {
 	b := NewBashExecutionBlock("yes", false)
-	b.startedAt = time.Now().Add(-50 * time.Millisecond)
 	zero := 0
 	b.SetCompleteWithOutput(&zero, false, true, "tail", "/tmp/full-output.log")
 	rows := b.Render(80)
@@ -185,11 +179,8 @@ func TestBashExecutionBlock_HasTopAndBottomBorders(t *testing.T) {
 	if !strings.Contains(rows[1], "\u2500") || !strings.Contains(rows[1], bashHeaderColor()) {
 		t.Errorf("row 1 should be bashMode top border, got %q", rows[1])
 	}
-	// Last is trailing spacer; second-to-last is bottom border.
-	if rows[len(rows)-1] != "" {
-		t.Errorf("last row should be trailing spacer, got %q", rows[len(rows)-1])
-	}
-	bottom := rows[len(rows)-2]
+	// Upstream ends with the bottom border (bash-execution.ts:64): no row follows it.
+	bottom := rows[len(rows)-1]
 	if !strings.Contains(bottom, "\u2500") || !strings.Contains(bottom, bashHeaderColor()) {
 		t.Errorf("bottom border missing/wrong: %q", bottom)
 	}
@@ -214,7 +205,6 @@ func TestBashExecutionBlock_CollapsePreviewLimit(t *testing.T) {
 		b.AppendOutput("line\n")
 	}
 	zero := 0
-	b.startedAt = time.Now().Add(-50 * time.Millisecond)
 	b.SetComplete(&zero, false, false)
 
 	// Collapsed (default).
@@ -223,7 +213,7 @@ func TestBashExecutionBlock_CollapsePreviewLimit(t *testing.T) {
 	if !strings.Contains(joined, "... 11 more lines") {
 		t.Errorf("expected collapse hint `... 11 more lines`, got:\n%s", joined)
 	}
-	if !strings.Contains(joined, "ctrl+o to expand") {
+	if !strings.Contains(widthx.StripAnsi(joined), "ctrl+o to expand") {
 		t.Errorf("expected expand-key hint, got:\n%s", joined)
 	}
 
@@ -234,7 +224,7 @@ func TestBashExecutionBlock_CollapsePreviewLimit(t *testing.T) {
 	if strings.Contains(joinedExp, "more lines") {
 		t.Errorf("expanded should not show `more lines`, got:\n%s", joinedExp)
 	}
-	if !strings.Contains(joinedExp, "ctrl+o to collapse") {
+	if !strings.Contains(widthx.StripAnsi(joinedExp), "(ctrl+o to collapse)") {
 		t.Errorf("expanded output with hidden logical lines should show collapse hint, got:\n%s", joinedExp)
 	}
 	if len(rowsExp) <= len(rows) {
