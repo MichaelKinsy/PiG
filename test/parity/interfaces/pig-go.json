@@ -58864,17 +58864,6 @@
       "shapeHash": "sha256:9c3d81bc0d5c19da655e6e4eaeacab3554c54dd985c28cb5612b558ed665588b"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding#Session.CycleToModel",
-      "package": "github.com/MichaelKinsy/PiG/coding",
-      "name": "Session.CycleToModel",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(m *github.com/MichaelKinsy/PiG/ai.Model, options ...ModelMutationOptions) error"
-      },
-      "shapeHash": "sha256:b37d7518203452b1e3b6f90d89d5219b66f27987e82fd44d63b34637ec3a8e99"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#Session.DiscardAddedDefaultTools",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "Session.DiscardAddedDefaultTools",
@@ -169302,6 +169291,17 @@
         "type": "func(a []string, b []string) bool"
       },
       "shapeHash": "sha256:67180bcb3226514aa3ee74a6380dec7d0b8455c0e74b001bfd0f0c41d64f641f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#scopedModelKey",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "scopedModelKey",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(model *github.com/MichaelKinsy/PiG/ai.Model) string"
+      },
+      "shapeHash": "sha256:9afcd910ce696250f98b31e263f177d4ff5e29bb0911f9ad284a86012dba9074"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#scopedModelsHandler",

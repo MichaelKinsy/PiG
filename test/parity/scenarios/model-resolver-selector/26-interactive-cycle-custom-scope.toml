@@ -2,10 +2,13 @@
 # Surface: app.model.cycleForward delegates to AgentSession.cycleModel and retains configured scope order.
 #
 # Upstream evidence: Pi 1.0.3 on 2026-10-06, tmux 100×35, using the fixture and
-# offline arguments below. From GPT-4 Turbo, four Ctrl+P presses produced:
-#   Switched to Custom Model  / custom-model
+# offline arguments below. enabledModels lists openai/gpt-4 first, so configured
+# order (GPT-4, Custom Model, GPT-4 Turbo) differs from provider/id sorted order.
+# From GPT-4 Turbo, five Ctrl+P presses produced:
 #   Switched to GPT-4        / gpt-4
+#   Switched to Custom Model / custom-model
 #   Switched to GPT-4 Turbo  / gpt-4-turbo
+#   Switched to GPT-4        / gpt-4
 #   Switched to Custom Model / custom-model
 # No provider request was made. Each wait checks the intermediate order; the final
 # escaped comparison checks the status, prompt, and full footer.
@@ -35,17 +38,24 @@ capture_start_last = true
 
 [[tmux.steps]]
 keys = ["hex:10"]
+wait_visible_contains = ["Switched to GPT-4", "gpt-4"]
+wait_not_contains = ["Switched to GPT-4 Turbo"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["hex:10"]
 wait_visible_contains = ["Switched to Custom Model", "custom-model"]
 wait_timeout_seconds = 5
 
 [[tmux.steps]]
 keys = ["hex:10"]
-wait_visible_contains = ["Switched to GPT-4", "gpt-4"]
+wait_visible_contains = ["Switched to GPT-4 Turbo", "gpt-4-turbo"]
 wait_timeout_seconds = 5
 
 [[tmux.steps]]
 keys = ["hex:10"]
-wait_visible_contains = ["Switched to GPT-4 Turbo", "gpt-4-turbo"]
+wait_visible_contains = ["Switched to GPT-4", "gpt-4"]
+wait_not_contains = ["Switched to GPT-4 Turbo"]
 wait_timeout_seconds = 5
 
 [[tmux.steps]]

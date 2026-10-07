@@ -83,6 +83,7 @@ pig_targets = [
 ]
 evidence = [
   "internal/codingagent/model_cycle_parity_test.go#TestInteractiveCycleUsesSessionSelections",
+  "coding/session_model_extension_upstream_test.go#TestSessionModelExtensionCyclesUpstream",
   "test/parity/scenarios/model-resolver-selector/26-interactive-cycle-custom-scope.toml",
 ]
 

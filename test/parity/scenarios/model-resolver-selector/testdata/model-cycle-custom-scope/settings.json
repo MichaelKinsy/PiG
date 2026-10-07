@@ -3,8 +3,8 @@
   "defaultModel": "gpt-4-turbo",
   "quietStartup": true,
   "enabledModels": [
-    "custom/custom-model",
     "openai/gpt-4",
+    "custom/custom-model",
     "openai/gpt-4-turbo"
   ]
 }
