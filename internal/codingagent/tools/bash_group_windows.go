@@ -3,9 +3,11 @@
 package tools
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"sync"
 	"syscall"
 	"unsafe"
@@ -85,16 +87,20 @@ func openJobMembers(job windows.Handle) ([]windows.Handle, error) {
 	for {
 		size := uint32(unsafe.Sizeof(jobProcessIDList{})) + (capacity-1)*uint32(unsafe.Sizeof(uintptr(0)))
 		buf := make([]uintptr, (size+uint32(unsafe.Sizeof(uintptr(0)))-1)/uint32(unsafe.Sizeof(uintptr(0))))
-		list := (*jobProcessIDList)(unsafe.Pointer(&buf[0]))
-		err := windows.QueryInformationJobObject(job, windows.JobObjectBasicProcessIdList, uintptr(unsafe.Pointer(list)), size, nil)
-		if err == windows.ERROR_MORE_DATA {
-			capacity = list.assigned
+		list := (*jobProcessIDList)(unsafe.Pointer(&buf[0])) //nolint:gosec // G103: buf is sized for a JOBOBJECT_BASIC_PROCESS_ID_LIST with capacity ids, the layout jobProcessIDList mirrors.
+		// The goroutine stack can move while the x/sys wrapper runs, before the system call, and the wrapper takes the buffer as a uintptr, so the buffer is pinned, which places it on the heap.
+		var pinner runtime.Pinner
+		pinner.Pin(&buf[0])
+		err := windows.QueryInformationJobObject(job, windows.JobObjectBasicProcessIdList, uintptr(unsafe.Pointer(list)), size, nil) //nolint:gosec // G103: QueryInformationJobObject fills the pinned JOBOBJECT_BASIC_PROCESS_ID_LIST buffer, and x/sys takes it as uintptr.
+		pinner.Unpin()
+		if errors.Is(err, windows.ERROR_MORE_DATA) {
+			capacity = max(list.assigned, capacity+1)
 			continue
 		}
 		if err != nil {
 			return nil, fmt.Errorf("list bash job members: %w", err)
 		}
-		ids := unsafe.Slice(&list.ids[0], list.listed)
+		ids := unsafe.Slice(&list.ids[0], list.listed) //nolint:gosec // G103: the API wrote listed ids after the header, inside buf.
 		var members []windows.Handle
 		for _, id := range ids {
 			if h, err := windows.OpenProcess(windows.SYNCHRONIZE, false, uint32(id)); err == nil {
@@ -177,8 +183,12 @@ func processGroupMayHoldOutput(p *os.Process) bool {
 	if !ok {
 		return true
 	}
-	var info jobBasicAccounting
-	if err := windows.QueryInformationJobObject(v.(windows.Handle), windows.JobObjectBasicAccountingInformation, uintptr(unsafe.Pointer(&info)), uint32(unsafe.Sizeof(info)), nil); err != nil {
+	// The goroutine stack can move while the x/sys wrapper runs, before the system call, and the wrapper takes the buffer as a uintptr, so the buffer is pinned, which places it on the heap.
+	info := new(jobBasicAccounting)
+	var pinner runtime.Pinner
+	pinner.Pin(info)
+	defer pinner.Unpin()
+	if err := windows.QueryInformationJobObject(v.(windows.Handle), windows.JobObjectBasicAccountingInformation, uintptr(unsafe.Pointer(info)), uint32(unsafe.Sizeof(*info)), nil); err != nil { //nolint:gosec // G103: QueryInformationJobObject fills the pinned JOBOBJECT_BASIC_ACCOUNTING_INFORMATION jobBasicAccounting mirrors, and x/sys takes it as uintptr.
 		return true
 	}
 	return info.ActiveProcesses != 0

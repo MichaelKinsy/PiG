@@ -1,4 +1,4 @@
-//go:build race
+//go:build linux && race
 
 package codemode
 
