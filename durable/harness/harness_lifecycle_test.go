@@ -729,7 +729,12 @@ func TestHarnessClose(t *testing.T) {
 				return queued[name].done
 			})
 		}
+		// Upstream's close() seals before release() runs; the Go Close runs on its own goroutine, so release only once
+		// its close listeners ran.
+		closeBegan := deferred()
+		harness.SubscribeClose(closeBegan.resolve)
 		closing := asyncErr(func() error { return harness.Close(testContext) })
+		_ = closeBegan.wait(testContext)
 		held.release()
 		if _, err := blocking.wait(); err != nil {
 			t.Fatal(err)
