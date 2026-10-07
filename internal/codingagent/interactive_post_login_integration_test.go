@@ -129,7 +129,7 @@ func (h *postLoginModelHandle) SetModel(model *ai.Model, options ...ModelMutatio
 		// Session.SetModel also extends a nonempty enabledModels setting.
 		if enabled := h.settings.GetEnabledModels(); len(enabled) > 0 {
 			spec := model.ProviderMeta.ProviderID + "/" + model.ID
-			return h.settings.UpdateGlobal(func(s *Settings) { s.EnabledModels = append(enabled, spec) })
+			return h.settings.UpdateGlobal(func(s *Settings) { s.EnabledModels = append(slices.Clone(enabled), spec) })
 		}
 	}
 	return nil
