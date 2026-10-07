@@ -1,6 +1,6 @@
 # PORT_MAP coverage report
 
-Generated from `550` PORT_MAP entries and `655` parity scenarios.
+Generated from `550` PORT_MAP entries and `656` parity scenarios.
 
 ## Status
 
@@ -377,7 +377,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/coding-agent/src/bun/cli.ts` | n/a | 0 | 0 | not run |  |
 | `packages/coding-agent/src/bun/restore-sandbox-env.ts` | n/a | 0 | 0 | not run |  |
 | `packages/coding-agent/src/modes/interactive/components/assistant-message.ts` | ✅ | 11 (01-assistant-message-text, 04-conversation-layout, 05-multi-turn-spacing, 18-latex-math-rendering, 19-mermaid-diagram-rendering, 21-resume-thinking-blocks, 22-resume-hidden-thinking, 23-resume-assistant-terminal-state, 25-review-thinking-tool-boundary, 26-review-thinking-markdown, 33-markdown-transformer) | 11 (01-assistant-message-text, 04-conversation-layout, 05-multi-turn-spacing, 18-latex-math-rendering, 19-mermaid-diagram-rendering, 21-resume-thinking-blocks, 22-resume-hidden-thinking, 23-resume-assistant-terminal-state, 25-review-thinking-tool-boundary, 26-review-thinking-markdown, 33-markdown-transformer) | not run |  |
-| `packages/coding-agent/src/modes/interactive/components/bash-execution.ts` | ✅ | 8 (06-bash-execution-success, 20-bash-execution-long-line-wrap, 45-bash-execution-exit-status, 46-bash-execution-running-spinner, 48-bash-execution-expand-hint, 49-bash-execution-collapse-hint, 50-bash-execution-line-limit, 51-bash-execution-byte-limit) | 8 (06-bash-execution-success, 20-bash-execution-long-line-wrap, 45-bash-execution-exit-status, 46-bash-execution-running-spinner, 48-bash-execution-expand-hint, 49-bash-execution-collapse-hint, 50-bash-execution-line-limit, 51-bash-execution-byte-limit) | not run |  |
+| `packages/coding-agent/src/modes/interactive/components/bash-execution.ts` | ✅ | 9 (06-bash-execution-success, 20-bash-execution-long-line-wrap, 45-bash-execution-exit-status, 46-bash-execution-running-spinner, 47-bash-execution-cancelled, 48-bash-execution-expand-hint, 49-bash-execution-collapse-hint, 50-bash-execution-line-limit, 51-bash-execution-byte-limit) | 9 (06-bash-execution-success, 20-bash-execution-long-line-wrap, 45-bash-execution-exit-status, 46-bash-execution-running-spinner, 47-bash-execution-cancelled, 48-bash-execution-expand-hint, 49-bash-execution-collapse-hint, 50-bash-execution-line-limit, 51-bash-execution-byte-limit) | not run |  |
 | `packages/coding-agent/src/modes/interactive/components/bordered-loader.ts` | ✅ | 2 (10-loader-countdown-bordered-behavior, 15-bordered-loader) | 1 (10-loader-countdown-bordered-behavior) | not run |  |
 | `packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts` | ✅ | 1 (13-branch-summary-message) | 1 (13-branch-summary-message) | not run |  |
 | `packages/coding-agent/src/modes/interactive/components/compaction-summary-message.ts` | ✅ | 1 (14-compaction-summary-message) | 1 (14-compaction-summary-message) | not run |  |
