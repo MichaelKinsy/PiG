@@ -1,0 +1,6 @@
+{"type":"session","version":3,"id":"continue-bash","timestamp":"2026-10-07T00:00:00.000Z","cwd":"/fixture"}
+{"type":"message","id":"c1","parentId":null,"timestamp":"2026-10-07T00:00:01.000Z","message":{"role":"user","content":"bash-start","timestamp":1791331200000}}
+{"type":"message","id":"c2","parentId":"c1","timestamp":"2026-10-07T00:00:02.000Z","message":{"role":"bashExecution","command":"printf 'a\\nb\\n'","output":"a\nb\n","exitCode":0,"cancelled":false,"truncated":false,"timestamp":1791331201000}}
+{"type":"message","id":"c3","parentId":"c2","timestamp":"2026-10-07T00:00:03.000Z","message":{"role":"bashExecution","command":"ls missing","output":"ls: missing: No such file or directory\n","exitCode":1,"cancelled":false,"truncated":false,"timestamp":1791331202000,"excludeFromContext":true}}
+{"type":"message","id":"c4","parentId":"c3","timestamp":"2026-10-07T00:00:04.000Z","message":{"role":"bashExecution","command":"sleep 5","output":"","cancelled":true,"truncated":false,"timestamp":1791331203000}}
+{"type":"message","id":"c5","parentId":"c4","timestamp":"2026-10-07T00:00:05.000Z","message":{"role":"user","content":"continue-end","timestamp":1791331204000}}

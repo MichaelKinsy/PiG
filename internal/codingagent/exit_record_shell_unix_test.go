@@ -3,7 +3,9 @@
 package codingagent
 
 import (
+	"bytes"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -35,9 +37,10 @@ func TestExitWithoutShutdownKillsTheRunningShellCommand(t *testing.T) {
 			if code != tc.code {
 				t.Fatalf("exit code = %d, want %d\n%s", code, tc.code, output)
 			}
-			// The killed job is a zombie until init reaps it.
+			// The killed job stays a zombie until its new parent reaps it, and a PID 1 that never reaps would leave
+			// it one, so a zombie counts as stopped.
 			deadline := time.Now().Add(5 * time.Second)
-			for processAlive(pid) {
+			for processRunning(pid) {
 				if time.Now().After(deadline) {
 					_ = syscall.Kill(pid, syscall.SIGKILL)
 					t.Fatalf("the shell command's background job %d outlived the exit", pid)
@@ -46,4 +49,25 @@ func TestExitWithoutShutdownKillsTheRunningShellCommand(t *testing.T) {
 			}
 		})
 	}
+}
+
+// processRunning reports whether pid is a process that has not exited: processAlive, minus a zombie. Linux shows the
+// state in /proc; other systems through ps.
+func processRunning(pid int) bool {
+	if !processAlive(pid) {
+		return false
+	}
+	if stat, err := os.ReadFile(filepath.Join("/proc", strconv.Itoa(pid), "stat")); err == nil {
+		// The state follows the parenthesized command name, which may itself hold ") ".
+		if i := bytes.LastIndex(stat, []byte(") ")); i >= 0 && i+2 < len(stat) {
+			return stat[i+2] != 'Z'
+		}
+		return true
+	}
+	state, err := exec.Command("ps", "-o", "stat=", "-p", strconv.Itoa(pid)).Output()
+	if err != nil {
+		// ps fails for a pid that is gone.
+		return processAlive(pid)
+	}
+	return !strings.HasPrefix(strings.TrimSpace(string(state)), "Z")
 }
