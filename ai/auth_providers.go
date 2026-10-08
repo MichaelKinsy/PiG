@@ -436,6 +436,9 @@ func oauthProviderAuth(providerID string, provider OAuthProviderInterface) *OAut
 	}
 	if builtin, ok := builtinOAuthNames[providerID]; ok {
 		name, subscription = builtin.name, builtin.subscription
+	} else if flagged, ok := provider.(OAuthSubscriptionProvider); ok {
+		// A registered flow outside the catalog carries its own isSubscription, as Pi's adaptOAuth does (provider-composer.ts:356).
+		subscription = flagged.IsSubscription()
 	}
 	return &OAuthAuth{
 		Name:           name,
