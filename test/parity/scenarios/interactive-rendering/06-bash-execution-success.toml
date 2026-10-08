@@ -34,6 +34,15 @@
 #      success; upstream renders nothing for exit==0.
 #   4. bash_execution.go rendered "(exit N · Xms)" / "(cancelled · Xms)"
 #      with duration suffix; upstream renders bare "(exit N)" / "(cancelled)".
+#
+# Comparator: output_normalized_equal -> escaped_output_equal (2026-10-07, Pi 1.0.3, runs = 3). The escaped crop is
+#   $ echo hello world\e[0m
+#
+#    \e[38;2;157;165;169mhello world\e[39m
+#
+#   \e[38;2;94;178;134m<border>
+# in both programs (ESC as \e, the run of ─ as <border>): the output in "muted" and the border in "bashMode", byte for byte.
+# PiG at main 50e81255d already drew these bytes, so this crop passes before and after the block port: the padding the port adds is trailing blanks tmux does not capture, and its other changes are outside this crop or exercised by 45 to 51. A crop through the editor's top border is not comparable, because the empty rows above the bottom-pinned editor depend on the startup header's height.
 
 name = "06-bash-execution-success"
 description = "BashExecutionComponent renders `!echo hello world` as a bordered block with a header, blank line, output, and final blank line. Exit 0 has no status line."
@@ -71,11 +80,7 @@ wait_timeout_seconds = 10
 [assert]
 both_reach_ready = true
 both_not_contain = ["unknown command", "panic:", "goroutine ", "exit 0", "(exit 0)"]
-# lint-known-gap: bg-paint SGR encoding differs between pig and upstream
-# (pig uses truecolor for bashMode #b5bd68; upstream goes through the
-# theme/Box delegation path). Visible content and box structure are
-# identical post-fix.
-output_normalized_equal = true
+escaped_output_equal = true
 runtime_ratio_max = 2.0
 # runs=3 because bash-execution timing has natural jitter on completion.
 runs = 3

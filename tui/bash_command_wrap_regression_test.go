@@ -24,11 +24,8 @@ func TestBashCommandHeaderUsesPaddedTextLayout(t *testing.T) {
 			block := NewBashExecutionBlock(command, false)
 			block.SetComplete(new(0), false, false)
 			lines := block.Render(width)
-			header := lines[2 : len(lines)-2]
-			want := NewPaddedText(bashHeaderColor()+"\x1b[1m$ "+command+"\x1b[0m", 1, 0, nil).Render(width)
-			for i := range want {
-				want[i] = strings.TrimRight(want[i], " ")
-			}
+			header := lines[2 : len(lines)-1]
+			want := NewPaddedText(ActiveTheme().FgText("bashMode", "\x1b[1m$ "+command+"\x1b[22m"), 1, 0, nil).Render(width)
 			if !reflect.DeepEqual(header, want) {
 				t.Errorf("command=%q width=%d header=%q want=%q", command, width, header, want)
 			}

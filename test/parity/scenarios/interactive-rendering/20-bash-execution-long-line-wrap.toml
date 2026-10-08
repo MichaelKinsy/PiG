@@ -9,6 +9,15 @@
 #     00000000000000000000000000TAIL
 #
 # The 901-column output is one logical line. Pi wraps it through Text, keeps the final 20 visual rows in collapsed mode, and retains the right-side TAIL marker. Horizontal clipping would show an ellipsis and lose that marker from the body.
+#
+# Comparator: output_normalized_equal -> escaped_output_equal (2026-10-07, Pi 1.0.3, runs = 3). In Pi's escaped crop (ESC as \e) every wrapped row but the last stays in "muted" to the row's end, so tmux writes the reset at the start of the next row:
+#
+#      \e[38;2;157;165;169m00000000000000000000000000000000000000
+#     \e[39m \e[38;2;157;165;169m00000000000000000000000000000000000000
+#     ...
+#     \e[39m \e[38;2;157;165;169m00000000000000000000000000TAIL\e[39m
+#
+# Red: PiG at main 50e81255d closed the color on every row (" \e[38;2;157;165;169m000…000\e[39m"), which the normalized comparator hid. Green with the block port, whose Text wraps the styled line as Pi does.
 
 name = "20-bash-execution-long-line-wrap"
 description = "A long Bash output line wraps, and the collapsed preview retains its last 20 visual rows."
@@ -48,6 +57,6 @@ settle_seconds = 1
 both_reach_ready = true
 both_not_contain = ["…", "panic:", "goroutine "]
 both_match_regex = ['0{10,}TAIL']
-output_normalized_equal = true
+escaped_output_equal = true
 runtime_ratio_max = 2.0
 runs = 3

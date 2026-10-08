@@ -1,0 +1,60 @@
+# Behavior family: interactive-rendering
+# Surface: BashExecutionComponent: the expanded block's full output and the app.tools.expand collapse hint.
+#
+# Upstream evidence (pinned Pi 1.0.3, 2026-10-07, parity-runner tmux probe with COLORTERM=truecolor and the dark theme):
+# Rows below are the escaped crop, ESC shown as \e, a run of ─ as <border>.
+#
+#   $ seq 1 30\e[0m
+#
+#    \e[38;2;157;165;169m1\e[39m
+#   … rows 2 to 30, then the empty last line …
+#
+#    \e[38;2;157;165;169m(\e[38;2;126;136;142mctrl+o\e[38;2;157;165;169m to collapse)\e[39m
+#   \e[38;2;94;178;134m<border>
+#
+# Upstream rule: expanded, the block shows every available line and theme.fg("muted", "(") + keyHint("app.tools.expand", "to collapse") + theme.fg("muted", ")").
+# Red: PiG at main 50e81255d drew "\e[2m(ctrl+o to collapse)\e[0m". Green with the block port.
+
+name = "49-bash-execution-collapse-hint"
+description = "After app.tools.expand, a 30-line `!` output shows every line and `(ctrl+o to collapse)` drawn by keyHint."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/bash-execution.ts",
+  "packages/coding-agent/src/modes/interactive/components/keybinding-hints.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 50
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/bash-wrap-cwd"
+capture_start = "$ seq 1 30"
+capture_end_regex = '─{100}'
+
+[[tmux.steps]]
+keys = ["!seq 1 30", "Enter"]
+wait_visible_contains = ["more lines ("]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["C-o"]
+wait_visible_contains = ["to collapse)"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["to collapse)"]
+both_not_contain = ["panic:", "goroutine ", "more lines"]
+escaped_output_equal = true
+runs = 3
