@@ -3251,6 +3251,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/interactive-rendering/47-bash-execution-cancelled.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "$ sleep 30",
+            "capture_end_regex": "─{100}"
+          },
+          "reason": "Owned visible surface: Escape cancels a running `!` command; the block ends with `(cancelled)` in the warning color and no loader.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/interactive-rendering/48-bash-execution-expand-hint.toml",
       "transforms": [
         {

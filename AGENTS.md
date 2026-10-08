@@ -291,7 +291,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `extensions-runtime` | 103 | 102 | 0 | 1 | 0 | 58 | not run |
 | `footer` | 11 | 11 | 0 | 0 | 0 | 9 | not run |
 | `fullscreen` | 12 | 12 | 0 | 0 | 0 | 9 | not run |
-| `interactive-rendering` | 54 | 53 | 1 | 0 | 0 | 35 | not run |
+| `interactive-rendering` | 55 | 54 | 1 | 0 | 0 | 35 | not run |
 | `json` | 10 | 10 | 0 | 0 | 0 | 7 | not run |
 | `model-resolver-selector` | 25 | 25 | 0 | 0 | 0 | 15 | not run |
 | `model-runtime-store-catalog` | 25 | 25 | 0 | 0 | 0 | 24 | not run |
