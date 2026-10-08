@@ -19,6 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -78,6 +79,15 @@ func TestExitRecordChild(t *testing.T) {
 		SetUncaughtGoroutineHandler(m.uncaughtOffLoop)
 		m.backgroundTasks.Go(func() { panic(&os.PathError{Op: "write", Path: "/dev/tty", Err: syscall.EIO}) })
 		select {}
+	case "dead-terminal-running-shell", "crash-running-shell":
+		m := NewInteractiveMode(InteractiveOptions{CWD: "/work", AgentDir: agentDir, AppVersion: "9.9.9"})
+		startRunningShellCommand(agentDir)
+		if scenario == "dead-terminal-running-shell" {
+			m.emergencyTerminalExit("terminal gone: read /dev/tty: input/output error")
+		}
+		SetUncaughtGoroutineHandler(m.uncaughtOffLoop)
+		m.backgroundTasks.Go(func() { panic("boom while a shell command runs") })
+		select {}
 	}
 	os.Exit(0)
 }
@@ -90,6 +100,20 @@ func terminatedSentinel(agentDir string) func() {
 func extensionsTerminated(agentDir string) bool {
 	_, err := os.Stat(filepath.Join(agentDir, "extensions-terminated"))
 	return err == nil
+}
+
+// startRunningShellCommand starts a command through the shell operations a `!` command and the bash tool share, with no
+// cancellation, and returns once its background job has written its pid to agentDir/shell-job-pid.
+func startRunningShellCommand(agentDir string) {
+	go func() {
+		_, _ = tools.NewLocalBashOperations(nil, "").Exec(context.Background(), "sleep 60 & echo $! > shell-job-pid.tmp && mv shell-job-pid.tmp shell-job-pid; wait", agentDir, tools.BashOperationsExecOptions{})
+	}()
+	for {
+		if _, err := os.Stat(filepath.Join(agentDir, "shell-job-pid")); err == nil {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 }
 
 func runExitRecordChild(t *testing.T, scenario, agentDir string) (string, int) {
