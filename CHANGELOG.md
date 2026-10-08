@@ -9,6 +9,10 @@ All notable public changes to PiG will be recorded in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- The `/sprite` picker draws the pig of the highlighted sprite right after its option rows (a few cells past the longest row, top-aligned with the first option, and dropped on narrow terminals), so the choice shows its face before you make it. `Create your own...` draws no pig and keeps the full-width list. The list stays the one it was, and a UI context without a custom-component host (RPC) still gets that plain list (D2).
+
 ### Fixed
 
 - With an active Piglet, an extension that denies every tool with `SetActiveTools([])` is no longer widened back to the Piglet's full tool scope. The Piglet scope only narrows what an earlier extension selected. `getActiveTools` replies and the replicated state carry `[]` for a session narrowed to no tools, never `null`.

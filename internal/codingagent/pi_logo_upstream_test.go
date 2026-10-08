@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/piglogin"
@@ -562,8 +563,9 @@ func TestBuiltInHeaderUsesTheTextMarkInAppleTerminal(t *testing.T) {
 	}
 }
 
-// Escape in the /sprite picker dismisses it through the interactive host's dialog (context.Canceled), which the built-in
-// pig-login command must treat as no choice rather than report as an extension error.
+// Escape in the /sprite picker dismisses it through the interactive host's custom component, which the built-in
+// pig-login command must treat as no choice rather than report as an extension error. The picker is the host's focused
+// component and draws the pig of the highlighted sprite right after its rows.
 func TestSpritePickerEscapeIsNoErrorThroughTheInteractiveHost(t *testing.T) {
 	isolatePigHome(t)
 	m, _ := newExtensionDialogProbe(t)
@@ -572,14 +574,86 @@ func TestSpritePickerEscapeIsNoErrorThroughTheInteractiveHost(t *testing.T) {
 		t.Fatal(err)
 	}
 	c := extension.NewContext(t.TempDir(), &ExtUIContext{m: m}, func() error { return nil }, extension.ContextActions{})
-	_, err = runExtensionDialogProbe(t, m, func() (string, error) {
-		return "", ext.Commands["sprite"].Handler(extension.WithContext(context.Background(), c), "")
-	}, []string{"\x1b"})
-	if err != nil {
+	result := make(chan error, 1)
+	go func() {
+		result <- ext.Commands["sprite"].Handler(extension.WithContext(context.Background(), c), "")
+	}()
+
+	picker := waitSpritePickerMounts(t, m, result)
+	const width = 100
+	head := piglogin.HeadLines(piglogin.Active(), tui.ActiveTheme().ColorMode())
+	lines := picker.Render(width)
+	row := -1
+	for i, line := range lines {
+		if strings.Contains(line, head[0]) {
+			row = i
+			break
+		}
+	}
+	if row < 0 {
+		t.Fatalf("the focused picker draws no pig beside its rows: %q", widthx.StripAnsi(strings.Join(lines, "\n")))
+	}
+	before, _, ok := strings.Cut(lines[row], head[0])
+	if !ok || widthx.VisibleWidth(before) != longestSpriteRowCells()+spritePreviewGapCells {
+		t.Fatalf("the pig does not start a few cells past the longest row: %q", widthx.StripAnsi(lines[row]))
+	}
+
+	if err := m.dispatchKey(context.Background(), "\x1b"); err != nil {
+		t.Fatal(err)
+	}
+	if err := waitSpritePickerEnds(t, m, result); err != nil {
 		t.Fatalf("/sprite then escape = %v, want no error", err)
 	}
 	if got := piglogin.Active(); got.ID != piglogin.DefaultID {
 		t.Fatalf("escape changed the sprite to %q", got.ID)
+	}
+	if focused := m.tuiInst.FocusedComponent(); focused != m.editor {
+		t.Fatalf("focus after the picker closed = %T, want the editor", focused)
+	}
+}
+
+// spritePreviewGapCells mirrors the cells tui keeps between the longest option row and the preview column.
+const spritePreviewGapCells = 4
+
+// waitSpritePickerMounts drains the UI loop until the host focuses the sprite picker, and fails with the call's result
+// when the picker ends before it mounts.
+func waitSpritePickerMounts(t *testing.T, m *InteractiveMode, result <-chan error) tui.Component {
+	t.Helper()
+	timer := time.NewTimer(2 * time.Second)
+	defer timer.Stop()
+	for {
+		if focused := m.tuiInst.FocusedComponent(); focused != nil && focused != m.editor {
+			// The picker's title is the one /sprite has always shown (coding/piglogin).
+			if strings.Contains(widthx.StripAnsi(strings.Join(focused.Render(100), "\n")), "Choose a PiG sprite") {
+				return focused
+			}
+		}
+		select {
+		case task := <-m.uiTaskCh:
+			task()
+		case err := <-result:
+			t.Fatalf("the picker ended before it mounted: %v", err)
+		case <-timer.C:
+			t.Fatal("the sprite picker never took focus")
+		}
+	}
+}
+
+// waitSpritePickerEnds drains the UI loop until the picker's custom call returns.
+func waitSpritePickerEnds(t *testing.T, m *InteractiveMode, result <-chan error) error {
+	t.Helper()
+	timer := time.NewTimer(2 * time.Second)
+	defer timer.Stop()
+	for {
+		select {
+		case err := <-result:
+			return err
+		case task := <-m.uiTaskCh:
+			task()
+		case <-timer.C:
+			t.Fatal("the sprite picker never returned")
+			return nil
+		}
 	}
 }
 
@@ -720,4 +794,14 @@ func TestBuiltInHeaderColorsTheTextMarkInAppleTerminal256(t *testing.T) {
 	if got := strings.TrimRight(lines[0], " "); got != " PiG. v"+pigversion.Version {
 		t.Errorf("first line = %q", got)
 	}
+}
+
+// longestSpriteRowCells is the width of the picker's longest row: a padding cell, the two-cell cursor column, the option
+// "Name: Tagline" and a padding cell.
+func longestSpriteRowCells() int {
+	cells := 1 + 2 + widthx.VisibleWidth(piglogin.CreateOption) + 1
+	for _, v := range piglogin.All() {
+		cells = max(cells, 1+2+widthx.VisibleWidth(v.Name+": "+v.Tagline)+1)
+	}
+	return cells
 }
