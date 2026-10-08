@@ -56,6 +56,66 @@ func TestNpmRuntimeRemovesAdvisoryOverridesFromBundledNpm(t *testing.T) {
 	}
 }
 
+// npm's tarball bundles its dependencies, and a lockfile cannot replace a bundled copy. The toolchain and the
+// parity image remove the bundled copy of each dependency they pin directly, so the lock must not describe it and
+// must pin the patched copy npm then resolves.
+func TestNpmLocksPinPatchedCopiesInsteadOfBundledOnes(t *testing.T) {
+	root := repoRoot(t)
+	for _, dir := range []string{
+		filepath.Join("automation", "ci", "npm-toolchain"),
+		filepath.Join("automation", "images", "npm-runtime"),
+	} {
+		var manifest struct {
+			Dependencies map[string]string `json:"dependencies"`
+		}
+		var lock struct {
+			Packages map[string]struct {
+				Version string `json:"version"`
+			} `json:"packages"`
+		}
+		for name, target := range map[string]any{"package.json": &manifest, "package-lock.json": &lock} {
+			data, err := os.ReadFile(filepath.Join(root, dir, name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := json.Unmarshal(data, target); err != nil {
+				t.Fatalf("%s/%s: %v", dir, name, err)
+			}
+		}
+		for _, dependency := range []string{"http-cache-semantics", "postcss-selector-parser"} {
+			want, ok := manifest.Dependencies[dependency]
+			if !ok {
+				t.Errorf("%s does not pin %s directly", dir, dependency)
+				continue
+			}
+			if got := lock.Packages["node_modules/"+dependency].Version; got != want {
+				t.Errorf("%s locks %s %q, want %q", dir, dependency, got, want)
+			}
+			if bundled, ok := lock.Packages["node_modules/npm/node_modules/"+dependency]; ok {
+				t.Errorf("%s locks npm's bundled %s %s, which the install removes", dir, dependency, bundled.Version)
+			}
+		}
+	}
+}
+
+// The toolchain script must remove the bundled copy of every dependency package.json pins besides npm itself.
+func TestNpmToolchainInstallRemovesBundledCopies(t *testing.T) {
+	root := repoRoot(t)
+	script, err := os.ReadFile(filepath.Join(root, "automation", "ci", "install-npm-toolchain.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		`npm ci --ignore-scripts --no-audit --no-fund`,
+		`rm -rf "node_modules/npm/node_modules/$dependency"`,
+		`name !== "npm"`,
+	} {
+		if !strings.Contains(string(script), want) {
+			t.Errorf("install-npm-toolchain.sh lacks %q", want)
+		}
+	}
+}
+
 func TestCINpmLocksPinDownloadIntegrity(t *testing.T) {
 	root := repoRoot(t)
 	cmd := testenv.ScriptCommand(t,

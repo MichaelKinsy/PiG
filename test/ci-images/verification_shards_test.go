@@ -535,7 +535,7 @@ func TestHostedJobsInstallPinnedNpmBeforeOracle(t *testing.T) {
 		oracle := false
 		for _, step := range job.Steps {
 			for line := range strings.SplitSeq(step.Run, "\n") {
-				if strings.Contains(line, "npm ci --prefix automation/ci/npm-toolchain") {
+				if strings.Contains(line, "automation/ci/install-npm-toolchain.sh") {
 					installed = true
 				}
 				if strings.Contains(line, `test "$(npm --version)" = "$NPM_VERSION"`) {

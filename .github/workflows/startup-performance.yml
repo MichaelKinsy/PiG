@@ -49,7 +49,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm ci --prefix automation/ci/npm-toolchain --ignore-scripts --no-audit --no-fund
+          automation/ci/install-npm-toolchain.sh
           export PATH="$PWD/automation/ci/npm-toolchain/node_modules/.bin:$PATH"
           npm ci --prefix extensions/sdk-ts --no-audit --no-fund
           mkdir -p bin/startup-timing tmp/startup-timing
