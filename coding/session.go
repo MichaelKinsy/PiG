@@ -934,6 +934,9 @@ func (s *Session) StreamModel(ctx context.Context, model *ai.Model, request ai.C
 // ModelMutationOptions controls whether a Session mutation also saves a global default.
 type ModelMutationOptions = icodingagent.ModelMutationOptions
 
+// ModelCycleResult reports a model-cycle selection and its clamped thinking level.
+type ModelCycleResult = icodingagent.ModelCycleResult
+
 // SetModel swaps the active LLM model and records a model_change in the Session transcript.
 // The next Send uses the new provider/model; tools, system prompt, and history are unchanged.
 // Global model defaults change only with Persist. The thinking default never changes here. Runtime-managed providers must have configured auth.
@@ -978,11 +981,6 @@ func (s *Session) SetModelOnMain(m *ai.Model, options ModelMutationOptions, disp
 		complete()
 	}
 	return nil
-}
-
-// CycleToModel applies a model-cycle selection, saving global model defaults only with Persist.
-func (s *Session) CycleToModel(m *ai.Model, options ...ModelMutationOptions) error {
-	return s.setModel(m, extension.ModelSelectSourceCycle, options...)
 }
 
 func (s *Session) setModel(m *ai.Model, source extension.ModelSelectSource, options ...ModelMutationOptions) error {

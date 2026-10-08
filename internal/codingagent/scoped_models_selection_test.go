@@ -2,9 +2,13 @@ package codingagent
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -50,6 +54,94 @@ func TestScopedModelStartupResolvesConfiguredPatterns(t *testing.T) {
 	m.initScopedModels()
 	if len(m.scopedModelIDs) != 0 {
 		t.Fatalf("unmatched settings leaked into the session scope: %v", m.scopedModelIDs)
+	}
+}
+
+func TestScopedModelStartupUsesSessionScope(t *testing.T) {
+	one := &ai.Model{ID: "one", ProviderMeta: ai.ProviderMetadata{ProviderID: "fixture"}}
+	two := &ai.Model{ID: "two", ProviderMeta: ai.ProviderMetadata{ProviderID: "fixture"}}
+	handle := &recordingCompactHandle{scopedModels: []extension.ScopedModel{{Model: two}, {Model: one}}}
+	m := NewInteractiveMode(InteractiveOptions{
+		SessionHandle: handle,
+		Settings:      Settings{EnabledModels: []string{"fixture/one"}},
+	})
+	m.initScopedModels()
+	if want := []string{"fixture/two", "fixture/one"}; !reflect.DeepEqual(m.scopedModelIDs, want) {
+		t.Fatalf("interactive scope = %v, want Session scope %v", m.scopedModelIDs, want)
+	}
+}
+
+// Pi keys scoped models by `${provider}/${id}` without collapsing an ID that already starts with the provider (interactive-mode.ts:5355,5363).
+func TestScopedModelStartupKeepsProviderPrefixedIDs(t *testing.T) {
+	auto := &ai.Model{ID: "fixture/auto", ProviderMeta: ai.ProviderMetadata{ProviderID: "fixture"}}
+	handle := &recordingCompactHandle{scopedModels: []extension.ScopedModel{{Model: auto}}}
+	m := NewInteractiveMode(InteractiveOptions{SessionHandle: handle})
+	m.initScopedModels()
+	if want := []string{"fixture/fixture/auto"}; !reflect.DeepEqual(m.scopedModelIDs, want) {
+		t.Fatalf("interactive scope = %v, want %v", m.scopedModelIDs, want)
+	}
+}
+
+func TestScopedSelectionKeepsProviderPrefixedIDsInSessionScope(t *testing.T) {
+	clearAllAuthEnv(t)
+	t.Setenv("PI_OFFLINE", "1")
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "models.json"), []byte(`{"providers":{"fixture":{"baseUrl":"http://127.0.0.1:9","api":"openai-completions","apiKey":"fake-key","models":[{"id":"fixture/auto"},{"id":"two"},{"id":"three"}]}}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	models := []tui.ModelItem{{FullID: "fixture/fixture/auto", Provider: "fixture"}, {FullID: "fixture/two", Provider: "fixture"}, {FullID: "fixture/three", Provider: "fixture"}}
+	selection, _ := newScopedModelsSelection(models, nil, nil)
+	handle := &recordingCompactHandle{}
+	m := &InteractiveMode{opts: InteractiveOptions{ModelRegistry: NewModelRegistry(dir), SessionHandle: handle}}
+	m.statusLine = NewStatusLine(nil, "test", nil)
+	selection.apply(m, []string{"fixture/fixture/auto", "fixture/two"})
+	if got := len(handle.ScopedModels()); got != 2 {
+		t.Fatalf("Session scope has %d models, want 2: the provider-prefixed model was dropped", got)
+	}
+	m.initScopedModels()
+	if want := []string{"fixture/fixture/auto", "fixture/two"}; !reflect.DeepEqual(m.scopedModelIDs, want) {
+		t.Fatalf("interactive scope = %v, want %v", m.scopedModelIDs, want)
+	}
+}
+
+func TestScopedSelectionSynchronizesSessionScope(t *testing.T) {
+	clearAllAuthEnv(t)
+	t.Setenv("PI_OFFLINE", "1")
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "models.json"), []byte(`{"providers":{"fixture":{"baseUrl":"http://127.0.0.1:9","api":"openai-completions","apiKey":"fake-key","models":[{"id":"one"},{"id":"two"},{"id":"three"}]}}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	registry := NewModelRegistry(dir)
+	models := []tui.ModelItem{{FullID: "fixture/one", Provider: "fixture"}, {FullID: "fixture/two", Provider: "fixture"}, {FullID: "fixture/three", Provider: "fixture"}}
+	selection, _ := newScopedModelsSelection(models, nil, nil)
+	handle := &recordingCompactHandle{}
+	m := &InteractiveMode{opts: InteractiveOptions{ModelRegistry: registry, SessionHandle: handle}}
+	m.statusLine = NewStatusLine(nil, "test", nil)
+	for _, tc := range []struct {
+		name    string
+		enabled []string
+		want    []string
+	}{
+		{name: "ordered subset", enabled: []string{"fixture/two", "fixture/gone", "fixture/one"}, want: []string{"fixture/two", "fixture/one"}},
+		{name: "replacement", enabled: []string{"fixture/three"}, want: []string{"fixture/three"}},
+		{name: "all", enabled: []string{"fixture/three", "fixture/two", "fixture/one"}},
+		{name: "unavailable only", enabled: []string{"fixture/gone"}},
+		{name: "empty", enabled: []string{}},
+		{name: "implicit all"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			selection.apply(m, tc.enabled)
+			var got []string
+			for _, entry := range handle.ScopedModels() {
+				got = append(got, modelSpec(entry.Model))
+				if entry.ThinkingLevel != "" {
+					t.Fatalf("selector retained a thinking override: %q", entry.ThinkingLevel)
+				}
+			}
+			if !reflect.DeepEqual(got, tc.want) || !reflect.DeepEqual(m.scopedModelIDs, tc.want) {
+				t.Fatalf("Session scope = %v, interactive scope = %v, want %v", got, m.scopedModelIDs, tc.want)
+			}
+		})
 	}
 }
 

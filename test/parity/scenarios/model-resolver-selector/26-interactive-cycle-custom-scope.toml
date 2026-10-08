@@ -1,0 +1,79 @@
+# Behavior family: model-resolver-selector
+# Surface: app.model.cycleForward delegates to AgentSession.cycleModel and retains configured scope order.
+#
+# Upstream evidence: Pi 1.0.3 on 2026-10-06, tmux 100×35, using the fixture and
+# offline arguments below. enabledModels lists openai/gpt-4 first, so configured
+# order (GPT-4, Custom Model, GPT-4 Turbo) differs from provider/id sorted order.
+# From GPT-4 Turbo, five Ctrl+P presses produced:
+#   Switched to GPT-4        / gpt-4
+#   Switched to Custom Model / custom-model
+#   Switched to GPT-4 Turbo  / gpt-4-turbo
+#   Switched to GPT-4        / gpt-4
+#   Switched to Custom Model / custom-model
+# No provider request was made. Each wait checks the intermediate order; the final
+# escaped comparison checks the status, prompt, and full footer.
+# Re-probed on 2026-10-07 at 100×35 with quietStartup=true. Without it, D2's
+# two-row-taller PiG compact header moves the chat status down two rows while
+# the fullscreen footer stays bottom-aligned, so this crop compares different
+# amounts of blank viewport space. Quiet startup isolates model cycling from
+# the approved branding difference; both exact comparisons remain unchanged.
+
+name = "26-interactive-cycle-custom-scope"
+description = "Ctrl+P cycles a mixed custom and built-in model scope in configured order."
+covers = [
+  "packages/coding-agent/src/core/agent-session.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 20
+capture_start = "Switched to Custom Model"
+capture_start_last = true
+
+[[tmux.steps]]
+keys = ["hex:10"]
+wait_visible_contains = ["Switched to GPT-4", "gpt-4"]
+wait_not_contains = ["Switched to GPT-4 Turbo"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["hex:10"]
+wait_visible_contains = ["Switched to Custom Model", "custom-model"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["hex:10"]
+wait_visible_contains = ["Switched to GPT-4 Turbo", "gpt-4-turbo"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["hex:10"]
+wait_visible_contains = ["Switched to GPT-4", "gpt-4"]
+wait_not_contains = ["Switched to GPT-4 Turbo"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["hex:10"]
+wait_visible_contains = ["Switched to Custom Model", "custom-model"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/model-cycle-custom-scope", "OPENAI_API_KEY=fake-openai-key"]
+pi = ["PI_CODING_AGENT_DIR=testdata/model-cycle-custom-scope", "OPENAI_API_KEY=fake-openai-key", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--offline", "--no-session"]
+pi_args = ["--no-extensions", "--offline", "--no-session"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["Switched to Custom Model", "custom-model"]
+both_not_contain = ["panic:", "goroutine ", "Error:"]
+output_equal = true
+escaped_output_equal = true
+runs = 3

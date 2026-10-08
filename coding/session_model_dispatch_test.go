@@ -14,7 +14,7 @@ func TestModelChangePrefixAndAwaitedNotification(t *testing.T) {
 	release := make(chan struct{})
 	unblock := sync.OnceFunc(func() { close(release) })
 	t.Cleanup(unblock)
-	h := newRecoveryHarness(t, harnessOptions{extension: extension.Extension{Path: "/ext/model", Handlers: map[string][]extension.HandlerFn{"model_select": {func(args ...any) (any, error) {
+	h := newModelExtensionHarness(t, []bool{true, true}, "", true, extension.Extension{Path: "/ext/model", Handlers: map[string][]extension.HandlerFn{"model_select": {func(args ...any) (any, error) {
 		event := args[0].(extension.ModelSelectEvent)
 		if event.Source != extension.ModelSelectSourceCycle {
 			t.Errorf("source=%q", event.Source)
@@ -25,22 +25,23 @@ func TestModelChangePrefixAndAwaitedNotification(t *testing.T) {
 		case <-args[1].(context.Context).Done():
 		}
 		return nil, nil
-	}}}}})
-	next := *h.session.Model()
-	next.ID = "next"
+	}}}}, nil)
 	done := make(chan error, 1)
-	go func() { done <- h.session.CycleToModel(&next) }()
+	go func() {
+		_, err := h.session.CycleModel("forward")
+		done <- err
+	}()
 	select {
 	case <-entered:
 	case err := <-done:
 		t.Fatalf("model change returned before listener entry: %v", err)
 	}
-	if h.session.Model().ID != "next" {
+	if h.session.Model().ID != "faux-2" {
 		t.Fatal("model prefix did not run before listener")
 	}
 	select {
 	case err := <-done:
-		t.Fatalf("blocking CycleToModel returned before notification: %v", err)
+		t.Fatalf("blocking CycleModel returned before notification: %v", err)
 	default:
 	}
 	unblock()

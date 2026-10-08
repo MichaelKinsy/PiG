@@ -1469,14 +1469,30 @@ type recordingCompactHandle struct {
 	cacheWarming         *CacheWarmingStatus
 	cacheWarmingModes    []CacheWarmingMode
 	agentSettledCount    int
-	// cycled and switched record the models CycleToModel and SetModel received; compacted records each ExtensionCompact call.
-	cycled, switched []*ai.Model
-	compacted        []*extension.CompactOptions
+	cycleResults         []*ModelCycleResult
+	cycleDirections      []string
+	cycleOptions         [][]ModelMutationOptions
+	cycled, switched     []*ai.Model
+	scopedModels         []extension.ScopedModel
+	compacted            []*extension.CompactOptions
 }
 
-func (h *recordingCompactHandle) CycleToModel(model *ai.Model, _ ...ModelMutationOptions) error {
-	h.cycled = append(h.cycled, model)
-	return nil
+func (h *recordingCompactHandle) CycleModel(direction string, options ...ModelMutationOptions) (*ModelCycleResult, error) {
+	h.cycleDirections = append(h.cycleDirections, direction)
+	h.cycleOptions = append(h.cycleOptions, options)
+	index := len(h.cycled)
+	if index >= len(h.cycleResults) || h.cycleResults[index] == nil {
+		return nil, nil
+	}
+	result := h.cycleResults[index]
+	h.cycled = append(h.cycled, result.Model)
+	return result, nil
+}
+func (h *recordingCompactHandle) ScopedModels() []extension.ScopedModel {
+	return h.scopedModels
+}
+func (h *recordingCompactHandle) SetScopedModels(models []extension.ScopedModel) {
+	h.scopedModels = models
 }
 func (h *recordingCompactHandle) ExtensionCompact(options *extension.CompactOptions) {
 	h.compacted = append(h.compacted, options)
@@ -1506,9 +1522,20 @@ func (h *recordingCompactHandle) OnAgentSettled() { h.agentSettledCount++ }
 func (h *recordingCompactHandle) Agent() *agent.Agent             { return h.agent }
 func (h *recordingCompactHandle) Inner() *Session                 { return h.inner }
 func (h *recordingCompactHandle) Events() <-chan agent.AgentEvent { return nil }
-func (h *recordingCompactHandle) SetModel(model *ai.Model, _ ...ModelMutationOptions) error {
+func (h *recordingCompactHandle) SetModel(model *ai.Model, options ...ModelMutationOptions) error {
 	h.switched = append(h.switched, model)
+	h.appendPersistedDefaultToScope(model, options)
 	return nil
+}
+
+// appendPersistedDefaultToScope models Session.SetModel adding a persisted default to a nonempty scope (agent-session.ts:_addPersistedDefaultToNonEmptyScope).
+func (h *recordingCompactHandle) appendPersistedDefaultToScope(model *ai.Model, options []ModelMutationOptions) {
+	if len(options) == 0 || !options[0].Persist || len(h.scopedModels) == 0 {
+		return
+	}
+	if !slices.ContainsFunc(h.scopedModels, func(entry extension.ScopedModel) bool { return ai.ModelsAreEqual(entry.Model, model) }) {
+		h.scopedModels = append(h.scopedModels, extension.ScopedModel{Model: model})
+	}
 }
 func (h *recordingCompactHandle) ExtensionSetModel(_ context.Context, model *ai.Model) (bool, error) {
 	return true, h.SetModel(model)
