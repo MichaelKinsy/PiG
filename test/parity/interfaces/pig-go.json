@@ -82085,6 +82085,17 @@
       "shapeHash": "sha256:fb5b08c21b1acc138b29526b141238763cb0cebaa0eca690bb78802ee3657ca9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#DisambiguateIdentities",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "DisambiguateIdentities",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(configs []ExtConfig) []ExtConfig"
+      },
+      "shapeHash": "sha256:3e646e0695964a9b5e38a46df23f09ebf40e16dc7996c0bc32b03828f6724059"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#EditorPayload",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "EditorPayload",
@@ -90267,17 +90278,6 @@
         "type": "func(src string) (string, error)"
       },
       "shapeHash": "sha256:29128e3f2e65c920279c0695a8e508ea8b20d5f8842d545a75929d4b107eec32"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#disambiguateIdentities",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
-      "name": "disambiguateIdentities",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(configs []ExtConfig) []ExtConfig"
-      },
-      "shapeHash": "sha256:3e646e0695964a9b5e38a46df23f09ebf40e16dc7996c0bc32b03828f6724059"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#drainRequestStates",

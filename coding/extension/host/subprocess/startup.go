@@ -17,8 +17,8 @@ func (h *Host) LoadFinalExtensionSet(ctx context.Context, configs, preloaded []E
 	}
 	// Give duplicate identities their host keys before matching loads to
 	// paths, as LoadAll and Reload do.
-	configs = disambiguateIdentities(configs)
-	preloaded = disambiguateIdentities(preloaded)
+	configs = DisambiguateIdentities(configs)
+	preloaded = DisambiguateIdentities(preloaded)
 	origin := func(config ExtConfig) string {
 		path := extConfigOrigin(config)
 		if path == "<unknown>" {
