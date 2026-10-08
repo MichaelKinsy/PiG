@@ -195,7 +195,8 @@ func (m *InteractiveMode) finishProviderAuthentication(providerID, actionLabel s
 					}
 					m.refreshThinkingLevel()
 					if handle != nil {
-						result <- m.addPersistedDefaultToNonEmptyScope(model)
+						m.initScopedModels()
+						result <- nil
 					} else {
 						result <- m.persistDefaultModel(model)
 					}

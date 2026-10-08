@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
 // Pi's agent-session-model-extension suite keeps ordinary mutations in the
@@ -40,7 +41,7 @@ func TestModelMutationsAreSessionOnly(t *testing.T) {
 			case "set model":
 				err = sess.SetModel(&next)
 			case "cycle model":
-				err = sess.CycleToModel(&next)
+				err = sess.setModel(&next, extension.ModelSelectSourceCycle)
 			case "thinking":
 				err = sess.SetThinkingLevel(ai.ThinkingHigh)
 			}

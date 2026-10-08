@@ -1,6 +1,10 @@
 package coding
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/MichaelKinsy/PiG/coding/extension"
+)
 
 // AgentSession.setModel defaults persist to false, including the cycle path.
 func TestSessionModelSwitchDoesNotRewriteGlobalDefault(t *testing.T) {
@@ -19,7 +23,7 @@ func TestSessionModelSwitchDoesNotRewriteGlobalDefault(t *testing.T) {
 			target := fakeModel()
 			target.ID = "selected-model"
 			if cycle {
-				err = session.CycleToModel(target)
+				err = session.setModel(target, extension.ModelSelectSourceCycle)
 			} else {
 				err = session.SetModel(target)
 			}
