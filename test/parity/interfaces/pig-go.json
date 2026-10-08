@@ -110366,6 +110366,17 @@
       "shapeHash": "sha256:9c6fb909250cff99d59d9f976ee9d0fe9c0c2dba88a5d835043b00138e911724"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#buildOverlay.modfiles",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "buildOverlay.modfiles",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(goMod []byte, goSum []byte) error"
+      },
+      "shapeHash": "sha256:ca162c3207ffb743afd8f7cf9914bb92bbd520247986b6862d24c027fe998aad"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#buildOverlay.write",
       "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
       "name": "buildOverlay.write",
@@ -110949,6 +110960,17 @@
       "shapeHash": "sha256:d1bd61472c020c95a12d6deb117605fa92236e68f49bdf046a747b4b90b85d6c"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#fusedGoSum",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "fusedGoSum",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(sourceRoot string, fused []fusedEntry) ([]byte, error)"
+      },
+      "shapeHash": "sha256:54ada6391e8711e828bdd8e620a58f695b088131287cdfdec159850f93a1d406"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#fusedHazard",
       "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
       "name": "fusedHazard",
@@ -110991,6 +111013,17 @@
         "type": "fusedModule"
       },
       "shapeHash": "sha256:08f74de30b201d8665a0058ba1ef9f87280e9344d14f5fa77615fbc51b6c6fa0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#fusedModuleRoots",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "fusedModuleRoots",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(fused []fusedEntry) []string"
+      },
+      "shapeHash": "sha256:be0214595cd201333f3e4b7fcffda51853e4ac1b69a09a838bae82115d1ddb2b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#fusedModules",
@@ -111123,6 +111156,17 @@
         "type": "func(root string) (string, error)"
       },
       "shapeHash": "sha256:005dc38a2634055b614b96c0cc93327ddaf306ae7e2f97fba61de69403750d9f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#goWorkspaceEnv",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "goWorkspaceEnv",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(env []string) bool"
+      },
+      "shapeHash": "sha256:8d28dddafed466ae9abe0989de647c0db4d3be5b081bc847a1b6601f98655035"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#hasBuildFlag",
@@ -111461,9 +111505,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(o *buildOverlay, sourceRoot string, fused []fusedEntry) error"
+        "type": "func(o *buildOverlay, sourceRoot string, fused []fusedEntry, workspace bool) error"
       },
-      "shapeHash": "sha256:f8cce4dd0d265065829bfc544e8f306c600f4300d0f91f876136d9ac836bef90"
+      "shapeHash": "sha256:8fef24024463325f9298f1139f6d21c37c56a6c610c668a85390e3ec1d6851fa"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#overlaySigner",
@@ -111637,9 +111681,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(outPath string, version string, overlayPath string) []string"
+        "type": "func(outPath string, version string, overlayPath string, modfilePath string) []string"
       },
-      "shapeHash": "sha256:f68726991400fabe6cdc07043ab6a09906eba72db99e05a8cf8c9eb1bea5e579"
+      "shapeHash": "sha256:a88ddc8887e605d66beee3a4ce6f0a1a0952b2c379f78800e904aa670331b53d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#pigletBuildOutput",
@@ -111673,6 +111717,17 @@
         "type": "func(request publishRequest) (publishRelease, error)"
       },
       "shapeHash": "sha256:9ecb6a11a6637d818182f5cc3a233828ac07976ea2f08715be4cd4bffd1f69f4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#promoteFusedReplacements",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "promoteFusedReplacements",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(parsed *golang.org/x/mod/modfile.File, fused []fusedEntry) error"
+      },
+      "shapeHash": "sha256:ee7e3ee8bd1632d113aabda6c5ea4521b54f29d3df5d273043be6af844745a9f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#publishAsset",
@@ -111948,6 +112003,17 @@
         "type": "func(name string, version string) (*githubPublication, error)"
       },
       "shapeHash": "sha256:f7e7f4f7f8036b0c2e6a01df5adcff978fd5000b1c82a627113f54d711736cb9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#readModFile",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "readModFile",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(root string) (*golang.org/x/mod/modfile.File, error)"
+      },
+      "shapeHash": "sha256:4c6d93fd44eeb0717def83b1d94b8c0608c2edf278de0bbceb713c41a88bd0c2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#reasonForStrategy",
@@ -112528,9 +112594,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(dir string, sourceRoot string, built []stagedCell, fused []fusedEntry, resolution *github.com/MichaelKinsy/PiG/coding/piglet/artifact.Record, opts Options) (string, error)"
+        "type": "func(dir string, sourceRoot string, built []stagedCell, fused []fusedEntry, resolution *github.com/MichaelKinsy/PiG/coding/piglet/artifact.Record, opts Options, workspace bool) (string, string, error)"
       },
-      "shapeHash": "sha256:22a5a8fc4ccd0a234f59f8dc07a88d2887b9bfe988d46680e44b010b615c450e"
+      "shapeHash": "sha256:6e15da2b5a249c1f9a1b93efb5547cc60cb7ef0528a6d82f1c2c4a8d5e590829"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#writeManagedArtifact",

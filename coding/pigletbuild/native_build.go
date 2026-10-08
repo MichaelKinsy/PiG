@@ -109,8 +109,13 @@ func buildNativeArtifact(ctx context.Context, source pigSource, p *piglet.Piglet
 		return nil, err
 	}
 
+	goToolchain, err := toolchain.ResolveGo()
+	if err != nil {
+		return nil, err
+	}
+	buildEnv := goToolchain.Environ(source.buildEnv(os.Environ()))
 	buildprogress.Phase(ctx, "Packing build inputs", "Embedding cells, resources, and component records")
-	overlayPath, err := writeBuildOverlay(filepath.Join(cacheRoot, "overlay"), sourceRoot, built, fused, resolution, opts)
+	overlayPath, modfilePath, err := writeBuildOverlay(filepath.Join(cacheRoot, "overlay"), sourceRoot, built, fused, resolution, opts, goWorkspaceEnv(buildEnv))
 	if err != nil {
 		return nil, err
 	}
@@ -122,18 +127,27 @@ func buildNativeArtifact(ctx context.Context, source pigSource, p *piglet.Piglet
 	if err != nil {
 		return nil, err
 	}
+	if modfilePath != "" {
+		// A fused module's dependencies join Pig's module graph, and -mod=readonly refuses a go.mod that does not
+		// already record what minimal version selection picks for them (go: updates to go.mod needed). Tidying the
+		// build's own copy resolves that, as the error message itself prescribes.
+		buildprogress.Phase(ctx, "Resolving fused dependencies", "go mod tidy over the fused module graph")
+		tidyArgs := buildprogress.ToolArgs(ctx, "go", []string{"mod", "tidy", "-modfile", modfilePath, "-overlay", overlayPath})
+		tidy := linkerexec.CommandContext(ctx, goToolchain.Command, tidyArgs...)
+		tidy.Dir = sourceRoot
+		tidy.Env = buildEnv
+		if err := buildprogress.Run(buildprogress.Member(ctx, p.Name), tidy); err != nil {
+			return nil, fmt.Errorf("resolve fused dependencies: %w", err)
+		}
+	}
 	buildprogress.Phase(ctx, "Compiling and linking Go binary", p.Name+" → "+abary)
 	if !buildprogress.Enabled(ctx) {
 		_, _ = fmt.Fprintf(stdout, "building Piglet Binary %s (%d embedded cell(s), %d fused, target %s)...\n", p.Name, len(built), len(fused), host)
 	}
-	buildArgs := buildprogress.ToolArgs(ctx, "go", pigletBinaryBuildArgs(abary, opts.Version, overlayPath))
-	goToolchain, err := toolchain.ResolveGo()
-	if err != nil {
-		return nil, err
-	}
+	buildArgs := buildprogress.ToolArgs(ctx, "go", pigletBinaryBuildArgs(abary, opts.Version, overlayPath, modfilePath))
 	cmd := linkerexec.CommandContext(ctx, goToolchain.Command, buildArgs...)
 	cmd.Dir = sourceRoot
-	cmd.Env = goToolchain.Environ(source.buildEnv(os.Environ()))
+	cmd.Env = buildEnv
 	if err := buildprogress.Run(buildprogress.Member(ctx, p.Name), cmd); err != nil {
 		return nil, fmt.Errorf("build Piglet Binary: %w", err)
 	}
@@ -150,10 +164,10 @@ func buildNativeArtifact(ctx context.Context, source pigSource, p *piglet.Piglet
 // go.mod, and signer key to the compiler through one `go build -overlay`, so a
 // build never writes into the Pig source tree and concurrent builds never
 // observe each other. It returns the overlay description path.
-func writeBuildOverlay(dir, sourceRoot string, built []stagedCell, fused []fusedEntry, resolution *pigletartifact.Record, opts Options) (string, error) {
+func writeBuildOverlay(dir, sourceRoot string, built []stagedCell, fused []fusedEntry, resolution *pigletartifact.Record, opts Options, workspace bool) (string, string, error) {
 	overlay, err := newBuildOverlay(dir)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	if len(built) > 0 {
 		manifest := cellpack.Manifest{
@@ -164,22 +178,22 @@ func writeBuildOverlay(dir, sourceRoot string, built []stagedCell, fused []fused
 			manifest.Cells[i] = sc.entry
 		}
 		if err := overlayCells(overlay, sourceRoot, manifest, built); err != nil {
-			return "", err
+			return "", "", err
 		}
 	}
 	if len(fused) > 0 {
-		if err := overlayFuse(overlay, sourceRoot, fused); err != nil {
-			return "", err
+		if err := overlayFuse(overlay, sourceRoot, fused, workspace); err != nil {
+			return "", "", err
 		}
 	}
 	if len(opts.BakedSettings) > 0 {
 		if err := overlay.bytes(filepath.Join(sourceRoot, bakedPigletDir, "piglet.yaml"), opts.BakedSettings); err != nil {
-			return "", err
+			return "", "", err
 		}
 	}
 	if opts.SignKey != nil {
 		if err := overlaySigner(overlay, sourceRoot, opts.SignKey); err != nil {
-			return "", err
+			return "", "", err
 		}
 	}
 	if resolution != nil {
@@ -187,13 +201,14 @@ func writeBuildOverlay(dir, sourceRoot string, built []stagedCell, fused []fused
 		// binary can verify its own build identity at startup.
 		closureJSON, err := json.Marshal(resolution)
 		if err != nil {
-			return "", fmt.Errorf("marshal Piglet closure: %w", err)
+			return "", "", fmt.Errorf("marshal Piglet closure: %w", err)
 		}
 		if err := overlay.bytes(filepath.Join(sourceRoot, bakedPigletDir, "resolution-record.json"), closureJSON); err != nil {
-			return "", err
+			return "", "", err
 		}
 	}
-	return overlay.write()
+	path, err := overlay.write()
+	return path, overlay.modfile, err
 }
 
 // pigletBinaryBuildArgs builds the `go build` argv, applies the build overlay,
@@ -201,7 +216,7 @@ func writeBuildOverlay(dir, sourceRoot string, built []stagedCell, fused []fused
 // drop the symbol table and DWARF (Go stack traces come from pclntab, so panics
 // stay legible and only debugger attachment is given up), and -trimpath keeps
 // absolute build paths out of a redistributable artifact.
-func pigletBinaryBuildArgs(outPath, version, overlayPath string) []string {
+func pigletBinaryBuildArgs(outPath, version, overlayPath, modfilePath string) []string {
 	ld := []string{"-s", "-w"}
 	if v := strings.TrimSpace(version); v != "" {
 		ld = append(ld, "-X main.PigletBinaryVersion="+v)
@@ -209,6 +224,9 @@ func pigletBinaryBuildArgs(outPath, version, overlayPath string) []string {
 	args := []string{"build", "-buildvcs=false", "-trimpath", "-ldflags", strings.Join(ld, " ")}
 	if overlayPath != "" {
 		args = append(args, "-overlay", overlayPath)
+	}
+	if modfilePath != "" {
+		args = append(args, "-modfile", modfilePath)
 	}
 	return append(args, "-o", outPath, "./cmd/pig")
 }
@@ -347,6 +365,8 @@ var bakedPigletDir = filepath.Join("coding", "pigletbuild", "binarypiglet")
 type buildOverlay struct {
 	dir     string
 	replace map[string]string
+	// modfile is the build's go.mod for -modfile, with its go.sum beside it; empty when nothing is fused.
+	modfile string
 }
 
 func newBuildOverlay(dir string) (*buildOverlay, error) {
@@ -503,9 +523,10 @@ func collectFused(cell subprocess.CellSpec) ([]fusedEntry, error) {
 	return out, nil
 }
 
-// overlayFuse imports each extension factory through its real package path and
-// pins local module roots in the build's view of Pig's go.mod.
-func overlayFuse(o *buildOverlay, sourceRoot string, fused []fusedEntry) error {
+// overlayFuse imports each extension factory through its real package path,
+// pins local module roots in the build's view of Pig's go.mod, and promotes
+// each fused module's own dependencies into it (see promoteFusedModules).
+func overlayFuse(o *buildOverlay, sourceRoot string, fused []fusedEntry, workspace bool) error {
 	fuseDir := filepath.Join(sourceRoot, "coding", "extension", "host", "fusepack")
 	genPath := filepath.Join(fuseDir, "registry_generated.go")
 	goModPath := filepath.Join(sourceRoot, "go.mod")
@@ -549,14 +570,47 @@ func overlayFuse(o *buildOverlay, sourceRoot string, fused []fusedEntry) error {
 			}
 		}
 	}
+	if err := promoteFusedReplacements(parsed, fused); err != nil {
+		return err
+	}
 	formatted, err := parsed.Format()
 	if err != nil {
 		return err
 	}
-	if err := o.bytes(goModPath, formatted); err != nil {
+	goSum, err := fusedGoSum(sourceRoot, fused)
+	if err != nil {
+		return err
+	}
+	if workspace {
+		// A source checkout builds through its go.work, where -modfile and go mod tidy are unavailable: the
+		// workspace's own requirements are not held to -mod=readonly consistency, so the overlaid go.mod and
+		// go.sum suffice.
+		if err := o.bytes(goModPath, formatted); err != nil {
+			return err
+		}
+		if goSum != nil {
+			if err := o.bytes(filepath.Join(sourceRoot, "go.sum"), goSum); err != nil {
+				return err
+			}
+		}
+	} else if err := o.modfiles(formatted, goSum); err != nil {
 		return err
 	}
 	return o.bytes(genPath, []byte(renderFuseRegistry(fused)))
+}
+
+// modfiles writes the build's go.mod and go.sum beside the overlay, for -modfile. The go command reads an
+// overlaid go.mod but refuses to update one, and the tidy step before a fused build must update both: a fused
+// module's own dependencies can force newer versions of modules Pig pins.
+func (o *buildOverlay) modfiles(goMod, goSum []byte) error {
+	o.modfile = filepath.Join(o.dir, "go.mod")
+	if err := os.WriteFile(o.modfile, goMod, 0o644); err != nil {
+		return fmt.Errorf("write build go.mod: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(o.dir, "go.sum"), goSum, 0o644); err != nil {
+		return fmt.Errorf("write build go.sum: %w", err)
+	}
+	return nil
 }
 
 func renderFuseRegistry(fused []fusedEntry) string {
