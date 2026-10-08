@@ -84,11 +84,13 @@ func (c ExtConfig) acceptsRegisteredName(name string) bool {
 	return name == c.Name || (c.identity != "" && name == c.identity)
 }
 
-// disambiguateIdentities gives each later copy of an extension identity from a
+// DisambiguateIdentities gives each later copy of an extension identity from a
 // different path its own host key ("ask:2", "ask:3", ...). Upstream identifies
 // an extension by its path, so copies from two Packages both load; the host
-// keys its registry by name, so the copies need distinct keys.
-func disambiguateIdentities(configs []ExtConfig) []ExtConfig {
+// keys its registry by name, so the copies need distinct keys. LoadAll applies
+// it to the configs it receives. A caller that loads configs one host at a time
+// applies it to the whole set first, so every copy keeps its own key.
+func DisambiguateIdentities(configs []ExtConfig) []ExtConfig {
 	counts := make(map[string]int, len(configs))
 	for _, config := range configs {
 		counts[config.Name]++
@@ -120,14 +122,6 @@ func disambiguateIdentities(configs []ExtConfig) []ExtConfig {
 		out[i].Name = key
 	}
 	return out
-}
-
-// DisambiguateIdentities keys each later copy of an extension identity, loaded
-// from a different path, by its own host name ("ask:2", "ask:3", ...), as LoadAll
-// does for the configs it receives. A caller that loads configs one host at a
-// time applies it to the whole set first, so every copy keeps its own key.
-func DisambiguateIdentities(configs []ExtConfig) []ExtConfig {
-	return disambiguateIdentities(configs)
 }
 
 // UnresolvedExtConfig returns a config for an extension path whose source did
@@ -1192,7 +1186,7 @@ func (h *Host) LoadAll(ctx context.Context, configs []ExtConfig) ([]extension.Ex
 	if len(unresolved) > 0 {
 		configs = slices.DeleteFunc(slices.Clone(configs), func(config ExtConfig) bool { return config.resolveErr != nil })
 	}
-	configs = disambiguateIdentities(configs)
+	configs = DisambiguateIdentities(configs)
 	var loaded []extension.Extension
 	errs := unresolved
 	// Fused extensions (Piglet Binary fused, D31) run in-process over a pipe; the rest
@@ -2360,7 +2354,7 @@ func (h *Host) Reload(ctx context.Context) ([]extension.Extension, error) {
 			rep.Issues = append(rep.Issues, reloadIssue(cfg, cfg.resolveErr))
 		}
 	}
-	cfgs = disambiguateIdentities(cfgs)
+	cfgs = DisambiguateIdentities(cfgs)
 	newByName := make(map[string]ExtConfig, len(cfgs))
 	for _, cfg := range cfgs {
 		if cfg.Enabled {

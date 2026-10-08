@@ -1,6 +1,8 @@
 package codingagent
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -133,5 +135,78 @@ func TestLoginProviderOptionsListAnExtensionOAuthProviderUnderAccountSignIn(t *t
 	}
 	if len(kinds) != 1 || kinds[0] != "oauth" {
 		t.Fatalf("external-oauth-test login options = %v, want [oauth]", kinds)
+	}
+}
+
+type testSubscriptionOAuthProvider struct{ testExternalOAuthProvider }
+
+func (testSubscriptionOAuthProvider) IsSubscription() bool { return true }
+
+// Pi adapts the registering extension's oauth with its own isSubscription (provider-composer.ts:356 adaptOAuth
+// `isSubscription: config.isSubscription`), which /login (interactive-mode.ts:5767) and isUsingSubscription
+// (model-runtime.ts:540) read. An extension provider outside the catalog keeps that flag through the composed auth,
+// on the subprocess registration path as on the native one (TestExtensionOAuthOnlyProviderHasNoAPIKeyMethodUpstream).
+func TestExtensionOAuthProviderOutsideTheCatalogKeepsItsSubscriptionFlag(t *testing.T) {
+	for _, subscription := range []bool{true, false} {
+		ai.UnregisterOAuthProvider("external-oauth-test")
+		if subscription {
+			ai.RegisterOAuthProvider("external-oauth-test", testSubscriptionOAuthProvider{})
+		} else {
+			ai.RegisterOAuthProvider("external-oauth-test", testExternalOAuthProvider{})
+		}
+		dir := t.TempDir()
+		registry := NewModelRegistry(dir)
+		if err := registry.RegisterProvider("external-oauth-test", extension.ProviderConfig{
+			Name:    "Extension OAuth",
+			API:     "external-api",
+			BaseURL: "https://external.test",
+			OAuth:   &extension.ProviderOAuth{Name: "ZZZ External OAuth", IsSubscription: subscription},
+			Models:  []extension.ProviderModelConfig{{ID: "m1", Name: "M1"}},
+		}); err != nil {
+			t.Fatal(err)
+		}
+		if got := registry.ProviderIsSubscription("external-oauth-test"); got != subscription {
+			t.Errorf("isSubscription=%v: ProviderIsSubscription = %v", subscription, got)
+		}
+		// model-runtime-auth-options.test.ts:302: one oauth option, named for the provider, whose method is the extension's flow.
+		m := &InteractiveMode{opts: InteractiveOptions{AgentDir: dir, ModelRegistry: registry}}
+		var options []tui.OAuthProvider
+		for _, option := range m.getLoginProviderOptions(false) {
+			if option.ID == "external-oauth-test" {
+				options = append(options, option)
+			}
+		}
+		if len(options) != 1 {
+			t.Fatalf("isSubscription=%v: login options = %+v, want one oauth option", subscription, options)
+		}
+		option := options[0]
+		if option.AuthType != "oauth" || option.Name != "Extension OAuth" || option.MethodName != "ZZZ External OAuth" || option.Subscription == nil || *option.Subscription != subscription {
+			t.Errorf("isSubscription=%v: login option = %+v", subscription, option)
+		}
+	}
+	ai.UnregisterOAuthProvider("external-oauth-test")
+}
+
+// Only an extension registration's oauth composes into the provider (provider-composer.ts:489
+// `extension?.oauth ? adaptOAuth(extension.oauth) : base?.auth.oauth`). A models.json provider outside the catalog
+// gains no account login from an unrelated OAuth flow of the same id, so /login offers its API key only.
+func TestModelsJSONProviderOutsideTheCatalogGainsNoOAuthFromTheFlowRegistry(t *testing.T) {
+	ai.RegisterOAuthProvider("external-oauth-test", testExternalOAuthProvider{})
+	defer ai.UnregisterOAuthProvider("external-oauth-test")
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "models.json"), []byte(`{"providers":{"external-oauth-test":{"baseUrl":"https://external.test","api":"openai-completions","apiKey":"literal-key","models":[{"id":"m1"}]}}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	registry := NewModelRegistry(dir)
+	m := &InteractiveMode{opts: InteractiveOptions{AgentDir: dir, ModelRegistry: registry}}
+
+	var kinds []string
+	for _, option := range m.getLoginProviderOptions(false) {
+		if option.ID == "external-oauth-test" {
+			kinds = append(kinds, option.AuthType)
+		}
+	}
+	if len(kinds) != 1 || kinds[0] != "api_key" {
+		t.Fatalf("external-oauth-test login options = %v, want [api_key]", kinds)
 	}
 }
