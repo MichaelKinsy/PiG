@@ -135908,6 +135908,17 @@
       "shapeHash": "sha256:f221d0a6f2f1f86bde1c4fe2c5e011e28899594bfefda9f9f5ff7cf364355014"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.enterOwnerLoop",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.enterOwnerLoop",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (leave func())"
+      },
+      "shapeHash": "sha256:3d8c92bd62e2bad9dfa839e7a2af5f64e559259d0dafc6823b13f7c44153a76c"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.exitIfDeadTerminal",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.exitIfDeadTerminal",
@@ -137182,6 +137193,17 @@
         "type": "func(providerID string, providerName string)"
       },
       "shapeHash": "sha256:e18eda492119177d76b22ad75b6aa3bccb295a187b1583128fa69fa50f92c008"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.onOwnerLoop",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.onOwnerLoop",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.onSuspendContinue",
@@ -138601,6 +138623,17 @@
         "type": "func(fn func()) bool"
       },
       "shapeHash": "sha256:aad2321bec8142b1cbf463d4882d72b913fca0163c376b6350def762308cb818"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.runOnOwner",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.runOnOwner",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, fn func())"
+      },
+      "shapeHash": "sha256:06fc886b75bcc6724b6d32b8f315ab84d1352cb2e0e88f57e4424ba26264a12d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.runPromptTurnWithImages",
@@ -153990,6 +154023,17 @@
         "type": "func(last time.Time, now time.Time) bool"
       },
       "shapeHash": "sha256:56b4b9fdcad2d6bea4158634df119d914a5aaacc8a16cef61ef49042caa76525"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#currentGoroutineID",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "currentGoroutineID",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() uint64"
+      },
+      "shapeHash": "sha256:8c2c25c05be990d156af5316d0723444537851bde41d6afa6bcb371a541de271"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#customCall",

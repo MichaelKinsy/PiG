@@ -224,8 +224,10 @@ type InteractiveMode struct {
 	emittingAgentSettled   bool
 	deferredSettledActions []func()
 
-	requestExit  atomic.Bool // /quit / /exit sets this; input loop notices and returns. Atomic: extension shutdown may set it off the owner loop.
-	fatalRuntime atomic.Bool // fatal session replacement errors exit 1 after the input loop restores the terminal.
+	// ownerGoroutine is the id of the goroutine running the input loop, or 0 when no loop runs. See onOwnerLoop.
+	ownerGoroutine atomic.Uint64
+	requestExit    atomic.Bool // /quit / /exit sets this; input loop notices and returns. Atomic: extension shutdown may set it off the owner loop.
+	fatalRuntime   atomic.Bool // fatal session replacement errors exit 1 after the input loop restores the terminal.
 
 	// suspended is true while the session is parked by SIGTSTP. SIGINT is
 	// ignored then, mirroring upstream's ignoreSigint listener.
@@ -667,9 +669,18 @@ var errOwnerLoopUnavailable = errors.New("interactive mode is not accepting work
 
 // postToMain is runOnMain for callers that must report a task the loop never
 // accepted, such as an extension's sendUserMessage: it never drops fn, and
-// returns an error only when ctx ends first.
+// returns an error only when ctx ends first. The owner loop posting to itself
+// never blocks: it queues fn behind the pending tasks when the queue has room,
+// and runs fn inline when the queue is full, because a full queue only this
+// goroutine drains cannot make room while it waits.
 func (m *InteractiveMode) postToMain(ctx context.Context, fn func()) error {
 	if fn == nil {
+		return nil
+	}
+	if m.onOwnerLoop() {
+		if !m.postUITask(fn) {
+			fn()
+		}
 		return nil
 	}
 	if ctx == nil {
