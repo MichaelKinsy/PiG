@@ -150,7 +150,7 @@ go build -o "$PREFIX/bin/pig" ./cmd/pig
 pig --version
 ```
 
-Use Go 1.27.1 for this build. The modules retain Go 1.26 as their language floor.
+Use Go 1.27.2 for this build. The modules retain Go 1.26 as their language floor.
 
 ## Troubleshooting
 

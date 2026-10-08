@@ -9,7 +9,7 @@ On macOS, Linux or Android with Termux (arm64 only), install the latest release 
 `curl -fsSL https://pi-in-go.dev/install.sh | sh`; in Termux it installs the
 `android-arm64` release into `$PREFIX/bin`. Or download an archive from
 [GitHub Releases](https://github.com/MichaelKinsy/PiG/releases). Windows
-support is a preview. From a source checkout, build it with Go 1.27.1. Go 1.27 release binaries for macOS require macOS 13 or later:
+support is a preview. From a source checkout, build it with Go 1.27.2. Go 1.27 release binaries for macOS require macOS 13 or later:
 
 ```bash
 go build -o bin/pig ./cmd/pig
