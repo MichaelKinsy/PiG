@@ -158,6 +158,9 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 	}
 	attachProcessGroup(cmd.Process)
 	defer releaseProcessGroup(cmd.Process)
+	// Upstream tracks the child until its wait ends, so an exit without orderly shutdown kills it.
+	trackDetachedChild(cmd.Process)
+	defer untrackDetachedChild(cmd.Process)
 	// os/exec copies a reader to the child's stdin the same way, and Wait
 	// waits for that copy.
 	var input sync.WaitGroup

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -165,6 +166,8 @@ func (m *InteractiveMode) uncaughtCrash(value any, stack []byte, stderr io.Write
 	if failure, ok := value.(error); ok && isDeadTerminalError(failure) {
 		m.emergencyTerminalExit("terminal gone: " + failure.Error())
 	}
+	// Upstream kills the tracked detached children before it reports: the exit skips the cancellation that stops them.
+	tools.KillTrackedDetachedChildren()
 	if failure, ok := value.(error); ok && extension.ErrorStack(failure) != "" {
 		stack = []byte(extension.ErrorStack(failure))
 		_, _ = fmt.Fprintf(stderr, "%s exiting due to uncaughtException:\n%s\n", AppName, stack)
