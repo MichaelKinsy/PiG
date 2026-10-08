@@ -211,7 +211,7 @@ func (m *InteractiveMode) renderSessionEntryList(entries []SessionEntry, trim bo
 	}
 
 	pendingCalls := make(map[string]ai.ToolCall)
-	// renderMessage renders one AgentMessage (user, assistant, toolResult)
+	// renderMessage renders one AgentMessage (user, assistant, toolResult, bashExecution)
 	// into the chat container with all its sub-components.
 	// Extracted so it can be called from both the session-entry path
 	// (primary) and the agent-message fallback path.
@@ -330,6 +330,9 @@ func (m *InteractiveMode) renderSessionEntryList(entries []SessionEntry, trim bo
 			comp.SetResultValue(result)
 			comp.SetResult(result.Text(), r.IsError, 0)
 			m.maybeConvertImagesForKitty(comp)
+
+		case msg.Role() == agent.RoleBashExecution:
+			m.chatContainer.Add(bashExecutionBlockFromMessage(msg.Custom))
 		}
 	}
 
@@ -384,6 +387,27 @@ func (m *InteractiveMode) renderSessionEntryList(entries []SessionEntry, trim bo
 		}
 	}
 	m.tuiInst.Render()
+}
+
+// bashExecutionBlockFromMessage is Pi addMessageToChat case "bashExecution" (interactive-mode.ts:3847-3859): a
+// completed block for a persisted `!` or `!!` command. Its output is appended only when non-empty, it is completed
+// with the persisted exit code, cancellation, truncation and full-output path, and it is not expanded on creation.
+func bashExecutionBlockFromMessage(message map[string]any) *tui.BashExecutionBlock {
+	command, _ := message["command"].(string)
+	excludeFromContext, _ := message["excludeFromContext"].(bool)
+	block := tui.NewBashExecutionBlock(command, excludeFromContext)
+	if output, _ := message["output"].(string); output != "" {
+		block.AppendOutput(output)
+	}
+	var exitCode *int
+	if code, ok := message["exitCode"].(float64); ok {
+		exitCode = new(int(code))
+	}
+	cancelled, _ := message["cancelled"].(bool)
+	truncated, _ := message["truncated"].(bool)
+	fullOutputPath, _ := message["fullOutputPath"].(string)
+	block.SetCompleteFullOutput(exitCode, cancelled, truncated, fullOutputPath)
+	return block
 }
 
 // addCustomEntryToChat renders a custom session entry (appended via the

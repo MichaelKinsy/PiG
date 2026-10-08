@@ -3353,6 +3353,42 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/interactive-rendering/52-resumed-bash-execution.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "$ ",
+            "capture_end": "resume-end"
+          },
+          "reason": "Owned visible surface: A resumed session draws each persisted ! and !! command as Pi's bash block: success, non-zero exit, cancelled, truncated with its full-output path, and excluded from context.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/53-resumed-bash-execution-poisoned.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "$ ",
+            "capture_end": "poison-end"
+          },
+          "reason": "Owned visible surface: A resumed bashExecution message with no exit code or flags, a null exit code, empty output with a non-zero exit, a cancelled non-zero exit, truncation without a full-output path, or ANSI and carriage-return output renders as Pi renders it.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/json/01-json-mode-streams-events.toml",
       "transforms": [
         {
@@ -6357,6 +6393,24 @@
             "capture_end_regex": "─+"
           },
           "reason": "Owned visible surface: The interactive resume picker includes and accents the current session, resumes it on Enter, and retains fuzzy scoring",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/session/34-continue-resume-bash-execution.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "bash-start",
+            "capture_end": "continue-end"
+          },
+          "reason": "Owned visible surface: --continue draws the persisted ! and !! command blocks of the resumed session, and /resume of the same session draws them again.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {

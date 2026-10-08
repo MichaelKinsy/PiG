@@ -150945,6 +150945,17 @@
       "shapeHash": "sha256:653e6f2b5dd37268f7c653e80a599525bdbcc8a1c568fbcdb073d043e252ef03"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#bashExecutionBlockFromMessage",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "bashExecutionBlockFromMessage",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(message map[string]any) *github.com/MichaelKinsy/PiG/tui.BashExecutionBlock"
+      },
+      "shapeHash": "sha256:ca28d3a8884aa596e0e327397be2ec79e20bf897079e41d52932738ad1cb78d7"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#bashExecutionContextMessages",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "bashExecutionContextMessages",
