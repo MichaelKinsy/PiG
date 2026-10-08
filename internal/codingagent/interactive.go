@@ -226,8 +226,12 @@ type InteractiveMode struct {
 
 	// ownerGoroutine is the id of the goroutine running the input loop, or 0 when no loop runs. See onOwnerLoop.
 	ownerGoroutine atomic.Uint64
-	requestExit    atomic.Bool // /quit / /exit sets this; input loop notices and returns. Atomic: extension shutdown may set it off the owner loop.
-	fatalRuntime   atomic.Bool // fatal session replacement errors exit 1 after the input loop restores the terminal.
+	// ownerOverflow holds, in order, the tasks the owner loop posted to its own full uiTaskCh; one background forwarder hands them to the loop. ownerOverflowActive is set while it is non-empty. See postFromOwner.
+	ownerOverflowMu     sync.Mutex
+	ownerOverflow       []ownerPost
+	ownerOverflowActive atomic.Bool
+	requestExit         atomic.Bool // /quit / /exit sets this; input loop notices and returns. Atomic: extension shutdown may set it off the owner loop.
+	fatalRuntime        atomic.Bool // fatal session replacement errors exit 1 after the input loop restores the terminal.
 
 	// suspended is true while the session is parked by SIGTSTP. SIGINT is
 	// ignored then, mirroring upstream's ignoreSigint listener.
@@ -652,7 +656,7 @@ func (m *InteractiveMode) runScheduledRender() {
 }
 
 // runOnMain hands fn to the main input loop and blocks until the loop accepts
-// it (backpressure) or ctx is cancelled (shutdown/abort). Unlike postUITask it
+// it (backpressure) or ctx is cancelled (shutdown/abort); the owner loop itself never blocks (see postFromOwner). Unlike postUITask it
 // never drops fn, so it is the tool for state the loop must not miss: streamed
 // bash output, login results, turn-end state. It does not wait for fn to run;
 // the loop executes queued tasks FIFO, so a caller that posts in order sees its
@@ -670,17 +674,17 @@ var errOwnerLoopUnavailable = errors.New("interactive mode is not accepting work
 // postToMain is runOnMain for callers that must report a task the loop never
 // accepted, such as an extension's sendUserMessage: it never drops fn, and
 // returns an error only when ctx ends first. The owner loop posting to itself
-// never blocks: it queues fn behind the pending tasks when the queue has room,
-// and runs fn inline when the queue is full, because a full queue only this
-// goroutine drains cannot make room while it waits.
+// never blocks and never runs fn inline: see postFromOwner.
 func (m *InteractiveMode) postToMain(ctx context.Context, fn func()) error {
 	if fn == nil {
 		return nil
 	}
+	// The owner check reads the goroutine id, which costs a stack walk, so a post that the queue accepts at once skips it. While owner overflow is pending the owner's own posts must queue behind it.
+	if !m.ownerOverflowActive.Load() && m.postUITask(fn) {
+		return nil
+	}
 	if m.onOwnerLoop() {
-		if !m.postUITask(fn) {
-			fn()
-		}
+		m.postFromOwner(ctx, fn)
 		return nil
 	}
 	if ctx == nil {

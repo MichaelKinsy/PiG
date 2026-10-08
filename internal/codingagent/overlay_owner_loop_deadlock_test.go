@@ -7,7 +7,6 @@ import (
 	"net"
 	"slices"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -184,35 +183,70 @@ func TestRunOnMainAndWaitOnOwnerLoopRunsInline(t *testing.T) {
 	}
 }
 
-// The owner loop posting to its own full queue cannot wait for room: runOnMain
-// ran fn only after the loop it blocks had drained the queue. With room the
-// task still queues behind pending work, so ordering is unchanged.
+// The owner loop posting to its own full queue cannot wait for room, because
+// only that goroutine drains it, and must not run the task inline either:
+// upstream runs a posted callback after the current task and after every
+// callback queued before it, and runOnMain promises a caller's posts run in
+// order. With room the task queues; when the queue is full it still runs after
+// the tasks already queued, and later owner posts stay behind it.
 func TestRunOnMainFromOwnerLoopNeverBlocksOnItsOwnQueue(t *testing.T) {
 	q := newInputQueueMode(t)
 	q.start(t)
-	order := runOnQueueLoop(t, q.InteractiveMode, func() []string {
-		var order []string
-		var queuedRan atomic.Bool
-		q.runOnMain(q.runCtx, func() { queuedRan.Store(true) })
-		if !queuedRan.Load() {
-			order = append(order, "after-post")
-		}
+	type posted struct {
+		ranDuringTask []string
+		fillers       int
+	}
+	var order []string // appended only on the owner loop
+	done := make(chan struct{})
+	got := runOnQueueLoop(t, q.InteractiveMode, func() posted {
+		q.runOnMain(q.runCtx, func() { order = append(order, "first") })
+		fillers := 0
 		for len(q.uiTaskCh) < cap(q.uiTaskCh) {
-			q.uiTaskCh <- func() {}
+			q.uiTaskCh <- func() { order = append(order, "queued") }
+			fillers++
 		}
-		inline := false
-		q.runOnMain(q.runCtx, func() { inline = true })
-		if inline {
-			order = append(order, "inline-when-full")
-		}
-		return order
+		q.runOnMain(q.runCtx, func() { order = append(order, "overflow-1") })
+		q.runOnMain(q.runCtx, func() { order = append(order, "overflow-2") })
+		// The queue may have room again by now; this post must still wait behind the overflow.
+		q.runOnMain(q.runCtx, func() { order = append(order, "after-overflow"); close(done) })
+		return posted{ranDuringTask: slices.Clone(order), fillers: fillers}
 	})
-	if want := []string{"after-post", "inline-when-full"}; !slices.Equal(order, want) {
+	if len(got.ranDuringTask) != 0 {
+		t.Fatalf("posted tasks ran inside the posting task: %v", got.ranDuringTask)
+	}
+	select {
+	case <-done:
+	case <-time.After(testbudget.Wait(t)):
+		t.Fatal("the owner loop never ran the tasks it posted to its own full queue")
+	}
+	want := []string{"first"}
+	for range got.fillers {
+		want = append(want, "queued")
+	}
+	want = append(want, "overflow-1", "overflow-2", "after-overflow")
+	if !slices.Equal(order, want) {
 		t.Fatalf("order on the loop = %v, want %v", order, want)
 	}
-	after := runOnQueueLoop(t, q.InteractiveMode, func() int { return len(q.uiTaskCh) })
-	if after != 0 {
-		t.Fatalf("%d tasks left queued", after)
+	if q.ownerOverflowActive.Load() {
+		t.Fatal("owner overflow still marked active after it drained")
+	}
+}
+
+// A post the queue accepts at once does not read the goroutine id: that read
+// walks the caller's stack and allocates, and every streamed update posts.
+func TestPostToMainWithRoomSkipsOwnerCheck(t *testing.T) {
+	m := newInputQueueMode(t).InteractiveMode
+	leave := m.enterOwnerLoop()
+	defer leave()
+	fn := func() {}
+	allocs := testing.AllocsPerRun(100, func() {
+		if err := m.postToMain(m.runCtx, fn); err != nil {
+			t.Fatal(err)
+		}
+		<-m.uiTaskCh
+	})
+	if allocs != 0 {
+		t.Fatalf("postToMain with room allocated %v times per post", allocs)
 	}
 }
 

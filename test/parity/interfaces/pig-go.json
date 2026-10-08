@@ -136271,6 +136271,17 @@
       "shapeHash": "sha256:864bd81dd802775a1a082d7f99fe261c8f3185dea2a3f45bbeae79e27ef91e07"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.forwardOwnerOverflow",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.forwardOwnerOverflow",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.forwardRenderCrash",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.forwardRenderCrash",
@@ -137336,6 +137347,17 @@
         "type": "func(logoColumn int, logoRow int, logoColumns int, logoRows int)"
       },
       "shapeHash": "sha256:e2e7044fb0659246ebfb40f9fdcc8fdf719ec31c8db8949298c91d821e525dfa"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.postFromOwner",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.postFromOwner",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, fn func())"
+      },
+      "shapeHash": "sha256:06fc886b75bcc6724b6d32b8f315ab84d1352cb2e0e88f57e4424ba26264a12d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.postRetryStatusUpdate",
@@ -165166,6 +165188,17 @@
         "type": "PackageManagerOwner"
       },
       "shapeHash": "sha256:d69defb56361b9e600b8edc59df701d905ca3708db30ec89bfd2aeb8d92a6062"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ownerPost",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ownerPost",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "ownerPost"
+      },
+      "shapeHash": "sha256:ae67d6080f0ec9e5c1eac40b93ed702ce7df1f06935ad30065be657397901501"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ownerYarn",
