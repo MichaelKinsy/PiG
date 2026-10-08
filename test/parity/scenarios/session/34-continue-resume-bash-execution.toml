@@ -1,0 +1,66 @@
+# Behavior family: session
+# Surface: --continue and /resume of the same session redraw its persisted `!` and `!!` command blocks.
+#
+# Upstream evidence (pinned Pi 1.0.3, 2026-10-07, parity-runner tmux probe): pi -c on testdata/continue-bash, then /resume and Enter on the current session. Plain crop:
+#
+#   bash-start
+#
+#
+#   <border>
+#    $ printf 'a\nb\n'
+#    a / b
+#   <border>
+#   …
+#    $ ls missing / ls: missing: No such file or directory / (exit 1)    (`!!`, dim borders)
+#    $ sleep 5 / (cancelled)
+#   <border>
+#
+#
+#    continue-end
+#
+# Upstream rule: continueRecent and the /resume selector both render the session through renderSessionEntries (interactive-mode.ts:4053), whose bashExecution messages go to addMessageToChat case "bashExecution" (:3847-3859).
+# Red: PiG at main 50e81255d and with only the block port showed only the two user messages. Green with the shared renderSessionEntryList case.
+
+name = "34-continue-resume-bash-execution"
+description = "--continue draws the persisted ! and !! command blocks of the resumed session, and /resume of the same session draws them again."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 50
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/continue-bash"
+capture_start = "bash-start"
+capture_end = "continue-end"
+
+[[tmux.steps]]
+keys = ["/resume", "Enter"]
+wait_visible_contains = ["Resume Session (Current Folder)"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Resumed session"]
+wait_not_contains = ["Resume Session (Current Folder)"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["$ printf 'a\\nb\\n'", "$ ls missing", "(exit 1)", "$ sleep 5", "(cancelled)", "continue-end"]
+both_not_contain = ["panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3

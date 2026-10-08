@@ -1,0 +1,52 @@
+# Behavior family: interactive-rendering
+# Surface: a resumed bashExecution message with missing or null fields renders as Pi's addMessageToChat renders it.
+#
+# Upstream evidence (pinned Pi 1.0.3, 2026-10-07, parity-runner tmux probe with the dark theme, --session on testdata/resumed-bash-poisoned-cwd/sessions/poisoned-bash.jsonl):
+# Plain rows of the crop:
+#
+#   $ true                       (output "", no exitCode, cancelled or truncated: header only)
+#   $ printf ''                  (exitCode null: header only)
+#   $ false / (exit 2)           (empty output, non-zero exit)
+#   $ sleep 9 / partial / (cancelled)   (cancelled wins over exitCode 130)
+#   $ seq 2 / 1 / 2              (truncated without fullOutputPath: no notice)
+#   $ printf colors / red / next / over   (ANSI stripped, \r\n and \r split lines)
+#   $ seq 23 / 5 … 23 / ... 4 more lines (ctrl+o to expand)   (`!!`, 24 lines with the trailing empty one)
+#
+# Upstream rule: addMessageToChat case "bashExecution" (interactive-mode.ts:3847-3859) appends output only when truthy and completes with the persisted fields; setComplete marks "error" only for an exit code that is neither 0, undefined nor null.
+# Pi 1.0.3 exits with an uncaught TypeError when command or output is missing (compaction.ts:338 estimateTokens reads their length for the footer), so those two cases are unit-tested in TestResumedPoisonedBashExecutionMessages, not compared here.
+# Red: PiG at main 50e81255d and with only the block port drew no block, only the trailing user message. Green with the shared renderSessionEntryList case.
+
+name = "53-resumed-bash-execution-poisoned"
+description = "A resumed bashExecution message with no exit code or flags, a null exit code, empty output with a non-zero exit, a cancelled non-zero exit, truncation without a full-output path, or ANSI and carriage-return output renders as Pi renders it."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/modes/interactive/components/bash-execution.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions", "--session", "sessions/poisoned-bash.jsonl"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions", "--session", "sessions/poisoned-bash.jsonl"]
+
+[tmux]
+width = 100
+height = 80
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/resumed-bash-poisoned-cwd"
+capture_start = "$ "
+capture_end = "poison-end"
+settle_seconds = 1
+
+[assert]
+both_reach_ready = true
+both_contain = ["$ true", "(exit 2)", "(cancelled)", "... 4 more lines", "poison-end"]
+both_not_contain = ["panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3

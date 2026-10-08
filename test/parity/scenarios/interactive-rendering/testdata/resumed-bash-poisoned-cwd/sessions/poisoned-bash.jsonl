@@ -1,0 +1,9 @@
+{"type":"session","version":3,"id":"poisoned-bash","timestamp":"2026-10-07T00:00:00.000Z","cwd":"/fixture"}
+{"type":"message","id":"p1","parentId":null,"timestamp":"2026-10-07T00:00:01.000Z","message":{"role":"bashExecution","command":"true","output":""}}
+{"type":"message","id":"p2","parentId":"p1","timestamp":"2026-10-07T00:00:02.000Z","message":{"role":"bashExecution","command":"printf ''","output":"","exitCode":null,"cancelled":false,"truncated":false}}
+{"type":"message","id":"p3","parentId":"p2","timestamp":"2026-10-07T00:00:03.000Z","message":{"role":"bashExecution","command":"false","output":"","exitCode":2}}
+{"type":"message","id":"p4","parentId":"p3","timestamp":"2026-10-07T00:00:04.000Z","message":{"role":"bashExecution","command":"sleep 9","output":"partial\n","exitCode":130,"cancelled":true}}
+{"type":"message","id":"p5","parentId":"p4","timestamp":"2026-10-07T00:00:05.000Z","message":{"role":"bashExecution","command":"seq 2","output":"1\n2\n","exitCode":0,"truncated":true}}
+{"type":"message","id":"p6","parentId":"p5","timestamp":"2026-10-07T00:00:06.000Z","message":{"role":"bashExecution","command":"printf colors","output":"\u001b[31mred\u001b[0m\r\nnext\rover\n","exitCode":0}}
+{"type":"message","id":"p7","parentId":"p6","timestamp":"2026-10-07T00:00:07.000Z","message":{"role":"bashExecution","command":"seq 23","output":"1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n","exitCode":0,"excludeFromContext":true}}
+{"type":"message","id":"u1","parentId":"p7","timestamp":"2026-10-07T00:00:30.000Z","message":{"role":"user","content":"poison-end","timestamp":1791331230000}}
