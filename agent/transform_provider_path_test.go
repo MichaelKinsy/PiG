@@ -131,3 +131,53 @@ func TestCleanToolCycleSurvivesProviderRequest(t *testing.T) {
 		})
 	}
 }
+
+func TestOpenAICompletionsSparseToolCallIndexExecutes(t *testing.T) {
+	const toolCallSSE = `data: {"choices":[{"delta":{"role":"assistant"},"index":0}],"id":"msg_1","model":"claude-sonnet-5","object":"chat.completion.chunk"}
+
+data: {"choices":[{"delta":{"tool_calls":[{"function":{"arguments":"","name":"get_result"},"id":"toolu_1","index":1,"type":"function"}]},"index":0}],"id":"msg_1","model":"claude-sonnet-5","object":"chat.completion.chunk"}
+
+data: {"choices":[{"delta":{"tool_calls":[{"function":{"arguments":"{\"job_id\""},"index":1,"type":"function"}]},"index":0}],"id":"msg_1","model":"claude-sonnet-5","object":"chat.completion.chunk"}
+
+data: {"choices":[{"delta":{"tool_calls":[{"function":{"arguments":":\"x\"}"},"index":1,"type":"function"}]},"index":0}],"id":"msg_1","model":"claude-sonnet-5","object":"chat.completion.chunk"}
+
+data: {"choices":[{"delta":{},"finish_reason":"tool_calls","index":0}],"id":"msg_1","model":"claude-sonnet-5","object":"chat.completion.chunk"}
+
+data: [DONE]
+
+`
+	const textSSE = `data: {"choices":[{"delta":{"role":"assistant","content":"done"},"index":0}],"id":"msg_2","object":"chat.completion.chunk"}
+
+data: {"choices":[{"delta":{},"finish_reason":"stop","index":0}],"id":"msg_2","object":"chat.completion.chunk"}
+
+data: [DONE]
+
+`
+	var requests int
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		_, _ = io.ReadAll(request.Body)
+		requests++
+		writer.Header().Set("Content-Type", "text/event-stream")
+		if requests == 1 {
+			_, _ = io.WriteString(writer, toolCallSSE)
+			return
+		}
+		_, _ = io.WriteString(writer, textSSE)
+	}))
+	defer server.Close()
+
+	provider := ai.NewOpenAIProvider(ai.OpenAIConfig{Model: "claude-sonnet-5", BaseURL: server.URL, APIKey: "k", ProviderID: "openai"})
+	tool := &fakeTool{name: "get_result", mode: ToolModeSequential, content: "satisfied"}
+	agent := NewAgent(AgentOptions{Model: fakeTestModel(provider), Tools: []AgentTool{tool}, MaxTurns: 5})
+
+	messages, err := agent.Send(context.Background(), "poll the job")
+	if err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	for _, message := range messages {
+		if message.ToolResult != nil && message.ToolResult.ToolName == "get_result" && message.ToolResult.Text() == "satisfied" {
+			return
+		}
+	}
+	t.Fatalf("tool call at stream index 1 never executed (%d provider requests)", requests)
+}
