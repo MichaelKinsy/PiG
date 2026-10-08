@@ -155,9 +155,6 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 		if stdinWrite != nil {
 			_ = stdinWrite.Close()
 		}
-		if errors.Is(err, errPigExiting) {
-			return BashOperationsResult{}, err
-		}
 		return BashOperationsResult{}, &shellSpawnError{path: shell.Path, cause: err}
 	}
 	defer releaseProcessGroup(cmd.Process)
