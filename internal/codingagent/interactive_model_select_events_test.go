@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -36,7 +37,7 @@ func TestInteractiveModelCommandEmitsNoModelSelectOfItsOwn(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(handle.switched) != 1 || handle.switched[0].ID != "capture/next" || len(handle.cycled) != 0 {
-		t.Fatalf("Session got SetModel %v and CycleToModel %v, want one SetModel of capture/next", handle.switched, handle.cycled)
+		t.Fatalf("Session got SetModel %v and CycleModel %v, want one SetModel of capture/next", handle.switched, handle.cycled)
 	}
 	if len(events) != 0 {
 		t.Fatalf("interactive mode emitted model_select %v itself; the Session owns the event", events)
@@ -46,15 +47,15 @@ func TestInteractiveModelCommandEmitsNoModelSelectOfItsOwn(t *testing.T) {
 // Cycling a model reaches the Session as a cycle (agent-session.ts:2480, 2512), so the Session's one model_select carries source "cycle". Pig's cycle called SetModel, whose event says source "set", and then added its own event.
 func TestInteractiveModelCycleReachesTheSessionAsACycle(t *testing.T) {
 	m := modelPickerTestMode(t)
-	t.Setenv("OPENAI_API_KEY", "fake-openai")
-	handle := &recordingCompactHandle{agent: m.agent}
+	next := &ai.Model{ID: "next", ProviderMeta: ai.ProviderMetadata{ProviderID: "capture"}}
+	handle := &recordingCompactHandle{agent: m.agent, cycleResults: []*ModelCycleResult{{Model: next}}}
 	m.opts.SessionHandle = handle
 	var events []any
 	m.newRunner = modelSelectCountingRunner(t, &events)
 
 	m.cycleModel(true)
 	if len(handle.cycled) != 1 || len(handle.switched) != 0 {
-		t.Fatalf("Session got CycleToModel %v and SetModel %v, want one CycleToModel", handle.cycled, handle.switched)
+		t.Fatalf("Session got CycleModel %v and SetModel %v, want one CycleModel", handle.cycled, handle.switched)
 	}
 	if len(events) != 0 {
 		t.Fatalf("interactive mode emitted model_select %v itself; the Session owns the event", events)

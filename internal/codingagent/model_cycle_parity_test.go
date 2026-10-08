@@ -2,12 +2,12 @@ package codingagent
 
 import (
 	"context"
-	"os"
-	"path/filepath"
-	"strings"
+	"slices"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
 type cycleTestProvider struct{ id string }
@@ -18,56 +18,81 @@ func (p cycleTestProvider) Stream(context.Context, ai.TranscriptContext, ai.Stre
 	return completedTestStream(p.id), nil
 }
 
-func TestCycleModelUsesProviderQualifiedSpec(t *testing.T) {
-	agentDir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(agentDir, "auth.json"), []byte(`{
-  "github-copilot": {"type":"oauth", "refresh":"refresh-token", "access":"access-token", "expires": 4102444800000}
-}`), 0o600); err != nil {
-		t.Fatal(err)
+func TestInteractiveCycleUsesSessionSelections(t *testing.T) {
+	current := &ai.Model{ID: "gpt-4-turbo", ProviderMeta: ai.ProviderMetadata{ProviderID: "openai"}}
+	custom := &ai.Model{ID: "custom-model", DisplayName: "Custom Model", ProviderMeta: ai.ProviderMetadata{ProviderID: "custom"}}
+	gpt4 := &ai.Model{ID: "gpt-4", DisplayName: "GPT-4", ProviderMeta: ai.ProviderMetadata{ProviderID: "openai"}}
+	handle := &recordingCompactHandle{
+		agent:        agent.NewAgent(agent.AgentOptions{Model: current}),
+		scopedModels: []extension.ScopedModel{{Model: custom}, {Model: gpt4}, {Model: current}},
+		cycleResults: []*ModelCycleResult{{Model: custom}, {Model: gpt4}, {Model: current}, {Model: custom}},
 	}
+	m := &InteractiveMode{opts: InteractiveOptions{
+		Model:         current,
+		SessionHandle: handle,
+		ModelBuilder:  func(string) (*ai.Model, error) { t.Fatal("interactive cycle rebuilt the model list"); return nil, nil },
+	}}
+	m.statusLine = NewStatusLine(current, "test", nil)
 
-	sm := NewSettingsManager(t.TempDir(), agentDir)
-	if err := sm.SetDefaultModelAndProvider("saved", "original"); err != nil {
-		t.Fatal(err)
+	for _, result := range handle.cycleResults {
+		m.cycleModel(true)
+		if m.opts.Model != result.Model {
+			t.Fatalf("interactive model = %v, want Session selection %v", m.opts.Model, result.Model)
+		}
 	}
-	var gotSpec string
-	m := &InteractiveMode{
-		opts: InteractiveOptions{
-			AgentDir:        agentDir,
-			SettingsManager: sm,
-			Model: &ai.Model{
-				ID:       "gpt-5.4",
-				Provider: cycleTestProvider{id: "github-copilot"},
-			},
-			ModelBuilder: func(spec string) (*ai.Model, error) {
-				gotSpec = spec
-				provider, modelID, ok := strings.Cut(spec, "/")
-				if !ok {
-					provider, modelID = "", spec
-				}
-				return &ai.Model{ID: modelID, Provider: cycleTestProvider{id: provider}}, nil
-			},
-		},
+	got := make([]string, 0, len(handle.cycled))
+	for _, model := range handle.cycled {
+		got = append(got, modelSpec(model))
 	}
-	m.statusLine = NewStatusLine(m.opts.Model, "test", nil)
-
-	m.cycleModel(true)
-	if got := sm.Get(); got.DefaultProvider != "saved" || got.DefaultModel != "original" {
-		t.Errorf("model cycle rewrote defaults: %s/%s", got.DefaultProvider, got.DefaultModel)
+	want := []string{"custom/custom-model", "openai/gpt-4", "openai/gpt-4-turbo", "custom/custom-model"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("cycled models = %v, want Session selections %v", got, want)
 	}
-
-	if gotSpec == "" {
-		t.Fatal("ModelBuilder was not called")
-	}
-	if !strings.HasPrefix(gotSpec, "github-copilot/") {
-		t.Fatalf("cycleModel passed %q to ModelBuilder; want provider-qualified github-copilot/<id>", gotSpec)
+	if wantDirections := []string{"forward", "forward", "forward", "forward"}; !slices.Equal(handle.cycleDirections, wantDirections) {
+		t.Fatalf("cycle directions = %v, want %v", handle.cycleDirections, wantDirections)
 	}
 }
 
-func TestGeneratedModelSpecPreservesSlashInModelID(t *testing.T) {
-	got := generatedModelSpec(ai.GeneratedModel{Provider: "openrouter", ID: "openai/gpt-5.5"})
-	want := "openrouter/openai/gpt-5.5"
-	if got != want {
-		t.Fatalf("generatedModelSpec = %q, want %q", got, want)
+func TestInteractiveCycleStatusMatchesSessionResult(t *testing.T) {
+	reasoning := &ai.Model{
+		ID:           "reasoning-model",
+		DisplayName:  "Reasoning Model",
+		Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingHigh},
+		ProviderMeta: ai.ProviderMetadata{ProviderID: "custom"},
+	}
+	for _, tc := range []struct {
+		name       string
+		scoped     []extension.ScopedModel
+		result     *ModelCycleResult
+		forward    bool
+		wantStatus string
+	}{
+		{name: "one available", wantStatus: "Only one model available", forward: true},
+		{name: "one in scope", scoped: []extension.ScopedModel{{Model: reasoning}}, wantStatus: "Only one model in scope", forward: true},
+		{name: "reasoning level", result: &ModelCycleResult{Model: reasoning, ThinkingLevel: ai.ThinkingHigh, IsScoped: true}, wantStatus: "Switched to Reasoning Model (thinking: high)"},
+		{name: "reasoning off", result: &ModelCycleResult{Model: reasoning, ThinkingLevel: ai.ThinkingOff}, wantStatus: "Switched to Reasoning Model"},
+		{name: "non-reasoning id fallback", result: &ModelCycleResult{Model: &ai.Model{ID: "plain"}, ThinkingLevel: ai.ThinkingHigh}, wantStatus: "Switched to plain"},
+		{name: "reasoning metadata", result: &ModelCycleResult{Model: &ai.Model{ID: "metadata", ProviderMeta: ai.ProviderMetadata{Reasoning: true}}, ThinkingLevel: ai.ThinkingLow}, wantStatus: "Switched to metadata (thinking: low)"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			handle := &recordingCompactHandle{scopedModels: tc.scoped, cycleResults: []*ModelCycleResult{tc.result}}
+			m := &InteractiveMode{opts: InteractiveOptions{SessionHandle: handle}}
+			m.statusLine = NewStatusLine(nil, "test", nil)
+			var status string
+			m.statusLine.SetStatusHook(func(message string) { status = message })
+
+			m.cycleModel(tc.forward)
+
+			if status != tc.wantStatus {
+				t.Fatalf("status = %q, want %q", status, tc.wantStatus)
+			}
+			wantDirection := "backward"
+			if tc.forward {
+				wantDirection = "forward"
+			}
+			if !slices.Equal(handle.cycleDirections, []string{wantDirection}) {
+				t.Fatalf("cycle directions = %v, want [%s]", handle.cycleDirections, wantDirection)
+			}
+		})
 	}
 }

@@ -20,10 +20,12 @@ func (h *liveModelSessionHandle) apply(model *ai.Model) {
 	h.notify()
 }
 
-func (h *liveModelSessionHandle) CycleToModel(model *ai.Model, options ...ModelMutationOptions) error {
-	_ = h.recordingCompactHandle.CycleToModel(model, options...)
-	h.apply(model)
-	return nil
+func (h *liveModelSessionHandle) CycleModel(direction string, options ...ModelMutationOptions) (*ModelCycleResult, error) {
+	result, err := h.recordingCompactHandle.CycleModel(direction, options...)
+	if result != nil {
+		h.apply(result.Model)
+	}
+	return result, err
 }
 
 func (h *liveModelSessionHandle) SetModel(model *ai.Model, options ...ModelMutationOptions) error {
@@ -46,7 +48,8 @@ func TestInteractiveModelSelectHandlersObserveTheSelectedModel(t *testing.T) {
 	defer detach()
 
 	var inproc, subprocess []string
-	handle := &liveModelSessionHandle{recordingCompactHandle: &recordingCompactHandle{agent: m.agent}}
+	next := &ai.Model{ID: "next", ProviderMeta: ai.ProviderMetadata{ProviderID: "capture"}}
+	handle := &liveModelSessionHandle{recordingCompactHandle: &recordingCompactHandle{agent: m.agent, cycleResults: []*ModelCycleResult{{Model: next}}}}
 	handle.notify = func() {
 		model, err := m.newRunner.CreateCommandContext().Model()
 		if err != nil {
@@ -66,7 +69,7 @@ func TestInteractiveModelSelectHandlersObserveTheSelectedModel(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(handle.cycled) != 1 || len(handle.switched) != 1 {
-		t.Fatalf("Session got CycleToModel %v and SetModel %v", handle.cycled, handle.switched)
+		t.Fatalf("Session got CycleModel %v and SetModel %v", handle.cycled, handle.switched)
 	}
 	want := []string{handle.cycled[0].ID, "capture/next"}
 	if len(inproc) != 2 || inproc[0] != want[0] || inproc[1] != want[1] {

@@ -12,6 +12,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -84,10 +85,15 @@ func TestModelPickerGeminiAuthAndCatalog(t *testing.T) {
 
 func TestCycleModelDoesNotPersistDefault(t *testing.T) {
 	m := modelPickerTestMode(t)
-	t.Setenv("OPENAI_API_KEY", "fake-openai")
+	next := &ai.Model{ID: "next", ProviderMeta: ai.ProviderMetadata{ProviderID: "capture"}}
+	handle := &recordingCompactHandle{agent: m.agent, cycleResults: []*ModelCycleResult{{Model: next}}}
+	m.opts.SessionHandle = handle
 	m.cycleModel(true)
 	if got := m.opts.SettingsManager.GetDefaultModel(); got != "original" {
 		t.Fatalf("cycling persisted %q as default", got)
+	}
+	if len(handle.cycleOptions) != 1 || len(handle.cycleOptions[0]) != 0 {
+		t.Fatalf("cycle options = %v, want no persisted default", handle.cycleOptions)
 	}
 }
 
@@ -108,6 +114,11 @@ func TestModelPickerReopensInScopeOrderAfterSavingDefault(t *testing.T) {
 	if err := m.opts.SettingsManager.SetDefaultModelAndProvider("capture", "model-one"); err != nil {
 		t.Fatal(err)
 	}
+	handle := &recordingCompactHandle{
+		agent:        m.agent,
+		scopedModels: []extension.ScopedModel{{Model: m.opts.Model}},
+	}
+	m.opts.SessionHandle = handle
 	m.scopedModelIDs = []string{"capture/model-one"}
 	m.setModalInputChannel(make(chan []byte, 3))
 	input, release := m.acquireModalInputChannel()
@@ -125,6 +136,9 @@ func TestModelPickerReopensInScopeOrderAfterSavingDefault(t *testing.T) {
 	}
 	if want := []string{"capture/model-one", "capture/model-two"}; !slices.Equal(m.scopedModelIDs, want) {
 		t.Fatalf("scope = %v, want %v", m.scopedModelIDs, want)
+	}
+	if len(handle.scopedModels) != 2 || modelSpec(handle.scopedModels[1].Model) != "capture/model-two" {
+		t.Fatalf("Session scope = %+v, want appended capture/model-two", handle.scopedModels)
 	}
 
 	var output bytes.Buffer

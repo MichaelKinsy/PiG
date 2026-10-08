@@ -10,13 +10,6 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-// ModelCycleResult reports a model-cycle selection and its clamped thinking level.
-type ModelCycleResult struct {
-	Model         *ai.Model
-	ThinkingLevel ai.ThinkingLevel
-	IsScoped      bool
-}
-
 // CycleModel selects the next available model. Empty direction means forward; only Persist changes global defaults.
 func (s *Session) CycleModel(direction string, options ...ModelMutationOptions) (*ModelCycleResult, error) {
 	if direction != "" && direction != "forward" && direction != "backward" {

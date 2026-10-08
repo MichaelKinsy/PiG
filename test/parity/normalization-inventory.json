@@ -4020,6 +4020,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/model-resolver-selector/26-interactive-cycle-custom-scope.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Switched to Custom Model",
+            "capture_start_last": true
+          },
+          "reason": "Owned visible surface: Ctrl+P cycles a mixed custom and built-in model scope in configured order.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/model-runtime-store-catalog/10-model-picker-refresh-status.toml",
       "transforms": [
         {

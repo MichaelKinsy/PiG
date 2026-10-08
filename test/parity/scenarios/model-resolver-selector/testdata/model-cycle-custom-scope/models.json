@@ -1,0 +1,15 @@
+{
+  "providers": {
+    "custom": {
+      "baseUrl": "http://127.0.0.1:9",
+      "api": "anthropic-messages",
+      "apiKey": "fake-key",
+      "models": [
+        {
+          "id": "custom-model",
+          "name": "Custom Model"
+        }
+      ]
+    }
+  }
+}

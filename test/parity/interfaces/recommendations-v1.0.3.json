@@ -175864,22 +175864,24 @@
     {
       "id": "pkg:coding-agent/.#ModelCycleResult",
       "upstreamShapeHash": "sha256:10560898c80cf2e0fe67b232cddc7e57da45488352725ae8f230b6b4fbf97253",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/coding#ModelCycleResult"
+        "go:github.com/MichaelKinsy/PiG/coding#ModelCycleResult",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelCycleResult"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",

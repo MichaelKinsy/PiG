@@ -115,138 +115,46 @@ func (m *InteractiveMode) handleModelPicker() {
 	showModelSelectionStatus(sc, spec)
 }
 
-// cycleModel cycles through available models in the given direction.
-// forward=true goes to the next model; forward=false goes to the previous.
-// Mirrors upstream interactive-mode.ts:3303-3320 (cycleModel).
-//
-// upstream: keybindings.ts:76-82 (app.model.cycleForward / cycleBackward)
+// cycleModel delegates ordering, scope, and thinking-level changes to the Session.
+// upstream: interactive-mode.ts:cycleModel
 func (m *InteractiveMode) cycleModel(forward bool) {
 	m.invalidatePostLoginSelection()
-	// Build the same filtered model list that PickModel uses.
-	catalog := ai.ListModels("")
-	if len(catalog) == 0 {
-		m.statusLine.Flash("No models available", 3*time.Second)
+	if m.opts.SessionHandle == nil {
+		m.showError("Model switching not configured")
 		return
 	}
-
-	// Filter to reachable + authenticated providers.
-	reachable := ReachableProviders()
-	authed := AuthenticatedProviders(m.opts.AgentDir)
-
-	var items []ai.GeneratedModel
-	for _, mm := range catalog {
-		if !reachable[mm.Provider] {
-			continue
-		}
-		if !authed[mm.Provider] {
-			continue
-		}
-		items = append(items, mm)
-	}
-
-	// Merge registered dynamic providers (example-provider, radius) before scoping so
-	// the scope filter applies to them uniformly. Already auth-filtered.
-	for _, e := range m.dynamicProviderModels() {
-		items = append(items, ai.GeneratedModel{Provider: e.ProviderID, ID: e.ModelID, DisplayName: e.DisplayName})
-	}
-
-	// If scoped model IDs are set, filter to only those.
-	if m.scopedModelIDs != nil {
-		scoped := make(map[string]bool, len(m.scopedModelIDs))
-		for _, id := range m.scopedModelIDs {
-			scoped[id] = true
-		}
-		items = slices.DeleteFunc(items, func(mm ai.GeneratedModel) bool {
-			_, scopedQualified := scoped[generatedModelSpec(mm)]
-			_, scopedBare := scoped[mm.ID]
-			return !scopedQualified && !scopedBare
-		})
-	}
-
-	if len(items) <= 1 {
-		msg := "Only one model available"
-		if len(items) == 0 {
-			msg = "No authenticated models"
-		}
-		m.statusLine.Flash(msg, 3*time.Second)
-		return
-	}
-
-	// Find current model in the list.
-	currentID := modelSpec(m.opts.Model)
-	currentBareID := ""
-	if m.opts.Model != nil {
-		currentBareID = m.opts.Model.ID
-	}
-	currentIdx := -1
-	for i, mm := range items {
-		if generatedModelSpec(mm) == currentID || mm.ID == currentBareID {
-			currentIdx = i
-			break
-		}
-	}
-	if currentIdx == -1 {
-		currentIdx = 0
-	}
-
-	// Cycle.
-	n := len(items)
-	var nextIdx int
+	direction := "backward"
 	if forward {
-		nextIdx = (currentIdx + 1) % n
-	} else {
-		nextIdx = (currentIdx - 1 + n) % n
+		direction = "forward"
 	}
-	next := items[nextIdx]
-	spec := generatedModelSpec(next)
-
-	// Switch via the same path as /model.
-	if m.opts.ModelBuilder == nil {
-		m.statusLine.Flash("Model switching not configured", 3*time.Second)
-		return
-	}
-	newModel, err := m.opts.ModelBuilder(spec)
+	result, err := m.opts.SessionHandle.CycleModel(direction)
 	if err != nil {
-		m.statusLine.Flash("Model switch failed: "+err.Error(), 5*time.Second)
+		m.showError(err.Error())
 		return
 	}
-	// The Session emits model_select once, with source "cycle" (agent-session.ts:2372-2384, 2480, 2512).
-	if m.opts.SessionHandle != nil {
-		if err := m.opts.SessionHandle.CycleToModel(newModel); err != nil {
-			m.statusLine.Flash("Model switch failed: "+err.Error(), 5*time.Second)
-			return
+	if result == nil {
+		message := "Only one model available"
+		if len(m.opts.SessionHandle.ScopedModels()) > 0 {
+			message = "Only one model in scope"
 		}
-	} else if m.agent != nil {
-		m.agent.SetModel(newModel)
+		m.statusLine.Flash(message, 3*time.Second)
+		return
 	}
-	m.opts.Model = newModel
-	m.statusLine.SetModel(newModel)
+	m.opts.Model = result.Model
+	m.statusLine.SetModel(result.Model)
 	m.refreshThinkingLevel()
 
-	displayName := next.DisplayName
+	displayName := result.Model.DisplayName
 	if displayName == "" {
-		displayName = next.ID
+		displayName = result.Model.ID
 	}
-	m.statusLine.Flash("Switched to "+displayName, 3*time.Second)
-}
-
-// dynamicProviderModels returns models from registered dynamic providers
-// (e.g. example-provider, radius) that have configured auth. Upstream's interactive
-// model surfaces build from modelRuntime.getAvailable(), which merges these
-// registered providers with the static catalog; pig's static ai.ListModels
-// omits them, so the model-list callers append these to match. Nil-safe.
-func (m *InteractiveMode) dynamicProviderModels() []ModelEntry {
-	if m == nil || m.opts.ModelRegistry == nil {
-		return nil
+	thinking := ""
+	if (result.Model.ProviderMeta.Reasoning || result.Model.Capabilities.MaxThinking != "") && result.ThinkingLevel != ai.ThinkingOff {
+		thinking = " (thinking: " + string(result.ThinkingLevel) + ")"
 	}
-	return m.opts.ModelRegistry.GetAvailable()
-}
-
-func generatedModelSpec(mm ai.GeneratedModel) string {
-	if mm.Provider == "" || strings.HasPrefix(mm.ID, mm.Provider+"/") {
-		return mm.ID
-	}
-	return mm.Provider + "/" + mm.ID
+	m.statusLine.Flash("Switched to "+displayName+thinking, 3*time.Second)
+	// Pi warns after a successful cycle too (interactive-mode.ts:4510).
+	m.maybeWarnAboutAnthropicSubscriptionAuthAsync()
 }
 
 func modelSpec(model *ai.Model) string {
