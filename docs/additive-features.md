@@ -67,6 +67,7 @@ Call-site markers:
 - `internal/npmpublish/`
 - `cmd/pig/package_publish.go`
 - `internal/buildprogress/`
+- `internal/fspublish/`
 - `coding/extension/host/runtimecell/go_packed.go`
 - `coding/extension/host/runtimecell/rust_packed.go`
 - `coding/extension/host/subprocess/builder.go`
@@ -84,6 +85,8 @@ Tests:
 - `cmd/pig/build_command_test.go`
 - `cmd/pig/build_progress_test.go`
 - `internal/buildprogress/reporter_test.go`
+- `internal/fspublish/` (`publish_linux_test.go` for the no-replace rename where Android refuses a Piglet commit's hard link)
+- `coding/pigletbuild/publish_linkrefused_linux_test.go` and `coding/piglet/add_linkrefused_linux_test.go` (Piglet scripts, records, managed artifacts and `pig piglet add` publish while the kernel refuses links through a seccomp filter)
 - `cmd/pig/package_commands_test.go`
 
 PORT_MAP path: n/a.

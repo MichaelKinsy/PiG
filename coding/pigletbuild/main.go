@@ -19,6 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/piglet/signature"
 	"github.com/MichaelKinsy/PiG/internal/buildprogress"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/fspublish"
 )
 
 // RunPigletBuildCommand handles the sole public Piglet output build path.
@@ -289,7 +290,7 @@ func writeSourceScript(path string, data []byte) (string, error) {
 	if err := stage.Close(); err != nil {
 		return "", err
 	}
-	if err := os.Link(stagePath, absolute); err != nil {
+	if err := fspublish.Publish(stagePath, absolute); err != nil {
 		return "", fmt.Errorf("commit Piglet script %s: %w", absolute, err)
 	}
 	return absolute, nil
