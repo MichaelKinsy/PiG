@@ -71,8 +71,12 @@ func discoverAuthContributionsFor(targetID string) (*authContributionRegistry, e
 		return nil, err
 	}
 	fusepack.Register()
-	configs = normalizeRuntimeExtensionConfigs(configs)
-	slices.SortFunc(configs, func(a, b subprocess.ExtConfig) int { return strings.Compare(a.Name, b.Name) })
+	// Inspection and launch load one extension per host, and the registry keys
+	// them by name. Two Packages whose entries share a name (every
+	// ./src/index.ts is "src") need distinct keys, or a login launches the
+	// last extension of that name instead of the one that declared the provider.
+	configs = subprocess.DisambiguateIdentities(normalizeRuntimeExtensionConfigs(configs))
+	slices.SortStableFunc(configs, func(a, b subprocess.ExtConfig) int { return strings.Compare(a.Name, b.Name) })
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	if len(configs) > 0 {

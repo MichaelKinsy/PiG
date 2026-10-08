@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -103,5 +104,34 @@ func TestOAuthProviderListUsesTheComposedRuntimeProviderName(t *testing.T) {
 		if got, ok := findOAuthProvider(providers, id); !ok || got.Name != want {
 			t.Errorf("%s picker entry = %+v (found %v), want name %q", id, got, ok, want)
 		}
+	}
+}
+
+// Pi composes the registering extension's oauth as the provider's account login (provider-composer.ts: `extension?.oauth ?? base.auth.oauth`)
+// and gives an oauth-only registration no API-key method, so /login lists it under "Sign in with an account" only.
+// An extension provider outside the catalog (pi-antigravity) registers this way.
+func TestLoginProviderOptionsListAnExtensionOAuthProviderUnderAccountSignIn(t *testing.T) {
+	ai.RegisterOAuthProvider("external-oauth-test", testExternalOAuthProvider{})
+	defer ai.UnregisterOAuthProvider("external-oauth-test")
+	dir := t.TempDir()
+	registry := NewModelRegistry(dir)
+	if err := registry.RegisterProvider("external-oauth-test", extension.ProviderConfig{
+		API:     "external-api",
+		BaseURL: "https://external.test",
+		OAuth:   &extension.ProviderOAuth{Name: "ZZZ External OAuth"},
+		Models:  []extension.ProviderModelConfig{{ID: "m1", Name: "M1"}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	m := &InteractiveMode{opts: InteractiveOptions{AgentDir: dir, ModelRegistry: registry}}
+
+	var kinds []string
+	for _, option := range m.getLoginProviderOptions(false) {
+		if option.ID == "external-oauth-test" {
+			kinds = append(kinds, option.AuthType)
+		}
+	}
+	if len(kinds) != 1 || kinds[0] != "oauth" {
+		t.Fatalf("external-oauth-test login options = %v, want [oauth]", kinds)
 	}
 }

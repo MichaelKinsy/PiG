@@ -122,6 +122,14 @@ func disambiguateIdentities(configs []ExtConfig) []ExtConfig {
 	return out
 }
 
+// DisambiguateIdentities keys each later copy of an extension identity, loaded
+// from a different path, by its own host name ("ask:2", "ask:3", ...), as LoadAll
+// does for the configs it receives. A caller that loads configs one host at a
+// time applies it to the whole set first, so every copy keeps its own key.
+func DisambiguateIdentities(configs []ExtConfig) []ExtConfig {
+	return disambiguateIdentities(configs)
+}
+
 // UnresolvedExtConfig returns a config for an extension path whose source did
 // not resolve. It stays enabled, so every consumer that selects enabled
 // extensions sees the attempt, but the host never plans or starts it: LoadAll

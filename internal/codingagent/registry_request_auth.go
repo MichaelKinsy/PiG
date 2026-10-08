@@ -25,6 +25,11 @@ func (r *ModelRegistry) registryAuthConfig(id string) (ai.ProviderAuth, provider
 	if !configured {
 		return base, config, baseErr == nil
 	}
+	// An extension registration's oauth is the provider's account login (`extension?.oauth ?? base.auth.oauth`); the bridge
+	// publishes its flow in the OAuth provider registry, so the registration inherits that flow when the catalog has none.
+	if base.OAuth == nil && config.OAuth != nil && config.OAuth.HasLogin {
+		base.OAuth, _ = ai.OAuthProviderAuth(id)
+	}
 	return ai.ProviderAuth{APIKey: composeAPIKeyAuth(id, base, config), OAuth: composeOAuthAuth(id, base.OAuth, config)}, config, true
 }
 
