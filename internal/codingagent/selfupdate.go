@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/fspublish"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 
@@ -662,7 +663,8 @@ func selfReplaceAt(ctx context.Context, client *http.Client, bin UpdateBinary, e
 	if err := os.Remove(backupPath); err != nil {
 		return fmt.Errorf("stage executable rollback: %w", err)
 	}
-	if err := os.Link(exePath, backupPath); err != nil {
+	// pig divergence (D39): the rollback backup is a hard link, or a synced copy where the file system refuses links (EPERM or EACCES, as Android does in Termux's prefix).
+	if err := fspublish.Duplicate(exePath, backupPath); err != nil {
 		return fmt.Errorf("preserve current executable for rollback: %w", err)
 	}
 	removeBackup := true
