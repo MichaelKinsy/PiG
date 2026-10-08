@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
 func TestModelMutationPersistOptions(t *testing.T) {
@@ -26,7 +27,7 @@ func TestModelMutationPersistOptions(t *testing.T) {
 			next := *model
 			next.ID = "next"
 			if cycle {
-				err = sess.CycleToModel(&next, ModelMutationOptions{Persist: true})
+				err = sess.setModel(&next, extension.ModelSelectSourceCycle, ModelMutationOptions{Persist: true})
 			} else {
 				err = sess.SetModel(&next, ModelMutationOptions{Persist: true})
 			}

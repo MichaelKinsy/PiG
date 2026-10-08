@@ -6,7 +6,9 @@ import (
 	"io"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -179,4 +181,32 @@ func TestOpenAICodexLoginReceivesSettingsDeviceID(t *testing.T) {
 	waitForRender(t, m.editorContainer, "Login failed")
 	deliverModalInput(t, m, []byte("\x1b"))
 	<-done
+}
+
+// Pi checks for Anthropic subscription auth after Ctrl+P cycles to a model (interactive-mode.ts:4510).
+func TestCycleModelChecksAnthropicSubscriptionAuth(t *testing.T) {
+	anthropic := anthropicWarningTestModel()
+	m, _ := newAnthropicWarningMode(t, anthropic)
+	m.statusLine = NewStatusLine(nil, "test", nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	m.runCtx, m.backgroundCtx = ctx, ctx
+	m.opts.RequestAuthRuntime.providerByID["anthropic"].Auth = ai.ProviderAuth{APIKey: &ai.APIKeyAuth{}}
+	m.opts.SessionHandle = &recordingCompactHandle{cycleResults: []*ModelCycleResult{{Model: anthropic}}}
+
+	var checks atomic.Int32
+	m.opts.RequestAuthRuntime.providerByID["anthropic"].Auth.APIKey.Check = func(context.Context, ai.APIKeyAuthInput) (*ai.AuthCheck, error) {
+		checks.Add(1)
+		return &ai.AuthCheck{Type: ai.CredentialOAuth}, nil
+	}
+	m.cycleModel(true)
+	deadline := time.Now().Add(5 * time.Second)
+	for checks.Load() == 0 && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	// The warning itself needs the owner loop, which this test does not run.
+	cancel()
+	m.backgroundTasks.Wait()
+	if got := checks.Load(); got != 1 {
+		t.Fatalf("Anthropic auth checks after cycling = %d, want 1", got)
+	}
 }
