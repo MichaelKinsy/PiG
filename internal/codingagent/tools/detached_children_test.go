@@ -1,47 +1,50 @@
 package tools
 
 import (
-	"errors"
 	"os"
 	"os/exec"
 	"testing"
+	"time"
 )
 
-// The exit cleanup and a shell start share one lock: a start either lands in the set the cleanup kills, or comes after
-// the cleanup and runs nothing. A shell started between its spawn and its registration would outlive pig.
-func TestDetachedChildSetStartsNothingAfterTheExitCleanup(t *testing.T) {
+const detachedChildSleepEnv = "PIG_TEST_DETACHED_CHILD_SLEEP"
+
+// TestDetachedChildSleepHelper is the child process TestDetachedChildSetKillsAStartedShell starts.
+func TestDetachedChildSleepHelper(t *testing.T) {
+	if os.Getenv(detachedChildSleepEnv) == "" {
+		t.Skip("helper process")
+	}
+	time.Sleep(time.Minute)
+}
+
+// The kill and a shell start share one lock: the start registers the shell before the kill can run, so the kill finds
+// it. A shell started between its spawn and its registration would outlive pig.
+func TestDetachedChildSetKillsAStartedShell(t *testing.T) {
 	set := newDetachedChildSet()
-	cmd := exec.Command(os.Args[0], "-test.run=^$")
+	cmd := exec.Command(os.Args[0], "-test.run=^TestDetachedChildSleepHelper$")
+	cmd.Env = append(os.Environ(), detachedChildSleepEnv+"=1")
 	setProcessGroup(cmd)
 	if err := set.start(cmd); err != nil {
 		t.Fatal(err)
 	}
+	defer releaseProcessGroup(cmd.Process)
 	set.mu.Lock()
 	_, tracked := set.processes[cmd.Process]
 	set.mu.Unlock()
 	if !tracked {
+		_ = cmd.Process.Kill()
 		t.Fatal("a started shell is not tracked")
 	}
-	set.untrack(cmd.Process)
-	_ = cmd.Wait()
-	releaseProcessGroup(cmd.Process)
-
+	waited := make(chan error, 1)
+	go func() { waited <- cmd.Wait() }()
 	set.killAll()
-	pr, pw, err := os.Pipe()
-	if err != nil {
-		t.Fatal(err)
+	select {
+	case <-waited:
+	case <-time.After(10 * time.Second):
+		_ = cmd.Process.Kill()
+		t.Fatal("the kill left the started shell running")
 	}
-	defer func() { _ = pr.Close() }()
-	late := exec.Command(os.Args[0], "-test.run=^$")
-	late.Stdout = pw
-	setProcessGroup(late)
-	if err := set.start(late); !errors.Is(err, errPigExiting) {
-		t.Fatalf("start after the exit cleanup = %v, want %v", err, errPigExiting)
-	}
-	if late.Process != nil {
-		t.Fatal("a shell started after the exit cleanup")
-	}
-	if _, err := pw.Write([]byte("x")); err == nil {
-		t.Fatal("the child's end of the output pipe is still open")
+	if len(set.processes) != 0 {
+		t.Fatalf("the kill kept %d tracked shells", len(set.processes))
 	}
 }

@@ -182141,15 +182141,59 @@
       "shapeHash": "sha256:ca27f6dae3d19d1bc41f2fbed39ffc5b7d513f66e511385ffaddc718d2d3d3f1"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#detachedChildSet",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "detachedChildSet",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "detachedChildSet"
+      },
+      "shapeHash": "sha256:28ad2c0b7816f2e74bb1aa61594d0969a1b62d62d19fa1715f59097496e91bf5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#detachedChildSet.killAll",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "detachedChildSet.killAll",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#detachedChildSet.start",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "detachedChildSet.start",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(cmd *os/exec.Cmd) error"
+      },
+      "shapeHash": "sha256:0c5c6951bcf505254c992720315dc41d99fe0e45ed7d49be966bc6acd58f50a4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#detachedChildSet.untrack",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "detachedChildSet.untrack",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(p *os.Process)"
+      },
+      "shapeHash": "sha256:22205319c9fc141f5693359de2a15e0c7222cd8b727b6a346bb1cab55d31f888"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#detachedChildren",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
       "name": "detachedChildren",
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "struct{sync.Mutex; processes map[*os.Process]struct{}}"
+        "type": "*detachedChildSet"
       },
-      "shapeHash": "sha256:4e7e48579dba2459e275dea945d88717d02de6df0c79e935dff4fb28342d3bfb"
+      "shapeHash": "sha256:de507ee245aa09ecb341848f5234100b0772d2c70959cb2bc9f86c573c14320b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#detectLineEnding",
@@ -182854,6 +182898,17 @@
         "type": "func(schema github.com/MichaelKinsy/PiG/ai.ToolSchema, order ...string) encoding/json.RawMessage"
       },
       "shapeHash": "sha256:26dea139199dab06eb102915e7ab526c124b774d64ad04d02fc098c4c0470737"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#newDetachedChildSet",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "newDetachedChildSet",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() *detachedChildSet"
+      },
+      "shapeHash": "sha256:253ae80d5f2602012723e270596a917d8767d7e88436e5a22e780cf1f999ac08"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#newOutputAccumulator",
@@ -183989,17 +184044,6 @@
       "shapeHash": "sha256:752220c0d8ae39f304a58f72162548ffff8686167630d59f174f9b83d5671352"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#trackDetachedChild",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
-      "name": "trackDetachedChild",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(p *os.Process)"
-      },
-      "shapeHash": "sha256:22205319c9fc141f5693359de2a15e0c7222cd8b727b6a346bb1cab55d31f888"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#tryCurlyQuoteVariant",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
       "name": "tryCurlyQuoteVariant",
@@ -184042,17 +184086,6 @@
         "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Regexp"
       },
       "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#untrackDetachedChild",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
-      "name": "untrackDetachedChild",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(p *os.Process)"
-      },
-      "shapeHash": "sha256:22205319c9fc141f5693359de2a15e0c7222cd8b727b6a346bb1cab55d31f888"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#utf8StreamDecoder",
