@@ -1,0 +1,62 @@
+# Behavior family: interactive-rendering
+# Surface: BashExecutionComponent: output over the bash tool's 50 KB limit, under 2000 lines, is cut by bytes with Pi's truncation notice.
+#
+# Upstream evidence (pinned Pi 1.0.3, 2026-10-07, parity-runner tmux probe with COLORTERM=truecolor and the dark theme):
+# Rows below are the escaped crop, ESC shown as \e, a run of ─ as <border>.
+#
+#   $ awk 'BEGIN{for(i=1;i<=600;i++)printf "%04d%096d\n",i,0}'\e[0m
+#    \e[38;2;157;165;169m0581000…\e[39m
+#   … rows 0582 to 0600 …
+#
+#    \e[38;2;157;165;169m... 486 more lines (\e[38;2;126;136;142mctrl+o\e[38;2;157;165;169m to expand)\e[39m
+#    \e[38;2;205;154;34mOutput truncated. Full output: <TMPDIR>/pi-bash-<16 hex>.log\e[39m
+#   \e[38;2;94;178;134m<border>
+#
+# Upstream rule: 600 lines of 101 bytes are 60600 bytes, under 2000 lines but over 50 KB, so truncateTail keeps the 506 whole trailing lines (0095 to 0600) that fit in 51200 bytes; the preview shows the last 20 and 486 hide behind it.
+# Red: PiG at main 50e81255d drew the hint in \e[2m and the notice in fixed \e[33m. Green with the block port.
+# The width keeps the temporary path on one row.
+
+name = "51-bash-execution-byte-limit"
+description = "600 lines of 101 bytes (60600 bytes) keep only the whole trailing lines within 50 KB, and the block shows Pi's truncation notice."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/bash-execution.ts",
+  "packages/coding-agent/src/core/tools/truncate.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 200
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/bash-wrap-cwd"
+capture_start = "$ awk"
+capture_end_regex = '─{200}'
+
+[[tmux.steps]]
+keys = ["!awk 'BEGIN{for(i=1;i<=600;i++)printf \"%04d%096d\\n\",i,0}'", "Enter"]
+wait_visible_contains = ["Output truncated. Full output:"]
+wait_timeout_seconds = 15
+
+[assert]
+both_reach_ready = true
+both_contain = ["0600000000", "Output truncated. Full output: "]
+both_not_contain = ["panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3
+
+# normalize-rationale: the full-output file name carries 16 random hex digits in both programs; the directory, prefix, suffix, colors and notice text stay compared.
+[[assert.normalize_replace]]
+pattern = 'pi-bash-[0-9a-f]{16}\.log'
+with = "pi-bash-RANDOM.log"
+reason = "Both programs name the full-output file pi-bash-<16 random hex digits>.log under the inherited temporary directory; only the random digits are replaced."

@@ -1,0 +1,54 @@
+# Behavior family: interactive-rendering
+# Surface: BashExecutionComponent: a `!` command that exits non-zero shows `(exit N)` in the theme's error color.
+#
+# Upstream evidence (pinned Pi 1.0.3, 2026-10-07, parity-runner tmux probe with COLORTERM=truecolor and the dark theme):
+# Rows below are the escaped crop, ESC shown as \e, a run of ─ as <border>.
+#
+#   $ echo out; exit 3\e[0m
+#
+#    \e[38;2;157;165;169mout\e[39m
+#
+#
+#    \e[38;2;234;127;129m(exit 3)\e[39m
+#   \e[38;2;94;178;134m<border>
+#
+# Upstream rule: bash-execution.ts updateDisplay pushes theme.fg("error", `(exit ${exitCode}`) for status "error" (exit code neither 0 nor undefined), inside a Text with a leading "\n" and padding 1.
+# Red: PiG at main 50e81255d drew the status in fixed \e[31m. Green with the block port.
+
+name = "45-bash-execution-exit-status"
+description = "A `!` command that exits 3 ends its block with `(exit 3)` in the error color."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/bash-execution.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/bash-wrap-cwd"
+capture_start = "$ echo out; exit 3"
+capture_end_regex = '─{100}'
+
+[[tmux.steps]]
+keys = ["!echo out; exit 3", "Enter"]
+wait_visible_contains = ["(exit 3)"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["(exit 3)"]
+both_not_contain = ["panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3
