@@ -58,7 +58,7 @@ The automation writes only where the environment allows. Set these when the defa
 
 | Script | Purpose |
 |---|---|
-| `setup.sh` | Installs the Go toolchain pinned by `go.mod`, starts the module-proxy fallback when proxy.golang.org is unreachable, and builds `bin/pig`. `--check` reports without changing anything, including a leaked `GOROOT`/`GOBIN` and Go TLS failures. Behind `make setup` and `make doctor`. |
+| `setup.sh` | Installs the Go toolchain pinned by `.go-version`, starts the module-proxy fallback when proxy.golang.org is unreachable, and builds `bin/pig`. `--check` reports without changing anything, including a leaked `GOROOT`/`GOBIN` and Go TLS failures. Behind `make setup` and `make doctor`. |
 | `goproxy-github.py` | Serves the Go module proxy protocol from GitHub source archives and verifies every module against `go.sum`. Used only where proxy.golang.org is blocked. |
 | `toolchains.lock` | Pinned toolchain archives and SHA-256 digests for `setup.sh`. |
 | `login-copilot.sh` | Interactive helper for signing pig in to GitHub Copilot. |

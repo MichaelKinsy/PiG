@@ -293,7 +293,7 @@ factory and a portable `go.mod`. Pig stages the SDK under
 `<config-root>/state/pigsdk/sdk`. Pig adds a temporary filesystem replacement
 during the build. The authored file contains no machine-specific path.
 
-Build PiG and Go extensions with Go 1.27.1. The generated module keeps Go 1.26
+Build PiG and Go extensions with Go 1.27.2. The generated module keeps Go 1.26
 as its language floor:
 
 ```go.mod

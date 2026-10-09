@@ -4,14 +4,14 @@
 ARG GO_BUILDER=cgr.dev/chainguard/go:latest-dev@sha256:72f9b391f511f88e7154aaaa5ee1e27fb6594575d9a406940f49786b30172803
 ARG WOLFI_BASE=cgr.dev/chainguard/wolfi-base:latest@sha256:a31344ab2cb8618db84f535eec56f76f6178b142cb92cb2e48676cc2dcebea72
 
-# GO_VERSION must equal the go.mod toolchain; make compliance checks it.
-ARG GO_VERSION=1.27.1
+# GO_VERSION must equal .go-version; make compliance checks it.
+ARG GO_VERSION=1.27.2
 
 FROM ${GO_BUILDER} AS go-toolchain
 ARG TARGETARCH
 ARG GO_VERSION
-ARG GO_SHA256_AMD64=63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445
-ARG GO_SHA256_ARM64=3450b45a3f9ee8568792736a5c5e70a1f2e9b36c35a8f74958c03e51d7d92bec
+ARG GO_SHA256_AMD64=ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5
+ARG GO_SHA256_ARM64=94f3e30b8e374bc285e7dadc11e0865726b9bc6e85b841ccceaabc0214c6b7c8
 RUN case "${TARGETARCH}" in \
       amd64) checksum="${GO_SHA256_AMD64}" ;; \
       arm64) checksum="${GO_SHA256_ARM64}" ;; \

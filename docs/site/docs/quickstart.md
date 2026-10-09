@@ -4,7 +4,7 @@ PiG is under active development. Install it on macOS or Linux with `curl -fsSL h
 
 ## Requirements
 
-Build the `pig` executable with Go 1.27.1. Go 1.27 release binaries for
+Build the `pig` executable with Go 1.27.2. Go 1.27 release binaries for
 macOS require macOS 13 or later.
 
 The complete verification suite also uses:

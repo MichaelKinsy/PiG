@@ -145,7 +145,7 @@ def check_permissions() -> list[str]:
 
 
 def check_pins() -> list[str]:
-    go = search(r"^toolchain go(\S+)$", "go.mod", "toolchain directive")
+    go = read(".go-version").strip()
     node = read(".node-version").strip()
     node_runtime = search(
         r'^const minimumNodeRuntimeVersion = "v([^"]+)"',
@@ -192,19 +192,24 @@ def check_pins() -> list[str]:
     version = r"(\d+(?:\.\d+)*)"
     for path, pattern in [
         ("docs/site/docs/containerization.md", rf"^FROM golang:{version} AS build"),
-        ("docs/site/docs/termux.md", rf"Use Go {version} for this build\."),
+        ("docs/site/docs/termux.md", rf"Go {version} is recommended for this build\."),
         ("docs/site/docs/windows.md", rf"Install Git and Go {version}\."),
         ("internal/pigdocs/content/extension-api.md", rf"Build PiG and Go extensions with Go {version}\."),
     ]:
         copies.append(("Go", go, path, search(pattern, path, "Go version")))
     source = {
-        "Go": "go.mod toolchain",
+        "Go": ".go-version",
         "Node": ".node-version",
         "Node extension runtime": "coding/extension/host/subprocess/builder_node.go minimumNodeRuntimeVersion",
         "Rust": ".github/workflows/ci.yml RUST_VERSION",
         "Pi": "internal/coding/pigversion/pigversion.go UpstreamVersion",
     }
-    return [
+    problems = []
+    for name in ["go.mod", "go.work"]:
+        floor = search(r"^toolchain go(\S+)$", name, "toolchain directive")
+        if tuple(map(int, floor.split("."))) > tuple(map(int, go.split("."))):
+            problems.append(f"Go pin drift: {name} toolchain go{floor} is newer than {go!r} from .go-version")
+    return problems + [
         f"{kind} pin drift: {where} = {value!r}, want {want!r} from {source[kind]}"
         for kind, want, where, value in copies
         if value != want
@@ -213,7 +218,7 @@ def check_pins() -> list[str]:
 
 # Workflows read toolchain pins from files. The Node compatibility matrix reads
 # separate minimum/current runtime pins without changing the build runtime.
-SETUP_VERSION_FILES = {"setup-go": ("go-version", "go.mod"), "setup-node": ("node-version", ".node-version")}
+SETUP_VERSION_FILES = {"setup-go": ("go-version", ".go-version"), "setup-node": ("node-version", ".node-version")}
 NODE_RUNTIME_MATRIX_INPUT = "node-version-file: ${{ matrix.node_version_file }}"
 
 

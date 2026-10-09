@@ -19,7 +19,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Go comes from go.mod, Node from .node-version, and Pi from
+# Go comes from .go-version, Node from .node-version, and Pi from
 # internal/coding/pigversion/pigversion.go. make compliance checks every other copy
 # of these pins.
 env:
@@ -63,7 +63,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          go-version-file: .go-version
           cache: true
       - name: Check the README, changelog and repository settings
         run: |
@@ -104,7 +104,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          go-version-file: .go-version
           cache: true
       # setup-go restores the build cache keyed on go.sum and never refreshes it on a hit.
       # This restores the newest cache a previous run saved, so a job recompiles only what changed.
@@ -157,7 +157,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(go env GOVERSION)" = "$(awk '$1 == "toolchain" { print $2; exit }' go.mod)"
+          test "$(go env GOVERSION)" = "go$(tr -d '\r\n' < .go-version)"
           test "$(node --version)" = "v$(cat .node-version)"
           test "$(npm --version)" = "$NPM_VERSION"
           test "$(rustc --version | cut -d' ' -f2)" = "$RUST_VERSION"
@@ -191,7 +191,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          go-version-file: .go-version
           cache: true
       # Install the oracle with the qualified npm runtime before selecting the
       # test runtime: pinned npm itself requires a newer Node than Pi's floor.
@@ -242,7 +242,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          go-version-file: .go-version
           cache: true
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -301,7 +301,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          go-version-file: .go-version
           cache: true
       # setup-go restores the build cache keyed on go.sum and never refreshes it on a hit.
       # This restores the newest cache a previous run saved, so a job recompiles only what changed.
@@ -492,7 +492,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          go-version-file: .go-version
           cache: true
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -537,7 +537,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          go-version-file: .go-version
           cache: true
       - name: Build and check the Android binary
         shell: bash
