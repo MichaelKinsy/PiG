@@ -60,7 +60,7 @@ jobs:
           npm ci --prefix automation/ci/npm-toolchain --ignore-scripts --no-audit --no-fund
           export PATH="$PWD/automation/ci/npm-toolchain/node_modules/.bin:$PATH"
           test "$(npm --version)" = 12.1.0
-          test "$(go env GOVERSION)" = go1.27.2
+          test "$(go env GOVERSION)" = "$(awk '$1 == "toolchain" { print $2; exit }' go.mod)"
           make upstream-mirror
       - name: Test summary aggregation
         run: python3 -m unittest discover -s automation/ci -p test_summarize_live_tests.py

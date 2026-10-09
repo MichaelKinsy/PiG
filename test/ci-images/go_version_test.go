@@ -33,6 +33,13 @@ func TestGoVersionPolicy(t *testing.T) {
 		"docs/site/docs/termux.md":                  "Use Go " + goVersion + " for this build.",
 		"docs/site/docs/windows.md":                 "Install Git and Go " + goVersion + ".",
 		"internal/pigdocs/content/extension-api.md": "Build PiG and Go extensions with Go " + goVersion + ".",
+		"internal/pigdocs/content/install.md":       "build it with Go " + goVersion + ".",
+		"README.md":                                 "\n- Go " + goVersion + "\n",
+		"docs/site/docs/development.md":             "- Go " + goVersion + ";",
+		"docs/site/docs/quickstart.md":              "Build the `pig` executable with Go " + goVersion + ".",
+		"docs/testing/live-secrets.md":              "Run from the repository root with Go " + goVersion + ".",
+		"AGENTS.md":                                 "documented setup commands use Go " + goVersion + ".",
+		"automation/dev/toolchains.lock":            "\ngo\t" + goVersion + "\t",
 	}
 	for path, want := range buildPins {
 		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
@@ -89,6 +96,7 @@ func checkWorkflowsReadGoMod(t *testing.T, root string) {
 		t.Fatal(err)
 	}
 	literal := regexp.MustCompile(`^\s*(?:go-version|GO_VERSION):`)
+	versionCheck := regexp.MustCompile(`GOVERSION\)"?\s*=+\s*"?go[0-9]`)
 	setupGo := regexp.MustCompile(`^\s*(?:-\s+)?uses:\s*actions/setup-go@`)
 	steps := 0
 	for _, path := range paths {
@@ -101,6 +109,9 @@ func checkWorkflowsReadGoMod(t *testing.T, root string) {
 		for i, line := range lines {
 			if literal.MatchString(line) {
 				t.Errorf("%s:%d pins Go by literal %q; read go.mod with go-version-file", name, i+1, strings.TrimSpace(line))
+			}
+			if versionCheck.MatchString(line) {
+				t.Errorf("%s:%d compares GOVERSION with a literal %q; read the go.mod toolchain directive", name, i+1, strings.TrimSpace(line))
 			}
 			if !setupGo.MatchString(line) {
 				continue
