@@ -57,8 +57,8 @@ func TestNpmRuntimeRemovesAdvisoryOverridesFromBundledNpm(t *testing.T) {
 }
 
 // npm's tarball bundles its dependencies, and a lockfile cannot replace a bundled copy. The toolchain and the
-// parity image remove the bundled copy of each dependency they pin directly, so the lock must not describe it and
-// must pin the patched copy npm then resolves.
+// parity image remove npm's bundled http-cache-semantics and postcss-selector-parser, so neither lock describes those
+// bundled copies, and each lock pins the patched copy npm then resolves.
 func TestNpmLocksPinPatchedCopiesInsteadOfBundledOnes(t *testing.T) {
 	root := repoRoot(t)
 	for _, dir := range []string{
@@ -98,21 +98,80 @@ func TestNpmLocksPinPatchedCopiesInsteadOfBundledOnes(t *testing.T) {
 	}
 }
 
-// The toolchain script must remove the bundled copy of every dependency package.json pins besides npm itself.
-func TestNpmToolchainInstallRemovesBundledCopies(t *testing.T) {
-	root := repoRoot(t)
-	script, err := os.ReadFile(filepath.Join(root, "automation", "ci", "install-npm-toolchain.sh"))
+// npmToolchainFixture copies install-npm-toolchain.sh into a temporary tree with the given package.json and puts a
+// fake npm first on PATH. The fake npm ci installs npm with bundled copies of alpha, beta and gamma, and a top-level
+// copy of each name in topLevel. It returns the toolchain directory and the command that runs the script.
+func npmToolchainFixture(t *testing.T, manifest string, topLevel ...string) (string, *exec.Cmd) {
+	t.Helper()
+	if _, err := exec.LookPath("node"); err != nil {
+		t.Fatal("install-npm-toolchain.sh needs node on PATH:", err)
+	}
+	source, err := os.ReadFile(filepath.Join(repoRoot(t), "automation", "ci", "install-npm-toolchain.sh"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{
-		`npm ci --ignore-scripts --no-audit --no-fund`,
-		`rm -rf "node_modules/npm/node_modules/$dependency"`,
-		`name !== "npm"`,
-	} {
-		if !strings.Contains(string(script), want) {
-			t.Errorf("install-npm-toolchain.sh lacks %q", want)
+	root := t.TempDir()
+	script := filepath.Join(root, "automation", "ci", "install-npm-toolchain.sh")
+	toolchain := filepath.Join(root, "automation", "ci", "npm-toolchain")
+	bin := filepath.Join(root, "bin")
+	for _, dir := range []string{toolchain, bin} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
 		}
+	}
+	fakeNpm := "#!/usr/bin/env bash\nset -euo pipefail\n" +
+		`test "$*" = "ci --ignore-scripts --no-audit --no-fund"` + "\n" +
+		"for name in alpha beta gamma; do mkdir -p node_modules/npm/node_modules/$name; echo '{}' > node_modules/npm/node_modules/$name/package.json; done\n" +
+		"for name in " + strings.Join(topLevel, " ") + "; do mkdir -p node_modules/$name; echo '{}' > node_modules/$name/package.json; done\n" +
+		"mkdir -p node_modules/npm/bin\necho '{}' > node_modules/npm/package.json\necho 'console.log(\"12.1.0\")' > node_modules/npm/bin/npm-cli.js\n"
+	for path, content := range map[string]string{
+		script:                                   string(source),
+		filepath.Join(toolchain, "package.json"): manifest,
+		filepath.Join(bin, "npm"):                fakeNpm,
+	} {
+		if err := os.WriteFile(path, []byte(content), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cmd := testenv.ScriptCommand(t, script)
+	cmd.Env = append(os.Environ(), "PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	return toolchain, cmd
+}
+
+// The toolchain script removes npm's bundled copy of every dependency package.json pins besides npm itself, and only
+// those, so npm resolves the pinned top-level copy.
+func TestNpmToolchainInstallRemovesBundledCopies(t *testing.T) {
+	toolchain, cmd := npmToolchainFixture(t, `{"dependencies":{"alpha":"1.0.0","beta":"1.0.0","npm":"12.1.0"}}`, "alpha", "beta")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("install-npm-toolchain.sh: %v\n%s", err, output)
+	}
+	for name, wantBundled := range map[string]bool{"alpha": false, "beta": false, "gamma": true} {
+		_, err := os.Stat(filepath.Join(toolchain, "node_modules", "npm", "node_modules", name))
+		if bundled := err == nil; bundled != wantBundled {
+			t.Errorf("npm's bundled %s present = %v, want %v", name, bundled, wantBundled)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(toolchain, "node_modules", "npm")); err != nil {
+		t.Errorf("the script removed npm itself: %v", err)
+	}
+}
+
+// A pinned dependency that npm ci did not install at the top level, or a manifest the script cannot read, fails the
+// install instead of leaving npm with no copy or with its vulnerable bundled copy.
+func TestNpmToolchainInstallFailsClosed(t *testing.T) {
+	for name, fixture := range map[string]struct {
+		manifest string
+		topLevel []string
+	}{
+		"missing top-level copy": {`{"dependencies":{"alpha":"1.0.0","beta":"1.0.0","npm":"12.1.0"}}`, []string{"alpha"}},
+		"unreadable manifest":    {`{"dependencies":`, []string{"alpha", "beta"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, cmd := npmToolchainFixture(t, fixture.manifest, fixture.topLevel...)
+			if output, err := cmd.CombinedOutput(); err == nil {
+				t.Fatalf("install-npm-toolchain.sh succeeded\n%s", output)
+			}
+		})
 	}
 }
 
