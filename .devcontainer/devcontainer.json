@@ -2,7 +2,7 @@
   "name": "PiG",
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
   "features": {
-    "ghcr.io/devcontainers/features/go:1": { "version": "1.27.1" },
+    "ghcr.io/devcontainers/features/go:1": { "version": "1.27.2" },
     "ghcr.io/devcontainers/features/node:1": { "version": "24.19.0" },
     "ghcr.io/devcontainers/features/python:1": { "version": "3.12" },
     "ghcr.io/devcontainers/features/rust:1": { "version": "1.97.1" }

@@ -2,6 +2,7 @@ module github.com/MichaelKinsy/PiG
 
 go 1.26.0
 
+// The oldest release PiG builds with. .go-version pins the release CI and the images use. A newer line makes GOTOOLCHAIN=auto request a toolchain that Go does not publish for every platform, such as Termux.
 toolchain go1.27.1
 
 // Node, and so Pi, reports a Windows directory junction as a symbolic link that realpath resolves. Since Go 1.23, os.Lstat reports it as irregular and filepath.EvalSymlinks does not follow it; winsymlink=0 restores the Node classification. go.work repeats it for workspace builds.
@@ -30,10 +31,10 @@ require (
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
 	github.com/tetratelabs/wazero v1.12.0
 	github.com/yuin/goldmark v1.8.5
-	golang.org/x/net v0.58.0
+	golang.org/x/net v0.60.0
 	golang.org/x/oauth2 v0.37.0
-	golang.org/x/term v0.45.0
-	golang.org/x/text v0.41.0
+	golang.org/x/term v0.46.0
+	golang.org/x/text v0.42.0
 	modernc.org/sqlite v1.53.0
 )
 
@@ -252,11 +253,11 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // direct
 	golang.org/x/exp/typeparams v0.0.0-20260209203927-2842357ff358 // indirect
 	golang.org/x/image v0.45.0
-	golang.org/x/mod v0.40.0
-	golang.org/x/sync v0.22.0 // indirect
-	golang.org/x/sys v0.47.0 // direct
-	golang.org/x/telemetry v0.0.0-20260811182544-a038080d80e5 // indirect
-	golang.org/x/tools v0.49.0
+	golang.org/x/mod v0.41.0
+	golang.org/x/sync v0.23.0 // indirect
+	golang.org/x/sys v0.48.0 // direct
+	golang.org/x/telemetry v0.0.0-20260908163034-4bcc4b2ee518 // indirect
+	golang.org/x/tools v0.50.0
 	golang.org/x/vuln v1.3.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect

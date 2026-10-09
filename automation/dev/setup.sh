@@ -84,9 +84,8 @@ leaked=()
 [[ -n ${GOBIN:-} ]] && leaked+=("GOBIN=$GOBIN")
 unset GOROOT GOBIN
 
-# Go toolchain: the version named by go.mod's toolchain directive.
-go_want="$(awk '$1 == "toolchain" { print $2; exit }' "$root/go.mod")"
-[[ -n $go_want ]] || go_want="go$(awk '$1 == "go" { print $2; exit }' "$root/go.mod")"
+# Go toolchain: the version named by .go-version.
+go_want="go$(tr -d '\r\n' <"$root/.go-version")"
 os="$(uname -s | tr '[:upper:]' '[:lower:]')"
 case "$(uname -m)" in x86_64 | amd64) arch=amd64 ;; aarch64 | arm64) arch=arm64 ;; *) arch="$(uname -m)" ;; esac
 pinned="$dev_home/toolchains/$go_want"
@@ -98,7 +97,7 @@ find_go() {
 	elif have go && [[ "$(goversion go)" == "$go_want" ]]; then
 		go_bin="$(command -v go)" go_mode=path
 	elif ((!check)) && have go && [[ "$(cd "$root" && GOTOOLCHAIN=auto go env GOVERSION 2>/dev/null)" == "$go_want" ]]; then
-		go_bin="$(command -v go)" go_mode=auto # go downloads go.mod's toolchain itself.
+		go_bin="$(command -v go)" go_mode=auto # go switches to go.mod's toolchain itself.
 	fi
 }
 install_go() { # Called in a condition, so errexit is off here: every step checks its own status.
