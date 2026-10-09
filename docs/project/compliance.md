@@ -89,7 +89,7 @@ Status values:
 
 | Pin | Source | Copies that `make compliance` checks |
 |---|---|---|
-| Go toolchain | `go.mod` `toolchain` | Workflows read `go.mod` (`go-version-file`); devcontainer; CI image Dockerfiles and tags |
+| Go toolchain | `.go-version` | Workflows read it (`go-version-file`); devcontainer; CI image Dockerfiles and tags; documented setup. The `go.mod` and `go.work` `toolchain` lines are the oldest release PiG builds with and must not exceed it |
 | Node | `.node-version` | Workflows read it (`node-version-file`); devcontainer; CI parity image tag |
 | Rust | `ci.yml` `RUST_VERSION` | Devcontainer; CI parity image tag |
 | Pi | `internal/coding/pigversion/pigversion.go` `UpstreamVersion` (re-exported as `coding.UpstreamVersion`) | `extensions/sdk-ts` dependencies; CI parity oracle image; `test/parity/known-gaps.toml`; `test/parity/behavior-contracts.toml`; README badge. `ci.yml` reads the source directly. |

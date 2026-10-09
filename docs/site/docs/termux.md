@@ -150,7 +150,7 @@ go build -o "$PREFIX/bin/pig" ./cmd/pig
 pig --version
 ```
 
-Use Go 1.27.2 for this build. The modules retain Go 1.26 as their language floor.
+Go 1.27.2 is recommended for this build. Go 1.27.1, the release Termux packages, also builds PiG: the `toolchain` line in `go.mod` stays at go1.27.1 so that `GOTOOLCHAIN=auto` does not request a `go1.27.2.android-arm64` toolchain that Go does not publish. The modules retain Go 1.26 as their language floor.
 
 ## Troubleshooting
 

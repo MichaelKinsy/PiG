@@ -4,7 +4,7 @@
 ARG GO_BUILDER=cgr.dev/chainguard/go:latest-dev@sha256:72f9b391f511f88e7154aaaa5ee1e27fb6594575d9a406940f49786b30172803
 ARG WOLFI_BASE=cgr.dev/chainguard/wolfi-base:latest@sha256:a31344ab2cb8618db84f535eec56f76f6178b142cb92cb2e48676cc2dcebea72
 
-# GO_VERSION must equal the go.mod toolchain; make compliance checks it.
+# GO_VERSION must equal .go-version; make compliance checks it.
 ARG GO_VERSION=1.27.2
 
 FROM ${GO_BUILDER} AS go-toolchain

@@ -2,7 +2,8 @@ module github.com/MichaelKinsy/PiG
 
 go 1.26.0
 
-toolchain go1.27.2
+// The oldest release PiG builds with. .go-version pins the release CI and the images use. A newer line makes GOTOOLCHAIN=auto request a toolchain that Go does not publish for every platform, such as Termux.
+toolchain go1.27.1
 
 // Node, and so Pi, reports a Windows directory junction as a symbolic link that realpath resolves. Since Go 1.23, os.Lstat reports it as irregular and filepath.EvalSymlinks does not follow it; winsymlink=0 restores the Node classification. go.work repeats it for workspace builds.
 godebug winsymlink=0
