@@ -68,6 +68,7 @@ func (m *InteractiveMode) inputLoop(ctx context.Context, source io.Reader) error
 }
 
 func (m *InteractiveMode) inputLoopUntil(ctx context.Context, source io.Reader, until <-chan struct{}) (resultErr error) {
+	defer m.enterOwnerLoop()()
 	m.startTerminalInput(ctx, source)
 	if until == nil {
 		defer func() {

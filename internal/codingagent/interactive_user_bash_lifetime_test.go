@@ -17,6 +17,8 @@ func userBashOwnerProbe(t *testing.T, handler extension.HandlerFn) (*Interactive
 	t.Helper()
 	m := newRunOnMainProbe(t)
 	m.pendingMessagesContainer = tui.NewContainer()
+	// The probe has no input loop. Production runs throttled renders on that loop, so route them to the dispatcher instead of the timer goroutine, which would read the component tree while the test goroutine mutates it.
+	m.installRenderDispatcher()
 	ctx, cancel := context.WithCancel(t.Context())
 	m.runCtx, m.backgroundCtx = ctx, ctx
 	m.abortCtx, m.abortFn = context.WithCancel(ctx)
